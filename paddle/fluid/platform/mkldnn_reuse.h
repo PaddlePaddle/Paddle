@@ -34,14 +34,11 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    // TODO(jczaja): Make it faster
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    key_ = key_common_ + "-t:" + ss.str();
     if (platform::get_cur_mkldnn_session_id() !=
         platform::kMKLDNNSessionID_Default) {
       key_ = key_common_;
+    } else {
+      key_ = key_common_ + "-t:" + MKLDNNHandler::ThreadIDasStr();
     }
   }
 
@@ -205,6 +202,11 @@ class MKLDNNHandler {
     return target_memory_p;
   }
 
+  static std::string ThreadIDasStr(void) {
+    return std::to_string(
+        std::hash<std::thread::id>()(std::this_thread::get_id()));
+  }
+
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
                              const std::string& suffix) {
     return dims2str(operand_dims) + suffix;
@@ -215,8 +217,8 @@ class MKLDNNHandler {
       const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::vector<int>& dilations,
       const int& groups, const mkldnn::memory::data_type& srcdt,
-      const mkldnn::memory::format& format, const bool& relu,
-      const bool& residual, const bool& brelu, const std::string& suffix) {
+      const mkldnn::memory::format& format, const std::string& fuse_activation,
+      const bool& residual, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
 
     AppendKeyDims(key, weights_dims);
@@ -230,9 +232,8 @@ class MKLDNNHandler {
     AppendKey(key, std::to_string(groups));
     AppendKey(key, std::to_string(srcdt));
     AppendKey(key, std::to_string(format));
-    AppendKey(key, std::to_string(relu));
+    AppendKey(key, fuse_activation);
     AppendKey(key, std::to_string(residual));
-    AppendKey(key, std::to_string(brelu));
     AppendKey(key, suffix);
   }
 
@@ -429,6 +430,22 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
     }
 
     return eltwise_bwd_p;
+  }
+
+  static std::string GetHash(const memory::dims& input_dims,
+                             const mkldnn::algorithm algorithm,
+                             const mkldnn::memory::format fmt,
+                             const float alpha, const float beta,
+                             const std::string& suffix) {
+    std::string key;
+    key.reserve(platform::MKLDNNHandler::MaxKeyLength);
+    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(algorithm));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(alpha));
+    platform::MKLDNNHandler::AppendKey(&key, std::to_string(beta));
+    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    return key;
   }
 
  private:
@@ -1161,9 +1178,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
   }
 
   mkldnn::primitive_attr CreatePostOps(
-      bool fuse_relu, bool fuse_residual_conn, bool fuse_brelu,
-      float fuse_brelu_threshold,
-      const std::vector<float> output_shift_scale = {},
+      std::string fuse_activation, float fuse_alpha, float fuse_beta,
+      bool fuse_residual_conn, const std::vector<float> output_shift_scale = {},
       float sum_scale = 1.0f) const {
     mkldnn::primitive_attr conv_attr;
     mkldnn::post_ops post_operations;
@@ -1181,20 +1197,17 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_relu) {
+    if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
       constexpr float scale = 1.0f;
-      constexpr float negative_slope = 0.0f;
-      constexpr float placeholder = 0.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
-                                     negative_slope, placeholder);
+                                     fuse_alpha, fuse_beta);
     }
 
-    if (fuse_brelu) {
+    if (fuse_activation == "relu6") {
       constexpr float scale = 1.0f;
-      constexpr float placeholder = 0.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
-                                     fuse_brelu_threshold, placeholder);
+                                     fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
@@ -1206,9 +1219,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       boost::optional<const mkldnn::memory::desc&> bias,
       const mkldnn::memory::desc& dst, const std::vector<int>& strides,
       const std::vector<int>& paddings, const mkldnn::engine& engine,
-      const bool fuse_relu, const bool fuse_residual_conn,
-      const bool fuse_brelu, const float fuse_brelu_threshold,
-      mkldnn::prop_kind fwd_prop_kind,
+      const std::string& fuse_activation, float fuse_alpha, float fuse_beta,
+      const bool fuse_residual_conn, mkldnn::prop_kind fwd_prop_kind,
       const std::vector<float> output_shift_scale = {},
       const float sum_scale = 1.0f) {
     // Conv PD has to be passed to Grad op that
@@ -1241,8 +1253,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                        padding_dims, mkldnn::padding_kind::zero);
 
         mkldnn::primitive_attr conv_attr =
-            CreatePostOps(fuse_relu, fuse_residual_conn, fuse_brelu,
-                          fuse_brelu_threshold, output_shift_scale, sum_scale);
+            CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,
+                          fuse_residual_conn, output_shift_scale, sum_scale);
 
         conv_pd_.reset(new typename forward_t::primitive_desc(
             conv_desc, conv_attr, engine));
@@ -1325,14 +1337,12 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
   // TODO(jczaja): Make hashing function more optimial
   static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
                              mkldnn::memory::dims& weights_dims,  // NOLINT
-                             const bool& fuse_relu,               // NOLINT
-                             const bool& fuse_brelu,              // NOLINT
+                             const std::string& fuse_activation,  // NOLINT
                              std::vector<int>& strides,           // NOLINT
                              std::vector<int>& paddings,          // NOLINT
                              std::vector<int>& dilations,         // NOLINT
                              int groups, const std::string& suffix) {
-    return dims2str(input_dims) + dims2str(weights_dims) +
-           std::to_string(fuse_relu) + std::to_string(fuse_brelu) +
+    return dims2str(input_dims) + dims2str(weights_dims) + fuse_activation +
            dims2str(strides) + dims2str(paddings) + dims2str(dilations) +
            std::to_string(groups) + suffix;
   }

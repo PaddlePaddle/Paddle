@@ -26,18 +26,17 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
 
+DECLARE_int32(communicator_max_merge_var_num);
+DECLARE_int32(communicator_send_queue_size);
+
 DEFINE_bool(communicator_independent_recv_thread, true,
             "use an independent to recv vars from parameter server");
-DEFINE_int32(communicator_send_queue_size, 20,
-             "queue size to recv gradient before send");
 DEFINE_int32(communicator_min_send_grad_num_before_recv, 20,
              "max grad num to send before recv parameters");
 DEFINE_int32(communicator_thread_pool_size, 5, "thread num to do send or recv");
 DEFINE_int32(communicator_send_wait_times, 5,
              "times that send thread will wait if merge num does not reach "
              "max_merge_var_num");
-DEFINE_int32(communicator_max_merge_var_num, 20,
-             "max var num to merge and send");
 DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
