@@ -172,7 +172,6 @@ void Communicator::SendThread() {
       task_f.wait();
     }
     auto after_run_send_graph = GetCurrentUS();
-    auto send_graph_use_time = after_run_send_graph - before_run_send_graph;
 
     VLOG(3) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;

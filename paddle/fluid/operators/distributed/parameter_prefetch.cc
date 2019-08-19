@@ -186,7 +186,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   auto* reconstruct_var =
       scope.FindVar(persistable_var_name)->GetMutable<framework::LoDTensor>();
   const auto vec_dim_1 = reconstruct_var->dims()[1];
-  auto* reconstruct_d = reconstruct_var->data<float>();
 
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
@@ -249,6 +248,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     }
   }
 
+  //  auto* reconstruct_d = reconstruct_var->data<float>();
   // reconstruct var
   //  for (auto& id : ids_union) {
   //    std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
