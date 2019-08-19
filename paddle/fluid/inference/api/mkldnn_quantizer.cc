@@ -400,13 +400,14 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({
-      "infer_clean_graph_pass", "cpu_quantize_pass", "cpu_quantize_squash_pass",
+      "cpu_quantize_pass", "cpu_quantize_squash_pass",
   });
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
   predictor_.argument_.SetIrAnalysisPasses(passes);
   predictor_.argument_.SetAnalysisPasses(
-      {"ir_analysis_pass", "memory_optimize_pass", "ir_graph_to_program_pass"});
+      {"ir_graph_clean_pass", "ir_analysis_pass", "memory_optimize_pass",
+       "ir_graph_to_program_pass"});
   predictor_.argument_.SetQuantVarScales(scales_);
 }
 
