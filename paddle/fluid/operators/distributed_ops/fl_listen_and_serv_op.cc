@@ -190,7 +190,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE_NOT_NULL(rpc_service_);
+  PADDLE_ENFORCE_EQ(!rpc_service_, true, "rpc_service_ must null");
   std::string endpoint = Attr<std::string>("endpoint");
 
   VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
