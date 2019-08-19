@@ -210,11 +210,6 @@ class DistributedTranspiler(Fleet):
         self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
 
-        print("server endpoints")
-        print(fleet.server_endpoints(to_string=True))
-        print("worker index: %d" % fleet.worker_index())
-        print("worker num: %d" % fleet.worker_num())
-
         if self.is_worker():
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),

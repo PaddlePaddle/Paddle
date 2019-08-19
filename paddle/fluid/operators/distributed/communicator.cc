@@ -173,15 +173,26 @@ void Communicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
     auto send_graph_use_time = after_run_send_graph - before_run_send_graph;
-    if (send_graph_use_time > 100) {
-      VLOG(1) << "run send graph use time "
-              << after_run_send_graph - before_run_send_graph;
-    }
-    if (!FLAGS_communicator_independent_recv_thread) {
-      RecvAll();
-    }
+
+    VLOG(3) << "run send graph use time "
+            << after_run_send_graph - before_run_send_graph;
+    RecvNonIndependent();
   }
   VLOG(0) << "communicator stopped, send thread exit";
+}
+
+void Communicator::RecvNonIndependent() {
+  if (!FLAGS_communicator_independent_recv_thread) {
+    return;
+  }
+
+  auto grad_num = grad_num_.load();
+  if (grad_num > 0) {
+    RecvAll();
+    grad_num_.store(0);
+  } else {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 }
 
 void Communicator::RecvAll() {
