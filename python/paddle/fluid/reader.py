@@ -56,7 +56,7 @@ class PyReader(object):
             The variables should be created by :code:`fluid.layers.data()`.
             it can be None under iterable mode.
         capacity (int): capacity of the queue maintained in PyReader object.
-            it is the maximal number of samples that can be store in the queue. 
+            it is the maximal number of samples that can be stored in the queue. 
         use_double_buffer (bool): whether to use double_buffer_reader to 
             speed up data feeding. 
         iterable (bool): whether the created reader object is iterable.   
