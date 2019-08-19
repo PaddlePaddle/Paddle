@@ -74,7 +74,7 @@ class TestLightNAS(unittest.TestCase):
             line for line in open('./light_nas/compress.yaml')
             if 'target_latency' not in line
         ]
-        fid = open('./light_nas/compress.yaml')
+        fid = open('./light_nas/compress.yaml', 'w')
         for line in lines:
             fid.write(line)
         fid.close()
