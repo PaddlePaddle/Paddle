@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import unittest
+import warnings
 import numpy as np
 import random
 import six
@@ -140,6 +141,7 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
+        cls.inplace_atol = None
 
         np.random.seed(123)
         random.seed(124)
@@ -385,7 +387,7 @@ class OpTest(unittest.TestCase):
 
     def check_inplace_output_with_place(self, place, no_check_set=None):
         # can`t enable inplace 
-        if not fluid.core._has_infer_inplace(self.op_type):
+        if not fluid.core.has_infer_inplace(self.op_type):
             return
         expect_outs, fetch_list = self._calc_output(
             place, no_check_set=no_check_set, enable_inplace=False)
@@ -394,13 +396,24 @@ class OpTest(unittest.TestCase):
 
         # compare expect_outs and actual_outs
         for i, out in enumerate(fetch_list):
-            self.assertTrue(
-                np.array_equal(
-                    np.array(expect_outs[i]), np.array(actual_outs[i])),
-                "Output (" + out.name + ") has diff at " + str(place) +
-                " when using and not using inplace" + "\nExpect " +
-                str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i]) +
-                " in class " + self.__class__.__name__ + '\n')
+            if self.inplace_atol is not None:
+                self.assertTrue(
+                    np.allclose(
+                        np.array(expect_outs[i]),
+                        np.array(actual_outs[i]),
+                        atol=self.inplace_atol),
+                    "Output (" + out.name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__)
+            else:
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    "Output (" + out.name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__ + '\n')
 
     def check_inplace_grad_output_with_place(self, place, no_check_set=None):
         # create froward program to get forward vars
@@ -412,7 +425,7 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         # get grad_op 
-        if not core._has_grad_op_maker(op.desc.type()):
+        if not fluid.core.has_grad_op_maker(op.desc.type()):
             return
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
                                                                   set(), [])
@@ -422,7 +435,7 @@ class OpTest(unittest.TestCase):
 
         for i, grad_op_desc in enumerate(grad_op_desc_list):
             # grad_op can not inplace
-            if not core._has_infer_inplace(grad_op_desc.type()):
+            if not fluid.core.has_infer_inplace(grad_op_desc.type()):
                 return
             # get forward outs
             forward_outs, fetch_list = self._calc_output(
@@ -500,13 +513,26 @@ class OpTest(unittest.TestCase):
 
             # compare expect_outs and actual_outs
             for i, out_name in enumerate(grad_fetch_list):
-                self.assertTrue(
-                    np.array_equal(
-                        np.array(expect_outs[i]), np.array(actual_outs[i])),
-                    "Output (" + out_name + ") has diff at " + str(place) +
-                    " when using and not using inplace" + "\nExpect " +
-                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
-                    + " in class " + self.__class__.__name__)
+                if self.inplace_atol is not None:
+                    self.assertTrue(
+                        np.allclose(
+                            np.array(expect_outs[i]),
+                            np.array(actual_outs[i]),
+                            atol=self.inplace_atol),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        " when using and not using inplace" + "\nExpect " +
+                        str(expect_outs[i]) + "\n" + "But Got" +
+                        str(actual_outs[i]) + " in class " +
+                        self.__class__.__name__)
+                else:
+                    self.assertTrue(
+                        np.array_equal(
+                            np.array(expect_outs[i]), np.array(actual_outs[i])),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        " when using and not using inplace" + "\nExpect " +
+                        str(expect_outs[i]) + "\n" + "But Got" +
+                        str(actual_outs[i]) + " in class " +
+                        self.__class__.__name__)
 
     def check_output_with_place(self,
                                 place,
@@ -614,7 +640,17 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
+        if self.inplace_atol is not None:
+            warnings.warn(
+                "By default, inplace_atol should not be set, please check it")
         self.check_inplace_output_with_place(place, no_check_set=no_check_set)
+
+        # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
+        if (hasattr(self, 'attrs') and self.attrs.get('use_mkldnn') is not None
+            ) or os.getenv('FLAGS_use_mkldnn') is not None:
+            warnings.warn(
+                "check inplace_grad for ops using mkldnn is not supported")
+            return
         self.check_inplace_grad_output_with_place(
             place, no_check_set=no_check_set)
 

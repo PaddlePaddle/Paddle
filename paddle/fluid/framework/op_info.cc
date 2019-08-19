@@ -39,16 +39,5 @@ std::vector<std::string> OpInfoMap::GetUseDefaultGradOpDescMakerOps() const {
   return std::vector<std::string>(result_ops.begin(), result_ops.end());
 }
 
-std::vector<std::string> OpInfoMap::GetHasInferInplaceOps() const {
-  // Use set to sort op names
-  std::set<std::string> result_ops;
-  for (auto& pair : map_) {
-    if (pair.second.infer_inplace_) {
-      result_ops.insert(pair.first);
-    }
-  }
-  return std::vector<std::string>(result_ops.begin(), result_ops.end());
-}
-
 }  // namespace framework
 }  // namespace paddle

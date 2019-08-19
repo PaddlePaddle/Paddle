@@ -176,9 +176,6 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def("_get_has_infer_inplace_ops",
-        [] { return OpInfoMap::Instance().GetHasInferInplaceOps(); });
-
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
@@ -736,11 +733,11 @@ All parameter, weight, gradient are variables in Paddle.
                        [](std::unique_ptr<OpDesc> &p) { return p.release(); });
         return std::make_pair(grad_op_desc_ptrs, grad_to_var);
       });
-  m.def("_has_grad_op_maker", [](const std::string op_type) {
+  m.def("has_grad_op_maker", [](const std::string op_type) {
     auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
     return op_info == nullptr ? false : op_info->HasGradOpMaker();
   });
-  m.def("_has_infer_inplace", [](const std::string op_type) {
+  m.def("has_infer_inplace", [](const std::string op_type) {
     auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
     return op_info == nullptr ? false : op_info->HasInferInplace();
   });

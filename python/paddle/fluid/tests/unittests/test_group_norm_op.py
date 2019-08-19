@@ -44,6 +44,7 @@ class TestGroupNormOp(OpTest):
         self.shape = (2, 4, 3, 3)
         self.attrs = {'epsilon': 1e-5, 'groups': 2}
         self.compare_between_place = False
+        self.inplace_atol = 1e-5
         self.init_test_case()
 
         input = np.random.random(self.shape).astype(self.dtype)

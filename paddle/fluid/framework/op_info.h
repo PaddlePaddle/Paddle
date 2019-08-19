@@ -129,8 +129,6 @@ class OpInfoMap {
 
   std::vector<std::string> GetUseDefaultGradOpDescMakerOps() const;
 
-  std::vector<std::string> GetHasInferInplaceOps() const;
-
  private:
   OpInfoMap() = default;
   std::unordered_map<std::string, OpInfo> map_;
