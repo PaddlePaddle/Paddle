@@ -85,11 +85,14 @@ def _current_expected_place():
 
 def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
-        sys.stderr.write(
-            'The CPU_NUM is not specified, you should set CPU_NUM in '
-            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
-            'indicates that how many CPUPlace are used in the current task.\n'
-            '!!! The default number of CPUPlaces is 1.\n\n')
+        if multiprocessing.cpu_count() > 1:
+            sys.stderr.write(
+                '!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n'
+                'CPU_NUM indicates that how many CPUPlace are used in the current task.\n'
+                'And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n'
+                'export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n'
+                '!!! The default number of CPU_NUM=1.\n'.format(
+                    multiprocessing.cpu_count(), multiprocessing.cpu_count()))
         os.environ['CPU_NUM'] = str(1)
     cpu_num = os.environ.get('CPU_NUM')
     return int(cpu_num)
@@ -269,11 +272,15 @@ def name_scope(prefix=None):
               g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
-    assert prefix, "namescope prefix cannot be empty."
-    global _name_scope
-    _name_scope = _name_scope.child(prefix)
-    yield
-    _name_scope = _name_scope.parent()
+    # in dygraph we don't need namescope since it will cause mem leak
+    if not in_dygraph_mode():
+        assert prefix, "namescope prefix cannot be empty."
+        global _name_scope
+        _name_scope = _name_scope.child(prefix)
+        yield
+        _name_scope = _name_scope.parent()
+    else:
+        yield
 
 
 def _full_name_scope():
@@ -2841,6 +2848,8 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._use_lamb = False
+
         self._nccl_comm_num = 1
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0

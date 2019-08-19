@@ -45,7 +45,7 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
-             "(LodTensor, default: LoDTensor<int>), Its shape is "
+             "2-D Tensor or LodTensor with  shape "
              "[Lp, 1], where Lp is the sum of all input sequences' length.");
     AddOutput("Output", "(Tensor, default: Tensor<int>), The align result.");
     AddAttr<int>("blank",
@@ -56,6 +56,11 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: true), whether to "
                   "merge repeated elements between two blanks. ")
         .SetDefault(true);
+    // add attr padding number for tensor input
+    AddAttr<int>("padding_num",
+                 "(int, default: 0), padding number "
+                 "use to padding tensor. ")
+        .SetDefault(0);
     AddComment(R"DOC(
 CTCAlign op is used to merge repeated elements between two blanks
 and then delete all blanks in sequence.
@@ -75,7 +80,23 @@ Then:
                    6, 7]
     Output.dims = {8, 1}
     Output.LoD = [[0, 6, 8]]
+or Given:
+    Input.data = [[0, 1, 2, 2, 0, 4], 
+                  [0, 4, 5, 0, 6, 0], 
+                  [0, 7, 7, 7, 0, 0]]   
+    Input.dims = {3, 6},
+    Input.Lod = []
+And:
+    blank = 0
+    merge_repeated = True
+    padding_num = 0
 
+Then:
+    Output.data = [[1, 2, 4, 0, 0, 0],
+                   [4, 5, 6, 0, 0, 0],
+                   [7, 0, 0, 0, 0, 0]]
+    Output.dims = {3, 6},
+    Output.Lod = []
 )DOC");
   }
 };

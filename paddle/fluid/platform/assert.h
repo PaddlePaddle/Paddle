@@ -38,11 +38,11 @@ limitations under the License. */
   } while (0)
 
 // NOTE: PADDLE_ASSERT is mainly used in CUDA Kernel or HOSTDEVICE function.
-#define PADDLE_ASSERT_MSG(_IS_NOT_ERROR, __MSG, __VAL)                       \
-  do {                                                                       \
-    if (!(_IS_NOT_ERROR)) {                                                  \
-      printf("Exception: %s:%d Assertion `%s` failed (%s %ld).\n", __FILE__, \
-             __LINE__, TOSTRING(_IS_NOT_ERROR), __MSG, __VAL);               \
-      EXIT();                                                                \
-    }                                                                        \
+#define PADDLE_ASSERT_MSG(_IS_NOT_ERROR, __FORMAT, ...)                   \
+  do {                                                                    \
+    if (!(_IS_NOT_ERROR)) {                                               \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n",    \
+             __FILE__, __LINE__, TOSTRING(_IS_NOT_ERROR), ##__VA_ARGS__); \
+      EXIT();                                                             \
+    }                                                                     \
   } while (0)
