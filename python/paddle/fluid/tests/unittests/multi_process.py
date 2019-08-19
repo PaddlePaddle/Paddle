@@ -21,7 +21,7 @@ def train():
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
     worker_endpoints = worker_endpoints_env
-    trainers_num = len(worker_endpoints)
+    trainers_num = len(worker_endpoints.split(','))
 
     name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
         .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)

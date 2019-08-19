@@ -14,8 +14,8 @@ export PADDLE_TRAINER_ID=0
 distributed_args="--use_paddlecloud True --cluster_node_ips ${cluster_node_ips} --node_ip ${node_ip} --selected_gpus=0,1 --log_dir testlog"
 python -m paddle.distributed.launch ${distributed_args} multi_process.py
 
-str1="selected_gpus:0 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171 trainers_num:59 current_endpoint:127.0.0.1:6170 trainer_id:0"
-str2="selected_gpus:1 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171 trainers_num:59 current_endpoint:127.0.0.1:6171 trainer_id:1"
+str1="selected_gpus:0 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171 trainers_num:4 current_endpoint:127.0.0.1:6170 trainer_id:0"
+str2="selected_gpus:1 worker_endpoints:127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171 trainers_num:4 current_endpoint:127.0.0.1:6171 trainer_id:1"
 file_0="multi_process.check_0.log"
 file_1="multi_process.check_1.log"
 
