@@ -11,6 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
+#
+#Licensed under the Apache License, Version 2.0(the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#http:  // www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 """
 paddle.distributed.launch is a module that spawns multiple distributed 
 process on each trainning node for gpu trainning.
@@ -73,7 +87,7 @@ PADDLE_TRAINER_ENDPOINTS
 POD_IP (current node ip address, not needed for local training)
 ''')
 
-    # Optional arguments for the launch helper
+    #Optional arguments for the launch helper
     parser.add_argument(
         "--cluster_node_ips",
         type=str,
@@ -115,7 +129,7 @@ POD_IP (current node ip address, not needed for local training)
         help="The path for each process's log.If it's not setted, the log will printed to default pipe."
     )
 
-    # positional
+    #positional
     parser.add_argument(
         "training_script",
         type=str,
@@ -124,7 +138,7 @@ POD_IP (current node ip address, not needed for local training)
         "followed by all the arguments for the "
         "training script")
 
-    # rest from the training program
+    #rest from the training program
     parser.add_argument('training_script_args', nargs=REMAINDER)
     return parser.parse_args()
 
@@ -141,19 +155,23 @@ def start_procs(args):
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
     node_id = node_ips.index(current_node_ip)
     if args.use_paddlecloud:
-        # solve PADDLE_TRAINERS=null when using single node.
-        # you can automatically get ip info while using paddlecloud.
+        #solve PADDLE_TRAINERS = null when using single node.
+        #you can automatically get ip info while using paddlecloud.
         current_node_ip = os.getenv("POD_IP", "127.0.0.1")
         node_ips = os.getenv("PADDLE_TRAINERS", current_node_ip).split(",")
         node_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         if current_node_ip != args.node_ip:
-            warnings.warn("Please NOTE: When using paddlecloud, current_node_ip is \
+            warnings.warn(
+                "Please NOTE: When using paddlecloud, current_node_ip is \
 automatically got from POD_IP. Your input node_ip: %s doesn't equals to \
-current_node_ip: %s from paddlecloud environment." % (args.node_ip, current_node_ip) )
+current_node_ip: %s from paddlecloud environment." %
+                (args.node_ip, current_node_ip))
         if args.cluster_node_ips != ",".join(node_ips):
-            warnings.warn("Please NOTE: When using paddlecloud, cluster_node_ips is \
+            warnings.warn(
+                "Please NOTE: When using paddlecloud, cluster_node_ips is \
 automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).Your input \
-cluster_node_ips: %s doesn't equals to IPs: %s from paddlecloud environment." % (args.cluster_node_ips, node_ips) )
+cluster_node_ips: %s doesn't equals to IPs: %s from paddlecloud environment." %
+                (args.cluster_node_ips, node_ips))
     num_nodes = len(node_ips)
 
     if args.selected_gpus is None:
@@ -178,10 +196,10 @@ cluster_node_ips: %s doesn't equals to IPs: %s from paddlecloud environment." % 
               ", node_ips:", node_ips, ", nranks:", nranks)
 
     current_env = copy.copy(default_env)
-    # paddle broadcast ncclUniqueId use socket, and
-    # proxy maybe make trainers unreachable, so delete them.
-    # if we set them to "", grpc will log error message "bad uri"
-    # so just delete them.
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
