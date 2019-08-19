@@ -190,7 +190,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   auto fan_in = Attr<int>("Fanin");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE(!rpc_service_);
+  PADDLE_ENFORCE_NOT_NULL(rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
 
   VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
@@ -211,8 +211,9 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_flrpc_get_thread_num);
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
-                 "optimize blocks should be 1 at least on the pserver side.");
+  PADDLE_ENFORCE_GT(
+      optimize_blocks.size(), 1,
+      "optimize blocks should be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
@@ -272,5 +273,5 @@ void FlSignalHandler::StopAndExit(int signal_num) {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fl_listen_and_serv, ops::FlListenAndServOp,
-                  ops::FlListenAndServOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(fl_listen_and_serv, ops::FlListenAndServOp,
+                             ops::FlListenAndServOpMaker);
