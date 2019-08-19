@@ -33,7 +33,7 @@ fi
 # use paddlecloud
 cluster_node_ips="10.0.0.1"
 node_ip="10.0.0.1"
-
+export PADDLE_TRAINERS_NUM=2
 distributed_args="--use_paddlecloud True --cluster_node_ips ${cluster_node_ips} --node_ip ${node_ip} --selected_gpus=0,1 --log_dir testlog"
 python -m paddle.distributed.launch ${distributed_args} multi_process.py
 
@@ -54,4 +54,3 @@ if ! grep -q "$str2" "$file"; then
 else
     echo "not find trainer 0"
     exit -1
-fi
