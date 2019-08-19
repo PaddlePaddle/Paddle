@@ -11,20 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
-#
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
-#
-#http:  // www.apache.org/licenses/LICENSE-2.0
-#
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
 """
 paddle.distributed.launch is a module that spawns multiple distributed 
 process on each trainning node for gpu trainning.
@@ -162,19 +148,20 @@ def start_procs(args):
             current_node_ip = os.getenv("POD_IP", "127.0.0.1")
             node_ips = os.getenv("PADDLE_TRAINERS", current_node_ip).split(",")
             node_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+
             if args.node_ip != "127.0.0.1" and current_node_ip != args.node_ip:
                 warnings.warn(
                     "Please NOTE: When using paddlecloud, current_node_ip is \
-    automatically got from POD_IP. Your input node_ip: %s doesn't equals to \
-    current_node_ip: %s from paddlecloud environment." %
+automatically got from POD_IP. Your input node_ip: %s doesn't equals to \
+current_node_ip: %s from paddlecloud environment." %
                     (args.node_ip, current_node_ip))
             if args.cluster_node_ips != "127.0.0.1" and args.cluster_node_ips != ",".join(
                     node_ips):
                 warnings.warn(
                     "Please NOTE: When using paddlecloud, cluster_node_ips is \
-    automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).Your input \
-    cluster_node_ips: %s doesn't equals to IPs: %s from paddlecloud environment."
-                    % (args.cluster_node_ips, node_ips))
+automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).Your input \
+cluster_node_ips: %s doesn't equals to IPs: %s from paddlecloud environment." %
+                    (args.cluster_node_ips, node_ips))
     num_nodes = len(node_ips)
 
     if args.selected_gpus is None:
