@@ -32,9 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
+DECLARE_bool(check_nan_inf);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 DEFINE_bool(fast_check_nan_inf, false,
             "Fast checking NAN/INF after each operation. It will be a little"
