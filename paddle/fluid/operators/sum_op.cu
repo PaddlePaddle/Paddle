@@ -62,6 +62,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
   auto *out = context.Output<LoDTensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
+
   if (!in_place) {
     out->mutable_data<T>(context.GetPlace());
   }

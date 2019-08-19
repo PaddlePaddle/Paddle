@@ -58,5 +58,49 @@ class TestHashNotLoDOp(TestHashOp):
         self.check_output()
 
 
+class TestHashOp2(TestHashOp):
+    """
+    Case:
+    int64 type input
+    """
+
+    def setUp(self):
+        self.op_type = "hash"
+        self.init_test_case()
+        self.inputs = {'X': self.in_seq}
+        self.attrs = {'num_hash': 2, 'mod_by': 10000}
+        self.outputs = {'Out': self.out_seq}
+
+    def init_test_case(self):
+        self.in_seq = np.array([1, 2**32 + 1]).reshape((2, 1)).astype("int64")
+        self.out_seq = np.array([1269, 9609, 3868, 7268]).reshape((2, 2, 1))
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestHashOp3(TestHashOp):
+    """
+    Case:
+    int64 type input
+    int64 type mod_by attr
+    """
+
+    def setUp(self):
+        self.op_type = "hash"
+        self.init_test_case()
+        self.inputs = {'X': self.in_seq}
+        self.attrs = {'num_hash': 2, 'mod_by': 2**32}
+        self.outputs = {'Out': self.out_seq}
+
+    def init_test_case(self):
+        self.in_seq = np.array([10, 5]).reshape((2, 1)).astype("int64")
+        self.out_seq = np.array(
+            [1204014882, 393011615, 3586283837, 2814821595]).reshape((2, 2, 1))
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == "__main__":
     unittest.main()

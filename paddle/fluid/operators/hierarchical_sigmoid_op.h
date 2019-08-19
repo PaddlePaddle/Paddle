@@ -248,8 +248,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w.dims());
-      set(temp_dim, 0, real_rows.size());
-
+      temp_dim[0] = real_rows.size();
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
       zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);

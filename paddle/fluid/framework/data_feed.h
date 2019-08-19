@@ -26,6 +26,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -33,11 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -104,6 +103,8 @@ class DataFeed {
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
   virtual void SetThreadNum(int thread_num) {}
+  // This function will do nothing at default
+  virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -111,6 +112,10 @@ class DataFeed {
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
+  virtual void SetPlace(const paddle::platform::Place& place) {
+    place_ = place;
+  }
+  virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -124,6 +129,7 @@ class DataFeed {
   // This function is used to pick one file from the global filelist(thread
   // safe).
   virtual bool PickOneFile(std::string* filename);
+  virtual void CopyToFeedTensor(void* dst, const void* src, size_t size);
 
   std::vector<std::string> filelist_;
   size_t* file_idx_;
@@ -158,6 +164,7 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  platform::Place place_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -198,7 +205,7 @@ class PrivateQueueDataFeed : public DataFeed {
   size_t queue_size_;
   string::LineFileReader reader_;
   // The queue for store parsed data
-  std::unique_ptr<paddle::operators::reader::BlockingQueue<T>> queue_;
+  std::shared_ptr<paddle::framework::ChannelObject<T>> queue_;
 };
 
 template <typename T>
@@ -214,6 +221,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetConsumeChannel(void* channel);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
+  virtual void SetParseInsId(bool parse_ins_id);
   virtual void LoadIntoMemory();
 
  protected:
@@ -223,6 +231,7 @@ class InMemoryDataFeed : public DataFeed {
 
   int thread_id_;
   int thread_num_;
+  bool parse_ins_id_;
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
@@ -417,6 +426,41 @@ struct Record {
   std::vector<FeatureItem> uint64_feasigns_;
   std::vector<FeatureItem> float_feasigns_;
   std::string ins_id_;
+};
+
+struct RecordCandidate {
+  std::string ins_id_;
+  std::unordered_multimap<uint16_t, FeatureKey> feas;
+
+  RecordCandidate& operator=(const Record& rec) {
+    feas.clear();
+    ins_id_ = rec.ins_id_;
+    for (auto& fea : rec.uint64_feasigns_) {
+      feas.insert({fea.slot(), fea.sign()});
+    }
+    return *this;
+  }
+};
+
+class RecordCandidateList {
+ public:
+  RecordCandidateList() = default;
+  RecordCandidateList(const RecordCandidateList&) = delete;
+  RecordCandidateList& operator=(const RecordCandidateList&) = delete;
+
+  void ReSize(size_t length);
+
+  void ReInit();
+
+  void AddAndGet(const Record& record, RecordCandidate* result);
+
+ private:
+  size_t _capacity = 0;
+  std::mutex _mutex;
+  bool _full = false;
+  size_t _cur_size = 0;
+  size_t _total_size = 0;
+  std::vector<RecordCandidate> _candidate_list;
 };
 
 template <class AR>

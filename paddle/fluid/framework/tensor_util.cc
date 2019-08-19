@@ -100,6 +100,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
       }
     }
+  } else {
+    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
 }
@@ -167,6 +169,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
                  nullptr);
+  } else {
+    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
 }

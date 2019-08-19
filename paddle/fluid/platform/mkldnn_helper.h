@@ -15,11 +15,11 @@ limitations under the License. */
 
 #include <mkldnn.h>
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace platform {
 
@@ -81,12 +81,24 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
 
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_undef;
+  return mkldnn::memory::data_type::data_undef;
 }
 
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::f32;
+  return mkldnn::memory::data_type::f32;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return mkldnn::memory::data_type::s32;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
+  return mkldnn::memory::data_type::s8;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
+  return mkldnn::memory::data_type::u8;
 }
 
 inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {

@@ -154,7 +154,7 @@ def start_procs(args):
         for i in range(selected_gpus_num):
             if trainers_endpoints != "":
                 trainers_endpoints += ","
-            trainers_endpoints += "%s:617%d" % (ip, i)
+            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
 
     nranks = num_nodes * selected_gpus_num
 
@@ -182,6 +182,9 @@ def start_procs(args):
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
+
+        if num_nodes > 1:
+            current_env.update({"FLAGS_sync_nccl_allreduce": "0"})
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
