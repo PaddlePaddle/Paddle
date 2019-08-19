@@ -133,5 +133,6 @@ class TestPRROIPoolOp(OpTest):
             self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5,
                               0.25, 7, 0.7)
 
+
 if __name__ == '__main__':
     unittest.main()
