@@ -191,6 +191,9 @@ class CompiledProgram(object):
             build_strategy(BuildStrategy): build_strategy is used to
                 build the graph with the specified options.
                 For more information, please refer to fluid.BuildStrategy.
+                Note that, if you set build_strategy in the argument list when
+                creating CompiledProgram and calling with_data_parallel,
+                the build_strategy in CompiledProgram will be overwritten by the latter.
                 Default None.
             exec_strategy(ExecutionStrategy): exec_strategy is used to
                 to select the a way to execute the graph, for example how many
@@ -215,7 +218,7 @@ class CompiledProgram(object):
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
         self._is_data_parallel = True
-        self._build_strategy = build_strategy
+        if build_strategy is not None: self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
