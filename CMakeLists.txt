@@ -71,7 +71,6 @@ option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_D
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 
@@ -150,8 +149,6 @@ include(external/cub)
 include(external/rocprim)
 include(external/xxhash)    # download xxhash
 include(external/dlpack)
-include(external/snappy)    # download snappy
-include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)

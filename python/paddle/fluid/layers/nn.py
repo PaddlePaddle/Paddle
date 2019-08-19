@@ -119,6 +119,7 @@ __all__ = [
     'image_resize',
     'image_resize_short',
     'resize_bilinear',
+    'resize_trilinear',
     'resize_nearest',
     'gather',
     'scatter',
@@ -210,8 +211,11 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'match_matrix_tensor',
+    'filter_by_instag',
     'var_conv_2d',
     'shard_index',
+    'hard_swish',
 ]
 
 kIgnoreIndex = -100
@@ -223,7 +227,6 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -297,7 +300,6 @@ def fc(input,
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
 
     Returns:
@@ -462,18 +464,20 @@ def embedding(input,
 
     Args:
         input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
-        param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        padding_idx(int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        param_attr(ParamAttr): Parameters for this layer.
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -3202,6 +3206,10 @@ def batch_norm(input,
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
@@ -7672,12 +7680,15 @@ def image_resize(input,
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w),
-    and the resizing only applies on the last two dimensions(hight and width).
+    The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
+    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
+    on the last two/three dimensions(depth, hight and width).
 
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+
+        'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
 
@@ -7690,6 +7701,11 @@ def image_resize(input,
     W-direction in this op) on a rectilinear 2D grid. The key idea is 
     to perform linear interpolation first in one direction, and then 
     again in the other direction.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
 
     Align_corners and align_mode are optinal parameters,the calculation method 
     of interpolation can be selected by them.
@@ -7748,30 +7764,58 @@ def image_resize(input,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
+        Trilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+           
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+          
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
     For details of bilinear interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
+    For details of trilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+
 
 
     Args:
         input (Variable): The input tensor of image resize layer,
                           This is a 4-D tensor of the shape
-                          (num_batches, channels, in_h, in_w).
+                          (num_batches, channels, in_h, in_w) or a
+                          5-D tensor of the shape
+                          (num_batches, channls, in_d, in_h, in_w).
         out_shape(list|tuple|Variable|None): Output shape of image resize
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
+                                    layer, the shape is (out_h, out_w) when
+                                    input is a 4-D tensor and is
+                                    (out_d, out_h, out_w) when input is a
+                                    5-D tensor. Default: None
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
-                       currently.
-                       Default: 'BILINEAR'
+        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR'
+                       and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
                                 according to this given shape rather than
@@ -7795,15 +7839,19 @@ def image_resize(input,
 
     Returns:
         Variable: The output is a 4-D tensor of the shape
-        (num_batches, channls, out_h, out_w).
+        (num_batches, channls, out_h, out_w) or a 5-D tensor of the shape
+        (num_batches, channels, out_d, out_h, out_w).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR'
-                    or 'NEAREST' currently.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
+                    'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
-        ValueError: out_shape length should be 2.
+        ValueError: out_shape length should be 2 for input 4-D tensor.
+        ValueError: out_shape length should be 3 for input 5-D tensor.
         ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
@@ -7817,13 +7865,19 @@ def image_resize(input,
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
+        'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
     }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
-        )
+            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
+
+    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+        raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
+    if resample == 'TRILINEAR' and len(input.shape) != 5:
+        raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
@@ -7840,6 +7894,7 @@ def image_resize(input,
 
     inputs = {"X": input}
     attrs = {
+        "out_d": 0,
         "out_h": 0,
         "out_w": 0,
         "interp_method": resample_type,
@@ -7857,12 +7912,21 @@ def image_resize(input,
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError(
                     "out_shape should be a list or tuple or Variable.")
-            if len(out_shape) != 2:
-                raise ValueError("out_shape length should be 2.")
-
-            out_shape = list(map(int, out_shape))
-            attrs['out_h'] = out_shape[0]
-            attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 4:
+                if len(out_shape) != 2:
+                    raise ValueError("out_shape length should be 2 for "
+                                     "input 4-D tensor.")
+                out_shape = list(map(int, out_shape))
+                attrs['out_h'] = out_shape[0]
+                attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 5:
+                if len(out_shape) != 3:
+                    raise ValueError("out_shape length should be 3 for "
+                                     "input 5-D tensor.")
+                out_shape = list(map(int, out_shape))
+                attrs['out_d'] = out_shape[0]
+                attrs['out_h'] = out_shape[1]
+                attrs['out_w'] = out_shape[2]
 
     else:
         if scale <= 0:
@@ -7945,7 +8009,7 @@ def resize_bilinear(input,
 
 
     Args:
-        input(${x_type}): ${x_comment}.
+        input(${x_type}): input should be a 4-D tensor.
 
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
                                     layer, the shape is (out_h, out_w).
@@ -7974,7 +8038,7 @@ def resize_bilinear(input,
         align_mode(bool): ${align_mode_comment}
 
     Returns:
-        ${out_comment}.
+        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
 
     Examples:
         .. code-block:: python
@@ -7986,6 +8050,112 @@ def resize_bilinear(input,
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
                         align_corners, align_mode)
+
+
+@templatedoc(op_type="trilinear_interp")
+def resize_trilinear(input,
+                     out_shape=None,
+                     scale=None,
+                     name=None,
+                     actual_shape=None,
+                     align_corners=True,
+                     align_mode=1):
+    """
+    Resize input by performing trilinear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
+
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+    Align_corners and align_mode are optinal parameters,the calculation 
+    method of interpolation can be selected by them.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)     
+
+        Bilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+
+
+    Args:
+        input(${x_type}): input should be a 4-D tensor.
+
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+                                    layer, the shape is (out_d, out_h, out_w).
+                                    Default: None
+
+        scale(float|None): The multiplier for the input depth, height or width.
+             At least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+
+        name(str|None): The output variable name.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+
+    Returns:
+        A 5-D tensor in shape (num_batches, channels, out_d, out_h, out_w)
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", shape=[3,6,9,11], dtype="float32")
+            out = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
+    """
+
+    return image_resize(input, out_shape, scale, name, 'TRILINEAR',
+                        actual_shape, align_corners, align_mode)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -8041,7 +8211,7 @@ def resize_nearest(input,
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
-        input(${x_type}): ${x_comment}.
+        input(${x_type}): input should be a 4-D tensor.
 
         out_shape(list|tuple|Variable|None): Output shape of resize nearest
                                     layer, the shape is (out_h, out_w).
@@ -8069,7 +8239,7 @@ def resize_nearest(input,
         align_corners(bool): ${align_corners_comment}
 
     Returns:
-        ${out_comment}.
+        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
 
     Examples:
         .. code-block:: python
@@ -9586,6 +9756,76 @@ def stack(x, axis=0):
         attrs={'axis': axis})
 
     return out
+
+
+@templatedoc(op_type="filter_by_instag")
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
+    """
+    **Filter By Instag Layer**
+   
+    This function filter a batch of ins by instag, 
+    There are multiple ins, and every ins belongs to some tags. 
+    We can specify some tags we want. So the ins which belongs to that tags
+    remains in the output, and others removed.
+ 
+    For example, one batch has 4 ins. Every ins has its tag list. 
+     
+       | Ins   |   Ins_Tag |
+       |:-----:|:------:|
+       |  0    |   0, 1 |
+       |  1    |   1, 3 |
+       |  2    |   0, 3 |
+       |  3    |   2, 6 |
+
+    And Lod is [1,1,1,1]
+
+    And the filter tags [1]
+
+    From the definition above, ins which has tag 1 can pass the filter
+    So Ins 0 and Ins 1 can pass and be seen in the output,
+    Ins 2 and 3 cannot pass because they do not has tag 1.
+
+    Actually, if is_lod is false, it is normal tensor that equals to 
+    lod_tensor with all 1, similar to the example above.
+
+    Args:
+        ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
+                        And first dimension can have lod info or not.
+        ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
+                        And split them by lod info
+        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
+                        list that holds the tags.
+        is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
+
+    Returns:
+        Variable: filtered ins (LoDTensor) and loss weight (Tensor)
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid.layers as layers
+          ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
+          ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+          filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+          out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
+        		
+    """
+    helper = LayerHelper('filter_by_instag', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=ins.dtype)
+    loss_weight = helper.create_variable_for_type_inference(dtype=np.float64)
+    mmap = helper.create_variable_for_type_inference(dtype=ins_tag.dtype)
+    helper.append_op(
+        type='filter_by_instag',
+        inputs={'Ins': ins,
+                'Ins_tag': ins_tag,
+                'Filter_tag': filter_tag},
+        outputs={'Out': out,
+                 'LossWeight': loss_weight,
+                 'IndexMap': mmap},
+        attrs={'is_lod': is_lod})
+
+    return [out, loss_weight]
 
 
 def unstack(x, axis=0, num=None):
@@ -12853,6 +13093,88 @@ def var_conv_2d(input,
     return helper.append_activation(conv_res)
 
 
+def match_matrix_tensor(x,
+                        y,
+                        channel_num,
+                        act=None,
+                        param_attr=None,
+                        dtype='float32',
+                        name=None):
+    """
+    Calculate the semantic matching matrix of two word sequences with variable length.
+    Given a query A of length `n` and a title B of length `m`, the input shape are respectively
+    [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
+    it will generate a learnable parameter matrix W with shape [h, 3, h].
+    Then the semantic matching matrix of query A and title B is calculated by 
+    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
+    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
+    the corresponding activation function will be applied to output matrix.
+    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
+
+    .. code-block:: text
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[2,                     3,                               ]]
+                x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
+                x.dims = [5, 2]
+            y is a Tensor:
+                y.lod =  [[3,                                 1,       ]]
+                y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
+                y.dims = [4, 2]
+            set channel_num 2, then we get a 1-level LoDTensor:
+                out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
+                out.dims = [18, 1]     # where 18 = 12 + 6
+
+    Args:
+        x (Variable): Input variable x which should be 1-level LodTensor.
+        y (Variable): Input variable y which should be 1-level LodTensor.
+        channel_num (int): The channel number of learnable parameter W.
+        act (str, default None): Activation to be applied to the output of this layer.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            parameters/weights of this layer.
+        dtype ('float32'): The data type of w data.
+        name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
+
+    Returns:
+        Variable: output with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+
+            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
+            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
+            out, out_tmp = layers.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
+    """
+    helper = LayerHelper('match_matrix_tensor', **locals())
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    assert len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[
+        -1]
+
+    weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False)
+    mm_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+    helper.append_op(
+        type='match_matrix_tensor',
+        inputs={
+            'X': x,
+            'Y': y,
+            'W': w,
+        },
+        outputs={"Out": mm_res,
+                 "Tmp": tmp_res},
+        attrs={'dim_t': channel_num})
+
+    return helper.append_activation(mm_res), tmp_res
+
+
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     This layer creates the sharded index for input. This layers is used in
@@ -12934,4 +13256,39 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             'ignore_value': ignore_value
         },
         stop_gradient=True)
+    return out
+
+
+@templatedoc()
+def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(Varaible): Input of HardSwish operator.
+        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
+        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
+        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_swish(x)
+    """
+    helper = LayerHelper('hard_swish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='hard_swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold,
+               'scale': scale,
+               'offset': offset})
     return out
