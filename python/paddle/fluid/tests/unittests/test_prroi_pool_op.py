@@ -114,6 +114,24 @@ class TestPRROIPoolOp(OpTest):
         for place in places:
             self.run_net(place)
 
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(
+                name="x", shape=[245, 30, 30], dtype="float32")
+            rois = fluid.layers.data(
+                name="rois", shape=[4], dtype="float32", lod_level=1)
+            # channel must be int type
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 0.5,
+                              0.25, 7, 7)
+            # spatial_scale must be float type
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5, 2,
+                              7, 7)
+            # pooled_height must be int type
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5,
+                              0.25, 0.7, 7)
+            # pooled_width must be int type
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5,
+                              0.25, 7, 0.7)
 
 if __name__ == '__main__':
     unittest.main()
