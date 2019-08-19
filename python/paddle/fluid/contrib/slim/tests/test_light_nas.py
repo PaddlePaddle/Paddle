@@ -78,6 +78,19 @@ class TestLightNAS(unittest.TestCase):
         for line in lines:
             fid.write(line)
         fid.close()
+        com_pass = Compressor(
+            place,
+            fluid.global_scope(),
+            train_prog,
+            train_reader=train_reader,
+            train_feed_list=None,
+            train_fetch_list=train_fetch_list,
+            eval_program=test_prog,
+            eval_reader=test_reader,
+            eval_feed_list=None,
+            eval_fetch_list=val_fetch_list,
+            train_optimizer=None,
+            search_space=space)
         com_pass.config('./light_nas/compress.yaml')
         eval_graph = com_pass.run()
 
