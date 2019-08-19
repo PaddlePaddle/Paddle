@@ -82,6 +82,7 @@ __all__ = [
     'sequence_slice',
     'dropout',
     'split',
+    'split2',
     'ctc_greedy_decoder',
     'edit_distance',
     'l2_normalize',
@@ -5191,6 +5192,74 @@ def split(input, num_or_sections, dim=-1, name=None):
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
+    helper.append_op(
+        type='split',
+        inputs={'X': input},
+        outputs={'Out': outs},
+        attrs={
+            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+            'sections': num_or_sections
+            if isinstance(num_or_sections, list) else [],
+            'axis': dim
+        })
+    return outs
+
+
+def split2(input, num_or_sections, dim=-1, name=None, output=None):
+    """
+    Split the input tensor into multiple sub-tensors.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-tensors
+            that the tensor will be divided into. If :attr:`num_or_sections`
+            is a list of integers, the length of list indicates the number of
+            sub-tensors and the integers indicate the sizes of sub-tensors'
+            :attr:`dim` dimension orderly.
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
+            dimension to split along is :math:`rank(input) + dim`.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        list(Variable): The list of segmented tensor variables.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # input is a variable which shape is [-1, 3, 9, 5]
+            input = fluid.layers.data(
+                 name="input", shape=[3, 9, 5], dtype="float32")
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 3, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 3, 5]
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            # x0.shape [-1, 3, 2, 5]
+            # x1.shape [-1, 3, 3, 5]
+            # x2.shape [-1, 3, 4, 5]
+    """
+    helper = LayerHelper('split', **locals())
+    input_shape = input.shape
+    dim = (len(input_shape) + dim) if dim < 0 else dim
+    if isinstance(num_or_sections, int):
+        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        num = num_or_sections
+    else:
+        assert len(num_or_sections) <= input_shape[
+            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        num = len(num_or_sections)
+    outs = [
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+        for i in range(num)
+    ] if output is None else output
+    assert len(outs) == num, ""
+
     helper.append_op(
         type='split',
         inputs={'X': input},
