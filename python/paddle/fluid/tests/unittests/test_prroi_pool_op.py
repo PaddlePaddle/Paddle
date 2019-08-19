@@ -18,6 +18,8 @@ import numpy as np
 import unittest
 from py_precise_roi_pool import PyPrRoIPool
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestPRROIPoolOp(OpTest):
@@ -82,6 +84,35 @@ class TestPRROIPoolOp(OpTest):
     def test_backward(self):
         for place in self._get_places():
             self._get_gradient(['X'], place, ["Out"], None)
+
+    def run_net(self, place):
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(
+                name="X",
+                shape=[self.channels, self.height, self.width],
+                dtype="float32")
+            rois = fluid.layers.data(
+                name="ROIs", shape=[4], dtype="float32", lod_level=1)
+            output = fluid.layers.prroi_pool(x, rois, self.output_channels,
+                                             0.25, 2, 2)
+            loss = fluid.layers.mean(output)
+            optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
+            optimizer.minimize(loss)
+            input_x = fluid.create_lod_tensor(self.x, [], place)
+            input_rois = fluid.create_lod_tensor(self.rois[:, 1:5],
+                                                 self.rois_lod, place)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            exe.run(fluid.default_main_program(),
+                    {'X': input_x,
+                     "ROIs": input_rois})
+
+    def test_net(self):
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            self.run_net(place)
 
 
 if __name__ == '__main__':
