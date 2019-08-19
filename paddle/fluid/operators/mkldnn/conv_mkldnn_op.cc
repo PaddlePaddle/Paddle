@@ -71,13 +71,14 @@ inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
 
 static mkldnn::memory::data_type GetDstType(bool is_int8,
                                             bool force_fp32_output,
-                                            bool fuse_relu, bool fuse_brelu,
+                                            std::string fuse_activation,
                                             bool fuse_residual_conn,
                                             const Tensor* residual_param) {
   auto dst_dt = mkldnn::memory::data_type::f32;  // uint8_t, int8_t, float
   if (is_int8) {
-    dst_dt = (fuse_relu || fuse_brelu) ? mkldnn::memory::data_type::u8
-                                       : mkldnn::memory::data_type::s8;
+    dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
+                 ? mkldnn::memory::data_type::u8
+                 : mkldnn::memory::data_type::s8;
     if (force_fp32_output) {
       dst_dt = mkldnn::memory::data_type::f32;
     }
@@ -100,12 +101,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (!is_INT8) {
       ComputeFP32(ctx);
     } else {
-      bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+      std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
       bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-      bool fuse_brelu = ctx.Attr<bool>("fuse_brelu");
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
       auto residual_param = ctx.Input<Tensor>("ResidualData");
-      auto dst_dt = GetDstType(true, force_fp32_output, fuse_relu, fuse_brelu,
+      auto dst_dt = GetDstType(true, force_fp32_output, fuse_activation,
                                fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeINT8<float>(ctx);
@@ -150,16 +150,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
-    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    float fuse_beta = ctx.Attr<float>("fuse_beta");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    bool fuse_brelu = false;
-    float fuse_brelu_threshold = 6.0;
     int groups = ctx.Attr<int>("groups");
     bool is_conv3d = strides.size() == 3U;
-    if (!is_conv3d) {
-      fuse_brelu = ctx.Attr<bool>("fuse_brelu");
-      fuse_brelu_threshold = ctx.Attr<float>("fuse_brelu_threshold");
-    }
+
     // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
@@ -180,7 +177,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, fuse_relu, fuse_brelu, strides, paddings, dilations,
+        src_tz, weights_tz, fuse_activation, strides, paddings, dilations,
         groups, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     std::vector<primitive> pipeline;
@@ -232,13 +229,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, fuse_residual_conn, fuse_brelu, fuse_brelu_threshold,
+          fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
           fwd_prop_kind);
     } else {
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
-          fuse_brelu_threshold, fwd_prop_kind);
+          mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
+          fuse_residual_conn, fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)
@@ -355,12 +352,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    float fuse_beta = ctx.Attr<float>("fuse_beta");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    bool fuse_brelu = ctx.Attr<bool>("fuse_brelu");
-    float fuse_brelu_threshold = ctx.Attr<float>("fuse_brelu_threshold");
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    bool unsigned_output = fuse_relu || fuse_brelu;
+    bool unsigned_output =
+        (fuse_activation == "relu" || fuse_activation == "relu6");
 
     PADDLE_ENFORCE(!fuse_residual_conn || !force_fp32_output,
                    "residual fusion does not support force output with fp32");
@@ -394,7 +392,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     key.reserve(MaxKeyLength);
     platform::ConvMKLDNNHandler::AppendKey(
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
-        input->format(), fuse_relu, fuse_residual_conn, fuse_brelu,
+        input->format(), fuse_activation, fuse_residual_conn,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
@@ -484,6 +482,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       handler.reset(
           new platform::ConvMKLDNNHandler(dev_ctx, mkldnn_engine, key));
       // create a conv primitive descriptor and save it for usage in backward
+
+      // TODO(grygielski) if INT8 brelu post-op will be available, just delete
+      // whole if statement
+      if (fuse_activation == "relu6") {
+        fuse_activation = "relu";
+        fuse_alpha = 0.0f;
+      }
+
       auto propagation = is_test ? mkldnn::prop_kind::forward_scoring
                                  : mkldnn::prop_kind::forward_training;
 
@@ -493,13 +499,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                                mkldnn::memory::format::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
-            fuse_brelu_threshold, propagation, output_shift_scale, sum_scale);
+            mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
+            fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       } else {
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, boost::none, dst_md, strides, paddings,
-            mkldnn_engine, fuse_relu, fuse_residual_conn, fuse_brelu,
-            fuse_brelu_threshold, propagation, output_shift_scale, sum_scale);
+            mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
+            fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       }
 
       // create mkldnn memory from input tensors (data/weights)
@@ -681,11 +687,6 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     GetWeightsTz(weights_tz, g, is_conv3d);
     std::vector<int> dst_tz =
         paddle::framework::vectorize2int(output_grad->dims());
-    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
-    bool fuse_brelu = false;
-    if (!is_conv3d) {
-      fuse_brelu = ctx.Attr<bool>("fuse_brelu");
-    }
     auto src_format = input->format();
     mkldnn::memory::format weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);
@@ -694,8 +695,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, fuse_relu, fuse_brelu, strides, paddings, dilations,
-        groups, ctx.op().Input("Input") + ctx.op().Input("Filter"));
+        src_tz, weights_tz, "", strides, paddings, dilations, groups,
+        ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;
