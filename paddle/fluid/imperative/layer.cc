@@ -331,7 +331,7 @@ std::vector<VarBasePtrMap> OpBase::ApplyGrad(
     std::unique_ptr<framework::OperatorBase> opbase =
         framework::OpRegistry::CreateOp(*grad_op_desc);
 
-    auto& info = framework::OpInfoMap::Instance()->Get(grad_op_desc->Type());
+    auto& info = framework::OpInfoMap::Instance().Get(grad_op_desc->Type());
     if (info.infer_var_type_) {
       RuntimeInferVarTypeContext infer_var_type_ctx(
           &grad_input_vars_[k], &tmp_grad_outputs[k], &(opbase->Attrs()));

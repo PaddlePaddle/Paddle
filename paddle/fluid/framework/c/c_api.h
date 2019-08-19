@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 // C-API to get global OpInfo map.
-paddle::framework::OpInfoMap *PD_GetOpInfoMap();
+paddle::framework::OpInfoMap &PD_GetOpInfoMap();
 
 // C-API to init global DeviceContextPool from outside.
 void PD_InitDevicesPool(paddle::platform::DeviceContextPool *pool);

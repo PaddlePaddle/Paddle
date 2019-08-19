@@ -257,4 +257,21 @@ cc_library(fluid_framework_shared
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(fluid_framework_shared PROPERTIES OUTPUT_NAME fluid_framework)
 target_link_libraries(fluid_framework_shared ${os_dependency_modules})
-set(FLUID_FRAMEWORK_SHARED_LIB ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libfluid_framework.so CACHE INTERNAL "Fluid framework lib")
+
+if (LINUX)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libfluid_framework.so
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if (WIN32)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libfluid_framework.dll
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if(APPLE)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libfluid_framework.dylib
+      CACHE INTERNAL "Fluid framework lib")
+endif()

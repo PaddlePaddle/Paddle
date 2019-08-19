@@ -26,7 +26,7 @@ limitations under the License. */
 
 extern "C" {
 
-paddle::framework::OpInfoMap *PD_GetOpInfoMap() {
+paddle::framework::OpInfoMap &PD_GetOpInfoMap() {
   return paddle::framework::OpInfoMap::Instance();
 }
 
@@ -39,7 +39,7 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     const std::unordered_set<std::string> &no_grad_set,
     std::unordered_map<std::string, std::string> *grad_to_var,
     const std::vector<paddle::framework::BlockDesc *> &grad_block) {
-  auto &op_info = PD_GetOpInfoMap()->Get(op_desc.Type());
+  auto &op_info = PD_GetOpInfoMap().Get(op_desc.Type());
   std::vector<std::string> ret;
   if (op_info.grad_op_maker_) {
     auto grad_op_descs =

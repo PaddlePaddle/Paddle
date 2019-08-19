@@ -36,7 +36,7 @@ void CreateGradOp(const framework::OpDesc& op_desc,
                   std::unordered_map<std::string, std::string>* grad_to_var) {
   PADDLE_ENFORCE(grad_op_descs->empty());
   const framework::OpInfo& op_info =
-      framework::OpInfoMap::Instance()->Get(op_desc.Type());
+      framework::OpInfoMap::Instance().Get(op_desc.Type());
   if (!op_info.grad_op_maker_) return;
 
   std::vector<std::unique_ptr<framework::OpDesc>> descs =
@@ -83,8 +83,8 @@ framework::VariableNameMap CreateInputVarNameMap(
     const OpBase* op, const VarBasePtrMap& varbase_map) {
   framework::VariableNameMap result;
 
-  auto* info_map = framework::OpInfoMap::Instance();
-  auto* op_info = info_map->GetNullable(op->Type());
+  auto& info_map = framework::OpInfoMap::Instance();
+  auto* op_info = info_map.GetNullable(op->Type());
   if (op_info == nullptr || op_info->proto_ == nullptr) {
     return result;
   }
@@ -111,8 +111,8 @@ framework::VariableNameMap CreateOutputVarNameMap(
     const OpBase* op, const VarBasePtrMap& varbase_map) {
   framework::VariableNameMap result;
 
-  auto* info_map = framework::OpInfoMap::Instance();
-  auto* op_info = info_map->GetNullable(op->Type());
+  auto& info_map = framework::OpInfoMap::Instance();
+  auto* op_info = info_map.GetNullable(op->Type());
   if (op_info == nullptr || op_info->proto_ == nullptr) {
     return result;
   }
@@ -192,7 +192,7 @@ void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
   framework::VariableNameMap outvars_name_map =
       CreateOutputVarNameMap(op, *outputs);
 
-  auto& info = framework::OpInfoMap::Instance()->Get(op->Type());
+  auto& info = framework::OpInfoMap::Instance().Get(op->Type());
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs_map);
   }

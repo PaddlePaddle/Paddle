@@ -61,7 +61,7 @@ struct OperatorRegistrar : public Registrar {
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
     details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
-    OpInfoMap::Instance()->Insert(op_type, info);
+    OpInfoMap::Instance().Insert(op_type, info);
   }
 };
 

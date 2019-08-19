@@ -42,11 +42,11 @@ T *DynLoad(void *handle, std::string name) {
 void LoadOpLib(const std::string &dso_name) {
   void *handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
-  typedef OpInfoMap *get_op_info_t();
+  typedef OpInfoMap &get_op_info_t();
   get_op_info_t *get_op_info =
       DynLoad<get_op_info_t>(handle, "PD_GetOpInfoMap");
-  auto *op_info = get_op_info();
-  auto *other_info_map = op_info->mutable_map();
+  auto &op_info = get_op_info();
+  auto *dyn_info_map = op_info.mutable_map();
 
   typedef std::vector<std::string> grad_op_desc_maker_t(
       const OpDesc &, const std::unordered_set<std::string> &,
@@ -56,14 +56,14 @@ void LoadOpLib(const std::string &dso_name) {
   grad_op_desc_maker_t *grad_op_desc_maker =
       DynLoad<grad_op_desc_maker_t>(handle, "PD_GetGradOpDescStrs");
 
-  auto *cur_info = OpInfoMap::Instance();
-  for (const auto &n : *(other_info_map)) {
+  auto &info_map = OpInfoMap::Instance();
+  for (const auto &n : *(dyn_info_map)) {
     auto type = n.first;
     if (type == "recurrent" || type == "recurrent_grad" ||
         type == "conditional_block" || type == "conditional_block_grad") {
       continue;
     }
-    if (cur_info->Has(n.first)) {
+    if (info_map.Has(n.first)) {
       PADDLE_THROW("Op %s has been registered.");
     }
     OpInfo info;
@@ -102,7 +102,7 @@ void LoadOpLib(const std::string &dso_name) {
     info.use_default_grad_op_desc_maker_ =
         n.second.use_default_grad_op_desc_maker_;
 
-    cur_info->Insert(type, info);
+    info_map.Insert(type, info);
   }
 
   typedef void init_device_t(platform::DeviceContextPool *);

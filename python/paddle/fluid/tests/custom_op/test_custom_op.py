@@ -105,7 +105,7 @@ class CustomOpTest(unittest.TestCase):
             return
         actual = custom_op_test(True, False)
         expect = custom_op_test(True, False)
-        self.assertEqual(actual, expect)
+        self.assertEqual(actual.all(), expect.all())
 
 
 if __name__ == '__main__':
