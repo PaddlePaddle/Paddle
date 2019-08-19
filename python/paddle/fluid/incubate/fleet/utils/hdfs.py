@@ -518,6 +518,8 @@ class HDFSClient(object):
         if self.is_exist(hdfs_path) and overwrite:
             self.delete(hdfs_path)
             self.makedirs(hdfs_path)
+        else:
+            self.makedirs(hdfs_path)
 
         procs = []
         for i in range(multi_processes):
