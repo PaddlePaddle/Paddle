@@ -8,6 +8,7 @@ fused_embedding_seq_pool
 gru
 lrn
 lstm_unit
+match_matrix_tensor
 max_pool2d_with_index
 max_pool3d_with_index
 maxout

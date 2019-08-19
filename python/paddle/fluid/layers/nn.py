@@ -211,6 +211,7 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'match_matrix_tensor',
     'filter_by_instag',
     'var_conv_2d',
     'shard_index',
@@ -13090,6 +13091,88 @@ def var_conv_2d(input,
         })
 
     return helper.append_activation(conv_res)
+
+
+def match_matrix_tensor(x,
+                        y,
+                        channel_num,
+                        act=None,
+                        param_attr=None,
+                        dtype='float32',
+                        name=None):
+    """
+    Calculate the semantic matching matrix of two word sequences with variable length.
+    Given a query A of length `n` and a title B of length `m`, the input shape are respectively
+    [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
+    it will generate a learnable parameter matrix W with shape [h, 3, h].
+    Then the semantic matching matrix of query A and title B is calculated by 
+    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
+    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
+    the corresponding activation function will be applied to output matrix.
+    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
+
+    .. code-block:: text
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[2,                     3,                               ]]
+                x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
+                x.dims = [5, 2]
+            y is a Tensor:
+                y.lod =  [[3,                                 1,       ]]
+                y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
+                y.dims = [4, 2]
+            set channel_num 2, then we get a 1-level LoDTensor:
+                out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
+                out.dims = [18, 1]     # where 18 = 12 + 6
+
+    Args:
+        x (Variable): Input variable x which should be 1-level LodTensor.
+        y (Variable): Input variable y which should be 1-level LodTensor.
+        channel_num (int): The channel number of learnable parameter W.
+        act (str, default None): Activation to be applied to the output of this layer.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            parameters/weights of this layer.
+        dtype ('float32'): The data type of w data.
+        name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
+
+    Returns:
+        Variable: output with LoD specified by this layer.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+
+            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
+            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
+            out, out_tmp = layers.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
+    """
+    helper = LayerHelper('match_matrix_tensor', **locals())
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    assert len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[
+        -1]
+
+    weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False)
+    mm_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+    helper.append_op(
+        type='match_matrix_tensor',
+        inputs={
+            'X': x,
+            'Y': y,
+            'W': w,
+        },
+        outputs={"Out": mm_res,
+                 "Tmp": tmp_res},
+        attrs={'dim_t': channel_num})
+
+    return helper.append_activation(mm_res), tmp_res
 
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
