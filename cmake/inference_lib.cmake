@@ -14,6 +14,12 @@
 
 # make package for paddle fluid shared and static library
 
+if(WIN32)
+    if(NOT PYTHON_EXECUTABLE)
+	FIND_PACKAGE(PythonInterp REQUIRED)
+    endif()
+endif()
+
 set(COPY_SCRIPT_DIR ${PADDLE_SOURCE_DIR}/cmake)
 function(copy TARGET)
     set(options "")
