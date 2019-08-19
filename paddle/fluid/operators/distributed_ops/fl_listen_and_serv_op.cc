@@ -211,7 +211,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
                             FLAGS_flrpc_get_thread_num);
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       optimize_blocks.size(), 1,
       "optimize blocks should be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
