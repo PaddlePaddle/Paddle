@@ -483,7 +483,6 @@ def _append_backward_ops_with_checkpoints_(
                 checkpoints_name.extend(op.desc.input_arg_names())
     checkpoints_name.extend([x + "@GRAD" for x in checkpoints_name])
     checkpoints_name = list(set(checkpoints_name))
-    print(checkpoints_name)
 
     op_idx_with_checkpoint_input = \
             _get_op_idx_with_checkpoints_input(
@@ -491,14 +490,6 @@ def _append_backward_ops_with_checkpoints_(
 
     checkpoints_name.extend(inputs_name)
 
-    print("all feedforward")
-    for op in ops:
-        print(_pretty_op_desc_(op.desc))
-
-    print("found checkpoint ops")
-    for idx in op_idx_with_checkpoint_input:
-        print(_pretty_op_desc_(ops[idx].desc))
-    print("------------")
     recompute_section = [[0, op_idx_with_checkpoint_input[0]]]
 
     for i, idx in enumerate(op_idx_with_checkpoint_input[:-1]):
@@ -506,8 +497,6 @@ def _append_backward_ops_with_checkpoints_(
 
     grad_op_descs = []
     subprogram_num = len(recompute_section)
-    print("recompute section")
-    print(recompute_section)
     for op in reversed(ops[(op_idx_with_checkpoint_input[-1]):]):
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -520,8 +509,6 @@ def _append_backward_ops_with_checkpoints_(
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(op_desc)
         new_op_desc._set_attr(op_role_attr_name, backward)
-        print(_pretty_op_desc_(new_op_desc))
-    print("first backward done.")
 
     for i, section in enumerate(recompute_section[::-1]):
         ff_ops = ops[section[0]:section[1]]
@@ -586,14 +573,8 @@ def _append_backward_ops_with_checkpoints_(
                 new_op_desc._set_attr(op_role_attr_name, backward)
                 section_ff_op_descs.append(new_op_desc)
 
-            print("recompute section %d ff" % i)
-            print("going to rename arg")
             for key in var_name_dict:
                 _rename_arg_(section_ff_op_descs, key, var_name_dict[key])
-
-            for op_desc in section_ff_op_descs:
-                print(_pretty_op_desc_(op_desc))
-            print(var_name_dict)
 
         if section_ff_op_descs == []:
             section_ff_op_descs = ff_ops
@@ -610,8 +591,6 @@ def _append_backward_ops_with_checkpoints_(
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(op_desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
-            print(_pretty_op_desc_(new_op_desc))
-        print("recompute section %d bp" % i)
 
 
 def _append_backward_ops_(block,
@@ -731,7 +710,6 @@ def _append_backward_ops_(block,
 def _append_vars_(block, start_op_idx, end_op_idx, grad_to_var, grad_info_map):
     for op_idx in range(start_op_idx, end_op_idx, 1):
         op_desc = block.desc.op(op_idx)
-        print("append vars for %s" % op_desc.type())
         if op_desc.has_attr("sub_block"):
             sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
             _append_vars_(sub_block, 0,
@@ -1001,20 +979,14 @@ def append_backward_with_forward_recomputation(loss,
         raise ValueError(
             "double backward is not supported in forward recomputation")
 
-    print("*****************************")
-
     _append_backward_ops_with_checkpoints_(
         root_block, op_path, root_block, no_grad_dict, grad_to_var, checkpoints)
-
-    print("*****************************")
 
     # should not work since appending grad times <= 1
     _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
 
-    print("*****************************")
     _append_vars_(root_block, fwd_op_num,
                   root_block.desc.op_size(), grad_to_var, grad_info_map)
-    print("*****************************")
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
