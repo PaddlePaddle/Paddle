@@ -12,35 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/passes/inference_op_replace_pass.h"
-#include <unordered_map>
+#pragma once
+
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-void InferenceOpReplacePass::RunImpl(Argument* argument) {
-  std::unordered_map<std::string, std::string> replaced_map{
-      {"conditional_block", "conditional_block_infer"},
-      {"merge_lod_tensor", "merge_lod_tensor_infer"},
-  };
+class IrInferCleanGraphPass : public AnalysisPass {
+ public:
+  void RunImpl(Argument *argument) override;
 
-  auto& graph = argument->main_graph();
-  auto nodes = graph.Nodes();
-
-  for (auto& node : nodes) {
-    if (!node->IsOp()) continue;
-    auto* op_desc = node->Op();
-    std::string op_type = op_desc->Type();
-    if (!replaced_map.count(op_type)) continue;
-    op_desc->SetType(replaced_map[op_type]);
-    op_desc->Flush();
-  }
-}
-
-std::string InferenceOpReplacePass::repr() const {
-  return "inference-op-replace-pass";
-}
+  std::string repr() const override { return "ir_graph_clean_pass"; }
+};
 
 }  // namespace analysis
 }  // namespace inference
