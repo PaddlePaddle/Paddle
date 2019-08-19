@@ -92,16 +92,16 @@ TEST(temporary_allocator, test_reuse_tmp_allocation) {
   void* tmp_allocation_ptr1 = nullptr;
   {
     PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
-    auto tmp_allocation1 = gpu_alloc.Allocate(100);
+    auto tmp_allocation1 = gpu_alloc.Allocate(200);
     tmp_allocation_ptr1 = tmp_allocation1->ptr();
   }
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  auto tmp_allocation2 = gpu_alloc.Allocate(100);
+  auto tmp_allocation2 = gpu_alloc.Allocate(200);
   void* tmp_allocation_ptr2 = tmp_allocation2->ptr();
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
   PADDLE_ENFORCE_EQ(tmp_allocation_ptr1, tmp_allocation_ptr2);
 
-  auto tmp_allocation3 = gpu_alloc.Allocate(100);
+  auto tmp_allocation3 = gpu_alloc.Allocate(200);
   void* tmp_allocation_ptr3 = tmp_allocation2->ptr();
   PADDLE_ENFORCE_EQ(tmp_allocation_ptr1, tmp_allocation_ptr3);
 #endif
@@ -117,11 +117,11 @@ TEST(temporary_allocator, test_times_excess_than_required_tmp_allocation) {
   {
     PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
     auto tmp_allocation1 =
-        gpu_alloc.Allocate(static_cast<size_t>(100 * excess_fraction - 1));
+        gpu_alloc.Allocate(static_cast<size_t>(200 * excess_fraction - 1));
     tmp_allocation_ptr1 = tmp_allocation1->ptr();
   }
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 1);
-  auto tmp_allocation2 = gpu_alloc.Allocate(100);
+  auto tmp_allocation2 = gpu_alloc.Allocate(200 * excess_fraction - 10);
   void* tmp_allocation_ptr2 = tmp_allocation2->ptr();
   PADDLE_ENFORCE_EQ(gpu_alloc.TemporaryAllocationQueueSize(), 0);
   PADDLE_ENFORCE_EQ(tmp_allocation_ptr1, tmp_allocation_ptr2);
