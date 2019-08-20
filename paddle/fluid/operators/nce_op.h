@@ -197,7 +197,7 @@ class NCEKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_DISTRIBUTE
       auto weight = context.Inputs("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
-                                       weight, table_names, epmap,
+                                       weight, false, table_names, epmap,
                                        height_sections, context, local_scope);
 #else
       PADDLE_THROW(

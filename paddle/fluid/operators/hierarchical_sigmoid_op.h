@@ -99,8 +99,8 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
       // w_Out is set to used by prefetch, never change it in other cases
       auto weight = ctx.Outputs("W_Out").front();
       operators::distributed::prefetch("Ids@Prefetch", "W@Prefetch", weight,
-                                       table_names, epmap, height_sections, ctx,
-                                       local_scope);
+                                       true, table_names, epmap,
+                                       height_sections, ctx, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

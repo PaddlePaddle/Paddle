@@ -61,7 +61,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
 // parameter server
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch(id_name, out_name, embedding_name,
+      operators::distributed::prefetch(id_name, out_name, embedding_name, false,
                                        table_names, epmap, height_sections,
                                        context, context.scope());
 #else

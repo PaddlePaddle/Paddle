@@ -160,19 +160,19 @@ void prefetch_core(
 }
 
 void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& persistable_var_name,
+              const std::string& persistable_var_name, const bool backfill,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs({id_name}, {out_name}, persistable_var_name, table_names, endpoints,
-            height_sections, context, scope);
+  prefetchs({id_name}, {out_name}, persistable_var_name, backfill, table_names,
+            endpoints, height_sections, context, scope);
 }
 
 void prefetchs(const std::vector<std::string>& id_var_names,
                const std::vector<std::string>& out_var_names,
-               const std::string& persistable_var_name,
+               const std::string& persistable_var_name, const bool backfill,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const std::vector<int64_t>& height_sections,
@@ -223,7 +223,11 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   prefetch_core(ids_union, tables, height_sections, context, scope,
                 &recved_vec_map);
 
-  auto& padding_idx = context.Attr<int64_t>("padding_idx");
+  auto padding_idx = distributed::kNoPadding;
+
+  if (context.HasAttr("padding_idx")) {
+    padding_idx = context.Attr<int64_t>("padding_idx");
+  }
 
   // copy vectors to out vars
   for (int i = 0; i < out_var_names.size(); i++) {
@@ -248,12 +252,15 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     }
   }
 
-  //  auto* reconstruct_d = reconstruct_var->data<float>();
-  // reconstruct var
-  //  for (auto& id : ids_union) {
-  //    std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-  //              reconstruct_d + id * vec_dim_1);
-  //  }
+  if (backfill) {
+    VLOG(3) << "backfill persistable var's id with vecs";
+
+    auto* reconstruct_d = reconstruct_var->data<float>();
+    for (auto& id : ids_union) {
+      std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
+                reconstruct_d + id * vec_dim_1);
+    }
+  }
 }
 
 };  // namespace distributed
