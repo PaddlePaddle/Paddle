@@ -248,16 +248,20 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
         iter = iter_end;
       }
       drop_pos_offset[i + 1] = drop_pos_offset[i] + nsentense_with_pyramid;
-      top_offset[i + 1] =
-          top_offset[i] +
-          (nsentense_with_pyramid == 0 ? 1 : nsentense_with_pyramid);
+      top_offset[i + 1] = top_offset[i] + nsentense_with_pyramid;
     }
 
     int top_l = top_offset[top_offset.size() - 1];
-
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
     top->set_lod(top_lod);
+    if (top_l < 1) {
+      int bs = top_offset.size() - 1;
+      top->Resize(framework::make_ddim({bs, _num_emb}));
+      auto* top_data = top->mutable_data<T>(ctx.GetPlace());
+      memset(top_data, 0, sizeof(T) * bs * _num_emb);
+      return;
+    }
     top->Resize(framework::make_ddim({top_l, _num_emb}));
     auto* top_data = top->mutable_data<T>(ctx.GetPlace());
 
@@ -268,21 +272,7 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       int w = offset[i + 1] - offset[i];
-      if (w_drop == 0) {
-        if (w >= 2) {
-          for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w;
-               ++ilayer) {
-            for (int l = 0; l < w - ilayer; ++l) {
-              iter++;
-            }
-          }
-        }
-        auto* top_pos = top_data + top_counter++ * _num_emb;
-        memset(top_pos, 0, _num_emb * sizeof(T));
-        continue;
-      }
       if (w >= 2) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
@@ -375,14 +365,16 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
 
     const auto* bottom_data = bottom->data<int32_t>();
 
+    auto& offset = bottom->lod()[0];
     int _slot_len = bottom->dims()[0];
     if (_slot_len == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
       return;
+    } else if (offset[offset.size() - 1] < 1) {
+      return;
     }
 
-    auto& offset = bottom->lod()[0];
-    auto& drop_pos_offset = drop_pos->lod()[0];
+    // auto& offset = bottom->lod()[0];
 
     const auto* top_diff = top->data<T>();
     T* weights = (T*)(_blobs->data<T>());
@@ -392,10 +384,6 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
-      if (w_drop == 0) {
-        top_counter++;
-      }
       if (w > 1) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
