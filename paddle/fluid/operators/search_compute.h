@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <immintrin.h>  // sse
+#include <immintrin.h>
 #include <cfloat>
-#include <cmath>    // fabs
-#include <cstring>  // memcpy
+#include <cmath>
+#include <cstring>
 
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -25,6 +25,53 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using LoD = framework::LoD;
+
+template <typename DeviceContext, typename T>
+void call_gemm(const math::BlasT<DeviceContext, T>& blas,
+               const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
+               const int M, const int N, const int K, const T alpha, const T* A,
+               const T* B, const T beta, T* C) {
+  int lda = (TransA == CblasNoTrans) ? K : M;
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
+}
+
+template <typename T>
+void call_gemm(const framework::ExecutionContext& ctx,
+               const CBLAS_TRANSPOSE TransA, const CBLAS_TRANSPOSE TransB,
+               const int M, const int N, const int K, const T alpha, const T* A,
+               const T* B, const T beta, T* C) {
+  int lda = (TransA == CblasNoTrans) ? K : M;
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
+}
+
+template <typename DeviceContext, typename T>
+void call_gemm_with_lda(const math::BlasT<DeviceContext, T>& blas,
+                        const CBLAS_TRANSPOSE TransA,
+                        const CBLAS_TRANSPOSE TransB, const int M, const int N,
+                        const int K, const T alpha, const T* A, const T* B,
+                        const T beta, T* C, int lda) {
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+
+  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
+}
+
+template <typename T>
+void call_gemm_batched(const framework::ExecutionContext& ctx,
+                       const CBLAS_TRANSPOSE TransA,
+                       const CBLAS_TRANSPOSE TransB, const int M, const int N,
+                       const int K, const T alpha, const T** A, const T** B,
+                       const T beta, T** C, const int batch) {
+  for (int i = 0; i < batch; ++i) {
+    call_gemm(ctx, TransA, TransB, M, N, K, alpha, A[i], B[i], beta, C[i]);
+  }
+}
 
 #ifndef TYPE_USE_FLOAT
 #define TYPE_USE_FLOAT
@@ -43,103 +90,25 @@ static const unsigned int SSE_STEP_SIZE = 4;
 static const unsigned int AVX_CUT_LEN_MASK = 7U;
 static const unsigned int SSE_CUT_LEN_MASK = 3U;
 
-#define _mm256_setzero_px _mm256_setzero_ps
 #define _mm256_mul_px _mm256_mul_ps
 #define _mm256_add_px _mm256_add_ps
 #define _mm256_load_px _mm256_loadu_ps
-#define _mm256_hadd_px _mm256_hadd_ps
-#define _mm256_permute2f128_px _mm256_permute2f128_ps
 #define _mm256_store_px _mm256_storeu_ps
 #define _mm256_broadcast_sx _mm256_broadcast_ss
-#define _mm256_castpx256_px128 _mm256_castps256_ps128
-#define _mm256_max_px _mm256_max_ps
-#define _mm256_sub_px _mm256_sub_ps
-#define _mm256_set1_px _mm256_set1_ps
-#define _mm256_sqrt_px _mm256_sqrt_ps
-#define _mm256_div_px _mm256_div_ps
-#define _mm_setzero_px _mm_setzero_ps
+
 #define _mm_add_px _mm_add_ps
 #define _mm_mul_px _mm_mul_ps
 #define _mm_load_px _mm_loadu_ps
-#define _mm_hadd_px _mm_hadd_ps
-#define _mm_store_sx _mm_store_ss
 #define _mm_store_px _mm_storeu_ps
 #define _mm_load1_px _mm_load1_ps
-#define _mm_max_px _mm_max_ps
-#define _mm_sub_px _mm_sub_ps
-#define _mm_set1_px _mm_set1_ps
-#define _mm_sqrt_px _mm_sqrt_ps
-#define _mm_div_px _mm_div_ps
-
-#elif defined(TYPE_USE_DOUBLE)
-
-#define __m256x __m256d
-#define __m128x __m128d
-
-static const unsigned int AVX_STEP_SIZE = 4;
-static const unsigned int SSE_STEP_SIZE = 2;
-static const unsigned int AVX_CUT_LEN_MASK = 3U;
-static const unsigned int SSE_CUT_LEN_MASK = 1U;
-
-#define _mm256_setzero_px _mm256_setzero_pd
-#define _mm256_mul_px _mm256_mul_pd
-#define _mm256_add_px _mm256_add_pd
-#define _mm256_load_px _mm256_loadu_pd
-#define _mm256_hadd_px _mm256_hadd_pd
-#define _mm256_permute2f128_px _mm256_permute2f128_pd
-#define _mm256_store_px _mm256_storeu_pd
-#define _mm256_broadcast_sx _mm256_broadcast_sd
-#define _mm256_castpx256_px128 _mm256_castpd256_pd128
-#define _mm256_max_px _mm256_max_pd
-#define _mm256_sub_px _mm256_sub_pd
-#define _mm256_set1_px _mm256_set1_pd
-#define _mm256_sqrt_px _mm256_sqrt_pd
-#define _mm256_div_px _mm256_div_pd
-#define _mm_setzero_px _mm_setzero_pd
-#define _mm_add_px _mm_add_pd
-#define _mm_mul_px _mm_mul_pd
-#define _mm_load_px _mm_loadu_pd
-#define _mm_hadd_px _mm_hadd_pd
-#define _mm_store_sx _mm_store_sd
-#define _mm_store_px _mm_storeu_pd
-#define _mm_load1_px _mm_load1_pd
-#define _mm_max_px _mm_max_pd
-#define _mm_sub_px _mm_sub_pd
-#define _mm_set1_px _mm_set1_pd
-#define _mm_sqrt_px _mm_sqrt_pd
-#define _mm_div_px _mm_div_pd
 #endif
 
-#if defined(TYPE_USE_FLOAT)
-
-#define X_MIN FLT_MIN
-#define X_MAX FLT_MAX
-
-#elif defined(TYPE_USE_DOUBLE)
-
-#define X_MIN DBL_MIN
-#define X_MAX DBL_MAX
-
-#endif
-template <typename T>
-inline void sse_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
-  unsigned int jjj, lll;
-  jjj = lll = 0;
-
-  lll = len & ~AVX_CUT_LEN_MASK;
-  __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
-  for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
-    _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
-  }
-  for (; jjj < len; jjj++) {
-    y[jjj] = alpha * x[jjj];
-  }
-}
 template <typename T>
 inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
+#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
@@ -148,8 +117,44 @@ inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
         _mm256_add_px(_mm256_load_px(y + jjj),
                       _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj))));
   }
+
+#elif defined(USE_SSE)
+  lll = len & ~SSE_CUT_LEN_MASK;
+  __m128x mm_alpha = _mm_load1_px(&alpha);
+  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
+    _mm_store_px(y + jjj,
+                 _mm_add_px(_mm_load_px(y + jjj),
+                            _mm_mul_px(mm_alpha, _mm_load_px(x + jjj))));
+  }
+
+#endif
   for (; jjj < len; jjj++) {
     y[jjj] += alpha * x[jjj];
+  }
+}
+
+template <typename T>
+inline void sse_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
+  unsigned int jjj, lll;
+  jjj = lll = 0;
+
+#if defined(USE_AVX)
+  lll = len & ~AVX_CUT_LEN_MASK;
+  __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
+  for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
+    _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
+  }
+
+#elif defined(USE_SSE)
+  lll = len & ~SSE_CUT_LEN_MASK;
+  __m128x mm_alpha = _mm_load1_px(&alpha);
+  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
+    _mm_store_px(y + jjj, _mm_mul_px(mm_alpha, _mm_load_px(x + jjj)));
+  }
+
+#endif
+  for (; jjj < len; jjj++) {
+    y[jjj] = alpha * x[jjj];
   }
 }
 
