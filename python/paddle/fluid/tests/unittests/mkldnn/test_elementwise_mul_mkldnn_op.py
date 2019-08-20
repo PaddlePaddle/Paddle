@@ -84,7 +84,7 @@ class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
             for name in ground_truth:
                 block.create_var(
                     name=name, dtype="float32", shape=ground_truth[name].shape)
-            bn_op = block.append_op(
+            conv2d_op = block.append_op(
                 type="conv2d",
                 inputs={
                     "Input": block.var('input'),
