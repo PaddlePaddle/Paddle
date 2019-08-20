@@ -115,6 +115,8 @@ class TestDistRunnerBase(object):
         dist_strategy.exec_strategy = exec_strategy
         dist_strategy.fuse_memory_size = 1  #MB
         dist_strategy.fuse_laryer_size = 1
+        if args.use_local_sgd:
+            dist_strategy.use_local_sgd = True
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -392,6 +394,7 @@ def runtime_main(test_class):
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--gpu_fleet_api', action='store_true')
+    parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -727,6 +730,8 @@ class TestDistBase(unittest.TestCase):
 
         if self._gpu_fleet_api:
             tr_cmd += " --gpu_fleet_api"
+            if self._use_local_sgd:
+                tr_cmd += " --use_local_sgd"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
