@@ -149,6 +149,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph_var_map[node->Name()] = node;
     }
   }
+  auto precision_mode = Get<AnalysisConfig::Precision>("precision_mode");
+  bool enable_fp16 = false;
+  if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *Agent(node).subgraph();
@@ -216,6 +219,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
+  SetAttr(op_desc->Proto(), "enable_fp16", enable_fp16);
   SetAttr(op_desc->Proto(), "use_calib_mode", use_calib_mode);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   SetAttr(op_desc->Proto(), "predictor_id", predictor_id);
@@ -244,7 +248,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  enable_int8, calibrator.get(), Get<int>("gpu_device_id"));
+                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"));
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

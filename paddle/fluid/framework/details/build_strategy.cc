@@ -77,7 +77,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Specifies the restrictions between different pass.
     if (strategy_.enable_parallel_graph_) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
-          << "Currently, fuse_all_optimizer_ops doesn't works under "
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
     }
@@ -95,6 +95,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
+    }
+    if (strategy_.async_mode_) {
+      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
+             "async mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
     }
   }
 
