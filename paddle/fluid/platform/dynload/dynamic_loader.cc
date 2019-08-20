@@ -268,9 +268,9 @@ void* GetMKLMLDsoHandle() {
 
 void* GetOpDsoHandle(const std::string& dso_name) {
 #if defined(__APPLE__) || defined(__OSX__)
-    PADDLE_THROW("Do not support Apple.");
+  PADDLE_THROW("Do not support Apple.");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-    PADDLE_THROW("Do not support Windows.");
+  PADDLE_THROW("Do not support Windows.");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 #endif
