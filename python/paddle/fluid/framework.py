@@ -547,6 +547,10 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
+    def numpy_async(self):
+        new_ivar = self._ivar._copy_to(core.CPUPlace(), False)
+        return np.array(new_ivar.value().get_tensor())
+
     def backward(self, backward_strategy=None):
         from .dygraph import BackwardStrategy
         if backward_strategy is None:
