@@ -33,14 +33,13 @@ int TensorAddTest(platform::CUDAPlace place, T t1, T t2) {
 #else
 int TensorAddTest(platform::CPUPlace place, T t1, T t2) {
 #endif
-  VLOG(3) << "here1";
   framework::Variable var1;
   framework::Variable var2;
   std::vector<T> src_data(10, t1);
   std::vector<T> dst_data(10, t2);
   std::vector<T> result;
   platform::CPUPlace src_place;
-  for (size_t i = 0; i < 10; i++) {
+  for (unsigned int i = 0; i < 10; i++) {
     result.emplace_back(src_data[i] + dst_data[i]);
   }
   std::vector<int64_t> dims = {2, 5};
@@ -62,8 +61,12 @@ int TensorAddTest(platform::CPUPlace place, T t1, T t2) {
                        sizeof(T) * dst_data.size());
 #endif
   imperative::TensorAdd(var1, &var2);
-  for (size_t i = 0; i < dst->numel(); i++) {
-    if (dst->data<T>()[i] != result[i]) return 1;
+  framework::LoDTensor rlt;
+  platform::CPUPlace rlt_place;
+  framework::TensorCopySync(*dst, rlt_place, &rlt);
+
+  for (size_t i = 0; i < rlt.numel(); i++) {
+    if (rlt.data<T>()[i] != result[i]) return 1;
   }
   return 0;
 }

@@ -79,17 +79,7 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
-#ifdef PADDLE_WITH_MKLDNN
-  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is
-  // set
-  if (kernel_iter == kernels.end() &&
-      expected_kernel_key.library_type_ == framework::LibraryType::kMKLDNN) {
-    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
-    expected_kernel_key.library_type_ = framework::LibraryType::kPlain;
-    expected_kernel_key.data_layout_ = framework::DataLayout::kAnyLayout;
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
+  // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
                  KernelTypeToString(expected_kernel_key));

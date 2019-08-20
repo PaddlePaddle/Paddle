@@ -1,2 +1,5 @@
 cc_test(nccl_context_test SRCS nccl_context_test.cc DEPS nccl_context)
-cc_test(test_add_functor SRCS test_add_functor.cc DEPS gradient_accumulator memcpy)
+cc_test(test_gradient_accmulator SRCS test_gradient_accmulator.cc DEPS gradient_accumulator memcpy)
+cc_test(test_layer SRCS test_layer.cc DEPS layer proto_desc operator op_registry variable_helper mul_op)
+cc_test(test_prepare_op SRCS test_prepare_op.cc DEPS prepared_operator op_info split_op layer concat_and_split)
+set_property(TEST test_prepare_op PROPERTY ENVIRONMENT FLAGS_use_mkldnn=1)

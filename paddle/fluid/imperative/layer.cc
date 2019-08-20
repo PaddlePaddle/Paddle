@@ -15,8 +15,6 @@
 #include "paddle/fluid/imperative/layer.h"
 #include <algorithm>
 #include <queue>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -51,138 +49,6 @@ ThreadSafeNameSet VarBase::name_set_;
 
 std::vector<std::string> VarBase::AliveVarNames() { return name_set_.Names(); }
 
-// infer var type context for imperative mode
-class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
- public:
-  RuntimeInferVarTypeContext(const NameVarBaseMap& inputs,
-                             const NameVarBaseMap* outputs,
-                             const framework::AttributeMap& attrs_map)
-      : InferVarTypeContext(nullptr, nullptr),
-        inputs_(inputs),
-        outputs_(outputs),
-        attrs_(attrs_map),
-        input_names_(),
-        output_names_(),
-        var_set_() {
-    input_names_.reserve(inputs_.size());
-    for (auto& it : inputs_) {
-      for (auto& var : it.second) {
-        input_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var.get();
-      }
-    }
-
-    output_names_.reserve(outputs_->size());
-    for (auto& it : *outputs_) {
-      for (auto& var : it.second) {
-        output_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var.get();
-      }
-    }
-  }
-
-  virtual ~RuntimeInferVarTypeContext() {}
-
-  framework::Attribute GetAttr(const std::string& name) const override {
-    auto iter = attrs_.find(name);
-    PADDLE_ENFORCE(iter != attrs_.end(), "Cannot find attribute %s", name);
-    return iter->second;
-  }
-
-  bool HasVar(const std::string& name) const override {
-    return var_set_.count(name) > 0;
-  }
-
-  bool HasInput(const std::string& name) const override {
-    return inputs_.count(name) > 0;
-  }
-
-  bool HasOutput(const std::string& name) const override {
-    PADDLE_ENFORCE_NOT_NULL(outputs_);
-    return outputs_->count(name) > 0;
-  }
-
-  const std::vector<std::string>& Input(
-      const std::string& name) const override {
-    auto iter = input_names_.find(name);
-    PADDLE_ENFORCE(iter != input_names_.end(), "Cannot find input %s", name);
-    return iter->second;
-  }
-
-  const std::vector<std::string>& Output(
-      const std::string& name) const override {
-    auto iter = output_names_.find(name);
-    PADDLE_ENFORCE(iter != output_names_.end(), "Cannot find output %s", name);
-    return iter->second;
-  }
-
-  framework::proto::VarType::Type GetType(
-      const std::string& name) const override {
-    auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetType",
-                   name);
-    return iter->second->Type();
-  }
-
-  void SetType(const std::string& name,
-               framework::proto::VarType::Type type) override {
-    if (name == "kLookupTablePath") {
-      VLOG(2) << "SUPER UGLY FIX, remove this when move imperative mode in C++";
-    } else {
-      var_set_[name]->SetType(type);
-    }
-  }
-
-  framework::proto::VarType::Type GetDataType(
-      const std::string& name) const override {
-    auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetDataType",
-                   name);
-    return iter->second->DataType();
-  }
-
-  void SetDataType(const std::string& name,
-                   framework::proto::VarType::Type type) override {
-    var_set_[name]->SetDataType(type);
-  }
-
-  std::vector<framework::proto::VarType::Type> GetDataTypes(
-      const std::string& name) const override {
-    PADDLE_THROW("GetDataTypes is not supported in runtime InferVarType");
-  }
-
-  void SetDataTypes(const std::string& name,
-                    const std::vector<framework::proto::VarType::Type>&
-                        multiple_data_type) override {
-    PADDLE_THROW("SetDataTypes is not supported in runtime InferVarType");
-  }
-
-  std::vector<int64_t> GetShape(const std::string& name) const override {
-    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
-  }
-
-  void SetShape(const std::string& name,
-                const std::vector<int64_t>& dims) override {
-    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
-  }
-
-  int32_t GetLoDLevel(const std::string& name) const override {
-    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
-  }
-
-  void SetLoDLevel(const std::string& name, int32_t lod_level) override {
-    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
-  }
-
- private:
-  const NameVarBaseMap& inputs_;
-  const NameVarBaseMap* outputs_;
-  const framework::AttributeMap& attrs_;
-  std::unordered_map<std::string, std::vector<std::string>> input_names_;
-  std::unordered_map<std::string, std::vector<std::string>> output_names_;
-  std::unordered_map<std::string, VarBase*> var_set_;
-};
-
 static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
@@ -196,7 +62,10 @@ static framework::VariableNameMap CreateVarNameMap(
        is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
-      PADDLE_ENFORCE(var.dispensable());
+      PADDLE_ENFORCE(
+          var.dispensable(),
+          "Var: %s not dispensable and there are no such var in inputs",
+          var.name());
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -270,9 +139,9 @@ static std::string DebugString(
   return ss.str();
 }
 
-static std::string DebugString(const std::string& op_type,
-                               const NameVarBaseMap& ins,
-                               const NameVarBaseMap& outs) {
+std::string LayerDebugString(const std::string& op_type,
+                             const NameVarBaseMap& ins,
+                             const NameVarBaseMap& outs) {
   std::stringstream ss;
   ss << "Op(" << op_type << "): ";
 
@@ -392,7 +261,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   }
 
   VLOG(3) << "Running Op " << Type();
-  VLOG(5) << DebugString(Type(), ins, outs);
+  VLOG(5) << LayerDebugString(Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
@@ -401,7 +270,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   prepared_op.Run();
 
-  VLOG(4) << DebugString(Type(), ins, outs);
+  VLOG(4) << LayerDebugString(Type(), ins, outs);
 }
 
 void OpBase::ClearBackwardTrace() {
