@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,8 +28,8 @@ template <typename T>
 __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
                                            int num_sequence, int input_dim,
                                            int future_context,
-                                           const size_t *batch_indices,
-                                           T *out) {
+                                           const size_t *batch_indices, T *out,
+                                           bool is_tensor, int timesteps) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -47,11 +44,15 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
         (d < input_dim) ? wt[thy * input_dim + d] : static_cast<T>(0);
   }
   __syncthreads();
-
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    int current_timesteps = 0;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -71,17 +72,23 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int future_context,
-                               const size_t *batch_indices, T *out) {
+                               const size_t *batch_indices, T *out,
+                               bool is_tensor, int timesteps) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 
   if (d >= input_dim) return;
-
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    int current_timesteps = 0;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
+
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -99,7 +106,8 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
                                              int num_sequence, int input_dim,
                                              int future_context,
                                              const size_t *batch_indices,
-                                             T *din) {
+                                             T *din, bool is_tensor,
+                                             int timesteps) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -114,10 +122,16 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
   }
   __syncthreads();
 
+  int current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    // int current_timesteps = 0;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -136,16 +150,23 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
 template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int future_context,
-                                 const size_t *batch_indices, T *din) {
+                                 const size_t *batch_indices, T *din,
+                                 bool is_tensor, int timesteps) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 
   if (d >= input_dim) return;
+  int current_timesteps = 0;
+
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -158,12 +179,10 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 
 // Compute W gradient (small future_context version)
 template <typename T>
-__global__ void RowConvGradFilterImproved(const T *in, const T *dout,
-                                          int num_sequence, int input_dim,
-                                          int future_context, int block_x,
-                                          int block_y,
-                                          const size_t *batch_indices,
-                                          T *dfilter) {
+__global__ void RowConvGradFilterImproved(
+    const T *in, const T *dout, int num_sequence, int input_dim,
+    int future_context, int block_x, int block_y, const size_t *batch_indices,
+    T *dfilter, bool is_tensor, int timesteps) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -175,7 +194,6 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
   int xdim_sh_in = block_y;
   int xdim_sh_dout = block_y;
-  // int xdim_sh_dfilter = future_context;
   int ydim_sh_in = block_x;
   int ydim_sh_dout = block_x + future_context - 1;
   int ydim_sh_dfilter = block_y;
@@ -196,7 +214,13 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    int current_timesteps = 0;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
+
     int scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
@@ -245,7 +269,8 @@ template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int input_dim, int future_context,
                                   int block_x, int block_y,
-                                  const size_t *batch_indices, T *dfilter) {
+                                  const size_t *batch_indices, T *dfilter,
+                                  bool is_tensor, int timesteps) {
   int blx = blockDim.x;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
@@ -258,11 +283,15 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
   // NOTE(zcd): temporary solution
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
-
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    int current_timesteps = end - start;
+    int current_timesteps = 0;
+    if (is_tensor) {
+      current_timesteps = timesteps;
+    } else {
+      current_timesteps = end - start;
+    }
     int scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
@@ -310,9 +339,26 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     const T *in = X->data<T>();
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
+    bool is_tensor = X->lod().empty();
+    int batch_size = 0;
+    if (is_tensor) {
+      batch_size = X->dims()[0];
+    } else {
+      batch_size = X->lod()[0].size() - 1;
+    }
+    int input_dim = 0;
+    framework::Vector<size_t> batch_indices(batch_size + 1);
+    int timesteps = X->dims()[1];
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i * timesteps;
+      }
+      input_dim = X->dims()[2];
+    } else {
+      batch_indices = X->lod()[0];
+      input_dim = X->dims()[1];
+    }
 
-    auto batch_indices = X->lod()[0];
-    int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
     size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
@@ -324,12 +370,14 @@ class RowConvKernel<platform::CUDADeviceContext, T>
       int mem_per_block = (future_context * block_dim.x) * sizeof(T);
       RowConvForwardSharedMemory<
           T><<<grid_dim, block_dim, mem_per_block, stream>>>(
-          in, weight, num_sequence, input_dim, future_context, idx, out);
+          in, weight, num_sequence, input_dim, future_context, idx, out,
+          is_tensor, timesteps);
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
-          in, weight, num_sequence, input_dim, future_context, idx, out);
+          in, weight, num_sequence, input_dim, future_context, idx, out,
+          is_tensor, timesteps);
     }
   }
 };
@@ -348,9 +396,27 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
 
     Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
     Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    int batch_size = 0;
+    bool is_tensor = X->lod().empty();
+    if (is_tensor) {
+      batch_size = X->dims()[0];
+    } else {
+      batch_size = X->lod()[0].size() - 1;
+    }
 
-    auto batch_indices = X->lod()[0];
-    int input_dim = X->dims()[1];
+    int input_dim = 0;
+    framework::Vector<size_t> batch_indices(batch_size + 1);
+    int timesteps = X->dims()[1];
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i * timesteps;
+      }
+      input_dim = X->dims()[2];
+    } else {
+      batch_indices = X->lod()[0];
+      input_dim = X->dims()[1];
+    }
+    // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
     size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
@@ -374,7 +440,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         RowConvGradFilterImproved<
             T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
             in, dout, num_sequence, input_dim, future_context, block_x, block_y,
-            idx, dfilter);
+            idx, dfilter, is_tensor, timesteps);
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -385,7 +451,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         RowConvGradFilter<
             T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
             in, dout, num_sequence, input_dim, future_context, block_x, block_y,
-            idx, dfilter);
+            idx, dfilter, is_tensor, timesteps);
       }
     }
 
@@ -397,12 +463,14 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         int mem_per_block = (future_context * block_dim.x) * sizeof(T);
         RowConvGradInputSharedMemory<
             T><<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-            dout, weights, num_sequence, input_dim, future_context, idx, din);
+            dout, weights, num_sequence, input_dim, future_context, idx, din,
+            is_tensor, timesteps);
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
         RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
-            dout, weights, num_sequence, input_dim, future_context, idx, din);
+            dout, weights, num_sequence, input_dim, future_context, idx, din,
+            is_tensor, timesteps);
       }
     }
   }
