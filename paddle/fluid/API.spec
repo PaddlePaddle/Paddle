@@ -663,7 +663,7 @@ paddle.fluid.dygraph.LayerNorm.parameters (ArgSpec(args=['self', 'include_sublay
 paddle.fluid.dygraph.LayerNorm.state_dict (ArgSpec(args=['self', 'destination', 'include_sublayers'], varargs=None, keywords=None, defaults=(None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.LayerNorm.sublayers (ArgSpec(args=['self', 'include_sublayers'], varargs=None, keywords=None, defaults=(True,)), ('document', '00a881005ecbc96578faf94513bf0d62'))
 paddle.fluid.dygraph.LayerNorm.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.NCE ('paddle.fluid.dygraph.nn.NCE', ('document', '6fd7781d50bb8598c96e3ccd21102852'))
+paddle.fluid.dygraph.NCE ('paddle.fluid.dygraph.nn.NCE', ('document', '2d579e8d9ce31bb29e079e5f6108fc73'))
 paddle.fluid.dygraph.NCE.__init__ (ArgSpec(args=['self', 'name_scope', 'num_total_classes', 'param_attr', 'bias_attr', 'num_neg_samples', 'sampler', 'custom_dist', 'seed', 'is_sparse'], varargs=None, keywords=None, defaults=(None, None, None, 'uniform', None, 0, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.NCE.add_parameter (ArgSpec(args=['self', 'name', 'parameter'], varargs=None, keywords=None, defaults=None), ('document', 'f35ab374c7d5165c3daf3bd64a5a2ec1'))
 paddle.fluid.dygraph.NCE.add_sublayer (ArgSpec(args=['self', 'name', 'sublayer'], varargs=None, keywords=None, defaults=None), ('document', '839ff3c0534677ba6ad8735c3fd4e995'))
