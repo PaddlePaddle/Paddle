@@ -471,7 +471,7 @@ function assert_api_not_changed() {
 }
 
 function assert_api_spec_approvals() {
-    /bin/bash -x ${PADDLE_ROOT}/tools/check_api_approvals.sh
+    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
     if [ "$?" != 0 ];then
        exit 1
     fi

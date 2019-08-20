@@ -31,13 +31,14 @@ API_FILES=("CMakeLists.txt"
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
 git_count=`git diff --numstat upstream/$BRANCH| awk '{sum+=$1}END{print sum}'`
-
+failed_num=1
 echo_list=()
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
   APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 5086632`
   if [ "${APPROVALS}" == "FALSE" ]; then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content\n"
-    echo_list=(${echo_list[@]} $echo_line)
+    echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+    failed_num=`expr $failed_num + 1`
   fi
 fi    
 
@@ -64,22 +65,28 @@ for API_FILE in ${API_FILES[*]}; do
       if [ "${APPROVALS}" == "FALSE" ]; then
         if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
           echo_line="You must have two RD (wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change! ${API_FILE} for the management reason of API interface and API document.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1`
         elif [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
           echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval for op_use_default_grad_op_maker.spec, which manages the grad_op memory optimization.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1` 
         elif [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1`
         elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (JiabinYang (Recommend) or luotao1) approval for python/requirements.txt, which manages the third-party python package.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1`
         elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend) or luotao1) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1`
         else
           echo_line="You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
-          echo_list=(${echo_list[@]} $echo_line)
+          echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+          failed_num=`expr $failed_num + 1`
         fi
       fi
   fi
@@ -92,7 +99,8 @@ if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         echo_line="You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the usage (either add or delete) of const_cast.\n"
-        echo_list=(${echo_list[@]} $echo_line)
+        echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+        failed_num=`expr $failed_num + 1`
     fi
 fi
 
@@ -103,7 +111,8 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
-        echo_list=(${echo_list[@]} $echo_line)
+        echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+        failed_num=`expr $failed_num + 1`
     fi
 fi
 
@@ -113,12 +122,15 @@ if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
-        echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.You must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n"
-        echo_list=(${echo_list[@]} $echo_line)
+        echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n"
+        echo_list=(${echo_list[@]} $failed_num "." $echo_line)
+        failed_num=`expr $failed_num + 1`
     fi
 fi
 
 if [ -n "${echo_list}" ];then
+  echo "****************"
   echo -e ${echo_list[@]}
+  echo "****************"
   exit 1
 fi
