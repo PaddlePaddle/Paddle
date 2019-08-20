@@ -32,7 +32,7 @@ approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.gi
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
 git_count=`git diff --numstat upstream/$BRANCH| awk '{sum+=$1}END{print sum}'`
 failed_num=1
-echo_list=()
+echo_list=( )
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
   APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 5086632`
   if [ "${APPROVALS}" == "FALSE" ]; then
