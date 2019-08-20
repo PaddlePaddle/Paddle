@@ -395,8 +395,8 @@ class TestLayer(LayerTest):
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
-        self.assertTrue(np.array_equal(static_rlt2, static_rlt))
-        self.assertTrue(np.array_equal(dy_rlt.numpy(), static_rlt))
+        self.assertTrue(np.allclose(static_rlt2, static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt2))
 
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
