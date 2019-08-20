@@ -140,6 +140,11 @@ class FakeBoxPS : public BoxPSBase {
   void PrintAllEmb() const;
   void DebugPrintKey(const uint64_t *d, int len, const std::string &info) const;
   std::mutex map_mutex;
+
+  std::vector<FeatureValue *> feature_values_cpu_;
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  std::vector<FeatureValue *> feature_values_gpu_;
+#endif
 };
 }  // namespace boxps
 }  // namespace paddle

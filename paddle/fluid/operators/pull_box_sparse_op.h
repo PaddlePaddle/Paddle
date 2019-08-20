@@ -26,7 +26,6 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
   auto hidden_size = ctx.Attr<int>("size");
-  printf("paddlebox: hidden size in op: %d\n", hidden_size);
 
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
@@ -37,11 +36,10 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     const uint64_t *single_slot_keys =
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
-    const auto key_numel = slot->numel();
+    slot_lengths[i] = slot->numel();
+
     auto *output = outputs[i]->mutable_data<float>(ctx.GetPlace());
     all_values[i] = output;
-    slot_lengths[i] = key_numel;
-    printf("paddlebox: numel in the %d slot is %ld\n", i, key_numel);
   }
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
@@ -63,12 +61,11 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     const uint64_t *single_slot_keys =
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
-    const float *grad_value = d_output[i]->data<float>();
-    const auto key_numel = slot->numel();
-    all_grad_values[i] = grad_value;
-    slot_lengths[i] = key_numel;
-  }
+    slot_lengths[i] = slot->numel();
 
+    const float *grad_value = d_output[i]->data<float>();
+    all_grad_values[i] = grad_value;
+  }
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
                           slot_lengths, hidden_size);

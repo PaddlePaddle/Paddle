@@ -16,6 +16,7 @@
 #include <ctime>
 #include <memory>
 #include <numeric>
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -58,62 +59,30 @@ int BoxWrapper::PullSparse(const paddle::platform::Place& place,
                            const std::vector<float*>& values,
                            const std::vector<int64_t>& slot_lengths,
                            const int hidden_size) {
-  if (platform::is_cpu_place(place)) {
-    VLOG(10) << "PaddleBox: PullSparse in CPUPlace";
+  if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-    uint64_t* total_keys = new uint64_t[total_length];
+    LoDTensor total_keys_tensor;
+    int64_t* total_keys =
+        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place);
     int64_t offset = 0;
     for (size_t i = 0; i < keys.size(); ++i) {
-      memcpy(total_keys + offset, keys[i], slot_lengths[i] * sizeof(uint64_t));
-      offset += slot_lengths[i];
-    }
-    PADDLE_ENFORCE_EQ(offset, total_length,
-                      "BoxWrapper::PullSparse: total feasign keys length "
-                      "should be equal to the sum of length of all input "
-                      "tensors.");
-
-    // Space allocation for FeatureValue is left for boxps
-    paddle::boxps::FeatureValue* total_values;
-    boxps_ptr_->PullSparseCPU(total_keys, &total_values,
-                              static_cast<int>(total_length));
-
-    offset = 0;
-    for (size_t i = 0; i < values.size(); ++i) {
-      int64_t fea_num = slot_lengths[i];
-      for (auto j = 0; j < fea_num; ++j) {
-        memcpy(values[i] + j * hidden_size,
-               reinterpret_cast<float*>(&((total_values + offset)->show)),
-               sizeof(float) * hidden_size);
-        ++offset;
-      }
-    }
-    PADDLE_ENFORCE_EQ(offset, total_length,
-                      "BoxWrapper::PullSparse: total emb values length should "
-                      "be equal to the sum of length of all input tensors.");
-
-    // All of these vectors should be free by boxps, right?
-    delete[] total_keys;
-    delete[] total_values;  // should be free in boxps, but for stub free here
-  } else if (platform::is_gpu_place(place)) {
+      if (platform::is_cpu_place(place)) {
+        memory::Copy(boost::get<platform::CPUPlace>(place), total_keys + offset,
+                     boost::get<platform::CPUPlace>(place), keys[i],
+                     slot_lengths[i] * sizeof(uint64_t));
+      } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    VLOG(10) << "PaddleBox: PullSparse in CUDAPlace";
-    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place).GetDeviceId());
-
-    int64_t total_length =
-        std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-
-    // TODO(hutuxian): should we use system_allocator or mutable_data() instead
-    // of calling cudaMalloc directly?
-    uint64_t* total_keys;
-    cudaError_t result =
-        cudaMalloc(&total_keys, total_length * sizeof(uint64_t));
-    PADDLE_ENFORCE_EQ(result, cudaSuccess, "PaddleBox: cudaMalloc failed.");
-
-    int64_t offset = 0;
-    for (size_t i = 0; i < keys.size(); ++i) {
-      cudaMemcpy(total_keys + offset, keys[i],
-                 slot_lengths[i] * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
+        memory::Copy(boost::get<platform::CUDAPlace>(place),
+                     total_keys + offset,
+                     boost::get<platform::CUDAPlace>(place), keys[i],
+                     slot_lengths[i] * sizeof(uint64_t), nullptr);
+#else
+        PADDLE_THROW(
+            "Please compile WITH_GPU option, and for now NCCL doesn't support "
+            "windows.");
+#endif
+      }
       offset += slot_lengths[i];
     }
     PADDLE_ENFORCE_EQ(offset, total_length,
@@ -123,17 +92,41 @@ int BoxWrapper::PullSparse(const paddle::platform::Place& place,
 
     // Space allocation for FeatureValue is left for boxps
     paddle::boxps::FeatureValue* total_values;
-    boxps_ptr_->PullSparseGPU(
-        total_keys, &total_values, static_cast<int>(total_length),
-        boost::get<platform::CUDAPlace>(place).GetDeviceId());
+    if (platform::is_cpu_place(place)) {
+      boxps_ptr_->PullSparseCPU(reinterpret_cast<uint64_t*>(total_keys),
+                                &total_values, static_cast<int>(total_length));
+    } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      boxps_ptr_->PullSparseGPU(
+          reinterpret_cast<uint64_t*>(total_keys), &total_values,
+          static_cast<int>(total_length),
+          boost::get<platform::CUDAPlace>(place).GetDeviceId());
+#endif
+    }
 
     offset = 0;
     for (size_t i = 0; i < values.size(); ++i) {
       int64_t fea_num = slot_lengths[i];
       for (auto j = 0; j < fea_num; ++j) {
-        cudaMemcpy(values[i] + j * hidden_size,
-                   reinterpret_cast<float*>(&((total_values + offset)->show)),
-                   sizeof(float) * hidden_size, cudaMemcpyDeviceToDevice);
+        // Copy the emb from BoxPS to paddle tensor. Since 'show','click','emb'
+        // are continuous in memory, so we copy here using the 'show' address
+        if (platform::is_cpu_place(place)) {
+          memory::Copy(
+              boost::get<platform::CPUPlace>(place),
+              values[i] + j * hidden_size,
+              boost::get<platform::CPUPlace>(place),
+              reinterpret_cast<float*>(&((total_values + offset)->show)),
+              sizeof(float) * hidden_size);
+        } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+          memory::Copy(
+              boost::get<platform::CUDAPlace>(place),
+              values[i] + j * hidden_size,
+              boost::get<platform::CUDAPlace>(place),
+              reinterpret_cast<float*>(&((total_values + offset)->show)),
+              sizeof(float) * hidden_size, nullptr);
+#endif
+        }
         ++offset;
       }
     }
@@ -141,14 +134,6 @@ int BoxWrapper::PullSparse(const paddle::platform::Place& place,
                       "BoxWrapper::PullSparse: total emb values length should "
                       "be equal to the sum of length of all input tensors.");
 
-    // All of these vectors should be free by boxps, right?
-    cudaFree(total_keys);
-    cudaFree(total_values);  // should be free in boxps, but for stub free here
-#else
-    PADDLE_THROW(
-        "Please compile WITH_GPU option, and for now NCCL doesn't support "
-        "windows.");
-#endif
   } else {
     VLOG(3)
         << "PaddleBox: PullSparse Only support CPUPlace and CUDAPlace now.\n";
@@ -162,14 +147,30 @@ int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                const std::vector<const float*>& grad_values,
                                const std::vector<int64_t>& slot_lengths,
                                const int hidden_size) {
-  if (platform::is_cpu_place(place)) {
-    VLOG(10) << "PaddleBox: PushSparse in CPUPlace";
+  if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-    uint64_t* total_keys = new uint64_t[total_length];
+    LoDTensor total_keys_tensor;
+    int64_t* total_keys =
+        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place);
     int64_t offset = 0;
     for (size_t i = 0; i < keys.size(); ++i) {
-      memcpy(total_keys + offset, keys[i], slot_lengths[i] * sizeof(uint64_t));
+      if (platform::is_cpu_place(place)) {
+        memory::Copy(boost::get<platform::CPUPlace>(place), total_keys + offset,
+                     boost::get<platform::CPUPlace>(place), keys[i],
+                     slot_lengths[i] * sizeof(uint64_t));
+      } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+        memory::Copy(boost::get<platform::CUDAPlace>(place),
+                     total_keys + offset,
+                     boost::get<platform::CUDAPlace>(place), keys[i],
+                     slot_lengths[i] * sizeof(uint64_t), nullptr);
+#else
+        PADDLE_THROW(
+            "Please compile WITH_GPU option, and for now NCCL doesn't support "
+            "windows.");
+#endif
+      }
       offset += slot_lengths[i];
     }
     PADDLE_ENFORCE_EQ(offset, total_length,
@@ -178,63 +179,34 @@ int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "tensors.");
 
     paddle::boxps::FeaturePushValue* total_grad_values =
-        new paddle::boxps::FeaturePushValue[total_length];
+        reinterpret_cast<paddle::boxps::FeaturePushValue*>(
+            memory::AllocShared(
+                place, total_length * sizeof(paddle::boxps::FeaturePushValue))
+                ->ptr());
 
     offset = 0;
     for (size_t i = 0; i < grad_values.size(); ++i) {
       int64_t fea_num = slot_lengths[i];
       for (auto j = 0; j < fea_num; ++j) {
-        memcpy(reinterpret_cast<float*>(&((total_grad_values + offset)->show)),
-               grad_values[i] + j * hidden_size, sizeof(float) * hidden_size);
-        ++offset;
-      }
-    }
-    PADDLE_ENFORCE_EQ(offset, total_length,
-                      "BoxWrapper::PushSparseGrad: total emb grad values "
-                      "length should be equal to the sum of length of all "
-                      "input tensors.");
-
-    boxps_ptr_->PushSparseCPU(total_keys, total_grad_values,
-                              static_cast<int>(total_length));
-    delete[] total_keys;
-    delete[] total_grad_values;
-  } else if (platform::is_gpu_place(place)) {
+        // Copy the emb grad from paddle tensor to BoxPS. Since
+        // 'show','click','emb' are continuous in memory, so we copy here using
+        // the 'show' address
+        if (platform::is_cpu_place(place)) {
+          memory::Copy(
+              boost::get<platform::CPUPlace>(place),
+              reinterpret_cast<float*>(&((total_grad_values + offset)->show)),
+              boost::get<platform::CPUPlace>(place),
+              grad_values[i] + j * hidden_size, sizeof(float) * hidden_size);
+        } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    VLOG(10) << "PaddleBox: PushSparse in CUDAPlace";
-    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place).GetDeviceId());
-
-    int64_t total_length =
-        std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
-
-    uint64_t* total_keys;
-    cudaError_t result =
-        cudaMalloc(&total_keys, total_length * sizeof(uint64_t));
-    PADDLE_ENFORCE_EQ(result, cudaSuccess, "PaddleBox: cudaMalloc failed.");
-
-    int64_t offset = 0;
-    for (size_t i = 0; i < keys.size(); ++i) {
-      cudaMemcpy(total_keys + offset, keys[i],
-                 slot_lengths[i] * sizeof(uint64_t), cudaMemcpyDeviceToDevice);
-      offset += slot_lengths[i];
-    }
-    PADDLE_ENFORCE_EQ(offset, total_length,
-                      "BoxWrapper::PushSparseGrad: total feasign keys length "
-                      "should be equal to the sum of length of all input "
-                      "tensors.");
-
-    paddle::boxps::FeaturePushValue* total_grad_values;
-    result = cudaMalloc(&total_grad_values,
-                        total_length * sizeof(paddle::boxps::FeaturePushValue));
-    PADDLE_ENFORCE_EQ(result, cudaSuccess, "PaddleBox: cudaMalloc failed.");
-
-    offset = 0;
-    for (size_t i = 0; i < grad_values.size(); ++i) {
-      int64_t fea_num = slot_lengths[i];
-      for (auto j = 0; j < fea_num; ++j) {
-        cudaMemcpy(
-            reinterpret_cast<float*>(&((total_grad_values + offset)->show)),
-            grad_values[i] + j * hidden_size, sizeof(float) * hidden_size,
-            cudaMemcpyDeviceToDevice);
+          memory::Copy(
+              boost::get<platform::CUDAPlace>(place),
+              reinterpret_cast<float*>(&((total_grad_values + offset)->show)),
+              boost::get<platform::CUDAPlace>(place),
+              grad_values[i] + j * hidden_size, sizeof(float) * hidden_size,
+              nullptr);
+#endif
+        }
         ++offset;
       }
     }
@@ -243,16 +215,18 @@ int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "length should be equal to the sum of length of all "
                       "input tensors.");
 
-    boxps_ptr_->PushSparseGPU(
-        total_keys, total_grad_values, static_cast<int>(total_length),
-        boost::get<platform::CUDAPlace>(place).GetDeviceId());
-    cudaFree(total_keys);
-    cudaFree(total_grad_values);
-#else
-    PADDLE_THROW(
-        "Please compile WITH_GPU option, and for now NCCL doesn't support "
-        "windows.");
+    if (platform::is_cpu_place(place)) {
+      boxps_ptr_->PushSparseCPU(reinterpret_cast<uint64_t*>(total_keys),
+                                total_grad_values,
+                                static_cast<int>(total_length));
+    } else {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      boxps_ptr_->PushSparseGPU(
+          reinterpret_cast<uint64_t*>(total_keys), total_grad_values,
+          static_cast<int>(total_length),
+          boost::get<platform::CUDAPlace>(place).GetDeviceId());
 #endif
+    }
   } else {
     VLOG(3)
         << "PaddleBox: PullSparse Only support CPUPlace and CUDAPlace now.\n";

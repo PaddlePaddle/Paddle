@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,16 +47,14 @@ class BoxWrapper {
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
     if (nullptr == s_instance_) {
-      // If main thread is guaranteed to init this, remove the lock
+      // If main thread is guaranteed to init this, this lock can be removed
       static std::mutex mutex;
       std::lock_guard<std::mutex> lock(mutex);
       if (nullptr == s_instance_) {
         s_instance_.reset(new paddle::framework::BoxWrapper());
-        // s_instance_->boxps_ptr_.reset(new paddle::boxps::FakeBoxPS());
-        s_instance_->boxps_ptr_ = std::shared_ptr<paddle::boxps::BoxPSBase>(
-            new paddle::boxps::FakeBoxPS());
-        s_instance_->boxps_ptr_->InitializeCPU(
-            nullptr, 0);  // Just hard code for embedding size now.
+        s_instance_->boxps_ptr_.reset(new paddle::boxps::FakeBoxPS());
+        // TODO(hutuxian): should be exposed from pybind
+        s_instance_->boxps_ptr_->InitializeCPU(nullptr, 0);
       }
     }
     return s_instance_;

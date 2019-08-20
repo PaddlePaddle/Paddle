@@ -58,6 +58,17 @@ int FakeBoxPS::BeginPass() {
 
 int FakeBoxPS::EndPass() {
   printf("FakeBoxPS: End pass, do nothing...\n");
+  for (auto e : feature_values_cpu_) {
+    delete[] e;
+  }
+  feature_values_cpu_.clear();
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+  for (auto e : feature_values_gpu_) {
+    cudaFree(e);
+  }
+  feature_values_gpu_.clear();
+#endif
+
   return 0;
 }
 
@@ -71,6 +82,11 @@ int FakeBoxPS::PullSparseCPU(const uint64_t *keys, FeatureValue **vals,
   this->DebugPrintKey(keys, fea_num, "key in pullsparse cpu:");
 
   *vals = new FeatureValue[fea_num];
+  {
+    // use same lock since pull and push are independent
+    std::lock_guard<std::mutex> lock(map_mutex);
+    feature_values_cpu_.push_back(*vals);
+  }
   for (int i = 0; i < fea_num; ++i) {
     const auto iter = emb_.find(*(keys + i));
     if (iter == emb_.end()) {
@@ -126,6 +142,11 @@ int FakeBoxPS::InitializeGPU(const char *conf_file, int minibatch_size,
 int FakeBoxPS::PullSparseGPU(const uint64_t *keys, FeatureValue **vals,
                              int fea_num, int stream_idx) {
   printf("FakeBoxPS PullSparseGPU begin\n");
+  cudaMalloc(vals, sizeof(FeatureValue) * fea_num);
+  {
+    std::lock_guard<std::mutex> lock(map_mutex);
+    feature_values_gpu_.push_back(*vals);
+  }
   uint64_t *cpu_keys = new uint64_t[fea_num];
   cudaMemcpy(cpu_keys, keys, sizeof(uint64_t) * fea_num,
              cudaMemcpyDeviceToHost);
@@ -138,7 +159,6 @@ int FakeBoxPS::PullSparseGPU(const uint64_t *keys, FeatureValue **vals,
   cudaMemcpy(vals, cpu_values, sizeof(FeatureValue) * fea_num,
              cudaMemcpyHostToDevice);
   delete[] cpu_keys;
-  delete[] cpu_values;
   return 0;
 }
 

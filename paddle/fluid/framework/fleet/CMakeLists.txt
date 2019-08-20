@@ -6,4 +6,4 @@ endif(WITH_PSLIB)
 
 cc_library(nccl_wrapper SRCS nccl_wrapper.cc DEPS framework_proto variable_helper scope)
 cc_library(boxps SRCS boxps.cc)
-cc_library(box_wrapper SRCS box_wrapper.cc DEPS boxps)
+cc_library(box_wrapper SRCS box_wrapper.cc DEPS boxps framework_proto lod_tensor)
