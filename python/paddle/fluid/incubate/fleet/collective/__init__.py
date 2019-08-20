@@ -104,6 +104,9 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
 
+        # only for coverage testing in unit test by now
+        self.train_with_program = False
+
         self.exec_strategy = fluid.ExecutionStrategy()
 
 
@@ -160,7 +163,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
     def _check_condition(self, name, **kwargs):
-        for k, v in kwargs.iterms():
+        for k, v in kwargs.iteritems():
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
@@ -176,14 +179,21 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-
-        if strategy.use_dist_fc:
+        elif strategy.use_dist_fc:
             self._check_condition(
                 "use_dist_fc",
                 use_dgc=main_program._enable_dgc,
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+        elif strategy.train_with_program:
+            # the lowest priority
+            strategy.mode = "collective"
+            strategy.collective_mode = "grad_allreduce"
+            self._check_condition(
+                "train_with_program",
+                use_dgc=main_program._enable_dgc,
+                use_lamb=main_program._use_lamb)
 
         if self._strategy.collective_mode=="local_sgd" \
                 or self._strategy.collective_mode == "grad_allreduce":
