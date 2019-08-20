@@ -14,13 +14,10 @@
 """
 Test LightNAS.
 """
-import paddle
+import sys
 import unittest
 import paddle.fluid as fluid
-from mobilenet import MobileNet
 from paddle.fluid.contrib.slim.core import Compressor
-from paddle.fluid.contrib.slim.graph import GraphWrapper
-import sys
 sys.path.append("./light_nas")
 from light_nas_space import LightNASSpace
 
@@ -34,10 +31,23 @@ class TestLightNAS(unittest.TestCase):
         """
         Test LightNAS.
         """
+        # Update compress.yaml
+        lines = list()
+        fid = open('./light_nas/compress.yaml')
+        for line in fid:
+            if 'target_latency' in line:
+                lines.append('        target_latency: 0\n')
+            else:
+                lines.append(line)
+        fid.close()
+        fid = open('./light_nas/compress.yaml', 'w')
+        for line in lines:
+            fid.write(line)
+        fid.close()
+
+        # Begin test
         if not fluid.core.is_compiled_with_cuda():
             return
-        class_dim = 10
-        image_shape = [1, 28, 28]
 
         space = LightNASSpace()
 
@@ -70,14 +80,43 @@ class TestLightNAS(unittest.TestCase):
         com_pass.config('./light_nas/compress.yaml')
         eval_graph = com_pass.run()
 
-        lines = [
-            line for line in open('./light_nas/compress.yaml')
-            if 'target_latency' not in line
-        ]
+    def test_compression_with_target_latency(self):
+        """
+        Test LightNAS with target_latency.
+        """
+        # Update compress.yaml
+        lines = list()
+        fid = open('./light_nas/compress.yaml')
+        for line in fid:
+            if 'target_latency' in line:
+                lines.append('        target_latency: 1\n')
+            else:
+                lines.append(line)
+        fid.close()
         fid = open('./light_nas/compress.yaml', 'w')
         for line in lines:
             fid.write(line)
         fid.close()
+
+        # Begin test
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        space = LightNASSpace()
+
+        startup_prog, train_prog, test_prog, train_metrics, test_metrics, train_reader, test_reader = space.create_net(
+        )
+        train_cost, train_acc1, train_acc5, global_lr = train_metrics
+        test_cost, test_acc1, test_acc5 = test_metrics
+
+        place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+
+        val_fetch_list = [('acc_top1', test_acc1.name),
+                          ('acc_top5', test_acc5.name)]
+        train_fetch_list = [('loss', train_cost.name)]
+
         com_pass = Compressor(
             place,
             fluid.global_scope(),
