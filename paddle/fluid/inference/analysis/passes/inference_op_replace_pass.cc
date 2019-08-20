@@ -20,9 +20,9 @@ namespace inference {
 namespace analysis {
 
 void InferenceOpReplacePass::RunImpl(Argument* argument) {
-  if (!argument->use_gpu()) return;
   std::unordered_map<std::string, std::string> replaced_map{
       {"conditional_block", "conditional_block_infer"},
+      {"merge_lod_tensor", "merge_lod_tensor_infer"},
   };
 
   auto& graph = argument->main_graph();
