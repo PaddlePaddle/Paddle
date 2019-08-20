@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import append_backward
@@ -44,59 +45,65 @@ class MLP(fluid.Layer):
 
 class TestOptimizerIO(unittest.TestCase):
     def test_optmizer_io(self):
-        mlp = MLP("mlp")
-        dy_x_data = np.array(
-            [np.random.rand(1, 28, 28) for i in range(128)], dtype=np.float32)
-        y_data = np.array(np.random.rand(128, 1), dtype=np.float32)
-        img = to_variable(dy_x_data)
-        label = to_variable(y_data)
-        label._stop_gradient = True
-        cost = mlp(img)
-        avg_loss = fluid.layers.reduce_mean(cost)
-        avg_loss.backward()
+        with fluid.dygraph.guard():
+            mlp = MLP("mlp")
+            sgd = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+                learning_rate=np.random.rand(),
+                decay_steps=1,
+                decay_rate=0.5,
+                staircase=True))
+            moment = fluid.optimizer.MomentumOptimizer(
+                learning_rate=0.001, momentum=0.9, use_nesterov=True)
+            dgc_moment = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=0.0001,
+                momentum=0.9,
+                rampup_step=1000,
+                rampup_begin_step=1252,
+                sparsity=[0.999, 0.999])
+            lars_moment = fluid.optimizer.LarsMomentum(
+                learning_rate=0.2, momentum=0.1, lars_weight_decay=0.001)
+            adagrad = fluid.optimizer.Adagrad(learning_rate=0.2)
+            adam = fluid.optimizer.AdamOptimizer(0.01)
+            decay_adagrad = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
+            adadelta = fluid.optimizer.Adadelta(
+                learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
+            rms = fluid.optimizer.RMSProp(learning_rate=0.1)
+            ftrl = fluid.optimizer.Ftrl(learning_rate=0.1)
+            lamb = fluid.optimizer.Lamb(learning_rate=0.002)
 
-        sgd = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
-            learning_rate=np.random.rand(),
-            decay_steps=1,
-            decay_rate=0.5,
-            staircase=True))
+            optimizers = [
+                sgd, moment, dgc_moment, lars_moment, adagrad, adam,
+                decay_adagrad, adadelta, rms, ftrl, lamb
+            ]
+            save_dir = "optimizer"
+            save_filenames = [
+                'sgd', 'moment', 'dgc_moment', 'lars_moment', 'adagrad', 'adam',
+                'decay_adagrad', 'adadelta', 'rms', 'ftrl', 'lamb'
+            ]
 
-        moment = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, use_nesterov=True)
-        dgc_moment = fluid.optimizer.DGCMomentumOptimizer(
-            learning_rate=0.0001,
-            momentum=0.9,
-            rampup_step=1000,
-            rampup_begin_step=1252,
-            sparsity=[0.999, 0.999])
-        lars_moment = fluid.optimizer.LarsMomentum(
-            learning_rate=0.2, momentum=0.1, lars_weight_decay=0.001)
-        adagrad = fluid.optimizer.Adagrad(learning_rate=0.2)
-        adam = fluid.optimizer.AdamOptimizer(0.01)
-        decay_adagrad = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
-        adadelta = fluid.optimizer.Adadelta(
-            learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
-        rms = fluid.optimizer.RMSProp(learning_rate=0.1)
-        ftrl = fluid.optimizer.Ftrl(learning_rate=0.1)
-        lamb = fluid.optimizer.Lamb(learning_rate=0.002)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+            for batch_id, data in enumerate(train_reader()):
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    128, 1)
 
-        optimizers = [
-            sgd, moment, dgc_moment, lars_moment, adagrad, adam, decay_adagrad,
-            adadelta, rms, ftrl, lamb
-        ]
-        save_dir = "optimizer"
-        save_filenames = [
-            'sgd', 'moment', 'dgc_moment', 'lars_moment', 'adagrad', 'adam',
-            'decay_adagrad', 'adadelta', 'rms', 'ftrl', 'lamb'
-        ]
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
+                label._stop_gradient = True
 
-        optimizers_state = []
-        for i, optimizer in enumerate(optimizers):
-            optimizer.minimize(avg_loss)
-            optimizer.save(save_dir, save_filenames[i])
-            optimizers_state.append(optimizer.state_dict())
+                cost = mlp(img)
+                avg_loss = fluid.layers.reduce_mean(cost)
+                avg_loss.backward()
 
-        with fluid.unique_name.guard():
+                optimizers_state = []
+                for i, optimizer in enumerate(optimizers):
+                    optimizer.minimize(avg_loss)
+                    optimizer.save(save_dir, save_filenames[i])
+                    optimizers_state.append(optimizer.state_dict())
+                break
+
             sgd_loaded = SGDOptimizer(
                 learning_rate=fluid.layers.natural_exp_decay(
                     learning_rate=random.uniform(0.001, 1.0),
@@ -144,11 +151,28 @@ class TestOptimizerIO(unittest.TestCase):
                 lamb_loaded
             ]
             optimizers_loaded_state = []
-            for i, optimizer_loaded in enumerate(optimizers_loaded):
-                optimizer_loaded.load_from_path(
-                    os.path.join("./", save_dir, save_filenames[i]))
-                optimizer_loaded.minimize(avg_loss)
-                optimizers_loaded_state.append(optimizer_loaded.state_dict())
+
+            for batch_id, data in enumerate(train_reader()):
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                    128, 1)
+
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
+                label._stop_gradient = True
+
+                cost = mlp(img)
+                avg_loss = fluid.layers.reduce_mean(cost)
+                avg_loss.backward()
+
+                for i, optimizer_loaded in enumerate(optimizers_loaded):
+                    optimizer_loaded.load_from_path(
+                        os.path.join("./", save_dir, save_filenames[i]))
+                    optimizer_loaded.minimize(avg_loss)
+                    optimizers_loaded_state.append(optimizer_loaded.state_dict(
+                    ))
+                break
 
             def compare_approximate(first, second):
                 if first.keys() != second.keys():
@@ -189,5 +213,4 @@ class TestOptimizerIO(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.dygraph.guard():
-        unittest.main()
+    unittest.main()
