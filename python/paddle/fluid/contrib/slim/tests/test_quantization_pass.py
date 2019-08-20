@@ -79,6 +79,7 @@ def conv_net(img, label):
         num_filters=20,
         pool_size=2,
         pool_stride=2,
+        pool_type='max',
         act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -87,6 +88,7 @@ def conv_net(img, label):
         num_filters=50,
         pool_size=2,
         pool_stride=2,
+        pool_type='avg',
         act="relu")
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -135,7 +137,6 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
@@ -177,7 +178,6 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
