@@ -181,7 +181,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
     def _check_condition(self, name, **kwargs):
-        for k, v in kwargs.iterms():
+        for k, v in kwargs.iteritems():
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
