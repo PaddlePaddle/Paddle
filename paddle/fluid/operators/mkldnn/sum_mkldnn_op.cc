@@ -114,10 +114,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             new memory(sum_pd.dst_desc(), mkldnn_engine, output_data));
       }
 
-      // for (size_t i = 0; i < srcs_mem.size(); ++i) {
-      //   inputs.push_back(srcs_mem[i]);
-      // }
-
       auto sum_prim = mkldnn::sum(sum_pd);
       output_format = platform::GetMKLDNNFormat(sum_pd.dst_desc());
 
@@ -131,7 +127,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         reorder_p = std::make_shared<reorder>(*dst_mem, *target_mem);
       }
 
-      // TODO(grygielski) refactor
       mkldnn::stream astream(mkldnn_engine);
       std::unordered_map<int, memory> args;
       for (size_t i = 0; i < srcs_mem.size(); ++i) {

@@ -76,11 +76,14 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_memory =
         handler.AcquireDstMemory(md, platform::to_void_cast<T>(output_data));
 
+    auto workspace = handler.AcquireWorkspaceMemory();
+
     auto lrn_p = handler.AcquireLRN();
 
     mkldnn::stream astream(mkldnn_engine);
     lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
-                             {MKLDNN_ARG_DST, *dst_memory}});
+                             {MKLDNN_ARG_DST, *dst_memory},
+                             {MKLDNN_ARG_WORKSPACE, *workspace}});
     astream.wait();
 
     auto output_format = paddle::platform::GetMKLDNNFormat(*dst_memory);
@@ -132,8 +135,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto diff_md = paddle::platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
-    // TODO(gyrgielski) redundant? since ref_lrn doesnt use workspace parameter
-    // auto workspace = handler.AcquireWorkspaceMemory();
+    auto workspace = handler.AcquireWorkspaceMemory();
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(
         diff_md, platform::to_void_cast<T>(out_grad_data));
@@ -153,7 +155,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::stream astream(mkldnn_engine);
     lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
-                               {MKLDNN_ARG_DIFF_SRC, *diff_src_memory}});
+                               {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
+                               {MKLDNN_ARG_WORKSPACE, *workspace}});
     astream.wait();
 
     auto output_format = paddle::platform::GetMKLDNNFormat(*diff_src_memory);

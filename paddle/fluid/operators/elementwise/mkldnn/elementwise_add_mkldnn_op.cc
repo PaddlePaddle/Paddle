@@ -87,7 +87,6 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
 
         auto x_reorder = handler.AcquireReorder(x_memory_p, user_x_memory_p);
 
-        // TODO(grygielski)
         x_reorder->execute(astream, *user_x_memory_p, *x_memory_p);
         astream.wait();
 
@@ -162,7 +161,6 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
 
       auto sum_prim = handler.AcquireSum(dst_memory);
 
-      // TODO(grygielski) refactor?
       sum_prim->execute(astream, {{MKLDNN_ARG_MULTIPLE_SRC, *src_x_memory},
                                   {MKLDNN_ARG_MULTIPLE_SRC + 1, *src_y_memory},
                                   {MKLDNN_ARG_DST, *dst_memory}});

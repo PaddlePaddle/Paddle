@@ -59,7 +59,6 @@ class MulPrimitiveFactory {
 
     if (mul_) {
       UpdateDataPointers(ctx, output, &x_matrix);
-      // TODO(grygielski) it has to be refactored!
       mkldnn::stream astream(engine_);
       mul_.get().execute(astream, {{MKLDNN_ARG_SRC, x_input_.get()},
                                    {MKLDNN_ARG_WEIGHTS, y_input_.get()},
@@ -75,7 +74,6 @@ class MulPrimitiveFactory {
 
     mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, ctx);
 
-    // TODO(grygielski) it has to be refactored!
     mkldnn::stream astream(engine_);
     mul_.get().execute(astream, {{MKLDNN_ARG_SRC, x_input_.get()},
                                  {MKLDNN_ARG_WEIGHTS, y_input_.get()},
@@ -165,7 +163,6 @@ class MulPrimitiveFactory {
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
 
-    // TODO(grygielski)
     mkldnn::stream astream(engine_);
     reorder.execute(astream, src_mem, dst_mem);
     astream.wait();
@@ -245,7 +242,6 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
 
     if (this->mul_) {
       this->UpdateDataPointers(ctx, output, &x_matrix);
-      // TODO(grygielski) it has to be refactored!
       mkldnn::stream astream(this->engine_);
       this->mul_.get().execute(astream,
                                {{MKLDNN_ARG_SRC, this->x_input_.get()},
@@ -268,7 +264,6 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     this->mul_ = CreateMulPrimitive(*(this->x_input_), *(this->y_input_),
                                     dst_desc, output, ctx);
 
-    // TODO(grygielski) it has to be refactored!
     mkldnn::stream astream(this->engine_);
     this->mul_.get().execute(astream,
                              {{MKLDNN_ARG_SRC, this->x_input_.get()},
@@ -293,7 +288,6 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
 
     auto reorder = mkldnn::reorder(reorder_pd);
 
-    // TODO(grygielski)
     mkldnn::stream astream(this->engine_);
     reorder.execute(astream, src_mem, dst_mem);
     astream.wait();

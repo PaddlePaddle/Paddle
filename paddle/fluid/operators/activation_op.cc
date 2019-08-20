@@ -18,8 +18,6 @@ limitations under the License. */
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-// TODO(grygielski) is it even needed?
-// #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"

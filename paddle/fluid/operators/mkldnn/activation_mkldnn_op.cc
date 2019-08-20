@@ -87,7 +87,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   auto *y = ctx.Output<Tensor>("Out");
 
   const T *x_data = x->data<T>();
-  T *y_data = y->mutable_data<T>(ctx.GetPlace());
 
   const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
@@ -96,7 +95,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
       "Input dim must be with 2, 3 or 4");
 
-  // TODO(grygielski)
   std::vector<int64_t> src_tz = paddle::framework::vectorize(x->dims());
 
   auto src_format =
@@ -120,10 +118,9 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   auto src_memory_p = handler.AcquireSrcMemory(md, to_void_cast<T>(x_data));
 
   auto dst_memory_p =
-      handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(y_data));
+      handler.AcquireDstMemoryFromPrimitive<T>(y, ctx.GetPlace());
   auto activation_p = handler.AcquireActivation();
 
-  // TODO(grygielski)
   mkldnn::stream astream(mkldnn_engine);
   activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
                                   {MKLDNN_ARG_TO, *dst_memory_p}});
@@ -151,7 +148,6 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
-  // TODO(grygielski)
   std::vector<int64_t> diff_dst_tz =
       paddle::framework::vectorize(diff_y->dims());
 
@@ -189,7 +185,6 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   auto activation_backward_p = handler.AcquireActivationBackward();
 
-  // TODO(grygielski)
   mkldnn::stream astream(mkldnn_engine);
   activation_backward_p->execute(astream,
                                  {{MKLDNN_ARG_SRC, *src_memory_p},

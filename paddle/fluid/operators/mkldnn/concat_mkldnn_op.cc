@@ -37,21 +37,13 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   }
 }
 
-// TODO(grygielski)
 static memory::desc CreateMemDesc(const Tensor& input,
-                                  // const mkldnn::engine& engine,
                                   const memory::data_type& dt) {
   const auto dims = paddle::framework::vectorize(input.dims());
   const auto format = input.format();
   auto mem_desc = memory::desc(dims, dt, format);
-  // auto mem_prim_desc = memory::primitive_desc(description, engine);
   return mem_desc;
 }
-
-// static mkldnn::memory::format GetDstMemFormat(
-//     const concat::primitive_desc& concat_pd) {
-//   return (memory::format)concat_pd.dst_primitive_desc().desc().data.format;
-// }
 
 static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
@@ -102,7 +94,7 @@ class ConcatPrimitiveFactory {
     auto dst_desc = CreateDstMemDescriptor(output, dt);
     return concat::primitive_desc(dst_desc, concat_axis, srcs_d, mkldnn_engine);
   }
-  // TODO(grygielski) refactor it 100%
+
   concat CreateConcatPrimitive(const concat::primitive_desc& concat_pd,
                                Tensor* output, platform::CPUPlace place,
                                const mkldnn::engine& mkldnn_engine) {
@@ -131,15 +123,6 @@ class ConcatPrimitiveFactory {
     return memory::desc(dst_dims, dt, memory::format_tag::any);
   }
 
-  // TODO(grygielski) Not used anymore (?)
-  // mkldnn::memory CreateDstMemory(const concat::primitive_desc& concat_pd,
-  //                                Tensor* output,
-  //                                const platform::CPUPlace& place) {
-  //   return memory(concat_pd.dst_desc(),
-  //                 output->mutable_data<T>(place));
-  // }
-
-  // TODO(grygielski)
   void CreateSourcesDescriptors(const std::vector<const Tensor*> multi_input,
                                 const mkldnn::engine& mkldnn_engine,
                                 const memory::data_type& dt) {
@@ -210,7 +193,6 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       prim_creator.SetDstDataHandle(*dst_mem, output->mutable_data<T>(place));
     }
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     std::unordered_map<int, memory> args;
     for (size_t i = 0; i < multi_input.size(); ++i) {

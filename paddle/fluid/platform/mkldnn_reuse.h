@@ -78,38 +78,18 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_diff_src_mem_p");
   }
 
-  // TODO(grygielski)
-  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
-      mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(md, engine_, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-    }
-    return mem_p;
-  }
-
-  // This incarnation of AcquireMemory can call user function eg. custom reorder
-  // or preprocessing routine if needed
   std::shared_ptr<mkldnn::memory> AcquireMemory(
       const mkldnn::memory::desc& md, void* ptr, const std::string& suffix,
       user_function custom_func = {}) {
-    /*Generate key*/
     auto local_key = key_ + suffix;
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
-      // Call custom reorder/preprocessing func if available
       if (custom_func) {
         auto reordered_data = custom_func(reinterpret_cast<const float*>(ptr));
         dev_ctx_.SetBlob(local_key + "-custom_reorder", reordered_data);
         ptr = reinterpret_cast<void*>(reordered_data.get());
       }
-
       mem_p = std::make_shared<mkldnn::memory>(md, engine_, ptr);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
@@ -118,49 +98,6 @@ class MKLDNNHandler {
     return mem_p;
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireMemory(const mkldnn::memory::desc& md,
-                                                const std::string& suffix) {
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(
-      const std::shared_ptr<mkldnn::memory>& user_memory_p,
-      const std::shared_ptr<mkldnn::memory>& target_memory_p,
-      const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto local_key = key_ + suffix;
-    auto key_reorder_p = key_ + suffix + "reorder_p";
-    auto engine = target_memory_p->get_engine();
-
-    auto stored_reorder_p = std::static_pointer_cast<mkldnn::reorder>(
-        dev_ctx_.GetBlob(key_reorder_p));
-
-    if (stored_reorder_p) {
-      // pipeline.push_back(*stored_reorder_p);
-      mkldnn::stream astream(engine);
-      stored_reorder_p->execute(astream, *user_memory_p, *target_memory_p);
-      astream.wait();
-    } else {
-      auto reorder_p =
-          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
-      mkldnn::stream astream(engine);
-      reorder_p->execute(astream, *user_memory_p, *target_memory_p);
-      astream.wait();
-      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-      // pipeline.push_back(*reorder_p);
-    }
-
-    return target_memory_p;
-  }
-
-  // TODO(grygielski) Probably a lot of redundant stuff
   std::shared_ptr<mkldnn::memory> AcquireMemory(
       mkldnn::memory::desc& md,       // NOLINT
       mkldnn::memory::desc& user_md,  // NOLINT
@@ -175,32 +112,30 @@ class MKLDNNHandler {
 
     auto target_memory_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    auto engine = user_memory_p->get_engine();
+
+    mkldnn::stream astream(engine_);
+
     if (target_memory_p == nullptr) {
       target_memory_p = user_memory_p;
-      std::shared_ptr<mkldnn::primitive> reorder_p;
       if (md != user_md) {
-        target_memory_p = std::make_shared<mkldnn::memory>(md, engine);
-        std::shared_ptr<mkldnn::reorder> reorder_p;
+        target_memory_p = std::make_shared<mkldnn::memory>(md, engine_);
+        std::shared_ptr<mkldnn::reorder::primitive_desc> reorder_pd;
         if (is_INT8) {
           mkldnn::primitive_attr
               attri;  // attribute for int8 weights and bias data reorder.
           attri.set_output_scales(mask, scale_data);
 
-          auto reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(
+          reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(
               new mkldnn::reorder::primitive_desc(*user_memory_p,
                                                   *target_memory_p, attri));
-          reorder_p = std::shared_ptr<mkldnn::reorder>(
-              new mkldnn::reorder(*reorder_pd));
         } else {
-          reorder_p = std::make_shared<mkldnn::reorder>(*user_memory_p,
-                                                        *target_memory_p);
+          reorder_pd = std::shared_ptr<mkldnn::reorder::primitive_desc>(
+              new mkldnn::reorder::primitive_desc(*user_memory_p,
+                                                  *target_memory_p));
         }
+        auto reorder_p = std::shared_ptr<mkldnn::reorder>(new mkldnn::reorder(*reorder_pd));
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
-        // TODO(grygielski) some crazy stuff
-        // pipeline.push_back(*reorder_p);
-        mkldnn::stream astream(engine);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -211,15 +146,43 @@ class MKLDNNHandler {
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        // TODO(grygielski) some crazy stuff
-        // pipeline.push_back(*reorder_p);
-        mkldnn::stream astream(engine);
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
                                      {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
       }
     }
     return target_memory_p;
+  }
+
+    std::shared_ptr<mkldnn::memory> AcquireMemory(const mkldnn::memory::desc& md,
+                                                const std::string& suffix) {
+    auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    }
+    return mem_p;
+  }
+
+  void AcquireReorder(
+      const std::shared_ptr<mkldnn::memory>& user_memory_p,
+      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+      const std::string& suffix) {
+    auto local_key = key_ + suffix;
+    auto key_reorder_p = key_ + suffix + "reorder_p";
+
+    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
+    if (!reorder_p) {
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      dev_ctx_.SetBlob(key_reorder_p, reorder_p);
+    }
+    mkldnn::stream astream(engine_);
+    reorder_p->execute(astream, *user_memory_p, *target_memory_p);
+    astream.wait();
   }
 
   static std::string ThreadIDasStr(void) {
@@ -323,11 +286,9 @@ class SumMKLDNNHandler : public MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(sum_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemory(sum_pd_->dst_desc(), ptr, "@dst_mem_p");
   }
 
-  // TODO(grygielski) deleted inputs attr
   std::shared_ptr<mkldnn::sum> AcquireSum(
       std::shared_ptr<mkldnn::memory> dst_memory) {
     auto prim_key = key_ + "@sum_p";
@@ -407,11 +368,7 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
     return activation_bwd_pd_;
   }
 
-  // TODO(grygielski) dst_memory_p and src_memory_p not used anymore
-  std::shared_ptr<mkldnn::eltwise_forward> AcquireActivation(
-      // std::shared_ptr<mkldnn::memory> dst_memory_p,
-      // std::shared_ptr<mkldnn::memory> src_memory_p
-      ) {
+  std::shared_ptr<mkldnn::eltwise_forward> AcquireActivation() {
     /*Generate key*/
     auto prim_key = key_ + "@eltwise_p";
 
@@ -425,23 +382,19 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
     return eltwise_p;
   }
 
-  // TODO(jczaja): Merge all AcquireDstMemoryFromPrimitive into one
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(activation_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+  template <typename T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(
+      framework::Tensor* output, platform::Place place) {
+    T* ptr = output->mutable_data<T>(place,
+                                     activation_pd_->dst_desc().get_size());
+    return this->AcquireMemory(activation_pd_->dst_desc(), ptr, "@dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(activation_bwd_pd_->diff_src_desc(),
-                                            ptr, "@diff_src_mem_p");
+    return this->AcquireMemory(activation_bwd_pd_->diff_src_desc(), ptr, "@diff_src_mem_p");
   }
 
-  // TODO(grygielski) No longer needed?
-  std::shared_ptr<mkldnn::eltwise_backward> AcquireActivationBackward(
-      // std::shared_ptr<mkldnn::memory> diff_src_memory_p,
-      // std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      // std::shared_ptr<mkldnn::memory> src_memory_p
-      ) {
+  std::shared_ptr<mkldnn::eltwise_backward> AcquireActivationBackward() {
     /*Generate key*/
     auto prim_key = key_ + "@eltwise_bwd_p";
 
@@ -542,11 +495,7 @@ class LRNMKLDNNHandler : public MKLDNNHandler {
     return mem_p;
   }
 
-  // TODO(grygielski)
-  std::shared_ptr<mkldnn::lrn_forward> AcquireLRN(
-      // std::shared_ptr<mkldnn::memory> dst_memory,
-      // std::shared_ptr<mkldnn::memory> src_memory
-      ) {
+  std::shared_ptr<mkldnn::lrn_forward> AcquireLRN() {
     auto prim_key = key_ + "@lrn_p";
 
     auto lrn_p = std::static_pointer_cast<mkldnn::lrn_forward>(
@@ -557,8 +506,6 @@ class LRNMKLDNNHandler : public MKLDNNHandler {
       } else {
         // For training we need to create workspace
         // to store indices from backward
-        auto workspace_memory = this->AcquireWorkspaceMemory();
-
         lrn_p = std::make_shared<mkldnn::lrn_forward>(*fwd_pd_);
       }
       dev_ctx_.SetBlob(prim_key, lrn_p);
@@ -596,13 +543,7 @@ class LRNMKLDNNHandler : public MKLDNNHandler {
     return bwd_pd_;
   }
 
-  // TODO(grygielski)
-  std::shared_ptr<mkldnn::lrn_backward> AcquireLRNBackward(
-      // std::shared_ptr<mkldnn::memory> src_memory,
-      // std::shared_ptr<mkldnn::memory> diff_dst_memory,
-      // std::shared_ptr<mkldnn::memory> workspace,
-      // std::shared_ptr<mkldnn::memory> diff_src_memory
-      ) {
+  std::shared_ptr<mkldnn::lrn_backward> AcquireLRNBackward() {
     auto prim_key = key_ + "@lrn_bwd_p";
 
     auto lrn_bwd_p = std::static_pointer_cast<mkldnn::lrn_backward>(
@@ -694,8 +635,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemory(fwd_pd_->dst_desc(), ptr, "@dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
@@ -723,11 +663,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     return mem_p;
   }
 
-  // TODO(grygielski) Doesnt need it anymore
-  std::shared_ptr<mkldnn::pooling_forward> AcquirePooling(
-      // std::shared_ptr<mkldnn::memory> dst_memory,
-      // std::shared_ptr<mkldnn::memory> src_memory
-      ) {
+  std::shared_ptr<mkldnn::pooling_forward> AcquirePooling() {
     auto prim_key = key_ + "@pooling_p";
 
     auto pooling_p = std::static_pointer_cast<mkldnn::pooling_forward>(
@@ -777,7 +713,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     return bwd_pd_;
   }
 
-  // TODO(grygielski) Probably redundant
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
@@ -788,8 +723,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_src_desc(), ptr,
-                                            "@diff_src_mem_p");
+    return this->AcquireMemory(bwd_pd_->diff_src_desc(), ptr, "@diff_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::pooling_backward> AcquirePoolingBackward(
@@ -1078,11 +1012,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
 
   size_t GetDstMemorySize() const { return conv_pd_->dst_desc().get_size(); }
 
-  // TODO(grygielski)
   mkldnn::memory::format_tag GetDstFormat() const {
     return paddle::platform::GetMKLDNNFormat(conv_pd_->dst_desc());
-    // return static_cast<mkldnn::memory::format>(
-    //     conv_pd_->dst_desc().data.format_tag);
   }
 
   size_t GetDiffWeightsMemorySize() const {
@@ -1113,8 +1044,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireDiffWeightsMemoryFromWeightsPrimitive(
       void* ptr) {
-    return this->AcquireMemoryFromPrimitive(
-        conv_bwd_weights_pd_->diff_weights_desc(), ptr, "@diff_weights_mem_p");
+    return this->AcquireMemory(conv_bwd_weights_pd_->diff_weights_desc(), ptr, "@diff_weights_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
@@ -1144,20 +1074,19 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       const std::shared_ptr<mkldnn::memory>& user_residual_memory_p,
       void* dst_ptr,
       std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    return this->AcquireMemory(user_residual_memory_p,
-                               this->AcquireDstMemoryFromPrimitive(dst_ptr),
-                               "@residual_data_mem_p", pipeline);
+      auto residual_dst_memory_p = this->AcquireDstMemoryFromPrimitive(dst_ptr);
+      this->AcquireReorder(user_residual_memory_p, residual_dst_memory_p, "@residual_data_mem_p");
+
+    return residual_dst_memory_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromDataPrimitive(
       void* ptr) {
-    return this->AcquireMemoryFromPrimitive(conv_bwd_data_pd_->diff_src_desc(),
-                                            ptr, "@diff_src_mem_p");
+    return this->AcquireMemory(conv_bwd_data_pd_->diff_src_desc(), ptr, "@diff_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(conv_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemory(conv_pd_->dst_desc(), ptr, "@dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemoryFromPrimitive(
@@ -1283,12 +1212,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return conv_pd_;
   }
 
-  // TODO(grygielski) redundant stuff
-  std::shared_ptr<forward_t> AcquireConvolution(
-      // std::shared_ptr<mkldnn::memory> src_memory_p,
-      // std::shared_ptr<mkldnn::memory> weights_memory_p,
-      // std::shared_ptr<mkldnn::memory> dst_memory_p
-      ) {
+  std::shared_ptr<forward_t> AcquireConvolution() {
     auto prim_key = key_ + "@conv_p";
     auto conv_p =
         std::static_pointer_cast<forward_t>(dev_ctx_.GetBlob(prim_key));
@@ -1300,31 +1224,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return conv_p;
   }
 
-  // TODO(grygielski) redundant function
-  // std::shared_ptr<forward_t> AcquireConvolution(
-  //     std::shared_ptr<mkldnn::memory> src_memory_p,
-  //     std::shared_ptr<mkldnn::memory> weights_memory_p,
-  //     std::shared_ptr<mkldnn::memory> bias_memory_p,
-  //     std::shared_ptr<mkldnn::memory> dst_memory_p) {
-  //   auto prim_key = key_ + "@conv_p";
-  //   auto conv_p =
-  //       std::static_pointer_cast<forward_t>(dev_ctx_.GetBlob(prim_key));
-  //   if (conv_p == nullptr) {
-  //     conv_p = std::make_shared<forward_t>(*conv_pd_, *src_memory_p,
-  //                                          *weights_memory_p, *bias_memory_p,
-  //                                          *dst_memory_p);
-
-  //     dev_ctx_.SetBlob(prim_key, conv_p);
-  //   }
-  //   return conv_p;
-  // }
-
-  // TODO(grygielski) redundant stuff
-  std::shared_ptr<backward_weights_t> AcquireConvolutionBackwardWeights(
-      // std::shared_ptr<mkldnn::memory> src_memory_p,
-      // std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      // std::shared_ptr<mkldnn::memory> diff_weights_memory_p
-      ) {
+  std::shared_ptr<backward_weights_t> AcquireConvolutionBackwardWeights() {
     auto prim_key = key_ + "@conv_bwd_weights_p";
     auto conv_bwd_weights_p = std::static_pointer_cast<backward_weights_t>(
         dev_ctx_.GetBlob(prim_key));
@@ -1337,12 +1237,7 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return conv_bwd_weights_p;
   }
 
-  // TODO(grygielski) redundant stuff
-  std::shared_ptr<backward_data_t> AcquireConvolutionBackwardData(
-      // std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      // std::shared_ptr<mkldnn::memory> weights_memory_p,
-      // std::shared_ptr<mkldnn::memory> diff_src_memory_p
-      ) {
+  std::shared_ptr<backward_data_t> AcquireConvolutionBackwardData() {
     auto prim_key = key_ + "@conv_bwd_data_p";
     auto conv_bwd_data_p =
         std::static_pointer_cast<backward_data_t>(dev_ctx_.GetBlob(prim_key));
@@ -1438,7 +1333,6 @@ static void SetDstMemoryHandler(
   dst_memory_p->set_data_handle(to_void_cast<T>(output_data));
 }
 
-// TODO(grygielski)
 template <typename T>
 static void SetDstMemoryQuantized(
     const framework::ExecutionContext& ctx, framework::Tensor* output,

@@ -44,18 +44,15 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
       : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
   std::shared_ptr<memory> AcquireScaleshiftMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->weights_desc(), ptr,
-                                            "@scaleshift_mem_p");
+    return this->AcquireMemory(batch_norm_pd_->weights_desc(), ptr, "@scaleshift_mem_p");
   }
 
   std::shared_ptr<memory> AcquireMeanMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->mean_desc(), ptr,
-                                            "@mean_mem_p");
+    return this->AcquireMemory(batch_norm_pd_->mean_desc(), ptr, "@mean_mem_p");
   }
 
   std::shared_ptr<memory> AcquireVarianceMemoryFromPrimitive(void *ptr) {
-    return this->AcquireMemoryFromPrimitive(batch_norm_pd_->variance_desc(),
-                                            ptr, "@variance_mem_p");
+    return this->AcquireMemory(batch_norm_pd_->variance_desc(), ptr, "@variance_mem_p");
   }
 
   std::shared_ptr<batch_norm_fwd::primitive_desc>
@@ -83,12 +80,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     return batch_norm_pd_;
   }
 
-  // TODO(grygielski) redundant parameters
-  std::shared_ptr<batch_norm_fwd> AcquireTestTrainingBatchNormFwd(
-      std::shared_ptr<memory> src_memory,
-      std::shared_ptr<memory> scaleshift_memory,
-      std::shared_ptr<memory> dst_memory, std::shared_ptr<memory> mean_memory,
-      std::shared_ptr<memory> variance_memory, bool is_test) {
+  std::shared_ptr<batch_norm_fwd> AcquireTestTrainingBatchNormFwd(bool is_test) {
     auto prim_key = key_ + "@batch_norm_p";
     auto batch_norm_p =
         std::static_pointer_cast<batch_norm_fwd>(dev_ctx_.GetBlob(prim_key));
@@ -249,7 +241,6 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_memory =
         handler.AcquireDstMemory(batch_norm_fwd_pd->dst_desc(), y_data);
 
-    // TODO(grygielski) refactor that
     std::shared_ptr<memory> mean_memory;
     std::shared_ptr<memory> variance_memory;
 
@@ -261,24 +252,19 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       variance_memory = handler.AcquireVarianceMemoryFromPrimitive(
           to_void_cast(variance_data));
 
-      batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(
-          src_memory, scaleshift_memory, dst_memory, mean_memory,
-          variance_memory, true);
+      batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(true);
     } else {
       // create mkldnn memory for stats (as output)
       mean_memory = handler.AcquireMeanMemoryFromPrimitive(batch_mean_data);
       variance_memory =
           handler.AcquireVarianceMemoryFromPrimitive(batch_variance_data);
 
-      batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(
-          src_memory, scaleshift_memory, dst_memory, mean_memory,
-          variance_memory, false);
+      batch_norm_p = handler.AcquireTestTrainingBatchNormFwd(false);
     }
 
     y->set_layout(DataLayout::kMKLDNN);
     y->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     batch_norm_p->execute(astream,
                           {{MKLDNN_ARG_SRC, *src_memory},
@@ -413,13 +399,9 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto batch_norm_bwd_p = std::static_pointer_cast<batch_norm_bwd>(
         dev_ctx.GetBlob(key_batch_norm_bwd_p));
 
-    // TODO(grygielski) in MKLDNN 1.0 you need all memories to execute so take
-    // look at next if/else
     // create mkldnn memory for input tensors (src/mean/variance)
 
     // for diff_dst, try to use same format as dst in forward pass
-    // TODO(grygielski)
-    // auto diff_dst_pd = batch_norm_fwd_pd.get()->dst_primitive_desc();
     auto diff_dst_md = batch_norm_fwd_pd.get()->dst_desc();
 
     auto src_memory = std::shared_ptr<memory>(
@@ -512,7 +494,6 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     // execute optional reorder and batch_norm backward primitive
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     if (is_diff_dst_reordered) {
       reorder_diff_dst->execute(astream, user_diff_dst_memory,

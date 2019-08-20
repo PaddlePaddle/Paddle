@@ -47,13 +47,13 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "Wrong layout/format set for Input tensor");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
-    // TODO(grygielski) change
+
     std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
-    // TODO(grygielski) change
+
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
-    // TODO(grygielski) change
+
     std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
@@ -108,20 +108,21 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, dst_tz, src_md, dst_md, ksize, strides, paddings,
         ctx.Attr<bool>("ceil_mode"));
 
-    // TODO(grygielski) neccesary for max pooling probably
-    auto pool_workspace_memory =
-        memory(pooling_pd->workspace_desc(), mkldnn_engine);
-
     auto dst_memory =
         handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
     auto pool_p = handler.AcquirePooling();
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
-    pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
-                              {MKLDNN_ARG_DST, *dst_memory},
-                              {MKLDNN_ARG_WORKSPACE, pool_workspace_memory}});
+    if (ctx.Attr<bool>("is_test")) {
+        pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                                  {MKLDNN_ARG_DST, *dst_memory}});
+    } else {
+        auto pool_workspace_memory = handler.AcquireWorkspaceMemory();
+        pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                                  {MKLDNN_ARG_DST, *dst_memory},
+                                  {MKLDNN_ARG_WORKSPACE, *pool_workspace_memory}});
+    }
     astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
@@ -153,13 +154,13 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         "is_test attribute should be set to False in training phase.");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
-    // TODO(grygielski) change
+
     std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
-    // TODO(grygielski) change
+
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
-    // TODO(grygielski) change
+
     std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 

@@ -73,7 +73,6 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     auto reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
 
-    // TODO(grygielski)
     mkldnn::stream astream(engine);
     reorder_p->execute(astream, *src_memory, dst_memory);
     astream.wait();

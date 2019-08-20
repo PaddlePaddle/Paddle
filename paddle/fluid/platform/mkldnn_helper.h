@@ -109,37 +109,8 @@ inline void Reorder(mkldnn::memory& src, mkldnn::memory& dst,
   astream.wait();
 }
 
-// TODO(grygielski)
 inline mkldnn::memory::format_tag GetMKLDNNFormat(
     mkldnn::memory::desc mem_desc) {
-  // TODO(grygielski) clean this mess
-  // mkldnn::memory::desc mem_desc({1, 64, 128, 128},
-  // mkldnn::memory::data_type::f32, mkldnn::memory::format_tag::nChw16c);
-  // auto mem_desc = memory.get_desc();
-  // std::cout<<"nDIMS:"<<mem_desc.data.ndims<<std::endl;
-  // std::cout<<"DIMS:"<<mem_desc.data.dims[0]<<" "<<mem_desc.data.dims[1]<<"
-  // "<<mem_desc.data.dims[2]<<" "<<mem_desc.data.dims[3]<<std::endl;
-  // std::cout<<"STRIDES:"<<mem_desc.data.format_desc.blocking.strides[0]<<"
-  // "<<mem_desc.data.format_desc.blocking.strides[1]<<"
-  // "<<mem_desc.data.format_desc.blocking.strides[2]<<"
-  // "<<mem_desc.data.format_desc.blocking.strides[3]<<std::endl;
-  // std::cout<<"INNER
-  // BLOCKS:"<<mem_desc.data.format_desc.blocking.inner_blks[0]<<std::endl;
-  // std::cout<<"INNER BLOCK
-  // IDX:"<<mem_desc.data.format_desc.blocking.inner_idxs[0]<<std::endl;
-  // if(mem_desc.data.ndims < 2) {
-  //   return mkldnn::memory::format_tag::x;
-  // }
-  // std::vector<int64_t> mem_dims(std::begin(mem_desc.data.dims),
-  // std::end(mem_desc.data.dims));
-  // mkldnn::memory::desc temp(mem_dims, mkldnn::memory::data_type::f32,
-  // mkldnn::memory::format_tag::nchw);
-  // if(temp == mem_desc) {
-  //   return mkldnn::memory::format_tag::nchw;
-  // }
-  // else {
-  //   return mkldnn::memory::format_tag::nhwc;
-  // }
 
   auto ndims = mem_desc.data.ndims;
   auto strides = mem_desc.data.format_desc.blocking.strides;
@@ -147,7 +118,6 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   auto inner_blks = mem_desc.data.format_desc.blocking.inner_blks;
   auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
 
-  // TODO(grygielski) incomplete
   if (ndims == 1) {
     return mkldnn::memory::format_tag::x;
   } else if (ndims == 2) {
@@ -204,37 +174,26 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       }
     }
   }
-  std::cout<<"@@@@@@@@@@ UNDEFINED FORMAT @@@@@@@@@@@@@@@@@@@"<<std::endl;
-  std::cout<<"NDIMS: "<<ndims<<std::endl;
-  std::cout<<"INNER_NBLKS: "<<inner_nblks<<std::endl;
-  for (int i=0;i<ndims;++i) {
-    std::cout<<"STRIDE["<<i<<"]: "<<strides[i]<<std::endl;
-  }
-  for (int i=0;i<inner_nblks;++i) {
-    std::cout<<"INNER_BLKS["<<i<<"]: "<<inner_blks[i]<<std::endl;
-  }
-  for (int i=0;i<inner_nblks;++i) {
-    std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
-  }
+  // DEBUG CODE - KEEP UNTILL TENSOR.MEMORY_DESC IMPLEMENTED
+  // std::cout<<"@@@@@@@@@@ UNDEFINED FORMAT @@@@@@@@@@@@@@@@@@@"<<std::endl;
+  // std::cout<<"NDIMS: "<<ndims<<std::endl;
+  // std::cout<<"INNER_NBLKS: "<<inner_nblks<<std::endl;
+  // for (int i=0;i<ndims;++i) {
+  //   std::cout<<"STRIDE["<<i<<"]: "<<strides[i]<<std::endl;
+  // }
+  // for (int i=0;i<inner_nblks;++i) {
+  //   std::cout<<"INNER_BLKS["<<i<<"]: "<<inner_blks[i]<<std::endl;
+  // }
+  // for (int i=0;i<inner_nblks;++i) {
+  //   std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
+  // }
   return mkldnn::memory::format_tag::undef;
-  // return mkldnn::memory::format_tag::nChw16c;
-
-  // return static_cast<mkldnn::memory::format_tag>(
-  //     memory.get_primitive_desc().desc().data.format_tag);
 }
 
 inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
 }
-
-// TODO(grygielski) innecessary
-// inline mkldnn::memory::format_tag GetMKLDNNFormat(
-//     const mkldnn::sum::primitive_desc& memory) {
-//      return mkldnn::memory::format_tag::nchw;
-// return static_cast<mkldnn::memory::format_tag>(
-//     memory.dst_primitive_desc().desc().data.format_tag);
-//}
 
 inline mkldnn::memory::format_tag MKLDNNFormatForSize(
     size_t dims_size, mkldnn::memory::format_tag data_format) {

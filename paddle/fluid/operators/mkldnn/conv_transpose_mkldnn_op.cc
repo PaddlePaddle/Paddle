@@ -64,15 +64,12 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                      "Bias must only have 1 dimension, i.e. X");
     }
 
-    // TODO(grygielski) change
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-    // TODO(grygielski) change
     std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-    // TODO(grygielski) change
     std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
     std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
 
@@ -208,10 +205,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::to_void_cast<T>(output_data));
 
     // create convolution op primitive
-    std::shared_ptr<mkldnn::deconvolution_forward> conv_p;
-    conv_p = handler.AcquireConvolution();
+    auto conv_p = handler.AcquireConvolution();
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     if (bias) {
       const T* bias_data = bias->data<T>();
@@ -234,10 +229,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                 {MKLDNN_ARG_DST, *dst_memory_p}});
     }
     astream.wait();
-
-    // push primitive to stream and wait until it's executed
-    // pipeline.push_back(*conv_p);
-    // mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));

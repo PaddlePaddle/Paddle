@@ -59,13 +59,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     transpose_p->execute(astream, *transpose_src_memory_p,
                          *transpose_dst_memory_p);
     astream.wait();
 
-    // TODO(grygielski) why like that?
     output->set_layout(DataLayout::kNCHW);
     output->set_format(mkldnn::memory::format_tag::undef);
   }

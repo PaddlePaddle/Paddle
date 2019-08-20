@@ -108,8 +108,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
         dst_memory->set_data_handle(output->mutable_data<uint8_t>(place));
       }
     }
-
-    // TODO(grygielski)
+    
     mkldnn::stream astream(engine);
     reorder_p->execute(astream, *src_memory, *dst_memory);
     astream.wait();

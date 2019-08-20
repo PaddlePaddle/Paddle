@@ -176,7 +176,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    // TODO(grygielski)
     std::vector<int64_t> src_tz = paddle::framework::vectorize(input->dims());
     std::vector<int64_t> weights_tz =
         paddle::framework::vectorize(filter->dims());
@@ -248,8 +247,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           fuse_residual_conn, fwd_prop_kind);
     }
 
-    std::shared_ptr<mkldnn::convolution_forward> conv_p;
-    conv_p = handler.AcquireConvolution();
+    auto conv_p = handler.AcquireConvolution();
 
     // create mkldnn memory from input tensors (data/weights)
     auto user_src_memory_p =
@@ -263,7 +261,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test);
 
-    std::shared_ptr<mkldnn::memory> dst_memory_p, user_residual_memory_p;
+    std::shared_ptr<mkldnn::memory> dst_memory_p;
 
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
@@ -280,7 +278,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto output_data =
             output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
 
-        // TODO(grygielski)
         std::vector<int64_t> residual_data_tz =
             paddle::framework::vectorize(residual_param->dims());
 
@@ -289,7 +286,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
         auto user_residual_md = platform::MKLDNNMemDesc(
             residual_data_tz, residual_data_type, residual_param->format());
-        user_residual_memory_p = handler.AcquireResidualDataMemory(
+        auto user_residual_memory_p = handler.AcquireResidualDataMemory(
             user_residual_md, to_void_cast<T>(residual_param_data));
 
         dst_memory_p = handler.AcquireDstMemoryFromResidualDataMemory(
@@ -306,32 +303,20 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dst_memory_p =
           handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
     }
+    mkldnn::stream astream(mkldnn_engine);
     // create convolution op primitive
-    std::shared_ptr<mkldnn::memory> user_bias_memory_p, bias_memory_p;
     if (bias) {
       const T* bias_data = bias->data<T>();
       auto user_bias_md = platform::MKLDNNMemDesc(
           {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format_tag::x);
-      user_bias_memory_p =
+      auto user_bias_memory_p =
           handler.AcquireBiasMemory(user_bias_md, to_void_cast<T>(bias_data));
-      // auto user_bias_memory_p =
-      // std::make_shared<mkldnn::memory>(user_bias_md, mkldnn_engine,
-      // to_void_cast<T>(bias_data));
-      bias_memory_p =
+      auto bias_memory_p =
           handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
-      // conv_p = handler.AcquireConvolution();
-    } else {
-      // TODO(grygielski) redundant stuff
-      // conv_p = handler.AcquireConvolution();
-    }
-
-    // TODO(grygielski)
-    mkldnn::stream astream(mkldnn_engine);
-    if (bias) {
       conv_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
-                                {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
-                                {MKLDNN_ARG_BIAS, *bias_memory_p},
-                                {MKLDNN_ARG_DST, *dst_memory_p}});
+                                  {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
+                                  {MKLDNN_ARG_BIAS, *bias_memory_p},
+                                  {MKLDNN_ARG_DST, *dst_memory_p}});
     } else {
       conv_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
                                 {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
@@ -373,15 +358,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                      "Bias must only have 1 dimension, i.e. X");
     }
 
-    // TODO(grygielski) change
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-    // TODO(grygielski) change
     std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-    // TODO(grygielski) change
     std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
     std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
 
@@ -456,12 +438,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_reorder_key = key + key_tid + "@src_mem_preorder_p";
     auto residual_reorder_key = key + key_tid + "@residual_data_mem_preorder_p";
 
-    // TODO(grygielski) can't work like that anymore
-    // conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
-    //     dev_ctx.GetBlob(prim_key));
-
-    // TODO(grygielski) MISSING MEMORY POINTERS IN ELSE
-    // if (conv_p == nullptr || !is_test) {
     const K* filter_data = filter->data<K>();
     auto scale_in_data = ctx.Attr<float>("Scale_in");
     auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
@@ -553,10 +529,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         user_weights_memory_p, pipeline, is_test, true, scale_weights_data,
         mask_reorder);
 
-    // TODO(grygielski) test one
-    dst_memory_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(dst_key));
-
     if (fuse_residual_conn) {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
@@ -582,9 +554,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       dst_memory_p = platform::SetDstMemory<T_out>(ctx, output, handler);
     }
 
-    // create convolution op primitive
-    auto scale_bias_key = key + "@scale_bias";
-    std::shared_ptr<mkldnn::memory> bias_memory_p;
+    conv_p = handler->AcquireConvolution();
+    mkldnn::stream astream(mkldnn_engine);
+
     if (bias) {
       const K* bias_data = bias->data<K>();
       auto user_bias_md = platform::MKLDNNMemDesc(
@@ -600,70 +572,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       for (int i = 0; i < count; i++) {
         scale_bias_data[i] = scale_in_data * scale_weights_data[i];
       }
-      bias_memory_p = handler->AcquireBiasMemoryFromPrimitive(
+      auto bias_memory_p = handler->AcquireBiasMemoryFromPrimitive(
           user_bias_memory_p, pipeline, is_test, true, scale_bias_data,
           mask_reorder);
-      conv_p = handler->AcquireConvolution();
-    } else {
-      conv_p = handler->AcquireConvolution();
-    }
-    // push primitive to stream and wait until it's executed
-
-    // pipeline.push_back(*conv_p);
-    // TODO(grygielski) MISSING MEMORY POINTERS IN ELSE
-    // } else {
-    //   auto src_memory_reorder_p = std::static_pointer_cast<mkldnn::memory>(
-    //       dev_ctx.GetBlob(src_reorder_key));
-    //   src_memory_p =
-    //       std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(src_key));
-    //   if (src_memory_reorder_p) {
-    //     user_src_memory_p = std::static_pointer_cast<mkldnn::memory>(
-    //         dev_ctx.GetBlob(user_src_key));
-    //     user_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
-    //   } else if (src_memory_p) {
-    //     src_memory_p->set_data_handle(to_void_cast<T>(input_data));
-    //   }
-
-    //   dst_memory_p =
-    //       std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(dst_key));
-    //   conv_pd =
-    //       std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
-    //           dev_ctx.GetBlob(key_conv_pd));
-    //   if (conv_pd) {
-    //     handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
-    //                                                   mkldnn_engine, key));
-    //   }
-
-    //   if (fuse_residual_conn) {
-    //     auto residual_param = ctx.Input<Tensor>("ResidualData");
-    //     output->ShareDataWith(*residual_param);
-    //     need_s8_to_u8 =
-    //         (platform::MKLDNNGetDataType<T_out>() == memory::data_type::s8)
-    //         &&
-    //         unsigned_output;
-    //   }
-    //   platform::SetDstMemoryHandler<T_out>(ctx, output, handler,
-    //   dst_memory_p);
-
-    //   // TODO(grygielski) memory is no longer privitive so can't be pushed
-    //   into mkldnn::primitive vector
-    //   if (src_memory_reorder_p) {
-    //     //pipeline.push_back(*src_memory_reorder_p);
-    //   }
-
-    //   auto residual_reorder_p = std::static_pointer_cast<mkldnn::memory>(
-    //       dev_ctx.GetBlob(residual_reorder_key));
-    // // TODO(grygielski) memory is no longer privitive so can't be pushed into
-    // mkldnn::primitive vector
-    //   if (residual_reorder_p) {
-    //     //pipeline.push_back(*residual_reorder_p);
-    //   }
-    //   pipeline.push_back(*conv_p);
-    // }
-
-    // TODO(grygielski)
-    mkldnn::stream astream(mkldnn_engine);
-    if (bias) {
       conv_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory_p},
                                 {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
                                 {MKLDNN_ARG_BIAS, *bias_memory_p},
@@ -674,8 +585,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                 {MKLDNN_ARG_DST, *dst_memory_p}});
     }
     astream.wait();
-    // TODO(grygielski) INT8 conv temporarily disabled
-    // stream(stream::kind::eager).submit(pipeline).wait();
+
     if (need_s8_to_u8) {
       output->mutable_data<uint8_t>(ctx.GetPlace());
     }
@@ -718,15 +628,12 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     if (!input_grad && !filter_grad) return;
 
-    // TODO(grygielski) change
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
     std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
-    // TODO(grygielski) change
     std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
 
-    // TODO(grygielski) change
     std::vector<int> dilations_temp = ctx.Attr<std::vector<int>>("dilations");
     std::vector<int64_t> dilations(begin(dilations_temp), end(dilations_temp));
 
@@ -850,12 +757,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
               reinterpret_cast<void*>(filter_grad_data));
 
       auto conv_bwd_weights_p = handler.AcquireConvolutionBackwardWeights();
-
-      // push primitive to stream and wait until it's executed
-      // pipeline.push_back(*conv_bwd_weights_p);
-
-      // TODO(grygielski) DOESNT SUPPORT REORDER
-      // why no bias_diff?
+      
+      // TODO(grygielski) why no bias_diff?
       conv_bwd_weights_p->execute(
           astream, {{MKLDNN_ARG_SRC, *src_memory_p},
                     {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_4filter_p},

@@ -114,7 +114,6 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
 }
 #endif
 
-// TODO(grygielski)
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out) {

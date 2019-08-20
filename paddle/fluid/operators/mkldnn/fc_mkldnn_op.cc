@@ -65,7 +65,6 @@ class FCPrimitiveFactory {
     return *fc_;
   }
 
-  // TODO(grygielski) test function
   void Execute() {
     mkldnn::stream astream(engine_);
     if (bias_) {
@@ -117,8 +116,6 @@ class FCPrimitiveFactory {
     mkldnn::stream astream(engine_);
     reorder.execute(astream, src_mem, dst_mem);
     astream.wait();
-
-    // stream(stream::kind::eager).submit({reorder}).wait();
 
     return dst_mem;
   }
@@ -288,7 +285,6 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto prim_creator =
         GetPrimitiveFactory<T>(dev_ctx, ctx, input, w, mkldnn_engine);
 
-    // TODO(grygielski) rethink all of that
     auto fc = prim_creator->CreateFcPrimitive(input, w, bias, output, ctx);
     prim_creator->Execute();
 

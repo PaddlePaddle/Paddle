@@ -77,11 +77,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     return softmax_pd_;
   }
 
-  // TODO(grygielski)
-  std::shared_ptr<mkldnn::softmax_forward> AcquireSoftmax(
-      //   std::shared_ptr<mkldnn::memory> dst_memory_p,
-      //   std::shared_ptr<mkldnn::memory> src_memory_p
-      ) {
+  std::shared_ptr<mkldnn::softmax_forward> AcquireSoftmax() {
     /*Generate key*/
     auto prim_key = key_ + "@softmax_p";
 
@@ -95,12 +91,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     return softmax_p;
   }
 
-  // TODO(grygielski)
-  std::shared_ptr<mkldnn::softmax_backward> AcquireSoftmaxBackward(
-      //   std::shared_ptr<mkldnn::memory> dst_memory_p,
-      //   std::shared_ptr<mkldnn::memory> diff_dst_memory_p,
-      //   std::shared_ptr<mkldnn::memory> diff_src_memory_p
-      ) {
+  std::shared_ptr<mkldnn::softmax_backward> AcquireSoftmaxBackward() {
     auto prim_key = key_ + "@softmax_bwd_p";
     auto softmax_bwd_p = std::static_pointer_cast<mkldnn::softmax_backward>(
         dev_ctx_.GetBlob(prim_key));
@@ -172,7 +163,6 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireDstMemory(softmax_md, to_void_cast<T>(output_data));
     auto softmax_p = handler.AcquireSoftmax();
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     softmax_p->execute(astream, {{MKLDNN_ARG_SRC, *softmax_src_memory_p},
                                  {MKLDNN_ARG_DST, *softmax_dst_memory_p}});
@@ -266,7 +256,6 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // Get primitve from device context
     auto softmax_bwd_p = handler.AcquireSoftmaxBackward();
 
-    // TODO(grygielski)
     mkldnn::stream astream(mkldnn_engine);
     softmax_bwd_p->execute(astream,
                            {{MKLDNN_ARG_DST, *dst_memory_p},

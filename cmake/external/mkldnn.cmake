@@ -111,7 +111,7 @@ ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 if(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
 else(WIN32)
-    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.1) # TODO(grygielski) changed .so.0 -> .so.1
+    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.1)
     ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
             DEPENDS mkldnn shared_mkldnn)
