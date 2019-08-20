@@ -1919,7 +1919,8 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  padding=None,
+                  padding=True,
+                  padding_start=None,
                   bias_attr=None,
                   param_attr=None,
                   act=None,
@@ -1927,14 +1928,54 @@ def sequence_conv(input,
     """
     This function creates the op for sequence_conv, using the inputs and
     other convolutional configurations for the filters and stride as given
-    in the input parameters to the function.
+    in the input parameters to the function. Seqence_conv receives input
+    sequences with variable length and outputs sequences with the same length
+    as the input.
+
+    .. code-block:: text
+
+            Here we'll illustrate the details of the padding operation:
+            For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
+            Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
+            Besides, for the sake of simplicity, we assume M=1 and N=2.
+            X = [[a1, a2;
+                  b1, b2;
+                  c1, c2]
+                 [d1, d2]]
+
+            This is to say that input (X) has 4 words and the dimension of each word
+            representation is 2.
+
+            * Case1:
+
+                If padding_start is -1 and padding is True, we use zero to pad
+                instead of learned weight to pad, and the filter_size is 3,
+                The output of the context sequence after padding (Out) is:
+                data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
+                                       a1, a2, b1, b2, c1, c2;
+                                       b1, b2, c1, c2, 0,  0 ]
+                                      [0,  0,  d1, d2, 0,  0 ]]
+
+                It will be multiplied by the filter weight to get the final output.
 
     Args:
         input (Variable): ${x_comment}
-        num_filters (int): number of filters.
-        filter_size (int): the filter size (H and W).
-        filter_stride (int): stride of the filter.
-        padding (bool): if True, add paddings.
+        num_filters (int): the number of filters.
+        filter_size (int): the height of filter, the width is hidden size by default.
+        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool): If set True, it will generate all-zero padding data to make sure the
+            length of the output is the same as the length of the input. These padding data will
+            not be trainable or updated while trainnig. Currently, it will always pad input whether
+            :attr:`padding` is set true or false. Because the length of input sequence may be shorter
+            than the height of the filter, which can't compute convolution correctly.
+        padding_start (int|None): It is used to indicate the start index for padding the input
+            sequence. And it can also be interpreted as the beginning of the convolution of the 
+            number of rows of sequence, which can be negative. The negative number means to pad
+            :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
+            The positive number means to skip :attr:`padding_start` time-steps of each instance.
+            If set None, the same length :math:`-\\frac{filter\_size}{2}` of data will be filled
+            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1`
+            data is padded at the end of each input sequence.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -1953,11 +1994,13 @@ def sequence_conv(input,
         Variable: output of sequence_conv
 
     Examples:
+
         .. code-block:: python
 
              import paddle.fluid as fluid
+
              x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(x,2)
+             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding=True, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
@@ -1968,6 +2011,8 @@ def sequence_conv(input,
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_variable_for_type_inference(dtype)
+    if padding_start is None:
+        padding_start = -int(filter_size // 2)
 
     helper.append_op(
         type='sequence_conv',
@@ -1978,8 +2023,8 @@ def sequence_conv(input,
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size // 2),
-            'contextLength': filter_size
+            'contextStart': padding_start,
+            'contextLength': filter_size,
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
