@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
-fluid.core.load_op(os.path.join(file_dir, 'librelu2_op.so'))
+fluid.load_op_library(os.path.join(file_dir, 'librelu2_op.so'))
 
 from paddle.fluid.layer_helper import CustomLayerHelper
 

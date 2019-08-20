@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -992,7 +993,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_dgc", framework::InitDGC);
-  m.def("load_op", framework::LoadOpLib);
+  m.def("load_op_library", framework::LoadOpLib);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 

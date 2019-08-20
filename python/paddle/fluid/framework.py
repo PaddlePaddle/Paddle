@@ -45,6 +45,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'load_op_library',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -3896,3 +3897,17 @@ def _dygraph_place_guard(place):
     yield
 
     _dygraph_current_expected_place_ = tmp_place
+
+
+def load_op_library(lib_filename):
+    """
+    Load a dynamic library, including custom operators and kernels.
+    When library is loaded, ops and kernels registered in the library
+    will be available in PaddlePaddle main process.
+    Please note, the type of custom operators cann't have the same type
+    with the existing operators in the framework.
+
+    Args:
+        lib_filename (str): name of dynamic library.
+    """
+    core.load_op_library(lib_filename)

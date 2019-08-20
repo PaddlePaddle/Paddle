@@ -225,7 +225,6 @@ if '${WITH_NGRAPH}' == 'ON':
 
 # copy libfuild_framework.so to libs
 fluid_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
-print(fluid_framework_lib)
 shutil.copy(fluid_framework_lib, libs_path)
 package_data['paddle.libs'] += [('libfluid_framework' if os.name != 'nt' else 'fluid_framework') + ext_name]
 
