@@ -119,9 +119,6 @@ if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 if [ -n "${echo_list}" ];then
-  for msg in ${echo_list[@]}
-   do
-    echo $msg
-  done
-  exit
+  echo ${echo_list[@]}
+  exit 1
 fi
