@@ -217,7 +217,6 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     } else {
       batch_size = x->lod()[0].size() - 1;
     }
-
     framework::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = 0;
     int input_dim = 0;
