@@ -82,7 +82,7 @@ class OpDesc {
 
   template <typename T>
   T GetAttrIfExists(const std::string &name) const {
-    T result;
+    T result{};
     if (HasAttr(name)) {
       result = boost::get<T>(GetAttr(name));
     }
