@@ -225,8 +225,11 @@ class SumSeqPoolGradFunctor {
                   const framework::Tensor& out_grad,
                   framework::LoDTensor* in_grad) {
     auto lod = in_grad->lod()[0];
+    LOG(ERROR)<< "bp out_grad.dims[0]" << out_grad.dims()[0];
+    LOG(ERROR)<< "bp in_grad.dims[0]" << in_grad->dims()[0];
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
-    int64_t in_w = in_grad->numel() / in_grad->dims()[0];
+    int64_t in_w = framework::flatten_to_2d(in_grad->dims(), 1)[1];
+    //int64_t in_w = in_grad->numel() / in_grad->dims()[0];
     PADDLE_ENFORCE(in_w == out_w);
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
@@ -279,14 +282,19 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       PADDLE_ENFORCE(platform::is_cpu_place(place));
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
+      LOG(ERROR)<<"seq_pool numel: "<< input.numel();
+      LOG(ERROR)<<"seq_pool dims[0]: "<< input.dims()[0];
+      LOG(ERROR)<<"seq_pool dims[1]: "<< input.dims()[1];
+      auto dim_flat2d = framework::flatten_to_2d(input.dims(), 1);
       jit::seq_pool_attr_t attr(
-          static_cast<int>(input.numel() / input.dims()[0]),
+          static_cast<int>(dim_flat2d[1]),
           jit::SeqPoolType::kSum);
       auto seqpool =
           jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache()
               .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
+        LOG(ERROR)<<"seq_pool dims[0]: "<< input.dims()[0] << "attr.h: "<< attr.h;
         if (attr.h == 0) {
           for (int j = 0; j < attr.w; ++j) {
             dst[j] = pad_value;
@@ -296,6 +304,7 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
         }
         dst += attr.w;
         src += attr.h * attr.w;
+        LOG(ERROR)<<"seq_pool dims[0]: "<< input.dims()[0] << " done! ";
       }
       return;
     }

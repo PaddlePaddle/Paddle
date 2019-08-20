@@ -224,6 +224,7 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     for (int i = 0; i < top_offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int nsentense_with_pyramid = 0;
+      LOG(ERROR)<<"i:"<< i<<" w len:"<< w;
       if (w < 2) {
         nsentense_with_pyramid = 0;
       } else {
@@ -246,14 +247,14 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
         }
         nsentense_with_pyramid = std::count(iter, iter_end, 1);
         iter = iter_end;
-      }
+        LOG(ERROR)<<"i:"<< i<<" nsentense_with_pyramid:"<< nsentense_with_pyramid;
+      } 
       drop_pos_offset[i + 1] = drop_pos_offset[i] + nsentense_with_pyramid;
-      top_offset[i + 1] =
-          top_offset[i] +
-          (nsentense_with_pyramid == 0 ? 1 : nsentense_with_pyramid);
+      top_offset[i + 1] = top_offset[i] + nsentense_with_pyramid;
     }
 
     int top_l = top_offset[top_offset.size() - 1];
+    LOG(ERROR)<<"top_l: "<< top_l;
 
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
@@ -268,20 +269,7 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       int w = offset[i + 1] - offset[i];
-      if (w_drop == 0) {
-        if (w >= 2) {
-          for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
-            for (int l = 0; l < w - ilayer; ++l) {
-              iter++;
-            }
-          }
-        }
-        auto* top_pos = top_data + top_counter++ * _num_emb;
-        memset(top_pos, 0, _num_emb * sizeof(T));
-        continue;
-      }
       if (w >= 2) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
@@ -298,12 +286,14 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
       }
     }
     if (iter != iter_end) {
+      LOG(ERROR)<<"iter != iter_end";
       exit(1);
     }
     if (_is_training == 0) {
       sse_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
                      _drop_out_percent);
     }
+    LOG(ERROR) << "ff done!";
   }
 };
 
@@ -387,7 +377,6 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     }
 
     auto& offset = bottom->lod()[0];
-    auto& drop_pos_offset = drop_pos->lod()[0];
 
     const auto* top_diff = top->data<T>();
     T* weights = (T*)(_blobs->data<T>());
@@ -397,10 +386,7 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
-      int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
-      if (w_drop == 0) {
-        top_counter++;
-      }
+      LOG(ERROR)<<"bp i: " << i << " w len: " <<w;
       if (w > 1) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
@@ -415,9 +401,10 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
           }
         }
       } else {
-        // do nothing
+        // do nothing  
       }
     }
+   LOG(ERROR)<<"bp done.";
   }
 };
 

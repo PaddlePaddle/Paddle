@@ -38,11 +38,15 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto lod = in->lod();
     // InferShape by lod
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-        "The first dimension of Input(X) must be large than batch size.");
+    LOG(ERROR)<<"seq_fool compute in_dims[0]: " << dims[0];
+    LOG(ERROR)<<"seq_fool compute in_dims[1]: " << dims[1];
+    LOG(ERROR)<<"seq_fool compute lod[0].size: " << lod[0].size();
+    //PADDLE_ENFORCE_GE(
+    //    dims[0],
+    //    /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
+    //    "The first dimension of Input(X) must be large than batch size.");
     dims[0] = lod[0].size() - 1;
+    LOG(ERROR)<<"after seq_fool compute in_dims[0]: " << dims[0];
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
     Tensor* index = nullptr;
