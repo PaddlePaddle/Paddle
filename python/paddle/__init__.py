@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from paddle.importScipy import funcImportScipy
+from paddle.check_import_scipy import check_import_scipy
 
-funcImportScipy(os.name)
+check_import_scipy(os.name)
 
 try:
     from paddle.version import full_version as __version__

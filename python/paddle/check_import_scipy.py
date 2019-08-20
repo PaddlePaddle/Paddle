@@ -11,23 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#import paddle
-#from paddle.importScipy import funcImportScipy
-import six.moves.builtins as builtins
-from paddle.importScipy import funcImportScipy
-import unittest
 
 
-def my_import(name, globals=None, locals=None, fromlist=(), level=0):
-    raise ImportError('DLL load failed,test import  error')
-
-
-class importTest(unittest.TestCase):
-    def test_import(self):
-        testOsName = 'nt'
-        builtins.__import__ = my_import
-        self.assertRaises(ImportError, funcImportScipy, testOsName)
-
-
-if __name__ == '__main__':
-    unittest.main()
+def check_import_scipy(OsName):
+    print_info = ""
+    if OsName == 'nt':
+        try:
+            import scipy.io as scio
+        except ImportError as e:
+            print_info = str(e)
+        if (len(print_info) > 0):
+            if 'DLL load failed' in print_info:
+                raise ImportError(
+                    print_info +
+                    "\nplease download visual C++ Redistributable for vs 2015, https://www.microsoft.com/en-us/download/details.aspx?id=48145"
+                )
+    return
