@@ -3,6 +3,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 API_FILES=("CMakeLists.txt"
            "paddle/fluid/API.spec"
            "paddle/fluid/op_use_default_grad_op_maker.spec"
