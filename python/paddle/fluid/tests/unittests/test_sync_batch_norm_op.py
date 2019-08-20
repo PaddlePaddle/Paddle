@@ -126,16 +126,55 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                                   feed={'input': data},
                                   fetch_list=fetch_names)
 
+        #####################################################################
+        # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
+        # with inplace build strategy
+        assert core.get_cuda_device_count() > 1
+        main, startup, outs = self.build_program(place, layout, seed, True,
+                                                 only_forward)
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        for nm in fetch_names:
+            fv = fluid.framework._get_var(str(nm), program=main)
+            fv.persistable = True
+        in_build_strategy = fluid.BuildStrategy()
+        in_build_strategy.sync_batch_norm = True
+        in_build_strategy.enable_inplace = True
+        in_build_strategy.memory_optimize = False
+        in_comp_prog = compiler.CompiledProgram(main).with_data_parallel(
+            outs[0].name if not only_forward else None,
+            build_strategy=in_build_strategy)
+        in_sync_bn_fetches = exe.run(program=in_comp_prog,
+                                     feed={'input': data},
+                                     fetch_list=fetch_names)
+
         for i in six.moves.xrange(1, len(sync_bn_fetches)):
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
+            in_sync_bn_val = in_sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+            if in_sync_bn_val.shape != bn_val.shape:
+                in_sync_bn_val = in_sync_bn_val[:bn_val.shape[0]]
             self.assertTrue(
                 np.allclose(
                     bn_val, sync_bn_val, atol=1e-3),
                 "Output (" + fetch_names[i] + ") has diff. \n" + "\nBN     " +
                 str(bn_val) + "\n" + "Sync BN " + str(sync_bn_val))
+            self.assertTrue(
+                np.allclose(
+                    bn_val, in_sync_bn_val, atol=1e-3),
+                "Output (" + fetch_names[i] + ") has diff. \n" + "\nBN     " +
+                str(bn_val) + "\n" + "Sync BN " + str(in_sync_bn_val))
 
     def test_train(self):
         if not core.is_compiled_with_cuda():

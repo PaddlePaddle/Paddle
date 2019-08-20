@@ -14,7 +14,35 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
 
+namespace paddle {
+namespace operators {
+
+class SyncBatchNormInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"}};
+  }
+};
+
+class SyncBatchNormGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {
+        {framework::GradVarName("Y"), framework::GradVarName("X")},
+        {"SavedMean", framework::GradVarName("Scale")},
+        {"SavedVariance", framework::GradVarName("Bias")},
+    };
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sync_batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
-REGISTER_OPERATOR(sync_batch_norm_grad, ops::BatchNormGradOp);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
+                  ops::SyncBatchNormInplaceInToOut);
+REGISTER_OPERATOR(sync_batch_norm_grad, ops::BatchNormGradOp,
+                  ops::SyncBatchNormGradInplaceInToOut);
