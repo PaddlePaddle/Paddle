@@ -224,7 +224,9 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     for (int i = 0; i < top_offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int nsentense_with_pyramid = 0;
+#ifdef DEBUG
       LOG(ERROR) << "i:" << i << " w len:" << w;
+#endif
       if (w < 2) {
         nsentense_with_pyramid = 0;
       } else {
@@ -247,24 +249,30 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
         }
         nsentense_with_pyramid = std::count(iter, iter_end, 1);
         iter = iter_end;
+#ifdef DEBUG
         LOG(ERROR) << "i:" << i
                    << " nsentense_with_pyramid:" << nsentense_with_pyramid;
+#endif
       }
       drop_pos_offset[i + 1] = drop_pos_offset[i] + nsentense_with_pyramid;
       top_offset[i + 1] = top_offset[i] + nsentense_with_pyramid;
     }
 
     int top_l = top_offset[top_offset.size() - 1];
+#ifdef DEBUG
     LOG(ERROR) << "top_l: " << top_l;
-
+#endif
     framework::LoD top_lod;
     top_lod.push_back(top_offset);
     top->set_lod(top_lod);
     if (top_l < 1) {
+#ifdef DEBUG
       LOG(ERROR) << "memset all 0 with dims[0]: " << top_offset.size() - 1;
-      top->Resize(framework::make_ddim({top_offset.size() - 1, _num_emb}));
+#endif
+      int bs = top_offset.size() - 1;
+      top->Resize(framework::make_ddim({bs, _num_emb}));
       auto* top_data = top->mutable_data<T>(ctx.GetPlace());
-      memset(top_data, 0, sizeof(T) * (top_offset.size() - 1) * _num_emb);
+      memset(top_data, 0, sizeof(T) * bs * _num_emb);
       return;
     }
     top->Resize(framework::make_ddim({top_l, _num_emb}));
@@ -294,14 +302,18 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
       }
     }
     if (iter != iter_end) {
+#ifdef DEBUG
       LOG(ERROR) << "iter != iter_end";
+#endif
       exit(1);
     }
     if (_is_training == 0) {
       sse_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
                      _drop_out_percent);
     }
+#ifdef DEBUG
     LOG(ERROR) << "ff done!";
+#endif
   }
 };
 
@@ -378,17 +390,19 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
       bottom_data[i] = bottom_data_ori[i];
     }
 
-    const auto& offset = bottom->lod()[0];
+    auto& offset = bottom->lod()[0];
     int _slot_len = bottom->dims()[0];
     if (_slot_len == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
       return;
     } else if (offset[offset.size() - 1] < 1) {
+#ifdef DEBUG
       LOG(ERROR) << "bp with all zero input data.";
+#endif
       return;
     }
 
-    auto& offset = bottom->lod()[0];
+    // auto& offset = bottom->lod()[0];
 
     const auto* top_diff = top->data<T>();
     T* weights = (T*)(_blobs->data<T>());
@@ -398,7 +412,9 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int top_counter = 0;
     for (int i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
+#ifdef DEBUG
       LOG(ERROR) << "bp i: " << i << " w len: " << w;
+#endif
       if (w > 1) {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
@@ -416,7 +432,9 @@ class CPUSearchPyramidHashOPGradKernel : public framework::OpKernel<T> {
         // do nothing
       }
     }
+#ifdef DEBUG
     LOG(ERROR) << "bp done.";
+#endif
   }
 };
 
