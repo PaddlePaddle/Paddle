@@ -97,9 +97,11 @@ void DistMultiTrainer::InitDumpEnv() {
 }
 
 void DistMultiTrainer::FinalizeDumpEnv() {
+#ifdef PADDLE_WITH_PSLIB
   queue_->Close();
   dump_thread_.join();
   queue_.reset();
+#endif
 }
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
