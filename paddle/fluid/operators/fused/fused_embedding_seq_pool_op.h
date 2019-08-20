@@ -60,6 +60,7 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
       VLOG(4) << "====sequence %d====" << i;
       for (std::map<int, int>::const_iterator it = ids_map.begin();
            it != ids_map.end(); ++it) {
+        VLOG(4) << it->first << " => " << it->second;
         csr_vals[val_idx] = it->second;
         csr_colmuns[val_idx] = it->first;
         ++val_idx;

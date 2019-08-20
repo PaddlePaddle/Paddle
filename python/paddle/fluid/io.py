@@ -21,6 +21,9 @@ import six
 import logging
 from functools import reduce
 
+import paddle
+import paddle.reader
+from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
@@ -32,10 +35,12 @@ from .reader import *
 from . import core
 from .. import compat as cpt
 
+batch = paddle.batch
+
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
-] + reader.__all__
+    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -217,13 +222,13 @@ def save_vars(executor,
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                save_file_path = os.path.join(save_dirname, new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
-                    })
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
