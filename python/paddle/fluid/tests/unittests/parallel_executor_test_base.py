@@ -24,6 +24,7 @@ import time
 import numpy as np
 import math
 import sys
+from feed_data_reader import FeedDataReader
 
 __all__ = ['TestParallelExecutorBase']
 
@@ -36,6 +37,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   iter=50,
                                   batch_size=None,
                                   feed_dict=None,
+                                  feed_data_reader=None,
                                   get_data_from_feeder=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
@@ -49,8 +51,18 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   use_fast_executor=False,
                                   enable_sequential_execution=False):
         def run_executor(exe, binary, feed, fetch_list):
-            res = exe.run(binary, feed=feed, fetch_list=fetch_list)
+            if feed_data_reader is None:
+                res = exe.run(binary, feed=feed, fetch_list=fetch_list)
+            else:
+                res = exe.run(binary,
+                              feed=feed_data_reader.get_next(exe, binary),
+                              fetch_list=fetch_list)
             return res
+
+        if feed_data_reader is not None:
+            assert isinstance(
+                feed_data_reader, FeedDataReader
+            ), "feed_data_reader must be type of FeedDataReader"
 
         main = fluid.Program()
         startup = fluid.Program()
