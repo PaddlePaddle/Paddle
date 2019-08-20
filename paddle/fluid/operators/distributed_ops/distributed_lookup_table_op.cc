@@ -93,9 +93,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<int64_t>>("height_sections");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
-    operators::distributed::prefetchs(id_names, out_names, embedding_name,
-                                      lookup_tables, endpoints, height_sections,
-                                      context, context.scope());
+    operators::distributed::prefetchs(
+        id_names, out_names, embedding_name, false, lookup_tables, endpoints,
+        height_sections, context, context.scope());
   }
 };
 
