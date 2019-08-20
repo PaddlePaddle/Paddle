@@ -136,15 +136,10 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  if (index == 0) {
-    PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
-    gpu_alloc_size_ -= size;
-    err = cudaFree(p);
-  } else {
-    PADDLE_ENFORCE_GE(fallback_alloc_size_, size);
-    fallback_alloc_size_ -= size;
-    err = cudaFreeHost(p);
-  }
+  PADDLE_ENFORCE_EQ(index, 0);
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  gpu_alloc_size_ -= size;
+  err = cudaFree(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFree after the
