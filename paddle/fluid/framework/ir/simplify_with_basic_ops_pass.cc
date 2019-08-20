@@ -40,43 +40,45 @@ void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
 }
 
 bool SimplifyWithBasicOpsPass::SimplifyDropout(Graph* graph, Node* n) const {
-  LOG(INFO) << "Simplify dropout";
-
   OpDesc* op = n->Op();
   bool is_test = boost::get<bool>(op->GetAttr("is_test"));
-  LOG(INFO) << "is_test: " << is_test;
   if (!is_test) {
     return false;
   }
 
+  Node* dropout_x = GetInputVar(n, op->Input("X")[0]);
+  Node* dropout_out = GetOutputVar(n, op->Output("Out")[0]);
+
   bool upscale_in_train =
       boost::get<std::string>(op->GetAttr("dropout_implementation")) ==
       "upscale_in_train";
-  LOG(INFO) << "upscale_in_train: " << upscale_in_train;
   if (upscale_in_train) {
     // dropout_op can be delete.
-    return false;
+    for (auto* next_op : dropout_out->outputs) {
+      dropout_x->outputs.push_back(next_op);
+      for (size_t i = 0; i < next_op->inputs.size(); ++i) {
+        if (next_op->inputs[i] == dropout_out) {
+          next_op->inputs[i] = dropout_x;
+        }
+      }
+    }
   } else {
     // use a scale_op replaces the dropout_op
-    Node* x = GetInputVar(n, op->Input("X")[0]);
-    Node* out = GetOutputVar(n, op->Output("Out")[0]);
-
     float scale = 1.0f - boost::get<float>(op->GetAttr("dropout_prob"));
 
     framework::OpDesc new_op_desc;
     new_op_desc.SetType("scale");
-    new_op_desc.SetInput("X", {x->Name()});
-    new_op_desc.SetOutput("Out", {out->Name()});
+    new_op_desc.SetInput("X", {dropout_x->Name()});
+    new_op_desc.SetOutput("Out", {dropout_out->Name()});
     new_op_desc.SetAttr("scale", scale);
     new_op_desc.SetAttr("bias", static_cast<float>(0));
     new_op_desc.SetAttr("bias_after_scale", true);
 
     auto scale_node = graph->CreateOpNode(&new_op_desc);
-    IR_NODE_LINK_TO(x, scale_node);
-    IR_NODE_LINK_TO(scale_node, out);
-
-    return true;
+    IR_NODE_LINK_TO(dropout_x, scale_node);
+    IR_NODE_LINK_TO(scale_node, dropout_out);
   }
+  return true;
 }
 
 Node* SimplifyWithBasicOpsPass::GetInputVar(Node* n,

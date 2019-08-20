@@ -69,13 +69,11 @@ struct Layers {
     return out;
   }
 
-  std::string unique_name() {
-    static int idx = 0;
-    return "tmp_" + std::to_string(idx++);
-  }
+  std::string unique_name() { return "tmp_" + std::to_string(idx_++); }
 
  private:
   ProgramDesc program_;
+  int idx_{0};
 };
 
 std::string DebugString(Node* node) {

@@ -27,6 +27,7 @@ class SimplifyWithBasicOpsPass : public Pass {
 
  private:
   bool SimplifyDropout(Graph* graph, Node* n) const;
+
   Node* GetInputVar(Node* n, const std::string& name) const;
   Node* GetOutputVar(Node* n, const std::string& name) const;
 };
