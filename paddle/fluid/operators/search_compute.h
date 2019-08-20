@@ -51,6 +51,17 @@ void call_gemm(const framework::ExecutionContext& ctx,
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
+template <typename DeviceContext, typename T>
+void call_gemm_with_lda(const math::BlasT<DeviceContext, T>& blas,
+                        const CBLAS_TRANSPOSE TransA,
+                        const CBLAS_TRANSPOSE TransB, const int M, const int N,
+                        const int K, const T alpha, const T* A, const T* B,
+                        const T beta, T* C, int lda) {
+  int ldb = (TransB == CblasNoTrans) ? N : K;
+
+  blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
+}
+
 template <typename T>
 void call_gemm_batched(const framework::ExecutionContext& ctx,
                        const CBLAS_TRANSPOSE TransA,
