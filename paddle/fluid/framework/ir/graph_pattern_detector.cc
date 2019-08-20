@@ -771,6 +771,35 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+PDNode *patterns::ConvActivation::operator()(
+    paddle::framework::ir::PDNode *conv_input, std::string conv_type,
+    std::string activation_type) {
+  // Create Operators
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // Create variables
+  // Filter
+  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input(conv_type, "Filter");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op(conv_type)
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out_var = pattern->NewNode(activation_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output(activation_type);
+
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
+  activation_op->LinksFrom({conv_out_var}).LinksTo({activation_out_var});
+  return activation_out_var;
+}
+
 PDNode *patterns::ConvReLU::operator()(
     paddle::framework::ir::PDNode *conv_input) {
   // Create Operators
@@ -1292,6 +1321,7 @@ PDNode *patterns::ConvRequant::operator()() {
   return requant_out;
 }
 
+  
 PDNode *patterns::ConvDequant::operator()() {
   // Create Operators
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
@@ -1309,6 +1339,7 @@ PDNode *patterns::ConvDequant::operator()() {
 
   return dequant_out;
 }
+
 
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
@@ -1915,6 +1946,9 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
 void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   auto reshape1_op =
       pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+  reshape1_op->assert_more([&](Node *x) {
+    return boost::get<std::vector<int>>(x->Op()->GetAttr("shape")).size() == 5;
+  });
 
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->assert_is_op_output("reshape2", "Out")

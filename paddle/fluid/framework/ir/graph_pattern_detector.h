@@ -431,6 +431,28 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+// Conv with Activation
+// op: conv + activation
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// activation_out, activation
+struct ConvActivation : public PatternBase {
+  ConvActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_activation") {}
+
+  PDNode* operator()(PDNode* conv_input, std::string conv_type = "conv2d",
+                     std::string activation_type = "relu");
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(activation);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // CONV with ReLU
 // op: conv + relu
 // named nodes:

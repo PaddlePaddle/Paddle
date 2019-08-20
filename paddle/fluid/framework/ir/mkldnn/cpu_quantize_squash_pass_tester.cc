@@ -57,8 +57,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // d->Dequant(scale1)->e
 // e->Quant(scale2)->f
 // (f,w2,b2)->Conv2->i
-ProgramDesc BuildProgramDesc(bool use_mkldnn, float scale_out, float scale1,
-                             float scale2) {
+
+
+ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn, float scale_out,
+                                        float scale1, float scale2) {
+
   ProgramDesc prog;
   for (auto& v : std::initializer_list<std::string>(
            {"a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"})) {
@@ -85,8 +88,11 @@ static const std::initializer_list<std::string> variable_names{
 // c->Quant1(scale2)->d and d->Conv2->e
 // c->Conv3->f
 // c->Quant2(scale3)->g and g->Conv4->h
-ProgramDesc BuildProgramDesc2(bool use_mkldnn, float scale_out, float scale1,
-                              float scale2, float scale3) {
+
+ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn, float scale_out,
+                                            float scale1, float scale2,
+                                            float scale3) {
+
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
@@ -103,6 +109,60 @@ ProgramDesc BuildProgramDesc2(bool use_mkldnn, float scale_out, float scale1,
   SetOp(&prog, "quantize", "Quant2", {"c"}, {"g"}, use_mkldnn, scale3);
   SetOp(&prog, "conv2d", "Conv4", {"g"}, {"h"}, use_mkldnn, scale_out);
 
+  return prog;
+}
+
+//  a->Conv1->b->Requant(scale1)->c
+//  d->Conv2->e->Requant(scale2)->f
+//  {c,f}->Concat
+ProgramDesc BuildConvsRequantConcatProgramDesc(bool use_mkldnn, float scale_out,
+                                               float scale1, float scale2) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn, scale1);
+
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, scale_out);
+  SetOp(&prog, "requantize", "Requant2", {"e"}, {"f"}, use_mkldnn, scale2);
+
+  SetOp(&prog, "concat", "Concat", {"c"}, {"f"}, use_mkldnn);
+
+  return prog;
+}
+
+// a->Concat->b
+// b->Dequant(scale1)->c
+// c->Quant(scale2)->d
+// d->Conv->e
+ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_mkldnn, float scale_out,
+                                               float scale1, float scale2) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, scale1);
+  SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_mkldnn, scale2);
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, scale_out);
+  return prog;
+}
+
+// a->Conv1->b
+// b->Requant1(Scale1)->c
+// b->Requant2(Scale2)->d
+ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
+                                             float scale1, float scale2) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn, scale1);
+  SetOp(&prog, "requantize", "Requant2", {"b"}, {"d"}, use_mkldnn, scale2);
   return prog;
 }
 
@@ -195,11 +255,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
-// check number of nodes
-void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  // Init scope, as it is used in pass
+void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
@@ -208,12 +265,23 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
   for (auto& v : variable_names) {
     InitTensorHolder(&scope, place, v.c_str());
   }
+  (*graph)->SetNotOwned(kParamScopeAttr, &scope);
+}
 
-  graph->SetNotOwned(kParamScopeAttr, &scope);
+void RegisterPass(std::unique_ptr<ir::Graph>* graph) {
+
   auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
+  graph->reset(pass->Apply(graph->release()));
+}
+
+// check number of nodes
+void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  PrepareGraph(&graph, prog);
 
   int original_nodes_num = graph->Nodes().size();
-  graph.reset(pass->Apply(graph.release()));
+  RegisterPass(&graph);
+
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
@@ -223,20 +291,9 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
 void EqualScaleOutTest(const ProgramDesc& prog, const std::string& name,
                        float scale) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  PrepareGraph(&graph, prog);
+  RegisterPass(&graph);
 
-  // Init scope, as it is used in pass
-  auto place = paddle::platform::CPUPlace();
-  NaiveExecutor exe{place};
-  Scope scope;
-  exe.CreateVariables(prog, 0, true, &scope);
-
-  for (auto& v : variable_names) {
-    InitTensorHolder(&scope, place, v.c_str());
-  }
-
-  graph->SetNotOwned(kParamScopeAttr, &scope);
-  auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
-  graph.reset(pass->Apply(graph.release()));
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() &&
@@ -252,19 +309,8 @@ void CheckRequantScalesTest(const ProgramDesc& prog, float scale_in,
                             float scale_out) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
-  // Init scope, as it is used in pass
-  auto place = paddle::platform::CPUPlace();
-  NaiveExecutor exe{place};
-  Scope scope;
-  exe.CreateVariables(prog, 0, true, &scope);
-
-  for (auto& v : variable_names) {
-    InitTensorHolder(&scope, place, v.c_str());
-  }
-
-  graph->SetNotOwned(kParamScopeAttr, &scope);
-  auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
-  graph.reset(pass->Apply(graph.release()));
+  PrepareGraph(&graph, prog);
+  RegisterPass(&graph);
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "requantize") {
@@ -284,8 +330,10 @@ TEST(CpuQuantizeSquashPass, equal_scales) {
   auto use_mkldnn = true;
   // Remove 4 nodes: Dequant, Quant, e, f
   auto remove_nodes = 4;
-  CountNodeTest(BuildProgramDesc(use_mkldnn, scale_out, scale, scale),
-                remove_nodes);
+
+  CountNodeTest(
+      BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale, scale),
+      remove_nodes);
 }
 
 // From Conv1->d->Dequant->e->Quant->f->Conv2
@@ -298,11 +346,14 @@ TEST(CpuQuantizeSquashPass, unequal_scales) {
   auto use_mkldnn = true;
   // Remove 4 nodes: Dequant, Quant, e, d
   auto remove_nodes = 4;
-  CountNodeTest(BuildProgramDesc(use_mkldnn, scale_out, scale1, scale2),
-                remove_nodes);
 
-  EqualScaleOutTest(BuildProgramDesc(use_mkldnn, scale_out, scale1, scale2),
-                    "Conv1", scale2);
+  CountNodeTest(
+      BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
+      remove_nodes);
+
+  EqualScaleOutTest(
+      BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
+      "Conv1", scale2);
 }
 
 // from
@@ -323,11 +374,13 @@ TEST(CpuQuantizeSquashPass, branch_to_equal_unequal_and_fp32) {
   // Remove 3 nodes: Quant1, c, Quant2,
   // Insert 1 node: Requant
   auto remove_nodes = 2;
-  CountNodeTest(BuildProgramDesc2(use_mkldnn, scale_out, scale, scale, scale2),
+
+  CountNodeTest(BuildConvMultiOutputProgramDesc(use_mkldnn, scale_out, scale,
+                                                scale, scale2),
                 remove_nodes);
-  CheckRequantScalesTest(
-      BuildProgramDesc2(use_mkldnn, scale_out, scale, scale, scale2), scale,
-      scale2);
+  CheckRequantScalesTest(BuildConvMultiOutputProgramDesc(use_mkldnn, scale_out,
+                                                         scale, scale, scale2),
+                         scale, scale2);
 }
 
 //  a->Conv1->b->Requant->c
@@ -340,14 +393,17 @@ TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
   auto use_mkldnn = true;
   // Remove 4 nodes: b, Requant1, e, Requant2
   auto remove_nodes = 4;
-  CountNodeTest(BuildProgramDesc3(use_mkldnn, scale_out, scale, scale),
-                remove_nodes);
+  CountNodeTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      remove_nodes);
 
   // check equal scale conv->scale_out and requant->scale_out
-  EqualScaleOutTest(BuildProgramDesc3(use_mkldnn, scale_out, scale, scale),
-                    "Conv1", scale);
-  EqualScaleOutTest(BuildProgramDesc3(use_mkldnn, scale_out, scale, scale),
-                    "Conv2", scale);
+  EqualScaleOutTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      "Conv1", scale);
+  EqualScaleOutTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      "Conv2", scale);
 }
 
 // a->Concat->b->Dequant->c->Quant->d->Conv->e
@@ -361,10 +417,13 @@ TEST(CpuQuantizeSquashPass,
   // Remove 3 nodes: Dequant1, c, Quant
   // Insert 1 node: Requant
   auto remove_nodes = 2;
-  CountNodeTest(BuildProgramDesc4(use_mkldnn, scale_out, scale, scale2),
-                remove_nodes);
+
+  CountNodeTest(
+      BuildConcatDequantQuantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      remove_nodes);
   CheckRequantScalesTest(
-      BuildProgramDesc4(use_mkldnn, scale_out, scale, scale2), scale, scale2);
+      BuildConcatDequantQuantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      scale, scale2);
 }
 
 // a->Conv1->b
@@ -377,9 +436,11 @@ TEST(CpuQuantizeSquashPass, more_than_one_conv_out_outputs) {
   auto use_mkldnn = true;
   // nothing change
   auto remove_nodes = 0;
-  CountNodeTest(BuildProgramDesc5(use_mkldnn, scale_out, scale, scale2),
-                remove_nodes);
+ CountNodeTest(
+      BuildConvMultiRequantProgramDesc(use_mkldnn, scale_out, scale, scale2),
+      remove_nodes);
 }
+  
 // a->Conv1->c->Concat
 TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto scale_out = 1.0f;

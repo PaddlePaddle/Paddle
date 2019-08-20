@@ -75,7 +75,6 @@ from . import clip
 from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
-from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
 from . import compiler
@@ -206,7 +205,7 @@ def __bootstrap__():
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'limit_of_tmp_allocation',
             'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist', 'cudnn_batchnorm_spatial_persistent'
+            'cudnn_batchnorm_spatial_persistent'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

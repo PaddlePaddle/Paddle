@@ -60,6 +60,7 @@ class CPUQuantizeSquashPass : public FusePassBase {
  */
   void ConvDequantSquash(Graph* graph) const;
 
+
   const std::string name_scope_{"squash"};
 };
 

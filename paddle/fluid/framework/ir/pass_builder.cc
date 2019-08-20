@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass_builder.h"
+#include <memory>
+#include <utility>
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
+  VLOG(3) << "Append " << pass_type;
   auto pass = ir::PassRegistry::Instance().Get(pass_type);
   passes_.emplace_back(pass.release());
   return passes_.back();
