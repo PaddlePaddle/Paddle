@@ -407,7 +407,8 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
   // For small case use 1D block
-  if (w < 16 || h < 16) {
+  constexpr int half_walf = 16;
+  if (w < half_walf || h < half_walf) {
     int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
     int gird_size = w;
     ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
