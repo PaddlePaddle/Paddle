@@ -406,7 +406,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      outs->Resize({0, out_dim});
+      outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       for (int i = 0; i < n; ++i) {
