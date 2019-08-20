@@ -370,7 +370,7 @@ class ChannelWriter {
 
   void Reset(ChannelObject<T>* channel) {
     CHECK(buffer_.empty()) << "Forgot to flush";
-    CHECK(channel != nullptr) << "Channel can not be nullptr";
+    //    CHECK(channel != nullptr) << "Channel can not be nullptr";
     channel_ = channel;
     buffer_.clear();
     failed_ = !channel;
