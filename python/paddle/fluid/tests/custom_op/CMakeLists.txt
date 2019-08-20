@@ -1,9 +1,10 @@
 if (WITH_GPU)
-    nv_library(relu_op_shared SHARED relu_op.cc relu_op.cu DEPS fluid_framework_shared)
+    nv_library(relu_op_shared SHARED SRCS relu_op.cc relu_op.cu DEPS fluid_framework_shared)
 else()
-    cc_library(relu_op_shared SHARED relu_op.cc DEPS fluid_framework_shared)
+    cc_library(relu_op_shared SHARED SRCS relu_op.cc DEPS fluid_framework_shared)
 endif()
 set_target_properties(relu_op_shared PROPERTIES OUTPUT_NAME relu2_op)
+target_link_libraries(relu_op_shared ${FLUID_FRAMEWORK_SHARED_LIB})
 
 # remove the linked glog and gflags when compling relu_op_shared
 # otherwise, there is running error:
