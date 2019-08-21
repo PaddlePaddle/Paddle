@@ -163,6 +163,7 @@ class ParallelExecutor(object):
             assert isinstance(
                 share_vars_from, ParallelExecutor
             ), "The share_vars_from should be ParallelExecutor."
+
         self._compiled_program.with_data_parallel(
             loss_name=loss_name,
             build_strategy=build_strategy,
@@ -172,7 +173,6 @@ class ParallelExecutor(object):
 
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
-        self._compiled_program._compile(place=self._place, scope=self._scope)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
