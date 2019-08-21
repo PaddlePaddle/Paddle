@@ -222,13 +222,13 @@ def save_vars(executor,
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                save_file_path = os.path.join(save_dirname, new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
-                    })
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -1028,13 +1028,6 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
-        if main_program._is_mem_optimized:
-            warnings.warn(
-                "save_inference_model must put before you call memory_optimize. \
-                                            the memory_optimize will modify the original program, \
-                                            is not suitable for saving inference model \
-                                            we save the original program as inference model.",
-                RuntimeWarning)
 
     elif not isinstance(main_program, Program):
         raise TypeError("program should be as Program type or None")
