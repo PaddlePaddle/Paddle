@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -22,18 +23,33 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
 /*
- * Fuse the CONV and ReLU to a ConvReLUOp.
+ * Fuse Conv and Activation base class.
  */
-class ConvReLUFusePass : public FusePassBase {
+class ConvActivationFusePass : public FusePassBase {
  public:
-  virtual ~ConvReLUFusePass() {}
+  virtual ~ConvActivationFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
+  virtual std::string activation_type() const { return "relu"; }
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+  const std::string name_scope_{"conv_activation_mkldnn_fuse"};
 };
-
+/*
+ * Fuse Conv and LeakyReLU class
+ */
+class Conv2DLeakyReLUFusePass : public ConvActivationFusePass {
+ public:
+  std::string activation_type() const { return "leaky_relu"; }
+};
+/*
+ * Fuse Conv and BoundedReLU class
+ */
+class Conv2DReLU6FusePass : public ConvActivationFusePass {
+ public:
+  std::string activation_type() const { return "relu6"; }
+};
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
