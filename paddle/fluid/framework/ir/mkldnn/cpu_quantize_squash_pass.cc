@@ -158,7 +158,6 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
   AddStatis(found_requant_squash_count);
   PrettyLogDetail("---    squashed %d requantize with convs",
                   found_requant_squash_count);
-
 }
 
 void CPUQuantizeSquashPass::ConvDequantSquash(Graph* graph) const {
@@ -191,7 +190,6 @@ void CPUQuantizeSquashPass::ConvDequantSquash(Graph* graph) const {
   AddStatis(found_conv_dequant_squash_count);
   PrettyLogDetail("---    squashed %d dequant with convs",
                   found_conv_dequant_squash_count);
-
 }
 
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
@@ -203,7 +201,6 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   DequantQuantSquash(graph, &nodes_keep_counter);
   ConvRequantSquash(graph);
   ConvDequantSquash(graph);
-
 }
 
 }  // namespace ir

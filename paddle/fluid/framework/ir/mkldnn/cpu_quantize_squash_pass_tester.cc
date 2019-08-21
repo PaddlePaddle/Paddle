@@ -58,10 +58,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // e->Quant(scale2)->f
 // (f,w2,b2)->Conv2->i
 
-
 ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn, float scale_out,
                                         float scale1, float scale2) {
-
   ProgramDesc prog;
   for (auto& v : std::initializer_list<std::string>(
            {"a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"})) {
@@ -92,7 +90,6 @@ static const std::initializer_list<std::string> variable_names{
 ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn, float scale_out,
                                             float scale1, float scale2,
                                             float scale3) {
-
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
@@ -166,64 +163,11 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
   return prog;
 }
 
-//  a->Conv1->b->Requant(scale1)->c
-//  d->Conv2->e->Requant(scale2)->f
-//  {c,f}->Concat
-ProgramDesc BuildProgramDesc3(bool use_mkldnn, float scale_out, float scale1,
-                              float scale2) {
-  ProgramDesc prog;
-  for (auto& v : variable_names) {
-    prog.MutableBlock(0)->Var(v);
-  }
-
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
-  SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn, scale1);
-
-  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, scale_out);
-  SetOp(&prog, "requantize", "Requant2", {"e"}, {"f"}, use_mkldnn, scale2);
-
-  SetOp(&prog, "concat", "Concat", {"c"}, {"f"}, use_mkldnn);
-
-  return prog;
-}
-
-// a->Concat->b
-// b->Dequant(scale1)->c
-// c->Quant(scale2)->d
-// d->Conv->e
-ProgramDesc BuildProgramDesc4(bool use_mkldnn, float scale_out, float scale1,
-                              float scale2) {
-  ProgramDesc prog;
-  for (auto& v : variable_names) {
-    prog.MutableBlock(0)->Var(v);
-  }
-
-  SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_mkldnn);
-  SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, scale1);
-  SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_mkldnn, scale2);
-  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, scale_out);
-  return prog;
-}
-
-// a->Conv1->b
-// b->Requant1(Scale1)->c
-// b->Requant2(Scale2)->d
-ProgramDesc BuildProgramDesc5(bool use_mkldnn, float scale_out, float scale1,
-                              float scale2) {
-  ProgramDesc prog;
-  for (auto& v : variable_names) {
-    prog.MutableBlock(0)->Var(v);
-  }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
-  SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn, scale1);
-  SetOp(&prog, "requantize", "Requant2", {"b"}, {"d"}, use_mkldnn, scale2);
-  return prog;
-}
-
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // c->Concat
-ProgramDesc BuildProgramDesc6(bool use_mkldnn, float scale_out, float scale) {
+ProgramDesc BuildConvDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
+                                              float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
@@ -237,7 +181,8 @@ ProgramDesc BuildProgramDesc6(bool use_mkldnn, float scale_out, float scale) {
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // b->Conv2->d
-ProgramDesc BuildProgramDesc7(bool use_mkldnn, float scale_out, float scale) {
+ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn, float scale_out,
+                                            float scale) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
@@ -255,7 +200,6 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
-
 void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
@@ -269,7 +213,6 @@ void PrepareGraph(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog) {
 }
 
 void RegisterPass(std::unique_ptr<ir::Graph>* graph) {
-
   auto pass = PassRegistry::Instance().Get("cpu_quantize_squash_pass");
   graph->reset(pass->Apply(graph->release()));
 }
@@ -293,7 +236,6 @@ void EqualScaleOutTest(const ProgramDesc& prog, const std::string& name,
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   PrepareGraph(&graph, prog);
   RegisterPass(&graph);
-
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() &&
@@ -436,11 +378,11 @@ TEST(CpuQuantizeSquashPass, more_than_one_conv_out_outputs) {
   auto use_mkldnn = true;
   // nothing change
   auto remove_nodes = 0;
- CountNodeTest(
+  CountNodeTest(
       BuildConvMultiRequantProgramDesc(use_mkldnn, scale_out, scale, scale2),
       remove_nodes);
 }
-  
+
 // a->Conv1->c->Concat
 TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto scale_out = 1.0f;
@@ -448,7 +390,8 @@ TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto use_mkldnn = true;
   // remove 2 nodes: Dequant1, c
   auto remove_nodes = 2;
-  CountNodeTest(BuildProgramDesc6(use_mkldnn, scale_out, scale), remove_nodes);
+  CountNodeTest(BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
 }
 
 TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
@@ -457,7 +400,8 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto use_mkldnn = true;
   // nothing change
   auto remove_nodes = 0;
-  CountNodeTest(BuildProgramDesc7(use_mkldnn, scale_out, scale), remove_nodes);
+  CountNodeTest(BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
 }
 
 }  // namespace ir

@@ -1321,7 +1321,6 @@ PDNode *patterns::ConvRequant::operator()() {
   return requant_out;
 }
 
-  
 PDNode *patterns::ConvDequant::operator()() {
   // Create Operators
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
@@ -1339,7 +1338,6 @@ PDNode *patterns::ConvDequant::operator()() {
 
   return dequant_out;
 }
-
 
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
