@@ -79,6 +79,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
 }
 
+#ifdef PADDLE_WITH_PSLIB
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
@@ -89,7 +90,6 @@ void DownpourWorker::SetNeedDump(bool need_dump_field) {
 
 template <typename T>
 std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
-#ifdef PADDLE_WITH_PSLIB
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -100,13 +100,10 @@ std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
     os << ":" << tensor->data<T>()[i];
   }
   return os.str();
-#endif
-  return std::string();
 }
 
 std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
                                   int64_t end) {
-#ifdef PADDLE_WITH_PSLIB
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -117,12 +114,9 @@ std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
     os << static_cast<uint64_t>(tensor->data<int64_t>()[i]) << " ";
   }
   return os.str();
-#endif
-  return std::string();
 }
 
 std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
-#ifdef PADDLE_WITH_PSLIB
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
@@ -134,8 +128,6 @@ std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
     out_val = "unsupported type";
   }
   return out_val;
-#endif
-  return std::string();
 }
 
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
@@ -163,6 +155,7 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
   }
   return true;
 }
+#endif
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(

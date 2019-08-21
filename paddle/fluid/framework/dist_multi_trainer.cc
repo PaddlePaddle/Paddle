@@ -25,6 +25,7 @@ namespace framework {
 
 void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                                   Dataset* dataset) {
+#ifdef PADDLE_WITH_PSLIB
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
@@ -61,7 +62,9 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
+#endif
 }
+#ifdef PADDLE_WITH_PSLIB
 
 void DistMultiTrainer::DumpWork() {
   while (1) {
@@ -97,12 +100,11 @@ void DistMultiTrainer::InitDumpEnv() {
 }
 
 void DistMultiTrainer::FinalizeDumpEnv() {
-#ifdef PADDLE_WITH_PSLIB
   queue_->Close();
   dump_thread_.join();
   queue_.reset();
-#endif
 }
+#endif
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_) {
