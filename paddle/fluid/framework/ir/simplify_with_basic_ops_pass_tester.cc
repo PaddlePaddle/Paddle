@@ -41,12 +41,12 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
     auto pass = PassRegistry::Instance().Get("simplify_with_basic_ops_pass");
     int num_dropout_nodes_before = GetNumOpNodes(graph, "dropout");
     int num_scale_nodes_before = GetNumOpNodes(graph, "scale");
-    LOG(INFO) << DebugString(graph);
+    VLOG(3) << DebugString(graph);
 
     graph.reset(pass->Apply(graph.release()));
     int num_dropout_nodes_after = GetNumOpNodes(graph, "dropout");
     int num_scale_nodes_after = GetNumOpNodes(graph, "scale");
-    LOG(INFO) << DebugString(graph);
+    VLOG(3) << DebugString(graph);
 
     PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0UL);
     if (dropout_implementation == "downgrade_in_infer") {

@@ -103,9 +103,8 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "infer_clean_graph_pass",  //
-        //   "identity_scale_op_clean_pass",              //
-        "is_test_pass",                              //
+    //   "identity_scale_op_clean_pass",              //
+    "is_test_pass",                                  //
         "simplify_with_basic_ops_pass",              //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
