@@ -67,6 +67,8 @@ class Dataset {
                                bool keep_unmerged_ins) = 0;
   // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
+  // set box ps mode
+  virtual void SetBoxPSFlag() = 0;
   // get file list
   virtual const std::vector<std::string>& GetFileList() = 0;
   // get thread num
@@ -94,6 +96,8 @@ class Dataset {
   virtual void PreLoadIntoMemory() = 0;
   // wait async load done
   virtual void WaitPreLoadDone() = 0;
+  // wait async load and feed data done(used in boxps mode)
+  virtual void WaitPreLoadFeedDataDone() = 0;
   // release all memory data
   virtual void ReleaseMemory() = 0;
   // local shuffle data
@@ -149,6 +153,7 @@ class DatasetImpl : public Dataset {
                                bool keep_unmerged_ins);
 
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
+  virtual void SetBoxPSFlag();
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
@@ -166,6 +171,7 @@ class DatasetImpl : public Dataset {
   virtual void LoadIntoMemory();
   virtual void PreLoadIntoMemory();
   virtual void WaitPreLoadDone();
+  virtual void WaitPreLoadFeedDataDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();
@@ -214,6 +220,8 @@ class DatasetImpl : public Dataset {
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
+  bool boxps_flag_ = false;
+  std::shared_ptr<std::thread> feed_data_thread_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type

@@ -129,6 +129,11 @@ void DatasetImpl<T>::SetMergeByInsId(
 }
 
 template <typename T>
+void DatasetImpl<T>::SetBoxPSFlag() {
+  boxps_flag_ = true;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);
@@ -199,6 +204,9 @@ void DatasetImpl<T>::LoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() end"
           << ", memory data size=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+  if (boxps_flag_) {
+    FeedPass();
+  }
 }
 
 template <typename T>
@@ -210,6 +218,12 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
         &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
+  if (boxps_flag_) {
+    feed_data_thread_.reset(new std::thread([&]() {
+      WaitPreLoadDone();
+      FeedPass();
+    }));
+  }
 }
 
 template <typename T>
@@ -222,6 +236,11 @@ void DatasetImpl<T>::WaitPreLoadDone() {
   int64_t in_chan_size = input_channel_->Size();
   input_channel_->SetBlockSize(in_chan_size / thread_num_ + 1);
   VLOG(3) << "DatasetImpl<T>::WaitPreLoadDone() end";
+}
+
+template <typename T>
+void DatasetImpl<T>::WaitPreLoadFeedDataDone() {
+  feed_data_thread_->join();
 }
 
 // release memory data

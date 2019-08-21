@@ -56,9 +56,8 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>("Ids")[0]->type(),
-        ctx.device_context());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.device_context());
   }
 };
 
@@ -92,7 +91,7 @@ class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("pull_box_sparse_grad");
+    op->SetType("push_box_sparse");
 
     op->SetInput("Ids", Input("Ids"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
@@ -112,7 +111,8 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>("Ids")[0]->type(),
+        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"))[0]
+            ->type(),
         ctx.device_context());
   }
 };
@@ -123,9 +123,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
                   ops::PullBoxSparseOpMaker, ops::PushBoxSparseOpDescMaker);
 
-REGISTER_OPERATOR(pull_box_sparse_grad, ops::PushBoxSparseOp);
+REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
 
-REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<int>,
-                       ops::PullBoxSparseCPUKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(pull_box_sparse_grad, ops::PullBoxSparseGradKernel<int>,
-                       ops::PullBoxSparseGradKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
+REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)

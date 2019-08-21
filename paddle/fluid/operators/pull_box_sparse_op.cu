@@ -27,23 +27,20 @@ template <typename T>
 class PullBoxSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PullBoxSparseFunctor(ctx);
+    PullBoxSparseFunctor<T>(ctx);
   }
 };
 
 template <typename T>
-class PullBoxSparseCUDAGradKernel : public framework::OpKernel<T> {
+class PushBoxSparseCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PushBoxSparseFunctor(ctx);
+    PushBoxSparseFunctor<T>(ctx);
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseCUDAKernel<int>,
-                        ops::PullBoxSparseCUDAKernel<int64_t>);
-REGISTER_OP_CUDA_KERNEL(pull_box_sparse_grad,
-                        ops::PullBoxSparseCUDAGradKernel<int>,
-                        ops::PullBoxSparseCUDAGradKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseCUDAKernel<float>)
+REGISTER_OP_CUDA_KERNEL(push_box_sparse, ops::PushBoxSparseCUDAKernel<float>)

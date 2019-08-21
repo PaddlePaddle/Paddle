@@ -285,6 +285,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_ins_id = False
         self.parse_content = False
         self.merge_by_lineid = False
+        self.boxps_flag = False
 
     def _prepare_to_run(self):
         """
@@ -407,6 +408,21 @@ class InMemoryDataset(DatasetBase):
                                          min_merge_size, keep_unmerged_ins)
         self.merge_by_lineid = True
 
+    def set_boxps_flag(self):
+        """
+        Set box ps mode.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_boxps_flag()
+
+        """
+        self.boxps_flag = True
+        self.dataset.set_boxps_flag()
+
     def load_into_memory(self):
         """
         Load data into memory
@@ -454,7 +470,10 @@ class InMemoryDataset(DatasetBase):
               dataset.preload_into_memory()
               dataset.wait_preload_done()
         """
-        self.dataset.wait_preload_done()
+        if self.boxps_flag:
+            self.dataset.wait_preload_feed_data_done()
+        else:
+            self.dataset.wait_preload_done()
 
     def local_shuffle(self):
         """
@@ -608,9 +627,6 @@ class InMemoryDataset(DatasetBase):
                                                         global_data_size)
             return global_data_size[0]
         return local_data_size[0]
-
-    def feed_pass(self):
-        self.dataset.feed_pass()
 
     def begin_pass(self):
         self.dataset.begin_pass()

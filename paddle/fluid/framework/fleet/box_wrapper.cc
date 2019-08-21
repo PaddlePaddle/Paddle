@@ -39,26 +39,26 @@ int BoxWrapper::GetDate() const {
   return atoi(buf);
 }
 
-int BoxWrapper::FeedPass(const std::vector<uint64_t>& feasgin_to_box) const {
-  boxps_ptr_->FeedPass(GetDate(), feasgin_to_box);
-  return 0;
+void BoxWrapper::FeedPass(const std::vector<uint64_t>& feasgin_to_box) const {
+  int ret = boxps_ptr_->FeedPass(GetDate(), feasgin_to_box);
+  PADDLE_ENFORCE_EQ(ret, 0, "FeedPass failed in BoxPS.");
 }
 
-int BoxWrapper::BeginPass() const {
-  boxps_ptr_->BeginPass();
-  return 0;
+void BoxWrapper::BeginPass() const {
+  int ret = boxps_ptr_->BeginPass();
+  PADDLE_ENFORCE_EQ(ret, 0, "BeginPass failed in BoxPS.");
 }
 
-int BoxWrapper::EndPass() const {
-  boxps_ptr_->EndPass();
-  return 0;
+void BoxWrapper::EndPass() const {
+  int ret = boxps_ptr_->EndPass();
+  PADDLE_ENFORCE_EQ(ret, 0, "EndPass failed in BoxPS.");
 }
 
-int BoxWrapper::PullSparse(const paddle::platform::Place& place,
-                           const std::vector<const uint64_t*>& keys,
-                           const std::vector<float*>& values,
-                           const std::vector<int64_t>& slot_lengths,
-                           const int hidden_size) {
+void BoxWrapper::PullSparse(const paddle::platform::Place& place,
+                            const std::vector<const uint64_t*>& keys,
+                            const std::vector<float*>& values,
+                            const std::vector<int64_t>& slot_lengths,
+                            const int hidden_size) {
   if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -93,14 +93,17 @@ int BoxWrapper::PullSparse(const paddle::platform::Place& place,
     // Space allocation for FeatureValue is left for boxps
     paddle::boxps::FeatureValue* total_values;
     if (platform::is_cpu_place(place)) {
-      boxps_ptr_->PullSparseCPU(reinterpret_cast<uint64_t*>(total_keys),
-                                &total_values, static_cast<int>(total_length));
+      int ret = boxps_ptr_->PullSparseCPU(
+          reinterpret_cast<uint64_t*>(total_keys), &total_values,
+          static_cast<int>(total_length));
+      PADDLE_ENFORCE_EQ(ret, 0, "PullSparseCPU failed in BoxPS.");
     } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      boxps_ptr_->PullSparseGPU(
+      int ret = boxps_ptr_->PullSparseGPU(
           reinterpret_cast<uint64_t*>(total_keys), &total_values,
           static_cast<int>(total_length),
           boost::get<platform::CUDAPlace>(place).GetDeviceId());
+      PADDLE_ENFORCE_EQ(ret, 0, "PullSparseGPU failed in BoxPS.");
 #endif
     }
 
@@ -135,18 +138,16 @@ int BoxWrapper::PullSparse(const paddle::platform::Place& place,
                       "be equal to the sum of length of all input tensors.");
 
   } else {
-    VLOG(3)
-        << "PaddleBox: PullSparse Only support CPUPlace and CUDAPlace now.\n";
-    return 1;
+    PADDLE_THROW(
+        "PaddleBox: PullSparse Only Support CPUPlace and CUDAPlace Now.");
   }
-  return 0;
 }
 
-int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
-                               const std::vector<const uint64_t*>& keys,
-                               const std::vector<const float*>& grad_values,
-                               const std::vector<int64_t>& slot_lengths,
-                               const int hidden_size) {
+void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
+                                const std::vector<const uint64_t*>& keys,
+                                const std::vector<const float*>& grad_values,
+                                const std::vector<int64_t>& slot_lengths,
+                                const int hidden_size) {
   if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -178,11 +179,10 @@ int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "should be equal to the sum of length of all input "
                       "tensors.");
 
+    auto buf = memory::AllocShared(
+        place, total_length * sizeof(paddle::boxps::FeaturePushValue));
     paddle::boxps::FeaturePushValue* total_grad_values =
-        reinterpret_cast<paddle::boxps::FeaturePushValue*>(
-            memory::AllocShared(
-                place, total_length * sizeof(paddle::boxps::FeaturePushValue))
-                ->ptr());
+        reinterpret_cast<paddle::boxps::FeaturePushValue*>(buf->ptr());
 
     offset = 0;
     for (size_t i = 0; i < grad_values.size(); ++i) {
@@ -216,23 +216,23 @@ int BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "input tensors.");
 
     if (platform::is_cpu_place(place)) {
-      boxps_ptr_->PushSparseCPU(reinterpret_cast<uint64_t*>(total_keys),
-                                total_grad_values,
-                                static_cast<int>(total_length));
+      int ret = boxps_ptr_->PushSparseCPU(
+          reinterpret_cast<uint64_t*>(total_keys), total_grad_values,
+          static_cast<int>(total_length));
+      PADDLE_ENFORCE_EQ(ret, 0, "PushSparseCPU failed in BoxPS.");
     } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-      boxps_ptr_->PushSparseGPU(
+      int ret = boxps_ptr_->PushSparseGPU(
           reinterpret_cast<uint64_t*>(total_keys), total_grad_values,
           static_cast<int>(total_length),
           boost::get<platform::CUDAPlace>(place).GetDeviceId());
+      PADDLE_ENFORCE_EQ(ret, 0, "PushSparseGPU failed in BoxPS.");
 #endif
     }
   } else {
-    VLOG(3)
-        << "PaddleBox: PullSparse Only support CPUPlace and CUDAPlace now.\n";
-    return 1;
+    PADDLE_THROW(
+        "PaddleBox: PushSparse Only Support CPUPlace and CUDAPlace Now.");
   }
-  return 0;
 }
 }  // end namespace framework
 }  // end namespace paddle

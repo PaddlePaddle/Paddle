@@ -31,19 +31,19 @@ class BoxWrapper {
   virtual ~BoxWrapper() {}
   BoxWrapper() {}
 
-  int FeedPass(const std::vector<uint64_t>& feasgin_to_box) const;
-  int BeginPass() const;
-  int EndPass() const;
-  int PullSparse(const paddle::platform::Place& place,
-                 const std::vector<const uint64_t*>& keys,
-                 const std::vector<float*>& values,
-                 const std::vector<int64_t>& slot_lengths,
-                 const int hidden_size);
-  int PushSparseGrad(const paddle::platform::Place& place,
-                     const std::vector<const uint64_t*>& keys,
-                     const std::vector<const float*>& grad_values,
-                     const std::vector<int64_t>& slot_lengths,
-                     const int hidden_size);
+  void FeedPass(const std::vector<uint64_t>& feasgin_to_box) const;
+  void BeginPass() const;
+  void EndPass() const;
+  void PullSparse(const paddle::platform::Place& place,
+                  const std::vector<const uint64_t*>& keys,
+                  const std::vector<float*>& values,
+                  const std::vector<int64_t>& slot_lengths,
+                  const int hidden_size);
+  void PushSparseGrad(const paddle::platform::Place& place,
+                      const std::vector<const uint64_t*>& keys,
+                      const std::vector<const float*>& grad_values,
+                      const std::vector<int64_t>& slot_lengths,
+                      const int hidden_size);
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
     if (nullptr == s_instance_) {

@@ -22,6 +22,7 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
 static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
@@ -29,16 +30,17 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
+  // BoxPS only supports float now
   std::vector<float *> all_values(slot_size);
   std::vector<int64_t> slot_lengths(slot_size);
-  for (auto i = 0; i < slot_size; i++) {
+  for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
     const uint64_t *single_slot_keys =
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
 
-    auto *output = outputs[i]->mutable_data<float>(ctx.GetPlace());
+    auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
     all_values[i] = output;
   }
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
@@ -46,6 +48,7 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
                       hidden_size);
 }
 
+template <typename T>
 static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto d_output =
@@ -56,7 +59,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
   std::vector<int64_t> slot_lengths(slot_size);
-  for (auto i = 0; i < slot_size; i++) {
+  for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
     const uint64_t *single_slot_keys =
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
@@ -76,15 +79,15 @@ template <typename T>
 class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PullBoxSparseFunctor(ctx);
+    PullBoxSparseFunctor<T>(ctx);
   }
 };
 
 template <typename T>
-class PullBoxSparseGradKernel : public framework::OpKernel<T> {
+class PushBoxSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PushBoxSparseFunctor(ctx);
+    PushBoxSparseFunctor<T>(ctx);
   }
 };
 }  // namespace operators
