@@ -205,7 +205,7 @@ class PrintOp : public framework::OperatorBase {
     }
     formater.summarize = Attr<int>("summarize");
     formater.data = reinterpret_cast<void *>(printed_tensor.data<void>());
-    formater(printed_tensor.numel());
+    formater(printed_tensor.numel() > 100 ? 100 : printed_tensor.numel());
   }
 
  private:
