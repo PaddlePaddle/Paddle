@@ -239,7 +239,7 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 }
 
 template <typename T>
-void DatasetImpl<T>::WaitPreLoadFeedDataDone() {
+void DatasetImpl<T>::WaitFeedPassDone() {
   feed_data_thread_->join();
 }
 

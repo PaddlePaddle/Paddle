@@ -528,6 +528,8 @@ def pull_box_sparse(input, size, dtype='float32'):
             contains the IDs information.
         size(int): The embedding size parameter, which indicates the size of 
             each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports 
+	    float32 now.
 
     Returns:
         Variable|list of Variable: The tensor variable storing the embeddings of the \

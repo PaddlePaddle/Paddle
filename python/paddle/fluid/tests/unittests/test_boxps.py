@@ -71,12 +71,11 @@ class TestBoxPS(unittest.TestCase):
                         for slot in ins:
                             binary_print(slot, fout)
                     fout.write("\n")
-        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
         dataset.set_use_var([x, y])
         dataset.set_batch_size(2)
         dataset.set_thread(1)
         dataset.set_filelist(filelist)
-        dataset.set_boxps_flag()
         dataset.load_into_memory()
         optimizer.minimize(loss)
         exe.run(fluid.default_startup_program())
@@ -148,11 +147,10 @@ class TestBoxPSPreload(unittest.TestCase):
                     fout.write("\n")
 
         def create_dataset():
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
             dataset.set_use_var([x, y])
             dataset.set_batch_size(2)
             dataset.set_thread(1)
-            dataset.set_boxps_flag()
             dataset.set_filelist(filelist)
             return dataset
 
@@ -174,6 +172,7 @@ class TestBoxPSPreload(unittest.TestCase):
 
         datasets[0].end_pass()
         datasets[1].wait_preload_done()
+        datasets[1].begin_pass()
         datasets[2].preload_into_memory()
         exe.train_from_dataset(
             program=fluid.default_main_program(),
@@ -181,6 +180,7 @@ class TestBoxPSPreload(unittest.TestCase):
             print_period=1)
         datasets[1].end_pass()
         datasets[2].wait_preload_done()
+        datasets[2].begin_pass()
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=datasets[2],

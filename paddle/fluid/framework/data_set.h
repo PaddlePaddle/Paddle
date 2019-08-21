@@ -97,7 +97,7 @@ class Dataset {
   // wait async load done
   virtual void WaitPreLoadDone() = 0;
   // wait async load and feed data done(used in boxps mode)
-  virtual void WaitPreLoadFeedDataDone() = 0;
+  virtual void WaitFeedPassDone() = 0;
   // release all memory data
   virtual void ReleaseMemory() = 0;
   // local shuffle data
@@ -171,7 +171,7 @@ class DatasetImpl : public Dataset {
   virtual void LoadIntoMemory();
   virtual void PreLoadIntoMemory();
   virtual void WaitPreLoadDone();
-  virtual void WaitPreLoadFeedDataDone();
+  virtual void WaitFeedPassDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle();

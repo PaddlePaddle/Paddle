@@ -88,8 +88,7 @@ void BindDataset(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("wait_preload_done", &framework::Dataset::WaitPreLoadDone,
            py::call_guard<py::gil_scoped_release>())
-      .def("wait_preload_feed_data_done",
-           &framework::Dataset::WaitPreLoadFeedDataDone,
+      .def("wait_feed_pass_done", &framework::Dataset::WaitFeedPassDone,
            py::call_guard<py::gil_scoped_release>())
       .def("release_memory", &framework::Dataset::ReleaseMemory,
            py::call_guard<py::gil_scoped_release>())

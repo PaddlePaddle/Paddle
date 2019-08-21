@@ -408,21 +408,6 @@ class InMemoryDataset(DatasetBase):
                                          min_merge_size, keep_unmerged_ins)
         self.merge_by_lineid = True
 
-    def set_boxps_flag(self):
-        """
-        Set box ps mode.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_boxps_flag()
-
-        """
-        self.boxps_flag = True
-        self.dataset.set_boxps_flag()
-
     def load_into_memory(self):
         """
         Load data into memory
@@ -471,7 +456,7 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         if self.boxps_flag:
-            self.dataset.wait_preload_feed_data_done()
+            self.dataset.wait_feed_pass_done()
         else:
             self.dataset.wait_preload_done()
 
@@ -745,3 +730,23 @@ class FileInstantDataset(DatasetBase):
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")
+
+
+class BoxPSDataset(InMemoryDataset):
+    """
+    BoxPSDataset: derived from InMemoryDataset.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+    """
+
+    def __init__(self):
+        """
+        Init
+        """
+        super(BoxPSDataset, self).__init__()
+        self.boxps_flag = True
+        self.dataset.set_boxps_flag()
