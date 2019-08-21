@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -31,6 +33,44 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+template <typename T>
+void prepare_csr_data(const std::vector<uint64_t> &offset,
+                      const int64_t *ids_data, const size_t idx_width,
+                      T *csr_vals, int *csr_colmuns, int *csr_row_idx) {
+  int val_idx = 0;
+  int row_idx = 0;
+  csr_row_idx[0] = 0;
+
+  std::map<int, int> ids_map;
+
+  // for each sequence in batch
+  for (size_t i = 0; i < offset.size() - 1; ++i) {
+    for (size_t idx = 0; idx < idx_width; ++idx) {
+      ids_map.clear();
+
+      // construct a map for creating csr
+      for (size_t j = offset[i]; j < offset[i + 1]; ++j) {
+        unsigned int word_idx =
+            static_cast<unsigned int>(ids_data[idx + j * idx_width]);
+        ++ids_map[word_idx];
+      }
+
+      VLOG(4) << "====sequence %d====" << i;
+      for (std::map<int, int>::const_iterator it = ids_map.begin();
+           it != ids_map.end(); ++it) {
+        VLOG(4) << it->first << " => " << it->second;
+        csr_vals[val_idx] = it->second;
+        csr_colmuns[val_idx] = it->first;
+        ++val_idx;
+      }
+      csr_row_idx[row_idx + 1] = csr_row_idx[row_idx] + ids_map.size();
+      ++row_idx;
+    }
+  }
+}
+#else
 template <typename T>
 struct EmbeddingVSumFunctor {
   void operator()(const framework::ExecutionContext &context,
@@ -60,6 +100,7 @@ struct EmbeddingVSumFunctor {
     }
   }
 };
+#endif
 
 inline int FusedEmbeddingSeqPoolLastDim(const framework::DDim &table_dims,
                                         const framework::DDim &ids_dims) {
@@ -91,8 +132,44 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     output_t->Resize({batch_size, last_dim});
 
     if (combiner_type == "sum") {
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+      auto output = output_t->mutable_data<T>(context.GetPlace());
+      int64_t table_height = table_var->dims()[0];
+      int64_t table_width = table_var->dims()[1];
+      auto weights = table_var->data<T>();
+
+      const std::vector<uint64_t> offset = ids_lod[0];
+      auto len = ids_t->numel();
+      int idx_width = len / offset.back();
+
+      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+      csr_vals_t.Resize({len});
+      csr_colmuns_t.Resize({len});
+      csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
+      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
+      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
+      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
+      prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
+                          csr_colmuns, csr_row_idx);
+
+      const char transa = 'N';
+      const T alpha = 1.0;
+      const T beta = 0.0;
+      const char matdescra[] = {'G', 'L', 'N', 'C'};
+
+      const int m = batch_size * idx_width;
+      const int n = table_width;
+      const int k = table_height;
+      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+      blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
+                 (const int *)csr_colmuns, (const int *)csr_row_idx,
+                 (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
+
+#else
       EmbeddingVSumFunctor<T> functor;
       functor(context, table_var, ids_t, output_t);
+#endif
     }
   }
 };

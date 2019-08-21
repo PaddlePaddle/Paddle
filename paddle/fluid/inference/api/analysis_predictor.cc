@@ -135,7 +135,6 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-
     // If not cloned, the parameters should be loaded.
     // If config_.ir_optim() is True, parameters is loaded in
     // OptimizeInferenceProgram(), but other persistable variables
@@ -145,17 +144,10 @@ bool AnalysisPredictor::PrepareProgram(
     // So in both case, create persistable variables at first.
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
-    // Optimize the program, and load parameters and modify them in the
-    // scope_.
-    // This will change the scope_ address.
-    if (config_.ir_optim()) {
-      status_ir_optim_enabled_ = true;
-      OptimizeInferenceProgram();
-    } else {
-      // Load parameters
-      LOG(INFO) << "load parameters ";
-      LoadParameters();
-    }
+    // if enable_ir_optim_ is false,
+    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // not be executed.
+    OptimizeInferenceProgram();
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
@@ -396,6 +388,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
+  argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
   argument_.SetStaticMemoryOptimForceUpdate(
@@ -467,8 +460,6 @@ void AnalysisPredictor::PrepareArgument() {
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  status_program_optimized_ = true;
-
   PrepareArgument();
   Analyzer().Run(&argument_);
 

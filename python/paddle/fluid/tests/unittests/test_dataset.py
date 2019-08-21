@@ -18,6 +18,7 @@ including create, config, run, etc.
 
 from __future__ import print_function
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import os
 import shutil
@@ -108,9 +109,62 @@ class TestDataset(unittest.TestCase):
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
+        dataset.set_fea_eval(10000, True)
+        dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
 
         exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+        for i in range(2):
+            try:
+                exe.train_from_dataset(fluid.default_main_program(), dataset)
+            except ImportError as e:
+                pass
+            except Exception as e:
+                self.assertTrue(False)
+
+        os.remove("./test_in_memory_dataset_run_a.txt")
+        os.remove("./test_in_memory_dataset_run_b.txt")
+
+    def test_in_memory_dataset_run_2(self):
+        """
+        Testcase for InMemoryDataset from create to run.
+        Use CUDAPlace
+        Use float type id
+        """
+        with open("test_in_memory_dataset_run_a.txt", "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open("test_in_memory_dataset_run_b.txt", "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="float32", lod_level=1)
+            slots_vars.append(var)
+
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_batch_size(32)
+        dataset.set_thread(3)
+        dataset.set_filelist([
+            "test_in_memory_dataset_run_a.txt",
+            "test_in_memory_dataset_run_b.txt"
+        ])
+        dataset.set_pipe_command("cat")
+        dataset.set_use_var(slots_vars)
+        dataset.load_into_memory()
+        dataset.local_shuffle()
+
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         for i in range(2):
             try:
@@ -155,6 +209,53 @@ class TestDataset(unittest.TestCase):
         dataset.set_use_var(slots_vars)
 
         exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+        for i in range(2):
+            try:
+                exe.train_from_dataset(fluid.default_main_program(), dataset)
+            except ImportError as e:
+                pass
+            except Exception as e:
+                self.assertTrue(False)
+
+        os.remove("./test_queue_dataset_run_a.txt")
+        os.remove("./test_queue_dataset_run_b.txt")
+
+    def test_queue_dataset_run_2(self):
+        """
+        Testcase for QueueDataset from create to run.
+        Use CUDAPlace
+        Use float type id
+        """
+        with open("test_queue_dataset_run_a.txt", "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open("test_queue_dataset_run_b.txt", "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="float32", lod_level=1)
+            slots_vars.append(var)
+
+        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+        dataset.set_batch_size(32)
+        dataset.set_thread(3)
+        dataset.set_filelist(
+            ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+        dataset.set_pipe_command("cat")
+        dataset.set_use_var(slots_vars)
+
+        exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         for i in range(2):
             try:
