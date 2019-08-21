@@ -72,7 +72,7 @@ def residual_block(num):
     return loss
 
 
-def conv_net(img, label):
+def conv_net(img, label, quant_skip_pattern):
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
@@ -90,7 +90,8 @@ def conv_net(img, label):
         pool_stride=2,
         pool_type='avg',
         act="relu")
-    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    with fluid.name_scope(quant_skip_pattern):
+        prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = fluid.layers.mean(loss)
     return avg_loss
@@ -109,7 +110,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             'mul_grad': ['X', 'Y']
         }
 
-    def check_program(self, transform_pass, program):
+    def check_program(self, program):
         quantized_ops = set()
         for block in program.blocks:
             for op in block.ops:
@@ -151,7 +152,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             graph.draw('.', 'quantize_fc_' + activation_quant_type,
                        marked_nodes)
         program = graph.to_program()
-        self.check_program(transform_pass, program)
+        self.check_program(program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         if not for_ci:
             val_marked_nodes = set()
@@ -192,7 +193,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             graph.draw('.', 'quantize_residual_' + activation_quant_type,
                        marked_nodes)
         program = graph.to_program()
-        self.check_program(transform_pass, program)
+        self.check_program(program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         if not for_ci:
             val_marked_nodes = set()
@@ -218,7 +219,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
                      seed,
                      activation_quant_type,
                      weight_quant_type='abs_max',
-                     for_ci=False):
+                     for_ci=False,
+                     quant_skip_pattern='skip_quant'):
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
@@ -228,7 +230,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
                         name='image', shape=[1, 28, 28], dtype='float32')
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64')
-                    loss = conv_net(img, label)
+                    loss = conv_net(img, label, quant_skip_pattern)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.001)
                         opt.minimize(loss)
@@ -255,7 +257,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
             scope=scope,
             place=place,
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type)
+            weight_quantize_type=weight_quant_type,
+            skip_pattern=quant_skip_pattern)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'

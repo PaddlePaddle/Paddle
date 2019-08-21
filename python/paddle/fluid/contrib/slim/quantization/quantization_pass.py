@@ -55,12 +55,6 @@ def _init_var_node(var_node, value, scope, place):
     tensor.set(value, place)
 
 
-def _quant_preproccess(op_node):
-    if op_node.op().has_attr("pooling_type") and \
-            op_node.op().attr("pooling_type") == 'avg':
-        op_node.op()._set_attr("skip_quant", True)
-
-
 class QuantizationTransformPass(object):
     def __init__(self,
                  scope=None,
@@ -70,7 +64,8 @@ class QuantizationTransformPass(object):
                  activation_quantize_type='abs_max',
                  weight_quantize_type='abs_max',
                  window_size=10000,
-                 moving_rate=0.9):
+                 moving_rate=0.9,
+                 skip_pattern='skip_quant'):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
@@ -115,6 +110,7 @@ class QuantizationTransformPass(object):
         self._place = place
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
+        self._skip_pattern = skip_pattern
 
         quant_type = [
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
@@ -160,6 +156,16 @@ class QuantizationTransformPass(object):
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
+
+        def _quant_preprocess(op_node):
+            pool_skipped = op_node.op().has_attr("pooling_type") and \
+                    op_node.op().attr("pooling_type") == 'avg'
+            user_skipped = isinstance(self._skip_pattern, str) and \
+                           op_node.op().has_attr("op_namescope") and \
+                           op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
+
+            if pool_skipped or user_skipped:
+                op_node.op()._set_attr("skip_quant", True)
 
         def _transform_forward(graph, op):
             for var_node in op.inputs:
@@ -211,24 +217,27 @@ class QuantizationTransformPass(object):
         if not self._is_test:
             self._create_global_step(graph)
         ops = graph.all_op_nodes()
+        # Do the preproccess of quantization, such as skipping some ops
+        # for not being quantized.
         for op in ops:
-            if op.name() in self._quantizable_ops:
-                _quant_preproccess(op)
+            if op.name() in self._quantizable_ops or \
+                    op.name() in self._quantizable_grad_ops:
+                _quant_preprocess(op)
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
         for op in ops:
             if op.name() in self._quantizable_ops:
-                skiped = op.op().has_attr("skip_quant") and \
+                skipped = op.op().has_attr("skip_quant") and \
                          op.op().attr("skip_quant")
-                if skiped:
+                if skipped:
                     continue
                 _transform_forward(graph, op)
         # The loop for renaming the inputs of backward op.
         for op in ops:
             if op.name() in self._quantizable_grad_ops:
-                skiped = op.op().has_attr("skip_quant") and \
+                skipped = op.op().has_attr("skip_quant") and \
                          op.op().attr("skip_quant")
-                if skiped:
+                if skipped:
                     continue
                 _transform_backward(graph, op)
         graph.resolve_hazard()
@@ -663,9 +672,9 @@ class QuantizationFreezePass(object):
         for op_node in ops:
             op_name = op_node.name()
             if op_name in self._quantizable_ops:
-                skiped = op_node.op().has_attr("skip_quant") and \
+                skipped = op_node.op().has_attr("skip_quant") and \
                          op_node.op().attr("skip_quant")
-                if skiped:
+                if skipped:
                     continue
                 if self._weight_quantize_type == 'channel_wise_abs_max' and op_name in self._conv_ops:
                     self._insert_post_channel_dequant_op(graph, op_node)
@@ -761,8 +770,8 @@ class QuantizationFreezePass(object):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         if len(op_node.input_arg_names()) >= 2 and len(persistable_vars) == 0:
             raise ValueError("The op %s has more than one inputs "
-                             "and all of them are not persistable." %
-                             (op_node.name()))
+                             "and all of them are not persistable. "
+                             "Now, it is not supported!" % (op_node.name()))
         max_range = 1
         param_range = (1 << (self._weight_bits - 1)) - 1
         act_range = (1 << (self._activation_bits - 1)) - 1
@@ -904,9 +913,9 @@ class ConvertToInt8Pass(object):
         for op_node in ops:
             op_name = op_node.name()
             if op_name in self._quantizable_ops:
-                skiped = op_node.op().has_attr("skip_quant") and \
+                skipped = op_node.op().has_attr("skip_quant") and \
                          op_node.op().attr("skip_quant")
-                if skiped:
+                if skipped:
                     continue
                 for var_node in op_node.inputs:
                     name = var_node.name()
