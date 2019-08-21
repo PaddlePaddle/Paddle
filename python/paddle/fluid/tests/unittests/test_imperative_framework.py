@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import numpy as np
+from test_imperative_base import new_program_scope
 
 
 class MLP(fluid.Layer):
@@ -44,32 +45,22 @@ class MLP(fluid.Layer):
         return x
 
 
-class TestDygraphDebugString(unittest.TestCase):
-    def test_dygraph_debug_string(self):
-        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        unique_name = 0
-        trace_var = 0
-        alive_var = 0
-        with fluid.dygraph.guard():
+class TestDygraphFramework(unittest.TestCase):
+    def test_dygraph_backward(self):
+        with new_program_scope():
             mlp = MLP("mlp")
-            for i in range(10):
-                var_inp = fluid.dygraph.base.to_variable(np_inp)
-                out = mlp(var_inp)
+            var_inp = fluid.layers.data(
+                "input", shape=[2, 2], dtype="float32", append_batch_size=False)
+            out = mlp(var_inp)
+            try:
                 out.backward()
-                mlp.clear_gradients()
-                unique_name_tmp, trace_var_tmp, alive_var_tmp = fluid.dygraph.base._print_debug_msg(
-                    is_test=True)
-                if i > 0:
-                    self.assertGreaterEqual(unique_name, unique_name_tmp)
-                    self.assertGreaterEqual(trace_var, trace_var_tmp)
-                    self.assertGreaterEqual(alive_var, alive_var_tmp)
-                else:
-                    unique_name = unique_name_tmp
-                    trace_var = trace_var_tmp
-                    alive_var = alive_var_tmp
-                try:
-                    fluid.dygraph.base._print_debug_msg()
-                except Exception as e:
-                    raise RuntimeError(
-                        "No Exception is accepted in _print_debug_msg, but we got: {}".
-                        format(e))
+                raise AssertionError(
+                    "backward should not be usable in static graph mode")
+            except ValueError as e:
+                self.assertTrue((e is not None))
+
+    def test_dygraph_to_string(self):
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        with fluid.dygraph.guard():
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp.to_string(throw_on_error=True)
