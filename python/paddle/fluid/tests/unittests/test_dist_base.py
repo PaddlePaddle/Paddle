@@ -125,7 +125,7 @@ class TestDistRunnerBase(object):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        my_print("gpu_fleet", "fleet.node_num:")
+        print_to_err("gpu_fleet", "fleet.node_num:")
         #"fleet.node_id:", fleet.node_id(),
         #"fleet.trainer_num:", fleet.worker_num())
 
@@ -161,15 +161,15 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
-        my_print(type(self).__name__, "begin to train on trainer")
+        print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
-            my_print(type(self).__name__, "run step %d finished" % i)
-        my_print(type(self).__name__, "trainer run finished")
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
 
         if six.PY2:
             print(pickle.dumps(out_losses))
