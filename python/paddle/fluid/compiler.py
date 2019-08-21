@@ -218,6 +218,10 @@ class CompiledProgram(object):
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
         self._is_data_parallel = True
+        # FIXME(zcd): Currently, the build_strategy can be set during creating
+        # CompiledProgram or calling with_data_parallel, and it may be confusing,
+        # but in the long run, we should set up build_strategy only when creating
+        # CompiledProgram, and exec_strategy should be deprecated.
         if build_strategy is not None: self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
