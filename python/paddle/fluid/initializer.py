@@ -238,6 +238,8 @@ class UniformInitializer(Initializer):
         assert diag_num is not None
         assert diag_step is not None
         assert diag_val is not None
+        if diag_num > 0 or diag_step > 0:
+            assert (diag_num > 0 and diag_step > 0)
         super(UniformInitializer, self).__init__()
         self._low = low
         self._high = high
