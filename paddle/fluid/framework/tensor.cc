@@ -40,8 +40,8 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
-                    "Please check Tensor::Resize has been called first. "
-                    "The Tensor's shape is [",
+                    "Please check Tensor::dims, or Tensor::Resize has been "
+                    "called first. The Tensor's shape is [",
                     dims(), "] now");
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
