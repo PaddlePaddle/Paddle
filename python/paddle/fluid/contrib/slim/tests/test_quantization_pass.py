@@ -90,8 +90,9 @@ def conv_net(img, label, quant_skip_pattern):
         pool_stride=2,
         pool_type='avg',
         act="relu")
+    hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     with fluid.name_scope(quant_skip_pattern):
-        prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = fluid.layers.mean(loss)
     return avg_loss
@@ -219,7 +220,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
                      seed,
                      activation_quant_type,
                      weight_quant_type='abs_max',
-                     for_ci=False,
+                     for_ci=True,
                      quant_skip_pattern='skip_quant'):
         def build_program(main, startup, is_test):
             main.random_seed = seed

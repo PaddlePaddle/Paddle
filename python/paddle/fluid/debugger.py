@@ -19,7 +19,7 @@ import six
 import random
 import os
 import re
-from .graphviz import GraphPreviewGenerator
+from .graphviz_utils import GraphPreviewGenerator
 from .proto import framework_pb2
 from google.protobuf import text_format
 from . import unique_name
