@@ -160,7 +160,6 @@ random value and set the value into the table for the next looking up.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
                   ops::DistributedLookupTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
