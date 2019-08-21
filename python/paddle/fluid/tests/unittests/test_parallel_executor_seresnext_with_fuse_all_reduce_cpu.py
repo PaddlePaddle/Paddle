@@ -1,4 +1,4 @@
-# Copyright (c) 20198 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,27 +13,25 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle.fluid as fluid
+fluid.core._set_fuse_parameter_group_size(3)
+fluid.core._set_fuse_parameter_memory_size(131072)
+
 import unittest
 import seresnext_net
 from seresnext_test_base import TestResnetBase
 from functools import partial
 
 
-class TestResnet(TestResnetBase):
-    def test_seresnext_with_learning_rate_decay(self):
-        # NOTE(zcd): This test is compare the result of use parallel_executor and executor,
-        # and the result of drop_out op and batch_norm op in this two executor
-        # have diff, so the two ops should be removed from the model.
-        # rm_drop_out=True,
-        # rm_bn=True,
+class TestResnetWithFuseAllReduceCPU(TestResnetBase):
+    def test_seresnext_with_fused_all_reduce(self):
+        # NOTE(zcd): In order to make the program faster,
+        # this unit test remove drop_out and batch_norm.
         check_func = partial(
             self.check_network_convergence,
             optimizer=seresnext_net.optimizer,
-            use_parallel_executor=False)
-        self._compare_result_with_origin_model(
-            check_func, use_cuda=False, compare_seperately=False, delta2=1e-3)
-        self._compare_result_with_origin_model(
-            check_func, use_cuda=True, compare_seperately=False)
+            fuse_all_reduce_ops=True)
+        self._compare_result_with_origin_model(check_func, use_cuda=False)
 
 
 if __name__ == '__main__':

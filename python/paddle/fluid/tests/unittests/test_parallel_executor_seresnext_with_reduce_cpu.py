@@ -19,7 +19,7 @@ import seresnext_net
 import paddle.fluid.core as core
 
 
-class TestResnetWithReduce(TestParallelExecutorBase):
+class TestResnetWithReduceBase(TestParallelExecutorBase):
     def _compare_reduce_and_allreduce(self, use_cuda, delta2=1e-5):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -84,10 +84,10 @@ class TestResnetWithReduce(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
 
+
+class TestResnetWithReduceCPU(TestResnetWithReduceBase):
     def test_seresnext_with_reduce(self):
         self._compare_reduce_and_allreduce(use_cuda=False, delta2=1e-3)
-        # TODO(zcd): temporally disable reduce_and_allreduce test because of the random failure.
-        # self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
 
 
 if __name__ == '__main__':
