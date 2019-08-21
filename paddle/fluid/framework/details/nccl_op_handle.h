@@ -59,7 +59,8 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     VLOG(10) << "SetRunEnv "
              << " run_order:" << run_order
-             << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce;
+             << ", use_hierarchical_allreduce:" << use_hierarchical_allreduce
+             << ", nccl_ctx_:" << nccl_ctxs_;
 
     if (nccl_ctxs_ == nullptr) {
       return;

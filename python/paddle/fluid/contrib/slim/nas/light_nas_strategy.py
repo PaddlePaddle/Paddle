@@ -128,6 +128,14 @@ class LightNASStrategy(Strategy):
         self._search_agent = SearchAgent(
             self._server_ip, self._server_port, key=self._key)
 
+    def __getstate__(self):
+        """Socket can't be pickled."""
+        d = {}
+        for key in self.__dict__:
+            if key not in ["_search_agent", "_server"]:
+                d[key] = self.__dict__[key]
+        return d
+
     def on_epoch_begin(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
                 self._retrain_epoch == 0 or
