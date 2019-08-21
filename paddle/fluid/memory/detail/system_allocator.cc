@@ -56,7 +56,7 @@ void* AlignedMalloc(size_t size) {
   PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
                     size);
 #endif
-  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  PADDLE_ENFORCE_NOT_NULL(p, "Fail to allocate CPU memory: size = %d .", size);
   return p;
 }
 
@@ -136,15 +136,10 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  if (index == 0) {
-    PADDLE_ASSERT(gpu_alloc_size_ >= size);
-    gpu_alloc_size_ -= size;
-    err = cudaFree(p);
-  } else {
-    PADDLE_ASSERT(fallback_alloc_size_ >= size);
-    fallback_alloc_size_ -= size;
-    err = cudaFreeHost(p);
-  }
+  PADDLE_ENFORCE_EQ(index, 0);
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  gpu_alloc_size_ -= size;
+  err = cudaFree(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFree after the
@@ -194,9 +189,9 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  PADDLE_ASSERT(index == 1);
+  PADDLE_ENFORCE_EQ(index, 1);
 
-  PADDLE_ASSERT(cuda_pinnd_alloc_size_ >= size);
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
   cuda_pinnd_alloc_size_ -= size;
   err = cudaFreeHost(p);
 
