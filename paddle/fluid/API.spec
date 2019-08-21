@@ -34,7 +34,7 @@ paddle.fluid.DistributeTranspiler.transpile (ArgSpec(args=['self', 'trainer_id',
 paddle.fluid.memory_optimize (ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level', 'skip_grads'], varargs=None, keywords=None, defaults=(None, False, 0, True)), ('document', '2348247f684bfd5bb9466470f35be064'))
 paddle.fluid.release_memory (ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd38c5b8b2b2e0bb19bcf1b581a80a7e4'))
 paddle.fluid.DistributeTranspilerConfig ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspilerConfig', ('document', '550b8c767a8ae1a2eb74b18924ddc975'))
-paddle.fluid.DistributeTranspilerConfig.__init__ (ArgSpec(args=['self'], varargs='args', keywords='kwargs', defaults=None), ('document', '1fffa485df7685e85162f514fdd2fed4'))
+paddle.fluid.DistributeTranspilerConfig.__init__ 
 paddle.fluid.ParallelExecutor ('paddle.fluid.parallel_executor.ParallelExecutor', ('document', '2b4d2e859f2e0c6161f4fed995f7956d'))
 paddle.fluid.ParallelExecutor.__init__ (ArgSpec(args=['self', 'use_cuda', 'loss_name', 'main_program', 'share_vars_from', 'exec_strategy', 'build_strategy', 'num_trainers', 'trainer_id', 'scope'], varargs=None, keywords=None, defaults=(None, None, None, None, None, 1, 0, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.ParallelExecutor.drop_local_exe_scopes (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '77c739744ea5708b80fb1b37cc89db40'))
@@ -82,9 +82,6 @@ paddle.fluid.io.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keyword
 paddle.fluid.io.compose (ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None), ('document', '884291104e1c3f37f33aae44b7deeb0d'))
 paddle.fluid.io.chain (ArgSpec(args=[], varargs='readers', keywords=None, defaults=None), ('document', 'd22c34e379a53901ae67a6bca7f4def4'))
 paddle.fluid.io.shuffle (ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None), ('document', 'e42ea6fee23ce26b23cb142cd1d6522d'))
-paddle.fluid.io.ComposeNotAligned ('paddle.reader.decorator.ComposeNotAligned', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.io.ComposeNotAligned.__init__ (ArgSpec(args=['self'], varargs='args', keywords='kwargs', defaults=None), ('document', '1fffa485df7685e85162f514fdd2fed4'))
-paddle.fluid.io.ComposeNotAligned.with_traceback 
 paddle.fluid.io.firstn (ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None), ('document', 'c5bb8f7dd4f917f1569a368aab5b8aad'))
 paddle.fluid.io.xmap_readers (ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,)), ('document', '9c804a42f8a4dbaa76b3c98e0ab7f796'))
 paddle.fluid.io.PipeReader ('paddle.reader.decorator.PipeReader', ('document', 'd3c250618f98c1a5fb646f869016a98e'))
@@ -409,7 +406,7 @@ paddle.fluid.layers.iou_similarity (ArgSpec(args=['x', 'y', 'name'], varargs=Non
 paddle.fluid.layers.box_coder (ArgSpec(args=['prior_box', 'prior_box_var', 'target_box', 'code_type', 'box_normalized', 'name', 'axis'], varargs=None, keywords=None, defaults=('encode_center_size', True, None, 0)), ('document', '4c6225fc1a1c0b84955a8f0013008243'))
 paddle.fluid.layers.polygon_box_transform (ArgSpec(args=['input', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e308ce1661cb722b220a6f482f85b9e4'))
 paddle.fluid.layers.yolov3_loss (ArgSpec(args=['x', 'gt_box', 'gt_label', 'anchors', 'anchor_mask', 'class_num', 'ignore_thresh', 'downsample_ratio', 'gt_score', 'use_label_smooth', 'name'], varargs=None, keywords=None, defaults=(None, True, None)), ('document', '400403175718d5a632402cdae88b01b8'))
-paddle.fluid.layers.yolo_box (ArgSpec(args=['x', 'img_size', 'anchors', 'class_num', 'conf_thresh', 'downsample_ratio', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '11b463ae2ad4c797fb91b3ee9864c4b4'))
+paddle.fluid.layers.yolo_box (ArgSpec(args=['x', 'img_size', 'anchors', 'class_num', 'conf_thresh', 'downsample_ratio', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ed56ff21536ca5c8ad418d0cfaf6a7b9'))
 paddle.fluid.layers.box_clip (ArgSpec(args=['input', 'im_info', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '9ddee76cb808db83768bf68010e39b2b'))
 paddle.fluid.layers.multiclass_nms (ArgSpec(args=['bboxes', 'scores', 'score_threshold', 'nms_top_k', 'keep_top_k', 'nms_threshold', 'normalized', 'nms_eta', 'background_label', 'name'], varargs=None, keywords=None, defaults=(0.3, True, 1.0, 0, None)), ('document', '76d74056e9eedcacf013d8e3b115cbd3'))
 paddle.fluid.layers.retinanet_detection_output (ArgSpec(args=['bboxes', 'scores', 'anchors', 'im_info', 'score_threshold', 'nms_top_k', 'keep_top_k', 'nms_threshold', 'nms_eta'], varargs=None, keywords=None, defaults=(0.05, 1000, 100, 0.3, 1.0)), ('document', '078d28607ce261a0cba2b965a79f6bb8'))
@@ -547,7 +544,7 @@ paddle.fluid.dygraph.Layer.parameters (ArgSpec(args=['self', 'include_sublayers'
 paddle.fluid.dygraph.Layer.state_dict (ArgSpec(args=['self', 'destination', 'include_sublayers'], varargs=None, keywords=None, defaults=(None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Layer.sublayers (ArgSpec(args=['self', 'include_sublayers'], varargs=None, keywords=None, defaults=(True,)), ('document', '00a881005ecbc96578faf94513bf0d62'))
 paddle.fluid.dygraph.Layer.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.__impl__ (ArgSpec(args=['func'], varargs=None, keywords=None, defaults=None), ('document', 'fa71ad4e6c2b5bf2b5258bd1959f9b2a'))
+paddle.fluid.dygraph.__impl__ (ArgSpec(args=['func'], varargs=None, keywords=None, defaults=()), ('document', 'fa71ad4e6c2b5bf2b5258bd1959f9b2a'))
 paddle.fluid.dygraph.guard (ArgSpec(args=['place'], varargs=None, keywords=None, defaults=(None,)), ('document', '7071320ffe2eec9aacdae574951278c6'))
 paddle.fluid.dygraph.to_variable (ArgSpec(args=['value', 'block', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '9a65d87163a2c6b00fb78f4e61fb3300'))
 paddle.fluid.dygraph.Conv2D ('paddle.fluid.dygraph.nn.Conv2D', ('document', 'baafe7ae0d3a61ae79cf4c7443e2c37c'))
@@ -810,7 +807,7 @@ paddle.fluid.dygraph.Tracer ('paddle.fluid.dygraph.tracer.Tracer', ('document', 
 paddle.fluid.dygraph.Tracer.__init__ (ArgSpec(args=['self', 'block'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.all_parameters (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.eval_mode (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.Tracer.trace 1. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[str, handle], arg2: Dict[str, handle], arg3: Dict[str, Variant], arg4: paddle::platform::CPUPlace, arg5: bool) -> None  2. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[str, handle], arg2: Dict[str, handle], arg3: Dict[str, Variant], arg4: paddle::platform::CUDAPlace, arg5: bool) -> None
+paddle.fluid.dygraph.Tracer.trace 1. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CPUPlace, arg5: bool) -> None  2. trace(self: paddle.fluid.core_avx.Tracer, arg0: paddle.fluid.core_avx.OpBase, arg1: Dict[unicode, handle], arg2: Dict[unicode, handle], arg3: Dict[unicode, Variant], arg4: paddle::platform::CUDAPlace, arg5: bool) -> None
 paddle.fluid.dygraph.Tracer.trace_op (ArgSpec(args=['self', 'op', 'inputs', 'outputs', 'stop_gradient'], varargs=None, keywords=None, defaults=(False,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.trace_var (ArgSpec(args=['self', 'name', 'var'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Tracer.train_mode (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
@@ -865,7 +862,7 @@ paddle.fluid.transpiler.RoundRobin.__init__ (ArgSpec(args=['self', 'pserver_endp
 paddle.fluid.transpiler.RoundRobin.dispatch (ArgSpec(args=['self', 'varlist'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.transpiler.RoundRobin.reset (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.transpiler.DistributeTranspilerConfig ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspilerConfig', ('document', '550b8c767a8ae1a2eb74b18924ddc975'))
-paddle.fluid.transpiler.DistributeTranspilerConfig.__init__ (ArgSpec(args=['self'], varargs='args', keywords='kwargs', defaults=None), ('document', '1fffa485df7685e85162f514fdd2fed4'))
+paddle.fluid.transpiler.DistributeTranspilerConfig.__init__ 
 paddle.fluid.nets.simple_img_conv_pool (ArgSpec(args=['input', 'num_filters', 'filter_size', 'pool_size', 'pool_stride', 'pool_padding', 'pool_type', 'global_pooling', 'conv_stride', 'conv_padding', 'conv_dilation', 'conv_groups', 'param_attr', 'bias_attr', 'act', 'use_cudnn'], varargs=None, keywords=None, defaults=(0, 'max', False, 1, 0, 1, 1, None, None, None, True)), ('document', '13f01ff80e8dfbd3427d90cf49bc62eb'))
 paddle.fluid.nets.sequence_conv_pool (ArgSpec(args=['input', 'num_filters', 'filter_size', 'param_attr', 'act', 'pool_type', 'bias_attr'], varargs=None, keywords=None, defaults=(None, 'sigmoid', 'max', None)), ('document', 'd6a1e527b53f5cc15594fee307dfc5cf'))
 paddle.fluid.nets.glu (ArgSpec(args=['input', 'dim'], varargs=None, keywords=None, defaults=(-1,)), ('document', 'b87bacfc70dd3477ed25ef14aa01389a'))
@@ -1041,3 +1038,4 @@ paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, k
 paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ead717d6d440a1eb11971695cd1727f4'))
 paddle.fluid.Scope Scope() -> paddle.fluid.core_avx._Scope
 paddle.fluid.install_check.run_check (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '66b7c84a17ed32fec2df9628367be2b9'))
+
