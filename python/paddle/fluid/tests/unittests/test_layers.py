@@ -2251,6 +2251,23 @@ class TestBook(LayerTest):
                 nms_eta=1.)
             return (nmsed_outs)
 
+    def test_fused_emb_seq(self):
+        dict_size = 20
+        with self.static_graph():
+            tensor = fluid.core.LoDTensor()
+            place = fluid.core.CPUPlace()
+            tensor.set(np.array([1, 2, 3, 1, 2]).astype("int64"), place)
+            tensor.set_recursive_sequence_lengths([[4, 1]])
+            data_t = layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=1)
+            emb = layers.fused_emb_seq(
+                input=data_t,
+                size=[dict_size, 32],
+                param_attr='w',
+                is_sparse=False)
+            self.get_static_graph_result(
+                feed={'word': tensor}, fetch_list=[emb])
+
 
 if __name__ == '__main__':
     unittest.main()
