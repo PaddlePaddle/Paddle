@@ -109,11 +109,7 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
-  std::string fuse_activation =
-      conv_op->Op()->HasAttr("fuse_activation")
-          ? boost::get<std::string>(conv_op->Op()->GetAttr("fuse_activation"))
-          : "";
-  if (fuse_activation == "relu" || fuse_activation == "relu6") return;
+  if (HasFusedActivation(conv_op)) return;
 
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
@@ -182,12 +178,7 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
     return;
   }
 
-  std::string fuse_activation =
-      residual_conv_op->Op()->HasAttr("fuse_activation")
-          ? boost::get<std::string>(
-                residual_conv_op->Op()->GetAttr("fuse_activation"))
-          : "";
-  if (fuse_activation == "relu" || fuse_activation == "relu6") return;
+  if (HasFusedActivation(residual_conv_op)) return;
 
   residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
   residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
