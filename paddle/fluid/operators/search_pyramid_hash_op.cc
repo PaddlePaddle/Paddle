@@ -263,18 +263,23 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
     LOG(ERROR) << "top_l: " << top_l;
 #endif
     framework::LoD top_lod;
-    top_lod.push_back(top_offset);
-    top->set_lod(top_lod);
     if (top_l < 1) {
 #ifdef DEBUG
       LOG(ERROR) << "memset all 0 with dims[0]: " << top_offset.size() - 1;
 #endif
+      for (int i = 1; i < top_offset.size(); i++) {
+        top_offset[i] = top_offset[i - 1] + 1;
+      }
+      top_lod.push_back(top_offset);
+      top->set_lod(top_lod);
       int bs = top_offset.size() - 1;
       top->Resize(framework::make_ddim({bs, _num_emb}));
       auto* top_data = top->mutable_data<T>(ctx.GetPlace());
       memset(top_data, 0, sizeof(T) * bs * _num_emb);
       return;
     }
+    top_lod.push_back(top_offset);
+    top->set_lod(top_lod);
     top->Resize(framework::make_ddim({top_l, _num_emb}));
     auto* top_data = top->mutable_data<T>(ctx.GetPlace());
 
