@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
-#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -25,46 +25,77 @@ void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;
   for (Node* n : graph->Nodes()) {
-    bool can_remove = false;
     if (n->IsOp() && n->Op()) {
       if (n->Op()->Type() == "dropout") {
-        can_remove = SimplifyDropout(graph, n);
+        SimplifyDropout(graph, n, &del_node_set);
       }
-    }
-    if (can_remove) {
-      del_node_set.insert(n);
     }
   }
 
   GraphSafeRemoveNodes(graph, del_node_set);
 }
 
-bool SimplifyWithBasicOpsPass::SimplifyDropout(Graph* graph, Node* n) const {
-  OpDesc* op = n->Op();
-  bool is_test = boost::get<bool>(op->GetAttr("is_test"));
+bool SimplifyWithBasicOpsPass::SimplifyDropout(
+    Graph* graph, Node* n,
+    std::unordered_set<const Node*>* del_node_set) const {
+  OpDesc* dropout_op_desc = n->Op();
+  bool is_test = boost::get<bool>(dropout_op_desc->GetAttr("is_test"));
   if (!is_test) {
     return false;
   }
 
-  Node* dropout_x = GetInputVar(n, op->Input("X")[0]);
-  Node* dropout_out = GetOutputVar(n, op->Output("Out")[0]);
+  Node* dropout_x = GetInputVar(n, dropout_op_desc->Input("X")[0]);
+  Node* dropout_out = GetOutputVar(n, dropout_op_desc->Output("Out")[0]);
 
-  bool upscale_in_train =
-      boost::get<std::string>(op->GetAttr("dropout_implementation")) ==
-      "upscale_in_train";
+  bool upscale_in_train = boost::get<std::string>(dropout_op_desc->GetAttr(
+                              "dropout_implementation")) == "upscale_in_train";
   if (upscale_in_train) {
-    // dropout_op can be delete.
+    // dropout_op can be deleted.
+    // dropout_x -> dropout_op -> dropout_out -> next_op -> next_out
+    //   |
+    //  \|/
+    // dropout_x -> next_op -> next_out
+    // Check whether dropout_x is some next_op's output
+    bool dropout_x_is_reused_as_output = false;
     for (auto* next_op : dropout_out->outputs) {
-      dropout_x->outputs.push_back(next_op);
-      for (size_t i = 0; i < next_op->inputs.size(); ++i) {
-        if (next_op->inputs[i] == dropout_out) {
-          next_op->inputs[i] = dropout_x;
+      for (auto* next_out : next_op->outputs) {
+        if (next_out == dropout_x ||
+            next_out->Var()->Name() == dropout_x->Var()->Name()) {
+          dropout_x_is_reused_as_output = true;
+          break;
         }
       }
+      if (dropout_x_is_reused_as_output) {
+        break;
+      }
     }
+    if (dropout_x_is_reused_as_output) {
+      VarDesc new_var_desc(*dropout_x->Var());
+      new_var_desc.SetName("simplify_with_basic_ops_" + dropout_x->Name());
+      auto* new_var_node = graph->CreateVarNode(&new_var_desc);
+      for (auto* out_op : dropout_x->outputs) {
+        if (out_op != n) {
+          ReplaceInputVar(out_op, dropout_x, new_var_node);
+        }
+      }
+      for (auto* in_op : dropout_x->inputs) {
+        ReplaceOutputVar(in_op, dropout_x, new_var_node);
+      }
+      dropout_x = new_var_node;
+    }
+    for (auto* next_op : dropout_out->outputs) {
+      ReplaceInputVar(next_op, dropout_out, dropout_x);
+    }
+
+    del_node_set->insert(dropout_out);
   } else {
-    // use a scale_op replaces the dropout_op
-    float scale = 1.0f - boost::get<float>(op->GetAttr("dropout_prob"));
+    // Use a scale_op replaces the dropout_op
+    // dropout_x -> dropout_op -> dropout_out -> next_op -> next_out
+    //   |
+    //  \|/
+    // dropout_x -> scale_op -> dropout_out -> next_op -> next_out
+    float scale =
+        1.0f - boost::get<float>(dropout_op_desc->GetAttr("dropout_prob"));
 
     framework::OpDesc new_op_desc;
     new_op_desc.SetType("scale");
@@ -74,10 +105,12 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(Graph* graph, Node* n) const {
     new_op_desc.SetAttr("bias", static_cast<float>(0));
     new_op_desc.SetAttr("bias_after_scale", true);
 
-    auto scale_node = graph->CreateOpNode(&new_op_desc);
-    IR_NODE_LINK_TO(dropout_x, scale_node);
-    IR_NODE_LINK_TO(scale_node, dropout_out);
+    auto* scale_op_node = graph->CreateOpNode(&new_op_desc);
+    IR_NODE_LINK_TO(dropout_x, scale_op_node);
+    IR_NODE_LINK_TO(scale_op_node, dropout_out);
   }
+
+  del_node_set->insert(n);
   return true;
 }
 
@@ -99,6 +132,32 @@ Node* SimplifyWithBasicOpsPass::GetOutputVar(Node* n,
     }
   }
   return nullptr;
+}
+
+void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op, Node* old_var,
+                                               Node* new_var) const {
+  if (op->IsOp() && op->Op()) {
+    new_var->outputs.push_back(op);
+    for (size_t i = 0; i < op->inputs.size(); ++i) {
+      if (op->inputs[i] == old_var) {
+        op->inputs[i] = new_var;
+        op->Op()->RenameInput(old_var->Name(), new_var->Name());
+      }
+    }
+  }
+}
+
+void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
+                                                Node* new_var) const {
+  if (op->IsOp() && op->Op()) {
+    new_var->inputs.push_back(op);
+    for (size_t i = 0; i < op->outputs.size(); ++i) {
+      if (op->outputs[i] == old_var) {
+        op->outputs[i] = new_var;
+        op->Op()->RenameOutput(old_var->Name(), new_var->Name());
+      }
+    }
+  }
 }
 
 }  // namespace ir

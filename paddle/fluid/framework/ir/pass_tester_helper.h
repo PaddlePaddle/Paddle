@@ -142,17 +142,46 @@ static std::string DebugString(Node* node) {
       is_first = false;
     }
     os << "}.";
+  } else if (node->IsVar() && node->Var()) {
+    os << "Node(" << node->Name() << "), inputs:{";
+    bool is_first = true;
+    for (auto* in : node->inputs) {
+      if (!is_first) {
+        os << ", ";
+      }
+      if (in->IsOp() && in->Op()) {
+        os << in->Op()->Type();
+      }
+      is_first = false;
+    }
+    os << "}, outputs:{";
+    is_first = true;
+    for (auto* out : node->outputs) {
+      if (!is_first) {
+        os << ", ";
+      }
+      if (out->IsOp() && out->Op()) {
+        os << out->Op()->Type();
+      }
+      is_first = false;
+    }
+    os << "}";
   }
   return os.str();
 }
 
 static std::string DebugString(const std::unique_ptr<Graph>& graph) {
   std::ostringstream os;
+  os << "Graph: {\n";
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
-      os << DebugString(node) << "\n";
+      os << "  ";
+    } else if (node->IsVar() && node->Var()) {
+      os << "    ";
     }
+    os << DebugString(node) << "\n";
   }
+  os << "}\n";
   return os.str();
 }
 

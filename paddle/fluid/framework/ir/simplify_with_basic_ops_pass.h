@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -26,10 +27,14 @@ class SimplifyWithBasicOpsPass : public Pass {
   void ApplyImpl(Graph* graph) const override;
 
  private:
-  bool SimplifyDropout(Graph* graph, Node* n) const;
+  bool SimplifyDropout(Graph* graph, Node* n,
+                       std::unordered_set<const Node*>* del_node_set) const;
 
   Node* GetInputVar(Node* n, const std::string& name) const;
   Node* GetOutputVar(Node* n, const std::string& name) const;
+
+  void ReplaceInputVar(Node* op, Node* old_var, Node* new_var) const;
+  void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) const;
 };
 
 }  // namespace ir
