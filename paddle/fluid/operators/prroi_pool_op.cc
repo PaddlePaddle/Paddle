@@ -80,31 +80,31 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PRROIPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of PRROIPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PRROIPoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of op(PRROIPool) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
+                      "Input(ROIs) of op(PRROIPool) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of op(PRROIPool) should not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    PADDLE_ENFORCE(input_dims.size() == 4,
-                   "The format of input tensor is NCHW");
-    PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                   "given as [(x1, y1, x2, y2), ...]");
-    PADDLE_ENFORCE(rois_dims[1] == 4,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                   "given as [(x1, y1, x2, y2), ...]");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      "The format of input tensor is NCHW");
+    PADDLE_ENFORCE_EQ(rois_dims.size(), 2,
+                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                      "given as [(x1, y1, x2, y2), ...]");
+    PADDLE_ENFORCE_EQ(rois_dims[1], 4,
+                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                      "given as [(x1, y1, x2, y2), ...]");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     int output_channels = ctx->Attrs().Get<int>("output_channels");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE(
-        input_dims[1] == output_channels * pooled_height * pooled_width,
+    PADDLE_ENFORCE_EQ(
+        input_dims[1], output_channels * pooled_height * pooled_width,
         "the channel of X(%d) should be equal to the product of "
         "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
         input_dims[1], output_channels, pooled_height, pooled_width);
@@ -140,10 +140,10 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "The gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      "The gradient of X should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
