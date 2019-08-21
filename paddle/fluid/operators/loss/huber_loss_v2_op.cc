@@ -25,23 +25,22 @@ class HuberLossV2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must be initialized.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) must be initialized.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
+                      "Input(Y) must be initialized.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2,
-                      "The rank of Input(X) must be 2 and the shape is "
-                      "[batch_size, 1].");
-    if (ctx->IsRuntime() ||
-        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
-      PADDLE_ENFORCE_EQ(x_dims, y_dims, "Shape of X and Y should be same");
-    }
+    PADDLE_ENFORCE_LE(x_dims.size(), 2,
+                      "The rank of Input(X) should less than or equal to 2.");
+    PADDLE_ENFORCE_LE(y_dims.size(), 2,
+                      "The rank of Input(Y) should less than or equal to 2.");
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims[1], 1,
-                        "Each row of Input(X) contains a real value, "
-                        "so the 2nd dimension of Input(X) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          framework::product(x_dims), framework::product(y_dims),
+          "Input(X) and Input(y) should have the same number of elements");
     }
 
     ctx->SetOutputDim("Residual", x_dims);
@@ -56,10 +55,10 @@ class HuberLossV2OpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input value of huber loss op."
-             "X is a 2-D tensor with shape [batch_size, 1].");
+             "X is tensor with shape [batch_size, 1] or [batch_size]");
     AddInput("Y",
              "The target value of huber loss op."
-             "Y is a 2-D tensor with shape [batch_size, 1].");
+             "Y is tensor with shape [batch_size, 1] or [batch_size]");
     AddOutput("Residual",
               "Intermediate tensor to cache residual value between Y and X."
               "The shape is same as Input(X) and will be reused in backward.")
@@ -98,8 +97,8 @@ class HuberLossV2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Input(Out@GRAD) should not be null.");
 
     auto residual_dims = ctx->GetInputDim("Residual");
 

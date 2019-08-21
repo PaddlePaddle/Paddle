@@ -72,14 +72,13 @@ class TestHuberLossApi(unittest.TestCase):
 
         place = fluid.CPUPlace()
         x_data = np.random.rand(10, 13).astype("float32")
-        label_data = np.random.random(size=(10, 1)).astype('float32')
+        label_data = np.random.random(size=(10, )).astype('float32')
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         ret = exe.run(feed={'x': x_data,
                             'label': label_data},
                       fetch_list=[loss],
                       return_numpy=False)
-        print(ret[0])
 
 
 if __name__ == '__main__':
