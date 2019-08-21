@@ -135,7 +135,7 @@ class LightNASStrategy(Strategy):
         _, _, test_prog, _, _, _, _ = context.search_space.create_net(tokens)
         flops = GraphWrapper(test_prog).flops()
         if flops <= self._max_flops:
-            if self._max_latency > 0 and context is not None:
+            if self._max_latency > 0:
                 latency = context.search_space.get_model_latency(test_prog)
                 return latency <= self._max_latency
             return True
