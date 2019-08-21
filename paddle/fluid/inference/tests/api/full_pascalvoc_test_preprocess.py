@@ -70,8 +70,8 @@ def convert_pascalvoc_local2bin(args):
     output_file_path = os.path.join(data_dir, args.output_file)
     f1 = open(output_file_path, "w+b")
     f1.seek(0)
-    line_len = len(lines)
-    f1.write(np.array(line_len).astype('int64').tobytes())
+    image_nums = len(lines)
+    f1.write(np.array(image_nums).astype('int64').tobytes())
 
     boxes = []
     lbls = []
@@ -128,9 +128,8 @@ def convert_pascalvoc_local2bin(args):
     f1.close()
 
     object_nums_sum = sum(object_nums)
-    target_size = 8 + line_len * 3 * args.resize_h * args.resize_h * 4 + line_len * 8 + object_nums_sum * (
+    target_size = 8 + image_nums * 3 * args.resize_h * args.resize_h * 4 + image_nums * 8 + object_nums_sum * (
         8 + 4 * 4 + 8)
-    print("Target_size is", target_size)
     if (os.path.getsize(output_file_path) == target_size):
         print("Success! \nThe output binary file can be found at: ",
               output_file_path)
@@ -168,12 +167,12 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
     f_test = tar.extractfile(TEST_LIST_KEY).read()
     lines = f_test.split('\n')
     del lines[-1]
-    line_len = len(lines)
-    per_percentage = line_len / 100
+    image_nums = len(lines)
+    per_percentage = image_nums / 100
 
     f1 = open(data_out_path, "w+b")
     f1.seek(0)
-    f1.write(np.array(line_len).astype('int64').tobytes())
+    f1.write(np.array(image_nums).astype('int64').tobytes())
     for tarInfo in tar:
         if tarInfo.isfile():
             tmp_filename = tarInfo.name
@@ -264,12 +263,6 @@ def run_convert():
     print("Success!\nThe binary file can be found at %s\n" % DATA_OUT_PATH)
 
 
-def data_path(path):
-    if not os.path.exists(path):
-        raise ValueError("Path %s do not exist." % path)
-    return path
-
-
 def main_pascalvoc_preprocess(args):
     parser = argparse.ArgumentParser(
         description="Convert the full pascalvoc val set or local data to binary file."
@@ -279,7 +272,7 @@ def main_pascalvoc_preprocess(args):
     parser.add_argument(
         "--data_dir",
         default="/home/li/AIPG-Paddle/paddle/build/third_party/inference_demo/int8v2/pascalvoc_small",
-        type=data_path,
+        type=str,
         help="Dataset root directory")
     parser.add_argument(
         "--img_annotation_list",
