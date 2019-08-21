@@ -1100,6 +1100,34 @@ class TestLayer(LayerTest):
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
+    def test_crop_tensor(self):
+        with self.static_graph():
+            x = fluid.layers.data(name="x1", shape=[6, 5, 8])
+
+            dim1 = fluid.layers.data(
+                name="dim1", shape=[1], append_batch_size=False)
+            dim2 = fluid.layers.data(
+                name="dim2", shape=[1], append_batch_size=False)
+            crop_shape1 = (1, 2, 4, 4)
+            crop_shape2 = fluid.layers.data(
+                name="crop_shape", shape=[4], append_batch_size=False)
+            crop_shape3 = [-1, dim1, dim2, 4]
+            crop_offsets1 = [0, 0, 1, 0]
+            crop_offsets2 = fluid.layers.data(
+                name="crop_offset", shape=[4], append_batch_size=False)
+            crop_offsets3 = [0, dim1, dim2, 0]
+
+            out1 = fluid.layers.crop_tensor(
+                x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = fluid.layers.crop_tensor(
+                x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = fluid.layers.crop_tensor(
+                x, shape=crop_shape3, offsets=crop_offsets3)
+
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            self.assertIsNotNone(out3)
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):

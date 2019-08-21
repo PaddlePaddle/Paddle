@@ -133,6 +133,7 @@ __all__ = [
     'selu',
     'log',
     'crop',
+    'crop_tensor',
     'rank_loss',
     'margin_rank_loss',
     'elu',
@@ -9117,6 +9118,11 @@ def crop(x, shape=None, offsets=None, name=None):
     """
     Crop input into output, as specified by offsets and shape.
 
+    **Warning:** THIS FUNCTION IS DEPRECATED. It will be removed in a future version.
+    Instructions for updating: Use `fluid.layers.crop_tensor
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/layers/nn.html#crop_tensor>`_
+    instead.
+
     .. code-block:: text
 
         * Case 1:
@@ -9148,16 +9154,16 @@ def crop(x, shape=None, offsets=None, name=None):
     Args:
         x (Variable): The input tensor variable.
         shape (Variable|list/tuple of integer): The output shape is specified
-            by `shape`, which can a Variable or a list/tupe of integer.
+            by `shape`, which can be a Variable or a list/tuple of integer.
             If a tensor Variable, it's rank must be the same as `x`. This way
             is suitable for the case that the output shape may be changed each
-            iteration. If a list/tupe of integer, it's length must be the same
+            iteration. If a list/tuple of integer, it's length must be the same
             as the rank of `x`
         offsets (Variable|list/tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a Variable or or a list/tupe
+            offsets at each dimension. It can be a Variable or a list/tuple
             of integers. If a tensor Variable, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
-            each iteration. If a list/tupe of integer, it's length must be the
+            each iteration. If a list/tuple of integer, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each
             dimension.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -9206,6 +9212,188 @@ def crop(x, shape=None, offsets=None, name=None):
 
     helper.append_op(
         type='crop',
+        inputs=ipts,
+        outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def crop_tensor(x, shape=None, offsets=None, name=None):
+    """
+    Crop input into output, as specified by offsets and shape.
+
+    .. code-block:: text
+
+        * Case 1:
+            Given
+                X = [[0, 1, 2, 0, 0]
+                     [0, 3, 4, 0, 0]
+                     [0, 0, 0, 0, 0]],
+            and
+                shape = [2, 2],
+                offsets = [0, 1],
+            output is:
+                Out = [[1, 2],
+                       [3, 4]].
+        * Case 2:
+            Given
+                X =  [[[0, 1, 2, 3]
+                       [0, 5, 6, 7]
+                       [0, 0, 0, 0]],
+
+                      [[0, 3, 4, 5]
+                       [0, 6, 7, 8]
+                       [0, 0, 0, 0]]].
+            and
+                shape = [2, 2, 3],
+                offsets = [0, 0, 1],
+            output is:
+                Out = [[[1, 2, 3]
+                        [5, 6, 7]],
+
+                        [[3, 4, 5]
+                         [6, 7, 8]]].
+
+    Args:
+        x (Variable): The input tensor variable.
+        shape (Variable|list|tuple of integer): The output shape is specified
+            by `shape`. It can be a 1-D tensor Variable or a list/tuple. If a 
+            1-D tensor Variable, it's rank must be the same as `x`. If a 
+            list/tuple, it's length must be the same as the rank of `x`. Each 
+            element of list can be an integer or a tensor Variable of shape: [1].
+            If Variable contained, it is suitable for the case that the shape may 
+            be changed each iteration. Only the first element of list/tuple can be 
+            set to -1, it means that the first dimension of the output is the same 
+            as the input.
+        offsets (Variable|list|tuple of integer|None): Specifies the cropping
+            offsets at each dimension. It can be a 1-D tensor Variable or a list/tuple.
+            If a 1-D tensor Variable, it's rank must be the same as `x`. If a list/tuple, 
+            it's length must be the same as the rank of `x`. Each element of list can be
+            an integer or a tensor Variable of shape: [1]. If Variable contained, it is 
+            suitable for the case that the offsets may be changed each iteration. If None, 
+            the offsets are 0 at each dimension.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The cropped tensor variable.
+
+    Raises:
+        ValueError: If shape is not a list, tuple or Variable.
+        ValueError: If offsets is not None and not a list, tuple or Variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
+            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            # shape is a 1-D tensor variable
+            crop_shape = fluid.layers.data(name="crop_shape", shape=[3], dtype="int32", append_batch_size=False)
+            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
+            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
+
+            # or shape is a list in which each element is a constant
+            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
+            # crop1.shape = [-1, 2, 3]
+
+            # or shape is a list in which each element is a constant or variable
+            y = fluid.layers.data(name="y", shape=[3, 8, 8], dtype="float32")
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            crop2 = fluid.layers.crop_tensor(y, shape=[-1, 3, dim1, 4])
+            # crop2.shape = [-1, 3, -1, 4]
+
+            # offsets is a 1-D tensor variable
+            crop_offsets = fluid.layers.data(name="crop_offsets", shape=[3], dtype="int32", append_batch_size=False)
+            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
+            # crop3.shape = [-1, 2, 3]
+
+            # offsets is a list in which each element is a constant or variable
+            offsets_var =  fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
+            # crop4.shape = [-1, 2, 3]
+
+    """
+    helper = LayerHelper('crop_tensor', **locals())
+
+    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
+            isinstance(shape, Variable)):
+        raise ValueError("The shape should be a list, tuple or Variable.")
+
+    if offsets is None:
+        offsets = [0] * len(x.shape)
+
+    if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
+            isinstance(offsets, Variable)):
+        raise ValueError("The offsets should be a list, tuple or Variable.")
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x}
+    attrs = {}
+
+    def contain_var(input_list):
+        for ele in input_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    if isinstance(offsets, Variable):
+        offsets.stop_gradient = True
+        ipts['Offsets'] = offsets
+    elif contain_var(offsets):
+        new_offsets_tensor = []
+        for dim in offsets:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_offsets_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                assert dim >= 0, ("offsets should be greater or equal to zero.")
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_offsets_tensor.append(temp_out)
+        ipts['OffsetsTensor'] = new_offsets_tensor
+    else:
+        attrs['offsets'] = offsets
+
+    unk_dim_idx = -1
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        ipts['Shape'] = shape
+    elif contain_var(shape):
+        new_shape_tensor = []
+        shape_attr = []
+        for dim_idx, dim_size in enumerate(shape):
+            if isinstance(dim_size, Variable):
+                dim_size.stop_gradient = True
+                new_shape_tensor.append(dim_size)
+                shape_attr.append(-1)
+            else:
+                assert (isinstance(dim_size, int))
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one element in shape can be unknown.")
+                    assert dim_idx == 0, (
+                        "Only the first element in shape can be -1.")
+                    unk_dim_idx = dim_idx
+                else:
+                    assert dim_size > 0, (
+                        "Each dimension size given in shape must be greater than zero."
+                    )
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant(
+                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+                shape_attr.append(dim_size)
+        ipts['ShapeTensor'] = new_shape_tensor
+        attrs['shape'] = shape_attr
+    else:
+        attrs['shape'] = shape
+
+    helper.append_op(
+        type='crop_tensor',
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
