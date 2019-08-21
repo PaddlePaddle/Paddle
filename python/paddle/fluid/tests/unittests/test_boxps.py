@@ -108,6 +108,11 @@ class TestBoxPSPreload(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
         emb_x, emb_y = layers.pull_box_sparse([x, y], size=2)
 
+        # For variable input for pull_box_sparse (For code coverage)
+        # TODO: will add UT for pull_box_sparse op to cover this case
+        emb_xp = layers.pull_box_sparse(x, size=2)
+        layers.Print(emb_xp)
+
         concat = layers.concat([emb_x, emb_y], axis=1)
         fc = layers.fc(input=concat,
                        name="fc",
