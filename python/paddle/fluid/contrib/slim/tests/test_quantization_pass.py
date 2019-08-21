@@ -130,7 +130,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
                             arg_name.endswith('.quantized.dequantized'))
                         self.assertTrue(arg_name in quantized_ops)
 
-    def linear_fc_quant(self, activation_quant_type, for_ci=False):
+    def linear_fc_quant(self, activation_quant_type, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -171,7 +171,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
     def test_linear_fc_quant_moving_average_abs_max(self):
         self.linear_fc_quant('moving_average_abs_max', for_ci=True)
 
-    def residual_block_quant(self, activation_quant_type, for_ci=False):
+    def residual_block_quant(self, activation_quant_type, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
