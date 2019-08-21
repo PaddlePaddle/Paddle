@@ -76,11 +76,54 @@ struct Layers {
   int idx_{0};
 };
 
-std::string DebugString(Node* node) {
+static std::string DebugString(OpDesc* op) {
+  std::ostringstream os;
+  os << "Op(" << op->Type() << "), inputs:{";
+  bool is_first = true;
+  for (auto& name : op->InputNames()) {
+    if (!is_first) {
+      os << ", ";
+    }
+    os << name << "[";
+    bool is_first_var_name = true;
+    for (auto& var_name : op->Input(name)) {
+      if (!is_first_var_name) {
+        os << ", ";
+      }
+      os << var_name;
+      is_first_var_name = false;
+    }
+    os << "]";
+    is_first = false;
+  }
+
+  os << "}, outputs:{";
+  is_first = true;
+  for (auto& name : op->OutputNames()) {
+    if (!is_first) {
+      os << ", ";
+    }
+    os << name << "[";
+    bool is_first_var_name = true;
+    for (auto& var_name : op->Output(name)) {
+      if (!is_first_var_name) {
+        os << ", ";
+      }
+      os << var_name;
+      is_first_var_name = false;
+    }
+    os << "]";
+    is_first = false;
+  }
+  os << "}";
+  return os.str();
+}
+
+static std::string DebugString(Node* node) {
   std::ostringstream os;
   if (node->IsOp() && node->Op()) {
     OpDesc* op = node->Op();
-    os << "Op(" << op->Type() << "), inputs:{";
+    os << "Node(" << DebugString(op) << "), inputs:{";
     bool is_first = true;
     for (auto* in : node->inputs) {
       if (!is_first) {
@@ -103,7 +146,7 @@ std::string DebugString(Node* node) {
   return os.str();
 }
 
-std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
   std::ostringstream os;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
@@ -113,7 +156,8 @@ std::string DebugString(const std::unique_ptr<Graph>& graph) {
   return os.str();
 }
 
-int GetNumOpNodes(const std::unique_ptr<Graph>& graph, std::string op_type) {
+static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
+                         std::string op_type) {
   int num_nodes = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op() && node->Op()->Type() == op_type) {
