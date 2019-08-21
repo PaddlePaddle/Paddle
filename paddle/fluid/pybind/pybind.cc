@@ -86,6 +86,7 @@ limitations under the License. */
 DEFINE_bool(reader_queue_speed_test_mode, false,
             "If set true, the queue.pop will only get data from queue but not "
             "remove the data from queue for speed testing");
+DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -734,13 +735,12 @@ All parameter, weight, gradient are variables in Paddle.
         return std::make_pair(grad_op_desc_ptrs, grad_to_var);
       });
   m.def("has_grad_op_maker", [](const std::string op_type) {
-    auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
-    return op_info == nullptr ? false : op_info->HasGradOpMaker();
+    return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });
   m.def("has_infer_inplace", [](const std::string op_type) {
-    auto op_info = framework::OpInfoMap::Instance().GetNullable(op_type);
-    return op_info == nullptr ? false : op_info->HasInferInplace();
+    return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
+  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
 
   m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {

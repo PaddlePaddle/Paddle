@@ -141,7 +141,6 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
-        cls.inplace_atol = None
 
         np.random.seed(123)
         random.seed(124)
@@ -336,9 +335,10 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         if for_inplace_grad_test is not None:
-            # set persistable for variables without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
-            # so we can use variables in global_scope for inplace grad test directly, without feeding
-            # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+            # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             for name, var in block.vars.items():
                 if 0 in var.shape:
                     var.persistable = True
@@ -372,7 +372,6 @@ class OpTest(unittest.TestCase):
         if enable_inplace is not None:
             build_strategy = fluid.BuildStrategy()
             build_strategy.enable_inplace = enable_inplace
-            build_strategy.memory_optimize = False
 
             compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
                 build_strategy=build_strategy, places=place)
@@ -385,7 +384,10 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_inplace_output_with_place(self, place, no_check_set=None):
+    def check_inplace_output_with_place(self,
+                                        place,
+                                        no_check_set=None,
+                                        inplace_atol=None):
         # can`t enable inplace 
         if not fluid.core.has_infer_inplace(self.op_type):
             return
@@ -396,12 +398,12 @@ class OpTest(unittest.TestCase):
 
         # compare expect_outs and actual_outs
         for i, out in enumerate(fetch_list):
-            if self.inplace_atol is not None:
+            if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
                         np.array(expect_outs[i]),
                         np.array(actual_outs[i]),
-                        atol=self.inplace_atol),
+                        atol=inplace_atol),
                     "Output (" + out.name + ") has diff at " + str(place) +
                     " when using and not using inplace" + "\nExpect " +
                     str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
@@ -415,8 +417,11 @@ class OpTest(unittest.TestCase):
                     str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
                     + " in class " + self.__class__.__name__ + '\n')
 
-    def check_inplace_grad_output_with_place(self, place, no_check_set=None):
-        # create froward program to get forward vars
+    def check_inplace_grad_output_with_place(self,
+                                             place,
+                                             no_check_set=None,
+                                             inplace_atol=None):
+        # create forward program to get forward vars
         program = Program()
         block = program.global_block()
         op = self._append_ops(block)
@@ -429,14 +434,14 @@ class OpTest(unittest.TestCase):
             return
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
                                                                   set(), [])
-        # has grad_op_maker but no grad_op ?
+        # has grad_op_maker but no grad_op 
         if not grad_op_desc_list:
             return
 
         for i, grad_op_desc in enumerate(grad_op_desc_list):
             # grad_op can not inplace
             if not fluid.core.has_infer_inplace(grad_op_desc.type()):
-                return
+                continue
             # get forward outs
             forward_outs, fetch_list = self._calc_output(
                 place, no_check_set=no_check_set, for_inplace_grad_test=True)
@@ -463,9 +468,10 @@ class OpTest(unittest.TestCase):
                     shape=forward_var.shape,
                     type=forward_var.type,
                     persistable=False)
-                # set persistable for variables without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
-                # so we can use variables in global_scope directly, without feeding
-                # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
+                # some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
+                # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+                # set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+                # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
                 if 0 in grad_var.shape:
                     grad_var.persistable = True
             grad_program._sync_with_cpp()
@@ -487,11 +493,10 @@ class OpTest(unittest.TestCase):
                             forward_var_name = arg
                         for i, out in enumerate(fetch_list):
                             if out.name == forward_var_name:
+                                # don't feed variables whose tensors hold no buffer (shape contains 0 like shape = [0,2,5] and holder_ is NULL), like XShape in reshape2 op.
+                                # get them from global_scope directly since we have set them persistable in forward execution
                                 if 0 in out.shape:
                                     continue
-                                    # don't feed tensors without buffer (shape contains 0 like shape = [0,2,5], holder_ is NULL), like XShape
-                                    # use variables in global_scope directly
-                                    # since feed_op will call check_memory_size() which fails when tensor holder_ is NULL
                                 else:
                                     grad_feed_map[arg] = forward_outs[i]._copy(
                                         p)
@@ -513,12 +518,12 @@ class OpTest(unittest.TestCase):
 
             # compare expect_outs and actual_outs
             for i, out_name in enumerate(grad_fetch_list):
-                if self.inplace_atol is not None:
+                if inplace_atol is not None:
                     self.assertTrue(
                         np.allclose(
                             np.array(expect_outs[i]),
                             np.array(actual_outs[i]),
-                            atol=self.inplace_atol),
+                            atol=inplace_atol),
                         "Output (" + out_name + ") has diff at " + str(place) +
                         " when using and not using inplace" + "\nExpect " +
                         str(expect_outs[i]) + "\n" + "But Got" +
@@ -539,7 +544,8 @@ class OpTest(unittest.TestCase):
                                 atol,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_dygraph=False):
+                                check_dygraph=False,
+                                inplace_atol=None):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -640,19 +646,24 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        if self.inplace_atol is not None:
+        # inplace_atol only used when op doesn't ensure computational consistency
+        if inplace_atol is not None:
             warnings.warn(
                 "By default, inplace_atol should not be set, please check it")
-        self.check_inplace_output_with_place(place, no_check_set=no_check_set)
+        self.check_inplace_output_with_place(
+            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
         # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
-        if (hasattr(self, 'attrs') and self.attrs.get('use_mkldnn') is not None
-            ) or os.getenv('FLAGS_use_mkldnn') is not None:
+        # skip use_mkldnn currently
+        flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
+        attrs_use_mkldnn = hasattr(
+            self, 'attrs') and bool(self.attrs.get('use_mkldnn', False))
+        if flags_use_mkldnn or attrs_use_mkldnn:
             warnings.warn(
                 "check inplace_grad for ops using mkldnn is not supported")
             return
         self.check_inplace_grad_output_with_place(
-            place, no_check_set=no_check_set)
+            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
     def _get_places(self):
         if self.dtype == np.float16:
@@ -679,7 +690,8 @@ class OpTest(unittest.TestCase):
                      atol=1e-5,
                      no_check_set=None,
                      equal_nan=False,
-                     check_dygraph=False):
+                     check_dygraph=False,
+                     inplace_atol=None):
         places = self._get_places()
         for place in places:
             self.check_output_with_place(place, atol, no_check_set, equal_nan,

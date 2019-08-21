@@ -78,7 +78,7 @@ struct OpInfo {
     return grad_op_maker_;
   }
 
-  // some op has no grad_op_maker, can't use GradOpMaker() ?
+  // some op has no grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const {
     return grad_op_maker_ != nullptr ? true : false;
   }

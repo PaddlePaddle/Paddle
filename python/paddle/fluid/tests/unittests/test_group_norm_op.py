@@ -44,7 +44,6 @@ class TestGroupNormOp(OpTest):
         self.shape = (2, 4, 3, 3)
         self.attrs = {'epsilon': 1e-5, 'groups': 2}
         self.compare_between_place = False
-        self.inplace_atol = 1e-5
         self.init_test_case()
 
         input = np.random.random(self.shape).astype(self.dtype)
@@ -62,11 +61,15 @@ class TestGroupNormOp(OpTest):
 
     def test_check_output(self):
         atol = 1e-4
+        inplace_atol = 1e-4
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=atol)
+        # add inplace_atol bacause group_norm doesn't ensure computational consistency
+        self.check_output_with_place(
+            place, atol=atol, inplace_atol=inplace_atol)
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=atol)
+            self.check_output_with_place(
+                place, atol=atol, inplace_atol=inplace_atol)
 
     def do_compare_between_place(self):
         if not core.is_compiled_with_cuda(): return
