@@ -97,8 +97,6 @@ class LightNASStrategy(Strategy):
 
     def on_compression_begin(self, context):
         self._current_tokens = context.search_space.init_tokens()
-        constrain_func = functools.partial(
-            self._constrain_func, context=context)
         self._controller.reset(context.search_space.range_table(),
                                self._current_tokens, None)
 
@@ -129,18 +127,6 @@ class LightNASStrategy(Strategy):
         # create client
         self._search_agent = SearchAgent(
             self._server_ip, self._server_port, key=self._key)
-
-    def _constrain_func(self, tokens, context=None):
-        """Check whether the tokens meet constraint."""
-        _, _, test_prog, _, _, _, _ = context.search_space.create_net(tokens)
-        flops = GraphWrapper(test_prog).flops()
-        if flops <= self._max_flops:
-            if self._max_latency > 0:
-                latency = context.search_space.get_model_latency(test_prog)
-                return latency <= self._max_latency
-            return True
-        else:
-            return False
 
     def on_epoch_begin(self, context):
         if context.epoch_id >= self.start_epoch and context.epoch_id <= self.end_epoch and (
