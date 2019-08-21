@@ -46,7 +46,10 @@ def _convert_places(places):
     return ret
 
 
-class DataLoaderBase(object):
+class DataLoader(object):
+    def __init__(self):
+        self._places = None
+
     def __call__(self):
         return self.__iter__()
 
@@ -59,8 +62,25 @@ class DataLoaderBase(object):
     def __next__(self):
         raise NotImplementedError()
 
+    @staticmethod
+    def from_generator(feed_list=None,
+                       capacity=None,
+                       use_double_buffer=True,
+                       iterable=True,
+                       return_list=False):
+        return GeneratorLoader(feed_list, capacity, use_double_buffer, iterable,
+                               return_list)
 
-class DataLoader(DataLoaderBase):
+    @staticmethod
+    def from_dataset(dataset):
+        return DatasetLoader(dataset)
+
+    @staticmethod
+    def from_filelist(filelist):
+        return FileListLoader(filelist)
+
+
+class GeneratorLoader(DataLoader):
     def __init__(self,
                  feed_list=None,
                  capacity=None,
@@ -68,8 +88,8 @@ class DataLoader(DataLoaderBase):
                  iterable=True,
                  return_list=False):
         self._tensor_reader = None
-        self._thread = None
         self._places = None
+        self._thread = None
         self._feed_list = feed_list
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -197,8 +217,8 @@ class DataLoader(DataLoaderBase):
                 else:
                     return self._reader.read_next()
             else:
-                ret = self._reader.read_next_list()
-                return [dygraph.base.to_variable(np.array(v)) for v in ret[0]]
+                ret = self._reader.read_next_list()[0]
+                return [dygraph.base.to_variable(v) for v in ret[0]]
         except:
             self._reset()
             six.reraise(*sys.exc_info())
@@ -247,8 +267,11 @@ class DataLoader(DataLoaderBase):
         if thread is not None:
             thread.join()
 
-    def set_sample_reader(self, reader, batch_size, drop_last=True,
-                          places=None):
+    def set_sample_generator(self,
+                             reader,
+                             batch_size,
+                             drop_last=True,
+                             places=None):
         assert batch_size > 0, "batch_size must be larger than 0"
         if not in_dygraph_mode():
             has_lod = False
@@ -258,7 +281,7 @@ class DataLoader(DataLoaderBase):
                     break
 
             if has_lod:
-                self.set_sample_list_reader(
+                self.set_sample_list_generator(
                     paddle.batch(
                         reader, batch_size=batch_size, drop_last=drop_last),
                     places=places)
@@ -269,14 +292,15 @@ class DataLoader(DataLoaderBase):
                     batch_size=batch_size,
                     generator=reader,
                     drop_last=drop_last)
-                self.set_batch_reader(reader, places=places)
+                self.set_batch_generator(reader, places=places)
         else:
-            self.set_sample_list_reader(
+            self.set_sample_list_generator(
                 paddle.batch(
                     reader, batch_size=batch_size, drop_last=drop_last),
                 places=places)
+        return self
 
-    def set_sample_list_reader(self, reader, places=None):
+    def set_sample_list_generator(self, reader, places=None):
         if not in_dygraph_mode():
             with program_guard(Program(), Program()):
                 feeder = DataFeeder(
@@ -294,20 +318,22 @@ class DataLoader(DataLoaderBase):
                 for slots in provider():
                     yield slots[0]
 
-        self.set_batch_reader(__tensor_reader_impl__, places)
+        self.set_batch_generator(__tensor_reader_impl__, places)
+        return self
 
-    def set_batch_reader(self, reader, places=None):
+    def set_batch_generator(self, reader, places=None):
         self._tensor_reader = reader
         if self._iterable:
-            assert places is not None, "Places cannot be None when py_reader is iterable"
+            assert places is not None, "Places cannot be None when DataLoader is iterable"
             self._places = _convert_places(places)
+        else:
+            if places is not None:
+                logging.info(
+                    'places would be ommited when DataLoader is not iterable')
+        return self
 
-    @staticmethod
-    def from_dataset(self, dataset):
-        raise NotImplementedError()
 
-
-class PyReader(DataLoaderBase):
+class PyReader(DataLoader):
     """
     Create a reader object for data feeding in Python. 
     Data would be prefetched using Python thread and be pushed
@@ -456,8 +482,8 @@ class PyReader(DataLoaderBase):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=False):
-        self._loader = DataLoader(feed_list, capacity, use_double_buffer,
-                                  iterable, return_list)
+        self._loader = DataLoader.from_generator(
+            feed_list, capacity, use_double_buffer, iterable, return_list)
 
     @property
     def queue(self):
@@ -671,7 +697,7 @@ class PyReader(DataLoaderBase):
                         executor.run(feed=data)
                  
         '''
-        self._loader.set_sample_list_reader(reader, places)
+        self._loader.set_sample_list_generator(reader, places)
 
     def decorate_batch_generator(self, reader, places=None):
         '''
@@ -723,4 +749,14 @@ class PyReader(DataLoaderBase):
                         executor.run(feed=data)
 
         '''
-        self._loader.set_batch_reader(reader, places)
+        self._loader.set_batch_generator(reader, places)
+
+
+class DatasetLoader(DataLoader):
+    def __init__(self, dataset):
+        self._dataset = dataset
+
+
+class FileListLoader(DataLoader):
+    def __init__(self, filelist):
+        self._filelist = filelist

@@ -14,26 +14,21 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace inference {
+namespace analysis {
 
-/*
- * Fuse the CONV and ReLU to a ConvReLUOp.
- */
-class ConvReLUFusePass : public FusePassBase {
+class IrInferCleanGraphPass : public AnalysisPass {
  public:
-  virtual ~ConvReLUFusePass() {}
+  void RunImpl(Argument *argument) override;
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  std::string repr() const override { return "ir_graph_clean_pass"; }
 };
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace analysis
+}  // namespace inference
 }  // namespace paddle

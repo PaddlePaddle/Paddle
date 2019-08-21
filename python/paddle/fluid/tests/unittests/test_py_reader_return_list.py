@@ -33,7 +33,7 @@ class TestPyReader(unittest.TestCase):
 
             return reader
 
-        for return_list in [True, False]:
+        for return_list in [True]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 image = fluid.layers.data(
                     name='image', shape=[784, 784], dtype='float32')
@@ -55,7 +55,7 @@ class TestPyReader(unittest.TestCase):
                 for _ in range(self.epoch_num):
                     for data in reader():
                         if return_list:
-                            executor.run(feed={"image": data[0]})
+                            executor.run(feed={"image": data[0][0]})
                         else:
                             executor.run(feed=data)
 

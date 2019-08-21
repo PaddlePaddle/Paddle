@@ -2123,7 +2123,7 @@ def conv2d(input,
     C will equal the number of input image channels divided by the groups.
     Please refer to UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more detials.
+    for more details.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -2166,7 +2166,7 @@ def conv2d(input,
         input (Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
         stride (int|tuple): The stride size. If stride is a tuple, it must

@@ -482,6 +482,11 @@ PYBIND11_MODULE(core_noavx, m) {
                  t.set_recursive_sequence_lengths([[2, 3]])
                  print(t.has_valid_recursive_sequence_lengths()) # True
            )DOC")
+      .def("_share_data_with",
+           [](LoDTensor &self, const LoDTensor &other) {
+             self.ShareDataWith(other);
+             self.set_lod(other.lod());
+           })
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference,
            R"DOC(
            Slice the original Tensor, and remove the LoD information.

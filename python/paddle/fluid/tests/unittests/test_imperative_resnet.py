@@ -327,6 +327,7 @@ class TestDygraphResnet(unittest.TestCase):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
             for batch_id, data in enumerate(train_reader()):
+                print('Get data')
                 if batch_id >= batch_num:
                     break
 

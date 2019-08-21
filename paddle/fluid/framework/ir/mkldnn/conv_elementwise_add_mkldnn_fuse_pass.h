@@ -126,6 +126,11 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(graph_ptr graph) const;
+  static bool HasFusedActivation(Node* conv_node) {
+    return !(conv_node->Op()
+                 ->GetAttrIfExists<std::string>("fuse_activation")
+                 .empty());
+  }
 
   const std::string name_scope_{"residual_connection_fuse_pass"};
 };
