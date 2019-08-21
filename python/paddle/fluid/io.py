@@ -1028,13 +1028,6 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
-        if main_program._is_mem_optimized:
-            warnings.warn(
-                "save_inference_model must put before you call memory_optimize. \
-                                            the memory_optimize will modify the original program, \
-                                            is not suitable for saving inference model \
-                                            we save the original program as inference model.",
-                RuntimeWarning)
 
     elif not isinstance(main_program, Program):
         raise TypeError("program should be as Program type or None")

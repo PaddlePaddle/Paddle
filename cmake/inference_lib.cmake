@@ -14,6 +14,12 @@
 
 # make package for paddle fluid shared and static library
 
+if(WIN32)
+    if(NOT PYTHON_EXECUTABLE)
+	FIND_PACKAGE(PythonInterp REQUIRED)
+    endif()
+endif()
+
 set(COPY_SCRIPT_DIR ${PADDLE_SOURCE_DIR}/cmake)
 function(copy TARGET)
     set(options "")
@@ -142,18 +148,6 @@ if (WITH_NGRAPH)
             DEPS ngraph
             )
 endif ()
-
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
-copy(snappy_lib
-        SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib
-        DEPS snappy)
-
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
-copy(snappystream_lib
-        SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib
-        DEPS snappystream)
 
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
 copy(zlib_lib
