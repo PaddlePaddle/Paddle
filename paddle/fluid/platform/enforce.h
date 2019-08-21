@@ -88,8 +88,10 @@ struct EnforceNotMet : public std::exception {
     std::stringstream ss;
     ss << output_file_name;
     std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
-    ss << "_" << std::put_time(&tm, "%F-%H-%M-%S") << ".log";
+    std::tm* tm = std::localtime(&t);
+    char mbstr[100];
+    std::strftime(mbstr, sizeof(mbstr), "%F-%H-%M-%S", tm);
+    ss << "_" << mbstr << ".log";
     std::ofstream err_file(ss.str(), std::ofstream::out);
     if (err_file.is_open()) {
       err_file << err;
