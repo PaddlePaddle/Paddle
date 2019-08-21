@@ -124,7 +124,7 @@ def row_conv_foward_Tensor(x, wt):
     return out
 
 
-class TestRowOpTensor(OpTest):
+class TestRowOpWithTensorInput(OpTest):
     def setUp(self):
         self.op_type = "row_conv"
         length = [3, 2, 4]

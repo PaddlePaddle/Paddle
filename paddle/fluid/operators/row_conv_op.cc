@@ -2,7 +2,9 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -93,9 +95,11 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
               "same shape as X.");
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
+
 The row convolution is called lookahead convolution.  This operator was 
 introduced in the following paper for DeepSpeech2:
 http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+
 The main motivation is that a bidirectional RNN, useful in DeepSpeech 
 like speech models, learns representation for a sequence by performing a 
 forward and a backward pass through the entire sequence. However, unlike 
@@ -104,20 +108,29 @@ and low-latency setting. The lookahead convolution incorporates information
 from future subsequences in a computationally efficient manner to improve 
 unidirectional recurrent neural networks. The row convolution operator is 
 different from the 1D sequence convolution, and is computed as follows:
+
 Given an input sequence $X$ of length $t$ and input dimension $D$, 
 and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
+
 $$
 out_{i} = \\sum_{j=i}^{i + context - 1} X_{j} \\cdot W_{j-i}
 $$
+
 In the above equation:
+
 * $Out_{i}$: The i-th row of output variable with shape [1, D].
+
 * $context$: Future context size.
+
 * $X_{j}$: The j-th row of input variable with shape [1, D].
+
 * $W_{j-i}$: The (j-i)-th row of parameters with shape [1, D].
+
 More details about row_conv please refer to
 the design document
 https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
+
 )DOC");
   }
 };
