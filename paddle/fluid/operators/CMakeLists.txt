@@ -17,6 +17,7 @@ add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(jit)
+add_subdirectory(loss)
 
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)

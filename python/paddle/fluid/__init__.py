@@ -51,6 +51,7 @@ from . import io
 from . import evaluator
 from . import initializer
 from . import layers
+from . import loss
 from . import dygraph
 from . import contrib
 from . import nets
@@ -93,6 +94,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'io',
         'initializer',
         'layers',
+        'loss',
         'contrib',
         'dygraph',
         'transpiler',
