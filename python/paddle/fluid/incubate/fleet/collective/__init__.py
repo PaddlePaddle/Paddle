@@ -179,19 +179,20 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-        elif strategy.use_dist_fc:
+
+        if strategy.use_dist_fc:
             self._check_condition(
                 "use_dist_fc",
                 use_dgc=main_program._enable_dgc,
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
-        elif strategy.train_with_program:
-            # the lowest priority
+
+        if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
             strategy.collective_mode = "grad_allreduce"
             self._check_condition(
-                "train_with_program",
+                "_ut4grad_allreduce",
                 use_dgc=main_program._enable_dgc,
                 use_lamb=main_program._use_lamb)
 
