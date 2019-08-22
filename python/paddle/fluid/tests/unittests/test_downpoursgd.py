@@ -29,8 +29,7 @@ from paddle.fluid.device_worker import DownpourSGD
 
 class TestListenAndServOp(OpTest):
     def setUp(self):
-        self.ps_timeout = 5
-        self.ip = "127.0.0.1"
+        pass
 
     def test_device_work_use_cvm(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
