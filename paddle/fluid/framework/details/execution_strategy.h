@@ -23,7 +23,7 @@ struct ExecutionStrategy {
   enum ExecutorType { kDefault = 0, kExperimental = 1 };
 
   // num_threads indicates the size of thread pool.
-  size_t num_threads_{0};
+  size_t num_threads_{1};
   bool use_cuda_{true};
   // Note that allow_op_delay is invalid now.
   bool allow_op_delay_{false};
