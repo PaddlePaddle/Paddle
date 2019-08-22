@@ -154,8 +154,7 @@ class DownpourServer(Server):
                 table2.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
                 table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
 
-    def add_dense_table(self, table_id, param_var, grad_var, strategy)
-    
+    def add_dense_table(self, table_id, param_var, grad_var, strategy):
         """
         Args:
             table_id(int): id of sparse params table
