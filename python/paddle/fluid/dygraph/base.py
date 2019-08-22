@@ -177,7 +177,7 @@ def to_variable(value, block=None, name=None):
             y = fluid.dygraph.to_variable(x)
 
     """
-    if isinstance(value, (np.ndarray, LoDTensor)):
+    if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
 
@@ -192,10 +192,7 @@ def to_variable(value, block=None, name=None):
             stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
-        if isinstance(value, LoDTensor):
-            tensor._share_data_with(value)
-        else:
-            tensor.set(value, framework._current_expected_place())
+        tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):
         return value

@@ -33,7 +33,7 @@ class TestPyReader(unittest.TestCase):
 
             return reader
 
-        for return_list in [True]:
+        for return_list in [True, False]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 image = fluid.layers.data(
                     name='image', shape=[784, 784], dtype='float32')

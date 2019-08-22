@@ -25,6 +25,7 @@ from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
+import time
 
 __all__ = ['PyReader']
 
@@ -51,7 +52,7 @@ class DataLoader(object):
         self._places = None
 
     def __call__(self):
-        return self.__iter__()
+        return self
 
     def next(self):
         return self.__next__()
@@ -62,6 +63,8 @@ class DataLoader(object):
     def __next__(self):
         raise NotImplementedError()
 
+
+class DataLoaderFactory(object):
     @staticmethod
     def from_generator(feed_list=None,
                        capacity=None,
@@ -218,8 +221,9 @@ class GeneratorLoader(DataLoader):
                     return self._reader.read_next()
             else:
                 ret = self._reader.read_next_list()[0]
-                return [dygraph.base.to_variable(v) for v in ret[0]]
-        except:
+                return [dygraph.base.to_variable(np.array(v)) for v in ret]
+        except StopIteration:
+            self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())
 
@@ -326,6 +330,9 @@ class GeneratorLoader(DataLoader):
         if self._iterable:
             assert places is not None, "Places cannot be None when DataLoader is iterable"
             self._places = _convert_places(places)
+            if in_dygraph_mode():
+                assert len(self._places
+                           ) == 1, "Number of places must be 1 in dygraph mode"
         else:
             if places is not None:
                 logging.info(
@@ -482,7 +489,7 @@ class PyReader(DataLoader):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=False):
-        self._loader = DataLoader.from_generator(
+        self._loader = DataLoaderFactory.from_generator(
             feed_list, capacity, use_double_buffer, iterable, return_list)
 
     @property
