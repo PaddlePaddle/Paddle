@@ -157,6 +157,7 @@ class TestLayer(LayerTest):
                 param_attr=fluid.initializer.ConstantInitializer(value=1),
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
+            lm(base.to_variable(inp))
             self.assertIsNone(lm._scale_w)
             self.assertIsNone(lm._bias_w)
 
