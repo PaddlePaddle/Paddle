@@ -127,22 +127,22 @@ class DownpourServer(Server):
                         strategy.get('sparse_weight_bounds'))
                 table.accessor.embedx_dim = strategy.get('sparse_embedx_dim', 8)
                 table.accessor.embedx_threshold = strategy.get(
-                    'sparse_embedx_threshold', 5)
+                    'sparse_embedx_threshold', 10)
                 table.accessor.fea_dim = int(table.accessor.embedx_dim) + 3
                 table.accessor.downpour_accessor_param.nonclk_coeff = strategy.get(
                     'sparse_nonclk_coeff', 0.1)
                 table.accessor.downpour_accessor_param.click_coeff = strategy.get(
-                    'sparse_click_coeff', 2)
+                    'sparse_click_coeff', 1)
                 table.accessor.downpour_accessor_param.base_threshold = strategy.get(
-                    'sparse_base_threshold', 0.2)
+                    'sparse_base_threshold', 1.5)
                 table.accessor.downpour_accessor_param.delta_threshold = strategy.get(
-                    'sparse_delta_threshold', 0.15)
+                    'sparse_delta_threshold', 0.25)
                 table.accessor.downpour_accessor_param.delta_keep_days = strategy.get(
                     'sparse_delta_keep_days', 16)
                 table.accessor.downpour_accessor_param.delete_after_unseen_days = strategy.get(
                     'sparse_delete_after_unseen_days', 30)
                 table.accessor.downpour_accessor_param.show_click_decay_rate = strategy.get(
-                    'sparse_show_click_decay_rate', 0.999)
+                    'sparse_show_click_decay_rate', 0.98)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
                     'sparse_delete_threshold', 0.8)
                 table1 = table.accessor.table_accessor_save_param.add()
@@ -245,13 +245,13 @@ class DownpourServer(Server):
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = strategy.get('datanorm_table_class',
-                                         "DownpourDenseTable")
+                                         "DownpourDenseDoubleTable")
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
-            'datanorm_accessor_class', "DownpourDenseValueAccessor")
+            'datanorm_accessor_class', "DownpourDenseValueDoubleAccessor")
         table.accessor.dense_sgd_param.name = strategy.get('datanorm_operation',
-                                                           "summary")
+                                                           "summarydouble")
         table.accessor.dense_sgd_param.summary.summary_decay_rate = strategy.get(
             'datanorm_decay_rate', 0.999999)
         table.accessor.fea_dim = fea_dim
