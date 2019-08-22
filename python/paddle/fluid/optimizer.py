@@ -36,6 +36,9 @@ from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
+from paddle.fluid.framework import Variable
+import os
+import pickle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -92,6 +95,65 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+
+        self._loaded_optimizer = False
+
+    def load_state_dict(self, state_dict):
+        if framework.in_dygraph_mode():
+            if self.type == state_dict.get('properties').get('type'):
+                self._loaded_optimizer = True
+                self._accumulators_state = state_dict.get('accumulators_state')
+                self.__dict__.update(state_dict.get('properties'))
+            else:
+                raise TypeError(
+                    "The state dict is for optimizer {0}, which is not consistent with optimizer type {1}".
+                    format(
+                        state_dict.get('properties').get('type'), self.type))
+        else:
+            raise TypeError(
+                "Loading state dict can only be used under DyGraph mode")
+
+    def state_dict(self):
+        pass
+
+    def save(self, save_dir, filename=None):
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+        if filename is None:
+            path = os.path.join(save_dir, os.path.normpath(str(self._name)))
+        else:
+            path = os.path.join(save_dir, filename)
+
+        with open(path, "wb") as f:
+            pickle.dump(self.state_dict(), f, 2)
+            f.close()
+
+    def load_from_path(self, load_path):
+        if not os.path.exists(load_path):
+            raise TypeError("file path not exist {}".format(load_path))
+        else:
+            with open(load_path, "rb") as f:
+                state_dict = pickle.load(f)
+                f.close()
+                self.load_state_dict(state_dict)
+
+    def load_accumultors_state(self, acc_state):
+        pass
+
+    def get_accumulators_state(self):
+        acc_names = self._accumulators.keys()
+        if len(acc_names) == 0:
+            return dict()
+        else:
+            acc_states = defaultdict(dict)
+            for acc_name in acc_names:
+                pure_acc_name = acc_name[acc_name.find(
+                    '_', acc_name.find('_') + 1) + 1:]
+                pnames = self._accumulators[acc_name].keys()
+                for pname in pnames:
+                    acc_states[pure_acc_name][pname] = self._accumulators[
+                        acc_name][pname].numpy()
+            return acc_states
 
     def load(self, stat_dict):
         """
@@ -234,6 +296,9 @@ class Optimizer(object):
             program = framework.default_main_program()
         return self._learning_rate_map.get(program, None)
 
+    def learning_rate(self, program=None):
+        return self._global_learning_rate(program).numpy_async()
+
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
         """
@@ -291,6 +356,7 @@ class Optimizer(object):
             dtype: data type of the accumulator variable
             fill_value: value to initialize the accumulator variable
         """
+        pure_acc_name = name
         if self._name is not None:
             name = self._name + "_" + name
         if (name in self._accumulators and
@@ -315,6 +381,11 @@ class Optimizer(object):
             shape=shape)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
+
+        if self._loaded_optimizer:
+            tensor = var._ivar.value().get_tensor()
+            tensor.set(self._accumulators_state[pure_acc_name][param.name],
+                       framework._current_expected_place())
         self._accumulators[name][param.name] = var
         return var
 
@@ -659,6 +730,18 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("State dict can only be used under DyGraph mode")
+
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
@@ -783,6 +866,20 @@ class MomentumOptimizer(Optimizer):
 
         return momentum_op
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _momentum=self._momentum,
+                    _use_nesterov=self._use_nesterov,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("State dict can only be used under DyGraph mode")
+
 
 class DGCMomentumOptimizer(MomentumOptimizer):
     """
@@ -874,6 +971,22 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             learning_rate, momentum, use_nesterov, regularization, name)
 
         core.init_dgc()
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _momentum=self._momentum,
+                    _rampup_begin_step=self._rampup_begin_step,
+                    _rampup_step=self._rampup_step,
+                    _use_nesterov=self._use_nesterov,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("State dict can only be used under DyGraph mode")
 
     def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')
@@ -1109,6 +1222,21 @@ class LarsMomentumOptimizer(Optimizer):
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _momentum=self._momentum,
+                    _lars_coeff=self._lars_coeff,
+                    _lars_weight_decay=self._lars_weight_decay,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("State dict can only be used under DyGraph mode")
+
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -1206,6 +1334,20 @@ class AdagradOptimizer(Optimizer):
         self.type = "adagrad"
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _epsilon=self._epsilon,
+                    initial_accumulator_value=self.initial_accumulator_value,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("load can only be used under DyGraph mode")
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1337,6 +1479,22 @@ class AdamOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _beta1=self._beta1,
+                    _beta2=self._beta2,
+                    _epsilon=self._epsilon,
+                    _lazy_mode=self._lazy_mode,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1516,6 +1674,22 @@ class AdamaxOptimizer(Optimizer):
         self._beta2 = beta2
         self._epsilon = epsilon
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _beta1=self._beta1,
+                    _beta2=self._beta2,
+                    _epsilon=self.epsilon,
+                    _lazy_mode=self.lazy_mode,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
+
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
@@ -1644,6 +1818,20 @@ class DecayedAdagradOptimizer(Optimizer):
         self._decay = decay
         self._epsilon = epsilon
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _decay=self._decay,
+                    _epsilon=self._epsilon,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
+
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -1732,6 +1920,20 @@ class AdadeltaOptimizer(Optimizer):
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _epsilon=self._epsilon,
+                    _rho=self._rho,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
@@ -1898,6 +2100,22 @@ class RMSPropOptimizer(Optimizer):
         self._momentum = momentum
         self._centered = centered
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _epsilon=self._epsilon,
+                    _rho=self._rho,
+                    _momentum=self._momentum,
+                    _centered=self._centered,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
+
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
@@ -2050,6 +2268,21 @@ class FtrlOptimizer(Optimizer):
         self._l2 = l2
         self._lr_power = lr_power
 
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _l1=self._l1,
+                    _l2=self._l2,
+                    _lr_power=self._lr_power,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
+
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
@@ -2173,6 +2406,22 @@ class LambOptimizer(AdamOptimizer):
         self.type = "lamb"
         self._weight_decay = lamb_weight_decay
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    _beta1=self._beta1,
+                    _beta2=self._beta2,
+                    _epsilon=self._epsilon,
+                    _weight_decay=self._weight_decay,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2307,6 +2556,7 @@ class ModelAverage(Optimizer):
                  name=None):
         super(ModelAverage, self).__init__(
             0.0, regularization=regularization, name=name)
+        self.type = 'model_average'
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
@@ -2341,6 +2591,21 @@ class ModelAverage(Optimizer):
         with program_guard(main_program=self.restore_program):
             for param_grad in self.params_grads:
                 self._add_average_restore_op(block, param_grad)
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            return {
+                'properties': dict(
+                    _learning_rate=self._learning_rate,
+                    average_window=self.average_window,
+                    min_average_window=self.min_average_window,
+                    max_average_window=self.max_average_window,
+                    _name=self._name,
+                    type=self.type),
+                'accumulators_state': self.get_accumulators_state()
+            }
+        else:
+            raise TypeError("state dict can only be used under DyGraph mode")
 
     def _add_average_apply_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
