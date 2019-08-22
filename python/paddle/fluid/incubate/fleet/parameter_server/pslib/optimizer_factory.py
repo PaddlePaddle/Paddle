@@ -13,13 +13,13 @@
 # limitations under the License.
 
 __all__ = ["DistributedAdam"]
-import ps_pb2 as pslib
 import paddle.fluid as fluid
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from .node import DownpourWorker, DownpourServer
+from . import ps_pb2 as pslib
 
 
 class DistributedOptimizerImplBase(object):

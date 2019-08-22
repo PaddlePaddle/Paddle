@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import ps_pb2 as pslib
+from . import ps_pb2 as pslib
 
 
 class Server(object):
