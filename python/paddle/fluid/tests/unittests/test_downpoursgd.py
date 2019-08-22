@@ -22,9 +22,10 @@ import subprocess
 import time
 import unittest
 from op_test import OpTest
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 from paddle.fluid.trainer_desc import DistMultiTrainer
 from paddle.fluid.device_worker import DownpourSGD
+from google.protobuf import text_format
+import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 
 
 class TestListenAndServOp(OpTest):
@@ -32,6 +33,8 @@ class TestListenAndServOp(OpTest):
         pass
 
     def test_device_work_use_cvm(self):
+        cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
+        os.system(cmd)
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         x_emb = fluid.layers.embedding(
             input=x, size=[1, 2], is_distributed=True)
@@ -40,29 +43,46 @@ class TestListenAndServOp(OpTest):
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
 
-        fleet.init()
-        adam = fluid.optimizer.Adam(learning_rate=0.000005)
-        adam = fleet.distributed_optimizer(adam, strategy={"use_cvm": True})
-        adam.minimize([avg_cost])
-        opt_info = fleet._opt_info
-        opt_info[
-            "fleet_desc"].fs_client_param.uri = "afs://tianqi.afs.baidu.com:9902"
-        opt_info["fleet_desc"].fs_client_param.user = "fcr-tianqi-d"
-        opt_info["fleet_desc"].fs_client_param.passwd = "absUPEwUB7nc"
-        opt_info[
-            "fleet_desc"].fs_client_param.hadoop_bin = "$HADOOP_HOME/bin/hadoop"
+        ps_param = pslib.PSParameter()
+        with open("fleet_desc.prototxt") as f:
+            text_format.Merge(f.read(), ps_param)
+        fleet_desc = ps_param
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
 
+        opt_info = {}
+        main_program = fluid.default_main_program()
+        program_id = str(id(avg_cost.block.program))
+        program_configs = {}
+        program_configs[program_id] = {"pull_sparse": [0], "push_sparse": [0]}
+        program_configs[program_id]["pull_dense"] = [1]
+        program_configs[program_id]["push_dense"] = [1]
+
+        worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
+        opt_info["program_configs"] = program_configs
+        opt_info["trainer"] = "DistMultiTrainer"
+        opt_info["device_worker"] = "DownpourSGD"
+        opt_info["optimizer"] = "DownpourSGD"
+        opt_info["fleet_desc"] = ps_param
+        opt_info["worker_skipped_ops"] = worker_skipped_ops
+        opt_info["use_cvm"] = True
+        opt_info["scale_datanorm"] = -1
+        opt_info["dump_slot"] = False
+
+        main_program._fleet_opt = opt_info
         trainer = DistMultiTrainer()
-        trainer._set_program(fluid.default_main_program())
+        trainer._set_program(main_program)
         device_worker = DownpourSGD()
-        device_worker._set_fleet_desc(opt_info["fleet_desc"])
+        device_worker._set_fleet_desc(fleet_desc)
         trainer._set_device_worker(device_worker)
-        trainer._set_fleet_desc(opt_info["fleet_desc"])
+        trainer._set_fleet_desc(fleet_desc)
         trainer._gen_trainer_desc()
+        cmd = "rm fleet_desc.prototxt*"
+        os.system(cmd)
 
     def test_device_work(self):
+        cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
+        os.system(cmd)
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         x_emb = fluid.layers.embedding(
             input=x, size=[1, 2], is_distributed=True)
@@ -71,27 +91,42 @@ class TestListenAndServOp(OpTest):
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
 
-        fleet.init()
-        adam = fluid.optimizer.Adam(learning_rate=0.000005)
-        adam = fleet.distributed_optimizer(adam, strategy=dict())
-        adam.minimize([avg_cost])
-        opt_info = fleet._opt_info
-        opt_info[
-            "fleet_desc"].fs_client_param.uri = "afs://tianqi.afs.baidu.com:9902"
-        opt_info["fleet_desc"].fs_client_param.user = "fcr-tianqi-d"
-        opt_info["fleet_desc"].fs_client_param.passwd = "absUPEwUB7nc"
-        opt_info[
-            "fleet_desc"].fs_client_param.hadoop_bin = "$HADOOP_HOME/bin/hadoop"
+        ps_param = pslib.PSParameter()
+        with open("fleet_desc.prototxt") as f:
+            text_format.Merge(f.read(), ps_param)
+        fleet_desc = ps_param
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
 
+        opt_info = {}
+        main_program = fluid.default_main_program()
+        program_id = str(id(avg_cost.block.program))
+        program_configs = {}
+        program_configs[program_id] = {"pull_sparse": [0], "push_sparse": [0]}
+        program_configs[program_id]["pull_dense"] = [1]
+        program_configs[program_id]["push_dense"] = [1]
+
+        worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
+        opt_info["program_configs"] = program_configs
+        opt_info["trainer"] = "DistMultiTrainer"
+        opt_info["device_worker"] = "DownpourSGD"
+        opt_info["optimizer"] = "DownpourSGD"
+        opt_info["fleet_desc"] = ps_param
+        opt_info["worker_skipped_ops"] = worker_skipped_ops
+        opt_info["use_cvm"] = False
+        opt_info["scale_datanorm"] = -1
+        opt_info["dump_slot"] = False
+
+        main_program._fleet_opt = opt_info
         trainer = DistMultiTrainer()
-        trainer._set_program(fluid.default_main_program())
+        trainer._set_program(main_program)
         device_worker = DownpourSGD()
-        device_worker._set_fleet_desc(opt_info["fleet_desc"])
+        device_worker._set_fleet_desc(fleet_desc)
         trainer._set_device_worker(device_worker)
-        trainer._set_fleet_desc(opt_info["fleet_desc"])
+        trainer._set_fleet_desc(fleet_desc)
         trainer._gen_trainer_desc()
+        cmd = "rm fleet_desc.prototxt*"
+        os.system(cmd)
 
 
 if __name__ == "__main__":
