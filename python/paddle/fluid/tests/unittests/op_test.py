@@ -506,7 +506,9 @@ class OpTest(unittest.TestCase):
                 build_strategy.enable_inplace = enable_inplace
                 compiled_program = fluid.CompiledProgram(
                     grad_program).with_data_parallel(
-                        build_strategy=build_strategy, places=place)
+                        loss_name="",
+                        build_strategy=build_strategy,
+                        places=place)
                 outs = exe.run(compiled_program,
                                feed=grad_feed_map,
                                fetch_list=grad_fetch_list,
