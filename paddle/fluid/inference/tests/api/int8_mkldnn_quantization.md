@@ -118,7 +118,7 @@ python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --ch
 
 Then the Pascal VOC2007 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
 
-* Prepare your own data as follows.
+* Prepare your own data.
 
 ```
 cd /PATH/TO/PADDLE/build
@@ -132,9 +132,11 @@ python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --ch
                                          --mean_value=[127.5, 127.5, 127.5] \\
                                          --ap_version=11point \\
 ```
+Then preprocessed binary file will be saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin (data_dir/output_file)`
+
 **parameter description:**
 * **choice**: Preprocess your own data (--choice=local) or download and preprocess whole VOC_2007 test set (--choice=VOC_test_2007).
-* **data_dir**: The dataset root directory.
+* **data_dir**: Set your own dataset root directory.
 * **img_annotation_list**: a file containing image path and corresponding annotation file path. It could be filename under data_dir or file path.
 * **label_file**: A file contains all object labels used in annotation files.
 * **output_file**: output filename or path.
@@ -156,6 +158,5 @@ You can run `test_analyzer_int8_object_detection` with the following arguments t
 * Measurement of accuracy requires a model which accepts two inputs: data and labels.
 * Different sampling batch size data may cause slight difference on INT8 top accuracy.
 * CAPI performance data is better than python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious.
-* The results could be achieved on avx512 or higher standard machines
 
 <!-- ## 3. Commands to reproduce the above accuracy and performance benchmark -->
