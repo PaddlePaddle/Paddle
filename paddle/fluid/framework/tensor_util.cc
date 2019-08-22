@@ -472,10 +472,12 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 
     const auto& origin_dims = tensor->dims();
     PADDLE_ENFORCE_EQ(origin_dims.size(), dims.size(),
-                      "tensor dims must be equal to load tensor dims");
+                      "tensor dims must be equal to load tensor dims, please "
+                      "check your paddle version and model");
     for (int i = 0; i < dims.size(); i++) {
       PADDLE_ENFORCE_EQ(origin_dims[i], dims[i],
-                        "tensor dims must be equal to load tensor dims");
+                        "tensor dims must be equal to load tensor dims, please "
+                        "check your paddle version and model");
     }
 
     tensor->Resize(framework::make_ddim(dims));
