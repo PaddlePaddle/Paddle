@@ -214,9 +214,10 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_program)
 
-            train_cp = compiler.CompiledProgram(main_program)
+            train_cp = main_program
             if use_parallel_executor:
-                train_cp = train_cp.with_data_parallel(loss_name=loss.name)
+                train_cp = compiler.CompiledProgram(
+                    main_program).with_data_parallel(loss_name=loss.name)
                 if use_cuda:
                     self.batch_size_times = core.get_cuda_device_count()
                 else:
