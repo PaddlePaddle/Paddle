@@ -27,16 +27,17 @@ class SqueezeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Squeeze operator should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("X"),
+                            "Input(X) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx->HasOutput("Out"),
+        "Output(Out) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
-    PADDLE_ENFORCE(x_dims.size() <= 6,
-                   "Invalid dimnesions, the rank of Input(X) "
-                   "should be in the range of [1, 6] (Eigen limit).");
+    PADDLE_ENFORCE_LE(x_dims.size(), 6,
+                      "Invalid dimnesions, the rank of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit).");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
@@ -77,13 +78,14 @@ class SqueezeOp : public framework::OperatorWithKernel {
         int current = squeeze_dims[idx] < 0 ? squeeze_dims[idx] + in_dims.size()
                                             : squeeze_dims[idx];
         // Check current index, the upper limit has beed checked in line 36.
-        PADDLE_ENFORCE(current >= 0,
-                       "Invalid axis, the negative axis is out of range.");
+        PADDLE_ENFORCE_GE(current, 0,
+                          "Invalid axis, the negative axis is out of range.");
 
         if (is_runtime) {
-          PADDLE_ENFORCE(in_dims[current] == 1,
-                         "Invalid axis index, the axis that will be squeezed "
-                         "should be equal to 1.");
+          PADDLE_ENFORCE_EQ(
+              in_dims[current], 1,
+              "Invalid axis index, the axis that will be squeezed "
+              "should be equal to 1.");
         }
 
         if (!(should_squeeze[current])) {
@@ -176,16 +178,17 @@ class Squeeze2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Squeeze operator should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("X"),
+                            "Input(X) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx->HasOutput("Out"),
+        "Output(Out) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
-    PADDLE_ENFORCE(x_dims.size() <= 6,
-                   "Invalid dimnesions, the rank of Input(X) "
-                   "should be in the range of [1, 6] (Eigen limit).");
+    PADDLE_ENFORCE_LE(x_dims.size(), 6,
+                      "Invalid dimnesions, the rank of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit).");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
@@ -202,8 +205,9 @@ class Squeeze2Op : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", "Out");
     }
 
-    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
-                   "Output(XShape) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ctx->HasOutput("XShape"),
+        "Output(XShape) of Squeeze operator should not be null.");
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -221,10 +225,10 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("XShape"),
-                   "Input(XShape) shouldn't be null.");
-    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+    PADDLE_ENFORCE_NOT_NULL(context->HasInput("XShape"),
+                            "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE_NOT_NULL(context->HasInput(framework::GradVarName("Out")),
+                            "Input(Out@GRAD) shouldn't be null.");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
