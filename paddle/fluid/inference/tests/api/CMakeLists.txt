@@ -43,6 +43,17 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	     --iterations=2)
 endfunction()
 
+function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
+	inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
+        ARGS --infer_model=${model_dir}/model
+             --infer_data=${data_path}
+             --warmup_batch_size=10
+             --batch_size=300
+             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+	     --iterations=1)
+endfunction()
+
 function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
@@ -232,12 +243,12 @@ if(WITH_MKLDNN)
   inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   ### Object detection models
-  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_100.bin")
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
   set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
   set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
   # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_100.tar.gz")
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_int8_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -245,7 +256,7 @@ if(WITH_MKLDNN)
   # mobilenet-ssd int8
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+  inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
 endif()
 

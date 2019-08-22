@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -61,13 +62,12 @@ limitations under the License. */
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
-#include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -187,6 +187,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.add_object("_cleanup",
                py::capsule([]() { ScopePool::Instance().Clear(); }));
+
+  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
   BindImperative(&m);
 
@@ -1065,10 +1067,17 @@ All parameter, weight, gradient are variables in Paddle.
                    t = fluid.LoDTensor()
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
-           )DOC");
-
-  m.def("IsInplace",
-        [](std::string op) -> bool { return operators::IsInplace(op); });
+           )DOC")
+      .def("_move_to_list",
+           [](LoDTensorArray &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               res[i] = py::cast(std::move(self[i]));
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
 
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
@@ -1105,6 +1114,8 @@ All parameter, weight, gradient are variables in Paddle.
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
+
+  m.def("size_of_dtype", framework::SizeOfType);
 
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
@@ -1548,17 +1559,31 @@ All parameter, weight, gradient are variables in Paddle.
                 )DOC")
       .def_property(
           "memory_optimize",
-          [](const BuildStrategy &self) { return self.memory_optimize_; },
-          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; },
-          R"DOC(The type is BOOL, memory opitimize aims to save total memory
+          [](const BuildStrategy &self) -> py::object {
+            if (self.memory_optimize_) {
+              return py::cast(self.memory_optimize_.get());
+            } else {
+              return py::cast(nullptr);
+            }
+          },
+          [](BuildStrategy &self, const py::handle &value) {
+            auto *py_obj = value.ptr();
+            if (py_obj == nullptr || py_obj == Py_None) {
+              self.memory_optimize_ = boost::none;
+            } else if (PyBool_Check(py_obj)) {
+              self.memory_optimize_ = (py_obj == Py_True);
+            } else {
+              PADDLE_THROW(
+                  "BuildStrategy.memory_optimize must be None, False or True");
+            }
+          },
+          R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
-                Memory Optimize is our experimental feature, some variables
-                may be reused/removed by optimize strategy. If you need to
-                fetch some variable values when using this feature, please
-                set the persistable property of the variables to True.
-
-                Default False)DOC")
+                Default None. None means framework would choose to use or not use 
+                this strategy automatically. Currently, None means that it is 
+                enabled when GC is disabled, and disabled when GC is enabled. 
+                True means enabling and False means disabling. Default None.)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
@@ -1578,13 +1603,6 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
-      .def_property("_use_legacy_memory_optimize_strategy",
-                    [](const BuildStrategy &self) {
-                      return self.use_legacy_memory_optimize_strategy_;
-                    },
-                    [](BuildStrategy &self, bool b) {
-                      self.use_legacy_memory_optimize_strategy_ = b;
-                    })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
@@ -1638,13 +1656,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors,
-                     const std::string &fetched_var_name) {
+                     const std::vector<std::string> &fetch_tensors) {
         pybind11::gil_scoped_release release;
-        self.Run(fetch_tensors, fetched_var_name);
+        return self.Run(fetch_tensors);
       });
 
-  BindRecordIOWriter(&m);
   BindFleetWrapper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);
