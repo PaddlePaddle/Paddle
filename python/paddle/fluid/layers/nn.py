@@ -9647,9 +9647,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             mask = layers.sequence_mask(x=x)
 
     """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-
     helper = LayerHelper('sequence_mask', **locals())
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
