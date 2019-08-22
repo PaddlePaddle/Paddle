@@ -90,7 +90,7 @@ PaddleDType PaddleTensorGetDType<float>() {
 template <typename T>
 PaddleTensor PaddleTensorCreate(
     py::array_t<T> data, const std::string name = "",
-    const std::vector<std::vector<size_t>> &lod = {}, bool copy = false) {
+    const std::vector<std::vector<size_t>> &lod = {}, bool copy = true) {
   PaddleTensor tensor;
 
   if (copy) {
@@ -161,11 +161,11 @@ void BindPaddleDType(py::module *m) {
 void BindPaddleBuf(py::module *m) {
   py::class_<PaddleBuf>(*m, "PaddleBuf")
       .def(py::init<size_t>())
-      .def(py::init([](std::vector<float> &data) {
+      /*.def(py::init([](std::vector<float> &data) {
         auto buf = PaddleBuf(data.size() * sizeof(float));
         std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
         return buf;
-      }))
+      }))*/
       .def(py::init(&PaddleBufCreate<int32_t>))
       .def(py::init(&PaddleBufCreate<int64_t>))
       .def(py::init(&PaddleBufCreate<float>))
@@ -223,15 +223,15 @@ void BindPaddleTensor(py::module *m) {
       .def(py::init(&PaddleTensorCreate<int32_t>), py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
-           py::arg("copy") = false)
+           py::arg("copy") = true)
       .def(py::init(&PaddleTensorCreate<int64_t>), py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
-           py::arg("copy") = false)
+           py::arg("copy") = true)
       .def(py::init(&PaddleTensorCreate<float>), py::arg("data"),
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
-           py::arg("copy") = false)
+           py::arg("copy") = true)
       .def("as_ndarray", &PaddleTensorGetData)
       .def_readwrite("name", &PaddleTensor::name)
       .def_readwrite("shape", &PaddleTensor::shape)
