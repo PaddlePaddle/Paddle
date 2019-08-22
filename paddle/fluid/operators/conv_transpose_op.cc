@@ -170,6 +170,14 @@ void Conv2DTransposeOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<std::string>("fuse_activation",
+                       "(string, default \"\") Only used in mkldnn kernel")
+      .SetDefault("");
+  AddAttr<float>("fuse_alpha",
+                 "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
+  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "

@@ -401,7 +401,9 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
                                        std::vector<std::string> var_list,
                                        std::string model_path,
                                        std::string model_proto_file,
+                                       std::vector<std::string> table_var_list,
                                        bool load_combine) {
+#ifdef PADDLE_WITH_PSLIB
   // load ProgramDesc from model file
   auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
     std::string contents;
@@ -467,7 +469,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
     }
   }
   delete old_scope;
-  PushDenseParamSync(scope, table_id, old_param_list);
+  PushDenseParamSync(scope, table_id, table_var_list);
+#endif
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
@@ -512,12 +515,72 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
+double FleetWrapper::GetCacheThreshold() {
+#ifdef PADDLE_WITH_PSLIB
+  double cache_threshold = 0.0;
+  auto ret = pslib_ptr_->_worker_ptr->flush();
+  ret.wait();
+  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(0, cache_threshold);
+  ret.wait();
+  if (cache_threshold < 0) {
+    LOG(ERROR) << "get cache threshold failed";
+    exit(-1);
+  }
+  return cache_threshold;
+#else
+  VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
+  return 0.0;
+#endif
+}
+
+void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
+                                const int mode, const double cache_threshold) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
+      0, path, std::to_string(mode), std::to_string(cache_threshold));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "cache shuffle failed";
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::CacheShuffle does nothing when no pslib";
+#endif
+}
+
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
+#endif
+}
+
 void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);
   ret.wait();
 #else
   VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::ClearModel() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->clear();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
 #endif
 }
 
