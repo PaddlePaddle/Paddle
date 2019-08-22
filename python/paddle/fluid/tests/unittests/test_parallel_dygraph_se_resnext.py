@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-#import unittest
+import unittest
 from test_dist_base import TestDistBase
 import paddle.fluid as fluid
-'''
+
+
 class TestParallelDygraphSeResNeXt(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -28,8 +29,7 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
         # try to remove the BN and Dropout in the network and using delta = 1e-5
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("parallel_dygraph_se_resnext.py", delta=1)
-'''
+
 
 if __name__ == "__main__":
-    pass
-    #unittest.main()
+    unittest.main()

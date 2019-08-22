@@ -290,7 +290,7 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         model = SeResNeXt("se-resnext")
         train_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False),
-            batch_size=2,
+            batch_size=4,
             drop_last=True)
 
         opt = fluid.optimizer.SGD(learning_rate=1e-3)
