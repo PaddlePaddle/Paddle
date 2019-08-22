@@ -469,7 +469,17 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     std::vector<int64_t> dims;
     dims.reserve(static_cast<size_t>(desc.dims().size()));
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+
+    const auto& origin_dims = tensor->dims();
+    PADDLE_ENFORCE_EQ(origin_dims.size(), dims.size(),
+                      "tensor dims must be equal to load tensor dims");
+    for (int i = 0; i < dims.size(); i++) {
+      PADDLE_ENFORCE_EQ(origin_dims[i], dims[i],
+                        "tensor dims must be equal to load tensor dims");
+    }
+
     tensor->Resize(framework::make_ddim(dims));
+
     void* buf;
     auto ctx = platform::CPUDeviceContext();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
