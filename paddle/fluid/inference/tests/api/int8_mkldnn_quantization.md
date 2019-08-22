@@ -139,11 +139,11 @@ Then user dataset pwill be preprocessed and saved by default in `/PATH/TO/PADDLE
 * **data_dir**: Set your own dataset root directory.
 * **img_annotation_list**: A file containing image path and corresponding annotation file path. It could be filename under data_dir or file path.
 * **label_file**: A file containing all object labels used in annotation files.
-* **output_file**: output filename or path.
-* **resize_h**: . Default: 300. Only support 300*300 now.
-* **resize_w**: . Default: 300. Only support 300*300 now.
-* **mean_value**: . Default: [127.5, 127.5, 127.5].
-* **ap_version**: . Default: 11point.
+* **output_file**: Output filename or path.
+* **resize_h**: Default: 300. Only support 300*300 now.
+* **resize_w**: Default: 300. Only support 300*300 now.
+* **mean_value**: Default: [127.5, 127.5, 127.5].
+* **ap_version**: Default: 11point.
 
 * ## Commands to reproduce object detection benchmark
 
