@@ -161,11 +161,11 @@ void BindPaddleDType(py::module *m) {
 void BindPaddleBuf(py::module *m) {
   py::class_<PaddleBuf>(*m, "PaddleBuf")
       .def(py::init<size_t>())
-      /*.def(py::init([](std::vector<float> &data) {
+      .def(py::init([](std::vector<float> &data) {
         auto buf = PaddleBuf(data.size() * sizeof(float));
         std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
         return buf;
-      }))*/
+      }))
       .def(py::init(&PaddleBufCreate<int32_t>))
       .def(py::init(&PaddleBufCreate<int64_t>))
       .def(py::init(&PaddleBufCreate<float>))
