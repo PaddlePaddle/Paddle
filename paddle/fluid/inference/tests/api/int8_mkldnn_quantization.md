@@ -109,14 +109,14 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 * ## Prepare dataset
 
-* download and preprocess Pascal VOC2007 Validation dataset as follows.
+* download and preprocess Pascal VOC2007 test set as follows.
 
 ```bash
 cd /PATH/TO/PADDLE/build
 python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 \\
 ```
 
-Then the Pascal VOC2007 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
+Then the Pascal VOC2007 test set will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
 
 * Prepare your own data.
 
@@ -132,13 +132,13 @@ python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --ch
                                          --mean_value=[127.5, 127.5, 127.5] \\
                                          --ap_version=11point \\
 ```
-Then preprocessed binary file will be saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin (data_dir/output_file)`
+Then user dataset pwill be preprocessed and saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin (data_dir/output_file)`
 
 **parameter description:**
 * **choice**: Preprocess your own data (--choice=local) or download and preprocess whole VOC_2007 test set (--choice=VOC_test_2007).
 * **data_dir**: Set your own dataset root directory.
-* **img_annotation_list**: a file containing image path and corresponding annotation file path. It could be filename under data_dir or file path.
-* **label_file**: A file contains all object labels used in annotation files.
+* **img_annotation_list**: A file containing image path and corresponding annotation file path. It could be filename under data_dir or file path.
+* **label_file**: A file containing all object labels used in annotation files.
 * **output_file**: output filename or path.
 * **resize_h**: . Default: 300. Only support 300*300 now.
 * **resize_w**: . Default: 300. Only support 300*300 now.
