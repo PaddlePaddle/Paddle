@@ -15,13 +15,11 @@
 #include "paddle/fluid/framework/data_set.h"
 #include <algorithm>
 #include <random>
-#include <set>
 #include <unordered_map>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
-#include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
@@ -129,11 +127,6 @@ void DatasetImpl<T>::SetMergeByInsId(
 }
 
 template <typename T>
-void DatasetImpl<T>::SetBoxPSFlag() {
-  boxps_flag_ = true;
-}
-
-template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);
@@ -204,9 +197,6 @@ void DatasetImpl<T>::LoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() end"
           << ", memory data size=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
-  if (boxps_flag_) {
-    FeedPass();
-  }
 }
 
 template <typename T>
@@ -218,12 +208,6 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
         &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
-  if (boxps_flag_) {
-    feed_data_thread_.reset(new std::thread([&]() {
-      WaitPreLoadDone();
-      FeedPass();
-    }));
-  }
 }
 
 template <typename T>
@@ -236,11 +220,6 @@ void DatasetImpl<T>::WaitPreLoadDone() {
   int64_t in_chan_size = input_channel_->Size();
   input_channel_->SetBlockSize(in_chan_size / thread_num_ + 1);
   VLOG(3) << "DatasetImpl<T>::WaitPreLoadDone() end";
-}
-
-template <typename T>
-void DatasetImpl<T>::WaitFeedPassDone() {
-  feed_data_thread_->join();
 }
 
 // release memory data
@@ -848,33 +827,6 @@ void MultiSlotDataset::SlotsShuffle(
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
           << ", memory data size for slots shuffle=" << input_channel_->Size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
-}
-
-void MultiSlotDataset::FeedPass() {
-  auto box_ptr = BoxWrapper::GetInstance();
-  std::vector<Record> pass_data;
-  std::vector<uint64_t> feasign_to_box;
-  input_channel_->ReadAll(pass_data);
-  for (const auto& ins : pass_data) {
-    const auto& feasign_v = ins.uint64_feasigns_;
-    for (const auto feasign : feasign_v) {
-      feasign_to_box.push_back(feasign.sign().uint64_feasign_);
-    }
-  }
-  input_channel_->Open();
-  input_channel_->Write(pass_data);
-  input_channel_->Close();
-  box_ptr->FeedPass(feasign_to_box);
-}
-
-void MultiSlotDataset::BeginPass() {
-  auto box_ptr = BoxWrapper::GetInstance();
-  box_ptr->BeginPass();
-}
-
-void MultiSlotDataset::EndPass() {
-  auto box_ptr = BoxWrapper::GetInstance();
-  box_ptr->EndPass();
 }
 
 }  // end namespace framework

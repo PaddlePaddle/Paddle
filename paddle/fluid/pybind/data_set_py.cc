@@ -88,8 +88,6 @@ void BindDataset(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("wait_preload_done", &framework::Dataset::WaitPreLoadDone,
            py::call_guard<py::gil_scoped_release>())
-      .def("wait_feed_pass_done", &framework::Dataset::WaitFeedPassDone,
-           py::call_guard<py::gil_scoped_release>())
       .def("release_memory", &framework::Dataset::ReleaseMemory,
            py::call_guard<py::gil_scoped_release>())
       .def("local_shuffle", &framework::Dataset::LocalShuffle,
@@ -113,12 +111,6 @@ void BindDataset(py::module* m) {
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
-           py::call_guard<py::gil_scoped_release>())
-      .def("begin_pass", &framework::Dataset::BeginPass,
-           py::call_guard<py::gil_scoped_release>())
-      .def("end_pass", &framework::Dataset::EndPass,
-           py::call_guard<py::gil_scoped_release>())
-      .def("set_boxps_flag", &framework::Dataset::SetBoxPSFlag,
            py::call_guard<py::gil_scoped_release>());
 }
 

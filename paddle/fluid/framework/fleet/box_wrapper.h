@@ -19,6 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/boxps.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -67,6 +68,57 @@ class BoxWrapper {
 
  protected:
   static bool is_initialized_;  // no use now
+};
+
+class BoxHelper {
+ public:
+  explicit BoxHelper(paddle::framework::Dataset* dataset) : dataset_(dataset) {}
+  virtual ~BoxHelper() {}
+
+  void BeginPass() {
+    auto box_ptr = BoxWrapper::GetInstance();
+    box_ptr->BeginPass();
+  }
+
+  void EndPass() {
+    auto box_ptr = BoxWrapper::GetInstance();
+    box_ptr->EndPass();
+  }
+  void LoadIntoMemory() {
+    dataset_->LoadIntoMemory();
+    FeedPass();
+  }
+  void PreLoadIntoMemory() {
+    dataset_->PreLoadIntoMemory();
+    feed_data_thread_.reset(new std::thread([&]() {
+      dataset_->WaitPreLoadDone();
+      FeedPass();
+    }));
+  }
+  void WaitFeedPassDone() { feed_data_thread_->join(); }
+
+ private:
+  Dataset* dataset_;
+  std::shared_ptr<std::thread> feed_data_thread_;
+  // notify boxps to feed this pass feasigns from SSD to memory
+  void FeedPass() {
+    auto box_ptr = BoxWrapper::GetInstance();
+    auto input_channel_ =
+        dynamic_cast<MultiSlotDataset*>(dataset_)->GetInputChannel();
+    std::vector<Record> pass_data;
+    std::vector<uint64_t> feasign_to_box;
+    input_channel_->ReadAll(pass_data);
+    for (const auto& ins : pass_data) {
+      const auto& feasign_v = ins.uint64_feasigns_;
+      for (const auto feasign : feasign_v) {
+        feasign_to_box.push_back(feasign.sign().uint64_feasign_);
+      }
+    }
+    input_channel_->Open();
+    input_channel_->Write(pass_data);
+    input_channel_->Close();
+    box_ptr->FeedPass(feasign_to_box);
+  }
 };
 
 }  // end namespace framework

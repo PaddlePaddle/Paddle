@@ -285,7 +285,6 @@ class InMemoryDataset(DatasetBase):
         self.parse_ins_id = False
         self.parse_content = False
         self.merge_by_lineid = False
-        self.boxps_flag = False
 
     def _prepare_to_run(self):
         """
@@ -455,10 +454,7 @@ class InMemoryDataset(DatasetBase):
               dataset.preload_into_memory()
               dataset.wait_preload_done()
         """
-        if self.boxps_flag:
-            self.dataset.wait_feed_pass_done()
-        else:
-            self.dataset.wait_preload_done()
+        self.dataset.wait_preload_done()
 
     def local_shuffle(self):
         """
@@ -613,12 +609,6 @@ class InMemoryDataset(DatasetBase):
             return global_data_size[0]
         return local_data_size[0]
 
-    def begin_pass(self):
-        self.dataset.begin_pass()
-
-    def end_pass(self):
-        self.dataset.end_pass()
-
 
 class QueueDataset(DatasetBase):
     """
@@ -748,5 +738,36 @@ class BoxPSDataset(InMemoryDataset):
         Init
         """
         super(BoxPSDataset, self).__init__()
-        self.boxps_flag = True
-        self.dataset.set_boxps_flag()
+        self.boxps = core.BoxPS(self.dataset)
+
+    def begin_pass(self):
+        """
+	Notify BoxPS to begin next pass
+	"""
+        self.boxps.begin_pass()
+
+    def end_pass(self):
+        """
+	Notify BoxPS to end current pass
+	"""
+        self.boxps.end_pass()
+
+    def wait_preload_done(self):
+        """
+	Wait async proload done
+	"""
+        self.boxps.wait_feed_pass_done()
+
+    def load_into_memory(self):
+        """
+	Load next pass into memory and notify boxps to fetch its emb from SSD
+	"""
+        self._prepare_to_run()
+        self.boxps.load_into_memory()
+
+    def preload_into_memory(self):
+        """
+	begin async preload next pass while current pass may be training
+	"""
+        self._prepare_to_run()
+        self.boxps.preload_into_memory()
