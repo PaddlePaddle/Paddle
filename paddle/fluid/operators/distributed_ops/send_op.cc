@@ -41,7 +41,6 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     auto epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_mode");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
@@ -96,10 +95,6 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("sync_mode",
-                 "(int, default 0)"
-                 "sync send or async send.")
-        .SetDefault(0);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
