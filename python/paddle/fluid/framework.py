@@ -25,7 +25,7 @@ import traceback
 import six
 
 import numpy as np
-import graphviz
+import subprocess
 import multiprocessing
 import sys
 from .. import compat as cpt
@@ -2700,14 +2700,13 @@ class IrGraph(object):
         """
 
         def _convert_to_pdf(dot_file_path):
-            with open(dot_file_path, 'r') as f:
-                dot_graph = f.read()
-                source = graphviz.Source(source=dot_graph)
-                source.render(
-                    filename=name,
-                    directory=save_path,
-                    cleanup=True,
-                    format='pdf')
+            pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
+            exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
+                            + ' -o ' + pdf_save_path, shell=True)
+            if exited_code != 0:
+                print('The dot command is needed for creating pdf files.')
+                print('The {} is saved as the dot filetype.'.format(
+                    dot_file_path))
 
         remove_ctr_vars = set()
         if remove_ctr_var:

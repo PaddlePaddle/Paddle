@@ -25,7 +25,17 @@ from paddle.fluid.log_helper import get_logger
 
 logger = get_logger(__name__, logging.INFO)
 
-from .graphviz_utils import Graph
+try:
+    from .graphviz import Graph
+except ImportError:
+    logger.info(
+        'Cannot import graphviz, which is required for drawing a network. This '
+        'can usually be installed in python with "pip install graphviz". Also, '
+        'pydot requires graphviz to convert dot files to pdf: in ubuntu, this '
+        'can usually be installed with "sudo apt-get install graphviz".')
+    print('net_drawer will not run correctly. Please install the correct '
+          'dependencies.')
+    exit(0)
 
 OP_STYLE = {
     'shape': 'oval',
