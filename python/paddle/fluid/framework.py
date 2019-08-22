@@ -547,6 +547,10 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
+    def numpy_async(self):
+        new_ivar = self._ivar._copy_to(core.CPUPlace(), False)
+        return np.array(new_ivar.value().get_tensor())
+
     def backward(self, backward_strategy=None):
         from .dygraph import BackwardStrategy
         if backward_strategy is None:
@@ -2854,6 +2858,10 @@ class Program(object):
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0
 
+        # @deprecated(the python memory optimize transpiler is deprecated)
+        # whether the program is optimized by memory_optimize_transpiler
+        self.__is_mem_optimized = False
+
         # if this program has been optimized by distributed optimizer
         # fleet_opt will be given a value
         self._fleet_opt = None
@@ -2864,6 +2872,16 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+    @property
+    def _is_mem_optimized(self):
+        # if the program is optimized, operator input/outputs
+        # maybe same, which conflict with save_inference_model.
+        return self.__is_mem_optimized
+
+    @_is_mem_optimized.setter
+    def _is_mem_optimized(self, target):
+        self.__is_mem_optimized = target
 
     @property
     def _op_role(self):
