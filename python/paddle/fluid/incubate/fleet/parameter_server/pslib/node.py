@@ -145,6 +145,14 @@ class DownpourServer(Server):
                     'sparse_show_click_decay_rate', 0.999)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
                     'sparse_delete_threshold', 0.8)
+                table1 = table.accessor.table_accessor_save_param.add()
+                table1.param = 1
+                table1.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
+                table1.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                table2 = table.accessor.table_accessor_save_param.add()
+                table2.param = 2
+                table2.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
+                table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy):
         """
