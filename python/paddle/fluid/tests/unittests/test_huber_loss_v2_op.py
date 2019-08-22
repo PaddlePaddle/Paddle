@@ -60,19 +60,47 @@ class TestHuberLossOp(OpTest):
             ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
 
 
+class TestHuberLossOpWithShapeBatchSize(TestHuberLossOp):
+    def setUp(self):
+        self.op_type = 'huber_loss_v2'
+        samples_num = 64
+        delta = 1.0
+        self.inputs = {
+            'X': np.random.uniform(0, 1., (samples_num)).astype('float32'),
+            'Y': np.random.uniform(0, 1., (samples_num)).astype('float32'),
+        }
+        residual = self.inputs['Y'] - self.inputs['X']
+        loss = np.vectorize(huber_loss_forward)(residual,
+                                                delta).astype('float32')
+        self.attrs = {'delta': delta}
+        self.outputs = {
+            'Residual': residual,
+            'Out': loss.reshape((samples_num, 1))
+        }
+
+
 class TestHuberLossApi(unittest.TestCase):
     def test_api(self):
 
         import paddle.fluid as fluid
-
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+        batch_size = 10
+        x = fluid.layers.data(
+            name='x',
+            shape=[batch_size, 16],
+            append_batch_size=False,
+            dtype='float32')
         predict = fluid.layers.fc(input=x, size=1)
-        label = fluid.layers.data(name='label', shape=[1], dtype='float32')
+        label = fluid.layers.data(
+            name='label',
+            shape=[batch_size],
+            append_batch_size=False,
+            dtype='float32')
         loss = fluid.loss.huber_loss(input=predict, label=label, delta=1.0)
 
         place = fluid.CPUPlace()
-        x_data = np.random.rand(10, 13).astype("float32")
-        label_data = np.random.random(size=(10, )).astype('float32')
+        x_data = np.random.rand(batch_size, 16).astype("float32")
+        label_data = np.random.random(size=(batch_size)).astype('float32')
+
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         ret = exe.run(feed={'x': x_data,

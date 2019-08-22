@@ -38,9 +38,10 @@ def huber_loss(input, label, delta):
 
     Args:
         input (Variable): This input is a probability computed by the previous operator.
-                          The first dimension is batch size, and the last dimension is 1.
-        label (Variable): The groud truth whose first dimension is batch size
-                          and last dimension is 1.
+                          The first dimension is batch size. It can be tensor with shape
+                          [batch_size, 1] or [batch_size].
+        label (Variable): The groud truth whose first dimension is batch size. It can be
+                          tensor with shape [batch_size, 1] or [batch_size].
         delta (float): The parameter of huber loss, which controls
                        the range of outliers
 
@@ -56,7 +57,7 @@ def huber_loss(input, label, delta):
             predict = fluid.layers.fc(input=x, size=1)
             label = fluid.layers.data(
                 name='label', shape=[1], dtype='float32')
-            loss = fluid.layers.huber_loss(
+            loss = fluid.loss.huber_loss(
                 input=predict, label=label, delta=1.0)
 
     """

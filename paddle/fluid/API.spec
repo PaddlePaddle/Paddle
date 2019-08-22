@@ -435,7 +435,7 @@ paddle.fluid.layers.Normal.entropy (ArgSpec(args=['self'], varargs=None, keyword
 paddle.fluid.layers.Normal.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', '2e8845cdf1129647e6fa6e816876cd3b'))
 paddle.fluid.layers.Normal.log_prob (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', 'b79091014ceaffb6a7372a198a341c23'))
 paddle.fluid.layers.Normal.sample (ArgSpec(args=['self', 'shape', 'seed'], varargs=None, keywords=None, defaults=(0,)), ('document', 'adac334af13f6984e991b3ecf12b8cb7'))
-paddle.fluid.loss.huber_loss (ArgSpec(args=['input', 'label', 'delta'], varargs=None, keywords=None, defaults=None), ('document', '11bb8e62cc9256958eff3991fe4834da'))
+paddle.fluid.loss.huber_loss (ArgSpec(args=['input', 'label', 'delta'], varargs=None, keywords=None, defaults=None), ('document', 'c2b63d2d85ae7fd98e46e6af0f79499d'))
 paddle.fluid.contrib.InitState ('paddle.fluid.contrib.decoder.beam_search_decoder.InitState', ('document', '3afd1f84232718e628e9e566941c5f05'))
 paddle.fluid.contrib.InitState.__init__ (ArgSpec(args=['self', 'init', 'shape', 'value', 'init_boot', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, None, False, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.contrib.StateCell ('paddle.fluid.contrib.decoder.beam_search_decoder.StateCell', ('document', 'ecd0066c02867d445d7b461e28220c50'))
