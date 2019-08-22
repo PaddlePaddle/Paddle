@@ -47,7 +47,7 @@ class FetchBarrierOp : public framework::OperatorBase {
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
     }
   }
 };

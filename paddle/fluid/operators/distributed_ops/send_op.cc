@@ -76,7 +76,7 @@ class SendOp : public framework::OperatorBase {
       }
       for (size_t i = 0; i < rets.size(); i++) {
         VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
         VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
