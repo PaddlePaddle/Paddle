@@ -1,6 +1,5 @@
 conv_shift
 cos_sim
-dequantize
 fc
 flatten
 fsp
@@ -17,13 +16,11 @@ nce
 pool2d
 pool3d
 prelu
-quantize
 rank_loss
 reduce_max
 reduce_min
 reduce_prod
 reduce_sum
-requantize
 reshape
 rnn_memory_helper
 sequence_softmax
