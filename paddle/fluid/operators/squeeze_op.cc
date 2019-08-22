@@ -27,11 +27,10 @@ class SqueezeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("X"),
-                            "Input(X) of Squeeze operator should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx->HasOutput("Out"),
-        "Output(Out) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
@@ -178,11 +177,10 @@ class Squeeze2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("X"),
-                            "Input(X) of Squeeze operator should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx->HasOutput("Out"),
-        "Output(Out) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
@@ -205,9 +203,8 @@ class Squeeze2Op : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", "Out");
     }
 
-    PADDLE_ENFORCE_NOT_NULL(
-        ctx->HasOutput("XShape"),
-        "Output(XShape) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
+                      "Output(XShape) of Squeeze operator should not be null.");
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -225,10 +222,10 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_NOT_NULL(context->HasInput("XShape"),
-                            "Input(XShape) shouldn't be null.");
-    PADDLE_ENFORCE_NOT_NULL(context->HasInput(framework::GradVarName("Out")),
-                            "Input(Out@GRAD) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(context->HasInput("XShape"), true,
+                      "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")), true,
+                      "Input(Out@GRAD) shouldn't be null.");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
