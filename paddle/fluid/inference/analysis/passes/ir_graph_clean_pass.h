@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/header.h"
+#pragma once
 
-#include <sstream>
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
-#include "gtest/gtest.h"
+namespace paddle {
+namespace inference {
+namespace analysis {
 
-TEST(Recordio, ChunkHead) {
-  paddle::recordio::Header hdr(0, 1, paddle::recordio::Compressor::kGzip, 3);
-  std::stringstream ss;
-  hdr.Write(ss);
-  ss.seekg(0, std::ios::beg);
-  paddle::recordio::Header hdr2;
-  hdr2.Parse(ss);
-  EXPECT_TRUE(hdr == hdr2);
-}
+class IrInferCleanGraphPass : public AnalysisPass {
+ public:
+  void RunImpl(Argument *argument) override;
+
+  std::string repr() const override { return "ir_graph_clean_pass"; }
+};
+
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle
