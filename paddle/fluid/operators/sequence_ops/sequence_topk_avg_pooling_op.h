@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <limits>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -26,7 +27,7 @@ void get_topk_pos(const T* data, int length, int k, int* pos) {
   std::vector<T> v(data, data + length);
 
   std::vector<int> topk_pos;
-  T min_val = -10000000.0;
+  T min_val = std::numeric_limits<T>::lowest();
   while (topk_pos.size() < real_k) {
     T max_val = min_val;
     int max_pos = -1;
