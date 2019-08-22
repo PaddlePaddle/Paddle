@@ -87,13 +87,15 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         # only support image classification
         num_images = len(data)
         image_data = [img.tolist() for (img, _) in data]
-        image_data = np.array(image_data).astype("float32").reshape([num_images, ] + list(data[0][0].shape))
+        image_data = np.array(image_data).astype("float32").reshape(
+            [num_images, ] + list(data[0][0].shape))
         image_data = image_data.ravel()
         images = core.PaddleTensor(image_data, "x")
         images.shape = [num_images, ] + list(data[0][0].shape)
 
         label_data = [label for (_, label) in data]
-        labels = core.PaddleTensor(np.array(label_data).astype("int64").reshape([num_images, 1]), "y")
+        labels = core.PaddleTensor(
+            np.array(label_data).astype("int64").reshape([num_images, 1]), "y")
 
         warmup_data = [images, labels]
 
