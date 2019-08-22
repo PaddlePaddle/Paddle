@@ -123,6 +123,13 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   use_gpu_ = true;
 }
 
+void GpuPassStrategy::EnableCUDNN() {
+  if (!use_cudnn_) {
+    passes_.insert(passes_.begin(), "cudnn_placement_pass");
+  }
+  use_cudnn_ = true;
+}
+
 void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
@@ -160,6 +167,8 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
 
   use_gpu_ = false;
 }
+
+void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
 void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
