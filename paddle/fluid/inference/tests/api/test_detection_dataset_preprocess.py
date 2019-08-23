@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +13,23 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-from test_dist_base import TestDistBase
+
+from full_pascalvoc_test_preprocess import main_pascalvoc_preprocess
+import numpy as np
+import paddle.fluid.core as core
 import paddle.fluid as fluid
+import unittest
+import os
 
 
-class TestParallelDygraphMnist(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
+class Test_Preprocess(unittest.TestCase):
+    def test_local_convert(self):
+        os.system("python full_pascalvoc_test_preprocess.py --choice=local")
 
-    def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
+    def test_online_convert(self):
+        os.system(
+            "python full_pascalvoc_test_preprocess.py --choice=VOC_test_2007")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

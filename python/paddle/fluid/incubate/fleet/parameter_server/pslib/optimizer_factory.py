@@ -13,13 +13,13 @@
 # limitations under the License.
 
 __all__ = ["DistributedAdam"]
-import ps_pb2 as pslib
 import paddle.fluid as fluid
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from .node import DownpourWorker, DownpourServer
+from . import ps_pb2 as pslib
 
 
 class DistributedOptimizerImplBase(object):
@@ -48,6 +48,63 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
 
+    def _find_distributed_lookup_table_inputs(self, program, table_names):
+        """
+        Find input variable of distribute lookup table in program.
+        We could support multi-distribute table now.
+        Args:
+        program(Program): given program, locate distributed lookup table
+        table_name(str): given table names that is found beforehand
+        Returns:
+        inputs
+        """
+        local_vars = program.current_block().vars
+        inputs_dict = dict()
+        for table_name in table_names:
+            inputs_dict[table_name] = []
+
+        for op in program.global_block().ops:
+            if op.type == "lookup_table":
+                if op.input("W")[0] in table_names:
+                    inputs_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Ids")])
+        return inputs_dict
+
+    def _find_distributed_lookup_table_outputs(self, program, table_names):
+        """
+        Find output variable of distribute lookup table in program.
+        We could support multi-distribute table now.
+        Args:
+        program(Program): given program, locate distributed lookup table
+        table_name(str): given table name that is found beforehand
+        Returns:
+        outputs
+        """
+        local_vars = program.current_block().vars
+        outputs_dict = dict()
+        for table_name in table_names:
+            outputs_dict[table_name] = []
+
+        for op in program.global_block().ops:
+            if op.type == "lookup_table":
+                if op.input("W")[0] in table_names:
+                    outputs_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.output("Out")])
+        return outputs_dict
+
+    def _find_multi_distributed_lookup_table(self, losses):
+        """
+        find multi-sparse-table
+        """
+        table_names = set()
+        for loss in losses:
+            for op in loss.block.program.global_block().ops:
+                if op.type == "lookup_table":
+                    if op.attr('is_distributed') is True:
+                        table_name = op.input("W")[0]
+                        table_names.add(table_name)
+        return list(table_names)
+
     def _minimize(self,
                   losses,
                   startup_program=None,
@@ -69,10 +126,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
             [optimize_ops, grads_and_weights]
         """
 
-        table_name = find_distributed_lookup_table(losses[0].block.program)
+        table_name = self._find_multi_distributed_lookup_table(losses)
         prefetch_slots = find_distributed_lookup_table_inputs(
+            losses[0].block.program, table_name[0])
+        inputs_dict = self._find_distributed_lookup_table_inputs(
             losses[0].block.program, table_name)
         prefetch_slots_emb = find_distributed_lookup_table_outputs(
+            losses[0].block.program, table_name[0])
+
+        outputs_dict = self._find_distributed_lookup_table_outputs(
             losses[0].block.program, table_name)
 
         ps_param = pslib.PSParameter()
@@ -87,20 +149,29 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 text_format.Merge(f.read(), ps_param)
             server.get_desc().CopyFrom(ps_param.server_param)
             worker.get_desc().CopyFrom(ps_param.trainer_param)
+
         sparse_table_index = 0
-        server.add_sparse_table(sparse_table_index, self._learning_rate,
-                                prefetch_slots, prefetch_slots_emb)
-        worker.add_sparse_table(sparse_table_index, self._learning_rate,
-                                prefetch_slots, prefetch_slots_emb)
-        dense_table_index = 1
+        for tn in table_name:
+            if strategy.get(tn) is not None:
+                server.add_sparse_table(sparse_table_index, strategy[tn])
+            else:
+                server.add_sparse_table(sparse_table_index, None)
+            worker.add_sparse_table(sparse_table_index, inputs_dict[tn],
+                                    outputs_dict[tn])
+            sparse_table_index += 1
+
+        dense_start_table_id = sparse_table_index
+        dense_table_index = sparse_table_index
         program_configs = {}
         param_grads_list = []
 
         for loss_index in range(len(losses)):
             program_id = str(id(losses[loss_index].block.program))
             program_configs[program_id] = {
-                "pull_sparse": [sparse_table_index],
-                "push_sparse": [sparse_table_index]
+                "pull_sparse":
+                [t_index for t_index in range(sparse_table_index)],
+                "push_sparse":
+                [t_index for t_index in range(sparse_table_index)]
             }
 
             params_grads = sorted(
@@ -128,19 +199,30 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_grads.append(i[1])
                 if not is_data_norm_data:
                     grads.append(i[1])
-            server.add_dense_table(dense_table_index, self._learning_rate,
-                                   params, grads)
+            if strategy.get('dense_table') is not None:
+                server.add_dense_table(dense_table_index, params, grads,
+                                       strategy['dense_table'])
+            else:
+                server.add_dense_table(dense_table_index, params, grads, None)
             worker.add_dense_table(dense_table_index, self._learning_rate,
-                                   params, grads)
+                                   params, grads, dense_start_table_id)
             program_configs[program_id]["pull_dense"] = [dense_table_index]
             program_configs[program_id]["push_dense"] = [dense_table_index]
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
-                server.add_data_norm_table(dense_table_index,
-                                           self._learning_rate,
-                                           data_norm_params, data_norm_grads)
+                if strategy.get('datanorm_table') is not None:
+                    server.add_data_norm_table(
+                        dense_table_index, self._learning_rate,
+                        data_norm_params, data_norm_grads,
+                        strategy['datanorm_table'])
+                else:
+                    server.add_data_norm_table(
+                        dense_table_index, self._learning_rate,
+                        data_norm_params, data_norm_grads, None)
+
                 worker.add_dense_table(dense_table_index, self._learning_rate,
-                                       data_norm_params, data_norm_grads)
+                                       data_norm_params, data_norm_grads,
+                                       dense_start_table_id)
                 program_configs[program_id]["pull_dense"].extend(
                     [dense_table_index])
                 program_configs[program_id]["push_dense"].extend(
