@@ -79,7 +79,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
 }
 
-#ifdef PADDLE_WITH_PSLIB
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
@@ -155,7 +154,6 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
   }
   return true;
 }
-#endif
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(
@@ -607,7 +605,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
-#ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -776,7 +773,6 @@ void DownpourWorker::TrainFiles() {
   if (need_dump_field_) {
     writer_.Flush();
   }
-#endif
 }
 
 }  // end namespace framework
