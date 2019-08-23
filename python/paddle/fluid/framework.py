@@ -2728,6 +2728,8 @@ class IrGraph(object):
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
