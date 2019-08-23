@@ -29,10 +29,12 @@ struct Layers {
 
   VarDesc* data(std::string name) { return lod_tensor(name); }
 
-  VarDesc* mul(VarDesc* x, VarDesc* y) { return binary_op("mul", x, y); }
+  VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
+    return binary_op("mul", x, y, out);
+  }
 
-  VarDesc* elementwise_add(VarDesc* x, VarDesc* y) {
-    return binary_op("elementwise_add", x, y);
+  VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
+    return binary_op("elementwise_add", x, y, out);
   }
 
   VarDesc* dropout(VarDesc* x, float dropout_prob,
@@ -57,8 +59,11 @@ struct Layers {
     return var;
   }
 
-  VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y) {
-    VarDesc* out = lod_tensor(unique_name());
+  VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y,
+                     VarDesc* out = nullptr) {
+    if (!out) {
+      out = lod_tensor(unique_name());
+    }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType(type);
     op->SetInput("X", {x->Name()});

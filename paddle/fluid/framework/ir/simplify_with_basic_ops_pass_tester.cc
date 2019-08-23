@@ -25,35 +25,48 @@ namespace ir {
 TEST(SimplifyWithBasicOpsPass, dropout) {
   for (std::string dropout_implementation :
        {"downgrade_in_infer", "upscale_in_train"}) {
-    LOG(INFO) << "dropout_implementation: " << dropout_implementation;
-    Layers layers;
-    // (x, y) -> mul -> tmp_0
-    // (tmp_0) -> dropout -> (tmp_1)
-    // (tmp_1, z) -> elementwise_add -> (tmp_2)
-    auto* x = layers.data("x");
-    auto* y = layers.data("y");
-    auto* z = layers.data("z");
-    auto* mul_out = layers.mul(x, y);
-    auto* dropout_out = layers.dropout(mul_out, 0.5f, dropout_implementation);
-    layers.elementwise_add(dropout_out, z);
+    for (auto inplace : {false, true}) {
+      if (dropout_implementation == "downgrade_in_infer" && inplace == true) {
+        continue;
+      }
 
-    std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-    auto pass = PassRegistry::Instance().Get("simplify_with_basic_ops_pass");
-    int num_dropout_nodes_before = GetNumOpNodes(graph, "dropout");
-    int num_scale_nodes_before = GetNumOpNodes(graph, "scale");
-    VLOG(3) << DebugString(graph);
+      LOG(INFO) << "dropout_implementation: " << dropout_implementation
+                << ", inplace: " << inplace;
+      Layers layers;
+      // (x, y) -> mul -> tmp_0
+      // (tmp_0) -> dropout -> (tmp_1)
+      // (tmp_1, z) -> elementwise_add -> (tmp_2)
+      // or
+      // (tmp_1, z) -> elementwise_add -> (tmp_0)
+      auto* x = layers.data("x");
+      auto* y = layers.data("y");
+      auto* z = layers.data("z");
+      auto* mul_out = layers.mul(x, y);
+      auto* dropout_out = layers.dropout(mul_out, 0.5f, dropout_implementation);
+      if (inplace) {
+        layers.elementwise_add(dropout_out, z, mul_out);
+      } else {
+        layers.elementwise_add(dropout_out, z);
+      }
 
-    graph.reset(pass->Apply(graph.release()));
-    int num_dropout_nodes_after = GetNumOpNodes(graph, "dropout");
-    int num_scale_nodes_after = GetNumOpNodes(graph, "scale");
-    VLOG(3) << DebugString(graph);
+      std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
+      auto pass = PassRegistry::Instance().Get("simplify_with_basic_ops_pass");
+      int num_dropout_nodes_before = GetNumOpNodes(graph, "dropout");
+      int num_scale_nodes_before = GetNumOpNodes(graph, "scale");
+      VLOG(3) << DebugString(graph);
 
-    PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0UL);
-    if (dropout_implementation == "downgrade_in_infer") {
-      PADDLE_ENFORCE_EQ(num_dropout_nodes_before,
-                        num_scale_nodes_after - num_scale_nodes_before);
-    } else {
-      PADDLE_ENFORCE_EQ(num_scale_nodes_after - num_scale_nodes_before, 0UL);
+      graph.reset(pass->Apply(graph.release()));
+      int num_dropout_nodes_after = GetNumOpNodes(graph, "dropout");
+      int num_scale_nodes_after = GetNumOpNodes(graph, "scale");
+      VLOG(3) << DebugString(graph);
+
+      PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0UL);
+      if (dropout_implementation == "downgrade_in_infer") {
+        PADDLE_ENFORCE_EQ(num_dropout_nodes_before,
+                          num_scale_nodes_after - num_scale_nodes_before);
+      } else {
+        PADDLE_ENFORCE_EQ(num_scale_nodes_after - num_scale_nodes_before, 0UL);
+      }
     }
   }
 }
