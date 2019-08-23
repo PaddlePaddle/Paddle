@@ -12,29 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <string>
-#include <unordered_set>
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
+#include <memory>
+#include <string>
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * Specifies which operators should use cuDNN.
- */
-class CUDNNPlacementPass : public PlacementPassBase {
- private:
-  const std::string GetPlacementName() const { return "cuDNN"; }
-
-  const std::string GetAttrName() const { return "use_cudnn"; }
-
-  const std::unordered_set<std::string> GetOpTypesList() const {
-    return Get<std::unordered_set<std::string>>("cudnn_enabled_op_types");
+void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
+  VLOG(3) << "Applies " << GetPlacementName() << " placement strategy.";
+  std::string attr_name = GetAttrName();
+  const auto& op_types_list = GetOpTypesList();
+  if (!graph->Has(attr_name)) {
+    graph->Set<bool>(attr_name, new bool(true));
   }
-};
+  for (const Node* n : graph->Nodes()) {
+    if (n->IsOp()) {
+      auto* op = n->Op();
+      if (op->HasAttr(attr_name) || op->HasProtoAttr(attr_name)) {
+        if (op_types_list.empty()) {
+          op->SetAttr(attr_name, true);
+        } else if (std::find(op_types_list.begin(), op_types_list.end(),
+                             n->Name()) != op_types_list.end()) {
+          op->SetAttr(attr_name, true);
+        }
+      }
+    }
+  }
+}
 
 }  // namespace ir
 }  // namespace framework

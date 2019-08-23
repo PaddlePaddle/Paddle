@@ -12,7 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/cudnn_placement_pass.h"
+#pragma once
 
-REGISTER_PASS(cudnn_placement_pass, paddle::framework::ir::CUDNNPlacementPass)
-    .RequirePassAttr("cudnn_enabled_op_types");
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/framework/ir/pass.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+
+/*
+ * Specifies which operators should use cuDNN.
+ */
+class PlacementPassBase : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+  virtual const std::string GetPlacementName() const = 0;
+  virtual const std::string GetAttrName() const = 0;
+  virtual const std::unordered_set<std::string> GetOpTypesList() const = 0;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
