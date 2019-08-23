@@ -19,15 +19,15 @@ import warnings
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
-import time
+from .dataset import DatasetBase, InMemoryDataset
 
-__all__ = ['PyReader']
+__all__ = ['PyReader', 'DataLoader']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -47,7 +47,7 @@ def _convert_places(places):
     return ret
 
 
-class DataLoader(object):
+class DataLoaderBase(object):
     def __init__(self):
         self._places = None
 
@@ -64,7 +64,7 @@ class DataLoader(object):
         raise NotImplementedError()
 
 
-class DataLoaderFactory(object):
+class DataLoader(object):
     @staticmethod
     def from_generator(feed_list=None,
                        capacity=None,
@@ -75,15 +75,11 @@ class DataLoaderFactory(object):
                                return_list)
 
     @staticmethod
-    def from_dataset(dataset):
-        return DatasetLoader(dataset)
-
-    @staticmethod
-    def from_filelist(filelist):
-        return FileListLoader(filelist)
+    def from_dataset(dataset, places=None):
+        return DatasetLoader(dataset, places)
 
 
-class GeneratorLoader(DataLoader):
+class GeneratorLoader(DataLoaderBase):
     def __init__(self,
                  feed_list=None,
                  capacity=None,
@@ -340,7 +336,7 @@ class GeneratorLoader(DataLoader):
         return self
 
 
-class PyReader(DataLoader):
+class PyReader(DataLoaderBase):
     """
     Create a reader object for data feeding in Python. 
     Data would be prefetched using Python thread and be pushed
@@ -489,7 +485,7 @@ class PyReader(DataLoader):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=False):
-        self._loader = DataLoaderFactory.from_generator(
+        self._loader = DataLoader.from_generator(
             feed_list, capacity, use_double_buffer, iterable, return_list)
 
     @property
@@ -759,11 +755,51 @@ class PyReader(DataLoader):
         self._loader.set_batch_generator(reader, places)
 
 
-class DatasetLoader(DataLoader):
-    def __init__(self, dataset):
+class DatasetLoader(DataLoaderBase):
+    def __init__(self, dataset, places=None):
+        assert isinstance(dataset,
+                          DatasetBase), "dataset must be type of DatasetBase"
+        assert not in_dygraph_mode(
+        ), "DatasetLoader is not supported in dygraph mode yet"
+
+        if places is None:
+            places = cpu_places()
+
+        thread_num = len(places)
+
+        assert len(dataset.filelist) >= thread_num, \
+            "Filelist number of dataset {} must be not less than place number {}".format(len(dataset.filelist), thread_num)
+
+        if dataset.thread_num != thread_num:
+            logging.warn('thread_num {} which is set in Dataset is ignored'.
+                         format(dataset.thread_num))
+            dataset.set_thread(thread_num)
+
+        if isinstance(dataset,
+                      InMemoryDataset) and dataset.queue_num > thread_num:
+            logging.warn("queue_num {} which is set in Dataset is ignored".
+                         format(dataset.queue_num))
+            dataset.set_queue_num(thread_num)
+        '''
+        for p in places:
+            assert isinstance(p, core.CPUPlace), \
+            "DatasetLoader only support CPUPlace currently"
+        '''
+
         self._dataset = dataset
+        use_slots = [
+            slot.name for slot in dataset.proto_desc.multi_slot_desc.slots
+            if slot.is_used
+        ]
 
+        self._iterable_dataset = core.IterableDatasetWrapper(
+            dataset.dataset, use_slots, _convert_places(places))
 
-class FileListLoader(DataLoader):
-    def __init__(self, filelist):
-        self._filelist = filelist
+    def __iter__(self):
+        self._dataset._finish_to_run()
+        self._dataset._prepare_to_run()
+        self._iterable_dataset._start()
+        return self
+
+    def __next__(self):
+        return self._iterable_dataset._next()

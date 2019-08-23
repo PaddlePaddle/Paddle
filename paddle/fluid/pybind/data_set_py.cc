@@ -21,6 +21,8 @@ limitations under the License. */
 #endif
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
@@ -41,10 +43,92 @@ namespace pd = paddle::framework;
 namespace paddle {
 namespace pybind {
 
-void BindDataset(py::module* m) {
+class IterableDatasetWrapper {
+ public:
+  IterableDatasetWrapper(framework::Dataset *dataset,
+                         const std::vector<std::string> &slots,
+                         const std::vector<platform::Place> &places)
+      : dataset_(dataset), slots_(slots), places_(places) {
+    size_t device_num = places_.size();
+    PADDLE_ENFORCE_GT(device_num, 0, "thread_num must be larger than 0");
+    PADDLE_ENFORCE_GT(slots_.size(), 0, "slot_num cannot be 0");
+    scopes_.reserve(device_num);
+    tensors_.reserve(device_num);
+    for (size_t i = 0; i < device_num; ++i) {
+      scopes_.emplace_back(new framework::Scope());
+      tensors_.emplace_back();
+      for (auto &var_name : slots_) {
+        auto *var = scopes_.back()->Var(var_name);
+        auto *t = var->GetMutable<framework::LoDTensor>();
+        tensors_.back().emplace_back(t);
+      }
+    }
+    is_exhaustive_.assign(device_num, false);
+  }
+
+  void Start() {
+    PADDLE_ENFORCE_EQ(is_started_, false, "Reader has been started");
+    data_feeds_ = dataset_->GetReaders();
+    PADDLE_ENFORCE_EQ(data_feeds_.size(), places_.size(),
+                      "Device number does not match reader number");
+    for (size_t i = 0; i < places_.size(); ++i) {
+      data_feeds_[i]->AssignFeedVar(*scopes_[i]);
+      data_feeds_[i]->SetPlace(places_[i]);
+      PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(), true, "Reader start failed");
+    }
+    is_started_ = true;
+    std::fill(is_exhaustive_.begin(), is_exhaustive_.end(), false);
+    exhaustive_num_ = 0;
+  }
+
+  std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
+    PADDLE_ENFORCE_EQ(is_started_, true, "Reader must be started");
+    size_t device_num = places_.size();
+    std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
+        device_num);
+    size_t read_num = 0;
+
+    while (exhaustive_num_ < device_num && read_num < device_num) {
+      for (size_t i = 0; i < device_num; ++i) {
+        if (is_exhaustive_[i]) continue;
+        if (data_feeds_[i]->Next() > 0) {
+          for (size_t j = 0; j < slots_.size(); ++j) {
+            result[read_num].emplace(slots_[j], std::move(*tensors_[i][j]));
+          }
+          ++read_num;
+        } else {
+          is_exhaustive_[i] = true;
+          ++exhaustive_num_;
+        }
+      }
+    }
+
+    if (UNLIKELY(read_num != device_num)) {
+      is_started_ = false;
+      data_feeds_.clear();
+      throw py::stop_iteration();
+    }
+
+    return result;
+  }
+
+ private:
+  framework::Dataset *dataset_;
+  std::vector<std::string> slots_;
+  std::vector<platform::Place> places_;
+
+  std::vector<framework::DataFeed *> data_feeds_;
+  std::vector<std::unique_ptr<framework::Scope>> scopes_;
+  std::vector<std::vector<framework::LoDTensor *>> tensors_;
+  bool is_started_{false};
+  std::vector<bool> is_exhaustive_;
+  size_t exhaustive_num_{0};
+};
+
+void BindDataset(py::module *m) {
   py::class_<framework::Dataset, std::unique_ptr<framework::Dataset>>(*m,
                                                                       "Dataset")
-      .def(py::init([](const std::string& name = "MultiSlotDataset") {
+      .def(py::init([](const std::string &name = "MultiSlotDataset") {
         return framework::DatasetFactory::CreateDataset(name);
       }))
       .def("set_filelist", &framework::Dataset::SetFileList,
@@ -108,7 +192,13 @@ void BindDataset(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
            py::call_guard<py::gil_scoped_release>());
+
+  py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
+      .def(py::init<framework::Dataset *, const std::vector<std::string> &,
+                    const std::vector<platform::Place> &>())
+      .def("_start", &IterableDatasetWrapper::Start)
+      .def("_next", &IterableDatasetWrapper::Next);
 }
 
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace pybind
+}  // namespace paddle

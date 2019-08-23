@@ -28,6 +28,10 @@ import unittest
 class TestDataset(unittest.TestCase):
     """  TestCases for Dataset. """
 
+    def setUp(self):
+        self.use_data_loader = False
+        self.epoch_num = 10
+
     def test_dataset_create(self):
         """ Testcase for dataset create. """
         try:
@@ -115,13 +119,20 @@ class TestDataset(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
-        for i in range(2):
-            try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
@@ -166,13 +177,20 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        for i in range(2):
-            try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
@@ -210,13 +228,20 @@ class TestDataset(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
-        for i in range(2):
-            try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
@@ -257,16 +282,29 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        for i in range(2):
-            try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
+
+
+class TestDatasetWithDataLoader(TestDataset):
+    def setUp(self):
+        self.use_data_loader = True
+        self.epoch_num = 10
 
 
 if __name__ == '__main__':

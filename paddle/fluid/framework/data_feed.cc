@@ -148,7 +148,10 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
-    cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(this->place_), true);
+    platform::SetDeviceId(boost::get<platform::CUDAPlace>(this->place_).device);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
 #else
     PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
