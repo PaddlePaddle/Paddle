@@ -800,60 +800,6 @@ PDNode *patterns::ConvActivation::operator()(
   return activation_out_var;
 }
 
-PDNode *patterns::ConvReLU::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
-  // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
-  auto *relu_op = pattern->NewNode(relu_repr())->assert_is_op("relu");
-  // Create variables
-  // Filter
-  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
-                              ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *conv_out_var = pattern->NewNode(conv_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
-                           ->assert_is_op_input("relu");
-  // output
-  auto *relu_out_var = pattern->NewNode(relu_out_repr())
-                           ->AsOutput()
-                           ->assert_is_op_output("relu");
-
-  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
-  relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
-  return relu_out_var;
-}
-
-PDNode *patterns::ConvBReLU::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
-  // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
-  auto *brelu_op = pattern->NewNode(brelu_repr())->assert_is_op("relu6");
-  // Create variables
-  // Filter
-  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
-                              ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *conv_out_var = pattern->NewNode(conv_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
-                           ->assert_is_op_input("relu6");
-  // output
-  auto *brelu_out_var = pattern->NewNode(brelu_out_repr())
-                            ->AsOutput()
-                            ->assert_is_op_output("relu6");
-
-  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
-  brelu_op->LinksFrom({conv_out_var}).LinksTo({brelu_out_var});
-  return brelu_out_var;
-}
-
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators

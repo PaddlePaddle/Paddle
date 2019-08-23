@@ -67,9 +67,6 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return DDim({-1});
-    }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
