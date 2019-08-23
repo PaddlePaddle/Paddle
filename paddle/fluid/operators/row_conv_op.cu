@@ -30,7 +30,8 @@ template <typename T>
 __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
                                            int num_sequence, int input_dim,
                                            int future_context,
-                                           const size_t *batch_indices, T *out) {
+                                           const size_t *batch_indices,
+                                           T *out) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -49,7 +50,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    
+
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -116,9 +117,8 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    // int current_timesteps = 0;
     current_timesteps = end - start;
-    
+
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -149,7 +149,7 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     current_timesteps = end - start;
-  
+
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -162,10 +162,12 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 
 // Compute W gradient (small future_context version)
 template <typename T>
-__global__ void RowConvGradFilterImproved(
-    const T *in, const T *dout, int num_sequence, int input_dim,
-    int future_context, int block_x, int block_y, const size_t *batch_indices,
-    T *dfilter) {
+__global__ void RowConvGradFilterImproved(const T *in, const T *dout,
+                                          int num_sequence, int input_dim,
+                                          int future_context, int block_x,
+                                          int block_y,
+                                          const size_t *batch_indices,
+                                          T *dfilter) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -264,7 +266,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-    
+
     int scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
