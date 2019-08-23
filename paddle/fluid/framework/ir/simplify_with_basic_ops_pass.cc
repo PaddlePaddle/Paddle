@@ -21,6 +21,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * This pass is to simplify the Grpah, it may contains:
+ * - replace comlicated op with basic op
+ * - remove some unnecessary op
+ *
+ * In the current implementation, it supports:
+ * - remove dropout_op (upscale_in_train) or
+ *   replace dropout_op with scale_op (downgrade_in_infer) when is_test is true
+ */
 void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;
