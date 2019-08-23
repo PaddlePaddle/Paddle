@@ -57,7 +57,6 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // d->Dequant(scale1)->e
 // e->Quant(scale2)->f
 // (f,w2,b2)->Conv2->i
-
 ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn, float scale_out,
                                         float scale1, float scale2) {
   ProgramDesc prog;
@@ -86,7 +85,6 @@ static const std::initializer_list<std::string> variable_names{
 // c->Quant1(scale2)->d and d->Conv2->e
 // c->Conv3->f
 // c->Quant2(scale3)->g and g->Conv4->h
-
 ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn, float scale_out,
                                             float scale1, float scale2,
                                             float scale3) {
@@ -224,7 +222,6 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
 
   int original_nodes_num = graph->Nodes().size();
   RegisterPass(&graph);
-
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_EQ(original_nodes_num - removed_nodes_num, current_nodes_num);
