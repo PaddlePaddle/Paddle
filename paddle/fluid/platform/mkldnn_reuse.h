@@ -1040,15 +1040,6 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                             mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
-  // TODO(jczaja): remove after conv int8 is adapted
-  ConvMKLDNNTemplateHandler(
-      std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
-      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-      const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {
-    conv_pd_ = conv_pd;
-  }
-
   ConvMKLDNNTemplateHandler(
       std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
       std::shared_ptr<typename backward_data_t::primitive_desc>
@@ -1355,6 +1346,21 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
            std::to_string(groups) + suffix;
   }
 
+  // Generate keys for storing/retriving primitives for INT8 conv key
+  // (lidanqing)
+  static std::string GetHash(
+      mkldnn::memory::dims& src_tz, mkldnn::memory::dims& weights_tz,  // NOLINT
+      std::vector<int>& strides, std::vector<int>& paddings,           // NOLINT
+      std::vector<int>& dilations, int groups,                         // NOLINT
+      const mkldnn::memory::data_type src_dt, const mkldnn::memory::format fmt,
+      std::string fuse_activation, bool fuse_residual_conn,
+      const std::string& suffix) {
+    return dims2str(src_tz) + dims2str(weights_tz) + dims2str(strides) +
+           dims2str(paddings) + dims2str(dilations) + std::to_string(groups) +
+           std::to_string(src_dt) + std::to_string(fmt) + fuse_activation +
+           std::to_string(fuse_residual_conn) + suffix;
+  }
+
   // Generate keys for storing/retriving primitives for this operator
   // TODO(jczaja): Make hashing function more optimial
   static std::string GetHash(mkldnn::memory::dims& input_dims,    // NOLINT
@@ -1384,47 +1390,6 @@ using ConvTransposeMKLDNNHandler =
     ConvMKLDNNTemplateHandler<mkldnn::deconvolution_forward,
                               mkldnn::deconvolution_backward_data,
                               mkldnn::deconvolution_backward_weights>;
-
-template <typename T>
-static std::shared_ptr<mkldnn::memory> SetDstMemory(
-    const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const std::shared_ptr<ConvMKLDNNHandler>& handler) {
-  T* output_data =
-      output->mutable_data<T>(ctx.GetPlace(), handler->GetDstMemorySize());
-  std::shared_ptr<mkldnn::memory> dst_memory_p =
-      handler->AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
-  return dst_memory_p;
-}
-
-template <typename T>
-static std::shared_ptr<mkldnn::memory> SetDstMemory(
-    const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const framework::Tensor* residual_param,
-    const mkldnn::memory::desc& user_residual_md,
-    const std::shared_ptr<ConvMKLDNNHandler>& handler,
-    std::vector<mkldnn::primitive>* pipeline) {
-  const T* residual_param_data = residual_param->data<T>();
-  PADDLE_ENFORCE(residual_param_data != nullptr,
-                 "Provide data if you want MKLDNN conv+elementwise_add fusion");
-  std::shared_ptr<mkldnn::memory> user_residual_memory_p =
-      handler->AcquireResidualDataMemory(user_residual_md,
-                                         to_void_cast<T>(residual_param_data));
-  T* output_data = output->mutable_data<T>(ctx.GetPlace());
-  std::shared_ptr<mkldnn::memory> dst_memory_p =
-      handler->AcquireDstMemoryFromResidualDataMemory(
-          user_residual_memory_p, to_void_cast<T>(output_data), *pipeline);
-  return dst_memory_p;
-}
-
-template <typename T>
-static void SetDstMemoryHandler(
-    const framework::ExecutionContext& ctx, framework::Tensor* output,
-    const std::shared_ptr<ConvMKLDNNHandler>& handler,
-    std::shared_ptr<mkldnn::memory> dst_memory_p) {
-  T* output_data =
-      output->mutable_data<T>(ctx.GetPlace(), handler->GetDstMemorySize());
-  dst_memory_p->set_data_handle(to_void_cast<T>(output_data));
-}
 
 template <typename T>
 static void SetDstMemoryQuantized(
