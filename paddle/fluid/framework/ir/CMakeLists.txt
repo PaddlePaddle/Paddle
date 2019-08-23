@@ -71,6 +71,8 @@ pass_library(fillconstant_elementwisemul_fuse inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
+pass_library(remove_reshape_transpose_pass)
+
 if(WITH_GPU)
     pass_library(cudnn_placement_pass base DEPS placement_pass_base)
 endif()
