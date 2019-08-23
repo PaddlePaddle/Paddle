@@ -1736,7 +1736,7 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.softshrink(input, name='softshrink')
+            out = layers.softshrink(input)
             return (out)
 
     def make_iou_similarity(self):
