@@ -12037,28 +12037,31 @@ def psroi_pool(input,
 def prroi_pool(input,
                rois,
                output_channels,
-               spatial_scale,
-               pooled_height,
-               pooled_width,
+               spatial_scale=1.0,
+               pooled_height=1,
+               pooled_width=1,
                name=None):
     """
-    ${comment}
+    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
 
     Args:
-        input (Variable): ${x_comment}
+        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+                        [N,C,H,W]. Where N is batch size,C is number of input channels,H
+                        is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                         the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates.
-        output_channels (integer): ${output_channels_comment}
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
-        pooled_height (integer): ${pooled_height_comment} Default: 1
-        pooled_width (integer): ${pooled_width_comment} Default: 1
-        name (str, default None): The name of this layer.
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates.
+        output_channels (integer): The output's channel.
+        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
+                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+        pooled_height (integer): The pooled output height. Default: 1.
+        pooled_width (integer): The pooled output width. Default: 1.
+        name (str, default None): The name of this operation.
 
     Returns:
-        Variable: ${out_comment}.
+        Variable: The tensor variable storing the prroi_pool result.
 
     Examples:
         .. code-block:: python
