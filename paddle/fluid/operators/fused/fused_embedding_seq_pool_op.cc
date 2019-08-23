@@ -78,6 +78,12 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                          "are supported, sum computes the weighted sum of the "
                          "embedding results for each row.")
         .SetDefault("sum");
+    AddAttr<int64_t>("padding_idx",
+                     "(int64, default -1) "
+                     "If the value is -1, it makes no effect to lookup. "
+                     "Otherwise the given value indicates padding the output "
+                     "with zeros whenever lookup encounters it in Ids.")
+        .SetDefault(kNoPadding);
     // NOTE(minqiyang): grad_inplace is an temporal attribute,
     // please do NOT set this attribute in python layer.
     AddAttr<bool>("grad_inplace",

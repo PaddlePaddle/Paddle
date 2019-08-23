@@ -33,12 +33,15 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
+constexpr int64_t kNoPadding = -1;
+
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
 template <typename T>
 void prepare_csr_data(const std::vector<uint64_t> &offset,
                       const int64_t *ids_data, const size_t idx_width,
-                      T *csr_vals, int *csr_colmuns, int *csr_row_idx) {
+                      T *csr_vals, int *csr_colmuns, int *csr_row_idx,
+                      int64_t padding_idx = kNoPadding) {
   int val_idx = 0;
   int row_idx = 0;
   csr_row_idx[0] = 0;
@@ -52,9 +55,11 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
 
       // construct a map for creating csr
       for (size_t j = offset[i]; j < offset[i + 1]; ++j) {
-        unsigned int word_idx =
-            static_cast<unsigned int>(ids_data[idx + j * idx_width]);
-        ++ids_map[word_idx];
+        auto ids_value = ids_data[idx + j * idx_width];
+        if (ids_value != padding_idx) {
+          unsigned int word_idx = static_cast<unsigned int>(ids_value);
+          ++ids_map[word_idx];
+        }
       }
 
       VLOG(4) << "====sequence %d====" << i;
@@ -119,6 +124,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     int64_t last_dim =
         FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
@@ -151,7 +157,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
       auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
       prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx);
+                          csr_colmuns, csr_row_idx, padding_idx);
 
       const char transa = 'N';
       const T alpha = 1.0;
