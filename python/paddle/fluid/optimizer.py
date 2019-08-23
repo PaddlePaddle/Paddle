@@ -2956,55 +2956,58 @@ class PipelineOptimizer(object):
 
 
 class LookaheadOptimizer(object):
-    def __init__(self,
-                 inner_optimizer,
-                 alpha=0.5,
-                 k=5,
-                 ignore_embed=True,
-                 name=None):
-        assert inner_optimizer is not None
+    def __init__(self, inner_optimizer, alpha=0.5, k=5):
+
+        assert (inner_optimizer is not None), "inner optimizer can not be None"
+        assert (
+            0.0 <= alpha <= 1.0
+        ), "alpha should be larger or equal to 0.0, and less or equal than 1.0"
+        assert (isinstance(k, int) and k > 0), "k should be a positive integer"
+
         self.inner_optimizer = inner_optimizer
         self.alpha = alpha
         self.k = k
-        self.ignore_embed = ignore_embed
         self.type = "lookahead"
 
     def minimize(self, loss, startup_program=None):
 
-        # Apply SGD to the main_program
-        mini_out = self.inner_optimizer.minimize(loss)
+        # Apply inner optimizer to the main_program
+        mini_out = self.inner_optimizer.minimize(
+            loss, startup_program=startup_program)
 
         # Get startup_program and main_program
         if startup_program is None:
             startup_program = default_startup_program()
         main_block = loss.block
-        main_program = main_block.program
 
         # add some vars to the main_program
         params = [param.name for param in main_block.all_parameters()]
-        if self.ignore_embed:
-            params = [x for x in params if "embedding" not in x]
+        param_to_slow = {}
         for param in params:
-            main_block.create_var(
+            fast_var = main_block.var(param)
+            assert (fast_var is not None)
+            slow_var = main_block.create_var(
                 name=param + "@SLOW",
-                shape=main_block.var(param).shape,
-                dtype=main_block.var(param).dtype,
+                shape=fast_var.shape,
+                dtype=fast_var.dtype,
                 persistable=True)
+            param_to_slow[param] = slow_var
 
         # add some vars to the startup_program
         startup_block = startup_program.global_block()
         for param in params:
-            assert (startup_block.var(param) is not None)
-            startup_block.create_var(
+            fast_var = startup_block.var(param)
+            assert (fast_var is not None)
+            slow_var = startup_block.create_var(
                 name=param + "@SLOW",
-                shape=startup_block.var(param).shape,
-                dtype=startup_block.var(param).dtype,
+                shape=fast_var.shape,
+                dtype=fast_var.dtype,
                 persistable=True)
 
             startup_block.append_op(
                 type="assign",
-                inputs={"X": startup_block.var(param)},
-                outputs={"Out": startup_block.var(param + "@SLOW")})
+                inputs={"X": fast_var},
+                outputs={"Out": slow_var})
 
         # Add Var k to main prog and startup prog
         k = layers.create_global_var(
@@ -3036,20 +3039,18 @@ class LookaheadOptimizer(object):
 
         one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
 
-        block = main_block
-
         mod = layers.elementwise_mod(step, k)
         with layers.control_flow.Switch() as switch:
             with switch.case(mod == zero_var):
                 for param_name in params:
+                    fast_var = main_block.var(param_name)
+                    slow_var = param_to_slow[param_name]
                     tmp_var = layers.elementwise_add(
-                        layers.elementwise_mul(block.var(param_name), alpha),
+                        layers.elementwise_mul(fast_var, alpha),
                         layers.elementwise_mul(
-                            block.var(param_name + "@SLOW"),
-                            layers.elementwise_sub(one_var, alpha)))
-                    layers.assign(
-                        input=tmp_var, output=block.var(param_name + "@SLOW"))
-                    layers.assign(input=tmp_var, output=block.var(param_name))
+                            slow_var, layers.elementwise_sub(one_var, alpha)))
+                    layers.assign(input=tmp_var, output=slow_var)
+                    layers.assign(input=tmp_var, output=fast_var)
             with switch.default():
                 pass
         return mini_out
