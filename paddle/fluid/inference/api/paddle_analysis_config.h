@@ -46,6 +46,7 @@ struct AnalysisConfig {
   enum class Precision {
     kFloat32 = 0,
     kInt8,
+    kHalf,
   };
 
   /** Set model with a directory.
