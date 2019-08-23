@@ -247,11 +247,7 @@ class TestSeqConvApi(unittest.TestCase):
 
         x = fluid.layers.data('x', shape=[32], lod_level=1)
         y = fluid.layers.sequence_conv(
-            input=x,
-            num_filters=2,
-            filter_size=3,
-            padding=True,
-            padding_start=None)
+            input=x, num_filters=2, filter_size=3, padding_start=None)
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(

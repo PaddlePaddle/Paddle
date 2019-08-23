@@ -1926,11 +1926,13 @@ def sequence_conv(input,
                   act=None,
                   name=None):
     """
-    This function creates the op for sequence_conv, using the inputs and
-    other convolutional configurations for the filters and stride as given
-    in the input parameters to the function. Seqence_conv receives input
-    sequences with variable length and outputs sequences with the same length
-    as the input.
+    The sequence_conv receives input sequences with variable length and other convolutional
+    configuration parameters for the filter and stride to apply the convolution operation.
+    It fills all-zero padding data on both sides of the sequence by default to ensure that
+    the output is the same length as the input. You can customize the padding behavior by
+    configuring the parameter :attr:`padding\_start`.
+    
+    **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
 
     .. code-block:: text
 
@@ -1948,9 +1950,12 @@ def sequence_conv(input,
 
             * Case1:
 
-                If padding_start is -1 and padding is True, we use zero to pad
-                instead of learned weight to pad, and the filter_size is 3,
-                The output of the context sequence after padding (Out) is:
+                If padding_start is -1 and filter_size is 3.
+                The length of padding data is calculated as follows:
+                up_pad_len = max(0, -padding_start) = 1
+                down_pad_len = max(0, filter_size + padding_start - 1) = 1
+
+                The output of the input sequence after padding is:
                 data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
                                        a1, a2, b1, b2, c1, c2;
                                        b1, b2, c1, c2, 0,  0 ]
@@ -1963,19 +1968,21 @@ def sequence_conv(input,
         num_filters (int): the number of filters.
         filter_size (int): the height of filter, the width is hidden size by default.
         filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
-        padding (bool): If set True, it will generate all-zero padding data to make sure the
-            length of the output is the same as the length of the input. These padding data will
-            not be trainable or updated while trainnig. Currently, it will always pad input whether
-            :attr:`padding` is set true or false. Because the length of input sequence may be shorter
-            than the height of the filter, which can't compute convolution correctly.
+        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+            future. Currently, it will always pad input to make sure the length of the output is
+            the same as input whether :attr:`padding` is set true or false. Because the length of
+            input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
+            result to not be computed correctly. These padding data will not be trainable or updated
+            while trainnig. 
         padding_start (int|None): It is used to indicate the start index for padding the input
-            sequence. And it can also be interpreted as the beginning of the convolution of the 
-            number of rows of sequence, which can be negative. The negative number means to pad
+            sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
-            The positive number means to skip :attr:`padding_start` time-steps of each instance.
-            If set None, the same length :math:`-\\frac{filter\_size}{2}` of data will be filled
-            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1`
-            data is padded at the end of each input sequence.
+            The positive number means to skip :attr:`padding_start` time-steps of each instance,
+            and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
+            at the end of the sequence to ensure that the output is the same length as the input.
+            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
+            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
+            is padded at the end of each input sequence.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -2000,7 +2007,7 @@ def sequence_conv(input,
              import paddle.fluid as fluid
 
              x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding=True, padding_start=-1)
+             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
