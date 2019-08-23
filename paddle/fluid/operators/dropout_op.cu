@@ -38,7 +38,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
     if (step_size == 0) {
-      curand_init(seed, idx, idx, &state);
+      curand_init(seed, idx, 0, &state);
       step_size = blockDim.x * gridDim.x;
     } else {
       curand_init(seed, idx, step_size, &state);
