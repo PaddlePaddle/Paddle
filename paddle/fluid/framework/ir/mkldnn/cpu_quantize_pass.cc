@@ -246,6 +246,10 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
         !boost::get<bool>(pool_op_desc->GetAttr("use_quantizer")))
       return;
 
+    // skip if avg pooling
+    if (boost::get<std::string>(pool_op_desc->GetAttr("pooling_type")) == "avg")
+      return;
+
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
 
