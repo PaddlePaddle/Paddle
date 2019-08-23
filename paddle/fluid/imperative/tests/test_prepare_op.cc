@@ -111,7 +111,7 @@ TEST(test_prepare_op, test_prepare_op) {
                                    split_attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp =
-                              PreparedOp::Prepare(ctx, op, place));
+                              PreparedOp::Prepare(ctx, op, place, ins));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -122,6 +122,61 @@ TEST(test_prepare_op, test_get_tensor_from_var) {
   vout_error->MutableVar()->GetMutable<framework::SelectedRows>();
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
+}
+
+TEST(test_prepare_op, test_prepare_data) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+  framework::OpDesc desc;
+  platform::CPUPlace cpu_place;
+  platform::CUDAPlace gpu_place(0);
+  // test split
+  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
+      cpu_place);
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+  framework::AttributeMap split_attr_map;
+  const auto& info = framework::OpInfoMap::Instance().Get("split");
+  framework::VariableNameMap var_in_map =
+      CreateVarNameMap(info, "split", ins, true);
+  framework::VariableNameMap var_out_map =
+      CreateVarNameMap(info, "split", outs, false);
+  framework::OperatorWithKernel split_op("split", var_in_map, var_out_map,
+                                         split_attr_map);
+  framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
+  ASSERT_ANY_THROW(PreparedOp preparedOp =
+                       PreparedOp::Prepare(ctx, split_op, gpu_place, ins));
+  // test reshape2
+  const auto& info2 = framework::OpInfoMap::Instance().Get("reshape2");
+  std::shared_ptr<imperative::VarBase> vin2(
+      new imperative::VarBase(false, "vin2"));
+  std::shared_ptr<imperative::VarBase> shape_var1(
+      new imperative::VarBase(false, "ShapeTensor"));
+  vin2->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
+      gpu_place);
+  shape_var1->MutableVar()
+      ->GetMutable<framework::LoDTensor>()
+      ->mutable_data<float>(cpu_place);
+  var_pair x2_pair = var_pair("X", vb_vector(1, vin2));
+  var_pair shape_var_pair = var_pair("ShapeTensor", vb_vector(1, vin2));
+  var_pair out2_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins2 = {x2_pair, shape_var_pair};
+  imperative::NameVarBaseMap outs2 = {out2_pair};
+  framework::VariableNameMap var_in_map2 =
+      CreateVarNameMap(info, "reshape2", ins2, true);
+  framework::VariableNameMap var_out_map2 =
+      CreateVarNameMap(info, "reshape2", outs2, false);
+  framework::AttributeMap reshape_attr_map;
+  framework::RuntimeContext ctx2 = PrepareRuntimeContext(ins2, outs2);
+  framework::OperatorWithKernel reshape_op("reshape2", var_in_map2,
+                                           var_out_map2, reshape_attr_map);
+  ASSERT_NO_THROW(PreparedOp preparedOp =
+                      PreparedOp::Prepare(ctx2, reshape_op, gpu_place, ins2));
 }
 
 }  // namespace imperative

@@ -17,6 +17,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -30,14 +32,17 @@ class PreparedOp {
  public:
   static PreparedOp Prepare(const framework::RuntimeContext& ctx,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place);
+                            const platform::Place& place,
+                            const NameVarBaseMap& ins);
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
 
   void Run();
 
-  static platform::Place GetExpectedPlace(const platform::Place& place,
-                                          const NameVarBaseMap& ins);
+  static platform::Place PrepareData(
+      const platform::Place& place, NameVarBaseMap* ins,
+      const framework::OperatorWithKernel& op,
+      const framework::OpKernelType& expected_kernel_key);
 
  private:
   PreparedOp(const framework::OperatorBase& op,

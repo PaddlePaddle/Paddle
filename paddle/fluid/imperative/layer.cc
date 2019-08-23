@@ -263,10 +263,8 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
-  auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
-  auto prepared_op =
-      PreparedOp::Prepare(runtime_ctx, *op_kernel, runtime_place);
+  auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);
 
   prepared_op.Run();
 

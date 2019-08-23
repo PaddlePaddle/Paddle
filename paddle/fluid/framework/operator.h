@@ -462,7 +462,8 @@ class OperatorWithKernel : public OperatorBase {
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
 
- protected:
+  // change this to public so that in dygraph mode we can call it to check if we
+  // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
