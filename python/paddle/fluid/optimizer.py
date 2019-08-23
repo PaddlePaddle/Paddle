@@ -2956,6 +2956,58 @@ class PipelineOptimizer(object):
 
 
 class LookaheadOptimizer(object):
+    """
+    This implements the Lookahead optimizer of the
+    paper : https://arxiv.org/abs/1907.08610.
+
+    Lookahead keeps two sets of params: the fast_params and
+    the slow_params. inner_optimizer update fast_params every 
+    training step. Lookahead updates the slow_params and fast_params 
+    every k training steps as follows:
+
+    .. math::
+        
+        slow_param\_t = slow_weight\_{t-1} + \\alpha * (fast_weight\_{t-1} - slow_weight\_{t-1})
+	
+	fast_param\_t =  slow_param\_t
+
+    Args:
+        inner_optimizer (Optimizer): The optimizer that update fast params step by step. \
+        alpha (float): The learning rate of Lookahead.
+        k (int): The slow params is updated every k steps.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
+	    loss = fluid.layers.cross_entropy(input=y, label=label)
+	    loss = fluid.layers.mean(x=loss)
+	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
+	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                            alpha=0.5,
+                                            k=5)
+	    optimizer.minimize(loss)
+	    main_program = fluid.default_main_program()
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+
+	    step = 0
+            while(step < 10):
+                step += 1
+		exe.run(fluid.default_main_program(),
+            	feed=feeder.feed(batch_data))
+
+    """
+
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
         assert (inner_optimizer is not None), "inner optimizer can not be None"
