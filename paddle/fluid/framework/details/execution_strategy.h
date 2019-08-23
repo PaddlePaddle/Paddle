@@ -22,7 +22,7 @@ namespace details {
 struct ExecutionStrategy {
   enum ExecutorType { kDefault = 0, kExperimental = 1 };
 
-  size_t num_threads_{0};
+  size_t num_threads_{1};
   bool use_cuda_{true};
   bool allow_op_delay_{false};
   // If we set this to 1, we will delete all variables when finish a batch. and
