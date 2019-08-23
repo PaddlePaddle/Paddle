@@ -518,6 +518,7 @@ class TransformThroughFP32Pass(object):
                         self._load_param(self._scope, weight_var_name))
                     scales = 1.0 / np.amax(
                         np.abs(weights.reshape(weights.shape[0], -1)), axis=1)
+                    #  scales = np.array(1.0 / np.amax(np.abs(weights)))
 
                     lod_tensor = _convert_scale2tensor(
                         scales.astype(np.float64))
