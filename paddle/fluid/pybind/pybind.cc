@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
 #include <algorithm>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT // for call_once
@@ -46,6 +47,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -62,13 +64,13 @@ limitations under the License. */
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -195,6 +197,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("print_mem_usage",
         []() { return memory::allocation::GPUMemMonitor.PrintMemUsage(); });
+
+  m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
   BindImperative(&m);
 
@@ -624,6 +628,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           # create tensor from a scope and set value to it.
           param = scope.var('Param').get_tensor()
           param_array = np.full((height, row_numel), 5.0).astype("float32")
@@ -780,19 +785,48 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           gpu_place = fluid.CUDAPlace(0)
 
         )DOC")
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
 #ifdef PADDLE_WITH_CUDA
-             PADDLE_ENFORCE(
-                 dev_id >= 0 && dev_id < platform::GetCUDADeviceCount(),
-                 "Invalid CUDAPlace(%d), must inside [0, %d)", dev_id,
-                 platform::GetCUDADeviceCount());
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid CUDAPlace(%d), device id must be 0 or "
+                   "positive integer",
+                   dev_id);
+               std::exit(-1);
+             }
+
+             if (UNLIKELY(dev_id >= platform::GetCUDADeviceCount())) {
+               if (platform::GetCUDADeviceCount() == 0) {
+                 LOG(ERROR) << "Cannot use GPU because there is no GPU "
+                               "detected on your "
+                               "machine.";
+                 std::exit(-1);
+               } else {
+                 LOG(ERROR) << string::Sprintf(
+                     "Invalid CUDAPlace(%d), must inside [0, %d), because GPU "
+                     "number on your machine is %d",
+                     dev_id, platform::GetCUDADeviceCount(),
+                     platform::GetCUDADeviceCount());
+                 std::exit(-1);
+               }
+             }
+
              new (&self) platform::CUDAPlace(dev_id);
 #else
-             PADDLE_THROW("Cannot use CUDAPlace in CPU only version");
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use GPU because you have installed CPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use GPU, please try to install GPU version "
+                 "PaddlePaddle by: pip install paddlepaddle-gpu\n"
+                 "If you only have CPU, please change CUDAPlace(%d) to be "
+                 "CPUPlace().\n",
+                 dev_id);
+             std::exit(-1);
 #endif
            })
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
@@ -810,6 +844,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           cpu_place = fluid.CPUPlace()
 
         )DOC")
@@ -829,6 +864,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           place = fluid.CUDAPinnedPlace()
 
         )DOC")
@@ -1082,6 +1118,8 @@ All parameter, weight, gradient are variables in Paddle.
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
   });
 
+  m.def("size_of_dtype", framework::SizeOfType);
+
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
@@ -1127,6 +1165,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[13], dtype='float32')
           y = fluid.layers.data(name='y', shape=[1], dtype='float32')
           y_predict = fluid.layers.fc(input=x, size=1, act=None)

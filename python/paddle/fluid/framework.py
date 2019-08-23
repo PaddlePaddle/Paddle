@@ -44,6 +44,7 @@ __all__ = [
     'cpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cuda',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -66,6 +67,7 @@ def in_dygraph_mode():
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
                 pass
 
@@ -83,11 +85,14 @@ def _current_expected_place():
 
 def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
-        sys.stderr.write(
-            'The CPU_NUM is not specified, you should set CPU_NUM in '
-            'the environment variable list, i.e export CPU_NUM=1. CPU_NUM '
-            'indicates that how many CPUPlace are used in the current task.\n'
-            '!!! The default number of CPUPlaces is 1.\n\n')
+        if multiprocessing.cpu_count() > 1:
+            sys.stderr.write(
+                '!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n'
+                'CPU_NUM indicates that how many CPUPlace are used in the current task.\n'
+                'And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n'
+                'export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n'
+                '!!! The default number of CPU_NUM=1.\n'.format(
+                    multiprocessing.cpu_count(), multiprocessing.cpu_count()))
         os.environ['CPU_NUM'] = str(1)
     cpu_num = os.environ.get('CPU_NUM')
     return int(cpu_num)
@@ -100,6 +105,21 @@ def _cuda_ids():
     else:
         device_ids = six.moves.range(core.get_cuda_device_count())
     return device_ids
+
+
+def is_compiled_with_cuda():
+    """
+    Whether this whl package can be used to run the model on GPU.
+
+    Returns (bool): support gpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_gpu = fluid.is_compiled_with_cuda()
+    """
+    return core.is_compiled_with_cuda()
 
 
 def cuda_places(device_ids=None):
@@ -127,6 +147,7 @@ def cuda_places(device_ids=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_places = fluid.cuda_places()
 
     """
@@ -145,8 +166,8 @@ def cpu_places(device_count=None):
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
 
     Args:
         device_count (None|int): device number.
@@ -157,6 +178,7 @@ def cpu_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cpu_places = fluid.cpu_places()
     """
 
@@ -183,6 +205,7 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
             # or
             cuda_pinned_places = fluid.cuda_pinned_places(1)
@@ -235,6 +258,7 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           with fluid.name_scope("s1"):
               a = fluid.layers.data(name='data', shape=[1], dtype='int32')
               b = a + 1
@@ -396,6 +420,7 @@ class Variable(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cur_program = Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
@@ -822,35 +847,84 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step if slice_item.step else 1
+
+                assert (step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+
+                if start is None and end is None:
+                    continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
+
+                slice_axis.append(dim)
+                slice_start.append(start)
+                slice_end.append(end)
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
-        else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+                # int
+                decrease_axis.append(dim)
+                slice_axis.append(dim)
+                slice_start.append(slice_item)
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+        out = self
+        if len(slice_axis) > 0:
+            # append slice_op here
+
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice"),
+                dtype=self.dtype)
+
+            self.block.append_op(
+                type="slice",
+                inputs={'Input': [out]},
+                outputs={'Out': [slice_out_var]},
+                attrs={
+                    'axes': slice_axis,
+                    'starts': slice_start,
+                    'ends': slice_end,
+                    'decrease_axis': decrease_axis
+                })
+
+            out = slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
+
+        return out
 
 
 def get_all_op_protos():
@@ -946,6 +1020,7 @@ class Operator(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cur_program = Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
@@ -2842,6 +2917,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
@@ -2875,6 +2951,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay

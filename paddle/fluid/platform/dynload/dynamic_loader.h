@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 
 namespace paddle {
 namespace platform {
@@ -33,6 +34,7 @@ void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 
+void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

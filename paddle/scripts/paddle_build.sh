@@ -292,13 +292,17 @@ function check_style() {
 #=================================================
 
 function build_base() {
-    parallel_number=`nproc`
-    if [[ "$1" != "" ]]; then
+    if [ "$SYSTEM" == "Linux" ];then
+      parallel_number=`nproc`
+    else
+      parallel_number=8
+    fi
+    if [ "$1" != "" ]; then
       parallel_number=$1
     fi
     make clean
     make -j ${parallel_number}
-    make install -j `nproc`
+    make install -j ${parallel_number} 
 }
 
 
@@ -414,8 +418,6 @@ EOF
         #remove proxy here to fix dist error on mac
         export http_proxy=
         export https_proxy=
-        # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $2
         # make install should also be test when unittest
         make install -j 8
 
@@ -442,6 +444,9 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -j $2
 
         paddle version
     fi
@@ -504,20 +509,20 @@ function assert_api_spec_approvals() {
       echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
       if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
           # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,xsrobin 50069408 qingqing01 7845005. 
+          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,jacquesqiao 3048612,xsrobin 50069408,qingqing01 7845005,junjun315 3124479,shanyi15 35982308. 
+          approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
-            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 50069408 46782768 30176695 6836917 7845005`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 30176695 6836917 7845005`
             if [ "${APPROVALS}" == "TRUE" ];then
-              APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-              python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
+              APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408 35982308`
             fi
           elif [ "${API_FILE}" == "CMakeLists.txt" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
           elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408`
+             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408 35982308`
+          elif [ "${API_FILE}" == "python/requirements.txt" ];then
+             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 3124479 6836917`
           else
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
@@ -825,7 +830,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
+        NCCL_DEPS="apt-get install -y --allow-change-held-packages libnccl2=2.4.7-1+cuda${CUDA_MAJOR} libnccl-dev=2.4.7-1+cuda${CUDA_MAJOR} || true"
     else
         NCCL_DEPS="true"
     fi
@@ -847,7 +852,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp36-cp36m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -873,7 +877,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp37-cp37m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -896,7 +899,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     else
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -912,7 +914,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     fi
 
@@ -995,9 +996,11 @@ function main() {
         ;;
       combine_avx_noavx)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       combine_avx_noavx_build_and_test)
         combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
       test)

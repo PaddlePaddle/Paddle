@@ -54,6 +54,7 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.w')
             res = fluid.io.is_parameter(param)
     """
@@ -74,6 +75,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
@@ -301,6 +303,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -681,6 +684,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -723,6 +727,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -760,6 +765,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -1230,6 +1236,7 @@ def get_parameter_value(para, executor):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param = fluid.default_main_program().global_block().var('fc.w')
             p = fluid.io.get_parameter_value(param, exe)
@@ -1267,6 +1274,7 @@ def get_parameter_value_by_name(name, executor, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             p = fluid.io.get_parameter_value('fc.w', exe)
     """
