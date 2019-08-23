@@ -39,6 +39,8 @@ if(WIN32)
     set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+else(WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
 find_package(CUDA QUIET)
@@ -149,8 +151,6 @@ include(external/cub)
 include(external/rocprim)
 include(external/xxhash)    # download xxhash
 include(external/dlpack)
-include(external/snappy)    # download snappy
-include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)

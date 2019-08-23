@@ -13,7 +13,7 @@
 
 import os
 import sys
-from optimizer_factory import *
+from .optimizer_factory import *
 from google.protobuf import text_format
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
