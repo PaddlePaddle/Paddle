@@ -55,6 +55,7 @@ if (NOT WITH_MKL)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
+search_pyramid_hash_op
 	sync_batch_norm_op deformable_conv_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
@@ -86,6 +87,12 @@ if (WITH_DGC)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
+#set_source_files_properties(memcpy.S PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
+cc_library(search_pyramid_hash_op SRCS search_pyramid_hash_op.cc memcpy.S DEPS xxhash)
+cc_library(memcpy_s SRCS memcpy.S)
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(search_pyramid_hash);\n")
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} memcpy_s)
+set(OP_LIBRARY search_pyramid_hash_op ${OP_LIBRARY} CACHE INTERNAL "op libs")
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)

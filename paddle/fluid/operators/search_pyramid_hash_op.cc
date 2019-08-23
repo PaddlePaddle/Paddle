@@ -20,6 +20,7 @@ limitations under the License. */
 
 extern "C" {
 #include "math/bloomfilter.h"
+void* memcpy1(void* dst, void* src, uint32_t length);
 }
 
 namespace paddle {
@@ -159,7 +160,8 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      memcpy(top_pos + j, weights + pos, _rand_len * sizeof(T));
+      memcpy1(top_pos + j, const_cast<float*>(weights + pos),
+              _rand_len * sizeof(T));
     }
   }
 
