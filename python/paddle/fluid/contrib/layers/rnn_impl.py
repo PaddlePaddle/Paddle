@@ -127,7 +127,7 @@ class BasicGRUUnit(Layer):
         r_hidden = r * pre_hidden
 
         candidate = layers.matmul(
-            layers.concat([input, pre_hidden], 1), self._candidate_weight)
+            layers.concat([input, r_hidden], 1), self._candidate_weight)
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
@@ -179,6 +179,11 @@ def basic_gru(input,
         dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, gru_unit will
@@ -345,7 +350,7 @@ def basic_gru(input,
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = fluid.layser.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -404,6 +409,11 @@ def basic_lstm(input,
         dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, lstm_unit will
