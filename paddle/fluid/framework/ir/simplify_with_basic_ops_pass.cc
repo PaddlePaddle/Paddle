@@ -48,7 +48,20 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     Graph* graph, Node* n,
     std::unordered_set<const Node*>* del_node_set) const {
   OpDesc* dropout_op_desc = n->Op();
-  bool is_test = boost::get<bool>(dropout_op_desc->GetAttr("is_test"));
+  bool is_test = false;
+  // In the model used in test_analyzer_bert, the is_test's AttrType of
+  // dropout_op is INT.
+  if (dropout_op_desc->HasAttr("is_test")) {
+    if (dropout_op_desc->GetAttrType("is_test") == proto::AttrType::BOOLEAN) {
+      is_test = boost::get<bool>(dropout_op_desc->GetAttr("is_test"));
+    } else if (dropout_op_desc->GetAttrType("is_test") ==
+               proto::AttrType::INT) {
+      is_test = boost::get<int>(dropout_op_desc->GetAttr("is_test")) == 0
+                    ? false
+                    : true;
+    }
+  }
+
   if (!is_test) {
     return false;
   }
@@ -56,8 +69,20 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   Node* dropout_x = GetInputVar(n, dropout_op_desc->Input("X")[0]);
   Node* dropout_out = GetOutputVar(n, dropout_op_desc->Output("Out")[0]);
 
-  bool upscale_in_train = boost::get<std::string>(dropout_op_desc->GetAttr(
-                              "dropout_implementation")) == "upscale_in_train";
+  bool upscale_in_train = false;
+  // Once the dropout_implementation's AttrType is BOOLEAN, but now is STRING.
+  if (dropout_op_desc->HasAttr("dropout_implementation")) {
+    if (dropout_op_desc->GetAttrType("dropout_implementation") ==
+        proto::AttrType::BOOLEAN) {
+      upscale_in_train =
+          boost::get<bool>(dropout_op_desc->GetAttr("dropout_implementation"));
+    } else if (dropout_op_desc->GetAttrType("dropout_implementation") ==
+               proto::AttrType::STRING) {
+      upscale_in_train = boost::get<std::string>(dropout_op_desc->GetAttr(
+                             "dropout_implementation")) == "upscale_in_train";
+    }
+  }
+
   if (upscale_in_train) {
     // dropout_op can be deleted.
     // dropout_x -> dropout_op -> dropout_out -> next_op -> next_out
