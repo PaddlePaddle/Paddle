@@ -16,6 +16,7 @@ paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=N
 paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c2562241744aabe3fff1b59af22dd281'))
 paddle.fluid.in_dygraph_mode (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '301bae0d8e02cc9eec5be02f052f11c6'))
 paddle.fluid.is_compiled_with_cuda (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '60c7f107a5050aeb58bb74eb175672b5'))
+paddle.fluid.load_op_library (ArgSpec(args=['lib_filename'], varargs=None, keywords=None, defaults=None), ('document', 'e9999a30767ae838386a52cc0d07496e'))
 paddle.fluid.Executor ('paddle.fluid.executor.Executor', ('document', '34e8c1769313fbeff7817212dda6259e'))
 paddle.fluid.Executor.__init__ (ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.Executor.close (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '3a584496aa1343f36eebf3c46b323a74'))
