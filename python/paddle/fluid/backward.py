@@ -30,7 +30,8 @@ __all__ = [
 
 def _pretty_op_desc_(op_desc, prefix):
     out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
-            (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
+            (prefix + "_op", str(op_desc.type()),
+             prefix + "_input", " ".join(op_desc.input_arg_names()),
              prefix + "_output", " ".join(op_desc.output_arg_names()))
     return out_s
 
@@ -591,16 +592,6 @@ def _append_backward_ops_with_checkpoints_(
                                                            var_name_dict[key])
 
             new_ff_ops = copy.copy(ff_ops)
-            '''
-            op_role_attr_name = \
-                core.op_proto_and_checker_maker.kOpRoleAttrName()
-            backward = core.op_proto_and_checker_maker.OpRole.Backward
-            for op in ff_ops:
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-                new_op_desc._set_attr(op_role_attr_name, backward)
-                section_ff_op_descs.append(new_op_desc)
-            '''
 
             for key in var_name_dict:
                 _rename_arg_(new_ff_ops, key, var_name_dict[key])
@@ -843,140 +834,10 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-0
-
-
-def append_backward_with_checkpoints(loss,
-                                     parameter_list=None,
-                                     no_grad_set=None,
-                                     callbacks=None,
-                                     checkpoints=None):
-    if checkpoints is None:
-        return append_backward(loss, parameter_list, no_grad_set, callbacks)
-    assert isinstance(loss, framework.Variable)
-
-    if loss.op is None:
-        _find_loss_op_(loss)
-
-    loss.op._set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
-                      int(core.op_proto_and_checker_maker.OpRole.Forward) |
-                      int(core.op_proto_and_checker_maker.OpRole.Loss))
-
-    if callbacks is not None:
-        isinstance(callbacks, list)
-
-    program = loss.block.program
-    program._appending_grad_times += 1
-
-    if no_grad_set is None:
-        no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
-    no_grad_dict = _get_stop_gradients_(program)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
-
-    grad_info_map = dict()
-    root_block = program.block(0)
-
-    fwd_op_num = root_block.desc.op_size()
-    current_block_idx = program.current_block_idx
-    grad_to_var = dict()
-
-    op_desc = _create_op_desc_(
-        "fill_constant",
-        {},
-        {"Out": [_append_grad_suffix_(loss.name)]},
-        {
-            "shape": [1],  # TODO(panyx0718): This can be loss.shape.
-            "value": 1.0,
-            "dtype": loss.dtype,
-            "force_cpu": False,
-            core.op_proto_and_checker_maker.kOpRoleAttrName():
-            int(core.op_proto_and_checker_maker.OpRole.Backward) |
-            int(core.op_proto_and_checker_maker.OpRole.Loss),
-        })
-
-    root_block.desc.append_op().copy_from(op_desc)
-
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-
-    input_grad_names_set = None
-
-    # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
-    if program._appending_grad_times > 1:
-        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
-
-    _append_backward_ops_(
-        root_block,
-        op_path,
-        root_block,
-        no_grad_dict,
-        grad_to_var,
-        callbacks,
-        input_grad_names_set=input_grad_names_set)
-
-    # _rename_grad_ is used for more than one call of backward()
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
-
-    # insert vars into block, and do infer shape
-    # infer_type, infer_var_data_type(with forward var)
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
-
-    program.current_block_idx = current_block_idx
-    program._sync_with_cpp()
-
-    if parameter_list is not None:
-        parameters = parameter_list
-    else:
-        params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
-        parameters = [param.name for param in params]
-
-    params_and_grads = []
-    for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
-            continue
-        grad_info = grad_info_map[param]
-        grad_block = grad_info[1]
-        if not grad_block.has_var(grad_info[0]):
-            raise ValueError("grad block[{0}] did not have grad var {1}".format(
-                grad_info[1], grad_info[0]))
-        # Get the param var from the global block
-        param_var = program.global_block().var(param)
-        grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
-        else:
-            params_and_grads.append((param_var, None))
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-    for p, g in params_and_grads:
-        if g is None:
-            continue
-        for op in reversed(program.global_block().ops):
-            assert isinstance(op, framework.Operator)
-            if g.name in op.output_arg_names:
-                g.op = op
-                break
-
-        if g.op is None:
-            raise ValueError("Unexpected branch")
-        attr_val = [p.name, g.name]
-        if g.op.has_attr(op_role_var_attr_name):
-            attr_val.extend(g.op.attr(op_role_var_attr_name))
-        g.op._set_attr(op_role_var_attr_name, attr_val)
-
-    return params_and_grads
-
-
-def append_backward_with_forward_recomputation(loss,
-                                               parameter_list=None,
-                                               no_grad_set=None,
-                                               checkpoints=None):
+def _append_backward_with_forward_recomputation(loss,
+                                                parameter_list=None,
+                                                no_grad_set=None,
+                                                checkpoints=None):
     """
     Append backward part to main_program.
     """
