@@ -28,10 +28,10 @@ __all__ = [
 ]
 
 
-def _pretty_op_desc_(op_desc):
-    out_s = "name:[%s]\n    inputs:[%s]\n    outputs:[%s]" % \
-            (str(op_desc.type()), " ".join(op_desc.input_arg_names()),
-             " ".join(op_desc.output_arg_names()))
+def _pretty_op_desc_(op_desc, prefix):
+    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
+            (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
+             prefix + "_output", " ".join(op_desc.output_arg_names()))
     return out_s
 
 
@@ -428,6 +428,20 @@ def serialize_op_decs(op_desc):
     return proto.__str__()
 
 
+def _get_op_idx_with_checkpoints_output(checkpoints_name, block, ops):
+    idx_list = []
+    for i, op in enumerate(ops):
+        is_checkpoint_op = True
+        for name in op.desc.output_arg_names():
+            if block.has_var(name) and block.var(name).persistable:
+                continue
+            if name not in checkpoints_name:
+                is_checkpoint_op = False
+        if is_checkpoint_op:
+            idx_list.append(i)
+    return sorted(list(set(idx_list)))
+
+
 def _get_op_idx_with_checkpoints_input(checkpoints_name, block, ops):
     idx_list = []
     for i, op in enumerate(ops):
@@ -458,21 +472,35 @@ def _get_op_idx_with_output_name(checkpoint_name, ops):
 
 def _append_backward_ops_with_checkpoints_(
         block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
-    checkpoints_name = [x.name for x in checkpoints]
+
+    checkpoints_name = []
+    checkpoints_candidate = [x.name for x in checkpoints]
+    checkpoints_count = {}
+    for name in checkpoints_candidate:
+        checkpoints_count[name] = 0
     op_idx_with_checkpoint_input = []
     dedup_dict = {}
 
     inputs_name = []
     op_output_names = []
     for op in ops:
+        if op.desc.type() == "read":
+            continue
         op_output_names.extend(op.desc.output_arg_names())
 
     for op in ops:
+        if op.desc.type() == "read":
+            continue
         for name in op.desc.input_arg_names():
             if name not in op_output_names:
                 inputs_name.append(name)
 
-    # add all var's name with the same input output
+    for name in checkpoints_candidate:
+        if checkpoints_count[name] > 1:
+            continue
+        checkpoints_name.append(name)
+
+    # add all var's name with the same input output, like inplace ops
     for op in ops:
         for name in op.desc.output_arg_names():
             if name in checkpoints_name:
@@ -481,8 +509,12 @@ def _append_backward_ops_with_checkpoints_(
         for name in op.desc.input_arg_names():
             if name in checkpoints_name:
                 checkpoints_name.extend(op.desc.input_arg_names())
-    checkpoints_name.extend([x + "@GRAD" for x in checkpoints_name])
+
+    checkpoints_name_grad = [x + "@GRAD" for x in checkpoints_name]
+    #checkpoints_name.extend([x + "@GRAD" for x in checkpoints_name])
+    checkpoints_name.extend(checkpoints_name_grad)
     checkpoints_name = list(set(checkpoints_name))
+
 
     op_idx_with_checkpoint_input = \
             _get_op_idx_with_checkpoints_input(
@@ -503,16 +535,8 @@ def _append_backward_ops_with_checkpoints_(
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
 
-    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    backward = core.op_proto_and_checker_maker.OpRole.Backward
-    for op_desc in grad_op_descs:
-        new_op_desc = block.desc.append_op()
-        new_op_desc.copy_from(op_desc)
-        new_op_desc._set_attr(op_role_attr_name, backward)
-
     for i, section in enumerate(recompute_section[::-1]):
         ff_ops = ops[section[0]:section[1]]
-        grad_op_descs = []
         section_vars = {}
         need_recompute = False
         for op in reversed(ff_ops):
@@ -542,6 +566,7 @@ def _append_backward_ops_with_checkpoints_(
                     section_vars[name] = 1
 
         section_ff_op_descs = []
+        new_ff_ops = []
         if need_recompute:
             var_name_dict = {}
             var_prefix = "subprog_%d_" % i
@@ -564,6 +589,9 @@ def _append_backward_ops_with_checkpoints_(
                 new_var = _add_var_to_block_with_new_name_(block,
                                                            block.var(key),
                                                            var_name_dict[key])
+
+            new_ff_ops = copy.copy(ff_ops)
+            '''
             op_role_attr_name = \
                 core.op_proto_and_checker_maker.kOpRoleAttrName()
             backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -572,25 +600,34 @@ def _append_backward_ops_with_checkpoints_(
                 new_op_desc.copy_from(op.desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
                 section_ff_op_descs.append(new_op_desc)
+            '''
 
             for key in var_name_dict:
-                _rename_arg_(section_ff_op_descs, key, var_name_dict[key])
+                _rename_arg_(new_ff_ops, key, var_name_dict[key])
+            for op_desc in new_ff_ops:
+                #print(_pretty_op_desc_(op_desc.desc, "recompute"))
+                grad_op_descs.extend([op_desc.desc])
 
-        if section_ff_op_descs == []:
+        if new_ff_ops == []:
             section_ff_op_descs = ff_ops
-        grad_op_descs = []
-        for op_desc in reversed(section_ff_op_descs):
+
+        for op_desc in reversed(new_ff_ops):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op_desc.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            #print(_pretty_op_desc_(grad_op_desc[0], "recompute"))
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        backward = core.op_proto_and_checker_maker.OpRole.Backward
-        for op_desc in grad_op_descs:
-            new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(op_desc)
-            new_op_desc._set_attr(op_role_attr_name, backward)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx])
+    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    backward = core.op_proto_and_checker_maker.OpRole.Backward
+    for op_desc in grad_op_descs:
+        new_op_desc = block.desc.append_op()
+        new_op_desc.copy_from(op_desc)
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        #print(_pretty_op_desc_(new_op_desc, "recompute"))
 
 
 def _append_backward_ops_(block,
@@ -804,6 +841,9 @@ def _get_stop_gradients_(program):
                 block_no_grad_set.add(_append_grad_suffix_(var.name))
         no_grad_dict[block.idx] = block_no_grad_set
     return no_grad_dict
+
+
+0
 
 
 def append_backward_with_checkpoints(loss,
