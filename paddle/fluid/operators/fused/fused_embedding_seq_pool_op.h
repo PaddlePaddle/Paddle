@@ -124,14 +124,13 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
-    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     int64_t last_dim =
         FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
     const auto &ids_lod = ids_t->lod();
     // in run time, the LoD of ids must be 1
-    PADDLE_ENFORCE(ids_lod.size(), 1UL,
-                   "The LoD level of Input(Ids) must be 1");
+    PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
+                      "The LoD level of Input(Ids) must be 1");
     int64_t batch_size = ids_lod[0].size() - 1;
     // in run time, the shape from Ids -> output
     // should be [seq_length, 1] -> [batch_size, last_dim]
@@ -140,6 +139,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     if (combiner_type == "sum") {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
       auto output = output_t->mutable_data<T>(context.GetPlace());
       int64_t table_height = table_var->dims()[0];
       int64_t table_width = table_var->dims()[1];
@@ -236,14 +236,15 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
+      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
       d_table->Resize(table_dim);
       auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       const auto &ids_lod = ids->lod();
-      PADDLE_ENFORCE(ids_lod.size(), 1UL,
-                     "The LoD level of Input(Ids) must be 1");
+      PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
+                        "The LoD level of Input(Ids) must be 1");
       const std::vector<uint64_t> offset = ids_lod[0];
       auto len = ids->numel();
       int idx_width = len / offset.back();
@@ -257,7 +258,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
       auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
       prepare_csr_data<T>(offset, ids->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx);
+                          csr_colmuns, csr_row_idx, padding_idx);
 
       auto *d_output_data = d_output->data<T>();
       const char transa = 'T';

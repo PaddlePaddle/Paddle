@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import unittest
+import platform
 
 import contextlib
 import numpy as np
@@ -33,6 +34,7 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
+import paddle.version as ver
 
 
 class LayerTest(unittest.TestCase):
@@ -2252,21 +2254,39 @@ class TestBook(LayerTest):
             return (nmsed_outs)
 
     def test_fused_emb_seq(self):
-        dict_size = 20
-        with self.static_graph():
-            tensor = fluid.core.LoDTensor()
-            place = fluid.core.CPUPlace()
-            tensor.set(np.array([1, 2, 3, 1, 2]).astype("int64"), place)
-            tensor.set_recursive_sequence_lengths([[4, 1]])
-            data_t = layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
-            emb = layers.fused_emb_seq(
-                input=data_t,
-                size=[dict_size, 32],
-                param_attr='w',
-                is_sparse=False)
-            self.get_static_graph_result(
-                feed={'word': tensor}, fetch_list=[emb])
+        if ver.mkl() == "ON" and not fluid.core.is_compiled_with_cuda(
+        ) and 'Linux' in platform.platform():
+            dict_size = 20
+            with self.static_graph():
+                tensor = fluid.core.LoDTensor()
+                place = fluid.core.CPUPlace()
+                tensor.set(np.array([1, 2, 3, 1, 2]).astype("int64"), place)
+                tensor.set_recursive_sequence_lengths([[4, 1]])
+                data_t = layers.data(
+                    name='word', shape=[1], dtype='int64', lod_level=1)
+                emb = layers.fused_emb_seq(
+                    input=data_t,
+                    size=[dict_size, 32],
+                    param_attr='w',
+                    is_sparse=False)
+                self.get_static_graph_result(
+                    feed={'word': tensor}, fetch_list=[emb])
+
+            with self.static_graph():
+                tensor = fluid.core.LoDTensor()
+                place = fluid.core.CPUPlace()
+                tensor.set(np.array([1, 2, 3, 1, 2]).astype("int64"), place)
+                tensor.set_recursive_sequence_lengths([[4, 1]])
+                data_t = layers.data(
+                    name='word', shape=[1], dtype='int64', lod_level=1)
+                emb = layers.fused_emb_seq(
+                    input=data_t,
+                    size=[dict_size, 32],
+                    param_attr='w',
+                    padding_idx=1,
+                    is_sparse=False)
+                self.get_static_graph_result(
+                    feed={'word': tensor}, fetch_list=[emb])
 
 
 if __name__ == '__main__':
