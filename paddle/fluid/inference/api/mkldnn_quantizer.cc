@@ -69,10 +69,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
               if (op->Type() == "conv2d") {
                 // output of conv2d with relu must be unsigned
                 std::string fuse_activation =
-                    op->HasAttr("fuse_activation")
-                        ? boost::get<std::string>(
-                              op->GetAttr("fuse_activation"))
-                        : "";
+                    op->GetAttrIfExists<std::string>("fuse_activation");
                 is_unsigned =
                     (fuse_activation == "relu" || fuse_activation == "relu6");
               } else if (op->Type() == "relu") {
@@ -400,13 +397,14 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({
-      "infer_clean_graph_pass", "cpu_quantize_pass", "cpu_quantize_squash_pass",
+      "cpu_quantize_pass", "cpu_quantize_squash_pass",
   });
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
   predictor_.argument_.SetIrAnalysisPasses(passes);
   predictor_.argument_.SetAnalysisPasses(
-      {"ir_analysis_pass", "memory_optimize_pass", "ir_graph_to_program_pass"});
+      {"ir_graph_clean_pass", "ir_analysis_pass", "memory_optimize_pass",
+       "ir_graph_to_program_pass"});
   predictor_.argument_.SetQuantVarScales(scales_);
 }
 

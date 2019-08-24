@@ -114,11 +114,7 @@ void MainTest(std::string activation) {
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(boost::get<bool>(op->GetAttr("use_mkldnn")));
       auto op_name = boost::get<std::string>(op->GetAttr("name"));
-      std::string fuse_activation =
-          op->HasAttr("fuse_activation")
-              ? boost::get<std::string>(op->GetAttr("fuse_activation"))
-              : "";
-      if (fuse_activation == activation) {
+      if (op->GetAttrIfExists<std::string>("fuse_activation") == activation) {
         ++conv_activation_count;
       }
       // check if only "conv1" convolution is fused
