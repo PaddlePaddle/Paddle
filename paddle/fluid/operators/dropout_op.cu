@@ -31,18 +31,12 @@ __global__ void RandomGenerator(const size_t n, const int seed,
                                 bool is_upscale_in_train) {
   curandStatePhilox4_32_10_t state;
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
 
   MaskType mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (step_size == 0) {
-      curand_init(seed, idx, 0, &state);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      curand_init(seed, idx, step_size, &state);
-    }
+    curand_init(seed, idx, 0, &state);
     if (curand_uniform(&state) < dropout_prob) {
       mask = 0;
       dest = 0;
