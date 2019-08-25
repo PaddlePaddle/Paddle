@@ -34,6 +34,8 @@ from .proto import framework_pb2
 from . import core
 from . import unique_name
 
+import paddle
+
 __all__ = [
     'Program',
     'default_startup_program',
@@ -542,6 +544,16 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
+
+    def detach(self):
+        new_var = self._cloneVar()
+        self.block.append_op(
+            type="assign",
+            inputs={'X': [self]},
+            outputs={'Out': [new_var]},
+            attrs={'device': 0},
+            stop_gradient=True)
+        return new_var
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
