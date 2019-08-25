@@ -135,7 +135,7 @@ void BasicEngine::PrepareDeps() {
 
     PrepareGradAccumulators(cur_op);
 
-    auto& preceding_ops = cur_op->PrecedingOps();
+    auto& preceding_ops = cur_op->GradPendingOps();
     for (auto* preceding_op : preceding_ops) {
       PADDLE_ENFORCE_NOT_NULL(preceding_op);
       ++op_deps_[preceding_op];
@@ -182,8 +182,8 @@ void BasicEngine::Execute() {
         tmp_var_list.emplace_back(tmp_var);
         if (var) {
           var_map[var.get()].emplace_back(std::move(tmp_var));
+          var->ClearGradOps();
         }
-        var->ClearGradOps();
       }
     }
 
@@ -204,7 +204,7 @@ void BasicEngine::Execute() {
     }
 
     // Step 3: Collect ready ops
-    for (auto* preceding_op : cur_op->PrecedingOps()) {
+    for (auto* preceding_op : cur_op->GradPendingOps()) {
       PADDLE_ENFORCE_NOT_NULL(preceding_op);
       auto iter = op_deps_.find(preceding_op);
       if (iter == op_deps_.end()) {

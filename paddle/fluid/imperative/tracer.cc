@@ -111,7 +111,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         OpBase::Create(trace_id, (*(grad_op_descs_[i].get())), fwd_op->place());
 
     // this OpBase* is just used to manage op's life time
-    engine->InsertOp(grad_op.get(), grad_op);
+    engine_->InsertOp(grad_op.get(), grad_op);
 
     std::unordered_set<OpBase*> visited_preceding_ops;
     // Step2 : prepare grad_in vars and bind them with grad_op,
@@ -187,7 +187,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
             PADDLE_ENFORCE(op, "No nullptr should be preceding_op");
             if (visited_preceding_ops.count(op) == 0) {
               visited_preceding_ops.insert(op);
-              grad_op->InsertPrecedingOps(op);
+              grad_op->InsertGradPendingOps(op);
             }
           }
         } else {

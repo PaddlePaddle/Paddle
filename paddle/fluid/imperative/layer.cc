@@ -197,7 +197,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
   // TODO(Jiabin): change this after move unique_name generator to CXX
   auto new_var = std::make_shared<VarBase>(
-      false, "Itmp" + std::to_string(copied_counter++));
+      false, "Itmp" + std::to_string(copied_counter_++));
 
   auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
   dst_tensor->set_lod(src_tensor.lod());
@@ -274,7 +274,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 }
 
 void OpBase::ClearBackwardTrace() {
-  preceding_ops_.clear();
+  grad_pending_ops_.clear();
   ins_.clear();
   outs_.clear();
 }

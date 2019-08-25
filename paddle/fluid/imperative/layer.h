@@ -152,7 +152,7 @@ class VarBase {
   framework::Variable var_;
   std::string name_;
   std::shared_ptr<VarBase> grad_var_;
-  mutable size_t copied_counter = 0;
+  mutable size_t copied_counter_ = 0;
 
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
@@ -340,12 +340,14 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   void ClearBackwardTrace();
 
-  const std::vector<OpBase*>& PrecedingOps() const { return preceding_ops_; }
+  const std::vector<OpBase*>& GradPendingOps() const {
+    return grad_pending_ops_;
+  }
 
-  void InsertPrecedingOps(OpBase* op) { preceding_ops_.emplace_back(op); }
+  void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }
 
   void SortPrecedingOps() {
-    std::sort(preceding_ops_.begin(), preceding_ops_.end(),
+    std::sort(grad_pending_ops_.begin(), grad_pending_ops_.end(),
               [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
   }
   NameVarBaseMap* GetMutableOutsMap() { return &outs_; }
@@ -383,7 +385,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   // Not need to be std::weak_ptr, because op is binded to a certain Tracer,
   // and would not be used by a Tracer that does not create itself.
-  std::vector<OpBase*> preceding_ops_;
+  std::vector<OpBase*> grad_pending_ops_;
 
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
