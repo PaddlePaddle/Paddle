@@ -33,8 +33,7 @@ function yellow(){
 }
 
 path='http://paddlepaddle.org/download?url='
-#release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
-release_version=1.5.1
+release_version=`pip show paddlepaddle|grep Version|awk '{print $NF}'`
 python_list=(
 "27"
 "35"
