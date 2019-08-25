@@ -727,6 +727,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         # Get the param var from the global block
         param_var = program.global_block().var(param)
         grad_var = grad_block.var(grad_info[0])
+        if not param_var.trainale:
+            continue
         if loss.block.has_var(grad_info[0]):
             params_and_grads.append((param_var, grad_var))
         else:
