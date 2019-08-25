@@ -33,7 +33,7 @@ class SqueezeKernel : public framework::OpKernel<T> {
 
     auto &axes = context.Attr<std::vector<int>>("axes");
     auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims, true);
+    auto out_dims = GetOutputShape(axes, x_dims);
 
     out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());
@@ -46,8 +46,7 @@ class SqueezeKernel : public framework::OpKernel<T> {
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                                        const framework::DDim &in_dims,
-                                        bool is_runtime) {
+                                        const framework::DDim &in_dims) {
     size_t num_squeeze_dims = squeeze_dims.size();
     int cnt_squeezed_dims = 0;
     bool should_squeeze[9] = {false};
@@ -69,12 +68,9 @@ class SqueezeKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(current, 0,
                           "Invalid axis, the negative axis is out of range.");
 
-        if (is_runtime) {
-          PADDLE_ENFORCE_EQ(
-              in_dims[current], 1,
-              "Invalid axis index, the axis that will be squeezed "
-              "should be equal to 1.");
-        }
+        PADDLE_ENFORCE_EQ(in_dims[current], 1,
+                          "Invalid axis index, the axis that will be squeezed "
+                          "should be equal to 1.");
 
         if (!(should_squeeze[current])) {
           ++cnt_squeezed_dims;
@@ -122,7 +118,7 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
 
     auto x_dims = in->dims();
     auto out_dims =
-        SqueezeKernel<DeviceContext, T>::GetOutputShape(axes, x_dims, true);
+        SqueezeKernel<DeviceContext, T>::GetOutputShape(axes, x_dims);
 
     out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());

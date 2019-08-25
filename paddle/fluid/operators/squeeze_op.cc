@@ -45,7 +45,7 @@ class SqueezeOp : public framework::OperatorWithKernel {
                         "tensor's rank.");
     }
 
-    auto out_dims = GetOutputShape(axes, x_dims, false);
+    auto out_dims = GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -57,8 +57,7 @@ class SqueezeOp : public framework::OperatorWithKernel {
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
-                                        const framework::DDim &in_dims,
-                                        bool is_runtime) {
+                                        const framework::DDim &in_dims) {
     size_t num_squeeze_dims = squeeze_dims.size();
     int cnt_squeezed_dims = 0;
     bool should_squeeze[9] = {false};
@@ -79,13 +78,6 @@ class SqueezeOp : public framework::OperatorWithKernel {
         // Check current index, the upper limit has beed checked in line 36.
         PADDLE_ENFORCE_GE(current, 0,
                           "Invalid axis, the negative axis is out of range.");
-
-        if (is_runtime) {
-          PADDLE_ENFORCE_EQ(
-              in_dims[current], 1,
-              "Invalid axis index, the axis that will be squeezed "
-              "should be equal to 1.");
-        }
 
         if (!(should_squeeze[current])) {
           ++cnt_squeezed_dims;
@@ -195,7 +187,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
                         "tensor's rank.");
     }
 
-    auto out_dims = SqueezeOp::GetOutputShape(axes, x_dims, false);
+    auto out_dims = SqueezeOp::GetOutputShape(axes, x_dims);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
