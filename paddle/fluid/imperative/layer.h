@@ -387,6 +387,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   // and would not be used by a Tracer that does not create itself.
   std::vector<OpBase*> grad_pending_ops_;
 
+  // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
 };
