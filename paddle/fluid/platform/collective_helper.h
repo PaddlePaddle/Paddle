@@ -15,9 +15,9 @@
 #pragma once
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "boost/variant.hpp"
@@ -58,8 +58,7 @@ class NCCLComm {
   virtual ~NCCLComm() = default;
 };
 
-// a singleton NCCL communicator context reserves communication ring ids
-// Assume multiprocessing mode
+// A singleton NCCL communicator context reserves communication ring ids
 class NCCLCommContext {
  public:
   static NCCLCommContext& Instance() {
@@ -71,20 +70,40 @@ class NCCLCommContext {
   NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
                            int dev_id, int ring_id = 0);
 
-  // retrieve a communicator by the ring id
+  void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+
+  // retrieve a communicator by the ring id in multiprocessing mode
   NCCLComm* Get(int ring_id) const {
-    PADDLE_ENFORCE(comm_map_.count(ring_id),
-                   "comunicator in ring id %d has not been initialized",
-                   ring_id);
-    return comm_map_.at(ring_id).get();
+    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
+                      "comunicator in ring id %d has not been initialized",
+                      ring_id);
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+                      "you should specify a device id to retrieve from "
+                      "multiple communicators");
+    return comm_map_.at(ring_id).begin()->second.get();
+  }
+
+  // retrieve a communicator by the ring id and the device id
+  NCCLComm* Get(int ring_id, int dev_id) const {
+    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
+                      "comunicator of ring id %d has not been initialized",
+                      ring_id);
+    PADDLE_ENFORCE_GT(
+        comm_map_.at(ring_id).count(dev_id), 0,
+        "comunicator at device id %d has not been initialized in ring %d",
+        dev_id, ring_id);
+    return comm_map_.at(ring_id).at(dev_id).get();
+  }
+
+  // retrieve a communicator by the ring id and place
+  NCCLComm* Get(int ring_id, Place place) const {
+    return Get(ring_id, boost::get<CUDAPlace>(place));
   }
 
  private:
-  // ring id to NCCLComm
-  std::unordered_map<int, std::unique_ptr<NCCLComm>> comm_map_;
-
-  // device id to CUDADeviceContext
-  std::unordered_map<int, std::unique_ptr<CUDADeviceContext>> dev_ctx_map_;
+  std::mutex comm_map_mutex_;
+  // ring id to dev-NCCLComm
+  std::map<int, std::map<int, std::unique_ptr<NCCLComm>>> comm_map_;
 
   NCCLCommContext() = default;
   NCCLCommContext(const NCCLCommContext& other) = delete;
