@@ -37,7 +37,7 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
         self.check_with_place(
             "dist_ctr.py",
             delta=1e-7,
-            check_error_log=False,
+            check_error_log=True,
             need_envs=need_envs)
 
 
