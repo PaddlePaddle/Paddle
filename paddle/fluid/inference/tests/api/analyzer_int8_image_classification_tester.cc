@@ -138,7 +138,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   }
 }
 
-TEST(Analyzer_int8_resnet50, quantization) {
+TEST(Analyzer_int8_image_classification, quantization) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 

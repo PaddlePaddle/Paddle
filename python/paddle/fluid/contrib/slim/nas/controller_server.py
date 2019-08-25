@@ -15,13 +15,14 @@
 import logging
 import socket
 from threading import Thread
+from ....log_helper import get_logger
 
 __all__ = ['ControllerServer']
 
-logging.basicConfig(
-    format='ControllerServer-%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__,
+    logging.INFO,
+    fmt='ControllerServer-%(asctime)s-%(levelname)s: %(message)s')
 
 
 class ControllerServer(object):

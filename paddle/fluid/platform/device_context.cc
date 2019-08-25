@@ -316,7 +316,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
 #if !defined(_WIN32)
-  PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  if (nccl_comm_) {
+    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+  }
 #endif
 }
 

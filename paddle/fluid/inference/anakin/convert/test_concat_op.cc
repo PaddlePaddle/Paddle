@@ -53,19 +53,15 @@ TEST(concat_op, gpu) {
   test_concat_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(concat_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_concat_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 USE_OP(concat);
-USE_CPU_ANAKIN_CONVERTER(concat);
-
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(concat);
-#endif

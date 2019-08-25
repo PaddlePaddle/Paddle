@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed.h"
 #ifdef _LINUX
 #include <stdio_ext.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #endif
 #include <utility>
 #include "gflags/gflags.h"
@@ -85,6 +88,13 @@ void DataFeed::CheckSetFileList() {
 
 void DataFeed::CheckStart() {
   PADDLE_ENFORCE(finish_start_, "Datafeed has not started running yet.");
+}
+
+void DataFeed::AssignFeedVar(const Scope& scope) {
+  CheckInit();
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    feed_vec_[i] = scope.FindVar(use_slots_[i])->GetMutable<LoDTensor>();
+  }
 }
 
 template <typename T>
@@ -1008,6 +1018,206 @@ void MultiSlotInMemoryDataFeed::DeserializeIns(
   auto fleet_ptr = FleetWrapper::GetInstance();
   fleet_ptr->Deserialize(ins, str);
 }
+
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+template <typename T>
+void PrivateInstantDataFeed<T>::PutToFeedVec() {
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    const auto& type = ins_vec_[i].GetType();
+    const auto& offset = ins_vec_[i].GetOffset();
+    int total_instance = static_cast<int>(offset.back());
+
+    if (type[0] == 'f') {  // float
+      const auto& feasign = ins_vec_[i].GetFloatData();
+      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+    } else if (type[0] == 'u') {  // uint64
+      // no uint64_t type in paddlepaddle
+      const auto& feasign = ins_vec_[i].GetUint64Data();
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, platform::CPUPlace());
+      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+    }
+
+    LoD data_lod{offset};
+    feed_vec_[i]->set_lod(data_lod);
+    if (use_slots_is_dense_[i]) {
+      int64_t total_dims = 1;
+      for (const auto e : use_slots_shape_[i]) {
+        total_dims *= e;
+      }
+      PADDLE_ENFORCE(
+          total_dims == total_instance,
+          "The actual data size of slot[%s] doesn't match its declaration",
+          use_slots_[i].c_str());
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+    }
+  }
+}
+
+template <typename T>
+int PrivateInstantDataFeed<T>::Next() {
+  if (ParseOneMiniBatch()) {
+    PutToFeedVec();
+    return ins_vec_[0].GetBatchSize();
+  }
+  Postprocess();
+
+  std::string filename;
+  if (!PickOneFile(&filename)) {
+    return -1;
+  }
+  if (!Preprocess(filename)) {
+    return -1;
+  }
+
+  PADDLE_ENFORCE(true == ParseOneMiniBatch(), "Fail to parse mini-batch data");
+  PutToFeedVec();
+  return ins_vec_[0].GetBatchSize();
+}
+
+template <typename T>
+void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
+  finish_init_ = false;
+  finish_set_filelist_ = false;
+  finish_start_ = false;
+
+  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
+                 "Multi_slot_desc has not been set.");
+  paddle::framework::MultiSlotDesc multi_slot_desc =
+      data_feed_desc.multi_slot_desc();
+  SetBatchSize(data_feed_desc.batch_size());
+  size_t all_slot_num = multi_slot_desc.slots_size();
+  all_slots_.resize(all_slot_num);
+  all_slots_type_.resize(all_slot_num);
+  use_slots_index_.resize(all_slot_num);
+  multi_inductive_shape_index_.resize(all_slot_num);
+  use_slots_.clear();
+  use_slots_is_dense_.clear();
+  for (size_t i = 0; i < all_slot_num; ++i) {
+    const auto& slot = multi_slot_desc.slots(i);
+    all_slots_[i] = slot.name();
+    all_slots_type_[i] = slot.type();
+    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    if (slot.is_used()) {
+      use_slots_.push_back(all_slots_[i]);
+      use_slots_is_dense_.push_back(slot.is_dense());
+      std::vector<int> local_shape;
+      if (slot.is_dense()) {
+        for (size_t j = 0; j < slot.shape_size(); ++j) {
+          if (slot.shape(j) == -1) {
+            multi_inductive_shape_index_[i].push_back(j);
+          }
+        }
+      }
+      for (size_t j = 0; j < slot.shape_size(); ++j) {
+        local_shape.push_back(slot.shape(j));
+      }
+      use_slots_shape_.push_back(local_shape);
+    }
+  }
+  feed_vec_.resize(use_slots_.size());
+  ins_vec_.resize(use_slots_.size());
+
+  finish_init_ = true;
+}
+
+template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
+
+bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
+  fd_ = open(filename.c_str(), O_RDONLY);
+  PADDLE_ENFORCE(fd_ != -1, "Fail to open file: %s", filename.c_str());
+
+  struct stat sb;
+  fstat(fd_, &sb);
+  end_ = static_cast<size_t>(sb.st_size);
+
+  buffer_ =
+      reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
+  PADDLE_ENFORCE(buffer_ != MAP_FAILED, strerror(errno));
+
+  offset_ = 0;
+  return true;
+}
+
+bool MultiSlotFileInstantDataFeed::Postprocess() {
+  if (buffer_ != nullptr) {
+    munmap(buffer_, end_);
+    buffer_ = nullptr;
+  }
+  if (fd_ != -1) {
+    close(fd_);
+    fd_ = -1;
+    end_ = 0;
+    offset_ = 0;
+  }
+  return true;
+}
+
+bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
+  if (offset_ == end_) {
+    return false;
+  }
+
+  batch_size_ = 0;
+  while (batch_size_ < default_batch_size_ && offset_ < end_) {
+    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
+      int idx = use_slots_index_[i];
+      char type = all_slots_type_[i][0];
+
+      uint16_t num = *reinterpret_cast<uint16_t*>(buffer_ + offset_);
+      PADDLE_ENFORCE(
+          num,
+          "The number of ids can not be zero, you need padding "
+          "it in data generator; or if there is something wrong with "
+          "the data, please check if the data contains unresolvable "
+          "characters.");
+      offset_ += sizeof(uint16_t);
+
+      if (idx != -1) {
+        int inductive_size = multi_inductive_shape_index_[i].size();
+        if (UNLIKELY(batch_size_ == 0)) {
+          ins_vec_[idx].Init(all_slots_type_[i], default_batch_size_ * num);
+          ins_vec_[idx].InitOffset(default_batch_size_);
+          uint64_t* inductive_shape =
+              reinterpret_cast<uint64_t*>(buffer_ + offset_);
+          for (int inductive_id = 0; inductive_id < inductive_size;
+               ++inductive_id) {
+            use_slots_shape_[i][multi_inductive_shape_index_[i][inductive_id]] =
+                static_cast<int>(*(inductive_shape + inductive_id));
+          }
+        }
+        num -= inductive_size;
+        offset_ += sizeof(uint64_t) * inductive_size;
+
+        if (type == 'f') {
+          ins_vec_[idx].AppendValues(
+              reinterpret_cast<float*>(buffer_ + offset_), num);
+          offset_ += num * sizeof(float);
+        } else if (type == 'u') {
+          ins_vec_[idx].AppendValues(
+              reinterpret_cast<uint64_t*>(buffer_ + offset_), num);
+          offset_ += num * sizeof(uint64_t);
+        }
+      } else {
+        if (type == 'f') {
+          offset_ += num * sizeof(float);
+        } else if (type == 'u') {
+          offset_ += num * sizeof(uint64_t);
+        }
+      }
+    }
+    ++batch_size_;
+    // OPTIMIZE: It is better to insert check codes between instances for format
+    // checking
+  }
+
+  PADDLE_ENFORCE(batch_size_ == default_batch_size_ || offset_ == end_,
+                 "offset_ != end_");
+  return true;
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

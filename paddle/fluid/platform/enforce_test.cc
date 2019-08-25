@@ -253,3 +253,46 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
   }
   EXPECT_TRUE(caught_eof);
 }
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
+  PADDLE_ENFORCE_CUDA_SUCCESS(value, msg);
+  return true;
+}
+
+template <typename T>
+bool CheckCudaStatusFailure(
+    T value, const std::string& msg = "self-defined cuda status failed") {
+  try {
+    PADDLE_ENFORCE_CUDA_SUCCESS(value, msg);
+    return false;
+  } catch (paddle::platform::EnforceNotMet& error) {
+    std::string ex_msg = error.what();
+    return ex_msg.find(msg) != std::string::npos;
+  }
+}
+
+TEST(enforce, cuda_success) {
+  EXPECT_TRUE(CheckCudaStatusSuccess(cudaSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue));
+  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorMemoryAllocation));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(CURAND_STATUS_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(CURAND_STATUS_VERSION_MISMATCH));
+  EXPECT_TRUE(CheckCudaStatusFailure(CURAND_STATUS_NOT_INITIALIZED));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(CUDNN_STATUS_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE));
+#if !defined(__APPLE__) && !defined(_WIN32)
+  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError));
+#endif
+}
+#endif

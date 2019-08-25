@@ -85,6 +85,7 @@ def data(name,
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
@@ -148,6 +149,7 @@ class ListenAndServ(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             with fluid.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
@@ -450,6 +452,7 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             reader = fluid.layers.random_data_generator(
                                              low=0.0,
                                              high=1.0,
@@ -1010,6 +1013,7 @@ def shuffle(reader, buffer_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],
@@ -1041,6 +1045,7 @@ def batch(reader, batch_size):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
                                                            './data2.recordio'],
                                                     shapes=[(3,224,224), (1,)],

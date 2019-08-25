@@ -138,8 +138,7 @@ def reader_creator(data_file,
                 break
 
     if use_xmap:
-        cpu_num = int(os.environ.get('CPU_NUM', cpu_count()))
-        return xmap_readers(mapper, reader, cpu_num, buffered_size)
+        return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
     else:
         return map_readers(mapper, reader)
 

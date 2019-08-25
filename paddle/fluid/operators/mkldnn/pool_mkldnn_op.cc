@@ -36,7 +36,8 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                       const std::vector<int>& ksize,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const memory::data_type& dt, const std::string& suffix) {
+                      const memory::data_type& dt, const memory::format& fmt,
+                      const std::string& suffix) {
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
   platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
@@ -45,6 +46,7 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKeyVec(&key, strides);
   platform::MKLDNNHandler::AppendKeyVec(&key, paddings);
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
+  platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
   platform::MKLDNNHandler::AppendKey(&key, suffix);
   return key;
 }
@@ -115,8 +117,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     mkldnn::memory::data_type dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    const std::string key = CreateKey(ctx, src_tz, pooling_type, ksize, strides,
-                                      paddings, dt, ctx.op().Output("Out"));
+    auto fmt = input->format();
+    const std::string key =
+        CreateKey(ctx, src_tz, pooling_type, ksize, strides, paddings, dt, fmt,
+                  ctx.op().Output("Out"));
     const std::string key_pool_p = key + "@pool_p";
     const std::string key_pool_pd = key + "@pool_pd";
     const std::string key_pool_src_mem_p = key + "@pool_src_mem_p";
@@ -294,9 +298,9 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
-    const std::string key =
-        CreateKey(ctx, diff_src_tz, pooling_type, ksize, strides, paddings,
-                  memory::data_type::f32, ctx.op().Input("Out"));
+    const std::string key = CreateKey(ctx, diff_src_tz, pooling_type, ksize,
+                                      strides, paddings, memory::data_type::f32,
+                                      in_x->format(), ctx.op().Input("Out"));
     const std::string key_pool_bwd_p = key + "@pool_bwd_p";
     const std::string key_pool_diff_src_mem_p = key + "@pool_diff_src_mem_p";
     const std::string key_pool_diff_dst_mem_p = key + "@pool_diff_dst_mem_p";

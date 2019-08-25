@@ -58,6 +58,7 @@ def split_lod_tensor(input, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[1])
           x.persistable = True
 
@@ -107,6 +108,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = layers.data(
                       name='x', shape=[1], dtype='float32', stop_gradient=False)
           y = layers.data(
@@ -165,8 +167,12 @@ def Print(input,
                 print the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor, same data with input tensor.
+        Variable: Output tensor.
 
+    NOTES:
+        The input and output are two different variables, and in the
+        following process, you should use the output variable but not the input,
+        otherwise, the print layer doesn't have backward.
 
     Examples:
         .. code-block:: python
@@ -174,16 +180,18 @@ def Print(input,
            import paddle.fluid as fluid
            
            input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           fluid.layers.Print(input, message = "The content of input layer:")
+           input = fluid.layers.Print(input, message = "The content of input layer:")
            # value = some_layer(...)
            # Print(value, summarize=10,
            #    message="The content of some_layer: ")
 
     '''
-    helper = LayerHelper('print', **locals())
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
         type='print',
         inputs={'In': input},
+        outputs={'Out': output},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -194,7 +202,7 @@ def Print(input,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
-    return input
+    return output
 
 
 class BlockGuard(object):
@@ -442,7 +450,7 @@ class StaticRNN(object):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
-        elif self.seq_len != x.shape[0]:
+        elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
@@ -750,6 +758,7 @@ def lod_rank_table(x, level=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[10],
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
@@ -816,6 +825,7 @@ def lod_tensor_to_array(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -849,6 +859,7 @@ def array_to_lod_tensor(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -958,6 +969,7 @@ def create_array(dtype):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.create_array(dtype='float32')
 
     """
@@ -985,6 +997,7 @@ def less_than(x, y, force_cpu=None, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           label = fluid.layers.data(name='y', shape=[1], dtype='int64')
           limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
           cond = fluid.layers.less_than(x=label, y=limit)
@@ -1333,6 +1346,7 @@ class ConditionalBlock(object):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              cond = layers.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)

@@ -15,6 +15,7 @@
 from ..core.strategy import Strategy
 from ..graph import VarWrapper, OpWrapper, GraphWrapper
 from ....framework import Program, program_guard, Parameter
+from ....log_helper import get_logger
 from .... import layers
 import prettytable as pt
 import numpy as np
@@ -28,9 +29,8 @@ import sys
 
 __all__ = ['SensitivePruneStrategy', 'UniformPruneStrategy', 'PruneStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class PruneStrategy(Strategy):

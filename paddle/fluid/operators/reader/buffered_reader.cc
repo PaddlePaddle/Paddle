@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 
@@ -127,9 +128,18 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
                        size, stream_);
         } else {
+          platform::CUDAPinnedPlace cuda_pinned_place;
+          framework::LoDTensor cuda_pinned_tensor;
+          cuda_pinned_tensor.Resize(cpu[i].dims());
+          auto cuda_pinned_ptr =
+              cuda_pinned_tensor.mutable_data(cuda_pinned_place, cpu[i].type());
+          memory::Copy(cuda_pinned_place, cuda_pinned_ptr,
+                       boost::get<platform::CPUPlace>(cpu_place), cpu_ptr,
+                       size);
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
-                       boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
-                       stream_);
+                       cuda_pinned_place, cuda_pinned_ptr, size, stream_);
+          PADDLE_ENFORCE(cudaStreamSynchronize(stream_),
+                         "cuda stream sync error.");
         }
         gpu[i].set_lod(cpu[i].lod());
       }
@@ -167,7 +177,8 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     return;
   }
 
-  *out = platform::is_gpu_place(place_) ? gpu_buffer_[i] : cpu_buffer_[i];
+  *out = std::move(platform::is_gpu_place(place_) ? gpu_buffer_[i]
+                                                  : cpu_buffer_[i]);
 
   // Do not push current position into ReadAsync. Push the previous position
   // Since all computation in fluid are async, change the data of
