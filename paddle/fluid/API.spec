@@ -982,7 +982,7 @@ paddle.fluid.optimizer.ExponentialMovingAverage.update (ArgSpec(args=['self'], v
 paddle.fluid.optimizer.PipelineOptimizer ('paddle.fluid.optimizer.PipelineOptimizer', ('document', '6f85382abedb922387b08d98e8d0b69c'))
 paddle.fluid.optimizer.PipelineOptimizer.__init__ (ArgSpec(args=['self', 'optimizer', 'cut_list', 'place_list', 'concurrency_list', 'queue_size', 'sync_steps', 'start_cpu_core_id'], varargs=None, keywords=None, defaults=(None, None, None, 30, 1, 0)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.PipelineOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.optimizer.LookaheadOptimizer ('paddle.fluid.optimizer.LookaheadOptimizer', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.optimizer.LookaheadOptimizer ('paddle.fluid.optimizer.LookaheadOptimizer', ('document', 'a6857807ea56ed16fc2d4dff1323689c'))
 paddle.fluid.optimizer.LookaheadOptimizer.__init__ (ArgSpec(args=['self', 'inner_optimizer', 'alpha', 'k'], varargs=None, keywords=None, defaults=(0.5, 5)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.LookaheadOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '1b7b2bfb986e93048e75ba69f2f490ab'))
