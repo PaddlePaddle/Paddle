@@ -564,6 +564,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
             dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
+
         block.append_op(
             type="mul",
             inputs={"X": mul_x,
