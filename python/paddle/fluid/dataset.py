@@ -91,6 +91,51 @@ class DatasetBase(object):
         """
         self.proto_desc.pipe_command = pipe_command
 
+    def set_fea_eval(self, record_candidate_size, fea_eval=True):
+        """
+        set fea eval mode for slots shuffle to debug the importance level of
+        slots(features), fea_eval need to be set True for slots shuffle.
+        
+        Args:
+            record_candidate_size(int): size of instances candidate to shuffle 
+                                        one slot
+            fea_eval(bool): wheather enable fea eval mode to enable slots shuffle.
+                            default is True.
+            
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_fea_eval(1000000, True)
+
+        """
+        if fea_eval:
+            self.dataset.set_fea_eval(fea_eval, record_candidate_size)
+        self.fea_eval = fea_eval
+
+    def slots_shuffle(self, slots):
+        """
+        Slots Shuffle 
+        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        in sparse feature with large scale of instances. To compare the metric, i.e.
+        auc while doing slots shuffle on one or several slots with baseline to 
+        evaluate the importance level of slots(features).
+        
+        Args:
+            slots(list[string]): the set of slots(string) to do slots shuffle.
+
+        Examples:
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_merge_by_lineid()
+            #suppose there is a slot 0
+            dataset.slots_shuffle(['0'])
+        """
+        if self.fea_eval:
+            slots_set = set(slots)
+            self.dataset.slots_shuffle(slots_set)
+
     def set_batch_size(self, batch_size):
         """
         Set batch size. Will be effective during training

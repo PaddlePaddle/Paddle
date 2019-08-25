@@ -41,5 +41,4 @@ void DeQuantOpMaker::Make() {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker);
