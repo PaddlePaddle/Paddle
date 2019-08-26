@@ -5709,16 +5709,16 @@ def warpctc(input,
                                          dtype='int64')
             label_length = fluid.layers.data(name='labels_length', shape=[12],
                                          dtype='int64')
-            label = fluid.layers.data(name='label', shape=[12, 1],
-                                      dtype='int32')
+            target = fluid.layers.data(name='target', shape=[12, 1],
+                                       dtype='int32')
             # length of the longest logit sequence
             max_seq_length = 4
             # number of logit sequences
             batch_size = 4
-            predict = fluid.layers.data(name='predict', 
-                                        shape=[max_seq_length, batch_size, 8],
-                                        dtype='float32')
-            cost = fluid.layers.warpctc(input=predict,label=label,
+            output = fluid.layers.data(name='output', 
+                                       shape=[max_seq_length, batch_size, 8],
+                                       dtype='float32')
+            loss = fluid.layers.warpctc(input=output,label=target,
                                         input_length=input_length,
                                         label_length=label_length)
 
