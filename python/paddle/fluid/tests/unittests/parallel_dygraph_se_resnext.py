@@ -60,7 +60,10 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        y = self._batch_norm(y)
+        # FIXME(zcd): when compare the result of multi-card and single-card,
+        # we should replace batch_norm with layer_norm.
+        y = fluid.layers.layer_norm(input=y)
+        # y = self._batch_norm(y)
 
         return y
 
@@ -278,7 +281,9 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.2, seed=1)
+        # FIXME(zcd): the dropout should be removed when compare the
+        # result of multi-card and single-card.
+        # y = fluid.layers.dropout(y, dropout_prob=0.2, seed=1)
         cost = self.fc(y)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
