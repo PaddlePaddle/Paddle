@@ -366,12 +366,12 @@ def center_loss(input,
                 update_center=True):
     """
     **Center loss Cost layer**
-    
+
     This layer accepts input (deep features,the output of the last hidden layer)
     and target label and return the center loss cost
-    
+
     For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
-    
+
     .. math::
 
         Out = \\frac{1}{2}(X - Y)^2
@@ -382,16 +382,16 @@ def center_loss(input,
                          with shape[N x 1],where N is the batch size.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
-        param_attr (ParamAttr): Attribute initializer of centers. 
+        param_attr (ParamAttr): Attribute initializer of centers.
         update_center (bool): whether to update value of center.
 
     Returns:
-        Variable: 2-D tensor with shape [N * 1] 
+        Variable: 2-D tensor with shape [N * 1]
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid 
+          import paddle.fluid as fluid
 
           input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
           label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
@@ -487,7 +487,7 @@ def embedding(input,
 
           import paddle.fluid as fluid
           data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
-          emb = fluid.layers.embedding(input=data, size=[128, 64])    
+          emb = fluid.layers.embedding(input=data, size=[128, 64])
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -583,12 +583,12 @@ def dynamic_lstm(input,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             emb_dim = 256
             vocab_size = 10000
             hidden_dim = 512
-            
+
             data = fluid.layers.data(name='x', shape=[1],
                          dtype='int32', lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
@@ -734,7 +734,7 @@ def lstm(input,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -1435,9 +1435,9 @@ def crf_decoding(input, param_attr, label=None):
            images = fluid.layers.data(name='pixel', shape=[784], dtype='float32')
            label = fluid.layers.data(name='label', shape=[1], dtype='int32')
            hidden = fluid.layers.fc(input=images, size=2)
-           crf = fluid.layers.linear_chain_crf(input=hidden, label=label, 
+           crf = fluid.layers.linear_chain_crf(input=hidden, label=label,
                      param_attr=fluid.ParamAttr(name="crfw"))
-           crf_decode = fluid.layers.crf_decoding(input=hidden, 
+           crf_decode = fluid.layers.crf_decoding(input=hidden,
                      param_attr=fluid.ParamAttr(name="crfw"))
     """
     helper = LayerHelper('crf_decoding', **locals())
@@ -2109,6 +2109,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
+           use_int8=False,
            act=None,
            name=None):
     """
@@ -2214,8 +2215,10 @@ def conv2d(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
-
-    num_channels = input.shape[1]
+    if use_int8:
+        num_channels = input.shape[3]
+    else:
+        num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
@@ -2241,7 +2244,10 @@ def conv2d(input,
         raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    if use_int8:
+        filter_shape = [num_filters] + filter_size + [int(num_filter_channels)]
+    else:
+        filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
@@ -2283,6 +2289,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
+            'use_int8': use_int8,
             'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False
         })
@@ -2843,8 +2850,8 @@ def pool3d(input,
                           the number of channels, D is the depth of the feature,
                           H is the height of the feature, and W is the width
                           of the feature.
-        pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
-            is a tuple or list, it must contain three integers, 
+        pool_size (int|list|tuple): The pool kernel size. If pool kernel size
+            is a tuple or list, it must contain three integers,
             (pool_size_Depth, pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be the cube of an int.
         pool_type (string): ${pooling_type_comment}
@@ -3207,7 +3214,7 @@ def batch_norm(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Note:
-        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use
         sync_batch_norm automatically.
 
     Args:
@@ -3225,22 +3232,22 @@ def batch_norm(input,
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     If the Initializer of the param_attr is not set, the parameter is initialized
 	     with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
 	     Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
             will save global mean with the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
@@ -3403,7 +3410,7 @@ def data_norm(input,
     Examples:
 
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
 
             hidden1 = fluid.layers.data(name="hidden1", shape=[200])
@@ -3686,7 +3693,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     :attr:`power_iters` shoule be a positive interger, do following
     calculations with U and V for :attr:`power_iters` rounds.
 
-    .. math:: 
+    .. math::
 
         \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
 
@@ -3700,7 +3707,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
 
         \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
-                
+
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
@@ -3719,7 +3726,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
 
             import paddle.fluid as fluid
 
-            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
+            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32],
                                        append_batch_size=False, dtype='float32')
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
@@ -3825,13 +3832,13 @@ def conv2d_transpose(input,
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
     Note:
-          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
@@ -4192,7 +4199,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
@@ -4262,7 +4269,7 @@ def sequence_expand_as(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -4470,7 +4477,7 @@ def beam_search(pre_ids,
              accumulated scores.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        return_parent_idx(bool): Whether to return an extra Tensor variable 
+        return_parent_idx(bool): Whether to return an extra Tensor variable
                         preserving the selected_ids' parent indice in pre_ids
                         in output, which can be used to gather cell states at
                         the next time step.
@@ -5053,7 +5060,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
@@ -5064,7 +5071,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             x = layers.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             x = layers.cast(x, 'bool')
 
-            out = layers.reduce_all(x)  # False 
+            out = layers.reduce_all(x)  # False
             out = layers.reduce_all(x, dim=0)  # [True, False]
             out = layers.reduce_all(x, dim=-1)  # [False, True]
             out = layers.reduce_all(x, dim=1, keep_dim=True)  # [[False], [True]]
@@ -5499,11 +5506,11 @@ def edit_distance(input,
     Returns:
         edit_distance_out(Variable): edit distance result in shape [batch_size, 1]. \n
         sequence_num(Variable): sequence number in shape [].
-        
+
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
 
             # using LoDTensor
@@ -6450,17 +6457,17 @@ def softmax_with_cross_entropy(logits,
     **Softmax With Cross Entropy Operator.**
 
     Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for dimension :attr:`axis` of 
-    the input tensor, after which cross-entropy loss is computed. This provides 
+    operator computes the softmax normalized values for dimension :attr:`axis` of
+    the input tensor, after which cross-entropy loss is computed. This provides
     a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
 
-    When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
-    expects mutually exclusive hard labels, each sample in a batch is in exactly 
-    one class with a probability of 1.0. Each sample in the batch will have a 
+    When the attribute :attr:`soft_label` is set :attr:`False`, this operators
+    expects mutually exclusive hard labels, each sample in a batch is in exactly
+    one class with a probability of 1.0. Each sample in the batch will have a
     single label.
 
     The equation is as follows:
@@ -6480,7 +6487,7 @@ def softmax_with_cross_entropy(logits,
         \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
         \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
-    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated 
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated
     first by:
 
     .. math::
@@ -6496,27 +6503,27 @@ def softmax_with_cross_entropy(logits,
     Args:
         logits (Variable): The input tensor of unscaled log probabilities.
         label (Variable): The ground truth  tensor. If :attr:`soft_label`
-            is set to :attr:`True`, Label is a Tensor<float/double> in the 
-            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
-            :attr:`True`, Label is a Tensor<int64> in the same shape with 
+            is set to :attr:`True`, Label is a Tensor<float/double> in the
+            same shape with :attr:`logits`. If :attr:`soft_label` is set to
+            :attr:`True`, Label is a Tensor<int64> in the same shape with
             :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. Default False.
         ignore_index (int): Specifies a target value that is ignored and does
                             not contribute to the input gradient. Only valid
-                            if :attr:`soft_label` is set to :attr:`False`. 
+                            if :attr:`soft_label` is set to :attr:`False`.
                             Default: kIgnoreIndex
         numeric_stable_mode (bool): A flag to indicate whether to use a more
                                     numerically stable algorithm. Only valid
-                                    when :attr:`soft_label` is :attr:`False` 
-                                    and GPU is used. When :attr:`soft_label` 
-                                    is :attr:`True` or CPU is used, the 
+                                    when :attr:`soft_label` is :attr:`False`
+                                    and GPU is used. When :attr:`soft_label`
+                                    is :attr:`True` or CPU is used, the
                                     algorithm is always numerically stable.
                                     Note that the speed may be slower when use
                                     stable algorithm. Default: True
         return_softmax (bool): A flag indicating whether to return the softmax
                                along with the cross entropy loss. Default: False
-        axis (int): The index of dimension to perform softmax calculations. It 
+        axis (int): The index of dimension to perform softmax calculations. It
                     should be in range :math:`[-1, rank - 1]`, while :math:`rank`
                     is the rank of input :attr:`logits`. Default: -1.
 
@@ -6573,50 +6580,50 @@ def sampled_softmax_with_cross_entropy(logits,
     """
     **Sampled Softmax With Cross Entropy Operator.**
 
-    Cross entropy loss with sampled softmax is used as the output layer for 
+    Cross entropy loss with sampled softmax is used as the output layer for
     larger output classes extensively. This operator samples a number of samples
-    for all examples, and computes the softmax normalized values for each 
-    row of the sampled tensor, after which cross-entropy loss is computed. 
+    for all examples, and computes the softmax normalized values for each
+    row of the sampled tensor, after which cross-entropy loss is computed.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
     softmax operator since that would produce incorrect results.
-    
+
     For examples with T true labels (T >= 1), we assume that each true label has
     a probability of 1/T. For each sample, S samples are generated using a
     log uniform distribution. True labels are concatenated with these samples to
     form T + S samples for each example. So, assume the shape of logits is
-    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a 
-    probability is calculated, which corresponds to the Q(y|x) in 
+    [N x K], the shape for samples is [N x (T+S)]. For each sampled label, a
+    probability is calculated, which corresponds to the Q(y|x) in
     [Jean et al., 2014](http://arxiv.org/abs/1412.2007).
-    
-    Logits are sampled according to the sampled labels. Then if 
-    remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
-    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
+
+    Logits are sampled according to the sampled labels. Then if
+    remove_accidental_hits is True, if a sample[i, j] accidentally hits true
+    labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to
     make its softmax result close to zero. Then sampled logits are subtracted by
-    logQ(y|x), these sampled logits and re-indexed labels are used to compute 
+    logQ(y|x), these sampled logits and re-indexed labels are used to compute
     a softmax with cross entropy.
 
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
             with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. Label is a 
-            Tensor<int64> with shape [N x T], where T is the number of true 
-            labels per example. 
-        num_samples (int): The number for each example, num_samples should be 
+        label (Variable): The ground truth which is a 2-D tensor. Label is a
+            Tensor<int64> with shape [N x T], where T is the number of true
+            labels per example.
+        num_samples (int): The number for each example, num_samples should be
             less than the number of class.
         num_true(int): The number of target classes per training example.
-        remove_accidental_hits (bool): A flag indicating whether to remove 
-            accidental hits when sampling. If True and if a sample[i, j] 
-            accidentally hits true labels, then the corresponding 
-            sampled_logits[i, j] is minus by 1e20 to make its softmax result 
+        remove_accidental_hits (bool): A flag indicating whether to remove
+            accidental hits when sampling. If True and if a sample[i, j]
+            accidentally hits true labels, then the corresponding
+            sampled_logits[i, j] is minus by 1e20 to make its softmax result
             close to zero. Default is True.
         use_customized_samples (bool): Whether to use custom samples and probabities to sample
             logits.
         customized_samples (Variable): User defined samples, which is a 2-D tensor
-            with shape [N, T + S]. S is the num_samples, and T is the number of true 
-            labels per example. 
-        customized_probabilities (Variable): User defined probabilities of samples, 
+            with shape [N, T + S]. S is the num_samples, and T is the number of true
+            labels per example.
+        customized_probabilities (Variable): User defined probabilities of samples,
             a 2-D tensor which has the same shape with customized_samples.
         seed (int): The random seed for generating random number, which is used
             in the process of sampling. Default is 0.
@@ -6779,7 +6786,7 @@ def one_hot(input, depth, allow_out_of_range=False):
         attrs = {'depth': depth}
     else:
         if not isinstance(depth, Variable):
-            # user attribute 
+            # user attribute
             inputs = {'X': input}
             attrs = {'depth': depth}
         else:
@@ -7490,7 +7497,7 @@ def label_smooth(label,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -7584,7 +7591,7 @@ def roi_align(input,
                          a 2-D LoDTensor of shape (num_rois, 4), the lod level
                          is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                          the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates. 
+                         right coordinates.
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7680,7 +7687,7 @@ def image_resize(input,
     **Resize a Batch of Images**
 
     The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
-    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
+    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies
     on the last two/three dimensions(depth, hight and width).
 
     Supporting resample methods:
@@ -7692,21 +7699,21 @@ def image_resize(input,
         'NEAREST' : Nearest neighbor interpolation
 
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
-    in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+    in both the 3rd dimention(in height direction) and the 4th dimention(in width
     direction) on input tensor.
-            
-    Bilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of two variables (e.g. H-direction and 
-    W-direction in this op) on a rectilinear 2D grid. The key idea is 
-    to perform linear interpolation first in one direction, and then 
+
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
     again in the other direction.
 
-    Trilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of three variables (e.g. D-direction, 
-    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    Trilinear interpolation is an extension of linear interpolation for
+    interpolating functions of three variables (e.g. D-direction,
+    H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
 
-    Align_corners and align_mode are optinal parameters,the calculation method 
+    Align_corners and align_mode are optinal parameters,the calculation method
     of interpolation can be selected by them.
 
     Example:
@@ -7714,18 +7721,18 @@ def image_resize(input,
     .. code-block:: text
 
         For scale:
-          
+
             if align_corners = True && out_size > 1 :
 
               scale_factor = (in_size-1.0)/(out_size-1.0)
-            
+
             else:
-              
+
               scale_factor = float(in_size/out_size)
-            
-          
+
+
         Nearest neighbor interpolation:
-          
+
           if:
               align_corners = False
 
@@ -7748,15 +7755,15 @@ def image_resize(input,
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-              
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
           else:
-           
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
 
@@ -7767,31 +7774,31 @@ def image_resize(input,
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
-              
+
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
 
           else:
-           
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
 
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-          
-    For details of nearest neighbor interpolation, please refer to Wikipedia: 
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
-    For details of bilinear interpolation, please refer to Wikipedia: 
+    For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
-    For details of trilinear interpolation, please refer to Wikipedia: 
+    For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
 
 
@@ -7808,8 +7815,8 @@ def image_resize(input,
                                     (out_d, out_h, out_w) when input is a
                                     5-D tensor. Default: None
         scale(float|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -7828,12 +7835,12 @@ def image_resize(input,
                                 set, otherwise errors would be occured in graph
                                 constructing stage.
                                 Default: None
-        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
-                               input and output tensors are aligned, preserving the values at the 
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
+                               input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
-                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
+        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
+                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale*dst_index .
 
     Returns:
@@ -7968,7 +7975,7 @@ def resize_bilinear(input,
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation
 
-    Align_corners and align_mode are optinal parameters,the calculation 
+    Align_corners and align_mode are optinal parameters,the calculation
     method of interpolation can be selected by them.
 
     Example:
@@ -7976,23 +7983,23 @@ def resize_bilinear(input,
     .. code-block:: text
 
         For scale:
-          
+
             if align_corners = True && out_size > 1 :
 
               scale_factor = (in_size-1.0)/(out_size-1.0)
-            
+
             else:
-              
-              scale_factor = float(in_size/out_size)     
+
+              scale_factor = float(in_size/out_size)
 
         Bilinear interpolation:
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-              
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
@@ -8015,8 +8022,8 @@ def resize_bilinear(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
 
         name(str|None): The output variable name.
@@ -8064,15 +8071,15 @@ def resize_trilinear(input,
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
-    Trilinear interpolation is an extension of linear interpolation for 
-    interpolating functions of three variables (e.g. D-direction, 
-    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    Trilinear interpolation is an extension of linear interpolation for
+    interpolating functions of three variables (e.g. D-direction,
+    H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
 
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation
 
-    Align_corners and align_mode are optinal parameters,the calculation 
+    Align_corners and align_mode are optinal parameters,the calculation
     method of interpolation can be selected by them.
 
     Example:
@@ -8080,23 +8087,23 @@ def resize_trilinear(input,
     .. code-block:: text
 
         For scale:
-          
+
             if align_corners = True && out_size > 1 :
 
               scale_factor = (in_size-1.0)/(out_size-1.0)
-            
+
             else:
-              
-              scale_factor = float(in_size/out_size)     
+
+              scale_factor = float(in_size/out_size)
 
         Bilinear interpolation:
 
           if:
               align_corners = False , align_mode = 0
-              
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
-              
+
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
@@ -8121,8 +8128,8 @@ def resize_trilinear(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input depth, height or width.
-             At least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             At least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
 
         name(str|None): The output variable name.
@@ -8175,18 +8182,18 @@ def resize_nearest(input,
     .. code-block:: text
 
         For scale:
-          
+
             if align_corners = True && out_size > 1 :
 
               scale_factor = (in_size-1.0)/(out_size-1.0)
-            
+
             else:
-              
+
               scale_factor = float(in_size/out_size)
-            
-          
+
+
         Nearest neighbor interpolation:
-          
+
           if:
               align_corners = False
 
@@ -8217,8 +8224,8 @@ def resize_nearest(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
 
         name(str|None): The output variable name.
@@ -8325,9 +8332,9 @@ def gather(input, index, overwrite=True):
         index (Variable): The index input with rank=1.
         overwrite (bool): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
-	    if False, use the accumulate mode to update the grad of the same index. 
+	    if False, use the accumulate mode to update the grad of the same index.
 	    Default value is True.
-	    
+
 
 
     Returns:
@@ -8374,7 +8381,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
         name (str|None): The output variable name. Default None.
         overwrite (bool): The mode that updating the output when has same index.
             If True, use the overwrite mode to update the output of the same index,
-	    if False, use the accumulate mode to update the output of the same index. 
+	    if False, use the accumulate mode to update the output of the same index.
 	    Default value is True.You can set overwrite=False to implement scatter_add.
 
     Returns:
@@ -8454,7 +8461,7 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -8610,9 +8617,9 @@ def selu(x, scale=None, alpha=None, name=None):
     Examples:
 
         .. code-block:: python
-             
+
             import paddle.fluid as fluid
-          
+
             input = fluid.layers.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
             output = fluid.layers.selu(input)
@@ -9337,7 +9344,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
     Args:
         x (Variable): The input tensor.
-        mode (string): The mode for weight sharing. 
+        mode (string): The mode for weight sharing.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha), it can be create by ParamAttr.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -9459,10 +9466,10 @@ def soft_relu(x, threshold=40.0, name=None):
 
     Examples:
 
-        .. code-block:: python 
- 
+        .. code-block:: python
+
             import paddle.fluid as fluid
-   
+
             x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
             y = fluid.layers.soft_relu(x, threshold=20.0)
     """
@@ -9638,7 +9645,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -9761,14 +9768,14 @@ def stack(x, axis=0):
 def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     """
     **Filter By Instag Layer**
-   
-    This function filter a batch of ins by instag, 
-    There are multiple ins, and every ins belongs to some tags. 
+
+    This function filter a batch of ins by instag,
+    There are multiple ins, and every ins belongs to some tags.
     We can specify some tags we want. So the ins which belongs to that tags
     remains in the output, and others removed.
- 
-    For example, one batch has 4 ins. Every ins has its tag list. 
-     
+
+    For example, one batch has 4 ins. Every ins has its tag list.
+
        | Ins   |   Ins_Tag |
        |:-----:|:------:|
        |  0    |   0, 1 |
@@ -9784,7 +9791,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
     So Ins 0 and Ins 1 can pass and be seen in the output,
     Ins 2 and 3 cannot pass because they do not has tag 1.
 
-    Actually, if is_lod is false, it is normal tensor that equals to 
+    Actually, if is_lod is false, it is normal tensor that equals to
     lod_tensor with all 1, similar to the example above.
 
     Args:
@@ -9792,7 +9799,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
                         And first dimension can have lod info or not.
         ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
                         And split them by lod info
-        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
+        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is
                         list that holds the tags.
         is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
 
@@ -9807,7 +9814,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
           ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
           filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
           out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
-        		
+
     """
     helper = LayerHelper('filter_by_instag', **locals())
 
@@ -9909,7 +9916,7 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-          
+
             import paddle.fluid as fluid
             x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
             out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
@@ -9985,7 +9992,7 @@ def uniform_random_batch_size_like(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers 
+            import paddle.fluid.layers as layers
 
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             out = layers.uniform_random_batch_size_like(input, [-1, 11])
@@ -10208,7 +10215,7 @@ def slice(input, axes, starts, ends):
                 ends = [2, 3]
             Then:
                 result = [ [5, 6, 7], ]
-        
+
         Case2:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
@@ -10230,7 +10237,7 @@ def slice(input, axes, starts, ends):
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
+
             starts = [1, 0, 2]
             ends = [3, 3, 4]
             axes = [0, 1, 2]
@@ -10472,7 +10479,7 @@ for func in [
 
 Examples:
   .. code-block:: python
-    
+
     import paddle.fluid as fluid
     # example 1: shape(x) = (2, 3, 4, 5), shape(y) = (2, 3, 4, 5)
     x0 = fluid.layers.data(name="x0", shape=[2, 3, 4, 5], dtype='float32')
@@ -10810,14 +10817,14 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
             dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
             output = fluid.layers.mul(dataX, dataY,
                                       x_num_col_dims = 1,
                                       y_num_col_dims = 1)
-            
+
 
     """
 
@@ -10913,8 +10920,8 @@ def maxout(x, groups, name=None):
 
             import paddle.fluid as fluid
             input = fluid.layers.data(
-                name='data', 
-                shape=[256, 32, 32], 
+                name='data',
+                shape=[256, 32, 32],
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
@@ -10967,7 +10974,7 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import numpy as np
 
@@ -11071,7 +11078,7 @@ def affine_channel(x,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             data = fluid.layers.data(name='data', shape=[3, 32, 32],
                                      dtype='float32')
@@ -11230,7 +11237,7 @@ def hash(input, hash_size, num_hash=1, name=None):
         Given:
 
         # shape [2, 2]
-        input.data = 
+        input.data =
             [[1, 2],
              [3, 4]]
 
@@ -11452,7 +11459,7 @@ def teacher_student_sigmoid_loss(input,
 
     Examples:
         .. code-block:: python
-          
+
           import paddle.fluid as fluid
 
           batch_size = 64
@@ -11619,7 +11626,7 @@ def get_tensor_from_selected_rows(x, name=None):
 
     Examples:
         .. code-block:: python
-	    
+
             import paddle.fluid as fluid
             b = fluid.default_main_program().global_block()
             input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
@@ -11646,7 +11653,7 @@ def shuffle_channel(x, group, name=None):
 
     Please refer to the paper
     https://arxiv.org/pdf/1707.01083.pdf
-    
+
     .. code-block:: text
 
         Given a 4-D tensor input with the shape (N, C, H, W):
@@ -11667,22 +11674,22 @@ def shuffle_channel(x, group, name=None):
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
-                          
+
                          [[0.5, 0.6],
                           [0.6, 0.7]],
-                          
+
                          [[0.3, 0.4],
                           [0.4, 0.5]],
-                          
+
                          [[0.7, 0.8],
                           [0.8, 0.9]]]]
-                        
-    Args: 
+
+    Args:
         x(Variable): The input tensor variable. It should be a 4-D tensor with shape [N, C, H, W]
         group(int): Indicating the conuts of subgroups, It should divide the number of channels.
 
     Returns:
-        out(Variable): the channels shuffling result is a tensor variable with the 
+        out(Variable): the channels shuffling result is a tensor variable with the
         same shape and same type as the input.
 
     Raises:
@@ -11714,17 +11721,17 @@ def shuffle_channel(x, group, name=None):
 def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     """
     **Temporal Shift Operator**
-    
+
     ${comment}
-                        
-    Args: 
+
+    Args:
         x(Variable): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
         name (str, default None): The name of this layer.
 
     Returns:
-        out(Variable): The temporal shifting result is a tensor variable with the 
+        out(Variable): The temporal shifting result is a tensor variable with the
         same shape and same type as the input.
 
     Raises:
@@ -12130,9 +12137,9 @@ def tree_conv(nodes_vector,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """ 
+    """
     ${comment}
-    		
+
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -12257,19 +12264,19 @@ def pixel_shuffle(x, upscale_factor):
     to a tensor of shape [N, C/r**2, H*r, W*r].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/r.
-    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution 
+    Please refer to the paper: `Real-Time Single Image and Video Super-Resolution
     Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
     by Shi et. al (2016) for more details.
 
         .. code-block:: text
-        
+
             Given a 4-D tensor with the shape:
                 x.shape = [1, 9, 4, 4]
             Given upscale_factor:
                 upscale_factor= 3
             output shape is:
                 [1, 1, 12, 12]
-    
+
     Args:
 
         x(Variable): The input tensor variable.
@@ -12364,7 +12371,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
     We assume that input is an embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
     If use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
     If use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
-    
+
     This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
 
     Args:
@@ -12377,7 +12384,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
     Returns:
 
-        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2. 
+        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2.
 
     Examples:
 
@@ -12412,13 +12419,13 @@ def where(condition):
     Return an int64 tensor with rank 2, specifying the coordinate of true element in `condition`.
 
     Output's first dimension is the number of true element, second dimension is rank(number of dimension) of `condition`.
-    If there is zero true element, then an empty tensor will be generated.  
+    If there is zero true element, then an empty tensor will be generated.
 
     Args:
         condition(Variable): A bool tensor with rank at least 1.
 
     Returns:
-        Variable: The tensor variable storing a 2-D tensor. 
+        Variable: The tensor variable storing a 2-D tensor.
 
     Examples:
         .. code-block:: python
@@ -12472,7 +12479,7 @@ def sign(x):
           import numpy as np
 
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32'))
 
     """
 
@@ -12490,7 +12497,7 @@ def sign(x):
 
 def unique(x, dtype='int32'):
     """
-    **unique** 
+    **unique**
 
     Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
 
@@ -12529,7 +12536,7 @@ def unique(x, dtype='int32'):
 
 def unique_with_counts(x, dtype='int32'):
     """
-    **unique** 
+    **unique**
 
     Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
 
@@ -12598,15 +12605,15 @@ def deformable_conv(input,
 
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-    
+
     .. math::
 
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-    
+
     Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, respectively.
     Refer to `Deformable ConvNets v2: More Deformable, Better Results
     <https://arxiv.org/abs/1811.11168v2>`_ .
-    
+
     Example:
         - Input:
 
@@ -12654,7 +12661,7 @@ def deformable_conv(input,
             connected to the second half of the input channels. Default: groups=1.
         deformable_groups (int): The number of deformable group partitions.
             Default: deformable_groups = 1.
-        im2col_step (int): Maximum number of images per im2col computation; 
+        im2col_step (int): Maximum number of images per im2col computation;
             The total batch size should be divisable by this value or smaller
             than this value; if you face out of memory problem, you can try
             to use a smaller value here.
@@ -12663,7 +12670,7 @@ def deformable_conv(input,
             of deformable conv. If it is set to None or one attribute of ParamAttr,
             deformable conv will create ParamAttr as param_attr.
             If the Initializer of the param_attr is not set, the parameter is
-            initialized with :math:`Normal(0.0, std)`, and the 
+            initialized with :math:`Normal(0.0, std)`, and the
             :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of
             deformable conv layer. If it is set to False, no bias will be added
@@ -12796,7 +12803,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   [dilation_h, dilation_w], or an integer dialtion treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
 
-    
+
     Returns:
         Variable: The tensor variable corresponding to the sliding local blocks. The output shape is [N, Cout, Lout] as decribled above. Cout is the  total number of values within each block, and Lout is the total number of such blocks.
 
@@ -12877,29 +12884,29 @@ def deformable_roi_pooling(input,
                            name=None):
     """
     Deformable PSROI Pooling Layer
-    
+
     Args:
-       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
+       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+                        [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
-                         N is number of ROIs, C is number of channels, which indicate the offset distance 
+       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where
+                         N is number of ROIs, C is number of channels, which indicate the offset distance
                          in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
+       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which
                           value is True or False. Default: False.
        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
+       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels
                          is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
        pooled_height (integer): The pooled output height. Default: 1.
        pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
+       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default:
                         if None, default value is [pooled_height, pooled_width].
        sample_per_part (integer): The number of samples in each bin. Default: 1.
        trans_std (float): Coefficient of offset. Default: 0.1.
@@ -12915,27 +12922,27 @@ def deformable_roi_pooling(input,
 
         import paddle.fluid as fluid
         input = fluid.layers.data(name="input",
-                                  shape=[2, 192, 64, 64], 
-                                  dtype='float32', 
-                                  append_batch_size=False)                   
+                                  shape=[2, 192, 64, 64],
+                                  dtype='float32',
+                                  append_batch_size=False)
         rois = fluid.layers.data(name="rois",
                                  shape=[4],
-                                 dtype='float32', 
+                                 dtype='float32',
                                  lod_level=1)
         trans = fluid.layers.data(name="trans",
-                                  shape=[2, 384, 64, 64], 
-                                  dtype='float32', 
-                                  append_batch_size=False) 
-        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
-                                                     rois=rois, 
-                                                     trans=trans, 
+                                  shape=[2, 384, 64, 64],
+                                  dtype='float32',
+                                  append_batch_size=False)
+        x = fluid.layers.nn.deformable_roi_pooling(input=input,
+                                                     rois=rois,
+                                                     trans=trans,
                                                      no_trans=False,
-                                                     spatial_scale=1.0, 
+                                                     spatial_scale=1.0,
                                                      group_size=(1, 1),
                                                      pooled_height=8,
                                                      pooled_width=8,
                                                      part_size=(8, 8),
-                                                     sample_per_part=4, 
+                                                     sample_per_part=4,
                                                      trans_std=0.1,
                                                      position_sensitive=False)
     """
@@ -12991,18 +12998,18 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
-    padding. Besides, input.dims[1] should be 1. 
+    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with
+    padding. Besides, input.dims[1] should be 1.
 
     .. code-block:: text
-            
+
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
-            input is a lodTensor: 
+            input is a lodTensor:
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
-            
+
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
@@ -13042,7 +13049,7 @@ def var_conv_2d(input,
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
             row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
             col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = layers.var_conv_2d(input=x_lod_tensor, 
+            out = layers.var_conv_2d(input=x_lod_tensor,
                                      row=row_lod_tensor,
                                      col=col_lod_tensor,
                                      input_channel=3,
@@ -13097,10 +13104,10 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     This layer creates the sharded index for input. This layers is used in
     model- and data- parallel mixed training generally, in which the index
     data (usually the label) should be recaculated in each trainer according
-    to 
+    to
 
     .. math::
-        
+
         assert index_num % nshards == 0
 
         shard_size = index_num / nshards
@@ -13114,23 +13121,23 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     the original index should be recalculated (i.e. sharded) before.
 
     Examples:
-    
+
         X is a Tensor of integer values:
           X.shape = [4, 1]
           X.data = [[1], [6], [12], [19]]
-        
+
         suppose index_num = 20 and nshards = 2, then we get shard_size = 10
-        
+
         if shard_id == 0, we get the Out:
           Out.shape = [4, 1]
           Out.data = [[1], [6], [-1], [-1]]
-        
+
         if shard_id == 1, we get the Out:
           Out.shape = [4, 1]
           Out.data = [[-1], [-1], [2], [9]]
-    
+
         the default `ignore_value` -1 is used in this example.
-    
+
     Args:
         input(Variable): Input indices, last dimension must be 1.
         index_num(scalar): An interger defining the range of the index.
