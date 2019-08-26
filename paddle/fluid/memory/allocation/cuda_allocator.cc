@@ -17,6 +17,7 @@
 #include <cuda_runtime.h>
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -36,7 +37,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto status = cudaMalloc(&ptr, size);
   if (UNLIKELY(status != cudaSuccess)) {
-    throw BadAlloc(string::Sprintf(
+    PADDLE_THROW_BAD_ALLOC(string::Sprintf(
         "Cannot allocate %d on GPU %d, cuda status %d, %s", size, place_.device,
         status, cudaGetErrorString(status)));
   }
