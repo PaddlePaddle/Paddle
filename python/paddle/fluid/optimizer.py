@@ -360,8 +360,9 @@ class Optimizer(object):
         global_block = framework.default_main_program().global_block()
         start = len(global_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
-        self._create_accumulators(global_block,
-                                  [p[0] for p in parameters_and_grads])
+        self._create_accumulators(
+            global_block,
+            [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
         optimize_ops = []
@@ -1390,7 +1391,7 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in param_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope("optimizer"):
@@ -1553,7 +1554,7 @@ class AdamaxOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope('adamx'):
