@@ -1958,7 +1958,8 @@ class BilinearTensorProduct(layers.Layer):
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
-        self._inputs["Bias"] = self._bias_param
+        if self._bias_attr:
+            self._inputs["Bias"] = self._bias_param
         if self._name is not None:
             out = self._helper.create_variable(
                 name=".".join([self.full_name(), self._name]),

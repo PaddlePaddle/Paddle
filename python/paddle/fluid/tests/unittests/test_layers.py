@@ -452,6 +452,30 @@ class TestLayer(LayerTest):
                 act='sigmoid')
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
 
+        with self.dynamic_graph():
+            btp2 = nn.BilinearTensorProduct('btp', 6, act='sigmoid')
+            dy_rlt2 = btp2(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+
+        with self.static_graph():
+            data_x2 = layers.data(
+                name='x',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            data_y2 = layers.data(
+                name='y',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            out2 = layers.bilinear_tensor_product(
+                data_x2, data_y2, 6, act='sigmoid')
+
+            static_rlt3 = self.get_static_graph_result(
+                feed={'x': inp_np_x,
+                      'y': inp_np_y}, fetch_list=[out2])[0]
+
+        self.assertTrue(np.array_equal(dy_rlt2.numpy(), static_rlt3))
         self.assertTrue(np.array_equal(static_rlt2, static_rlt))
         self.assertTrue(np.array_equal(dy_rlt.numpy(), static_rlt))
 
