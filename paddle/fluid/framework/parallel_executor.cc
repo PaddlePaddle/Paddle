@@ -200,12 +200,17 @@ class ParallelExecutorPrivate {
     InitNCCLCtxs(scope, bst);
   }
 #endif
+  inline bool IsPersistable(const std::string &name) const {
+    auto iter = is_persistable_.find(name);
+    return iter != is_persistable_.end() && iter->second;
+  }
 
   BuildStrategy build_strategy_;
   std::vector<platform::Place> places_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;  // not owned
   std::unique_ptr<details::SSAGraphExecutor> executor_;
+  std::unordered_map<std::string, bool> is_persistable_;
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
@@ -473,6 +478,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       var_infos.back().name_ = node->Var()->Name();
       var_infos.back().type_ = node->Var()->GetType();
       var_infos.back().persistable_ = node->Var()->Persistable();
+      member_->is_persistable_.emplace(node->Var()->Name(),
+                                       node->Var()->Persistable());
     }
   }
 
@@ -642,22 +649,39 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
-  for (auto pair : tensors) {
+  size_t num_places = member_->places_.size();
+  for (auto &pair : tensors) {
+    bool is_persistable = member_->IsPersistable(pair.first);
+    VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
+            << " data (" << pair.first << "), dim:" << pair.second.dims();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-    if (member_->places_.size() != lod_tensors.size()) {
-      bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    if (!is_persistable && num_places != lod_tensors.size()) {
       auto error_info = string::Sprintf(
-          "The number(%d) of samples of "
-          "current batch is less than the count(%d) of "
-          "devices(%s), currently, it is not allowed. ",
-          lod_tensors.size(), member_->places_.size(),
-          (is_cpu_place ? "CPU" : "GPU"));
+          "The number(%d) of samples of current batch is less than the "
+          "count(%d) of devices(%s), currently, it is not allowed. ",
+          lod_tensors.size(), num_places, (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=
             "You should set the environment variable CPU_NUM in the system "
             "to determine the number of devices you need.";
       }
       PADDLE_THROW(error_info);
+    } else if (is_persistable && lod_tensors.size() != 1) {
+      auto error_info = string::Sprintf(
+          "The number(%d) of samples of the current batch does not match the "
+          "count(%d) of devices(%s). Because that %s is a persistable "
+          "variable, you can feed just one sample, in that case, the input "
+          "sample will be copied in %d copies and be sent to different places "
+          "separately. If you need that different place has different value, "
+          "you should feed %d samples.",
+          lod_tensors.size(), num_places, (is_cpu_place ? "CPU" : "GPU"),
+          pair.first, num_places, num_places);
+      PADDLE_THROW(error_info);
+    } else if (is_persistable && lod_tensors.size() == 1) {
+      for (size_t i = 1; i < num_places; ++i) {
+        lod_tensors.emplace_back(lod_tensors.front());
+      }
     }
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?

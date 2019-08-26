@@ -496,7 +496,7 @@ class Executor(object):
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
+                    # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 feed_tensor_dict[feed_name] = feed_tensor
