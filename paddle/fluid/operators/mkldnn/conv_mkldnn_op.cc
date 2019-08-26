@@ -482,14 +482,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       handler.reset(
           new platform::ConvMKLDNNHandler(dev_ctx, mkldnn_engine, key));
       // create a conv primitive descriptor and save it for usage in backward
-
-      // TODO(grygielski) if INT8 brelu post-op will be available, just delete
-      // whole if statement
-      if (fuse_activation == "relu6") {
-        fuse_activation = "relu";
-        fuse_alpha = 0.0f;
-      }
-
       auto propagation = is_test ? mkldnn::prop_kind::forward_scoring
                                  : mkldnn::prop_kind::forward_training;
 
