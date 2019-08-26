@@ -262,72 +262,6 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
     return result_grad_ops
 
 
-def _get_sumop_from_addup_repetitive_outputs_(op_descs, renamed_vars):
-    """
-    In backward part, an variable may be the output of more than one ops.
-    And one op may yield its multiple outputs to the same variable.
-    In these cases, the variable should be the accumulation of all the outputs.
-    `sum_op`s are added to implement the accumulate.
-    """
-    pending_sum_ops = []
-    var_rename_count = collections.defaultdict(int)
-    renamed_vars = collections.defaultdict(list)
-    renamed_var_start_idx = collections.defaultdict(list)
-    for idx, op_desc in enumerate(op_descs):
-        for var_name in op_desc.input_arg_names():
-            if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append((_create_op_desc_(
-                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
-                    {"use_mkldnn": False}), idx))
-                renamed_vars[var_name] = [var_name]
-        for param_idx, param_name in enumerate(op_desc.output_names()):
-            arg_names = op_desc.output(param_name)
-            for arg_idx, var_name in enumerate(arg_names):
-                if "@GRAD" not in var_name:
-                    continue
-                if var_name == core.empty_var_name(
-                ) or var_name in op_desc.input_arg_names():
-                    # empty variable or inplace op
-                    continue
-                if len(renamed_vars[var_name]) == 0:
-                    # it's the first time we get the variable
-                    renamed_vars[var_name] = [var_name]
-                    renamed_var_start_idx[var_name] = idx
-                else:
-                    if len(renamed_vars[var_name]) == 1:
-                        new_name = var_name + "@RENAME@" + \
-                            str(var_rename_count[var_name])
-                        var_rename_count[var_name] += 1
-                        renamed_vars[var_name][0] = new_name
-                        _rename_arg_(op_descs, var_name, new_name,
-                                     renamed_var_start_idx[var_name], idx)
-                        _rename_arg_(pending_sum_ops, var_name, new_name)
-                        for p in op_desc.output_names()[:param_idx]:
-                            p_arg_names = op_desc.output(p)
-                            if var_name in p_arg_names:
-                                op_desc.set_output(p, [
-                                    new_name if x == var_name else x
-                                    for x in p_arg_names
-                                ])
-                        arg_names = [
-                            new_name if x == var_name else x
-                            for x in arg_names[:arg_idx]
-                        ] + arg_names[arg_idx:]
-                    new_name = var_name + "@RENAME@" + \
-                               str(var_rename_count[var_name])
-                    var_rename_count[var_name] += 1
-                    arg_names[arg_idx] = new_name
-                    op_desc.set_output(param_name, arg_names)
-                    renamed_vars[var_name].append(new_name)
-
-    for var_name, inputs in six.iteritems(renamed_vars):
-        if len(inputs) > 1:
-            pending_sum_ops.append(
-                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
-                                  {"use_mkldnn": False}), len(op_descs)))
-    return pending_sum_ops
-
-
 def _addup_repetitive_outputs_(op_descs):
     """
     In backward part, an variable may be the output of more than one ops.
@@ -759,9 +693,6 @@ def _append_backward_ops_with_checkpoints_(
             added_descs = _add_descs_to_block(grad_op_desc, block)
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
-        #sumop_descs = _get_sumop_from_addup_repetitive_outputs_(grad_op_descs)
-        #added_sumop_descs = _add_descs_to_block(sumop_descs, block)
-        #grad_op_desc.extend(added_sumop_descs)
 
 
 def _append_backward_ops_(block,
