@@ -90,7 +90,7 @@ struct BuildStrategy {
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
   bool fuse_all_optimizer_ops_{true};
-  bool fuse_all_reduce_ops_{false};
+  bool fuse_all_reduce_ops_{true};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
