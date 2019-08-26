@@ -64,6 +64,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 }
 
 void DistMultiTrainer::DumpWork() {
+#ifdef _LINUX
   while (1) {
     std::string out_str;
     if (!queue_->Get(out_str)) {
@@ -81,6 +82,7 @@ void DistMultiTrainer::DumpWork() {
       continue;
     }
   }
+#endif
 }
 
 void DistMultiTrainer::InitDumpEnv() {
