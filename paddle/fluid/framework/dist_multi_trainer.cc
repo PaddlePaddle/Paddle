@@ -67,6 +67,7 @@ void DistMultiTrainer::DumpWork() {
 #ifdef _LINUX
   while (1) {
     std::string out_str;
+    
     if (!queue_->Get(out_str)) {
       break;
     }
