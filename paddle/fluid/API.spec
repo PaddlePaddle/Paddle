@@ -1038,4 +1038,3 @@ paddle.fluid.unique_name.switch (ArgSpec(args=['new_generator'], varargs=None, k
 paddle.fluid.unique_name.guard (ArgSpec(args=['new_generator'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ead717d6d440a1eb11971695cd1727f4'))
 paddle.fluid.Scope Scope() -> paddle.fluid.core_avx._Scope
 paddle.fluid.install_check.run_check (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '66b7c84a17ed32fec2df9628367be2b9'))
-
