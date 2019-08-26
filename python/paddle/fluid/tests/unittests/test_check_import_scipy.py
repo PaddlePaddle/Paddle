@@ -11,15 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
+#import paddle
+#from paddle.importScipy import funcImportScipy
+import six.moves.builtins as builtins
+from paddle.check_import_scipy import check_import_scipy
 import unittest
-from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase
 
 
-class TestResnetWithReduceGPU(TestResnetWithReduceBase):
-    def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
+def my_import(name, globals=None, locals=None, fromlist=(), level=0):
+    raise ImportError('DLL load failed,unittest: import scipy  failed')
+
+
+class importTest(unittest.TestCase):
+    def test_import(self):
+        testOsName = 'nt'
+        builtins.__import__ = my_import
+        self.assertRaises(ImportError, check_import_scipy, testOsName)
 
 
 if __name__ == '__main__':

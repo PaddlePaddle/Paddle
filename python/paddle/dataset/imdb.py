@@ -29,7 +29,7 @@ import re
 import string
 import six
 
-__all__ = ['build_dict', 'train', 'test', 'convert']
+__all__ = ['build_dict', 'train', 'test']
 
 URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
@@ -140,12 +140,3 @@ def word_dict():
 
 def fetch():
     paddle.dataset.common.download(URL, 'imdb', MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    w = word_dict()
-    paddle.dataset.common.convert(path, lambda: train(w), 1000, "imdb_train")
-    paddle.dataset.common.convert(path, lambda: test(w), 1000, "imdb_test")
