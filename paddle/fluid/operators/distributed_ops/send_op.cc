@@ -41,7 +41,6 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     auto epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_mode");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
@@ -75,12 +74,10 @@ class SendOp : public framework::OperatorBase {
           VLOG(3) << "don't send no-initialied variable: " << ins[i];
         }
       }
-      if (sync_send) {
-        for (size_t i = 0; i < rets.size(); i++) {
-          VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
-        }
+      for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
+        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
   }
@@ -98,10 +95,6 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("sync_mode",
-                 "(int, default 0)"
-                 "sync send or async send.")
-        .SetDefault(0);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
