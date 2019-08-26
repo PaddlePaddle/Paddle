@@ -32,9 +32,8 @@ from ..unique_name import generate as unique_name
 import logging
 
 __all__ = [
-    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'py_reader', 'create_py_reader_by_data',
-    'Preprocessor', 'load'
+    'data', 'read_file', 'double_buffer', 'py_reader',
+    'create_py_reader_by_data', 'load'
 ]
 
 
@@ -360,137 +359,6 @@ def _copy_reader_create_op_(block, op):
         outputs=new_output_map,
         attrs=op.all_attrs())
     return new_op
-
-
-@templatedoc(op_type='create_recordio_file_reader')
-def open_recordio_file(filename,
-                       shapes,
-                       lod_levels,
-                       dtypes,
-                       pass_num=1,
-                       for_parallel=True):
-    """
-    ${comment}
-
-    Args:
-       filename(${filename_type}): ${filename_comment}.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
-       dtypes(list): List of strs which declaring data type.
-       pass_num(int): Number of passes to run.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
-
-    Returns:
-       ${out_comment}.
-
-    Examples:
-
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.io.open_recordio_file(
-        >>>                               filename='./data.recordio',
-        >>>                               shapes=[(3,224,224), (1,)],
-        >>>                               lod_levels=[0, 0],
-        >>>                               dtypes=['float32', 'int64'])
-        >>> # Via the reader, we can use 'read_file' layer to get data:
-        >>> image, label = fluid.layers.io.read_file(reader)
-    """
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
-    shape_concat = []
-    ranks = []
-
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
-
-    var_name = unique_name('open_recordio_file')
-
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
-        type='create_recordio_file_reader',
-        outputs={'Out': [startup_var]},
-        attrs={
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'filename': filename,
-            'ranks': ranks
-        })
-
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
-
-    if pass_num > 1:
-        main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
-
-    return monkey_patch_reader_methods(main_prog_var)
-
-
-def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
-    """
-    Create a uniform random data generator
-
-    This layer returns a Reader Variable.
-    Instead of opening a file and reading data from it, this
-    Reader Variable generates float uniform random data by itself.
-    It can be used as a dummy reader to test a network without
-    opening a real file.
-
-    Args:
-       low(float): The lower bound of data's uniform distribution.
-       high(float): The upper bound of data's uniform distribution.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
-
-    Returns:
-       Variable: A Reader Variable from which we can get random data.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            reader = fluid.layers.random_data_generator(
-                                             low=0.0,
-                                             high=1.0,
-                                             shapes=[[3,224,224], [1]],
-                                             lod_levels=[0, 0])
-            # Via the reader, we can use 'read_file' layer to get data:
-            image, label = fluid.layers.read_file(reader)
-    """
-    dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
-    shape_concat = []
-    ranks = []
-
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
-
-    var_name = unique_name('random_data_generator')
-
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
-        type='create_random_data_generator',
-        outputs={'Out': [startup_var]},
-        attrs={
-            'low': low,
-            'high': high,
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'ranks': ranks
-        })
-
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
-
-    return monkey_patch_reader_methods(main_prog_var)
 
 
 def _py_reader(capacity,
@@ -1006,79 +874,6 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
     return monkey_patch_reader_methods(new_reader)
 
 
-def shuffle(reader, buffer_size):
-    """
-    Creates a data reader whose data output is shuffled.
-    Output from the iterator that created by original reader will be
-    buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
-    is determined by argument buf_size.
-
-    Args:
-        reader(callable): the original reader whose output will be shuffled.
-        buf_size(int): shuffle buffer size.
-
-    Returns:
-        callable: the new reader whose output is shuffled.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
-                                                           './data2.recordio'],
-                                                    shapes=[(3,224,224), (1,)],
-                                                    lod_levels=[0, 0],
-                                                    dtypes=['float32', 'int64'],
-                                                    thread_num=2,
-                                                    buffer_size=2)
-            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
-            shuffle_reader = fluid.layers.shuffle(reader=batch_reader, buffer_size=5000)
-    """
-    return __create_unshared_decorated_reader__(
-        'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
-
-
-def batch(reader, batch_size):
-    """
-    This layer is a reader decorator. It takes a reader and adds
-    'batching' decoration on it. When reading with the result
-    decorated reader, output data will be automatically organized
-    to the form of batches.
-
-    Args:
-        reader(Variable): The reader to be decorated with 'batching'.
-        batch_size(int): The batch size.
-
-    Returns:
-        Variable: The reader which has been decorated with 'batching'.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
-                                                           './data2.recordio'],
-                                                    shapes=[(3,224,224), (1,)],
-                                                    lod_levels=[0, 0],
-                                                    dtypes=['float32', 'int64'],
-                                                    thread_num=2,
-                                                    buffer_size=2)
-            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
-
-            # If we read data with the raw_reader:
-            #     data = fluid.layers.read_file(raw_reader)
-            # We can only get data instance by instance.
-            #
-            # However, if we read data with the batch_reader:
-            #     data = fluid.layers.read_file(batch_reader)
-            # Each 5 adjacent instances will be automatically combined together
-            # to become a batch. So what we get('data') is a batch data instead
-            # of an instance.
-    """
-    return __create_unshared_decorated_reader__(
-        'create_batch_reader', reader, {'batch_size': int(batch_size)})
-
-
 def double_buffer(reader, place=None, name=None):
     """
     Wrap a double buffer reader. The data will copy to target place with a
@@ -1096,25 +891,21 @@ def double_buffer(reader, place=None, name=None):
         wrapped reader with double buffer.
 
     Examples:
-
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.open_files(filenames=['mnist.recordio'],
-        >>>                                  shapes=[[-1, 784], [-1, 1]],
-        >>>                                  lod_levels=[0, 0],
-        >>>                                  dtypes=['float32', 'int64'])
-        >>> reader = fluid.layers.double_buffer(reader)
-        >>> img, label = fluid.layers.read_file(reader)
+        .. code-block:: python
+          
+           import paddle.fluid as fluid
+           reader = fluid.layers.py_reader(capacity=64,
+                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                           dtypes=['float32', 'int64'],
+                                           use_double_buffer=False)
+           reader = fluid.layers.double_buffer(reader)
+           image, label = fluid.layers.read_file(reader)
     """
     attrs = dict()
     if place is not None:
         attrs['place'] = str(place).upper()
     return __create_unshared_decorated_reader__(
         'create_double_buffer_reader', reader, attrs, name=name)
-
-
-def multi_pass(reader, pass_num):
-    return __create_shared_decorated_reader__(
-        'create_multi_pass_reader', reader, {'pass_num': int(pass_num)})
 
 
 def read_file(reader):
@@ -1136,14 +927,10 @@ def read_file(reader):
         .. code-block:: python
           
            import paddle.fluid as fluid
-           data_file = fluid.layers.open_files(
-                filenames=['mnist.recordio'],
-                shapes=[(-1, 748), (-1, 1)],
-                lod_levels=[0, 0],
-                dtypes=["float32", "int64"])
-           data_file = fluid.layers.double_buffer(
-                fluid.layers.batch(data_file, batch_size=64))
-           input, label = fluid.layers.read_file(data_file)
+           reader = fluid.layers.py_reader(capacity=64,
+                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                           dtypes=['float32', 'int64'])
+           image, label = fluid.layers.read_file(reader)
     """
     helper = LayerHelper('read_file')
     out = [
@@ -1157,113 +944,6 @@ def read_file(reader):
         return out[0]
     else:
         return out
-
-
-class Preprocessor(object):
-    """
-    A block for data pre-processing in reader.
-
-    Args:
-        reader (Variable): A reader variable.
-        name (str, default None): The name of the reader.
-
-    Examples:
-          .. code-block:: python
-
-           import paddle.fluid as fluid
-
-           reader = fluid.layers.io.open_files(
-               filenames=['./data1.recordio', './data2.recordio'],
-               shapes=[(3, 224, 224), (1, )],
-               lod_levels=[0, 0],
-               dtypes=['float32', 'int64']) 
-
-            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
-            with preprocessor.block():
-                img, lbl = preprocessor.inputs()
-                img_out = img / 2
-                lbl_out = lbl + 1
-                preprocessor.outputs(img_out, lbl_out)
-
-            data_file = fluid.layers.io.double_buffer(preprocessor())
-
-    """
-    BEFORE_SUB_BLOCK = 0
-    IN_SUB_BLOCK = 1
-    AFTER_SUB_BLOCK = 2
-
-    def __init__(self, reader, name=None):
-        self.underlying_reader = reader
-        new_reader_name = name if name is not None else unique_name(
-            "create_custom_reader")
-        self.main_prog = default_main_program()
-        self.reader = self.main_prog.current_block().create_var(
-            name=new_reader_name)
-        self.sub_block = None
-        self.source_var_names = None
-        self.sink_var_names = None
-        self.status = Preprocessor.BEFORE_SUB_BLOCK
-
-    def _is_completed(self):
-        return self.sub_block and self.source_var_names and self.sink_var_names
-
-    @signature_safe_contextmanager
-    def block(self):
-        self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog._create_block()
-        yield
-        self.main_prog._rollback()
-        self.status = Preprocessor.AFTER_SUB_BLOCK
-        if not self._is_completed():
-            raise RuntimeError(
-                "The definition of preprocessor is incompleted! "
-                "Please make sure that you have set input and output "
-                "variables by invoking 'inputs' and 'outputs' in "
-                "Preprocessor's sub-block.")
-
-    def inputs(self):
-        if self.status != Preprocessor.IN_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor.inputs() can only be invoked inside the sub-block."
-            )
-
-        source_shapes = self.underlying_reader.desc.shapes()
-        source_dtypes = self.underlying_reader.desc.dtypes()
-        source_lod_levels = self.underlying_reader.desc.lod_levels()
-        self.source_var_names = [
-            unique_name("preprocessor_source")
-            for _ in six.moves.range(len(source_shapes))
-        ]
-        source_vars = []
-        for var_name, shape, dtype, lod_level in zip(
-                self.source_var_names, source_shapes, source_dtypes,
-                source_lod_levels):
-            source_vars.append(self.main_prog.current_block().create_var(
-                name=var_name, shape=shape, dtype=dtype, lod_level=lod_level))
-        return source_vars
-
-    def outputs(self, *outs):
-        if self.status != Preprocessor.IN_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor.outputs() can only be invoked inside the sub-block."
-            )
-        self.sink_var_names = [var.name for var in outs]
-
-    def __call__(self, *args, **kwargs):
-        if self.status != Preprocessor.AFTER_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor output can only be retrieved after rnn block.")
-
-        self.main_prog.current_block().append_op(
-            type="create_custom_reader",
-            inputs={'UnderlyingReader': self.underlying_reader},
-            outputs={'Out': [self.reader]},
-            attrs={
-                "sub_block": self.sub_block,
-                "source_var_names": self.source_var_names,
-                "sink_var_names": self.sink_var_names
-            })
-        return monkey_patch_reader_methods(self.reader)
 
 
 @templatedoc()

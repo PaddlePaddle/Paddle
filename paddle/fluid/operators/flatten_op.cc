@@ -260,10 +260,11 @@ class Flatten2GradOp : public framework::OperatorBase {
     attrs["shape"] = framework::vectorize2int(x_dims);
     attrs["inplace"] = false;
 
-    auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
-    reshape_op->Run(scope, place);
+    auto reshape_grad_op = framework::OpRegistry::CreateOp(
+        "reshape2_grad",
+        {{"Out@GRAD", {dout_name}}, {"Shape", {}}, {"XShape", {xshape_name}}},
+        {{"X@GRAD", {dx_name}}}, attrs);
+    reshape_grad_op->Run(scope, place);
   }
 };
 
