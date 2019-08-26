@@ -15,10 +15,6 @@
 from __future__ import print_function
 
 import os
-
-import math
-import numpy as np
-
 import signal
 import time
 import unittest
@@ -29,10 +25,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
-
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -218,6 +210,7 @@ class TestListenAndServOp(unittest.TestCase):
                 np.testing.assert_almost_equal(o_labels, out[2], decimal=6)
 
     def test_nce_op_remote(self):
+        os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
         # run pserver on CPU in sync mode
         p0 = self._start_pserver(0, False, True, run_pserver)
         self._wait_ps_ready(p0.pid)

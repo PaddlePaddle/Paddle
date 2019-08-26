@@ -401,13 +401,6 @@ class DistributeTranspiler(object):
                     "trainer_id": self.trainer_id
                 })
 
-        elif op_type == "nce" or op_type == "hierarchical_sigmoid":
-            for op in ops:
-                op._set_attr('epmap', endpoints)
-                op._set_attr('table_names', table_names)
-                op._set_attr('height_sections', height_sections)
-                op._set_attr('trainer_id', self.trainer_id)
-
     def _is_input_of_remote_sparse_update_op(self, param_name):
         for op in self.sparse_update_ops:
             if param_name in op.input_arg_names:
