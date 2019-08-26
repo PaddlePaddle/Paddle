@@ -642,7 +642,7 @@ static std::once_flag init_infer_shape_funcs;
 static void InitInferShapeFuncs() {
   std::call_once(init_infer_shape_funcs, [] {
     auto &map = OpInfoMap::Instance();
-    auto &info_map = *(map.mutable_map());
+    auto &info_map = *map.mutable_map();
 
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;

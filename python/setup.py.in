@@ -224,16 +224,15 @@ if '${WITH_NGRAPH}' == 'ON':
                                   '${NGRAPH_TBB_LIB_NAME}']
 
 # copy libfuild_framework.so to libs
-fluid_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
-shutil.copy(fluid_framework_lib, libs_path)
-package_data['paddle.libs'] += [('libfluid_framework' if os.name != 'nt' else 'fluid_framework') + ext_name]
+if os.name != 'nt' and sys.platform != 'darwin':
+    fluid_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
+    shutil.copy(fluid_framework_lib, libs_path)
+    package_data['paddle.libs'] += [('libfluid_framework' if os.name != 'nt' else 'fluid_framework') + ext_name]
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
-
-
 
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
@@ -332,6 +331,8 @@ class InstallHeaders(Command):
         return self.copy_file(header, install_dir)
   
     def run(self):
+        if os.name != 'nt' and sys.platform != 'darwin':
+            return
         hdrs = self.distribution.headers
         if not hdrs:
             return
@@ -360,5 +361,5 @@ setup(name='${PACKAGE_NAME}',
       cmdclass={
           'install_headers': InstallHeaders,
           'install': InstallCommand,
-      },
+      }
 )

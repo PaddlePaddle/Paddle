@@ -96,14 +96,14 @@ class CustomOpTest(unittest.TestCase):
         os.environ['CPU_NUM'] = str(2)
 
     def test_cpu(self):
-        actual = custom_op_test(False, False)
+        actual = custom_op_test(False, True)
         expect = custom_op_test(False, False)
         self.assertEqual(actual.all(), expect.all())
 
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
-        actual = custom_op_test(True, False)
+        actual = custom_op_test(True, True)
         expect = custom_op_test(True, False)
         self.assertEqual(actual.all(), expect.all())
 
