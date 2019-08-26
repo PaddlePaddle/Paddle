@@ -352,7 +352,6 @@ class DownpourWorker(Worker):
 
         dense_param_name.sort()
         dense_grad_name.sort()
-
         for table in self._worker.dense_table:
             if table.table_id == table_id:
                 desc_dense_param_name = list(self._worker.dense_table[
