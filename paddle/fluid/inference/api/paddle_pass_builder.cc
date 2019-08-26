@@ -71,8 +71,7 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "infer_clean_graph_pass",                        //
-      "conv_affine_channel_fuse_pass",             //
+  "conv_affine_channel_fuse_pass",                 //
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
@@ -90,7 +89,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
 
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
-    "infer_clean_graph_pass",                       //
     "quant_conv2d_dequant_fuse_pass",               //
     "simplify_anakin_priorbox_detection_out_pass",  //
     "fillconstant_elementwisemul_fuse",             //
@@ -104,9 +102,8 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "infer_clean_graph_pass",  //
-        //   "identity_scale_op_clean_pass",              //
-        "conv_affine_channel_fuse_pass",             //
+    //   "identity_scale_op_clean_pass",              //
+    "conv_affine_channel_fuse_pass",                 //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
@@ -140,8 +137,7 @@ void GpuPassStrategy::EnableNgraph() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"infer_clean_graph_pass",         //
-                  "attention_lstm_fuse_pass",       //
+  passes_.assign({"attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
