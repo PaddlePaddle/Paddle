@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/init.h"
 
 constexpr auto saxpy_code = R"(
-__global__ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
+extern "C" __global__
+void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
   size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < n) {
     z[tid] = a * x[tid] + y[tid];
@@ -26,7 +29,49 @@ __global__ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(device_code, cuda) {
+  paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDADeviceCode code("saxpy_kernel", saxpy_code, 70);
+
+  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+
+  paddle::framework::Tensor cpu_x;
+  paddle::framework::Tensor cpu_y;
+  paddle::framework::Tensor cpu_z;
+
+  float scale = 2;
+  auto dims = paddle::framework::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
+  cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
+
+  size_t n = cpu_x.numel();
+  for (size_t i = 0; i < n; ++i) {
+    cpu_x.data<float>()[i] = static_cast<float>(i);
+  }
+  for (size_t i = 0; i < n; ++i) {
+    cpu_y.data<float>()[i] = static_cast<float>(0.5);
+  }
+
+  paddle::framework::Tensor x;
+  paddle::framework::Tensor y;
+  paddle::framework::Tensor z;
+
+  float* x_data = x.mutable_data<float>(dims, place);
+  float* y_data = y.mutable_data<float>(dims, place);
+  float* z_data = z.mutable_data<float>(dims, place);
+
+  TensorCopySync(cpu_x, place, &x);
+  TensorCopySync(cpu_y, place, &y);
+
   code.Compile();
+
+  std::vector<void*> args = {&scale, &x_data, &y_data, &z_data, &n};
+  code.Launch(place, n, &args);
+
+  TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
+  for (size_t i = 0; i < n; i++) {
+    PADDLE_ENFORCE_EQ(cpu_z.data<float>()[i],
+                      static_cast<float>(i) * scale + 0.5);
+  }
 }
 #endif

@@ -17,27 +17,26 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/dynload/nvrtc.h"
 #endif
 
 namespace paddle {
 namespace platform {
 
-struct Formal {
-  enum Type { INT = 0, FLOAT = 1, FLOAT_PTR = 2 } type;
-
-  std::string name;
-};
+enum DataType { INT = 0, FLOAT = 1, FLOAT_PTR = 2 };
 
 class DeviceCode {
  public:
   virtual ~DeviceCode() {}
   virtual void Compile() = 0;
+  virtual void Launch(Place place, const size_t n,
+                      std::vector<void*>* args) const = 0;
 
  protected:
   std::string name_;
-  std::vector<Formal> inputs_;
-  std::vector<Formal> outputs_;
+  std::vector<DataType> formals_;
   std::string kernel_;
 };
 
@@ -47,12 +46,14 @@ class CUDADeviceCode : public DeviceCode {
   explicit CUDADeviceCode(const std::string& name, const std::string& kernel,
                           int compute_capability);
   void Compile() override;
+  void Launch(Place place, const size_t n,
+              std::vector<void*>* args) const override;
 
  private:
   int compute_capability_;
   std::vector<char> ptx_;
-  //  CUModule module_;
-  //  CUfunction function_;
+  CUmodule module_;
+  CUfunction function_;
 };
 #endif
 

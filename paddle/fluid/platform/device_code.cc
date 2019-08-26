@@ -50,13 +50,13 @@ void CUDADeviceCode::Compile() {
   // Compile the program for specified compute_capability
   std::string compute_flag =
       "--gpu-architecture=compute_" + std::to_string(compute_capability_);
-  const std::vector<const char*> options = {"--std=c++11", "-O3",
+  const std::vector<const char*> options = {"--std=c++11",
                                             compute_flag.c_str()};
-  nvrtcResult result =
+  nvrtcResult compile_result =
       dynload::nvrtcCompileProgram(program,          // program
                                    options.size(),   // numOptions
                                    options.data());  // options
-  if (result == NVRTC_ERROR_COMPILATION) {
+  if (compile_result == NVRTC_ERROR_COMPILATION) {
     // Obtain compilation log from the program
     size_t log_size;
     PADDLE_ENFORCE(dynload::nvrtcGetProgramLogSize(program, &log_size),
@@ -78,6 +78,36 @@ void CUDADeviceCode::Compile() {
 
   PADDLE_ENFORCE(dynload::nvrtcDestroyProgram(&program),
                  "nvrtcDestroyProgram failed.");
+
+  PADDLE_ENFORCE_EQ(
+      dynload::cuModuleLoadData(&module_, ptx_.data()), CUDA_SUCCESS,
+      "Fail to load PTX of %s (in cuModuleLoadData.)", name_.c_str());
+  PADDLE_ENFORCE_EQ(
+      dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
+      CUDA_SUCCESS, "Fail to get function of %s (in cuModuleGetFunction.)",
+      name_.c_str());
+}
+
+void CUDADeviceCode::Launch(Place place, const size_t n,
+                            std::vector<void*>* args) const {
+  if (!is_gpu_place(place)) {
+    PADDLE_THROW("CUDADeviceCode can only launch on GPU place.");
+  }
+
+  int num_threads = 1024;
+  int num_blocks = n / num_threads;
+
+  auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
+      DeviceContextPool::Instance().Get(place));
+  PADDLE_ENFORCE_EQ(
+      dynload::cuLaunchKernel(function_, num_blocks, 1, 1,  // grid dim
+                              num_threads, 1, 1,            // block dim
+                              0,                            // shared memory
+                              dev_ctx->stream(),            // stream
+                              args->data(),                 // arguments
+                              nullptr),
+      CUDA_SUCCESS, "Fail to launch kernel %s (in cuLaunchKernel.)",
+      name_.c_str());
 }
 #endif
 
