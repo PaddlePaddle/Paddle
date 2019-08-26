@@ -17,9 +17,11 @@ limitations under the License. */
 #include <condition_variable>  // NOLINT
 #include <functional>
 #include <future>  // NOLINT
-#include <mutex>   // NOLINT
+#include <memory>
+#include <mutex>  // NOLINT
 #include <queue>
 #include <thread>  // NOLINT
+#include <utility>
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
