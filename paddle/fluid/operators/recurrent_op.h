@@ -50,7 +50,10 @@ class StepScopes {
 
   framework::Scope &ExScope();
 
-  void Next();
+  void ForwardNext();
+
+  void BackwardNext(const platform::DeviceContext &dev_ctx,
+                    framework::Scope *parent_scope);
 
  private:
   framework::Scope &GetScope(size_t scope_id) const;

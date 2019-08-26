@@ -94,12 +94,22 @@ framework::Scope &StepScopes::ExScope() {
   return scope;
 }
 
-void StepScopes::Next() {
-  if (is_backward_) {
-    --counter_;
-  } else {
-    ++counter_;
+void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
+                              framework::Scope *parent_scope) {
+  PADDLE_ENFORCE(is_backward_,
+                 "Cannot get backward next scope when is forward");
+  if (counter_ + 2 == scopes_->size()) {
+    parent_scope->DeleteScope((*scopes_)[counter_ + 1]);
+    scopes_->pop_back();
+    VLOG(3) << "Deleted scope at " << counter_ + 1;
   }
+  --counter_;
+}
+
+void StepScopes::ForwardNext() {
+  PADDLE_ENFORCE(!is_backward_,
+                 "Cannot get forward next scope when is backward");
+  ++counter_;
 }
 
 framework::Scope &StepScopes::GetScope(size_t scope_id) const {
@@ -242,7 +252,7 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
           framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
         });
 
-    scopes.Next();
+    scopes.ForwardNext();
   }
 }
 
@@ -426,7 +436,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         VLOG(5) << "Link initialize state gradient finished ";
       }
     }
-    scopes.Next();
+    scopes.BackwardNext(dev_ctx, const_cast<framework::Scope *>(&scope));
   }
   // Delete the scope of StepScopes
   auto *var = scope.FindVar(Input(kStepScopes));
