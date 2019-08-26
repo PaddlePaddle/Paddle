@@ -588,6 +588,13 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+        parameters = loss.block.program.global_block().all_parameters()
+        param_no_trainable = set(
+            [param.name for param in parameters if param.trainable is False])
+        if no_grad_set is None: no_grad_set = set()
+        # If the parameter is no trainable, it should not have a gradient.
+        no_grad_set.update(param_no_trainable)
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
