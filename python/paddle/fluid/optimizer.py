@@ -589,10 +589,17 @@ class Optimizer(object):
             and list of (param, grad) Variables pair for optimization.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif isinstance(no_grad_set, set) or isinstance(
+                no_grad_set, list) or isinstance(no_grad_set, tuple):
+            no_grad_set = set(no_grad_set)
+        else:
+            assert "no_grad_set should be a set, but the passed type is {}".format(
+                type(no_grad_set))
         parameters = loss.block.program.global_block().all_parameters()
         param_no_trainable = set(
             [param.name for param in parameters if param.trainable is False])
-        if no_grad_set is None: no_grad_set = set()
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
         params_grads = self.backward(
