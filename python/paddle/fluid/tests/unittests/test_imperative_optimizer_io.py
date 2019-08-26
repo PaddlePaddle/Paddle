@@ -347,7 +347,7 @@ class TestGetLearnignRate(unittest.TestCase):
                 avg_loss.backward()
                 sgd.minimize(avg_loss)
                 self.assertAlmostEqual(
-                    sgd.learning_rate(None)[0],
+                    sgd.learning_rate()[0],
                     expected_exp_decay_lr(lr, batch_id, decay_steps, decay_rate,
                                           staircase))
                 if batch_id == 2:

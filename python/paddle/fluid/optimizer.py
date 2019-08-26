@@ -297,7 +297,7 @@ class Optimizer(object):
         return self._learning_rate_map.get(program, None)
 
     def learning_rate(self, program=None):
-        return self._global_learning_rate(program).numpy_async()
+        return self._global_learning_rate(program).numpy()
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
