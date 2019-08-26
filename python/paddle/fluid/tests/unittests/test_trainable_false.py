@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+from collections import Counter
 import unittest
 import paddle.fluid as fluid
 from simple_nets import init_data
@@ -30,8 +31,12 @@ def test_trainable():
     return loss
 
 
-class TestBackward(unittest.TestCase):
-    def check_backward(self, model, feed_dict):
+class TestTrainable(unittest.TestCase):
+    def check_trainable(self,
+                        model,
+                        feed_dict,
+                        op_count,
+                        optimizer=fluid.optimizer.Adam()):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
@@ -40,18 +45,29 @@ class TestBackward(unittest.TestCase):
 
         with fluid.program_guard(main, startup):
             loss = model()
-
-            optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
+
+            # The number of adam should be one.
+            ops = Counter([op.type for op in main.global_block().ops])
+            for op in op_count:
+                assert (ops[op] == op_count[op])
 
             exe.run(fluid.default_startup_program())
             exe.run(feed=feed_dict)
 
-    def test_backward(self):
+    def test_trainable(self):
         batch_size = 2
         img, label = init_data(batch_size, img_shape=[784], label_range=9)
         feed_dict = {'image': img, 'label': label}
-        self.check_backward(test_trainable, feed_dict)
+        self.check_trainable(
+            test_trainable, feed_dict, op_count={'adam': 1,
+                                                 'scale': 2})
+        self.check_trainable(
+            test_trainable,
+            feed_dict,
+            op_count={'adamax': 1,
+                      'scale': 1},
+            optimizer=fluid.optimizer.Adamax(learning_rate=0.2))
 
 
 if __name__ == '__main__':
