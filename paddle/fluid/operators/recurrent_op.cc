@@ -54,20 +54,6 @@ static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
   step_scopes->clear();
 }
 
-// StepScopes manages scopes inside RNN.
-//    StepScopes::CurScope() get the current scope
-//    StepScopes::ExScope() get the ex-scope, or scope in previous time step.
-//    StepScopes::Next() move to next time step.
-//
-// if is_train = False, then
-//   there are two scopes for the RNN and just support forward.
-// else
-//   the len(scopes) == seq_len
-//
-// if is_backward = True, then
-//   reversely access scopes
-// else
-//   access scopes from begin to end.
 StepScopes::StepScopes(const platform::DeviceContext &dev_ctx,
                        const framework::Scope &parent, StepScopeVar *scopes,
                        bool is_train, size_t seq_len, bool is_backward)
@@ -76,8 +62,8 @@ StepScopes::StepScopes(const platform::DeviceContext &dev_ctx,
       is_train_(is_train),
       is_backward_(is_backward) {
   size_t num_step_scopes = is_train ? seq_len : 2;
-  PADDLE_ENFORCE(is_train || !is_backward,
-                 "Cannot backward when is not training");
+  PADDLE_ENFORCE_EQ(is_train || !is_backward, true,
+                    "Cannot backward when is not training");
   if (!is_backward_) {
     ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&parent), scopes);
     scopes->reserve(static_cast<size_t>(num_step_scopes));
@@ -96,8 +82,8 @@ framework::Scope &StepScopes::ExScope() {
 
 void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
                               framework::Scope *parent_scope) {
-  PADDLE_ENFORCE(is_backward_,
-                 "Cannot get backward next scope when is forward");
+  PADDLE_ENFORCE_EQ(is_backward_, true,
+                    "Cannot get backward next scope when is forward");
   if (counter_ + 2 == scopes_->size()) {
     parent_scope->DeleteScope((*scopes_)[counter_ + 1]);
     scopes_->pop_back();
@@ -107,8 +93,8 @@ void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
 }
 
 void StepScopes::ForwardNext() {
-  PADDLE_ENFORCE(!is_backward_,
-                 "Cannot get forward next scope when is backward");
+  PADDLE_ENFORCE_EQ(!is_backward_, true,
+                    "Cannot get forward next scope when is backward");
   ++counter_;
 }
 
@@ -449,7 +435,7 @@ StepScopes RecurrentGradOp::CreateStepScopes(
     const platform::DeviceContext &dev_ctx, const framework::Scope &scope,
     size_t seq_len) const {
   auto *var = scope.FindVar(Input(kStepScopes));
-  PADDLE_ENFORCE(var != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(var);
   return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                     Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
 }
@@ -468,6 +454,7 @@ std::unordered_set<std::string> RecurrentGradOp::LocalVarNames(
     const framework::Scope &scope) const {
   return this->List2Set(scope.LocalVarNames());
 }
+
 std::vector<std::string> RecurrentGradOp::GradVarLists(
     const std::vector<std::string> &var_names) {
   std::vector<std::string> retv;

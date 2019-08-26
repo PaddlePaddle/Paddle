@@ -25,20 +25,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// StepScopes manages scopes inside RNN.
-//    StepScopes::CurScope() get the current scope
-//    StepScopes::ExScope() get the ex-scope, or scope in previous time step.
-//    StepScopes::Next() move to next time step.
+// StepScopes manages the scopes inside Recurrent Op.
 //
 // if is_train = False, then
-//   there are two scopes for the RNN and just support forward.
+//   there are two scopes for the RNN and just support forward
 // else
 //   the len(scopes) == seq_len
 //
 // if is_backward = True, then
-//   reversely access scopes
+//   reversely access scopes, delete useless ex-scope
 // else
-//   access scopes from begin to end.
+//   access scopes from beginning to end
 class StepScopes {
  public:
   StepScopes(const platform::DeviceContext &dev_ctx,
@@ -46,12 +43,17 @@ class StepScopes {
              std::vector<framework::Scope *> *scopes, bool is_train,
              size_t seq_len, bool is_backward = false);
 
+  // Get the current scope
   framework::Scope &CurScope();
 
+  // Get the ex-scope, which is the scope in previous time step
   framework::Scope &ExScope();
 
+  // Move to next time step when forwarding
   void ForwardNext();
 
+  // Delete ex-scope after using it, then move to next time step when
+  // backwarding
   void BackwardNext(const platform::DeviceContext &dev_ctx,
                     framework::Scope *parent_scope);
 
