@@ -513,10 +513,6 @@ function assert_api_spec_approvals() {
           approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
           if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560 ` 
-
-            if [ "${APPROVALS}" == "TRUE" ];then
-              APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408 35982308`
-            fi
           elif [ "${API_FILE}" == "CMakeLists.txt" ];then
             APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
             python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
