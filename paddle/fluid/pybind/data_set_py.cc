@@ -47,8 +47,18 @@ class IterableDatasetWrapper {
  public:
   IterableDatasetWrapper(framework::Dataset *dataset,
                          const std::vector<std::string> &slots,
-                         const std::vector<platform::Place> &places)
-      : dataset_(dataset), slots_(slots), places_(places) {
+                         const std::vector<platform::Place> &places,
+                         size_t batch_size, bool drop_last)
+      : dataset_(dataset),
+        slots_(slots),
+        places_(places),
+        batch_size_(batch_size),
+        drop_last_(drop_last) {
+#if defined _WIN32
+    PADDLE_THROW("Dataset is not supported on Windows");
+#elif defined __APPLE__
+    PADDLE_THROW("Dataset is not supported on MAC");
+#else
     size_t device_num = places_.size();
     PADDLE_ENFORCE_GT(device_num, 0, "thread_num must be larger than 0");
     PADDLE_ENFORCE_GT(slots_.size(), 0, "slot_num cannot be 0");
@@ -63,7 +73,10 @@ class IterableDatasetWrapper {
         tensors_.back().emplace_back(t);
       }
     }
-    is_exhaustive_.assign(device_num, false);
+
+    is_exhaustive_.resize(device_num);
+    exhaustive_num_ = 0;
+#endif
   }
 
   void Start() {
@@ -73,39 +86,65 @@ class IterableDatasetWrapper {
                       "Device number does not match reader number");
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
-      data_feeds_[i]->SetPlace(places_[i]);
+      data_feeds_[i]->SetPlace(platform::CPUPlace());
       PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(), true, "Reader start failed");
     }
     is_started_ = true;
-    std::fill(is_exhaustive_.begin(), is_exhaustive_.end(), false);
+
+    is_exhaustive_.assign(places_.size(), false);
     exhaustive_num_ = 0;
   }
 
   std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
     PADDLE_ENFORCE_EQ(is_started_, true, "Reader must be started");
     size_t device_num = places_.size();
+
     std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
         device_num);
-    size_t read_num = 0;
 
-    while (exhaustive_num_ < device_num && read_num < device_num) {
-      for (size_t i = 0; i < device_num; ++i) {
-        if (is_exhaustive_[i]) continue;
-        if (data_feeds_[i]->Next() > 0) {
-          for (size_t j = 0; j < slots_.size(); ++j) {
-            result[read_num].emplace(slots_[j], std::move(*tensors_[i][j]));
-          }
-          ++read_num;
-        } else {
+    size_t read_num = 0;
+    while (read_num < device_num && exhaustive_num_ < device_num) {
+      for (size_t i = 0; i < data_feeds_.size(); ++i) {
+        if (is_exhaustive_[i]) {
+          continue;
+        }
+
+        bool is_success = (data_feeds_[i]->Next() > 0);
+        if (!is_success) {
           is_exhaustive_[i] = true;
           ++exhaustive_num_;
+          continue;
+        }
+
+        for (size_t j = 0; j < slots_.size(); ++j) {
+          if (!IsValidLoDTensor(*tensors_[i][j])) {
+            is_success = false;
+            break;
+          }
+
+          if (tensors_[i][j]->place() == places_[read_num]) {
+            result[read_num].emplace(slots_[j], std::move(*tensors_[i][j]));
+          } else {
+            framework::TensorCopy(std::move(*tensors_[i][j]), places_[read_num],
+                                  &result[read_num][slots_[j]]);
+          }
+        }
+
+        if (!is_success) {
+          is_exhaustive_[i] = true;
+          ++exhaustive_num_;
+          continue;
+        }
+
+        ++read_num;
+        if (read_num == device_num) {
+          break;
         }
       }
     }
 
     if (UNLIKELY(read_num != device_num)) {
       is_started_ = false;
-      data_feeds_.clear();
       throw py::stop_iteration();
     }
 
@@ -113,16 +152,32 @@ class IterableDatasetWrapper {
   }
 
  private:
+  bool IsValidLoDTensor(const framework::LoDTensor &tensor) const {
+    auto &lod = tensor.lod();
+    PADDLE_ENFORCE_LE(lod.size(), 1, "lod level must be not larger than 1");
+    if (!drop_last_) return true;
+
+    if (lod.empty()) {
+      return static_cast<size_t>(tensor.dims()[0]) == batch_size_;
+    } else {
+      return lod[0].size() == batch_size_ + 1;
+    }
+  }
+
+ private:
   framework::Dataset *dataset_;
   std::vector<std::string> slots_;
   std::vector<platform::Place> places_;
+  size_t batch_size_;
+  bool drop_last_;
 
   std::vector<framework::DataFeed *> data_feeds_;
+  std::vector<bool> is_exhaustive_;
+  size_t exhaustive_num_;
+
   std::vector<std::unique_ptr<framework::Scope>> scopes_;
   std::vector<std::vector<framework::LoDTensor *>> tensors_;
   bool is_started_{false};
-  std::vector<bool> is_exhaustive_;
-  size_t exhaustive_num_{0};
 };
 
 void BindDataset(py::module *m) {
@@ -195,7 +250,7 @@ void BindDataset(py::module *m) {
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
       .def(py::init<framework::Dataset *, const std::vector<std::string> &,
-                    const std::vector<platform::Place> &>())
+                    const std::vector<platform::Place> &, size_t, bool>())
       .def("_start", &IterableDatasetWrapper::Start)
       .def("_next", &IterableDatasetWrapper::Next);
 }

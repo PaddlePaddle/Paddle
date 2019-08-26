@@ -71,12 +71,70 @@ class DataLoader(object):
                        use_double_buffer=True,
                        iterable=True,
                        return_list=False):
+        """
+        Create a DataLoader object for loading data from Python generator. 
+        Data would be prefetched using Python thread and be pushed
+        into a queue asynchronously.
+        
+        Args:  
+            feed_list (list(Variable)|tuple(Variable)): feed variable list.
+                The variables should be created by :code:`fluid.layers.data()`.
+                it can be None under iterable mode.
+            capacity (int): capacity of the queue maintained in PyReader object.
+                The unit is batch number.
+            use_double_buffer (bool): whether to use double_buffer_reader to 
+                speed up data feeding. 
+            iterable (bool): whether the created reader object is iterable.
+            return_list (bool): whether the return value presented as list.
+
+        Returns:
+            loader (DataLoader): the created DataLoader object.
+
+        Examples:
+            
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                
+                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                loader = fluid.io.DataLoader.from_generator(feed_list=[image, label], capacity=16)
+        """
         return GeneratorLoader(feed_list, capacity, use_double_buffer, iterable,
                                return_list)
 
     @staticmethod
-    def from_dataset(dataset, places=None):
-        return DatasetLoader(dataset, places)
+    def from_dataset(dataset, places, drop_last=True):
+        """
+        Create an iterable DataLoader object for loading data from Dataset.    
+        Dataset is only supported in Linux system currently.
+
+        Args:
+            dataset (InMemoryDataset|QueueDataset): the dataset object.
+            places (list(CUDAPlace)|list(CPUPlace)): places where the result data should be converted.   
+            drop_last (bool): whether to drop the last batch whose size is less than batch size. 
+
+        Returns:
+            loader (DataLoader): the created DataLoader object, which can be treated as a Python generator.   
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+                dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+                dataset.set_batch_size(32)
+                dataset.set_filelist(['a.txt', 'b.txt', 'c.txt'])
+                dataset.set_use_var([image, label])
+                dataset.set_pipe_command('cat') 
+
+                loader = fluid.io.DataLoader.from_dataset(dataset, fluid.cpu_places())
+        """
+        return DatasetLoader(dataset, places, drop_last)
 
 
 class GeneratorLoader(DataLoaderBase):
@@ -502,12 +560,6 @@ class PyReader(DataLoaderBase):
     def __next__(self):
         return self._loader.__next__()
 
-    def _reset(self):
-        self._reader.reset()
-        thread = self._thread
-        if thread is not None:
-            thread.join()
-
     def start(self):
         '''
         Start the data feeding thread. 
@@ -756,35 +808,28 @@ class PyReader(DataLoaderBase):
 
 
 class DatasetLoader(DataLoaderBase):
-    def __init__(self, dataset, places=None):
+    def __init__(self, dataset, places, drop_last):
         assert isinstance(dataset,
                           DatasetBase), "dataset must be type of DatasetBase"
         assert not in_dygraph_mode(
         ), "DatasetLoader is not supported in dygraph mode yet"
-
-        if places is None:
-            places = cpu_places()
 
         thread_num = len(places)
 
         assert len(dataset.filelist) >= thread_num, \
             "Filelist number of dataset {} must be not less than place number {}".format(len(dataset.filelist), thread_num)
 
-        if dataset.thread_num != thread_num:
+        if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn('thread_num {} which is set in Dataset is ignored'.
                          format(dataset.thread_num))
-            dataset.set_thread(thread_num)
+
+        dataset.set_thread(thread_num)
 
         if isinstance(dataset,
                       InMemoryDataset) and dataset.queue_num > thread_num:
             logging.warn("queue_num {} which is set in Dataset is ignored".
                          format(dataset.queue_num))
             dataset.set_queue_num(thread_num)
-        '''
-        for p in places:
-            assert isinstance(p, core.CPUPlace), \
-            "DatasetLoader only support CPUPlace currently"
-        '''
 
         self._dataset = dataset
         use_slots = [
@@ -793,7 +838,8 @@ class DatasetLoader(DataLoaderBase):
         ]
 
         self._iterable_dataset = core.IterableDatasetWrapper(
-            dataset.dataset, use_slots, _convert_places(places))
+            dataset.dataset, use_slots,
+            _convert_places(places), dataset.proto_desc.batch_size, drop_last)
 
     def __iter__(self):
         self._dataset._finish_to_run()

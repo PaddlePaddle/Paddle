@@ -31,6 +31,7 @@ class TestDataset(unittest.TestCase):
     def setUp(self):
         self.use_data_loader = False
         self.epoch_num = 10
+        self.drop_last = False
 
     def test_dataset_create(self):
         """ Testcase for dataset create. """
@@ -120,7 +121,9 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            data_loader = fluid.io.DataLoader.from_dataset(dataset,
+                                                           fluid.cpu_places(),
+                                                           self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -129,8 +132,6 @@ class TestDataset(unittest.TestCase):
                 try:
                     exe.train_from_dataset(fluid.default_main_program(),
                                            dataset)
-                except ImportError as e:
-                    pass
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -178,7 +179,9 @@ class TestDataset(unittest.TestCase):
         ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            data_loader = fluid.io.DataLoader.from_dataset(dataset,
+                                                           fluid.cpu_places(),
+                                                           self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -187,8 +190,6 @@ class TestDataset(unittest.TestCase):
                 try:
                     exe.train_from_dataset(fluid.default_main_program(),
                                            dataset)
-                except ImportError as e:
-                    pass
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -229,7 +230,9 @@ class TestDataset(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            data_loader = fluid.io.DataLoader.from_dataset(dataset,
+                                                           fluid.cpu_places(),
+                                                           self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -238,8 +241,6 @@ class TestDataset(unittest.TestCase):
                 try:
                     exe.train_from_dataset(fluid.default_main_program(),
                                            dataset)
-                except ImportError as e:
-                    pass
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -283,7 +284,9 @@ class TestDataset(unittest.TestCase):
         ) else fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(dataset)
+            data_loader = fluid.io.DataLoader.from_dataset(dataset,
+                                                           fluid.cpu_places(),
+                                                           self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -292,8 +295,6 @@ class TestDataset(unittest.TestCase):
                 try:
                     exe.train_from_dataset(fluid.default_main_program(),
                                            dataset)
-                except ImportError as e:
-                    pass
                 except Exception as e:
                     self.assertTrue(False)
 
@@ -305,6 +306,7 @@ class TestDatasetWithDataLoader(TestDataset):
     def setUp(self):
         self.use_data_loader = True
         self.epoch_num = 10
+        self.drop_last = False
 
 
 if __name__ == '__main__':

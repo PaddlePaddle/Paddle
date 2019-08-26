@@ -174,6 +174,11 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
+if (APPLE OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_dataset)
+  list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
+endif()
+
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   
 set(TEST_OPS_WITH_GC
