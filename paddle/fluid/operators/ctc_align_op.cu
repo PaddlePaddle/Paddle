@@ -43,52 +43,89 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
 }
 
 template <typename T>
+__global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
+                                             const T* tokens, const int blank,
+                                             const int merge_repeated,
+                                             const int padding_num,
+                                             const int64_t batch_size,
+                                             T* output) {
+  int ind = blockIdx.x * blockDim.x + threadIdx.x;
+  if (ind >= batch_size) return;
+  int output_idx = ind * num_token;
+  T prev_token = -1;
+  for (int i = ind * num_token; i < ind * num_token + num_token; i++) {
+    if ((unsigned)tokens[i] != blank &&
+        !(merge_repeated && tokens[i] == prev_token)) {
+      output[output_idx] = tokens[i];
+      ++output_idx;
+    }
+    prev_token = tokens[i];
+  }
+  for (int i = output_idx; i < ind * num_token + num_token; i++) {
+    output[i] = padding_num;
+  }
+}
+
+template <typename T>
 class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
-    const size_t level = 0;
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* output = ctx.Output<LoDTensor>("Output");
-    auto input_lod = framework::ToAbsOffset(input->lod());
-
-    const T* tokens = input->data<T>();
-    const int64_t num_tokens = input->dims()[0];
-    const size_t num_seq = input_lod[level].size() - 1;
-
     const int blank = ctx.Attr<int>("blank");
     const int merge_repeated =
         static_cast<int>(ctx.Attr<bool>("merge_repeated"));
-
-    // prepare a lod to record lod information while merging elements
-    thrust::device_vector<size_t> dev_out_lod0(input_lod[level].size());
-    size_t* dev_out_lod0_ptr = thrust::raw_pointer_cast(dev_out_lod0.data());
-
-    // merge elements and delete blank
-    T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
-
+    const T* tokens = input->data<T>();
     auto stream = ctx.cuda_device_context().stream();
-    MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
-        num_tokens, tokens, num_seq,
-        input_lod[level].CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
-        dev_out_lod0_ptr, output_data);
 
-    // set output lod
-    std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
-    framework::LoD out_lod;
-    out_lod.push_back(host_out_lod0);
-    output->set_lod(out_lod);
+    // tensor input which has no lod
+    if (input->lod().empty()) {
+      const int padding_num = ctx.Attr<int>("padding_num");
+      auto input_dims = input->dims();
+      T* output_data = output->mutable_data<T>({input_dims[0], input_dims[1]},
+                                               ctx.GetPlace());
+      PaddingMergeAndDelCudaKernel<
+          T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
+          input_dims[1], tokens, blank, merge_repeated, padding_num,
+          input_dims[0], output_data);
+    } else {
+      const size_t level = 0;
+      auto input_lod = framework::ToAbsOffset(input->lod());
 
-    // resize output dims
-    output->Resize({static_cast<int64_t>(host_out_lod0.back()), 1});
+      const int64_t num_tokens = input->dims()[0];
+      const size_t num_seq = input_lod[level].size() - 1;
 
-    if (host_out_lod0.back() == 0) {
-      output->Resize({1, 1});
-      output->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> set_constant;
-      set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
-                   output, -1);
+      // prepare a lod to record lod information while merging elements
+      thrust::device_vector<size_t> dev_out_lod0(input_lod[level].size());
+      size_t* dev_out_lod0_ptr = thrust::raw_pointer_cast(dev_out_lod0.data());
+
+      // merge elements and delete blank
+      T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
+
+      MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
+          num_tokens, tokens, num_seq,
+          input_lod[level].CUDAMutableData(ctx.GetPlace()), blank,
+          merge_repeated, dev_out_lod0_ptr, output_data);
+
+      // set output lod
+      std::vector<size_t> host_out_lod0(dev_out_lod0.begin(),
+                                        dev_out_lod0.end());
+      framework::LoD out_lod;
+      out_lod.push_back(host_out_lod0);
+      output->set_lod(out_lod);
+
+      // resize output dims
+      output->Resize({static_cast<int64_t>(host_out_lod0.back()), 1});
+
+      if (host_out_lod0.back() == 0) {
+        output->Resize({1, 1});
+        output->mutable_data<T>(ctx.GetPlace());
+        math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+        set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
+                     output, -1);
+      }
     }
   }
 };

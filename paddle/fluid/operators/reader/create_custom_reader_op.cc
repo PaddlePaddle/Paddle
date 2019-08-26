@@ -167,7 +167,7 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
     tensor->set_lod(underlying_outs[i].lod());
   }
   // 2. Run the sub-block.
-  exe_.Run(program_, exe_scope, sub_block_id_, false, true);
+  exe_.Run(program_, exe_scope, sub_block_id_, false, true, {}, true);
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
