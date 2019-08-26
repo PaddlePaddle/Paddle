@@ -498,7 +498,7 @@ class Executor(object):
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
+                    # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 feed_tensor_dict[feed_name] = feed_tensor
@@ -528,11 +528,7 @@ class Executor(object):
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names)._move_to_list()
-
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
+        return as_numpy(tensors) if return_numpy else tensors
 
     def run(self,
             program=None,
@@ -611,7 +607,7 @@ class Executor(object):
                 use_program_cache=use_program_cache)
         except Exception as e:
             if not isinstance(e, core.EOFException):
-                print("An exception was thrown!\n {}".format(str(e)))
+                print("!!!A non-EOF exception is thrown.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
