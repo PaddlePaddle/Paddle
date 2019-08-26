@@ -49,7 +49,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
-                                 const NameVarBaseMap outs,
+                                 const NameVarBaseMap& outs,
                                  bool trace_backward) {
   // TODO(jiabin): Implement auto prune here
   return trace_backward;

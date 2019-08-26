@@ -29,10 +29,10 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
 }
 
 platform::Place PreparedOp::PrepareData(
-    const platform::Place& place, NameVarBaseMap* ins,
+    const platform::Place& place, const NameVarBaseMap& ins,
     const framework::OperatorWithKernel& op,
     const framework::OpKernelType& expected_kernel_key) {
-  for (const auto& name_pair : *ins) {
+  for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {

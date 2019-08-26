@@ -40,7 +40,7 @@ class PreparedOp {
   void Run();
 
   static platform::Place PrepareData(
-      const platform::Place& place, NameVarBaseMap* ins,
+      const platform::Place& place, const NameVarBaseMap& ins,
       const framework::OperatorWithKernel& op,
       const framework::OpKernelType& expected_kernel_key);
 
