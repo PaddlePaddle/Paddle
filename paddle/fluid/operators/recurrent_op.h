@@ -159,7 +159,7 @@ class RecurrentBase : public framework::OperatorBase {
     if (is_backward && src_var == nullptr) {
       return;
     }
-    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
@@ -178,9 +178,9 @@ class RecurrentBase : public framework::OperatorBase {
       return;
     }
     auto *src_var = src_scope.FindVar(src_var_name);
-    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE(dst_var != nullptr, "%s is not found.", dst_var_name);
+    PADDLE_ENFORCE_NOT_NULL(dst_var, "%s is not found.", dst_var_name);
     auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
     callback(src_tensor, dst_tensor);
   }

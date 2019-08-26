@@ -121,11 +121,11 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   // Dim format SEQ_LEN, BATCH_SIZE, ...
   int64_t seq_len = -1;
   auto &all_inputs = Inputs(kInputs);
-  PADDLE_ENFORCE(!all_inputs.empty());
+  PADDLE_ENFORCE_EQ(!all_inputs.empty(), true);
   for (auto &iname : all_inputs) {
     auto *var = scope.FindVar(iname);
-    PADDLE_ENFORCE(var != nullptr);
-    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>());
+    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true);
     auto &dim = var->Get<framework::LoDTensor>().dims();
     if (seq_len == -1) {
       seq_len = dim[0];
@@ -246,7 +246,7 @@ StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
                                          const framework::Scope &scope,
                                          size_t seq_len) const {
   auto *var = scope.FindVar(Output(kStepScopes));
-  PADDLE_ENFORCE(var != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(var);
   return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                     Attr<bool>(kIsTrain), seq_len);
 }
@@ -426,7 +426,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   }
   // Delete the scope of StepScopes
   auto *var = scope.FindVar(Input(kStepScopes));
-  PADDLE_ENFORCE(var != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(var);
   auto *step_scopes = var->GetMutable<StepScopeVar>();
   ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&scope), step_scopes);
 }
@@ -591,25 +591,25 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
           0, "The Attr(%s) should be empty.", RecurrentBase::kStates);
     }
 
-    PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kInputs),
-                   "The input(%s) should not be empty.",
-                   RecurrentBase::kInputs);
-    PADDLE_ENFORCE(ctx->HasInputs(RecurrentBase::kOutputs),
-                   "The input(%s) should not be empty.",
-                   RecurrentBase::kOutputs);
+    PADDLE_ENFORCE_EQ(ctx->HasInputs(RecurrentBase::kInputs), true,
+                      "The input(%s) should not be empty.",
+                      RecurrentBase::kInputs);
+    PADDLE_ENFORCE_EQ(ctx->HasInputs(RecurrentBase::kOutputs), true,
+                      "The input(%s) should not be empty.",
+                      RecurrentBase::kOutputs);
 
     // In some case the kInitialStates is empty.
     if (ctx->HasInputs(RecurrentBase::kInitialStates)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(
-                         framework::GradVarName(RecurrentBase::kInitialStates)),
-                     "The output of(%s) should not be empty.",
-                     framework::GradVarName(RecurrentBase::kInitialStates));
+      PADDLE_ENFORCE_EQ(ctx->HasOutputs(framework::GradVarName(
+                            RecurrentBase::kInitialStates)),
+                        true, "The output of(%s) should not be empty.",
+                        framework::GradVarName(RecurrentBase::kInitialStates));
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInitialStates),
                          ctx->GetInputsDim(RecurrentBase::kInitialStates));
     }
 
-    PADDLE_ENFORCE(
-        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)),
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)), true,
         "The output of(%s) should not be empty.",
         framework::GradVarName(RecurrentBase::kInputs));
     ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInputs),
@@ -617,9 +617,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
 
     // In some case the kParameters is empty.
     if (ctx->HasInputs(RecurrentBase::kParameters)) {
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_EQ(
           ctx->HasOutputs(framework::GradVarName(RecurrentBase::kParameters)),
-          "The output of(%s) should not be empty.",
+          true, "The output of(%s) should not be empty.",
           framework::GradVarName(RecurrentBase::kParameters));
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kParameters),
                          ctx->GetInputsDim(RecurrentBase::kParameters));
