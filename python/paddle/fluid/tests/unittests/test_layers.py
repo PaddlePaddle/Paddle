@@ -424,6 +424,7 @@ class TestLayer(LayerTest):
             static_rlt = self.get_static_graph_result(
                 feed={'x': inp_np_x,
                       'y': inp_np_y}, fetch_list=[out])[0]
+
         with self.static_graph():
             data_x = layers.data(
                 name='x',

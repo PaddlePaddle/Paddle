@@ -1948,17 +1948,16 @@ class BilinearTensorProduct(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if self._bias_attr:
-            bias_size = [1, self._size]
-            self._bias_param = self.create_parameter(
-                attr=self._bias_attr,
-                shape=bias_size,
-                dtype=self._dtype,
-                is_bias=True)
+        bias_size = [1, self._size]
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=bias_size,
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
-        if self._bias_attr:
+        if self._bias_param:
             self._inputs["Bias"] = self._bias_param
         if self._name is not None:
             out = self._helper.create_variable(
