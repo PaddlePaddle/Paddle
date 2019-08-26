@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,24 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+#import paddle
+#from paddle.importScipy import funcImportScipy
+import six.moves.builtins as builtins
 from paddle.check_import_scipy import check_import_scipy
+import unittest
 
-check_import_scipy(os.name)
 
-try:
-    from paddle.version import full_version as __version__
-    from paddle.version import commit as __git_commit__
+def my_import(name, globals=None, locals=None, fromlist=(), level=0):
+    raise ImportError('DLL load failed,unittest: import scipy  failed')
 
-except ImportError:
-    import sys
-    sys.stderr.write('''Warning with import paddle: you should not
-     import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
 
-import paddle.reader
-import paddle.dataset
-import paddle.batch
-import paddle.compat
-import paddle.distributed
-batch = batch.batch
+class importTest(unittest.TestCase):
+    def test_import(self):
+        testOsName = 'nt'
+        builtins.__import__ = my_import
+        self.assertRaises(ImportError, check_import_scipy, testOsName)
+
+
+if __name__ == '__main__':
+    unittest.main()
