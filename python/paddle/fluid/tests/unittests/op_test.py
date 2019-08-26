@@ -680,7 +680,8 @@ class OpTest(unittest.TestCase):
                 return []
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
-        use_ngraph = bool(os.getenv("FLAGS_use_ngraph", False))
+        use_ngraph = fluid.core.is_compiled_with_ngraph(
+        ) and fluid.core.get_flags_use_ngraph()
         if use_ngraph:
             cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
