@@ -57,12 +57,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._batch_norm = BatchNorm(
             self.full_name(), num_filters, act=act, momentum=0.1)
+        self._layer_norm = fluid.dygraph.nn.LayerNorm(
+            self.full_name(), begin_norm_axis=1)
 
     def forward(self, inputs):
         y = self._conv(inputs)
         # FIXME(zcd): when compare the result of multi-card and single-card,
         # we should replace batch_norm with layer_norm.
-        y = fluid.layers.layer_norm(input=y)
+        y = self._layer_norm(y)
         # y = self._batch_norm(y)
 
         return y
