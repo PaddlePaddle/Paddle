@@ -21,6 +21,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
+  out << "[";
+  for (auto const& tmp : v) out << tmp << ",";
+  out << "]";
+  return out;
+}
+
 // Not thread-safe. Should be owned per-kernel.
 template <typename TAlgorithm>
 class AlgorithmsCache {
@@ -80,6 +88,8 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
 
   seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
           (seed << 6) + (seed >> 2) + 5;
+
+  VLOG(10) << "seed:" << seed;
 
   if (seed == 0) return gen_func();
 

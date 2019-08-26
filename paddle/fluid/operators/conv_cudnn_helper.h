@@ -119,6 +119,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
+
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
             int returned_algo_count;
@@ -247,6 +251,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
+      VLOG(10) << "cudnnConvolutionBwdDataAlgoPerf_t x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
+
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
             int returned_algo_count;
@@ -367,6 +375,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
+
+      VLOG(10) << "cudnnConvolutionBwdFilterAlgoPerf_t x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
