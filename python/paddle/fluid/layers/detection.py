@@ -2100,8 +2100,16 @@ def roi_perspective_transform(input,
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
-        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
-                  (num_rois, channels, transformed_h, transformed_w).
+            tuple: A tuple with three Variables. (out, mask, transform_matrix)
+
+            out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
+            (num_rois, channels, transformed_h, transformed_w).
+
+            mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
+            (num_rois, 1, transformed_h, transformed_w).
+
+            transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
+            a 2-D tensor with shape (num_rois, 9).
 
     Examples:
         .. code-block:: python
@@ -2110,11 +2118,13 @@ def roi_perspective_transform(input,
 
             x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
             rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
-            out = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
+            out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    mask = helper.create_variable_for_type_inference(dtype="int32")
+    transform_matrix = helper.create_variable_for_type_inference(dtype)
     out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
     out2in_w = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -2124,14 +2134,16 @@ def roi_perspective_transform(input,
         outputs={
             "Out": out,
             "Out2InIdx": out2in_idx,
-            "Out2InWeights": out2in_w
+            "Out2InWeights": out2in_w,
+            "Mask": mask,
+            "TransformMatrix": transform_matrix
         },
         attrs={
             "transformed_height": transformed_height,
             "transformed_width": transformed_width,
             "spatial_scale": spatial_scale
         })
-    return out
+    return out, mask, transform_matrix
 
 
 def generate_proposal_labels(rpn_rois,
