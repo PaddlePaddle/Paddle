@@ -19,10 +19,13 @@ import unittest
 import paddle.fluid as fluid
 from simple_nets import init_data, simple_fc_net
 import os
-os.environ['CPU_NUM'] = str(4)
 
 
 class TestBackward(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ['CPU_NUM'] = str(4)
+
     def optimizer(self):
         learning_rate = fluid.layers.create_global_var(
             name="learning_rate",
