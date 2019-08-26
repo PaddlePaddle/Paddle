@@ -103,6 +103,110 @@ static __global__ void KeNormAffine(const T *x, const T *scale, const T *bias,
 }
 
 template <typename DeviceContext, typename T>
+void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
+                          const DataLayout layout, const framework::Tensor *x,
+                          framework::Tensor *y, const framework::Tensor *mean,
+                          const framework::Tensor *variance,
+                          framework::Tensor *mean_out,
+                          framework::Tensor *variance_out,
+                          framework::Tensor *saved_mean,
+                          framework::Tensor *saved_variance, double epsilon,
+                          const float momentum, const bool is_test,
+                          const bool use_global_stats
+
+                          ) {
+  const auto &x_dims = x->dims();
+  PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                    "The Input dim size should be larger than 1.");
+  PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                    "The Input dim size should be less than 6.");
+  int N, C, H, W, D;
+  ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+  int x_numel = x->numel();
+
+  const T *x_d = x->data<T>();
+  const T *s_d = ctx.Input<Tensor>("Scale")->data<T>();
+  const T *b_d = ctx.Input<Tensor>("Bias")->data<T>();
+
+  T *y_d = y->mutable_data<T>(ctx.GetPlace());
+
+  const T *mean_data = nullptr;
+  const T *var_data = nullptr;
+
+  auto &dev_ctx = ctx.cuda_device_context();
+  auto stream = dev_ctx.stream();
+  const int block = 512;
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+
+  paddle::memory::AllocationPtr alloc_ptr{nullptr};
+
+  if (is_test) {
+    mean_data = mean->data<T>();
+    var_data = variance->data<T>();
+  } else {
+    auto &allocator =
+        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+    // x, x^2, 1, here 1 is used to calc device num
+    // device num also can be got from platform::DeviceContextPool
+    const int bytes = (C * 2 + 1) * sizeof(T);
+    alloc_ptr = allocator.Allocate(bytes);
+
+    T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
+    const int threads = 256;
+    int grid = std::min(C, (max_threads + threads - 1) / threads);
+    if (layout == framework::DataLayout::kNCHW) {
+      KeLocalStats<T, threads,
+                   framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+          x_d, N, H * W * D, C, stats);
+    } else {
+      KeLocalStats<T, threads,
+                   framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+          x_d, N, H * W * D, C, stats);
+    }
+
+    Tensor c_g_st;
+    T *c_g_st_d = c_g_st.mutable_data<T>({2 * C + 1}, platform::CPUPlace());
+    auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
+
+#ifndef WIN32
+    auto *comm = dev_ctx.nccl_comm();
+    int dtype = platform::ToNCCLDataType(x->type());
+    // In-place operation
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+        stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
+#endif
+
+    T *est_mean_data = mean_out->mutable_data<T>(ctx.GetPlace());
+    T *est_var_data = variance_out->mutable_data<T>(ctx.GetPlace());
+
+    T *sv_mean_data = saved_mean->mutable_data<T>(ctx.GetPlace());
+    T *sv_inv_var_data = saved_variance->mutable_data<T>(ctx.GetPlace());
+
+    // Note, Input('Mean')/Input('Variance') share variable with
+    // Output('MeanOut')/Output('VarianceOut')
+    KeSyncAndMovingStats<T><<<(C + block - 1) / block, block, 0, stream>>>(
+        stats, stats + C, stats + 2 * C, C, momentum, epsilon, sv_mean_data,
+        sv_inv_var_data, est_mean_data, est_var_data);
+
+    mean_data = sv_mean_data;
+    var_data = stats + C;
+  }
+
+  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+  if (layout == framework::DataLayout::kNCHW) {
+    KeNormAffine<T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
+        y_d);
+  } else {
+    KeNormAffine<T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
+        y_d);
+  }
+}
+
+template <typename DeviceContext, typename T>
 class SyncBatchNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -112,109 +216,28 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    PADDLE_ENFORCE(
-        !use_global_stats,
+    PADDLE_ENFORCE_EQ(
+        use_global_stats, false,
         "sync_batch_norm doesn't support to set use_global_stats True. ",
         "Please use batch_norm in this case.");
 
     const auto *x = ctx.Input<Tensor>("X");
-    const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
-    int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
-    int x_numel = x->numel();
-
-    const T *x_d = x->data<T>();
-    const T *s_d = ctx.Input<Tensor>("Scale")->data<T>();
-    const T *b_d = ctx.Input<Tensor>("Bias")->data<T>();
-
     auto *y = ctx.Output<Tensor>("Y");
-    T *y_d = y->mutable_data<T>(ctx.GetPlace());
 
-    const T *mean_data = nullptr;
-    const T *var_data = nullptr;
+    const auto *est_mean = ctx.Input<Tensor>("Mean");
+    const auto *est_var = ctx.Input<Tensor>("Variance");
 
-    auto &dev_ctx = ctx.cuda_device_context();
-    auto stream = dev_ctx.stream();
-    auto *comm = dev_ctx.nccl_comm();
-    const int block = 512;
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    // moving mean/variance
+    auto *mean_out = ctx.Output<Tensor>("MeanOut");
+    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
 
-    paddle::memory::AllocationPtr alloc_ptr{nullptr};
+    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
 
-    if (is_test) {
-      const auto *est_mean = ctx.Input<Tensor>("Mean");
-      const auto *est_var = ctx.Input<Tensor>("Variance");
-      mean_data = est_mean->data<T>();
-      var_data = est_var->data<T>();
-    } else {
-      auto &allocator =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-      // x, x^2, 1, here 1 is used to calc device num
-      // device num also can be got from platform::DeviceContextPool
-      const int bytes = (C * 2 + 1) * sizeof(T);
-      alloc_ptr = allocator.Allocate(bytes);
-
-      T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
-      const int threads = 256;
-      int grid = std::min(C, (max_threads + threads - 1) / threads);
-      if (layout == framework::DataLayout::kNCHW) {
-        KeLocalStats<
-            T, threads,
-            framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-            x_d, N, H * W * D, C, stats);
-      } else {
-        KeLocalStats<
-            T, threads,
-            framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-            x_d, N, H * W * D, C, stats);
-      }
-
-      Tensor c_g_st;
-      T *c_g_st_d = c_g_st.mutable_data<T>({2 * C + 1}, platform::CPUPlace());
-      auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-      memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
-
-      int dtype = platform::ToNCCLDataType(x->type());
-      // In-place operation
-      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-          stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-          comm, stream));
-
-      // moving mean/variance
-      auto *mean_out = ctx.Output<Tensor>("MeanOut");
-      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-      T *est_mean_data = mean_out->mutable_data<T>(ctx.GetPlace());
-      T *est_var_data = variance_out->mutable_data<T>(ctx.GetPlace());
-
-      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-      auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
-      T *sv_mean_data = saved_mean->mutable_data<T>(ctx.GetPlace());
-      T *sv_inv_var_data = saved_inv_variance->mutable_data<T>(ctx.GetPlace());
-
-      // Note, Input('Mean')/Input('Variance') share variable with
-      // Output('MeanOut')/Output('VarianceOut')
-      KeSyncAndMovingStats<T><<<(C + block - 1) / block, block, 0, stream>>>(
-          stats, stats + C, stats + 2 * C, C, momentum, epsilon, sv_mean_data,
-          sv_inv_var_data, est_mean_data, est_var_data);
-
-      mean_data = sv_mean_data;
-      var_data = stats + C;
-    }
-
-    int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-    if (layout == framework::DataLayout::kNCHW) {
-      KeNormAffine<T,
-                   framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-          y_d);
-    } else {
-      KeNormAffine<T,
-                   framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          x_d, s_d, b_d, mean_data, var_data, epsilon, C, H * W * D, x_numel,
-          y_d);
-    }
+    SyncBatchNormFunctor<DeviceContext, T>(ctx, layout, x, y, est_mean, est_var,
+                                           mean_out, variance_out, saved_mean,
+                                           saved_inv_variance, epsilon,
+                                           momentum, is_test, use_global_stats);
   }
 };
 
@@ -318,14 +341,127 @@ static __global__ void KeBNBackwardData(const T *dy, const T *x, const T *beta,
   }
 }
 
+template <typename DeviceContext, typename T>
+void SyncBatchNormGradFunctor(
+    const framework::ExecutionContext &ctx, const DataLayout layout,
+    const framework::Tensor *x, const framework::Tensor *scale,
+    framework::Tensor *d_x, const framework::Tensor *d_y,
+    framework::Tensor *d_scale, framework::Tensor *d_bias,
+    const framework::Tensor *mean, const framework::Tensor *variance,
+    double epsilon) {
+  const auto &x_dims = x->dims();
+
+  PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                    "The Input dim size should be larger than 1.");
+  PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                    "The Input dim size should be less than 6.");
+
+  int N, C, H, W, D;
+  ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+  PADDLE_ENFORCE_EQ(scale->dims()[0], C,
+                    "Expected first dim for input parameter(scale) of "
+                    "OP(sync_batch_norm) be (%d), but given (%d).",
+                    C, scale->dims()[0]);
+
+  d_x->mutable_data<T>(ctx.GetPlace());
+  if (d_scale && d_bias) {
+    d_scale->mutable_data<T>(ctx.GetPlace());
+    d_bias->mutable_data<T>(ctx.GetPlace());
+  }
+  PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL,
+                    "Expected rank for input parameter(scale) of "
+                    "OP(sync_batch_norm) be (1), but given (%d).",
+                    scale->dims().size());
+
+  std::vector<int> dims;
+  std::vector<int> strides;
+  if (layout == DataLayout::kNCHW) {
+    dims = {N, C, H, W, D};
+    strides = {C * H * W * D, H * W * D, W * D, D, 1};
+  } else {
+    dims = {N, C, H, W, D};
+    strides = {H * W * C * D, 1, W * D * C, D * C, C};
+  }
+  const T *x_d = x->data<T>();
+  const T *dy_d = d_y->data<T>();
+
+  auto &dev_ctx = ctx.cuda_device_context();
+  auto stream = dev_ctx.stream();
+
+  const T *saved_mean = mean->data<T>();
+  const T *saved_inv_var = variance->data<T>();
+  auto &allocator = platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
+  const int bytes = (C * 2 + 1) * sizeof(T);
+  auto alloc_ptr = allocator.Allocate(bytes);
+  T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
+
+  const int threads = 256;
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  int grid = std::min(C, (max_threads + threads - 1) / threads);
+  int x_numel = x->numel();
+  int fsize = H * W * D;
+
+  if (layout == framework::DataLayout::kNCHW) {
+    KeBackwardLocalStats<
+        T, threads, framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+        dy_d, x_d, saved_mean, N, fsize, C, stats);
+  } else {
+    KeBackwardLocalStats<
+        T, threads, framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+        dy_d, x_d, saved_mean, N, fsize, C, stats);
+  }
+
+#ifndef WIN32
+  auto *comm = dev_ctx.nccl_comm();
+  int dtype = platform::ToNCCLDataType(x->type());
+  // In-place operation
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+      stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+      comm, stream));
+#endif
+
+  const int block = 512;
+  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+  if (layout == framework::DataLayout::kNCHW) {
+    if (d_scale && d_bias) {
+      KeBNBackwardScaleBias<
+          T, threads,
+          framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+          dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
+          d_scale->data<T>(), d_bias->data<T>());
+    }
+    if (d_x) {
+      KeBNBackwardData<
+          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+          dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
+          stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
+          d_x->data<T>());
+    }
+  } else {
+    if (d_scale && d_bias) {
+      KeBNBackwardScaleBias<
+          T, threads,
+          framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+          dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
+          d_scale->data<T>(), d_bias->data<T>());
+    }
+    if (d_x) {
+      KeBNBackwardData<
+          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+          dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
+          stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
+          d_x->data<T>());
+    }
+  }
+}
 // Deriving the Gradient for the Backward Pass of Batch Normalization
 // https://kevinzakka.github.io/2016/09/14/batch_normalization/
 template <typename DeviceContext, typename T>
 class SyncBatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
 
@@ -334,107 +470,17 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
 
-    const auto &x_dims = x->dims();
-
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
-    int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
-
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    d_x->mutable_data<T>(ctx.GetPlace());
-    if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
-    }
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
 
-    std::vector<int> dims;
-    std::vector<int> strides;
-    if (layout == DataLayout::kNCHW) {
-      dims = {N, C, H, W, D};
-      strides = {C * H * W * D, H * W * D, W * D, D, 1};
-    } else {
-      dims = {N, C, H, W, D};
-      strides = {H * W * C * D, 1, W * D * C, D * C, C};
-    }
-
-    const T *x_d = x->data<T>();
-    const T *dy_d = d_y->data<T>();
-
-    auto &dev_ctx = ctx.cuda_device_context();
-    auto stream = dev_ctx.stream();
-    auto *comm = dev_ctx.nccl_comm();
-
-    const T *saved_mean = ctx.Input<Tensor>("SavedMean")->data<T>();
-    const T *saved_inv_var = ctx.Input<Tensor>("SavedVariance")->data<T>();
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    const int bytes = (C * 2 + 1) * sizeof(T);
-    auto alloc_ptr = allocator.Allocate(bytes);
-    T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
-
-    const int threads = 256;
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    int grid = std::min(C, (max_threads + threads - 1) / threads);
-    int x_numel = x->numel();
-    int fsize = H * W * D;
-
-    if (layout == framework::DataLayout::kNCHW) {
-      KeBackwardLocalStats<
-          T, threads,
-          framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, N, fsize, C, stats);
-    } else {
-      KeBackwardLocalStats<
-          T, threads,
-          framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-          dy_d, x_d, saved_mean, N, fsize, C, stats);
-    }
-    int dtype = platform::ToNCCLDataType(x->type());
-    // In-place operation
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-        stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
-
-    const int block = 512;
-    int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-    if (layout == framework::DataLayout::kNCHW) {
-      if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<
-            T, threads,
-            framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
-            d_scale->data<T>(), d_bias->data<T>());
-      }
-      if (d_x) {
-        KeBNBackwardData<
-            T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-            dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
-            stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
-            d_x->data<T>());
-      }
-    } else {
-      if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<
-            T, threads,
-            framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean, saved_inv_var, epsilon, N, C, fsize,
-            d_scale->data<T>(), d_bias->data<T>());
-      }
-      if (d_x) {
-        KeBNBackwardData<
-            T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-            dy_d, x_d, scale->data<T>(), saved_mean, saved_inv_var, stats,
-            stats + C, stats + 2 * C, epsilon, C, fsize, x->numel(),
-            d_x->data<T>());
-      }
-    }
+    SyncBatchNormGradFunctor<DeviceContext, T>(ctx, layout, x, scale, d_x, d_y,
+                                               d_scale, d_bias, saved_mean,
+                                               saved_inv_var, epsilon);
   }
 };
 
