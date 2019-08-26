@@ -227,6 +227,16 @@ class TestLinearChainCrfPaddingTensor(OpTest):
             offset += l
         return padded
 
+    def seq_pad_exps(self, data, length):
+        max_len = np.max(length)
+        shape = [len(length), max_len] + list(data.shape[1:])
+        padded = np.ones(shape).astype(data.dtype)
+        offset = 0
+        for i, l in enumerate(length):
+            padded[i, 0:l] = data[offset:offset + l]
+            offset += l
+        return padded
+
     def set_test_data_1(self):
         # Fix the unittest by: add padding tensor in inputs 
 
@@ -244,7 +254,6 @@ class TestLinearChainCrfPaddingTensor(OpTest):
             -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
         emission_row_max = np.amax(emission, axis=1, keepdims=True)
         emission_exps = np.exp(emission - emission_row_max)
-
         transition = np.random.uniform(-0.5, 0.5,
                                        [TAG_NUM + 2, TAG_NUM]).astype("float64")
         transition_exps = np.exp(transition)
@@ -264,7 +273,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         alpha, log_likelihood = crf.crf_forward_compute()
         self.outputs = {
             "Alpha": self.seq_pad(alpha, lod[0]),
-            "EmissionExps": self.seq_pad(emission_exps, lod[0]),
+            "EmissionExps": self.seq_pad_exps(emission_exps, lod[0]),
             "TransitionExps": transition_exps,
             "LogLikelihood": log_likelihood
         }
