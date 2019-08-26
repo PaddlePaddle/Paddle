@@ -50,7 +50,10 @@ class TestTrainable(unittest.TestCase):
             # The number of adam should be one.
             ops = Counter([op.type for op in main.global_block().ops])
             for op in op_count:
-                assert (ops[op] == op_count[op])
+                if op_count[op] == 0:
+                    assert op not in ops
+                else:
+                    assert ops[op] == op_count[op]
 
             exe.run(fluid.default_startup_program())
             exe.run(feed=feed_dict)
@@ -59,14 +62,20 @@ class TestTrainable(unittest.TestCase):
         batch_size = 2
         img, label = init_data(batch_size, img_shape=[784], label_range=9)
         feed_dict = {'image': img, 'label': label}
+        # Note that, because the Weight of FC is not trainable and the x is stop_gradient,
+        # so the 'mul_grad' should not be appended.
         self.check_trainable(
-            test_trainable, feed_dict, op_count={'adam': 1,
-                                                 'scale': 2})
+            test_trainable,
+            feed_dict,
+            op_count={'adam': 1,
+                      'scale': 2,
+                      'mul_grad': 0})
         self.check_trainable(
             test_trainable,
             feed_dict,
             op_count={'adamax': 1,
-                      'scale': 1},
+                      'scale': 1,
+                      'mul_grad': 0},
             optimizer=fluid.optimizer.Adamax(learning_rate=0.2))
 
 
