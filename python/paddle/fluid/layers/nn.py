@@ -314,6 +314,7 @@ def fc(input,
           import paddle.fluid as fluid
           # when input is single tensor
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
 
           # when input are multiple tensors
@@ -1354,7 +1355,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input, label, param_attr=None, length=None):
     """
     Linear Chain CRF.
 
@@ -1364,6 +1365,7 @@ def linear_chain_crf(input, label, param_attr=None):
         input(${emission_type}): ${emission_comment}
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
+        Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
@@ -1375,15 +1377,52 @@ def linear_chain_crf(input, label, param_attr=None):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
+             import numpy as np
+             train_program = fluid.Program()
+             startup_program = fluid.Program()
+     
+             #define net structure, using LodTensor
+             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int', lod_level=1)
+             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
              crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
-
+             input=emission,
+             label=label,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01)) 
+            
+             #define net structure, using padding  
+             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32')
+             label = fluid.layers.data(name='Label', shape=[1], dtype='int')
+             label_length = fluid.layers.data(name='Length', shape=[1], dtype='int')
+             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
+             crf_cost = fluid.layers.linear_chain_crf(
+             input=emission,
+             label=label,
+             length=label_length,
+             param_attr=fluid.ParamAttr(
+                 name='crfw',
+                 learning_rate=0.01))
+             
+             use_cuda = False
+             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+             exe = fluid.Executor(place)
+             exe.run(startup_program)
+             
+             #define data, using LoDTensor
+             a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
+             b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
+             feed1 = {'emission':a,'label':b}
+             
+             #define data, using padding
+             cc=np.random.rand(4,10,10).astype('float32')
+             dd=np.random.rand(4,10,1).astype('int64')
+             ll=np.array([[3,3,4,2]])
+             feed1 = {'input_data':cc,'label':dd,'length':ll}
+             
+             loss = exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
+             print(loss) 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1399,11 +1438,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
+    if length:
+        this_inputs['length'] = [length]
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],
@@ -3825,15 +3869,8 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
-
-    Note:
-          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
-          conv2d_transpose can compute the kernel size automatically.
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
