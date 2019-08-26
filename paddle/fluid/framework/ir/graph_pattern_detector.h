@@ -750,6 +750,21 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_out);
 };
 
+// Transpose op
+// Forward pass for transpose.
+// transpose_out is a result of the operator.
+struct Transpose : public PatternBase {
+  Transpose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(transpose_in);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.

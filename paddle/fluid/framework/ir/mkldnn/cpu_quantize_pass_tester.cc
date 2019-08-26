@@ -48,7 +48,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
-  } else if (type == "pool2d") {
+  } else if (type == "pool2d" || type == "transpose2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
@@ -113,19 +113,14 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
   tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
-void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
-              int quant_count, int dequant_count, int added_nodes_count,
-              float scale) {
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-
-  // Init scope, as it is used in pass
+void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
+                 const std::initializer_list<std::string> variable_names,
+                 int* original_nodes_num, int* current_nodes_num) {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
-
   auto* scales = new VarQuantScale();
-
   for (auto& v : variable_names) {
     InitTensorHolder(&scope, place, v.c_str());
     LoDTensor tensor;
@@ -136,16 +131,23 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
     (*scales)[v] = std::make_pair(false, std::move(tensor));
   }
 
-  graph->SetNotOwned(kParamScopeAttr, &scope);
-
-  auto pass = PassRegistry::Instance().Get("cpu_quantize_pass");
+  (*graph)->SetNotOwned(kParamScopeAttr, &scope);
+  std::unique_ptr<Pass> pass =
+      PassRegistry::Instance().Get("cpu_quantize_pass");
   pass->Set("quant_var_scales", scales);
 
-  int original_nodes_num = graph->Nodes().size();
+  *original_nodes_num = (*graph)->Nodes().size();
+  (*graph).reset(pass->Apply((*graph).release()));
+  *current_nodes_num = (*graph)->Nodes().size();
+}
 
-  graph.reset(pass->Apply(graph.release()));
-
-  int current_nodes_num = graph->Nodes().size();
+void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
+              int quant_count, int dequant_count, int added_nodes_count,
+              float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names, &original_nodes_num,
+              &current_nodes_num);
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
@@ -232,35 +234,9 @@ ProgramDesc BuildProgramDescConcat() {
 void MainTestConcat(const ProgramDesc& prog, int pool_count, int concat_count,
                     int quant_count, int dequant_count, int added_nodes_count) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-
-  // Init scope, as it is used in pass
-  auto place = paddle::platform::CPUPlace();
-  NaiveExecutor exe{place};
-  Scope scope;
-  exe.CreateVariables(prog, 0, true, &scope);
-
-  auto* scales = new VarQuantScale();
-
-  for (auto& v : variable_names_concat) {
-    InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
-    tensor.Resize({1});
-    auto* ptr = tensor.mutable_data<double>(place);
-    ptr[0] = 2.0;
-
-    (*scales)[v] = std::make_pair(false, std::move(tensor));
-  }
-
-  graph->SetNotOwned(kParamScopeAttr, &scope);
-
-  auto pass = PassRegistry::Instance().Get("cpu_quantize_pass");
-  pass->Set("quant_var_scales", scales);
-
-  int original_nodes_num = graph->Nodes().size();
-
-  graph.reset(pass->Apply(graph.release()));
-
-  int current_nodes_num = graph->Nodes().size();
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_concat, &original_nodes_num,
+              &current_nodes_num);
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
@@ -300,9 +276,93 @@ TEST(CpuQuantizePass, concat) {
   MainTestConcat(BuildProgramDescConcat(), pool_count, concat_count,
                  quant_count, dequant_count, added_nodes_count);
 }
-
 }  // namespace
 
+namespace {
+static const std::initializer_list<std::string> variable_names_transpose = {
+    "a", "w1", "b", "c", "w2", "d", "e", "f"};
+
+// a->Conv1->b
+// b->Transpose1->c
+// c->Conv2->d
+// d->Transpose2->e
+// e->Dropout->f
+ProgramDesc BuildProgramDescTranspose() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    auto* var = prog.MutableBlock(0)->Var(v);
+    if (v.find("w") == 0) {
+      var->SetPersistable(true);
+    }
+  }
+
+  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, true);
+  SetOp(&prog, "transpose2", "Transpose1", {"b"}, {"c"}, true, true);
+  SetOp(&prog, "conv2d", "Conv1", {"c", "w2"}, {"d"}, true, true);
+  SetOp(&prog, "transpose2", "Transpose2", {"d"}, {"e"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+
+  return prog;
+}
+
+void MainTestTranspose(const ProgramDesc& prog, int conv_count,
+                       int transpose_count, int quant_count, int dequant_count,
+                       int added_nodes_count, float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_transpose, &original_nodes_num,
+              &current_nodes_num);
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int transpose_nodes_count = 0;
+  int conv_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "transpose2") {
+        transpose_nodes_count++;
+      } else if (op->Type() == "conv2d") {
+        conv_nodes_count++;
+        auto op_name = boost::get<std::string>(op->GetAttr("name"));
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_in")), scale)
+            << "Scale_in for node '" + op_name + "'.";
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+            << "Scale_out for node '" + op_name + "'.";
+        EXPECT_EQ(
+            boost::get<std::vector<float>>(op->GetAttr("Scale_weights"))[0],
+            scale)
+            << "Scale_weights for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(transpose_nodes_count, transpose_count);
+  EXPECT_EQ(conv_nodes_count, conv_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, transpose) {
+  // a1->Quant->a2->Conv1->b1->Dequant->b2
+  // b2->Quant->b3->Transpose->c1->Dequant->c2
+  // c2->Quant->c3->Conv2->d1->Dequant->d2
+  // d2->Quant->d3->Transpose->e1->Dequant->e2
+  // e2->Dropout->f
+  int conv_count = 2;
+  int transpose_count = 2;
+  int quant_count = 4;
+  int dequant_count = 4;
+  // 4 Quant + 4 IN + 4 DeQuant + 4 OUT
+  int added_nodes_count = 16;
+  MainTestTranspose(BuildProgramDescTranspose(), conv_count, transpose_count,
+                    quant_count, dequant_count, added_nodes_count, 2.0f * 127);
+}
+}  // namespace
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

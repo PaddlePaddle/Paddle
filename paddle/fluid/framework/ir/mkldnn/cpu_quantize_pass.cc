@@ -343,6 +343,65 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
                   quantize_prior_box_count);
 }
 
+void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Transpose transpose_pattern{pattern, name_scope_};
+  transpose_pattern();
+
+  int quantize_transpose_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize transpose op";
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, transpose_pattern);
+    auto* transpose_op_desc = transpose_op->Op();
+
+    if (!transpose_op_desc->HasAttr("use_quantizer")) {
+      return;
+    }
+    // skip if should not be quantized
+    if (!transpose_op_desc->HasAttr("use_quantizer") ||
+        !boost::get<bool>(transpose_op_desc->GetAttr("use_quantizer"))) {
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, transpose_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, transpose_pattern);
+
+    // skip if prev op is not quantized
+    // in future we should checked if next_op is quantized
+    // transpose INT8 schould be used only between INT8 operators
+    if (!(prev_op->Op()->Type() == "dequantize" ||
+          (prev_op->Op()->HasAttr("use_quantizer") &&
+           boost::get<bool>(prev_op->Op()->GetAttr("use_quantizer"))))) {
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_in, transpose_in, transpose_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out, transpose_pattern);
+
+    // get scales calculated after warmup, they scale variables to MAX=1.0
+    auto scales = Get<VarQuantScale>("quant_var_scales");
+
+    auto input_scale = scales[transpose_in->Name()].second.data<double>()[0];
+    bool is_input_unsigned = scales[transpose_in->Name()].first;
+    QuantizeInput(g, transpose_op, transpose_in, "X", input_scale,
+                  is_input_unsigned);
+
+    auto output_scale = scales[transpose_out->Name()].second.data<double>()[0];
+    bool is_output_unsigned = scales[transpose_out->Name()].first;
+    DequantizeOutput(g, transpose_op, transpose_out, "Out", output_scale,
+                     is_output_unsigned);
+
+    ++quantize_transpose_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_transpose_count);
+
+  PrettyLogDetail("---    quantized %d transpose ops",
+                  quantize_transpose_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE(graph);
@@ -355,6 +414,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
+  QuantizeTranspose(graph);
 }
 
 }  // namespace ir

@@ -828,12 +828,16 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  public:
   TransposeMKLDNNHandler(std::vector<int>& dims,  // NOLINT
                          std::vector<int>& axis,  // NOLINT
+                         framework::proto::VarType::Type vtype,
+                         mkldnn::memory::data_type dtype,
                          const platform::MKLDNNDeviceContext& dev_ctx,
                          mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
         axis_(axis),
-        logical_axis_(dims.size(), 0) {}
+        logical_axis_(dims.size(), 0),
+        vtype_(vtype),
+        dtype_(dtype) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::format& fmt, void* ptr) {
@@ -847,9 +851,8 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
         logical_axis_[i] = i;
       }
       auto src_md = fmt != mkldnn::memory::format::nchw
-                        ? platform::MKLDNNMemDesc(
-                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
-                        : Axis2MemoryDesc(dims_, logical_axis_);
+                        ? platform::MKLDNNMemDesc(dims_, dtype_, fmt)
+                        : Axis2MemoryDesc(dims_, logical_axis_, dtype_);
       mem_p = std::make_shared<mkldnn::memory>(
           mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
       dev_ctx_.SetBlob(local_key, mem_p);
@@ -866,14 +869,14 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
       auto dst_mdp = mkldnn::memory::primitive_desc{
-          Axis2MemoryDesc(dims_, axis_), engine_};
+          Axis2MemoryDesc(dims_, axis_, dtype_), engine_};
 
-      auto dst_data = output->mutable_data<float>(place, dst_mdp.get_size());
+      auto dst_data = output->mutable_data(place, vtype_);
 
       mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
-      auto dst_data = output->mutable_data<float>(place);
+      auto dst_data = output->mutable_data(place, vtype_);
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
@@ -901,8 +904,8 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
 
  protected:
   mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,  // NOLINT
-                                       std::vector<int>& axis      // NOLINT
-                                       ) {
+                                       std::vector<int>& axis,     // NOLINT
+                                       mkldnn::memory::data_type dtype) {
     mkldnn_memory_desc_t mem_fmt;
 
     mem_fmt.primitive_kind = mkldnn_memory;
@@ -911,7 +914,12 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
       // regardless physical layout)
     }
-    mem_fmt.data_type = mkldnn_f32;
+    if (dtype == mkldnn::memory::data_type::s8)
+      mem_fmt.data_type = mkldnn_s8;
+    else if (dtype == mkldnn::memory::data_type::u8)
+      mem_fmt.data_type = mkldnn_u8;
+    else
+      mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
 
     unsigned int total_stride = 1;
@@ -933,6 +941,8 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   std::vector<int> dims_;
   std::vector<int> axis_;
   std::vector<int> logical_axis_;
+  framework::proto::VarType::Type vtype_;
+  mkldnn::memory::data_type dtype_;
 };
 
 class ReorderMKLDNNHandler : public MKLDNNHandler {
