@@ -23,7 +23,7 @@ from paddle.fluid.framework import Program, Variable, name_scope, default_main_p
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _append_backward_with_forward_recomputation, _some_in_set_, _append_grad_suffix_
+from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -3154,8 +3154,11 @@ class RecomputeOptimizer(object):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
-            params_grads = _append_backward_with_forward_recomputation(
-                loss, parameter_list, no_grad_set, self._checkpoints)
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                checkpoints=self._checkpoints)
 
             if grad_clip:
                 # TODO(guru4elephant): should add grad_clip for static graph
