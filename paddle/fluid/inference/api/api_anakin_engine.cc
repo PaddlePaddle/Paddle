@@ -195,7 +195,7 @@ bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
                  << "'s type is not float";
     }
     auto d_tensor_p = this->executor_p_->get_in(input.name);
-    auto net_shape = d_tensor_p->shape();
+    auto net_shape = d_tensor_p->valid_shape();
     if (net_shape.size() != input.shape.size()) {
       LOG(FATAL) << " input  " << input.name
                  << "'s shape size should be equal to that of net";
