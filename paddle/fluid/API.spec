@@ -209,7 +209,7 @@ paddle.fluid.layers.rank_loss (ArgSpec(args=['label', 'left', 'right', 'name'], 
 paddle.fluid.layers.margin_rank_loss (ArgSpec(args=['label', 'left', 'right', 'margin', 'name'], varargs=None, keywords=None, defaults=(0.1, None)), ('document', '6fc86ed23b420c8a0f6c043563cf3937'))
 paddle.fluid.layers.elu (ArgSpec(args=['x', 'alpha', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', '9af1926c06711eacef9e82d7a9e4d308'))
 paddle.fluid.layers.relu6 (ArgSpec(args=['x', 'threshold', 'name'], varargs=None, keywords=None, defaults=(6.0, None)), ('document', '538fc860b2a1734e118b94e4a1a3ee67'))
-paddle.fluid.layers.pow (ArgSpec(args=['x', 'factor', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', '35fa2b79b1ae6968d4a69788051c1d27'))
+paddle.fluid.layers.pow (ArgSpec(args=['x', 'factor', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', 'ca34f88ff61cf2a7f4c97a493d6000d0'))
 paddle.fluid.layers.stanh (ArgSpec(args=['x', 'scale_a', 'scale_b', 'name'], varargs=None, keywords=None, defaults=(0.6666666666666666, 1.7159, None)), ('document', '1e1efad868714425da15c785dfb533a1'))
 paddle.fluid.layers.hard_sigmoid (ArgSpec(args=['x', 'slope', 'offset', 'name'], varargs=None, keywords=None, defaults=(0.2, 0.5, None)), ('document', '607d79ca873bee40eed1c79a96611591'))
 paddle.fluid.layers.swish (ArgSpec(args=['x', 'beta', 'name'], varargs=None, keywords=None, defaults=(1.0, None)), ('document', 'e0dc7bc66cba939033bc028d7a62c5f4'))

@@ -9590,7 +9590,7 @@ def pow(x, factor=1.0, name=None):
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
-        factor(${factor_type}|1.0): ${factor_comment}
+        factor(float|Variable|1.0): The exponential factor of Pow.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -9602,16 +9602,28 @@ def pow(x, factor=1.0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.pow(x, factor=2.0)
+
+            # example 1: argument factor is float
+            y_1 = fluid.layers.pow(x, factor=2.0)
+
+            # example 2: argument factor is Variable
+            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            y_2 = fluid.layers.pow(x, factor=factor_tensor)
     """
     helper = LayerHelper('pow', **locals())
+    inputs = {'X': x}
+    attrs = {}
+    if isinstance(factor, Variable):
+        factor.stop_gradient = True
+        inputs['FactorTensor'] = factor
+    else:
+        attrs['factor'] = factor
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='pow',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'factor': factor})
+        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
