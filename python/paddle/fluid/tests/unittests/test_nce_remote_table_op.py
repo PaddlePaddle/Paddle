@@ -277,7 +277,7 @@ class TestTranspilerWithNCE(unittest.TestCase):
             return cost
 
         datas = []
-        word_frequencys = None
+        word_frequencys = []
 
         input_word = fluid.layers.data(
             name="input_word", shape=[1], dtype='int64')
@@ -305,8 +305,10 @@ class TestTranspilerWithNCE(unittest.TestCase):
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
                 scale=1 / math.sqrt(dict_size))))
 
-        cost = nce_layer(emb, words[1], embedding_size, dict_size, 5, "uniform",
-                         word_frequencys, None)
+        fc0 = fluid.layers.fc(emb, size=11)
+
+        cost = nce_layer(fc0, words[1], embedding_size, dict_size, 5, "uniform",
+                         word_frequencys, [])
 
         avg_cost = fluid.layers.reduce_mean(cost)
         return avg_cost, py_reader
@@ -319,12 +321,13 @@ class TestTranspilerWithNCE(unittest.TestCase):
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
 
         fleet.init(role)
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = True
-
         avg_cost, py_reader = self.skip_gram_word2vec()
 
         optimizer = fluid.optimizer.SGD(0.01)
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = True
+        strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -332,6 +335,16 @@ class TestTranspilerWithNCE(unittest.TestCase):
 
     def test_nce_at_transpiler(self):
         trainer_pro = self.get_trainer_program()
+
+        nce_op = None
+        for op in trainer_pro.global_block().ops:
+            if op.type == "nce":
+                nce_op = op
+                break
+
+        self.assertEqual(nce_op.type, "nce")
+        self.assertEqual(nce_op.attr('is_sparse'), True)
+        self.assertEqual(nce_op.attr('remote_prefetch'), True)
 
 
 if __name__ == '__main__':
