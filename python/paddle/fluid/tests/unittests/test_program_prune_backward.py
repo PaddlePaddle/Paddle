@@ -36,7 +36,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
             test_program_prune = main_program.clone(for_test=True)
 
-            place = fluid.CUDAPlace(0)
+            place = fluid.CPUPlace(0)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
