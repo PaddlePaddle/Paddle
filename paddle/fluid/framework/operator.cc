@@ -398,6 +398,12 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
   }
 }
 
+bool TensorInVarIsInitialized(const Variable* var) {
+  auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+  if (!tensor_in->IsInitialized()) return false;
+  return true;
+}
+
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
@@ -704,6 +710,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(vars.size(), 1UL,
                       "Input(%s) should hold one element, but now it holds %d",
                       name, vars.size());
+    PADDLE_ENFORCE_EQ(TensorInVarIsInitialized(vars[0]), true,
+                      "Input variable %s has not been initialized.", name);
     return this->GetDim(vars[0]);
   }
 
