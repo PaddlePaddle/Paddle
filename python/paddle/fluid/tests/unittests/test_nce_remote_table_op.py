@@ -15,6 +15,10 @@
 from __future__ import print_function
 
 import os
+
+import math
+import numpy as np
+
 import signal
 import time
 import unittest
@@ -25,6 +29,10 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
+
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -210,7 +218,6 @@ class TestListenAndServOp(unittest.TestCase):
                 np.testing.assert_almost_equal(o_labels, out[2], decimal=6)
 
     def test_nce_op_remote(self):
-        os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
         # run pserver on CPU in sync mode
         p0 = self._start_pserver(0, False, True, run_pserver)
         self._wait_ps_ready(p0.pid)
@@ -230,6 +237,101 @@ class TestListenAndServOp(unittest.TestCase):
         p0.join()
         os.kill(p1.pid, signal.SIGINT)
         p1.join()
+
+
+class TestTranspilerWithNCE(unittest.TestCase):
+    def skip_gram_word2vec(self):
+        def nce_layer(input, label, embedding_size, num_total_classes,
+                      num_neg_samples, sampler, word_frequencys, sample_weight):
+            w_param_name = "nce_w"
+            b_param_name = "nce_b"
+
+            w_param = fluid.default_main_program().global_block(
+            ).create_parameter(
+                shape=[num_total_classes, embedding_size],
+                dtype='float32',
+                type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+                name=w_param_name, )
+            b_param = fluid.default_main_program().global_block(
+            ).create_parameter(
+                shape=[num_total_classes, 1],
+                dtype='float32',
+                name=b_param_name, )
+
+            cost = fluid.layers.nce(
+                input=input,
+                label=label,
+                num_total_classes=num_total_classes,
+                sampler=sampler,
+                custom_dist=word_frequencys,
+                sample_weight=sample_weight,
+                param_attr=fluid.ParamAttr(
+                    name=w_param_name,
+                    initializer=fluid.initializer.Normal(
+                        scale=1 / math.sqrt(num_total_classes))),
+                bias_attr=fluid.ParamAttr(
+                    name=b_param_name, initializer=fluid.initializer.Normal()),
+                num_neg_samples=num_neg_samples,
+                is_sparse=is_sparse)
+
+            return cost
+
+        datas = []
+        word_frequencys = None
+
+        input_word = fluid.layers.data(
+            name="input_word", shape=[1], dtype='int64')
+        predict_word = fluid.layers.data(
+            name='predict_word', shape=[1], dtype='int64')
+        datas.append(input_word)
+        datas.append(predict_word)
+
+        py_reader = fluid.layers.create_py_reader_by_data(
+            capacity=64,
+            feed_list=datas,
+            name='py_reader',
+            use_double_buffer=True)
+
+        words = fluid.layers.read_file(py_reader)
+
+        dict_size = 10001
+        embedding_size = 11
+        is_sparse = True
+
+        emb = fluid.layers.embedding(
+            input=words[0],
+            is_sparse=is_sparse,
+            size=[dict_size + 10, embedding_size],
+            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
+                scale=1 / math.sqrt(dict_size))))
+
+        cost = nce_layer(emb, words[1], embedding_size, dict_size, 5, "uniform",
+                         word_frequencys, None)
+
+        avg_cost = fluid.layers.reduce_mean(cost)
+        return avg_cost, py_reader
+
+    def get_trainer_program(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+
+        fleet.init(role)
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = True
+
+        avg_cost, py_reader = self.skip_gram_word2vec()
+
+        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        return fleet.main_program
+
+    def test_nce_at_transpiler(self):
+        trainer_pro = self.get_trainer_program()
 
 
 if __name__ == '__main__':
