@@ -1004,6 +1004,11 @@ All parameter, weight, gradient are variables in Paddle.
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetCUDAComputeCapability(place.device) >= 53;
   });
+
+  m.def("is_int8_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 61 support int8
+    return platform::GetCUDAComputeCapability(place.device) >= 61;
+  });
 #endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);

@@ -37,9 +37,19 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Input(Filter) of ConvOp should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Output"),
                  "Output(Output) of ConvOp should not be null.");
-
+  bool int8_conv = ctx->Attrs().Get<bool>("use_int8");
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
+  if (int8_conv) {
+    int64_t tmp = in_dims[3];
+    in_dims[2] = in_dims[1];
+    in_dims[3] = in_dims[2];
+    in_dims[1] = tmp;
+    tmp = filter_dims[3];
+    filter_dims[2] = filter_dims[1];
+    filter_dims[3] = filter_dims[2];
+    filter_dims[1] = tmp;
+  }
 
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
@@ -78,7 +88,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                                             strides[i]));
     }
   }
-  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+
+  if (int8_conv) {
+    std::vector<int64_t> out_shape(
+        {output_shape[0], output_shape[2], output_shape[3], output_shape[1]});
+    ctx->SetOutputDim("Output", framework::make_ddim(out_shape));
+  } else {
+    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+  }
   ctx->ShareLoD("Input", "Output");
 }
 
@@ -268,6 +285,10 @@ void Conv2DOpMaker::Make() {
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
                 "for cuDNN convolution or not, default is False.")
+      .SetDefault(false);
+  AddAttr<bool>("use_int8",
+                "(bool, default false) whether to use int conv "
+                "or not, default is False")
       .SetDefault(false);
   AddComment(R"DOC(
 Convolution Operator.

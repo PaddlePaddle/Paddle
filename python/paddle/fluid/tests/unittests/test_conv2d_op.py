@@ -22,6 +22,9 @@ from op_test import OpTest
 
 
 def conv2d_forward_naive(input, filter, group, conv_param):
+    if input.dtype == np.int8:
+        input = input.transpose((0, 3, 1, 2))
+        filter = filter.transpose((0, 3, 1, 2))
     in_n, in_c, in_h, in_w = input.shape
     out_c, f_c, f_h, f_w = filter.shape
     assert f_c * group == in_c
@@ -59,7 +62,8 @@ def conv2d_forward_naive(input, filter, group, conv_param):
                     out[:, g * sub_out_c + k, i, j] = \
                         np.sum(input_pad_masked * f_sub[k, :, :, :],
                                axis=(1, 2, 3))
-
+    if input.dtype == np.int8:
+        out = out.transpose((0, 2, 3, 1))
     return out, in_n, out_h, out_w, out_c
 
 
@@ -494,6 +498,138 @@ class TestCUDNNExhaustiveSearch(TestConv2dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
+
+
+class TestConv2dInt8Op(OpTest):
+    def setUp(self):
+        self.op_type = "conv2d"
+        self.use_cudnn = True
+        self.exhaustive_search = False
+        self.use_cuda = True
+        self.use_mkldnn = False
+        self.use_int8 = True
+        self.fuse_relu_before_depthwise_conv = False
+        self.data_format = "AnyLayout"
+        self.dtype = np.int8
+        self.init_group()
+        self.init_dilation()
+        self.init_test_case()
+        self.init_kernel_type()
+
+        conv2d_param = {
+            'stride': self.stride,
+            'pad': self.pad,
+            'dilation': self.dilations
+        }
+
+        input = np.random.random(self.input_size).astype(self.dtype)
+        if not self.has_cuda():
+            self.fuse_relu_before_depthwise_conv = False
+        if self.fuse_relu_before_depthwise_conv:
+            input = input - 0.5
+            input -= (input < 0) * 0.1
+            input += (input >= 0) * 0.1
+            input2 = np.maximum(input, 0.0)
+        else:
+            input2 = input
+        filter = np.random.uniform(-1, 1, self.filter_size).astype(self.dtype)
+        output, _, _, _, _ = conv2d_forward_naive(input2, filter, self.groups,
+                                                  conv2d_param)
+        output = output.astype(self.dtype)
+
+        self.inputs = {
+            'Input': OpTest.np_dtype_to_fluid_dtype(input),
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+        }
+        self.attrs = {
+            'strides': self.stride,
+            'paddings': self.pad,
+            'groups': self.groups,
+            'dilations': self.dilations,
+            'use_cudnn': self.use_cudnn,
+            'use_int8': self.use_int8,
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format,
+            'fuse_relu_before_depthwise_conv':
+            self.fuse_relu_before_depthwise_conv,
+            'exhaustive_search': self.exhaustive_search
+        }
+        self.outputs = {'Output': output}
+
+    def has_cuda(self):
+        return core.is_compiled_with_cuda() and (self.use_cudnn or
+                                                 self.use_cuda)
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-1)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16 or self.dtype == np.int8:
+            return
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.02)
+
+    def test_check_grad_no_filter(self):
+        if self.dtype == np.float16 or self.dtype == np.int8:
+            return
+        place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Filter']))
+
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 4, 4, 8]  # NHWC
+        assert np.mod(self.input_size[3], self.groups) == 0
+        f_c = self.input_size[3] // self.groups
+        self.filter_size = [16, 3, 3, f_c]
+
+    def init_dilation(self):
+        self.dilations = [1, 1]
+
+    def init_group(self):
+        self.groups = 1
+
+    def init_kernel_type(self):
+        pass
+
+
+class TestWithPadInt8(TestConv2dInt8Op):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 4, 4, 16]  # NHWC
+        assert np.mod(self.input_size[3], self.groups) == 0
+        f_c = self.input_size[3] // self.groups
+        self.filter_size = [32, 3, 3, f_c]
+
+
+class TestWithStrideInt8(TestConv2dInt8Op):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 4, 4, 32]  # NHWC
+        assert np.mod(self.input_size[3], self.groups) == 0
+        f_c = self.input_size[3] // self.groups
+        self.filter_size = [64, 3, 3, f_c]
+
+
+class TestWith1x1Int8(TestConv2dInt8Op):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 8, 8, 4]  # NHWC
+        assert np.mod(self.input_size[3], self.groups) == 0
+        f_c = self.input_size[3] // self.groups
+        self.filter_size = [8, 1, 1, f_c]
+
+    def init_group(self):
+        self.groups = 1
 
 
 # Please Don't remove the following code.

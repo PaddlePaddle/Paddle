@@ -20,6 +20,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
@@ -34,6 +35,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::TransposeKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
