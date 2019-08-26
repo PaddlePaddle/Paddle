@@ -406,11 +406,20 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
-  // suppose perfoemance improves with h increased.
-  dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-  int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-  FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
-      x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  // For small case use 1D block
+  constexpr int half_walf = 16;
+  if (w < half_walf || h < half_walf) {
+    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+    int gird_size = w;
+    ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  } else {
+    // suppose perfoemance improves with h increased.
+    dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+    int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+    FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
+        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  }
 }
 
 #endif
