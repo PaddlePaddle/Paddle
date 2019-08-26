@@ -24,7 +24,8 @@ from .. import compat as cpt
 from . import unique_name
 
 __all__ = [
-    'append_backward', 'gradients', 'append_backward_with_forward_recomputation'
+    'append_backward',
+    'gradients',
 ]
 
 
@@ -38,7 +39,6 @@ def _pretty_op_desc_(op_desc, prefix):
 def _add_descs_to_block(descs, block):
     if len(descs) == 0:
         return []
-    print(len(descs))
     result_descs = []
     op_role_attr_name = \
         core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -240,16 +240,10 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
                 sum_op = _create_op_desc_("sum", {"X": input_names},
                                           {"Out": [var_name]},
                                           {"use_mkldnn": False})
-                print("going to rename var %s" % var_name)
                 for i, idx in enumerate(grad_var_position[var_name]):
                     if idx < len(total_grad_ops):
-                        print("rename old op descs")
-                        print("before rename")
-                        print(_pretty_op_desc_(total_grad_ops[idx], "renamed"))
                         _rename_arg_([total_grad_ops[idx]], var_name,
                                      "%s@RENAME@%d" % (var_name, i))
-                        print("after rename")
-                        print(_pretty_op_desc_(total_grad_ops[idx], "renamed"))
                     else:
                         _rename_arg_(result_grad_ops[idx - len(total_grad_ops)],
                                      var_name, "%s@RENAME@%d" % (var_name, i),
@@ -264,9 +258,6 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
                 grad_var_position[
                     var_name] = [len(total_grad_ops) + len(result_grad_ops)]
         result_grad_ops.append(op_desc)
-
-    for op_desc in result_grad_ops:
-        print(_pretty_op_desc_(op_desc, "result_grad"))
 
     return result_grad_ops
 
@@ -334,7 +325,6 @@ def _get_sumop_from_addup_repetitive_outputs_(op_descs, renamed_vars):
             pending_sum_ops.append(
                 (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
                                   {"use_mkldnn": False}), len(op_descs)))
-    print("sum ops num: %d" % len(pending_sum_ops))
     return pending_sum_ops
 
 
@@ -626,9 +616,38 @@ def _get_op_idx_with_output_name(checkpoint_name, ops):
     return -1
 
 
-def _append_backward_ops_with_checkpoints3_(
+def _append_backward_ops_with_checkpoints_(
         block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
     checkpoints_name = [x.name for x in checkpoints]
+    """
+    Create grad ops with forward ops, and insert them into given block
+
+    Args:
+        block(Block): the block where forward ops are
+        ops(Op): the forward operators whose forward recomputation backward ops need to be added
+        target_block(Block): the block which is going to hold new generated grad ops
+        no_grad_dict(dict):
+            key(int) block index
+            val(str): corresponding forward variable name
+        checkpoints: variables that a user defined as checkpoint for forward recomputation
+
+    Algorithms:
+        1) go through all forward ops and induct all checkpoint vars
+            a. input variables can be deduced from forward program
+            b. input variables are checkpoints
+            c. variables that are used across segments will be held in memory
+        2) find ops between checkpoints, i.e. recompute_segments
+        3) go through each recompute_segments, add backward ops with forward recomputation
+            a. add ops in current recompute_segment as forward recomputation ops
+            b. rename all non-checkpoint variables in recomputation ops
+            c. add sum_op to merge gradient if needed
+            d. add backward ops of current recomputation ops
+        4) remove no grad branch as it is in _remove_no_grad_branch_
+        5) Note1: all appended ops' OpRole are Backward
+        6) Note2: variables that are used across segments will be held in memory
+        7) Note3: all variables with new name should be returned so that _append_vars_ can be called
+        8) Note4: current forward recomputation backpropagation does not handle programs with subblock
+    """
     inputs_name = []
     op_output_names = []
     for op in ops:
@@ -691,8 +710,6 @@ def _append_backward_ops_with_checkpoints3_(
                     vars_should_be_hold.append(name)
         for name in name_list:
             var_count_book[name] = 1
-    print("vars should be hold")
-    print(vars_should_be_hold)
     grad_should_be_hold = [x + "@GRAD" for x in vars_should_be_hold]
     vars_should_be_hold.extend(grad_should_be_hold)
 
@@ -745,354 +762,6 @@ def _append_backward_ops_with_checkpoints3_(
         #sumop_descs = _get_sumop_from_addup_repetitive_outputs_(grad_op_descs)
         #added_sumop_descs = _add_descs_to_block(sumop_descs, block)
         #grad_op_desc.extend(added_sumop_descs)
-
-
-def _append_backward_ops_with_checkpoints2_(
-        block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
-    """
-    Create grad ops with forward ops, and insert them into given block
-    
-    Args:
-        block(Block): the block where forward ops are
-        ops(Op): the forward operators whose forward recomputation backward ops need to be added
-        target_block(Block): the block which is going to hold new generated grad ops
-        no_grad_dict(dict):
-            key(int) block index
-            val(str): corresponding forward variable name
-        checkpoints: variables that a user defined as checkpoint for forward recomputation
-
-    Algorithms:
-        1) go through all forward ops and induct all checkpoint vars
-            a. input variables can be deduced from forward program
-            b. input variables are checkpoints
-        2) find ops between checkpoints, i.e. recompute_section
-        3) go through each recompute_section, add backward ops with forward recomputation
-            a. add ops in current recompute_section as forward recomputation ops
-            b. rename all non-checkpoint variables in recomputation ops
-            c. add backward ops of current recomputation ops
-        4) addup repetitive output variables with sum op, rename variables as needed
-        5) remove no grad branch as it is in _remove_no_grad_branch_
-        6) Note1: all appended ops' OpRole are Backward
-        7) Note2: checkpoints should be graph cut points that can split current forward graph
-        8) Note3: all variables with new name should be returned so that _append_vars_ can be called
-        9) Note4: current forward recomputation backpropagation does not handle programs with subblock
-    """
-
-    # step1: go through all forward ops and induct all checkpoint vars
-    checkpoints_name = [x.name for x in checkpoints]
-    print("input checkpoint names")
-    print(checkpoints_name)
-    inputs_name = []
-    op_output_names = []
-    for op in ops:
-        if op.desc.type() == "read":
-            continue
-        op_output_names.extend(op.desc.output_arg_names())
-
-    # variables that are input of other ops and not output of other ops
-    # we consider these variables input variables
-    for op in ops:
-        if op.desc.type() == "read":
-            inputs_name.extend(op.desc.output_arg_names())
-            continue
-        '''
-        for name in op.desc.input_arg_names():
-            if name not in op_output_names and not block.var(name).persistable:
-                inputs_name.append(name)
-        '''
-
-    for op in ops:
-        for name in op.desc.output_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.output_arg_names())
-                break
-        for name in op.desc.input_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.input_arg_names())
-                break
-    checkpoints_name_grad = [x + "@GRAD" for x in checkpoints_name]
-    checkpoints_name.extend(checkpoints_name_grad)
-    checkpoints_name.extend(inputs_name)
-    checkpoints_name = list(set(checkpoints_name))
-
-    print("input names")
-    print(inputs_name)
-    print("checkpoint names")
-    print(checkpoints_name)
-
-    op_idx_with_checkpoint_input = \
-            _get_op_idx_with_checkpoints_input(
-                checkpoints_name, block, ops)
-
-    # step2: find ops between checkpoints, i.e. recompute_section
-    recompute_section = []
-    for i, idx in enumerate(op_idx_with_checkpoint_input[:-1]):
-        recompute_section.append([idx, op_idx_with_checkpoint_input[i + 1]])
-
-    # add more checkpoint vars to ensure the validity of current split
-
-    for i, section in enumerate(recompute_section[::-1]):
-        ff_ops = ops[section[0]:section[1]]
-        output_names = []
-        for op in ff_ops:
-            for name in op.desc.output_arg_names():
-                output_names.append(name)
-        for op in ff_ops:
-            for name in op.desc.input_arg_names():
-                if name not in output_names and \
-                   not block.var(name).persistable and \
-                   name not in checkpoints_name:
-                    checkpoints_name.append(name)
-
-    print("recompute section")
-    print(recompute_section)
-    print("final checkpoints")
-    print(checkpoints_name)
-
-    #step3. go through each recompute_section, add backward ops with forward recomputation
-    #    a. add ops in current recompute_section as forward recomputation ops
-    #    b. rename all non-checkpoint variables in recomputation ops
-    #    c. add backward ops of current recomputation ops
-
-    grad_op_descs = []
-    subprogram_num = len(recompute_section)
-
-    # directly add backward ops of the first recompute section
-    # the reason is that the forward part is ready in forward computation
-    # we can just reuse the last forward section's result
-    for op in reversed(ops[(op_idx_with_checkpoint_input[-1]):]):
-        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-        added_descs = _add_descs_to_block(grad_op_desc, block)
-        grad_op_descs.extend(added_descs)
-        grad_to_var.update(op_grad_to_var)
-
-    for i, section in enumerate(recompute_section[::-1]):
-        ff_ops = ops[section[0]:section[1]]
-        var_name_dict = {}
-        var_suffix = ".subprog_%d" % i
-        added_descs = []
-        print("is a ok section")
-
-        for op in ff_ops:
-            input_and_output_names = []
-            input_and_output_names.extend(op.desc.input_arg_names())
-            input_and_output_names.extend(op.desc.output_arg_names())
-            for name in input_and_output_names:
-                if block.var(name).persistable or name in checkpoints_name:
-                    continue
-                if name not in var_name_dict:
-                    var_name_dict[name] = name + var_suffix
-        print("var name dict")
-        print(var_name_dict)
-        # do I have to do this?
-        '''
-        for key in var_name_dict:
-            _add_var_to_block_with_new_name_(
-                block,
-                block.var(key),
-                var_name_dict[key])
-        '''
-        # add forward descs to the end of current block
-        added_descs = _add_descs_to_block(ff_ops, block)
-        # rename variable names in added_descs
-        for key in var_name_dict:
-            _rename_arg_(added_descs, key, var_name_dict[key])
-        # added_descs should be in grad_op_descs because it is backward op desc
-        grad_op_descs.extend(added_descs)
-
-        # c. add backward ops of current recomputation ops
-        for op_desc in reversed(added_descs):
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
-            print("op grad_to_var")
-            print(op_grad_to_var)
-            added_descs = _add_descs_to_block(grad_op_desc, block)
-            # append grad_op_desc to the end of current block
-            grad_op_descs.extend(added_descs)
-            grad_to_var.update(op_grad_to_var)
-        sumop_descs = _get_sumop_from_addup_repetitive_outputs_(grad_op_descs)
-        added_sumop_descs = _add_descs_to_block(sumop_descs, block)
-        grad_op_desc.extend(added_sumop_descs)
-    '''
-    sumop_descs = _get_sumop_from_addup_repetitive_outputs_(grad_op_descs)
-    added_sumop_descs = _add_descs_to_block(sumop_descs, block)
-    grad_op_desc.extend(added_sumop_descs)
-    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
-                                            no_grad_dict[block.idx])
-    '''
-
-
-def _append_backward_ops_with_checkpoints_(
-        block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
-
-    checkpoints_name = []
-    checkpoints_candidate = [x.name for x in checkpoints]
-    checkpoints_count = {}
-    for name in checkpoints_candidate:
-        checkpoints_count[name] = 0
-    op_idx_with_checkpoint_input = []
-    dedup_dict = {}
-
-    inputs_name = []
-    op_output_names = []
-    for op in ops:
-        if op.desc.type() == "read":
-            continue
-        op_output_names.extend(op.desc.output_arg_names())
-
-    for op in ops:
-        if op.desc.type() == "read":
-            continue
-        for name in op.desc.input_arg_names():
-            if name not in op_output_names:
-                inputs_name.append(name)
-
-    for name in checkpoints_candidate:
-        if checkpoints_count[name] > 1:
-            continue
-        checkpoints_name.append(name)
-
-    # add all var's name with the same input output, like inplace ops
-    for op in ops:
-        for name in op.desc.output_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.output_arg_names())
-                break
-        for name in op.desc.input_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.input_arg_names())
-
-    checkpoints_name_grad = [x + "@GRAD" for x in checkpoints_name]
-    #checkpoints_name.extend([x + "@GRAD" for x in checkpoints_name])
-    checkpoints_name.extend(checkpoints_name_grad)
-    checkpoints_name = list(set(checkpoints_name))
-
-    op_idx_with_checkpoint_input = \
-            _get_op_idx_with_checkpoints_input(
-                checkpoints_name, block, ops)
-
-    checkpoints_name.extend(inputs_name)
-
-    recompute_section = [[0, op_idx_with_checkpoint_input[0]]]
-
-    for i, idx in enumerate(op_idx_with_checkpoint_input[:-1]):
-        recompute_section.append([idx, op_idx_with_checkpoint_input[i + 1]])
-
-    grad_op_descs = []
-    subprogram_num = len(recompute_section)
-    for op in reversed(ops[(op_idx_with_checkpoint_input[-1]):]):
-        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-        grad_op_descs.extend(grad_op_desc)
-        grad_to_var.update(op_grad_to_var)
-
-    for i, section in enumerate(recompute_section[::-1]):
-        ff_ops = ops[section[0]:section[1]]
-        section_vars = {}
-        need_recompute = False
-        for op in reversed(ff_ops):
-            if op.has_attr("sub_block"):
-                raise ValueError(
-                    "currently programs with sub_block(conditional op)"
-                    " is not supported in RecomputeOptimizer")
-
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-            for op_desc in grad_op_desc:
-                for name in op_desc.input_arg_names():
-                    if block.has_var(name) and block.var(name).persistable:
-                        continue
-                    if name in checkpoints_name:
-                        continue
-                    if name not in section_vars:
-                        need_recompute = True
-                        break
-                if need_recompute:
-                    break
-                for name in op_desc.output_arg_names():
-                    if block.has_var(name) and block.var(name).persistable:
-                        continue
-                    if name in checkpoints_name:
-                        continue
-                    section_vars[name] = 1
-
-        section_ff_op_descs = []
-        new_ff_ops = []
-        if need_recompute:
-            var_name_dict = {}
-            var_suffix = ".subprog_%d" % i
-            for op in ff_ops:
-                for name in op.desc.input_arg_names():
-                    if block.var(name).persistable:
-                        continue
-                    if name in checkpoints_name:
-                        continue
-                    if name not in var_name_dict:
-                        #var_name_dict[name] = var_prefix + name
-                        var_name_dict[name] = name + var_suffix
-                for name in op.desc.output_arg_names():
-                    if block.var(name).persistable:
-                        continue
-                    if name in checkpoints_name:
-                        continue
-                    if name not in var_name_dict:
-                        #var_name_dict[name] = var_prefix + name
-                        var_name_dict[name] = name + var_suffix
-            for key in var_name_dict:
-                new_var = _add_var_to_block_with_new_name_(block,
-                                                           block.var(key),
-                                                           var_name_dict[key])
-            '''
-            for ff_op in ff_ops:
-                new_op = _create_op_desc_with_op_(ff_op)
-                new_ff_ops.append(new_op)
-                print(_pretty_op_desc_(new_op, "new_op"))
-            '''
-            for ff_op in ff_ops:
-                op_desc = core.OpDesc()
-                op_desc.copy_from(ff_op.desc)
-                new_ff_ops.append(op_desc)
-            '''
-            op_role_attr_name = \
-                core.op_proto_and_checker_maker.kOpRoleAttrName()
-            backward = core.op_proto_and_checker_maker.OpRole.Backward
-            for op in ff_ops:
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-                new_op_desc._set_attr(op_role_attr_name, backward)
-                section_ff_op_descs.append(new_op_desc)
-            '''
-
-            for key in var_name_dict:
-                _rename_arg_(new_ff_ops, key, var_name_dict[key])
-            for op_desc in new_ff_ops:
-                #print(_pretty_op_desc_(op_desc.desc, "recompute"))
-                grad_op_descs.extend([op_desc])
-
-        if new_ff_ops == []:
-            section_ff_op_descs = ff_ops
-
-        for op_desc in reversed(new_ff_ops):
-            #if op_desc.type == "batch_norm":
-            #    print(str(op_desc))
-
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
-            #print(_pretty_op_desc_(grad_op_desc[0], "recompute"))
-            grad_op_descs.extend(grad_op_desc)
-            grad_to_var.update(op_grad_to_var)
-
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
-    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
-                                            no_grad_dict[block.idx])
-    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    backward = core.op_proto_and_checker_maker.OpRole.Backward
-    for op_desc in grad_op_descs:
-        new_op_desc = block.desc.append_op()
-        new_op_desc.copy_from(op_desc)
-        new_op_desc._set_attr(op_role_attr_name, backward)
-        #print(_pretty_op_desc_(new_op_desc, "recompute"))
 
 
 def _append_backward_ops_(block,
@@ -1226,7 +895,6 @@ def _append_vars_(block, start_op_idx, end_op_idx, grad_to_var, grad_info_map):
             if var_name not in grad_to_var:
                 continue
             grad_info_map[grad_to_var[var_name]] = (var_name, block)
-        print(_pretty_op_desc_(op_desc, "op_desc_infer"))
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
         for arg in op_desc.output_arg_names():
@@ -1257,8 +925,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if "@GRAD" not in grad_var_name:
-                continue
             if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
                 continue
@@ -1268,8 +934,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
         # infer_shape and infer_type
-        if op_desc.type == "batch_norm":
-            print(str(op_desc))
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
         for arg in op_desc.output_arg_names():
@@ -1313,238 +977,11 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-0
-
-
-def append_backward_with_checkpoints(loss,
-                                     parameter_list=None,
-                                     no_grad_set=None,
-                                     callbacks=None,
-                                     checkpoints=None):
-    if checkpoints is None:
-        return append_backward(loss, parameter_list, no_grad_set, callbacks)
-    assert isinstance(loss, framework.Variable)
-
-    if loss.op is None:
-        _find_loss_op_(loss)
-
-    loss.op._set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
-                      int(core.op_proto_and_checker_maker.OpRole.Forward) |
-                      int(core.op_proto_and_checker_maker.OpRole.Loss))
-
-    if callbacks is not None:
-        isinstance(callbacks, list)
-
-    program = loss.block.program
-    program._appending_grad_times += 1
-
-    if no_grad_set is None:
-        no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
-    no_grad_dict = _get_stop_gradients_(program)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
-
-    grad_info_map = dict()
-    root_block = program.block(0)
-
-    fwd_op_num = root_block.desc.op_size()
-    current_block_idx = program.current_block_idx
-    grad_to_var = dict()
-
-    op_desc = _create_op_desc_(
-        "fill_constant",
-        {},
-        {"Out": [_append_grad_suffix_(loss.name)]},
-        {
-            "shape": [1],  # TODO(panyx0718): This can be loss.shape.
-            "value": 1.0,
-            "dtype": loss.dtype,
-            "force_cpu": False,
-            core.op_proto_and_checker_maker.kOpRoleAttrName():
-            int(core.op_proto_and_checker_maker.OpRole.Backward) |
-            int(core.op_proto_and_checker_maker.OpRole.Loss),
-        })
-
-    root_block.desc.append_op().copy_from(op_desc)
-
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-
-    input_grad_names_set = None
-
-    # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
-    if program._appending_grad_times > 1:
-        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
-
-    _append_backward_ops_(
-        root_block,
-        op_path,
-        root_block,
-        no_grad_dict,
-        grad_to_var,
-        callbacks,
-        input_grad_names_set=input_grad_names_set)
-
-    # _rename_grad_ is used for more than one call of backward()
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
-
-    # insert vars into block, and do infer shape
-    # infer_type, infer_var_data_type(with forward var)
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
-
-    program.current_block_idx = current_block_idx
-    program._sync_with_cpp()
-
-    if parameter_list is not None:
-        parameters = parameter_list
-    else:
-        params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
-        parameters = [param.name for param in params]
-
-    params_and_grads = []
-    for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
-            continue
-        grad_info = grad_info_map[param]
-        grad_block = grad_info[1]
-        if not grad_block.has_var(grad_info[0]):
-            raise ValueError("grad block[{0}] did not have grad var {1}".format(
-                grad_info[1], grad_info[0]))
-        # Get the param var from the global block
-        param_var = program.global_block().var(param)
-        grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
-        else:
-            params_and_grads.append((param_var, None))
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-    for p, g in params_and_grads:
-        if g is None:
-            continue
-        for op in reversed(program.global_block().ops):
-            assert isinstance(op, framework.Operator)
-            if g.name in op.output_arg_names:
-                g.op = op
-                break
-
-        if g.op is None:
-            raise ValueError("Unexpected branch")
-        attr_val = [p.name, g.name]
-        if g.op.has_attr(op_role_var_attr_name):
-            attr_val.extend(g.op.attr(op_role_var_attr_name))
-        g.op._set_attr(op_role_var_attr_name, attr_val)
-
-    return params_and_grads
-
-
-def append_backward_with_forward_recomputation(loss,
-                                               parameter_list=None,
-                                               no_grad_set=None,
-                                               checkpoints=None):
-    """
-    Append backward part to main_program.
-    """
-    assert isinstance(loss, framework.Variable)
-
-    if loss.op is None:
-        _find_loss_op_(loss)
-
-    loss.op._set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
-                      int(core.op_proto_and_checker_maker.OpRole.Forward) |
-                      int(core.op_proto_and_checker_maker.OpRole.Loss))
-
-    program = loss.block.program
-    program._appending_grad_times += 1
-
-    if no_grad_set is None:
-        no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
-    no_grad_dict = _get_stop_gradients_(program)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
-
-    grad_info_map = dict()
-    root_block = program.block(0)
-
-    fwd_op_num = root_block.desc.op_size()
-    current_block_idx = program.current_block_idx
-    grad_to_var = dict()
-
-    op_desc = _create_loss_op_desc_(loss)
-    root_block.desc.append_op().copy_from(op_desc)
-
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-
-    if program._appending_grad_times > 1:
-        raise ValueError(
-            "double backward is not supported in forward recomputation")
-
-    _append_backward_ops_with_checkpoints3_(
-        root_block, op_path, root_block, no_grad_dict, grad_to_var, checkpoints)
-
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
-
-    _append_vars_(root_block, fwd_op_num,
-                  root_block.desc.op_size(), grad_to_var, grad_info_map)
-
-    program.current_block_idx = current_block_idx
-    program._sync_with_cpp()
-
-    if parameter_list is not None:
-        parameters = parameter_list
-    else:
-        params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
-        parameters = [param.name for param in params]
-
-    params_and_grads = []
-    for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
-            continue
-        grad_info = grad_info_map[param]
-        grad_block = grad_info[1]
-        if not grad_block.has_var(grad_info[0]):
-            raise ValueError("grad block[{0}] did not have grad var {1}".format(
-                grad_info[1], grad_info[0]))
-        param_var = program.global_block().var(param)
-        grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
-        else:
-            params_and_grads.append((param_var, None))
-
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-    for p, g in params_and_grads:
-        if g is None:
-            continue
-        for op in reversed(program.global_block().ops):
-            assert isinstance(op, framework.Operator)
-            if g.name in op.output_arg_names:
-                g.op = op
-                break
-
-        if g.op is None:
-            raise ValueError("Unexpected branch")
-        attr_val = [p.name, g.name]
-        if g.op.has_attr(op_role_var_attr_name):
-            attr_val.extend(g.op.attr(op_role_var_attr_name))
-        g.op._set_attr(op_role_var_attr_name, attr_val)
-
-    return params_and_grads
-
-
-def append_backward(loss, parameter_list=None, no_grad_set=None,
-                    callbacks=None):
+def append_backward(loss,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    callbacks=None,
+                    checkpoints=None):
     """
     Append backward part to main_program.
 
@@ -1632,10 +1069,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
-    no_grad_dict = _get_stop_gradients_(
-        program)  # block.idx -> stop_gradients variable list
-    no_grad_dict[0].update(list(map(_append_grad_suffix_,
-                                    no_grad_set)))  # stop gradients var + @GRAD
+    no_grad_dict = _get_stop_gradients_(program)
+    no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
     grad_info_map = dict()
     root_block = program.block(0)
@@ -1660,14 +1095,21 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     if program._appending_grad_times > 1:
         input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
-    _append_backward_ops_(
-        root_block,
-        op_path,
-        root_block,
-        no_grad_dict,
-        grad_to_var,
-        callbacks,
-        input_grad_names_set=input_grad_names_set)
+    if checkpoints != None and \
+       isinstance(checkpoints, list) and \
+       len(checkpoints) > 0:
+        _append_backward_ops_with_checkpoints_(root_block, op_path, root_block,
+                                               no_grad_dict, grad_to_var,
+                                               checkpoints)
+    else:
+        _append_backward_ops_(
+            root_block,
+            op_path,
+            root_block,
+            no_grad_dict,
+            grad_to_var,
+            callbacks,
+            input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
