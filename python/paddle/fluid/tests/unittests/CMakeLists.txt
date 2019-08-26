@@ -28,6 +28,7 @@ endif(NOT WITH_DISTRIBUTE)
 
 
 if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)

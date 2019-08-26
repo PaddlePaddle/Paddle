@@ -65,7 +65,6 @@ class NCCLCommContext {
     static NCCLCommContext comm_ctx;
     return comm_ctx;
   }
-  ~NCCLCommContext();
 
   NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
                            int dev_id, int ring_id = 0);
@@ -97,17 +96,19 @@ class NCCLCommContext {
 
   // retrieve a communicator by the ring id and place
   NCCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, boost::get<CUDAPlace>(place));
+    return Get(ring_id, boost::get<CUDAPlace>(place).device);
   }
 
  private:
+  std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
   // ring id to dev-NCCLComm
   std::map<int, std::map<int, std::unique_ptr<NCCLComm>>> comm_map_;
 
+  void ReleaseNCCLComms();
+
   NCCLCommContext() = default;
-  NCCLCommContext(const NCCLCommContext& other) = delete;
-  NCCLCommContext& operator=(const NCCLCommContext& other) = delete;
+  DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 };
 
 }  // namespace platform

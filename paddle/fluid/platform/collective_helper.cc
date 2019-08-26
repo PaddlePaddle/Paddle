@@ -85,8 +85,12 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
   dev2comm.emplace(dev_id, std::unique_ptr<NCCLComm>(c));
   comm_map_mutex_.unlock();
 
-  VLOG(0) << "nccl communicator of rank " << rank << " in ring " << ring_id
+  VLOG(1) << "nccl communicator of rank " << rank << " in ring " << ring_id
           << " has been created";
+
+  std::call_once(once_flag_, []() {
+    std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
+  });
 
   return comm_map_[ring_id][dev_id].get();
 }
@@ -117,13 +121,19 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 
     dev2comm.emplace(dev_ids[i], std::unique_ptr<NCCLComm>(c));
   }
+
+  std::call_once(once_flag_, []() {
+    std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
+  });
 }
 
-NCCLCommContext::~NCCLCommContext() {
+void NCCLCommContext::ReleaseNCCLComms() {
+  // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
+  // destroy nccl_comm_t explicitly. Please refer to
+  // platform::CUDADeviceContext::~CUDADeviceContext()
   for (auto& p : comm_map_) {
     for (auto& q : p.second) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::ncclCommDestroy(q.second->comm()));
+      q.second.reset();
     }
   }
 }

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
@@ -31,6 +32,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+class CCommInitAllInferShape : public framework::InferShapeBase {
+ public:
+  ~CCommInitAllInferShape() {}
+  void operator()(framework::InferShapeContext* ctx) const override{};
+};
 
 class CCommInitAllOp : public framework::OperatorBase {
  public:
@@ -50,6 +57,7 @@ class CCommInitAllOp : public framework::OperatorBase {
     if (devices.empty()) {
       devices = platform::GetSelectedDevices();
     }
+
     int rid = Attr<int>("ring_id");
 
     platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
@@ -82,4 +90,4 @@ Initialize all collective communicatoin context
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(c_comm_init_all, ops::CCommInitAllOp,
-                  ops::CCommInitAllOpMaker);
+                  ops::CCommInitAllInferShape, ops::CCommInitAllOpMaker);
