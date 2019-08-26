@@ -187,6 +187,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_params.append(i[0])
                 if not is_data_norm_data:
                     params.append(i[0])
+
             for i in params_grads:
                 is_data_norm_data = False
                 for data_norm_grad in self.data_norm_name:
@@ -195,6 +196,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_grads.append(i[1])
                 if not is_data_norm_data:
                     grads.append(i[1])
+
             if strategy.get('dense_table') is not None:
                 server.add_dense_table(dense_table_index, params, grads,
                                        strategy['dense_table'], table_name)
