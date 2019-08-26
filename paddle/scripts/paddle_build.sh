@@ -191,11 +191,10 @@ function cmake_base() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
-        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -203,8 +202,12 @@ function cmake_base() {
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
+        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
+        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
         -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
@@ -228,15 +231,18 @@ EOF
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
+        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
+        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
+        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
         -DWITH_GRPC=${grpc_flag}
 
 }
@@ -265,6 +271,9 @@ function check_style() {
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
+    mkdir -p ./build/go
+    cp go/glide.* build/go
+    cd build/go; glide install; cd -
 
     export PATH=/usr/bin:$PATH
     pre-commit install
@@ -293,7 +302,7 @@ function build_base() {
     fi
     make clean
     make -j ${parallel_number}
-    make install -j ${parallel_number}
+    make install -j ${parallel_number} 
 }
 
 
@@ -449,7 +458,7 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid,paddle.reader > new.spec
 
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
@@ -471,9 +480,81 @@ function assert_api_not_changed() {
 }
 
 function assert_api_spec_approvals() {
-    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
-    if [ "$?" != 0 ];then
-       exit 1
+    if [ -z ${BRANCH} ]; then
+        BRANCH="develop"
+    fi
+
+    API_FILES=("CMakeLists.txt"
+               "paddle/fluid/API.spec"
+               "paddle/fluid/op_use_default_grad_op_maker.spec"
+               "python/paddle/fluid/parallel_executor.py"
+               "paddle/fluid/framework/operator.h"
+               "paddle/fluid/framework/tensor.h"
+               "paddle/fluid/framework/details/op_registry.h"
+               "paddle/fluid/framework/grad_op_desc_maker.h"
+               "paddle/fluid/framework/lod_tensor.h"
+               "paddle/fluid/framework/selected_rows.h"
+               "paddle/fluid/framework/op_desc.h"
+               "paddle/fluid/framework/block_desc.h"
+               "paddle/fluid/framework/var_desc.h"
+               "paddle/fluid/framework/scope.h"
+               "paddle/fluid/framework/ir/node.h"
+               "paddle/fluid/framework/ir/graph.h"
+               "paddle/fluid/framework/framework.proto"
+               "python/paddle/fluid/compiler.py"
+               "python/paddle/fluid/__init__.py"
+               "paddle/fluid/operators/distributed/send_recv.proto.in")
+    for API_FILE in ${API_FILES[*]}; do
+      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
+      echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+      if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
+          # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+          # approval_user_list: XiaoguangHu01 46782768,chengduoZH 30176695,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,tensor-tang 21351065,xsrobin 50069408,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 5086632,JiabinYang 22361972,chenwhql 22561442. 
+          approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+          if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560 ` 
+
+            if [ "${APPROVALS}" == "TRUE" ];then
+              APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 50069408 35982308`
+            fi
+          elif [ "${API_FILE}" == "CMakeLists.txt" ];then
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 46782768 30176695`
+          elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610`
+          elif [ "${API_FILE}" == "python/requirements.txt" ];then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 22361972`
+          else
+            APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+            python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
+          fi
+          echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+          if [ "${APPROVALS}" == "FALSE" ]; then
+            if [ "${API_FILE}" == "paddle/fluid/API.spec" ];then
+              echo "You must have two RD (wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change! ${API_FILE} for the management reason of API interface and API document."
+            elif [ "${API_FILE}" == "CMakeLists.txt" ];then
+              echo "You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for the cmakelist change! ${API_FILE} for the management reason of the Compilation parameter."
+            elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
+              echo "You must have one RD (lanxianghit (Recommend) or luotao1) approval for the python/paddle/fluid/init.py, which manages the environment variables."
+            elif [ "${API_FILE}" == "python/requirements.txt" ];then
+              echo "You must have one RD (JiabinYang (Recommend) or luotao1) approval for python/requirements.txt, which manages the third-party python package."
+            else
+              echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao) approval for the api change! ${API_FILE} for the management reason of the underlying code for fluid."
+            fi
+            exit 1
+          fi
+      fi
+    done
+
+    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
+    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 21351065 3048612 46782768 30176695 12538138 6836917 32832641`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang,jacquesqiao) approval for the api change! ${API_FILE} for the avoidance of the bad C++ code habits."
+            exit 1
+        fi
     fi
 }
 
@@ -895,18 +976,6 @@ function build_document_preview() {
 }
 
 
-function example() {
-    pip install /paddle/build/python/dist/*.whl
-    paddle version
-    cd ${PADDLE_ROOT}/python/paddle/fluid
-    python sampcd_processor.py cpu 
-    if [ "$?" != "0" ];then
-      echo "Code instance execution failed"
-      exit 1
-    fi
-}
-
-
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -921,7 +990,6 @@ function main() {
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
         assert_api_spec_approvals
-        example
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1013,9 +1081,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         build_document_preview
-        ;;
-      api_example)
-        example
         ;;
       *)
         print_usage
