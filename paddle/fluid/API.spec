@@ -82,6 +82,8 @@ paddle.fluid.io.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keyword
 paddle.fluid.io.compose (ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None), ('document', '884291104e1c3f37f33aae44b7deeb0d'))
 paddle.fluid.io.chain (ArgSpec(args=[], varargs='readers', keywords=None, defaults=None), ('document', 'd22c34e379a53901ae67a6bca7f4def4'))
 paddle.fluid.io.shuffle (ArgSpec(args=['reader', 'buf_size'], varargs=None, keywords=None, defaults=None), ('document', 'e42ea6fee23ce26b23cb142cd1d6522d'))
+paddle.fluid.io.ComposeNotAligned ('paddle.reader.decorator.ComposeNotAligned', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.io.ComposeNotAligned.__init__ 
 paddle.fluid.io.firstn (ArgSpec(args=['reader', 'n'], varargs=None, keywords=None, defaults=None), ('document', 'c5bb8f7dd4f917f1569a368aab5b8aad'))
 paddle.fluid.io.xmap_readers (ArgSpec(args=['mapper', 'reader', 'process_num', 'buffer_size', 'order'], varargs=None, keywords=None, defaults=(False,)), ('document', '9c804a42f8a4dbaa76b3c98e0ab7f796'))
 paddle.fluid.io.PipeReader ('paddle.reader.decorator.PipeReader', ('document', 'd3c250618f98c1a5fb646f869016a98e'))
@@ -159,7 +161,7 @@ paddle.fluid.layers.edit_distance (ArgSpec(args=['input', 'label', 'normalized',
 paddle.fluid.layers.l2_normalize (ArgSpec(args=['x', 'axis', 'epsilon', 'name'], varargs=None, keywords=None, defaults=(1e-12, None)), ('document', 'c1df110ea65998984f564c5c10abc54a'))
 paddle.fluid.layers.matmul (ArgSpec(args=['x', 'y', 'transpose_x', 'transpose_y', 'alpha', 'name'], varargs=None, keywords=None, defaults=(False, False, 1.0, None)), ('document', '3720b4a386585094435993deb028b592'))
 paddle.fluid.layers.topk (ArgSpec(args=['input', 'k', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e50940f3ce5a08cc477b72f517491bf3'))
-paddle.fluid.layers.warpctc (ArgSpec(args=['input', 'label', 'blank', 'norm_by_times', 'use_cudnn', 'input_length', 'label_length'], varargs=None, keywords=None, defaults=(0, False, False, None, None)), ('document', 'a76f4d4c8432465784480bddffafb1c8'))
+paddle.fluid.layers.warpctc (ArgSpec(args=['input', 'label', 'blank', 'norm_by_times', 'use_cudnn', 'input_length', 'label_length'], varargs=None, keywords=None, defaults=(0, False, False, None, None)), ('document', 'ba27f25141adf24706536d179fabdf17'))
 paddle.fluid.layers.sequence_reshape (ArgSpec(args=['input', 'new_dim'], varargs=None, keywords=None, defaults=None), ('document', 'f568714a876425004aca4ea2d4a27701'))
 paddle.fluid.layers.transpose (ArgSpec(args=['x', 'perm', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '8e72db173d4c082e27cb11f31d8c9bfa'))
 paddle.fluid.layers.im2sequence (ArgSpec(args=['input', 'filter_size', 'stride', 'padding', 'input_image_size', 'out_stride', 'name'], varargs=None, keywords=None, defaults=(1, 1, 0, None, 1, None)), ('document', '33134416fc27dd65a767e5f15116ee16'))
@@ -982,9 +984,6 @@ paddle.fluid.optimizer.ExponentialMovingAverage.update (ArgSpec(args=['self'], v
 paddle.fluid.optimizer.PipelineOptimizer ('paddle.fluid.optimizer.PipelineOptimizer', ('document', '6f85382abedb922387b08d98e8d0b69c'))
 paddle.fluid.optimizer.PipelineOptimizer.__init__ (ArgSpec(args=['self', 'optimizer', 'cut_list', 'place_list', 'concurrency_list', 'queue_size', 'sync_steps', 'start_cpu_core_id'], varargs=None, keywords=None, defaults=(None, None, None, 30, 1, 0)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.PipelineOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.optimizer.LookaheadOptimizer ('paddle.fluid.optimizer.LookaheadOptimizer', ('document', 'c291cadfa7452c7bf58b9e2f900a3511'))
-paddle.fluid.optimizer.LookaheadOptimizer.__init__ (ArgSpec(args=['self', 'inner_optimizer', 'alpha', 'k'], varargs=None, keywords=None, defaults=(0.5, 5)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.optimizer.LookaheadOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '1b7b2bfb986e93048e75ba69f2f490ab'))
 paddle.fluid.backward.gradients (ArgSpec(args=['targets', 'inputs', 'target_gradients', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e2097e1e0ed84ae44951437bfe269a1b'))
 paddle.fluid.regularizer.L1DecayRegularizer ('paddle.fluid.regularizer.L1DecayRegularizer', ('document', '34603757e70974d2fcc730643b382925'))
@@ -1008,8 +1007,8 @@ paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', '6a6cd8e
 paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
 paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', 'afd58ea5d390b5ea06ca70291a266d45'))
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
-paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', 'cd667b4ee96d7d6fca40aa722d67d744'))
-paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', 'fa47fa251f727c4a4f638d61e3c7c141'))
+paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.WeightNormParamAttr ('paddle.fluid.param_attr.WeightNormParamAttr', ('document', 'b5ae1698ea72d5a9428000b916a67379'))
 paddle.fluid.WeightNormParamAttr.__init__ (ArgSpec(args=['self', 'dim', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.DataFeeder ('paddle.fluid.data_feeder.DataFeeder', ('document', 'd9e64be617bd5f49dbb08ac2bc8665e6'))
