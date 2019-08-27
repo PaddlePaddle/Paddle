@@ -70,7 +70,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     void* recvbuff = out->mutable_data<T>(place);
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -102,7 +102,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_THROW("Invalid reduce type: %d", red_type);
     }
 
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
