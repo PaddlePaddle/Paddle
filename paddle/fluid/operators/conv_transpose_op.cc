@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_transpose_op.h"
+#include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -127,6 +129,12 @@ void Conv2DTransposeOpMaker::Make() {
       "output feature channels,"
       "H is the height of the filter, and W is the width of the filter. "
       "We enforce groups number == 1 in the convolution transpose scenario.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable();
+
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
@@ -162,6 +170,14 @@ void Conv2DTransposeOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<std::string>("fuse_activation",
+                       "(string, default \"\") Only used in mkldnn kernel")
+      .SetDefault("");
+  AddAttr<float>("fuse_alpha",
+                 "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
+  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
+      .SetDefault(0.0f);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -176,7 +192,7 @@ void Conv2DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -272,7 +288,7 @@ void Conv3DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(4096);
+      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -338,6 +354,28 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
                                  ctx.GetPlace(), layout_, library_);
 }
 
+class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    if (ForwardOp().Inputs().count("Bias") > 0) {
+      op->SetInput("Bias", Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    }
+    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -346,7 +384,7 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -362,7 +400,7 @@ REGISTER_OP_CPU_KERNEL(
 // conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -378,7 +416,7 @@ REGISTER_OP_CPU_KERNEL(
 // depthwise conv2d_transpose
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvTransposeGradOpDescMaker);
 REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

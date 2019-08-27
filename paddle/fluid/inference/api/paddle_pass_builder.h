@@ -30,6 +30,10 @@ class PaddlePassBuilder {
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
 
+  void SetPasses(std::initializer_list<std::string> passes) {
+    passes_ = passes;
+  }
+
   /** Append a pass to the end of the passes. */
   void AppendPass(const std::string &pass_type);
 
@@ -45,6 +49,7 @@ class PaddlePassBuilder {
   /** Delete all the passes that has type `pass_type`. */
   void DeletePass(const std::string &pass_type);
 
+  void ClearPasses();
   /** Append an analysis pass. */
   void AppendAnalysisPass(const std::string &pass);
 
@@ -67,8 +72,9 @@ class PaddlePassBuilder {
 
  protected:
   std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass", "ir_analysis_pass",
-       "ir_params_sync_among_devices_pass"}};
+      {"ir_graph_build_pass", "ir_graph_clean_pass", "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass", "adjust_cudnn_workspace_size_pass",
+       "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
 };
 
@@ -84,11 +90,20 @@ class PassStrategy : public PaddlePassBuilder {
    */
   virtual void EnableMKLDNN() {}
 
+  /** Enable NGRAPH optimization
+   */
+  virtual void EnableNgraph() {}
+
+  /** Enable MKLDNN quantize optimization
+   */
+  virtual void EnableMkldnnQuantizer() {}
+
   bool use_gpu() const { return use_gpu_; }
 
   virtual ~PassStrategy() = default;
 
  protected:
+  bool use_ngraph_{false};
   bool use_gpu_{false};
   bool use_mkldnn_{false};
 };
@@ -100,30 +115,22 @@ class CpuPassStrategy : public PassStrategy {
   CpuPassStrategy();
 
   explicit CpuPassStrategy(const CpuPassStrategy &other)
-      : PassStrategy(other.AllPasses()) {}
+      : PassStrategy(other.AllPasses()) {
+    use_gpu_ = other.use_gpu_;
+    use_ngraph_ = other.use_ngraph_;
+    use_mkldnn_ = other.use_mkldnn_;
+    use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
+  }
 
   virtual ~CpuPassStrategy() = default;
 
-  void EnableMKLDNN() override {
-// TODO(Superjomn) Consider the way to mix CPU with GPU.
-#ifdef PADDLE_WITH_MKLDNN
-    if (!use_mkldnn_) {
-      passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+  void EnableNgraph() override;
+  void EnableMKLDNN() override;
+  void EnableMkldnnQuantizer() override;
 
-      for (auto &pass : std::vector<std::string>(
-               {"depthwise_conv_mkldnn_pass",    //
-                "conv_bias_mkldnn_fuse_pass",    //
-                "conv3d_bias_mkldnn_fuse_pass",  //
-                "conv_relu_mkldnn_fuse_pass",    //
-                "conv_elementwise_add_mkldnn_fuse_pass"})) {
-        passes_.push_back(pass);
-      }
-    }
-    use_mkldnn_ = true;
-#else
-    use_mkldnn_ = false;
-#endif
-  }
+ protected:
+  bool use_ngraph_{false};
+  bool use_mkldnn_quantizer_{false};
 };
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
@@ -137,9 +144,14 @@ class GpuPassStrategy : public PassStrategy {
     use_gpu_ = true;
   }
 
+  void EnableNgraph() override;
   void EnableMKLDNN() override;
+  void EnableMkldnnQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
 };
+
+extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle

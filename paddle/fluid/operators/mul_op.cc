@@ -13,8 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -74,6 +79,30 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
+
+      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
+          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
+        customized_type_value = kMULMKLDNNINT8;
+      }
+    }
+#endif
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library, customized_type_value);
+  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -82,6 +111,9 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two
@@ -112,6 +144,27 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
+    AddAttr<float>(
+        "scale_x",
+        "scale_x to be used for int8 mul input data x. scale_x has the"
+        "same purpose as scale_in in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
+        .SetDefault(1.0f);
+    AddAttr<std::vector<float>>(
+        "scale_y",
+        "scale_y to be used for int8 mul input data y. scale_y has the"
+        "same purpose as scale_weights in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
+        .SetDefault({1.0f});
+    AddAttr<float>("scale_out",
+                   "scale_out to be used for int8 output data."
+                   "Only used with MKL-DNN INT8")
+        .SetDefault(1.0f);
+    AddAttr<bool>(
+        "force_fp32_output",
+        "(bool, default false) Force quantize kernel output FP32, only "
+        "used in quantized MKL-DNN.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Mul Operator.
 
@@ -178,16 +231,77 @@ class MulOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class MulDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
+
+    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
+      ctx->ShareDim("DOut", "DDOut");
+    }
+    if (ctx->HasOutput("DX") && ctx->HasInput("DDY")) {
+      ctx->ShareDim("X", "DX");
+    }
+    if (ctx->HasOutput("DY") && ctx->HasInput("DDX")) {
+      ctx->ShareDim("Y", "DY");
+    }
+  }
+};
+
+class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+    retv->SetType("mul_grad_grad");
+
+    retv->SetInput("X", Input("X"));
+    retv->SetInput("Y", Input("Y"));
+    retv->SetInput("DOut", Input(framework::GradVarName("Out")));
+    retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+
+    auto ddx = OutputGrad(framework::GradVarName("X"));
+    auto ddw = OutputGrad(framework::GradVarName("Y"));
+    std::vector<std::string> empty_str = {};
+
+    retv->SetOutput("DDOut", (ddx.empty())
+                                 ? empty_str
+                                 : InputGrad(framework::GradVarName("Out")));
+    retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
+    retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
+
+    retv->SetAttrMap(Attrs());
+    return retv;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
                   ops::MulOpGradMaker);
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
+
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
+
+REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
+
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    mul_grad_grad,
+    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

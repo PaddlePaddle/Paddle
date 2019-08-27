@@ -41,10 +41,11 @@ class AccuracyOp : public framework::OperatorWithKernel {
     // it's the output of topk.
 
     PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label's rank must be 2.");
-    PADDLE_ENFORCE_EQ(label_dim[1], 1, "label's second dimension must be 1");
-    PADDLE_ENFORCE_EQ(inference_dim[0], label_dim[0],
-                      "the inference tensor's num_rows must be"
-                      " the same as label.");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, label_dim[1], 1,
+                                 "label's second dimension must be 1");
+    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, inference_dim[0], label_dim[0],
+                                 "the inference tensor's num_rows must be"
+                                 " the same as label.");
 
     ctx->SetOutputDim("Accuracy", {1});
     ctx->SetOutputDim("Correct", {1});

@@ -20,6 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
+from mkldnn_op_test import format_reorder
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -27,20 +28,6 @@ def conv2d_forward_refer(input, filter, group, conv_param):
                                                           conv_param)
     size = [in_n, out_c, out_h, out_w]
     return format_reorder(out, size)
-
-
-def format_reorder(out, size):
-    in_n = size[0]
-    out_h = size[2]
-    out_w = size[3]
-    out_c = size[1]
-    out_tmp = np.zeros((in_n, out_h, out_w, out_c))
-    for n in range(in_n):
-        for i in range(out_h):
-            for j in range(out_w):
-                for m in range(out_c):
-                    out_tmp[n, i, j, m] = out[n, m, i, j]
-    return out_tmp.reshape(in_n, out_c, out_h, out_w)
 
 
 class TestConv2dInt8Op(TestConv2dOp):
@@ -96,12 +83,12 @@ class TestConv2dInt8Op(TestConv2dOp):
                     input_residual, self.input_residual_size).astype(
                         self.srctype) * (self.scale_out / self.scale_in_eltwise
                                          ))
-                if self.fuse_relu:
+                if self.fuse_activation == "relu":
                     output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
                     output = output_tmp.astype(self.dsttype)
             else:
-                if self.fuse_relu:
+                if self.fuse_activation == "relu":
                     output = np.maximum(np.round(output1 - output2),
                                         0).astype(self.dsttype)
                 else:
@@ -115,25 +102,26 @@ class TestConv2dInt8Op(TestConv2dOp):
             output1 = conv2d_forward_refer(
                 input.astype(np.int32), filter_int, self.groups,
                 conv2d_param).astype(np.float32)
+            output1_tmp = np.round(output1 * (
+                self.scale_out / (self.scale_in * self.scale_weights[0])))
+
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     0, 10, self.input_residual_size).astype(self.srctype)
-                output_tmp = np.round(output1 * (self.scale_out / (
+                output_tmp_res = np.round(output1 * (self.scale_out / (
                     self.scale_in * self.scale_weights[0])) + format_reorder(
                         input_residual, self.input_residual_size).astype(
                             np.int32) * (self.scale_out / self.scale_in_eltwise
                                          ))
-                output_tmp2 = np.round(output1 * (
-                    self.scale_out / (self.scale_in * self.scale_weights[0])))
-                if self.fuse_relu:
-                    output = np.maximum(output_tmp, 0).astype(self.dsttype)
+                if self.fuse_activation == "relu":
+                    output = np.maximum(output_tmp_res, 0).astype(self.dsttype)
                 else:
-                    output = output_tmp.astype(self.dsttype)
+                    output = output_tmp_res.astype(self.dsttype)
             else:
-                if self.fuse_relu:
-                    output = np.maximum(output_tmp2, 0).astype(self.dsttype)
+                if self.fuse_activation == "relu":
+                    output = np.maximum(output1_tmp, 0).astype(self.dsttype)
                 else:
-                    output = output_tmp2.astype(self.dsttype)
+                    output = output1_tmp.astype(self.dsttype)
 
         self.inputs = {
             'Input':
@@ -157,7 +145,7 @@ class TestConv2dInt8Op(TestConv2dOp):
             'Scale_out': self.scale_out,
             'Scale_weights': self.scale_weights,
             'Scale_in_eltwise': self.scale_in_eltwise,
-            'fuse_relu': self.fuse_relu,
+            'fuse_activation': self.fuse_activation,
             'fuse_residual_connection': self.fuse_residual
         }
         self.outputs = {'Output': output}
@@ -190,7 +178,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.dsttype = np.int8
 
     def init_fuse_relu(self):
-        self.fuse_relu = True
+        self.fuse_activation = "relu"
 
     def init_fuse_residual(self):
         self.fuse_residual = True
@@ -274,15 +262,13 @@ class TestWithInput1x1Filter1x1(TestConv2dInt8Op):
         self.groups = 3
 
 
-def init_data_type_with_fusion(self, input_dt, fuse_relu, fuse_residual):
+def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
     self.srctype = input_dt
-    self.dsttype = np.uint8 if fuse_relu else np.int8
+    self.dsttype = np.uint8 if fuse_activation == "relu" else np.int8
 
-    def init_fuse_relu(self):
-        self.fuse_relu = fuse_relu
+    self.fuse_activation = fuse_activation
 
-    def init_fuse_residual(self):
-        self.fuse_residual = fuse_residual
+    self.fuse_residual = fuse_residual
 
 
 def create_test_int8_class(parent):
@@ -291,43 +277,43 @@ def create_test_int8_class(parent):
 
     class TestS8U8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, True, False)
+            init_data_type_with_fusion(self, np.int8, "relu", False)
 
     #--------------------test conv2d s8 in and s8 out--------------------
 
     class TestS8S8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, False, False)
+            init_data_type_with_fusion(self, np.int8, "", False)
 
     #--------------------test conv2d u8 in and s8 out--------------------
 
     class TestU8S8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, False, False)
+            init_data_type_with_fusion(self, np.uint8, "", False)
 
     #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
 
     class TestU8U8Case(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, True, False)
+            init_data_type_with_fusion(self, np.uint8, "relu", False)
 
     #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
 
     class TestS8U8ResCase(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, True, True)
+            init_data_type_with_fusion(self, np.int8, "relu", True)
 
     #--------------------test conv2d s8 in and s8 out with residual fuse--------------------
 
     class TestS8S8ResCase(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.int8, False, True)
+            init_data_type_with_fusion(self, np.int8, "", True)
 
     #--------------------test conv2d u8 in and s8 out with residual fuse--------------------
 
     class TestU8S8ResCase(parent):
         def init_data_type(self):
-            init_data_type_with_fusion(self, np.uint8, False, True)
+            init_data_type_with_fusion(self, np.uint8, "", True)
 
     cls_name_s8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
     cls_name_s8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")

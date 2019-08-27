@@ -141,12 +141,10 @@ endfunction()
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
-  add_definitions("-DPADDLE_CUDA_BINVER=\"60\"")
 elseif (${CUDA_VERSION} LESS 8.0) # CUDA 7.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"70\"")
 elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
@@ -154,18 +152,16 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
 elseif (${CUDA_VERSION} LESS 10.0) # CUDA 9.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"90\"")
 elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"100\"")
 endif()
+add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
 include_directories(${CUDA_INCLUDE_DIRS})
 if(NOT WITH_DSO)
@@ -190,10 +186,6 @@ list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
-if(WITH_FAST_MATH)
-  # Make use of fast math library. https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
-  list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
-endif()
 # in cuda9, suppress cuda warning on eigen 
 list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings

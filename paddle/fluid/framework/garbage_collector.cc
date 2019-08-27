@@ -13,10 +13,21 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+
+DECLARE_double(eager_delete_tensor_gb);
+DECLARE_double(memory_fraction_of_eager_deletion);
+DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {
@@ -26,6 +37,9 @@ GarbageCollector::GarbageCollector(const platform::Place &place,
     : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
   garbages_.reset(new GarbageQueue());
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  if (max_memory_size_ > 1) {
+    mutex_.reset(new std::mutex());
+  }
 }
 
 CPUGarbageCollector::CPUGarbageCollector(const platform::CPUPlace &place,
@@ -85,5 +99,25 @@ void StreamGarbageCollector::ClearCallback(
   callback_manager_->AddCallback(callback);
 }
 #endif
+
+int64_t GetEagerDeletionThreshold() {
+  return FLAGS_eager_delete_tensor_gb < 0
+             ? -1
+             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
+                                    (static_cast<int64_t>(1) << 30));
+}
+
+bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
+
+void SetEagerDeletionMode(double threshold, double fraction, bool fast_mode) {
+  FLAGS_eager_delete_tensor_gb = threshold;
+  FLAGS_memory_fraction_of_eager_deletion = fraction;
+  FLAGS_fast_eager_deletion_mode = fast_mode;
+}
+
+double GetEagerDeletionMemoryFraction() {
+  return FLAGS_memory_fraction_of_eager_deletion;
+}
+
 }  // namespace framework
 }  // namespace paddle

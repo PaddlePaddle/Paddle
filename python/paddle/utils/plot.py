@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import six
 
 
 class PlotData(object):
@@ -60,9 +61,9 @@ class Ploter(object):
 
     def append(self, title, step, value):
         """
-	    Feed data
-	    
-            Args:
+        Feed data
+
+        Args:
                 title: assign the group data to this subtitle.
                 step: the x_axis of data.
                 value: the y_axis of data.
@@ -71,9 +72,9 @@ class Ploter(object):
                 .. code-block:: python
                 plot_curve = Ploter("Curve 1","Curve 2")
                 plot_curve.append(title="Curve 1",step=1,value=1)
-	"""
-        assert isinstance(title, basestring)
-        assert self.__plot_data__.has_key(title)
+        """
+        assert isinstance(title, six.string_types)
+        assert title in self.__plot_data__
         data = self.__plot_data__[title]
         assert isinstance(data, PlotData)
         data.append(step, value)
@@ -89,7 +90,7 @@ class Ploter(object):
                 .. code-block:: python
                 plot_curve = Ploter()
                 plot_cure.plot()
-	"""
+        """
         if self.__plot_is_disabled__():
             return
 

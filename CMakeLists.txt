@@ -24,6 +24,8 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "AR tools: ${CMAKE_AR}")
+
 if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
@@ -37,6 +39,8 @@ if(WIN32)
     set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+else(WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
 find_package(CUDA QUIET)
@@ -45,33 +49,32 @@ find_package(Threads REQUIRED)
 
 include(simd)
 
-################################ Configurations #######################################
+################################ Exposed Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
-option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
-option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
-option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
-option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
-option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
+option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
+option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
+option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
+option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
+option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(ON_INFER         "Turn on inference optimization."               OFF)
+################################ Internal Configurations #######################################
+option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
+option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
-option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
-option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
-option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
-option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
-option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(ON_INFER         "Turn on inference optimization."               OFF)
-option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
-option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
+option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
+option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -120,6 +123,12 @@ endif()
 if (REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
+
+if (SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
+  message("Choose the correct type of sanitizer")
+  return()
+endif()
+
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -142,14 +151,11 @@ include(external/cub)
 include(external/rocprim)
 include(external/xxhash)    # download xxhash
 include(external/dlpack)
-include(external/snappy)    # download snappy
-include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
 include(cupti)
-include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_PSLIB)
@@ -179,6 +185,7 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+include(anakin_subgraph)
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags
@@ -189,10 +196,15 @@ if(WITH_GPU)
     include(cuda)
     include(tensorrt)
 endif()
-if(WITH_MKL OR WITH_MKLML)
-    include(external/anakin)
-elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
+
+if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
+    set(WITH_DGC OFF)
+endif()
+
+if(WITH_DGC)
+    message(STATUS "add dgc lib.")
+    include(external/dgc)
+    add_definitions(-DPADDLE_WITH_DGC)
 endif()
 
 if (WITH_PROFILER)
@@ -201,14 +213,7 @@ if (WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-if (WITH_JEMALLOC)
-    find_package(JeMalloc REQUIRED)
-    include_directories(${JEMALLOC_INCLUDE_DIR})
-    add_definitions(-DPADDLE_WITH_JEMALLOC)
-endif()
-
 include(generic)            # simplify cmake module
-include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION

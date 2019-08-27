@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <atomic>
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -35,6 +37,7 @@ namespace operators {
 constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 constexpr char kCheckpointBlockId[] = "checkpint_block_id";
+constexpr char kSparseGradToParam[] = "sparse_grad_to_param";
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
 

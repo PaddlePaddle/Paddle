@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -43,6 +44,7 @@ struct VarHandleBase {
   virtual ~VarHandleBase();
 
   virtual std::string DebugString() const = 0;
+  virtual const std::string& Name() const = 0;
 
   void AddInput(OpHandleBase* in, ir::Node* node) {
     node_->inputs.clear();
@@ -73,11 +75,15 @@ struct VarHandleBase {
 
   OpHandleBase* GeneratedOp() { return generated_op_; }
 
+  const OpHandleBase* GeneratedOp() const { return generated_op_; }
+
   const std::unordered_set<OpHandleBase*>& PendingOps() const {
     return pending_ops_;
   }
 
   ir::Node* Node() { return node_; }
+
+  const ir::Node* Node() const { return node_; }
 
  protected:
   // The operator who generate this variable. nullptr if the variable
@@ -95,8 +101,9 @@ struct VarHandleBase {
 //
 // NOTE: runtime variables have place.
 struct VarHandle : public VarHandleBase {
-  explicit VarHandle(ir::Node* node) : VarHandleBase(node) {}
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
 
+ public:
   virtual ~VarHandle();
 
   std::string DebugString() const override;
@@ -109,6 +116,20 @@ struct VarHandle : public VarHandleBase {
         name_(std::move(name)),
         place_(std::move(place)) {}
 
+#ifdef PADDLE_WITH_CUDA
+  bool HasEvent() { return has_event_; }
+
+  const cudaEvent_t& GetEvent() {
+    PADDLE_ENFORCE(HasEvent(), "The event is not set.");
+    return event_;
+  }
+
+  void SetGenerateEvent(const cudaEvent_t& event) {
+    has_event_ = true;
+    event_ = event;
+  }
+#endif
+
   // version field currently is not used, however, just store the version to
   // debug easily.
  private:
@@ -116,6 +137,11 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
+#ifdef PADDLE_WITH_CUDA
+  // Only when this event is triggered, var is generated.
+  cudaEvent_t event_;
+  bool has_event_{false};
+#endif
 
  public:
   bool IsTheSameVar(const VarHandle& o) const {
@@ -125,6 +151,7 @@ struct VarHandle : public VarHandleBase {
 
   size_t version() const { return version_; }
   size_t scope_idx() const { return scope_idx_; }
+  const std::string& Name() const override { return name_; }
   const std::string& name() const { return name_; }
   const platform::Place& place() const { return place_; }
 };
@@ -136,6 +163,10 @@ struct DummyVarHandle : public VarHandleBase {
   virtual ~DummyVarHandle();
 
   std::string DebugString() const override;
+
+ public:
+  const std::string& Name() const override { return name_; }
+  std::string name_{"DummyVar"};
 };
 
 }  // namespace details

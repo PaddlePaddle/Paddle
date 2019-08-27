@@ -179,15 +179,15 @@ void FusionLSTMOpMaker::Make() {
   AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
       .AsIntermediate();
   AddAttr<bool>("use_peepholes",
-                "(bool, defalut: True) "
+                "(bool, default: True) "
                 "whether to enable diagonal/peephole connections.")
       .SetDefault(true);
   AddAttr<bool>("is_reverse",
-                "(bool, defalut: False) "
+                "(bool, default: False) "
                 "whether to compute reversed LSTM.")
       .SetDefault(false);
   AddAttr<bool>("use_seq",
-                "(bool, defalut: True) "
+                "(bool, default: True) "
                 "whether to use seq mode to compute.")
       .SetDefault(true);
   AddAttr<std::string>("gate_activation",
@@ -198,7 +198,7 @@ void FusionLSTMOpMaker::Make() {
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("cell_activation",
                        "(string, default: tanh)"
-                       "The activation for cell output, `tanh` by defalut.")
+                       "The activation for cell output, `tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("candidate_activation",
@@ -235,32 +235,34 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   const int D = wh_dims[0];                                 \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                    \
-  const T* x_data = x->data<T>();                                             \
-  const T* wx_data = wx->data<T>();                                           \
-  const T* wh_data = wh->data<T>();                                           \
-  /* diagonal weight*/                                                        \
-  const T* wp_data = bias->data<T>() + D4;                                    \
-  /* for peephole only*/                                                      \
-  T* checked_cell_data = nullptr;                                             \
-  auto place = ctx.GetPlace();                                                \
-  if (use_peepholes) {                                                        \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                          \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                   \
-    checked_cell_data = checked_cell->mutable_data<T>(place);                 \
-  }                                                                           \
-  const jit::lstm_attr_t attr(                                                \
-      D, jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),        \
-      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),      \
-      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),           \
-      use_peepholes);                                                         \
-  jit::lstm_t one_step;                                                       \
-  one_step.wp = wp_data;                                                      \
-  one_step.checked = checked_cell_data;                                       \
-  auto ComputeC1H1 =                                                          \
-      jit::Get<jit::kLSTMC1H1, jit::LSTMTuples<T>, platform::CPUPlace>(attr); \
-  auto ComputeCtHt =                                                          \
-      jit::Get<jit::kLSTMCtHt, jit::LSTMTuples<T>, platform::CPUPlace>(attr)
+#define INIT_OTHER_DEFINES                                                     \
+  const T* x_data = x->data<T>();                                              \
+  const T* wx_data = wx->data<T>();                                            \
+  const T* wh_data = wh->data<T>();                                            \
+  /* diagonal weight*/                                                         \
+  const T* wp_data = bias->data<T>() + D4;                                     \
+  /* for peephole only*/                                                       \
+  T* checked_cell_data = nullptr;                                              \
+  auto place = ctx.GetPlace();                                                 \
+  if (use_peepholes) {                                                         \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
+    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                    \
+    checked_cell_data = checked_cell->mutable_data<T>(place);                  \
+  }                                                                            \
+  const jit::lstm_attr_t attr(                                                 \
+      D, jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),         \
+      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
+      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
+      use_peepholes);                                                          \
+  jit::lstm_t one_step;                                                        \
+  one_step.wp = wp_data;                                                       \
+  one_step.checked = checked_cell_data;                                        \
+  auto ComputeC1H1 =                                                           \
+      jit::KernelFuncs<jit::LSTMC1H1Tuple<T>, platform::CPUPlace>::Cache().At( \
+          attr);                                                               \
+  auto ComputeCtHt =                                                           \
+      jit::KernelFuncs<jit::LSTMCtHtTuple<T>, platform::CPUPlace>::Cache().At( \
+          attr)
 
 // Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out)                                           \
@@ -472,8 +474,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_lstm, ops::FuisonLSTMKernel<float>,
                        ops::FuisonLSTMKernel<double>);

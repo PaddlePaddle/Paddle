@@ -93,11 +93,9 @@ execution.
 
 class GetPlacesInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o_name : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o_name).SetType(
-          framework::proto::VarType::PLACE_LIST);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o_name : ctx->Output("Out")) {
+      ctx->SetType(o_name, framework::proto::VarType::PLACE_LIST);
     }
   }
 };

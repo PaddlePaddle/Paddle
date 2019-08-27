@@ -98,7 +98,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
       attr.type = jit::SeqPoolType::kSqrt;
     }
     auto seqpool =
-        jit::Get<jit::kSeqPool, jit::SeqPoolTuples<T>, platform::CPUPlace>(
+        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
             attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
@@ -126,8 +126,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_seqpool_concat, ops::FusionSeqPoolConcatOp,
-                  ops::FusionSeqPoolConcatOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusionSeqPoolConcatOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_concat,
                        ops::FusionSeqPoolConcatKernel<float>,

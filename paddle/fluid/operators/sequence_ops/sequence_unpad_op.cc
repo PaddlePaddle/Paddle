@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_unpad_op.h"
+#include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -125,19 +127,39 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = framework::GetDataTypeOfVar(
+        ctx.InputVar(framework::GradVarName("Out")));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
+
+class SequenceUnpadGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("sequence_unpad_grad");
+    op->SetAttrMap(Attrs());
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequenceUnpadGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
-                  ops::SequenceUnpadOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp);
+                  ops::SequenceUnpadOpMaker, ops::SequenceUnpadGradOpDescMaker);
+REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
+                  ops::SequenceUnpadGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_unpad,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, float>,

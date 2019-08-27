@@ -91,6 +91,78 @@ class TestProdOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestAllOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_all"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].all()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAllOpWithDim(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_all"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.attrs = {'dim': [1]}
+        self.outputs = {'Out': self.inputs['X'].all(axis=1)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAllOpWithKeepDim(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_all"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.outputs = {
+            'Out': np.expand_dims(
+                self.inputs['X'].all(axis=1), axis=1)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyOpWithDim(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.attrs = {'dim': [1]}
+        self.outputs = {'Out': self.inputs['X'].any(axis=1)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyOpWithKeepDim(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.outputs = {
+            'Out': np.expand_dims(
+                self.inputs['X'].any(axis=1), axis=1)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"

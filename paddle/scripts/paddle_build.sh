@@ -52,10 +52,7 @@ function init() {
     fi
 }
 
-function cmake_gen() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-
+function cmake_base() {
     # build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # delete previous built whl packages
@@ -194,21 +191,20 @@ function cmake_gen() {
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
-        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}
-        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} 
         -DWITH_GRPC=${grpc_flag}
     ========================================
 EOF
@@ -225,24 +221,30 @@ EOF
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
+        -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DANAKIN_BUILD_FAT_BIN=${ANAKIN_BUILD_FAT_BIN:OFF}\
-        -DANAKIN_BUILD_CROSS_PLANTFORM=${ANAKIN_BUILD_CROSS_PLANTFORM:ON}\
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_JEMALLOC=${WITH_JEMALLOC:-OFF} \
         -DWITH_GRPC=${grpc_flag}
 
+}
+
+function cmake_gen() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cmake_base $1
 }
 
 function abort(){
@@ -259,12 +261,10 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
+    pip install cpplint
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    mkdir -p ./build/go
-    cp go/glide.* build/go
-    cd build/go; glide install; cd -
 
     export PATH=/usr/bin:$PATH
     pre-commit install
@@ -282,6 +282,21 @@ function check_style() {
 #              Build
 #=================================================
 
+function build_base() {
+    if [ "$SYSTEM" == "Linux" ];then
+      parallel_number=`nproc`
+    else
+      parallel_number=8
+    fi
+    if [ "$1" != "" ]; then
+      parallel_number=$1
+    fi
+    make clean
+    make -j ${parallel_number}
+    make install -j ${parallel_number}
+}
+
+
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -290,9 +305,7 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
-    make clean
-    make -j `nproc`
-    make install -j `nproc`
+    build_base $1
 }
 
 function build_mac() {
@@ -324,6 +337,25 @@ EOF
         fi
     fi
 }
+
+
+function combine_avx_noavx_build() {
+    mkdir -p ${PADDLE_ROOT}/build.noavx
+    cd ${PADDLE_ROOT}/build.noavx
+    WITH_AVX=OFF
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+
+    # build combined one
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
+    WITH_AVX=ON
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
 
 function run_brpc_test() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -377,10 +409,21 @@ EOF
         #remove proxy here to fix dist error on mac
         export http_proxy=
         export https_proxy=
-        # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $2
         # make install should also be test when unittest
         make install -j 8
+
+        set +ex
+        if [ "$1" == "cp27-cp27m" ]; then
+            pip uninstall -y paddlepaddle
+        elif [ "$1" == "cp35-cp35m" ]; then
+            pip3.5 uninstall -y paddlepaddle
+        elif [ "$1" == "cp36-cp36m" ]; then
+            pip3.6 uninstall -y paddlepaddle
+        elif [ "$1" == "cp37-cp37m" ]; then
+            pip3.7 uninstall -y paddlepaddle
+        fi
+        set -ex
+
         if [ "$1" == "cp27-cp27m" ]; then
             set -e
             pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
@@ -393,17 +436,10 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        paddle version
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -j $2
 
-        if [ "$1" == "cp27-cp27m" ]; then
-            pip uninstall -y paddlepaddle
-        elif [ "$1" == "cp35-cp35m" ]; then
-            pip3.5 uninstall -y paddlepaddle
-        elif [ "$1" == "cp36-cp36m" ]; then
-            pip3.6 uninstall -y paddlepaddle
-        elif [ "$1" == "cp37-cp37m" ]; then
-            pip3.7 uninstall -y paddlepaddle
-        fi
+        paddle version
     fi
 }
 
@@ -413,75 +449,31 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid,paddle.reader > new.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
-        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
     fi
     # ComposeNotAligned has significant difference between py2 and py3
     sed -i '/.*ComposeNotAligned.*/d' new.spec
 
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+
+    # Currently, we only check in PR_CI python 2.7
+    if [ "$SYSTEM" != "Darwin" ]; then
+      if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+      fi
+    fi
     deactivate
 }
 
 function assert_api_spec_approvals() {
-    if [ -z ${BRANCH} ]; then
-        BRANCH="develop"
-    fi
-
-    API_FILES=("cmake/external"
-               "paddle/fluid/API.spec"
-               "paddle/fluid/framework/operator.h"
-               "paddle/fluid/framework/tensor.h"
-               "paddle/fluid/framework/lod_tensor.h"
-               "paddle/fluid/framework/selected_rows.h"
-               "paddle/fluid/framework/op_desc.h"
-               "paddle/fluid/framework/block_desc.h"
-               "paddle/fluid/framework/var_desc.h"
-               "paddle/fluid/framework/scope.h"
-               "paddle/fluid/framework/ir/node.h"
-               "paddle/fluid/framework/ir/graph.h"
-               "paddle/fluid/framework/framework.proto"
-               "paddle/fluid/operators/distributed/send_recv.proto.in")
-    for API_FILE in ${API_FILES[*]}; do
-      API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" || true`
-      echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
-      if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
-          # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-          APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-          python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
-          echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-          if [ "${APPROVALS}" == "FALSE" ]; then
-              echo "You must have panyx0718 approval for the api change! ${API_FILE}"
-              exit 1
-          fi
-      fi
-    done
-
-    HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
-    if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 2887803`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have panyx0718 approval for the const_cast"
-            exit 1
-        fi
-    fi
-
-    pip install ${PADDLE_ROOT}/build/opt/paddle/share/wheels/*.whl
-    CHECK_DOCK_MD5=`python ${PADDLE_ROOT}/tools/check_doc_approval.py`
-    if [ "True" != ${CHECK_DOCK_MD5} ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 35982308`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "You must have shanyi15 approval for the api doc change! "
-            exit 1
-        fi
-        echo ${CHECK_DOCK_MD5} >/root/.cache/doc_md5.txt
+    /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
+    if [ "$?" != 0 ];then
+       exit 1
     fi
 }
 
@@ -533,6 +525,148 @@ function bind_test() {
         env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
     done
     wait
+}
+
+EXIT_CODE=0;
+function caught_error() {
+ for job in `jobs -p`; do
+        # echo "PID => ${job}"
+        if ! wait ${job} ; then
+            echo "At least one test failed with exit code => $?" ;
+            EXIT_CODE=1;
+        fi
+    done
+}
+
+function card_test() {
+    set -m
+
+    # get the CUDA device count
+    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        if (( $cardnumber > $CUDA_DEVICE_COUNT )); then
+            cardnumber=$CUDA_DEVICE_COUNT
+        fi
+    else
+        cardnumber=$CUDA_DEVICE_COUNT
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    trap 'caught_error' CHLD
+
+    NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
+    for (( i = 0; i < $NUM_PROC; i++ )); do
+        # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
+        # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
+        cuda_list=()
+        for (( j = 0; j < cardnumber; j++ )); do
+            if [ $j -eq 0 ]; then
+                    cuda_list=("$[i*cardnumber]")
+                else
+                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+            fi
+        done
+        if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            else
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+            fi
+        else
+            if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            else
+                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+            fi
+        fi
+    done
+
+    wait; # wait for all subshells to finish
+    set +m
+}
+
+function parallel_test_base() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests in parallel way ...
+    ========================================
+EOF
+
+set +x
+        EXIT_CODE=0;
+        test_cases=$(ctest -N -V) # get all test cases
+        exclusive_tests=''        # cases list which would be run exclusively
+        single_card_tests=''      # cases list which would take one graph card
+        multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+        is_exclusive=''           # indicate whether the case is exclusive type
+        is_multicard=''           # indicate whether the case is multiple GPUs type
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                    # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    continue
+                fi
+                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+                if [[ "$is_multicard" == "" ]]; then
+                  # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
+                fi
+
+                if [[ "$is_exclusive" != "" ]]; then
+                    if [[ "$exclusive_tests" == "" ]]; then
+                        exclusive_tests="^$testcase$"
+                    else
+                        exclusive_tests="$exclusive_tests|^$testcase$"
+                    fi
+                elif [[ "$is_multicard" != "" ]]; then
+                    if [[ "$multiple_card_tests" == "" ]]; then
+                        multiple_card_tests="^$testcase$"
+                    else
+                        multiple_card_tests="$multiple_card_tests|^$testcase$"
+                    fi
+                else
+                    if [[ "$single_card_tests" == "" ]]; then
+                        single_card_tests="^$testcase$"
+                    else
+                        single_card_tests="$single_card_tests|^$testcase$"
+                    fi
+                fi
+                is_exclusive=''
+                is_multicard=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+
+        card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+set -ex
+    fi
+}
+
+function parallel_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    parallel_test_base
 }
 
 function gen_doc_lib() {
@@ -618,7 +752,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
+        NCCL_DEPS="apt-get install -y --allow-change-held-packages libnccl2=2.4.7-1+cuda${CUDA_MAJOR} libnccl-dev=2.4.7-1+cuda${CUDA_MAJOR} || true"
     else
         NCCL_DEPS="true"
     fi
@@ -632,7 +766,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python && pip3 install /*.whl; apt-get install -f -y && \
+        pip3 install opencv-python py-cpuinfo==5.0.0 && pip3 install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
         ${PADDLE_VERSION} && \
@@ -640,7 +774,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp36-cp36m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -666,7 +799,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     elif [ "$1" == "cp37-cp37m" ]; then
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -689,7 +821,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     else
         cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
@@ -705,7 +836,6 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
-    ENV NCCL_LAUNCH_MODE PARALLEL
 EOF
     fi
 
@@ -723,9 +853,14 @@ function gen_fluid_lib() {
     Generating fluid library for train and inference ...
     ========================================
 EOF
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON
-    make -j `nproc` fluid_lib_dist
-    make -j `nproc` inference_lib_dist
+    parallel_number=`nproc`
+    if [[ "$1" != "" ]]; then
+      parallel_number=$1
+    fi
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+
+    make -j ${parallel_number} fluid_lib_dist
+    make -j ${parallel_number} inference_lib_dist
 }
 
 function tar_fluid_lib() {
@@ -754,17 +889,57 @@ EOF
     ./clean.sh
 }
 
+
+function build_document_preview() {
+    sh /paddle/tools/document_preview.sh ${PORT}
+}
+
+
+function example() {
+    pip install /paddle/build/python/dist/*.whl
+    paddle version
+    cd ${PADDLE_ROOT}/python/paddle/fluid
+    python sampcd_processor.py cpu 
+    if [ "$?" != "0" ];then
+      echo "Code instance execution failed"
+      exit 1
+    fi
+}
+
+
 function main() {
     local CMD=$1
+    local parallel_number=$2
     init
     case $CMD in
+      build_only)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        ;;
+      build_and_check)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        example
+        ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
+        gen_dockerfile ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
+        ;;
+      combine_avx_noavx)
+        combine_avx_noavx_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
+      combine_avx_noavx_build_and_test)
+        combine_avx_noavx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        parallel_test_base
+        ;;
       test)
-        run_test
+        parallel_test
         ;;
       single_test)
         single_test $2
@@ -783,7 +958,7 @@ function main() {
         ;;
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         tar_fluid_lib
         test_fluid_lib
         ;;
@@ -792,16 +967,12 @@ function main() {
         ;;
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
-        build
-        assert_api_not_changed ${PYTHON_ABI:-""}
-        run_test
-        gen_fluid_lib
-        test_fluid_lib
-        assert_api_spec_approvals
+        build ${parallel_number}
+        parallel_test
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
-        build
+        build ${parallel_number}
         run_brpc_test
         ;;
       assert_api)
@@ -809,7 +980,7 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         test_fluid_lib
         ;;
       assert_api_approvals)
@@ -826,22 +997,29 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build
-        run_test
-        assert_api_not_changed ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
       gen_fluid_lib)
-        gen_fluid_lib
+        gen_fluid_lib ${parallel_number}
         ;;
       test_fluid_lib)
         test_fluid_lib
         ;;
+      document)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        build_document_preview
+        ;;
+      api_example)
+        example
+        ;;
       *)
         print_usage
-        exit 0
+        exit 1
         ;;
       esac
 }

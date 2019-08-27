@@ -13,8 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace operators {
@@ -40,6 +46,27 @@ inline bool NeedSend(const framework::Scope& scope,
         "[LodTensor, SelectedRows]");
   }
   return false;
+}
+
+inline std::vector<int64_t> ToAbsoluteSection(
+    const std::vector<int64_t>& height_sections) {
+  std::vector<int64_t> abs_sections;
+  abs_sections.resize(height_sections.size());
+  abs_sections[0] = 0;
+  for (size_t i = 1; i < height_sections.size(); ++i) {
+    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
+  }
+  return abs_sections;
+}
+
+inline size_t GetSectionIndex(int64_t id,
+                              const std::vector<int64_t>& abs_sections) {
+  for (size_t i = 1; i < abs_sections.size(); ++i) {
+    if (id < abs_sections[i]) {
+      return i - 1;
+    }
+  }
+  return abs_sections.size() - 1;
 }
 
 }  // namespace operators

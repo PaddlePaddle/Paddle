@@ -33,24 +33,27 @@ class AvgPoolPlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() override {
-    return SerializedSize(ceil_mode_) + SerializedSize(ksize_) +
-           SerializedSize(strides_) + SerializedSize(paddings_) +
-           SerializedSize(input_shape_) + getBaseSerializationSize();
+    return SerializedSize(getPluginType()) + SerializedSize(ceil_mode_) +
+           SerializedSize(ksize_) + SerializedSize(strides_) +
+           SerializedSize(paddings_) + SerializedSize(input_shape_) +
+           SerializedSize(output_shape_) + getBaseSerializationSize();
   }
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
-  // It should not be called by users.
   void serialize(void *buffer) override {
+    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, ceil_mode_);
     SerializeValue(&buffer, ksize_);
     SerializeValue(&buffer, strides_);
     SerializeValue(&buffer, paddings_);
     SerializeValue(&buffer, input_shape_);
+    SerializeValue(&buffer, output_shape_);
   }
 
  public:
+  AvgPoolPlugin() {}
   AvgPoolPlugin(bool ceil_mode, std::vector<int> ksize,
                 std::vector<int> strides, std::vector<int> paddings,
                 std::vector<int> input_shape)
@@ -89,6 +92,7 @@ class AvgPoolPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &strides_);
     DeserializeValue(&serialData, &serialLength, &paddings_);
     DeserializeValue(&serialData, &serialLength, &input_shape_);
+    DeserializeValue(&serialData, &serialLength, &output_shape_);
   }
 
   AvgPoolPlugin *clone() const override {
@@ -96,7 +100,7 @@ class AvgPoolPlugin : public PluginTensorRT {
                              input_shape_);
   }
 
-  const char *getPluginType() const override { return "avg_pool"; }
+  const char *getPluginType() const override { return "avg_pool_plugin"; }
   int getNbOutputs() const override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
