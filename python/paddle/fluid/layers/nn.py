@@ -314,7 +314,6 @@ def fc(input,
           import paddle.fluid as fluid
           # when input is single tensor
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-          
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
 
           # when input are multiple tensors
@@ -3871,6 +3870,13 @@ def conv2d_transpose(input,
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+
+    Note:
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
+          conv2d_transpose can compute the kernel size automatically.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
