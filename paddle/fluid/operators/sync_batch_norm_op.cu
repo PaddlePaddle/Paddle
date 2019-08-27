@@ -74,7 +74,6 @@ class SyncBatchNormGradKernel::Compute(
                                              d_scale, d_bias, saved_mean,
                                              saved_inv_var, epsilon);
 }
-};
 
 }  // namespace operators
 }  // namespace paddle
