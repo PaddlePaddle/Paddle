@@ -61,6 +61,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'inplace_abn',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -3322,11 +3323,35 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    use_mkldnn = False
+    if act in ['identity', 'elu', 'leakyrelu']:
+        op_type = "inplace_abn"
+        # use fused-activation by default and disable mkldnn
+        use_mkldnn = False
+        use_fused_act = True
+    else:
+        op_type = "batch_norm"
+        use_fused_act = False
+
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
+    attrs = {
+        "momentum": momentum,
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": use_mkldnn,
+        "fuse_with_relu": fuse_with_relu,
+        "use_global_stats": use_global_stats
+    }
+
+    if use_fused_act:
+        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+        attrs.update({"activation": act})
+
     helper.append_op(
-        type="batch_norm",
+        type=op_type,
         inputs={
             "X": input,
             "Scale": scale,
@@ -3341,17 +3366,12 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={
-            "momentum": momentum,
-            "epsilon": epsilon,
-            "is_test": is_test,
-            "data_layout": data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu,
-            "use_global_stats": use_global_stats
-        })
+        attrs=attrs)
 
-    return helper.append_activation(batch_norm_out)
+    if use_fused_act:
+        return batch_norm_out
+    else:
+        return helper.append_activation(batch_norm_out)
 
 
 def data_norm(input,
