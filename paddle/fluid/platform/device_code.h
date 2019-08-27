@@ -16,16 +16,14 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/dynload/nvrtc.h"
 #endif
 
 namespace paddle {
 namespace platform {
-
-enum DataType { INT = 0, FLOAT = 1, FLOAT_PTR = 2 };
 
 class DeviceCode {
  public:
@@ -36,7 +34,6 @@ class DeviceCode {
 
  protected:
   std::string name_;
-  std::vector<DataType> formals_;
   std::string kernel_;
 };
 

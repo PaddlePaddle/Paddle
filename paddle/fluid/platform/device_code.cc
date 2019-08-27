@@ -39,13 +39,14 @@ CUDADeviceCode::CUDADeviceCode(const std::string& name,
 
 void CUDADeviceCode::Compile() {
   nvrtcProgram program;
-  PADDLE_ENFORCE(dynload::nvrtcCreateProgram(&program,
-                                             kernel_.c_str(),  // buffer
-                                             name_.c_str(),    // name
-                                             0,                // numHeaders
-                                             nullptr,          // headers
-                                             nullptr),         // includeNames
-                 "nvrtcCreateProgram failed.");
+  PADDLE_ENFORCE_EQ(dynload::nvrtcCreateProgram(&program,
+                                                kernel_.c_str(),  // buffer
+                                                name_.c_str(),    // name
+                                                0,                // numHeaders
+                                                nullptr,          // headers
+                                                nullptr),  // includeNames
+                    NVRTC_SUCCESS,
+                    "nvrtcCreateProgram failed.");
 
   // Compile the program for specified compute_capability
   std::string compute_flag =
@@ -59,25 +60,25 @@ void CUDADeviceCode::Compile() {
   if (compile_result == NVRTC_ERROR_COMPILATION) {
     // Obtain compilation log from the program
     size_t log_size;
-    PADDLE_ENFORCE(dynload::nvrtcGetProgramLogSize(program, &log_size),
-                   "nvrtcGetProgramLogSize failed.");
+    PADDLE_ENFORCE_EQ(dynload::nvrtcGetProgramLogSize(program, &log_size),
+                      NVRTC_SUCCESS, "nvrtcGetProgramLogSize failed.");
     std::vector<char> log;
     log.resize(log_size + 1);
-    PADDLE_ENFORCE(dynload::nvrtcGetProgramLog(program, log.data()),
-                   "nvrtcGetProgramLog failed.");
+    PADDLE_ENFORCE_EQ(dynload::nvrtcGetProgramLog(program, log.data()),
+                      NVRTC_SUCCESS, "nvrtcGetProgramLog failed.");
     LOG(FATAL) << "JIT compiling of CUDA code failed:\n" << log.data();
   }
 
   // Obtain PTX from the program
   size_t ptx_size;
-  PADDLE_ENFORCE(dynload::nvrtcGetPTXSize(program, &ptx_size),
-                 "nvrtcGetPTXSize failed.");
+  PADDLE_ENFORCE_EQ(dynload::nvrtcGetPTXSize(program, &ptx_size), NVRTC_SUCCESS,
+                    "nvrtcGetPTXSize failed.");
   ptx_.resize(ptx_size + 1);
-  PADDLE_ENFORCE(dynload::nvrtcGetPTX(program, ptx_.data()),
-                 "nvrtcGetPTX failed.");
+  PADDLE_ENFORCE_EQ(dynload::nvrtcGetPTX(program, ptx_.data()), NVRTC_SUCCESS,
+                    "nvrtcGetPTX failed.");
 
-  PADDLE_ENFORCE(dynload::nvrtcDestroyProgram(&program),
-                 "nvrtcDestroyProgram failed.");
+  PADDLE_ENFORCE_EQ(dynload::nvrtcDestroyProgram(&program), NVRTC_SUCCESS,
+                    "nvrtcDestroyProgram failed.");
 
   PADDLE_ENFORCE_EQ(
       dynload::cuModuleLoadData(&module_, ptx_.data()), CUDA_SUCCESS,
