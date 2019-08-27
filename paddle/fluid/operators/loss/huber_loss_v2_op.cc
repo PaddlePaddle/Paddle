@@ -120,7 +120,7 @@ class HuberLossV2GradOpDescMaker : public framework::SingleGradOpDescMaker {
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("huber_loss_grad");
+    op->SetType("huber_loss_v2_grad");
     op->SetInput("Residual", Output("Residual"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
