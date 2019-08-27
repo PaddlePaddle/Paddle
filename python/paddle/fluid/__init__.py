@@ -114,7 +114,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'dygraph_grad_clip',
         'profiler',
         'unique_name',
-        'recordio_writer',
         'Scope',
         'install_check',
     ]
