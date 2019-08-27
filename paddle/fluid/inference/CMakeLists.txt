@@ -21,6 +21,8 @@ if (ANAKIN_SUBGRAPH)
   add_subdirectory(anakin)
 endif()
 
+add_subdirectory(lite)
+
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 get_property(fluid_third_partys GLOBAL PROPERTY FLUID_THRID_PARTYS)

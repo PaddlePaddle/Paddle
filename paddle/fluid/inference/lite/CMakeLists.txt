@@ -1,0 +1,5 @@
+if (NOT LITE_SUBGRAPH)
+    return()
+else()
+    message(STATUS "==== Build LITE_SUBGRAPH! ====")
+endif()
