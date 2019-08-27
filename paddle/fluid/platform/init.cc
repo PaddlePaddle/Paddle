@@ -203,7 +203,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 }
 
 #ifndef _WIN32
-static void SignalHandle(const char *data, int size) {
+void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
   try {
     LOG(WARNING) << "Signal raises!\n" + std::string(data, size);
