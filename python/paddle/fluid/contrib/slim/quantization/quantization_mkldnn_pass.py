@@ -463,6 +463,7 @@ class TransformThroughFP32Pass(object):
         graph = self._apply_pass(graph, 'infer_clean_graph_pass')
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
+        graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
