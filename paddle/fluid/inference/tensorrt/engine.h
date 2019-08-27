@@ -128,7 +128,6 @@ class TensorRTEngine {
         &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
-    infer_context_.reset(infer_engine_->createExecutionContext());
   }
 
   void SetRuntimeBatch(size_t batch_size);
@@ -200,7 +199,8 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
-  infer_ptr<nvinfer1::IExecutionContext> infer_context_;
+  std::unordered_map<std::thread::id, infer_ptr<nvinfer1::IExecutionContext>>
+      infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 };  // class TensorRTEngine
