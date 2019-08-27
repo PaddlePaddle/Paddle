@@ -42,7 +42,7 @@ class Engine {
   virtual void RemoveOp(OpBase* op) {
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot remove null op");
     auto iter = grad_ops_.find(op);
-    PADDLE_ENFORCE(iter != grad_ops_.end(), "Op is not inside tracer");
+    PADDLE_ENFORCE_EQ(iter != grad_ops_.end(), true, "Op is not inside tracer");
     grad_ops_.erase(iter);
   }
 

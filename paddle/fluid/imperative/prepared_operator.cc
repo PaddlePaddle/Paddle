@@ -36,10 +36,10 @@ platform::Place PreparedOp::GetExpectedPlace(const platform::Place& place,
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto tmp_place = tensor->place();
-        PADDLE_ENFORCE(!found || tmp_place == place,
-                       "Input variable should keep in the same place: %s, "
-                       "but get place: %s of input %s instead",
-                       place, tmp_place, name_pair.first);
+        PADDLE_ENFORCE_EQ(!found || tmp_place == place, true,
+                          "Input variable should keep in the same place: %s, "
+                          "but get place: %s of input %s instead",
+                          place, tmp_place, name_pair.first);
       }
     }
   }

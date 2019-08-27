@@ -64,8 +64,8 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
 
-  PADDLE_ENFORCE(var->HasGradVar(), "Grad variable not exist for variable %s",
-                 var->Name());
+  PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
+                    "Grad variable not exist for variable %s", var->Name());
 
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
   auto* grad_var =
@@ -110,9 +110,9 @@ void BasicEngine::PrepareGradAccumulators(OpBase* op) {
 }
 
 void BasicEngine::PrepareDeps() {
-  PADDLE_ENFORCE(op_deps_.empty(), "Op deps must be initialized here");
-  PADDLE_ENFORCE(accumulators_.empty(),
-                 "Accumulators must be initialized here");
+  PADDLE_ENFORCE_EQ(op_deps_.empty(), true, "Op deps must be initialized here");
+  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+                    "Accumulators must be initialized here");
 
   std::queue<OpBase*> q;
   std::unordered_set<OpBase*> visited;
@@ -150,8 +150,8 @@ void BasicEngine::PrepareDeps() {
 void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VarBase> src,
                               VarBase* dst) {
   auto iter = accumulators_.find(dst);
-  PADDLE_ENFORCE(iter != accumulators_.end(),
-                 "Cannot find gradient of variable %s", dst->Name());
+  PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
+                    "Cannot find gradient of variable %s", dst->Name());
   iter->second->Add(std::move(src), op->id());
 }
 void BasicEngine::Execute() {

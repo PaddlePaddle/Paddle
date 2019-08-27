@@ -209,7 +209,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   framework::Attribute GetAttr(const std::string& name) const override {
     auto iter = attrs_.find(name);
-    PADDLE_ENFORCE(iter != attrs_.end(), "Cannot find attribute %s", name);
+    PADDLE_ENFORCE_EQ(iter != attrs_.end(), true, "Cannot find attribute %s",
+                      name);
     return iter->second;
   }
 
@@ -229,22 +230,24 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const std::vector<std::string>& Input(
       const std::string& name) const override {
     auto iter = input_names_.find(name);
-    PADDLE_ENFORCE(iter != input_names_.end(), "Cannot find input %s", name);
+    PADDLE_ENFORCE_EQ(iter != input_names_.end(), true, "Cannot find input %s",
+                      name);
     return iter->second;
   }
 
   const std::vector<std::string>& Output(
       const std::string& name) const override {
     auto iter = output_names_.find(name);
-    PADDLE_ENFORCE(iter != output_names_.end(), "Cannot find output %s", name);
+    PADDLE_ENFORCE_EQ(iter != output_names_.end(), true,
+                      "Cannot find output %s", name);
     return iter->second;
   }
 
   framework::proto::VarType::Type GetType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetType",
-                   name);
+    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
+                      "Cannot find var %s in GetType", name);
     return iter->second->Type();
   }
 
@@ -260,8 +263,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   framework::proto::VarType::Type GetDataType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetDataType",
-                   name);
+    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
+                      "Cannot find var %s in GetDataType", name);
     return iter->second->DataType();
   }
 
@@ -346,7 +349,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }
 
-  void SortPrecedingOps() {
+  void SortGradPendingOps() {
     std::sort(grad_pending_ops_.begin(), grad_pending_ops_.end(),
               [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
   }
