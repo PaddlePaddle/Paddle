@@ -385,7 +385,7 @@ class InMemoryDataset(DatasetBase):
         self._prepare_to_run()
         self.dataset.load_into_memory()
 
-    def preload_into_memory(self, thread_num):
+    def preload_into_memory(self, thread_num=None):
         """
         Load data into memory in async mode
 
@@ -403,6 +403,8 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         self._prepare_to_run()
+        if thread_num is None:
+            thread_num = self.thread_num
         self.dataset.create_preload_readers(thread_num)
         self.dataset.preload_into_memory(thread_num)
 

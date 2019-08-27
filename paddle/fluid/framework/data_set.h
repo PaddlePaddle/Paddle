@@ -114,7 +114,7 @@ class Dataset {
   // create preload readers
   virtual void CreatePreLoadReaders(int thread_num) = 0;
   // destroy preload readers after prelaod done
-  virtual void DestoryPreLoadReaders() = 0;
+  virtual void DestroyPreLoadReaders() = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -171,7 +171,7 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
   virtual void CreatePreLoadReaders(int thread_num);
-  virtual void DestoryPreLoadReaders();
+  virtual void DestroyPreLoadReaders();
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

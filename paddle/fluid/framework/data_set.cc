@@ -379,13 +379,13 @@ void DatasetImpl<T>::CreatePreLoadReaders(int thread_num) {
 }
 
 template <typename T>
-void DatasetImpl<T>::DestoryPreLoadReaders() {
-  VLOG(3) << "Begin DestoryPreLoadReaders";
+void DatasetImpl<T>::DestroyPreLoadReaders() {
+  VLOG(3) << "Begin DestroyPreLoadReaders";
   preload_readers_.clear();
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(
       preload_readers_);
   file_idx_ = 0;
-  VLOG(3) << "End DestoryPreLoadReaders";
+  VLOG(3) << "End DestroyPreLoadReaders";
 }
 
 template <typename T>
