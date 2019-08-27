@@ -155,7 +155,7 @@ class DownpourServer(Server):
                 table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
-                        sparse_table_name):
+                        sparse_table_names):
         """
         Args:
             table_id(int): id of sparse params table
@@ -166,7 +166,7 @@ class DownpourServer(Server):
         fea_dim = 0
         dense_param_vars = []
         for p in param_var:
-            if p.name not in sparse_table_name:
+            if p.name not in sparse_table_names:
                 dense_param_vars.append(p)
 
         for param in dense_param_vars:
@@ -216,7 +216,7 @@ class DownpourServer(Server):
         table.accessor.fea_dim = fea_dim
 
     def add_data_norm_table(self, table_id, learning_rate, param_var, grad_var,
-                            strategy, sparse_table_name):
+                            strategy, sparse_table_names):
         """
         Args:
             table_id(int): id of datanorm table
@@ -227,7 +227,7 @@ class DownpourServer(Server):
         fea_dim = 0
         dense_param_vars = []
         for p in param_var:
-            if p.name not in sparse_table_name:
+            if p.name not in sparse_table_names:
                 dense_param_vars.append(p)
 
         for param in dense_param_vars:
@@ -325,7 +325,7 @@ class DownpourWorker(Worker):
             [var.name + "@GRAD" for var in slot_value_vars])
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
-                        dense_start_table_id, sparse_table_name):
+                        dense_start_table_id, sparse_table_names):
         """
         Args:
             table_id(int): id of sparse params table
@@ -337,12 +337,12 @@ class DownpourWorker(Worker):
             return None 
         """
         sparse_table_name_grad = []
-        for name in sparse_table_name:
+        for name in sparse_table_names:
             sparse_table_name_grad.append(name + "@GRAD")
 
         dense_param_name = []
         for p in param_vars:
-            if p.name not in sparse_table_name:
+            if p.name not in sparse_table_names:
                 dense_param_name.append(p.name)
 
         dense_grad_name = []
