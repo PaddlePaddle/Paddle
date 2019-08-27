@@ -1035,8 +1035,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id',
-        'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
+        'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
+        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
         'c_sync_comm_stream'
     }
 
@@ -2728,6 +2728,8 @@ class IrGraph(object):
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
@@ -2854,10 +2856,6 @@ class Program(object):
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0
 
-        # @deprecated(the python memory optimize transpiler is deprecated)
-        # whether the program is optimized by memory_optimize_transpiler
-        self.__is_mem_optimized = False
-
         # if this program has been optimized by distributed optimizer
         # fleet_opt will be given a value
         self._fleet_opt = None
@@ -2868,16 +2866,6 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
-
-    @property
-    def _is_mem_optimized(self):
-        # if the program is optimized, operator input/outputs
-        # maybe same, which conflict with save_inference_model.
-        return self.__is_mem_optimized
-
-    @_is_mem_optimized.setter
-    def _is_mem_optimized(self, target):
-        self.__is_mem_optimized = target
 
     @property
     def _op_role(self):

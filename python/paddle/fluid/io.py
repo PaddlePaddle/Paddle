@@ -111,6 +111,20 @@ def _clone_var_in_block_(block, var):
             persistable=True)
 
 
+def _get_valid_program(main_program):
+    if main_program is None:
+        main_program = default_main_program()
+    elif isinstance(main_program, CompiledProgram):
+        main_program = main_program._program
+        if main_program is None:
+            raise TypeError("program should be as Program type or None")
+        warnings.warn(
+            "The input is a CompiledProgram, this is not recommended.")
+    if not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
+    return main_program
+
+
 def save_vars(executor,
               dirname,
               main_program=None,
@@ -193,13 +207,9 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
+    main_program = _get_valid_program(main_program)
 
     if vars is None:
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
-
         save_vars(
             executor,
             main_program=main_program,
@@ -210,11 +220,6 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
-
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
@@ -222,13 +227,13 @@ def save_vars(executor,
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                save_file_path = os.path.join(save_dirname, new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
-                    })
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -516,11 +521,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.save_persistables(executor=exe, dirname=param_path,
                                        main_program=prog)
     """
-
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
-
     else:
         save_vars(
             executor,
@@ -1026,18 +1029,7 @@ def save_inference_model(dirname,
                 all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
-    if main_program is None:
-        main_program = default_main_program()
-        if main_program._is_mem_optimized:
-            warnings.warn(
-                "save_inference_model must put before you call memory_optimize. \
-                                            the memory_optimize will modify the original program, \
-                                            is not suitable for saving inference model \
-                                            we save the original program as inference model.",
-                RuntimeWarning)
-
-    elif not isinstance(main_program, Program):
-        raise TypeError("program should be as Program type or None")
+    main_program = _get_valid_program(main_program)
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.

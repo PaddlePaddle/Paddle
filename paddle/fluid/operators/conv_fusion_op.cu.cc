@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
-DEFINE_int64(cudnn_exhaustive_search_times, -1,
-             "Exhaustive search times for cuDNN convolution, "
-             "default is -1, not exhaustive search");
+DECLARE_int64(cudnn_exhaustive_search_times);
 
 namespace paddle {
 namespace operators {

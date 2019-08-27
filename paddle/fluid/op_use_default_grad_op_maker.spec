@@ -1,6 +1,5 @@
 conv_shift
 cos_sim
-dequantize
 fc
 flatten
 fsp
@@ -8,6 +7,7 @@ fused_embedding_seq_pool
 gru
 lrn
 lstm_unit
+match_matrix_tensor
 max_pool2d_with_index
 max_pool3d_with_index
 maxout
@@ -16,13 +16,11 @@ nce
 pool2d
 pool3d
 prelu
-quantize
 rank_loss
 reduce_max
 reduce_min
 reduce_prod
 reduce_sum
-requantize
 reshape
 rnn_memory_helper
 sequence_softmax
