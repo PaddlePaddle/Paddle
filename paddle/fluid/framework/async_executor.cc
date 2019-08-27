@@ -78,16 +78,20 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
     auto var_desc = block.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc, "%s is not found.", var_name);
     auto shapes = var_desc->GetShape();
+    PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
+                   "var %s: Fetched var has wrong shape, "
+                   "only variables with the last dimension size 1 supported",
+                   var_name);
   }
 
   DataFeedDesc data_feed_desc;
   bool success = data_feed_desc.ParseFromString(data_feed_desc_str);
-  PADDLE_ENFORCE(success, "Change, Fail to parse DataFeedDesc from string:\n%s",
+  PADDLE_ENFORCE(success, "Fail to parse DataFeedDesc from string:\n%s",
                  data_feed_desc_str.c_str());
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
-  PADDLE_ENFORCE_GT(file_cnt, 0, "File list cannot be empty");
+  PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
