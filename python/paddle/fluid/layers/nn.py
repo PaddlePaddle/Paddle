@@ -3346,7 +3346,6 @@ def batch_norm(input,
     }
 
     if use_fused_act:
-        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
         attrs.update({"activation": act})
 
     helper.append_op(
