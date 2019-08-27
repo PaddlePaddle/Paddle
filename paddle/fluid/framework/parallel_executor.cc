@@ -727,7 +727,8 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
   for (auto &pair : tensors) {
     bool is_persistable = member_->IsPersistable(pair.first);
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
-            << " data (" << pair.first << "), dim:" << pair.second.dims();
+            << " data (" << pair.first << "), dim:" << pair.second.dims()
+            << ", place: " << pair.second.place();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
     if (!is_persistable && num_places != lod_tensors.size()) {
@@ -753,11 +754,23 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           pair.first, num_places, num_places);
       PADDLE_THROW(error_info);
     } else if (is_persistable && lod_tensors.size() == 1) {
+      lod_tensors.reserve(num_places);
+      auto &tensor = lod_tensors.front();
+      PADDLE_ENFORCE_EQ(tensor.dims(), pair.second.dims(),
+                        "The dim doesn't match.");
+      PADDLE_ENFORCE_EQ(tensor.place(), member_->places_.at(0),
+                        "The place doesn't match.");
       for (size_t i = 1; i < num_places; ++i) {
-        lod_tensors.emplace_back(lod_tensors.front());
+        lod_tensors.emplace_back();
+        auto &tmp = lod_tensors.back();
+        framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
       }
     }
-    PADDLE_ENFORCE_EQ(lod_tensors.size(), num_places);
+    PADDLE_ENFORCE_EQ(
+        lod_tensors.size(), num_places,
+        "The number(%d) of samples of the current batch does not match the "
+        "count(%d) of devices.",
+        lod_tensors.size(), num_places);
 
     for (size_t j = 0; j < num_places; ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
