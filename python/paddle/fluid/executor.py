@@ -292,13 +292,28 @@ def _as_lodtensor(data, place):
     return tensor
 
 
-def _all_persistable_vars_initialized(program, scope=None):
+def _all_persistable_vars_initialized_in_main_program(program, scope=None):
+    def _check_persistable_vars_in_program(program, scope):
+        for each_block in program.blocks:
+            for each_var in list(each_block.vars.values()):
+                if each_var.persistable and scope.find_var(
+                        each_var.name) is None:
+                    return False
+        return True
+
     if scope is None:
         scope = global_scope()
-    for each_block in program.blocks:
-        for each_var in list(each_block.vars.values()):
-            if each_var.persistable and scope.find_var(each_var.name) is None:
-                return False
+    prog_check = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    # TODO(chenweihang): if the input program only has Graph, 
+    #                    getting the persistable info of vars need new interface
+    if prog_check is None:
+        return True
+    if prog_check._add_new_elements:
+        prog_check._add_new_elements = False
+        if not prog_check.is_startup_program() and \
+            not _check_persistable_vars_in_program(prog_check, scope):
+            return False
     return True
 
 
@@ -638,14 +653,12 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        if program._add_new_elements:
-            if not program.is_startup_program() and \
-                not _all_persistable_vars_initialized(program, scope):
-                raise RuntimeError(
+        if not _all_persistable_vars_initialized_in_main_program(program,
+                                                                 scope):
+            raise RuntimeError(
                     "There are persistable variables in the current program that are not initialized. \n"\
                     "Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."
                 )
-            program._add_new_elements = False
 
         if fetch_list is not None:
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):

@@ -20,6 +20,7 @@ import contextlib
 import numpy
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.compiler as compiler
 
 
 class TestPersistableVarsInitCheck(unittest.TestCase):
@@ -62,6 +63,45 @@ class TestPersistableVarsInitCheck(unittest.TestCase):
                 "There are persistable variables in the current program that are not initialized. \n"\
                 "Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."):
                 exe.run(fluid.default_main_program(),
+                        feed={'X': input_x,
+                              'Y': input_y},
+                        fetch_list=[avg_loss.name])
+
+    def test_run_startup_after_minimize_for_compiled_program(self):
+        with self.program_scope_guard():
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+
+            avg_loss = self.forward_net_func()
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
+            exe.run(fluid.default_startup_program())
+
+            input_x = numpy.random.random(size=(10, 13)).astype('float32')
+            input_y = numpy.random.random(size=(10, 1)).astype('float32')
+            compiled_prog = compiler.CompiledProgram(fluid.default_main_program(
+            )).with_data_parallel(loss_name=avg_loss.name)
+            exe.run(compiled_prog,
+                    feed={'X': input_x,
+                          'Y': input_y},
+                    fetch_list=[avg_loss.name])
+
+    def test_run_startup_before_minimize_for_compiled_program(self):
+        with self.program_scope_guard():
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+
+            avg_loss = self.forward_net_func()
+            exe.run(fluid.default_startup_program())
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
+
+            input_x = numpy.random.random(size=(10, 13)).astype('float32')
+            input_y = numpy.random.random(size=(10, 1)).astype('float32')
+            compiled_prog = compiler.CompiledProgram(fluid.default_main_program(
+            )).with_data_parallel(loss_name=avg_loss.name)
+            with self.assertRaisesRegexp(RuntimeError,
+                "There are persistable variables in the current program that are not initialized. \n"\
+                "Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."):
+                exe.run(compiled_prog,
                         feed={'X': input_x,
                               'Y': input_y},
                         fetch_list=[avg_loss.name])
