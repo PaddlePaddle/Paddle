@@ -48,6 +48,9 @@ inline cudnnDataType_t ToCudnnDataType(
     case framework::proto::VarType::FP64:
       type = CUDNN_DATA_DOUBLE;
       break;
+    case framework::proto::VarType::INT8:
+      type = CUDNN_DATA_INT8;
+      break;
     default:
       break;
   }
@@ -102,19 +105,28 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize2int(tensor.dims());
-    std::vector<int> strides(dims.size());
-    strides[dims.size() - 1] = 1;
-    for (int i = dims.size() - 2; i >= 0; i--) {
-      strides[i] = dims[i + 1] * strides[i + 1];
+    auto dtype = ToCudnnDataType(tensor.type());
+    if (dtype == CUDNN_DATA_INT8) {
+      auto dims = tensor.dims();
+      CUDNN_ENFORCE(dynload::cudnnSetTensor4dDescriptor(
+          desc_.get(), CUDNN_TENSOR_NHWC, CUDNN_DATA_INT8, dims[0], dims[3],
+          dims[1], dims[2]));
+    } else {
+      auto dims = framework::vectorize2int(tensor.dims());
+      std::vector<int> strides(dims.size());
+      strides[dims.size() - 1] = 1;
+      for (int i = dims.size() - 2; i >= 0; i--) {
+        strides[i] = dims[i + 1] * strides[i + 1];
+      }
+      std::vector<int> dims_with_group(dims.begin(), dims.end());
+      if (groups > 1) {
+        dims_with_group[1] = dims_with_group[1] / groups;
+      }
+
+      CUDNN_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
+          desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
+          dims_with_group.data(), strides.data()));
     }
-    std::vector<int> dims_with_group(dims.begin(), dims.end());
-    if (groups > 1) {
-      dims_with_group[1] = dims_with_group[1] / groups;
-    }
-    CUDNN_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
-        dims_with_group.data(), strides.data()));
   }
 
  private:
@@ -142,13 +154,22 @@ class FilterDescriptor {
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
-    auto dims = framework::vectorize2int(tensor.dims());
-    if (groups > 1) {
-      dims[1] = dims[1] / groups;
+    auto dtype = ToCudnnDataType(tensor.type());
+
+    if (dtype == CUDNN_DATA_INT8) {
+      auto dims = tensor.dims();
+      CUDNN_ENFORCE(dynload::cudnnSetFilter4dDescriptor(
+          desc_.get(), CUDNN_DATA_INT8, CUDNN_TENSOR_NHWC, dims[0], dims[3],
+          dims[1], dims[2]));
+    } else {
+      auto dims = framework::vectorize2int(tensor.dims());
+      if (groups > 1) {
+        dims[1] = dims[1] / groups;
+      }
+      CUDNN_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
+          desc_.get(), ToCudnnDataType(tensor.type()), format, dims.size(),
+          dims.data()));
     }
-    CUDNN_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), format, dims.size(),
-        dims.data()));
   }
 
  private:
@@ -177,8 +198,12 @@ class ConvolutionDescriptor {
   void set(cudnnDataType_t dtype, const std::vector<int>& pads,
            const std::vector<int>& strides, const std::vector<int>& dilations,
            const int groups = 1) {
-    cudnnDataType_t compute_type =
-        (dtype == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
+    cudnnDataType_t compute_type = CUDNN_DATA_FLOAT;
+    if (dtype == CUDNN_DATA_DOUBLE)
+      compute_type = CUDNN_DATA_DOUBLE;
+    else if (dtype == CUDNN_DATA_INT8)
+      compute_type = CUDNN_DATA_INT32;
+
     T* desc = desc_.get();
     CUDNN_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc, pads.size(), pads.data(), strides.data(), dilations.data(),

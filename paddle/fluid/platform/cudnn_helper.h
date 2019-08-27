@@ -203,6 +203,22 @@ class CudnnDataType<double> {
   }
 };
 
+template <>
+class CudnnDataType<int8_t> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_INT8;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
 inline cudnnTensorFormat_t GetCudnnTensorFormat(
     const DataLayout& order) {  // Not use
   switch (order) {

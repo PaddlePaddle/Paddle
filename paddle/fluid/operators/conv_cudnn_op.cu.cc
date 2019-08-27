@@ -92,6 +92,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
     if (input->dims().size() == 5) {
       layout = DataLayout::kNCDHW;
+    } else if (dtype == CUDNN_DATA_INT8) {
+      layout = DataLayout::kNHWC;
     }
     auto layout_format = GetCudnnTensorFormat(layout);
 
@@ -109,9 +111,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     args.wdesc.set(*filter, layout_format, groups);
     args.odesc.set(*output, groups);
     int i_n, i_c, i_d, i_h, i_w;
-    GetNCDHW(input->dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d, &i_h, &i_w);
+    GetNCDHW(input->dims(), layout, &i_n, &i_c, &i_d, &i_h, &i_w);
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(output->dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d, &o_h, &o_w);
+    GetNCDHW(output->dims(), layout, &o_n, &o_c, &o_d, &o_h, &o_w);
 
     int group_offset_in = i_c / groups * i_h * i_w * i_d;
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
@@ -493,6 +495,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
                    paddle::operators::CUDNNConvOpKernel<double>,
+                   paddle::operators::CUDNNConvOpKernel<int8_t>,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,

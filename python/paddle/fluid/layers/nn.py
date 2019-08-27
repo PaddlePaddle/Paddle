@@ -2110,6 +2110,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
+           use_int8=False,
            act=None,
            name=None):
     """
@@ -2216,7 +2217,10 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
-    num_channels = input.shape[1]
+    if use_int8:
+        num_channels = input.shape[3]
+    else:
+        num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
@@ -2242,7 +2246,10 @@ def conv2d(input,
         raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    if use_int8:
+        filter_shape = [num_filters] + filter_size + [int(num_filter_channels)]
+    else:
+        filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
@@ -2284,6 +2291,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
+            'use_int8': use_int8,
             'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False
         })
