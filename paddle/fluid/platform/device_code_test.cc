@@ -30,9 +30,8 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 #ifdef PADDLE_WITH_CUDA
 TEST(device_code, cuda) {
   paddle::framework::InitDevices(false, {0});
-  paddle::platform::CUDADeviceCode code("saxpy_kernel", saxpy_code, 70);
-
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
   paddle::framework::Tensor cpu_x;
   paddle::framework::Tensor cpu_y;
@@ -40,7 +39,7 @@ TEST(device_code, cuda) {
 
   float scale = 2;
   auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+      {static_cast<int64_t>(64), static_cast<int64_t>(1024)});
   cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
   cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
 
@@ -66,7 +65,9 @@ TEST(device_code, cuda) {
   code.Compile();
 
   std::vector<void*> args = {&scale, &x_data, &y_data, &z_data, &n};
-  code.Launch(place, n, &args);
+  code.SetNumThreads(1024);
+  code.SetWorkloadPerThread(1);
+  code.Launch(n, &args);
 
   TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {

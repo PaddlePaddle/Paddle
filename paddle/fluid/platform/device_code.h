@@ -29,10 +29,10 @@ class DeviceCode {
  public:
   virtual ~DeviceCode() {}
   virtual void Compile() = 0;
-  virtual void Launch(Place place, const size_t n,
-                      std::vector<void*>* args) const = 0;
+  virtual void Launch(const size_t n, std::vector<void*>* args) const = 0;
 
  protected:
+  Place place_;
   std::string name_;
   std::string kernel_;
 };
@@ -40,14 +40,20 @@ class DeviceCode {
 #ifdef PADDLE_WITH_CUDA
 class CUDADeviceCode : public DeviceCode {
  public:
-  explicit CUDADeviceCode(const std::string& name, const std::string& kernel,
-                          int compute_capability);
+  explicit CUDADeviceCode(const Place& place, const std::string& name,
+                          const std::string& kernel);
   void Compile() override;
-  void Launch(Place place, const size_t n,
-              std::vector<void*>* args) const override;
+  void Launch(const size_t n, std::vector<void*>* args) const override;
+
+  void SetNumThreads(int num_threads) { num_threads_ = num_threads; }
+  void SetWorkloadPerThread(int workload_per_thread) {
+    workload_per_thread_ = workload_per_thread;
+  }
 
  private:
-  int compute_capability_;
+  int max_threads_{0};
+  int num_threads_{1024};
+  int workload_per_thread_{1};
   std::vector<char> ptx_;
   CUmodule module_;
   CUfunction function_;

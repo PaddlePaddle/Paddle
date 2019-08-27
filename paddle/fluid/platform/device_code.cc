@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
+#include <algorithm>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -29,12 +30,15 @@ inline void throw_on_error(nvrtcResult stat, const std::string& msg) {
 #endif
 }
 
-CUDADeviceCode::CUDADeviceCode(const std::string& name,
-                               const std::string& kernel,
-                               int compute_capability) {
+CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
+                               const std::string& kernel) {
+  if (!is_gpu_place(place)) {
+    PADDLE_THROW("CUDADeviceCode can only launch on GPU place.");
+  }
+
+  place_ = place;
   name_ = name;
   kernel_ = kernel;
-  compute_capability_ = compute_capability;
 }
 
 void CUDADeviceCode::Compile() {
@@ -49,8 +53,11 @@ void CUDADeviceCode::Compile() {
                     "nvrtcCreateProgram failed.");
 
   // Compile the program for specified compute_capability
+  auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
+      DeviceContextPool::Instance().Get(place_));
+  int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
-      "--gpu-architecture=compute_" + std::to_string(compute_capability_);
+      "--gpu-architecture=compute_" + std::to_string(compute_capability);
   const std::vector<const char*> options = {"--std=c++11",
                                             compute_flag.c_str()};
   nvrtcResult compile_result =
@@ -87,22 +94,22 @@ void CUDADeviceCode::Compile() {
       dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
       CUDA_SUCCESS, "Fail to get function of %s (in cuModuleGetFunction.)",
       name_.c_str());
+
+  max_threads_ = dev_ctx->GetMaxPhysicalThreadCount();
 }
 
-void CUDADeviceCode::Launch(Place place, const size_t n,
-                            std::vector<void*>* args) const {
-  if (!is_gpu_place(place)) {
-    PADDLE_THROW("CUDADeviceCode can only launch on GPU place.");
-  }
-
-  int num_threads = 1024;
-  int num_blocks = n / num_threads;
+void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
+  int max_blocks = std::max(max_threads_ / num_threads_, 1);
+  int workload_per_block = workload_per_thread_ * num_threads_;
+  int num_blocks =
+      std::min(max_blocks, (static_cast<int>(n) + workload_per_block - 1) /
+                               workload_per_block);
 
   auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
-      DeviceContextPool::Instance().Get(place));
+      DeviceContextPool::Instance().Get(place_));
   PADDLE_ENFORCE_EQ(
       dynload::cuLaunchKernel(function_, num_blocks, 1, 1,  // grid dim
-                              num_threads, 1, 1,            // block dim
+                              num_threads_, 1, 1,           // block dim
                               0,                            // shared memory
                               dev_ctx->stream(),            // stream
                               args->data(),                 // arguments
