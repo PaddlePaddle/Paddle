@@ -149,18 +149,6 @@ if (WITH_NGRAPH)
             )
 endif ()
 
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
-copy(snappy_lib
-        SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib
-        DEPS snappy)
-
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappystream")
-copy(snappystream_lib
-        SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib
-        DEPS snappystream)
-
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
 copy(zlib_lib
         SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
