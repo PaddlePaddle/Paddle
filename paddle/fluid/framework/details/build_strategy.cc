@@ -265,8 +265,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase(ir::kNRanks);
-      pass->Set<size_t>(ir::kNRanks, new size_t(nranks));
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
@@ -274,6 +274,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
     } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -288,11 +290,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                       new bool(use_hierarchical_allreduce_));
 #endif
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
-      pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLocalScopes);
-      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
-                                                    &local_scopes);
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;

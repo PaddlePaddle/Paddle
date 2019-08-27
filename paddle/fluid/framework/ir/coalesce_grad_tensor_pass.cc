@@ -66,27 +66,32 @@ class CoalesceGradTensorPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const {
     ir::Graph &result = *graph;
-
+    if (Get<size_t>(details::kNRanks) <= 1) {
+      VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
+              << ", there doesn't need apply FuseAllReduceOpPass.";
+      return;
+    }
     details::ParamsAndGrads params_grads;
     RecordParamsAndGrads(result, &params_grads);
 
-    VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
-      return;
-    }
-
-    auto vars_info = GetVarInfo(result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndDenseGrads,
                                             &result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndSparseGrads,
                                             &result);
     ResetAttribute<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads, &result);
+
+    VLOG(10) << "The number of params and grads is:" << params_grads.size();
+    if (params_grads.size() == 0) {
+      return;
+    }
+
     auto &p_g_dense_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     auto &p_g_sparse_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndSparseGrads);
 
+    auto vars_info = GetVarInfo(result);
     for (auto &param_grad : params_grads) {
       if (IsLoDTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
@@ -483,4 +488,5 @@ class CoalesceGradTensorPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
-              paddle::framework::ir::CoalesceGradTensorPass);
+              paddle::framework::ir::CoalesceGradTensorPass)
+    .RequirePassAttr(paddle::framework::details::kNRanks);

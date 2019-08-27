@@ -106,6 +106,39 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
         "The number of dense gradients should be little than optimizer ops.");
+    if (VLOG_IS_ON(6)) {
+      std::stringstream out;
+      auto params_and_dense_grads_tmp = params_and_dense_grads;
+      std::sort(params_and_dense_grads_tmp.begin(),
+                params_and_dense_grads_tmp.end(),
+                [](const std::pair<std::string, std::string> &item1,
+                   const std::pair<std::string, std::string> &item2) {
+                  return item1.second < item2.second;
+                });
+      out << "ParamsAndDenseGrads: ";
+      for (auto &p_g : params_and_dense_grads_tmp) {
+        out << p_g.second << "(" << p_g.first << "), ";
+      }
+      VLOG(6) << out.str();
+      std::stringstream out2;
+      std::vector<std::pair<std::string, std::string>> param_grads_tmp;
+      param_grads_tmp.reserve(aux_var_set[kGrad].size());
+      for (size_t i = 0; i < aux_var_set[kGrad].size(); ++i) {
+        param_grads_tmp.emplace_back(
+            std::make_pair(aux_var_set[kParam][i], aux_var_set[kGrad][i]));
+      }
+      std::sort(param_grads_tmp.begin(), param_grads_tmp.end(),
+                [](const std::pair<std::string, std::string> &item1,
+                   const std::pair<std::string, std::string> &item2) {
+                  return item1.second < item2.second;
+                });
+      out2 << "Grads: ";
+      for (auto &p_g : param_grads_tmp) {
+        out2 << p_g.second << "(" << p_g.first << "), ";
+      }
+      VLOG(6) << out2.str();
+    }
+
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
       opt_grad_set.insert(p_g.second);
@@ -321,24 +354,25 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  PADDLE_ENFORCE_NE(aux_vars_set->count(kParam), static_cast<size_t>(0));
-  auto &param_vec = aux_vars_set->at(kParam);
+  PADDLE_ENFORCE_NE(aux_vars_set->count(kGrad), static_cast<size_t>(0));
+  auto &grad_vec = aux_vars_set->at(kGrad);
 
-  std::vector<size_t> param_sort_idx;
-  param_sort_idx.reserve(param_vec.size());
+  std::vector<size_t> grad_sort_idx;
+  grad_sort_idx.reserve(grad_vec.size());
 
   for (auto &p_g : params_grads) {
-    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
-    PADDLE_ENFORCE(iter != param_vec.end());
-    auto idx = std::distance(param_vec.begin(), iter);
-    param_sort_idx.emplace_back(idx);
+    auto iter = std::find(grad_vec.begin(), grad_vec.end(), p_g.second);
+    PADDLE_ENFORCE(iter != grad_vec.end(), "%s is not found in grad_vec",
+                   p_g.second);
+    auto idx = std::distance(grad_vec.begin(), iter);
+    grad_sort_idx.emplace_back(idx);
   }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
     sorted_vars.reserve(aux_vars.second.size());
     for (size_t i = 0; i < aux_vars.second.size(); ++i) {
-      sorted_vars.emplace_back(aux_vars.second.at(param_sort_idx[i]));
+      sorted_vars.emplace_back(aux_vars.second.at(grad_sort_idx[i]));
     }
     std::swap(aux_vars.second, sorted_vars);
 
@@ -354,7 +388,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
   std::vector<ir::Node *> sorted_ops;
   sorted_ops.reserve(ops->size());
   for (size_t i = 0; i < ops->size(); ++i) {
-    sorted_ops.emplace_back(ops->at(param_sort_idx[i]));
+    sorted_ops.emplace_back(ops->at(grad_sort_idx[i]));
   }
   std::swap(*ops, sorted_ops);
 }
