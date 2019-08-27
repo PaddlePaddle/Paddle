@@ -85,7 +85,7 @@ class InplaceABNKernel
     int batch_size = x->dims()[0];
     int frame_size = x->dims()[1];
 
-    BatchNormKernel<platform::CPUDeviceContext, T>::Compute(ctx);
+    BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
     // apply in-place activation calculate
     auto cur_x = EigenMatrix<T>::From(*y);
@@ -119,7 +119,7 @@ class InplaceABNGradKernel
 
     auto inp_cur_dy = EigenMatrix<T>::From(const_cast<Tensor&>(*d_y));
     inp_cur_dy.device(place) = cur_dx;
-    BatchNormGradKernel<platform::CPUDeviceContext, T>::Compute(ctx);
+    BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
 }  // namespace operators

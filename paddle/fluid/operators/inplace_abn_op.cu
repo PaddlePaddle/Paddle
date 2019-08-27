@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/inplace_abn_op.h"
 #include "paddle/fluid/operators/sync_batch_norm_op.h"
 
 namespace paddle {
@@ -25,9 +26,9 @@ class InplaceABNKernel
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
     int activation = *ctx.Input<Tensor>("activation")->data<int>();
-    auto place = boost::get<platform::CPUPlace>(ctx.GetPlace());
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    SyncBatchNormKernel<platform::CPUDeviceContext, T>::Compute(ctx);
+    SyncBatchNormKernel<DeviceContext, T>::Compute(ctx);
 
     // apply in-place activation calculate
     // apply in-place activation calculate
@@ -51,7 +52,7 @@ class InplaceABNGradKernel
     const auto* d_y = ctx.Input<Tensor>(framework::GradVarName("d_y"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("d_x"));
     int activation = *ctx.Input<Tensor>("activation")->data<int>();
-    auto place = boost::get<platform::CPUPlace>(ctx.GetPlace());
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     // apply in-place activation calculate
     auto cur_x = EigenMatrix<T>::From(*x);
@@ -61,7 +62,9 @@ class InplaceABNGradKernel
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy);
 
-    SyncBatchNormGradKernel<platform::CPUDeviceContext, T>::Compute(ctx);
+    auto inp_cur_dy = EigenMatrix<T>::From(const_cast<Tensor&>(*d_y));
+    inp_cur_dy.device(place) = cur_dx;
+    SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
 

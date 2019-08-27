@@ -422,5 +422,19 @@ void SyncBatchNormGradFunctor(
   }
 }
 
+template <typename DeviceContext, typename T>
+class SyncBatchNormKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override;
+};
+
+// Deriving the Gradient for the Backward Pass of Batch Normalization
+// https://kevinzakka.github.io/2016/09/14/batch_normalization/
+template <typename DeviceContext, typename T>
+class SyncBatchNormGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override;
+};
+
 }  // namespace operators
 }  // namespace paddle
