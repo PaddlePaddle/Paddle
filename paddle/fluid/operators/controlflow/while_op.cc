@@ -62,7 +62,7 @@ class WhileOp : public framework::OperatorBase {
 
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
-
+    PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope should be empty.");
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
 
@@ -300,6 +300,7 @@ class WhileGradOp : public framework::OperatorBase {
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
+    step_scopes->clear();
   }
 };
 
