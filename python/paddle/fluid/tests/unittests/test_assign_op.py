@@ -25,37 +25,6 @@ class TestAssignOp(op_test.OpTest):
         x = numpy.random.random(size=(100, 10))
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
-        self.attrs = {"device": 0}
-
-    def test_forward(self):
-        self.check_output()
-
-    def test_backward(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestAssignOp1(op_test.OpTest):
-    def setUp(self):
-        self.op_type = "assign"
-        x = numpy.random.random(size=(100, 10))
-        self.inputs = {'X': x}
-        self.outputs = {'Out': x}
-        self.attrs = {"device": 1}
-
-    def test_forward(self):
-        self.check_output()
-
-    def test_backward(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestAssignOp2(op_test.OpTest):
-    def setUp(self):
-        self.op_type = "assign"
-        x = numpy.random.random(size=(100, 10))
-        self.inputs = {'X': x}
-        self.outputs = {'Out': x}
-        self.attrs = {"device": 2}
 
     def test_forward(self):
         self.check_output()
