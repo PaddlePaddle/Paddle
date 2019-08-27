@@ -88,7 +88,7 @@ class Dataset {
   // load all data into memory
   virtual void LoadIntoMemory() = 0;
   // load all data into memory in async mode
-  virtual void PreLoadIntoMemory() = 0;
+  virtual void PreLoadIntoMemory(int thread_num) = 0;
   // wait async load done
   virtual void WaitPreLoadDone() = 0;
   // release all memory data
@@ -111,6 +111,10 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
+  // create preload readers
+  virtual void CreatePreLoadReaders(int thread_num) = 0;
+  // destroy preload readers after prelaod done
+  virtual void DestoryPreLoadReaders() = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -153,7 +157,7 @@ class DatasetImpl : public Dataset {
   virtual void CreateChannel();
   virtual void RegisterClientToClientMsgHandler();
   virtual void LoadIntoMemory();
-  virtual void PreLoadIntoMemory();
+  virtual void PreLoadIntoMemory(int thread_num);
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
@@ -166,11 +170,14 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
+  virtual void CreatePreLoadReaders(int thread_num);
+  virtual void DestoryPreLoadReaders();
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;

@@ -317,6 +317,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 #ifdef _LINUX
   VLOG(3) << "LoadIntoMemory() begin, thread_id=" << thread_id_;
   std::string filename;
+  paddle::framework::ChannelWriter<T> writer(input_channel_);
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
@@ -324,7 +325,6 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
     CHECK(this->fp_ != nullptr);
     __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-    paddle::framework::ChannelWriter<T> writer(input_channel_);
     T instance;
     platform::Timer timeline;
     timeline.Start();
@@ -338,6 +338,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_;
   }
+  writer.Flush();
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_;
 #endif
 }
@@ -883,13 +884,27 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
-  std::vector<std::vector<float>> batch_float_feasigns(use_slots_.size(),
-                                                       std::vector<float>());
-  std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
+  thread_local std::vector<std::vector<float>> batch_float_feasigns(
+      use_slots_.size(), std::vector<float>());
+  thread_local std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
       use_slots_.size(), std::vector<uint64_t>());
-  std::vector<std::vector<size_t>> offset(use_slots_.size(),
-                                          std::vector<size_t>{0});
-  std::vector<bool> visit(use_slots_.size(), false);
+  thread_local std::vector<std::vector<size_t>> offset(use_slots_.size(),
+                                                       std::vector<size_t>{0});
+  thread_local std::vector<bool> visit(use_slots_.size(), false);
+
+  for (auto& i : batch_float_feasigns) {
+    i.clear();
+  }
+  for (auto& i : batch_uint64_feasigns) {
+    i.clear();
+  }
+  for (auto& i : offset) {
+    i = std::vector<size_t>{0};
+  }
+  for (size_t i = 0; i < visit.size(); ++i) {
+    visit[i] = false;
+  }
+
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
     for (auto& item : r.float_feasigns_) {
