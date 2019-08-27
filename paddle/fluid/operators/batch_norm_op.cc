@@ -25,27 +25,28 @@ namespace paddle {
 namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                 "Input(Scale) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                 "Input(Bias) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                 "Input(Mean) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Variance"),
-                 "Input(Variance) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                 "Output(Y) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    "Input(X) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
+                    "Input(Scale) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
+                    "Input(Bias) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
+                    "Input(Mean) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
+                    "Input(Variance) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
+                    "Output(Y) of ConvOp should not be null.");
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
-    PADDLE_ENFORCE(ctx->HasOutput("MeanOut"),
-                   "Output(MeanOut) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"),
-                   "Output(VarianceOut) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedMean"),
-                   "Output(SavedMean) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"),
-                   "Output(SavedVariance) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("MeanOut"), true,
+                      "Output(MeanOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("VarianceOut"), true,
+                      "Output(VarianceOut) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("SavedMean"), true,
+                      "Output(SavedMean) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("SavedVariance"), true,
+                      "Output(SavedVariance) of ConvOp should not be null.");
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
@@ -58,8 +59,10 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
-  PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                 "Input X must have 2 to 5 dimensions.");
+  PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                    "The Input X dim size should be larger than 1.");
+  PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                    "The Input X dim size should be less than 6.");
 
   const int64_t C =
       (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -132,8 +135,8 @@ void BatchNormOpMaker::Make() {
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
-        PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                       "'epsilon' should be between 0.0 and 0.001.");
+        PADDLE_ENFORCE_GE(epsilon, 0.0f, "'epsilon' should be GE 0.0.");
+        PADDLE_ENFORCE_LE(epsilon, 0.001f, "'epsilon' should be LE 0.001.");
       });
   AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
   AddInput("X", "The input tensor");
@@ -209,8 +212,10 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                      "The Input X dim size should be larger than 1.");
+    PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                      "The Input X dim size should be less than 6.");
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -344,27 +349,29 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE(ctx->HasInput("X"));
-  PADDLE_ENFORCE(ctx->HasInput("Scale"), "Input(scale) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                 "Input(Y@GRAD) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("SavedMean"),
-                 "Input(SavedMean) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("SavedVariance"),
-                 "Input(SavedVariance) should not be null");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
+                    "Input(scale) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
+                    "Input(Y@GRAD) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
+                    "Input(SavedMean) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
+                    "Input(SavedVariance) should not be null");
 
   // check output
-  PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                    "Output(X@GRAD) should not be null");
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                   "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
-                   "null at same time");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
+                      "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
+                      "null at same time");
   }
   const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
   if (use_global_stats) {
-    PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_mkldnn"),
-                   "Using global stats during training is not supported "
-                   "in gradient op kernel of batch_norm_mkldnn_op now.");
+    PADDLE_ENFORCE_EQ(!ctx->Attrs().Get<bool>("use_mkldnn"), true,
+                      "Using global stats during training is not supported "
+                      "in gradient op kernel of batch_norm_mkldnn_op now.");
   }
 
   const auto x_dims = ctx->GetInputDim("X");
@@ -432,8 +439,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                      "The Input X dim size should be larger than 1.");
+    PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                      "The Input X dim size should be less than 6.");
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]

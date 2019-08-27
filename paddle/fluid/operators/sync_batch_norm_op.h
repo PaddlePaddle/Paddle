@@ -319,9 +319,9 @@ void SyncBatchNormGradFunctor(
   const auto &x_dims = x->dims();
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                    "The Input dim size should be larger than 1.");
+                    "The Input X dim size should be larger than 1.");
   PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                    "The Input dim size should be less than 6.");
+                    "The Input X dim size should be less than 6.");
 
   int N, C, H, W, D;
   ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
