@@ -76,7 +76,6 @@ class InplaceABNKernel
     : public paddle::operators::BatchNormKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
