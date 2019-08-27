@@ -61,7 +61,6 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
-    'inplace_abn',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
