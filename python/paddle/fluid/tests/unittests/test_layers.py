@@ -158,8 +158,9 @@ class TestLayer(LayerTest):
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             lm(base.to_variable(inp))
-            self.assertIsNone(lm._scale_w)
-            self.assertIsNone(lm._bias_w)
+
+            self.assertFalse(hasattr(lm, "_scale_w"))
+            self.assertFalse(hasattr(lm, "_bias_w"))
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
         self.assertTrue(np.array_equal(dy_ret.numpy(), static_ret2))
