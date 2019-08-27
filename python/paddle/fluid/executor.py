@@ -292,6 +292,16 @@ def _as_lodtensor(data, place):
     return tensor
 
 
+def _all_persistable_vars_initialized(program, scope=None):
+    if scope is None:
+        scope = global_scope()
+    for each_block in program.blocks:
+        for each_var in list(each_block.vars.values()):
+            if each_var.persistable and scope.find_var(each_var.name) is None:
+                return False
+    return True
+
+
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
@@ -627,6 +637,12 @@ class Executor(object):
 
         if scope is None:
             scope = global_scope()
+
+        if not program.is_startup_program() and \
+            not _all_persistable_vars_initialized(program, scope):
+            raise RuntimeError(
+                "There are persistable variables in the current program that are not initialized. Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."
+            )
 
         if fetch_list is not None:
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):

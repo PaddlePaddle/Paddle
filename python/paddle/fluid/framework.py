@@ -3581,6 +3581,13 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
+    def is_startup_program(self):
+        for each_block in self.blocks:
+            for each_var in list(each_block.vars.values()):
+                if not each_var.persistable:
+                    return False
+        return True
+
 
 class Parameter(Variable):
     """
