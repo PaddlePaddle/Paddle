@@ -638,11 +638,14 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        if not program.is_startup_program() and \
-            not _all_persistable_vars_initialized(program, scope):
-            raise RuntimeError(
-                "There are persistable variables in the current program that are not initialized. Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."
-            )
+        if program._add_new_elements:
+            if not program.is_startup_program() and \
+                not _all_persistable_vars_initialized(program, scope):
+                raise RuntimeError(
+                    "There are persistable variables in the current program that are not initialized. \n"
+                    "Please confirm that you have run startup_program and run it after fluid.optimizer.minimize()."
+                )
+            program._add_new_elements = False
 
         if fetch_list is not None:
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):

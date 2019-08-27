@@ -542,6 +542,7 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
+            self.block.program._add_new_elements = True
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
@@ -1780,6 +1781,7 @@ class Block(object):
                 attrs=kwargs.get("attrs", None))
 
             self.ops.append(op)
+            self.program._add_new_elements = True
 
         return op
 
@@ -1797,6 +1799,7 @@ class Block(object):
         op_desc = self.desc._insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.insert(index, op)
+        self.program._add_new_elements = True
         return op
 
     def _remove_op(self, index):
@@ -1850,6 +1853,7 @@ class Block(object):
                 outputs=kwargs.get("outputs", None),
                 attrs=kwargs.get("attrs", None))
             self.ops.insert(0, op)
+            self.program._add_new_elements = True
 
         return op
 
@@ -1895,12 +1899,14 @@ class Block(object):
             op_desc = ops_in_cpp[index]
             op = Operator(self, op_desc)
             self.ops.insert(0, op)
+            self.program._add_new_elements = True
 
         # sync ops append to the end of cpp_ops
         for index in range((end_index + 1), len(ops_in_cpp)):
             op_desc = ops_in_cpp[index]
             op = Operator(self, op_desc)
             self.ops.append(op)
+            self.program._add_new_elements = True
 
         # sync ops removed from c++ end
         if end_index != -1 and end_index < len(self.ops):
@@ -2866,6 +2872,10 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+        # when program is executed by exe.run, it will be set False
+        # When new op or var was append to program, it will be set True
+        self._add_new_elements = True
 
     @property
     def _op_role(self):
