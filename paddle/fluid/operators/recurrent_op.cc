@@ -93,7 +93,7 @@ void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
 }
 
 void StepScopes::ForwardNext() {
-  PADDLE_ENFORCE_EQ(!is_backward_, true,
+  PADDLE_ENFORCE_EQ(is_backward_, false,
                     "Cannot get forward next scope when is backward");
   ++counter_;
 }
