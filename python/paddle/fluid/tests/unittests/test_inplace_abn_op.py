@@ -25,7 +25,6 @@ from paddle.fluid import compiler
 
 class TestInplaceANBOpTraining(unittest.TestCase):
     def setUp(self):
-        #self.dtype = np.float32
         self.dtype = np.float64
         self.N = 32
         self.C = 16
@@ -70,8 +69,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
-                # if not inplace_abn:
-                #     out = out / core.get_cuda_device_count()
+                if not inplace_abn:
+                    out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
@@ -143,20 +142,20 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 str(bn_val) + "\n" + "Inplace ABN " + str(inplace_abn_val))
 
     def test_train(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if not core.is_compiled_with_cuda():
+            return
 
+        places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
                 for activation in ['elu', ]:
                     self.compare(place, layout, False, activation)
 
     def test_infer(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if not core.is_compiled_with_cuda():
+            return
 
+        places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
                 for activation in ['elu', ]:

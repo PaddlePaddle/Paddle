@@ -82,8 +82,6 @@ class InplaceABNKernel
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     using PLACE = decltype(place);
-    int batch_size = x->dims()[0];
-    int frame_size = x->dims()[1];
 
     BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
