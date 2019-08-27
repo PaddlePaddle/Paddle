@@ -537,12 +537,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                  N * sample_size);
         d_x_arr.setZero();
 
-        const auto d_y_row_sum = d_y_arr.rowwise().sum();
-        const auto x_minus_mean = x_arr.colwise() - mean_arr;
-        const auto d_y_mul_x_minus_mean_row_sum =
-            (d_y_arr * x_minus_mean).rowwise().sum();
-        const auto inv_var_sqr = inv_var_arr * inv_var_arr;
-
         if (d_scale && d_bias) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
             d_bias_arr += d_y_arr.col(nhw);
@@ -553,11 +547,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
         if (!use_global_stats) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) +=
-                scale_inv_var_nhw *
-                (d_y_arr.col(nhw) * N * sample_size - d_y_row_sum -
-                 x_minus_mean.col(nhw) * inv_var_sqr *
-                     d_y_mul_x_minus_mean_row_sum);
+            d_x_arr.col(nhw) += 
+                  scale_inv_var_nhw * 
+                  (d_y_arr.col(nhw) * N * sample_size - d_bias_arr - 
+                  (x_arr.col(nhw) - mean_arr) * d_scale_arr * inv_var_arr);
           }
         } else {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {

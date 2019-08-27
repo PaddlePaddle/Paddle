@@ -307,6 +307,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
+        self.data_formats = ["NCHW"]
         self.momentum = 0.9
         self.epsilon = 0.00001
         self.init_kernel_type()
@@ -338,14 +339,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
         return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
 
     def set_mean_variance(self, scale_shape, x, data_layout):
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.ones(scale_shape).astype(np.float32)
+        mean, variance = _cal_mean_variance(x, self.epsilon, data_layout)
+        mean_pre = np.zeros(scale_shape).astype(np.float32)
+        variance_pre = np.ones(scale_shape).astype(np.float32)
         # computing global mean/variance for one step
         if self.use_global_stats:
             mom = self.momentum
-            x_mean, x_var = _cal_mean_variance(x, self.epsilon, data_layout)
-            mean = x_mean * (1. - mom) + mom * mean
-            variance = x_var * (1. - mom) + mom * variance
+            mean = mean * (1. - mom) + mom * mean_pre
+            variance = variance * (1. - mom) + mom * variance_pre
         return mean, variance
 
     def test_forward_backward(self):
@@ -442,6 +443,9 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     fetch_list=self.fetch_list)
 
             for id, name in enumerate(self.fetch_list):
+                if name == 'variance':
+                    self.__assert_close(var_dict[name], out[id], name, atol=1e-3)
+                    continue
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
 
