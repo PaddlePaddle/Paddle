@@ -352,6 +352,7 @@ class DownpourWorker(Worker):
 
         dense_param_name.sort()
         dense_grad_name.sort()
+
         for table in self._worker.dense_table:
             if table.table_id == table_id:
                 desc_dense_param_name = list(self._worker.dense_table[
@@ -375,8 +376,31 @@ class DownpourWorker(Worker):
 
         table = self._worker.dense_table.add()
         table.table_id = table_id
-        table.dense_variable_name.extend(dense_param_name)
-        table.dense_gradient_variable_name.extend(dense_grad_name)
+
+        def cmp_fc(x, y):
+            if x.startswith("fc_") and y.startswith("fc_"):
+                index_x = x.find('.')
+                index_y = y.find('.')
+                if index_x > 0 and index_y > 0:
+                    num_x = x[3:index_x]
+                    num_y = y[3:index_y]
+                    if num_x.isdigit() and num_y.isdigit():
+                        if int(num_x) < int(num_y):
+                            return -1
+                        if int(num_x) > int(num_y):
+                            return 1
+                        if x[index_x + 1] == 'w' and y[index_y + 1] == 'b':
+                            return -1
+                        if x[index_x + 1] == 'b' and y[index_y + 1] == 'w':
+                            return 1
+            if x < y:
+                return -1
+            else:
+                return 1
+
+        table.dense_variable_name.extend(sorted(dense_param_name, cmp_fc))
+        table.dense_gradient_variable_name.extend(
+            sorted(dense_grad_name, cmp_fc))
 
     def get_desc(self):
         """
