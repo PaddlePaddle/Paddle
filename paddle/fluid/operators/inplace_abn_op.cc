@@ -80,14 +80,11 @@ class InplaceABNKernel
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    using PLACE = decltype(place);
-
     BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
     // apply in-place activation calculate
     auto cur_x = EigenMatrix<T>::From(*y);
     auto cur_y = EigenMatrix<T>::From(*y);
-
     InplaceABNActivation<DeviceContext, T> functor;
     functor.Compute(activation, place, cur_x, cur_y);
   }
