@@ -110,7 +110,7 @@ std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
   }
   std::ostringstream os;
   for (int64_t i = start; i < end; i++) {
-    os << static_cast<uint64_t>(tensor->data<int64_t>()[i]) << " ";
+    os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
   }
   return os.str();
 }
