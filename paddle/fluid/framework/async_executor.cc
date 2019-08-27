@@ -78,10 +78,6 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
     auto var_desc = block.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc, "%s is not found.", var_name);
     auto shapes = var_desc->GetShape();
-    PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
-                   "var %s: Fetched var has wrong shape, "
-                   "only variables with the last dimension size 1 supported",
-                   var_name);
   }
 
   DataFeedDesc data_feed_desc;
