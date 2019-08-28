@@ -61,9 +61,10 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     fluid.default_main_program().random_seed = 1
     exe.run(fluid.default_startup_program())
 
-    train_cp = compiler.CompiledProgram(fluid.default_main_program())
+    train_cp = fluid.default_main_program()
     if use_parallel_executor:
-        train_cp = train_cp.with_data_parallel(loss_name=cost.name)
+        train_cp = compiler.CompiledProgram(fluid.default_main_program(
+        )).with_data_parallel(loss_name=cost.name)
         fetch_list = [cost.name]
     else:
         fetch_list = [cost]

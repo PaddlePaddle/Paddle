@@ -15,7 +15,6 @@ set(PYBIND_SRCS
   exception.cc
   protobuf.cc
   const_value.cc
-  recordio.cc
   reader_py.cc
   fleet_wrapper_py.cc
   nccl_wrapper_py.cc

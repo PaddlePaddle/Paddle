@@ -77,8 +77,9 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     return;
   }
 
-  PADDLE_ENFORCE(dst_tensor->numel() == numel, "dst_numel %d vs. src_numel %d",
-                 dst_tensor->numel(), numel);
+  PADDLE_ENFORCE_EQ(dst_tensor->numel() == numel, true,
+                    "dst_numel %d vs. src_numel %d", dst_tensor->numel(),
+                    numel);
 
   auto data_type = src_tensor.type();
   auto place = src_tensor.place();

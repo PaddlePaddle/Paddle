@@ -83,9 +83,9 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   for (auto& pair : ins) {
     for (auto& var : pair.second) {
       auto& var_ptr = name_to_var[var->Name()];
-      PADDLE_ENFORCE(var_ptr == nullptr || var_ptr->get() == var.get(),
-                     "There are different variables with same name %s",
-                     var->Name());
+      PADDLE_ENFORCE_EQ(var_ptr == nullptr || var_ptr->get() == var.get(), true,
+                        "There are different variables with same name %s",
+                        var->Name());
       var_ptr = &var;
     }
   }
@@ -93,9 +93,9 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   for (auto& pair : outs) {
     for (auto& var : pair.second) {
       auto& var_ptr = name_to_var[var->Name()];
-      PADDLE_ENFORCE(var_ptr == nullptr || var_ptr->get() == var.get(),
-                     "There are different variables with same name %s",
-                     var->Name());
+      PADDLE_ENFORCE_EQ(var_ptr == nullptr || var_ptr->get() == var.get(), true,
+                        "There are different variables with same name %s",
+                        var->Name());
       var_ptr = &var;
     }
   }
@@ -111,7 +111,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         OpBase::Create(trace_id, (*(grad_op_descs_[i].get())), fwd_op->place());
 
     // this OpBase* is just used to manage op's life time
-    engine->InsertOp(grad_op.get(), grad_op);
+    engine_->InsertOp(grad_op.get(), grad_op);
 
     std::unordered_set<OpBase*> visited_preceding_ops;
     // Step2 : prepare grad_in vars and bind them with grad_op,
@@ -128,8 +128,14 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
           // If it is a grad var, find its coresponding forward var
           auto& fwd_var_name = iter->second;
           auto fwd_var_iter = name_to_var.find(fwd_var_name);
-          PADDLE_ENFORCE(fwd_var_iter != name_to_var.end(),
-                         "Cannot find forward variable named %s", fwd_var_name);
+          PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                            "Cannot find forward variable named %s",
+                            fwd_var_name);
+          PADDLE_ENFORCE_NOT_NULL(
+              (*(fwd_var_iter->second))->GradVarBase(),
+              "Grad of %s should "
+              "not be NULL when we Track_Backward Input of %s",
+              (*(fwd_var_iter->second))->Name(), grad_op->Type());
           (*(fwd_var_iter->second))->GradVarBase()->AddGradOps(grad_op);
           VLOG(3) << "Add Grad Op " << grad_op->Type() << " for :"
                   << (*(fwd_var_iter->second))->GradVarBase()->Name();
@@ -137,9 +143,9 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         } else {
           // If it is a forward var, just add it
           auto fwd_var_iter = name_to_var.find(grad_in_var_name);
-          PADDLE_ENFORCE(fwd_var_iter != name_to_var.end(),
-                         "Cannot find forward variable named %s",
-                         grad_in_var_name);
+          PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                            "Cannot find forward variable named %s",
+                            grad_in_var_name);
           bwd_in.emplace_back(*(fwd_var_iter->second));
         }
 
@@ -158,13 +164,18 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
       for (auto& grad_out_var_name : grad_outs.second) {
         auto iter = grad_to_var.find(grad_out_var_name);
-        PADDLE_ENFORCE(iter != grad_to_var.end(),
-                       "Cannot find output of input grad %s in op %s",
-                       grad_out_var_name, fwd_op->Type());
+        PADDLE_ENFORCE_EQ(iter != grad_to_var.end(), true,
+                          "Cannot find output of input grad %s in op %s",
+                          grad_out_var_name, fwd_op->Type());
         auto fwd_var_iter = name_to_var.find(iter->second);
-        PADDLE_ENFORCE(fwd_var_iter != name_to_var.end(),
-                       "Cannot find forward variable named %s", iter->second);
-
+        PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                          "Cannot find forward variable named %s",
+                          iter->second);
+        PADDLE_ENFORCE_NOT_NULL(
+            (*(fwd_var_iter->second))->GradVarBase(),
+            "Grad of %s should "
+            "not be NULL when we Track_Backward Output of %s",
+            (*(fwd_var_iter->second))->Name(), grad_op->Type());
         bwd_out.emplace_back((*(fwd_var_iter->second))->GradVarBase());
         VLOG(3) << "Set backward output " << grad_outs.first << " of "
                 << grad_op->Type() << " to be "
@@ -184,10 +195,10 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
         if (!preceding_ops.empty()) {
           for (const auto& op : preceding_ops) {
-            PADDLE_ENFORCE(op, "No nullptr should be preceding_op");
+            PADDLE_ENFORCE_NOT_NULL(op, "No nullptr should be preceding_op");
             if (visited_preceding_ops.count(op) == 0) {
               visited_preceding_ops.insert(op);
-              grad_op->InsertPrecedingOps(op);
+              grad_op->InsertGradPendingOps(op);
             }
           }
         } else {
@@ -198,7 +209,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
       }
     }
     // To ensure numeric stability as static graph
-    grad_op->SortPrecedingOps();
+    grad_op->SortGradPendingOps();
   }
 }
 

@@ -66,8 +66,8 @@ static framework::VariableNameMap CreateVarNameMap(
        is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
-      PADDLE_ENFORCE(
-          var.dispensable(),
+      PADDLE_ENFORCE_EQ(
+          var.dispensable(), true,
           "Var: %s not dispensable and there are no such var in inputs",
           var.name());
       result[var.name()] = {};

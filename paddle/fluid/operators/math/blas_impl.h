@@ -128,6 +128,11 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
+
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_scsrmm(args...);
+  }
 };
 
 template <>
@@ -232,6 +237,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VMERF(ARGS... args) {
     platform::dynload::vmdErf(args...);
+  }
+
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_dcsrmm(args...);
   }
 };
 
@@ -747,6 +757,19 @@ void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
   }
 #endif
 }
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::CSRMM(
+    const char *transa, const int *m, const int *n, const int *k,
+    const T *alpha, const char *matdescra, const T *val, const int *indx,
+    const int *pntrb, const int *pntre, const T *b, const int *ldb,
+    const T *beta, T *c, const int *ldc) const {
+  CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
+                  ldb, beta, c, ldc);
+}
+#endif
 
 }  // namespace math
 }  // namespace operators

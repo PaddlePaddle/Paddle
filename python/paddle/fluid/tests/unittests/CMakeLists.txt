@@ -1,6 +1,7 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0) 
+set(dist_ENVS http_proxy="" https_proxy="")
 
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
@@ -8,6 +9,7 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_fleetapi)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_dgc_nccl)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_hallreduce)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_multi_comm)
@@ -23,6 +25,7 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
 endif(NOT WITH_DISTRIBUTE)
+
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
@@ -75,9 +78,9 @@ if(NOT WITH_MKLML)
 endif()
 
 if(NOT WITH_MKL)
+  list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif(NOT WITH_MKL)
-
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
@@ -135,7 +138,12 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_dist_train)
+
+LIST(REMOVE_ITEM TEST_OPS test_lookup_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
+LIST(REMOVE_ITEM TEST_OPS test_dist_train)
+LIST(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
 list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
@@ -229,37 +237,46 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 if(WITH_DISTRIBUTE)
-    py_test_modules(test_dist_train MODULES test_dist_train)
+    py_test_modules(test_dist_train MODULES test_dist_train ENVS ${dist_ENVS})
+    py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op ENVS ${dist_ENVS})
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20 LABELS "RUN_TYPE=EXCLUSIVE")
+    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
+            PROPERTIES LABELS "RUN_TYPE=DIST")
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
         set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_mnist_hallreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_mnist_multi_comm PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_mnist_ring_allreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_mnist_backward_deps PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_mnist_hallreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_mnist_multi_comm PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_mnist_ring_allreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_mnist_backward_deps PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_mnist_fleetapi  PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
         set_tests_properties(test_dist_mnist_lars PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_simnet_bow PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_text_classification PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_simnet_bow PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_text_classification PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
 
-    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_dgc)
+        list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_dgc)
         list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync)
 	    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_async)
-	        list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync_with_memopt)
+	    list(REMOVE_ITEM TEST_OPS test_dist_se_resnext_sync_with_memopt)
+
         py_test_modules(test_dist_se_resnext_dgc MODULES test_dist_se_resnext_dgc)
-	py_test_modules(test_dist_se_resnext_sync MODULES test_dist_se_resnext_sync)
+	    py_test_modules(test_dist_se_resnext_sync MODULES test_dist_se_resnext_sync)
         py_test_modules(test_dist_se_resnext_nccl MODULES test_dist_se_resnext_nccl)
         bash_test_modules(test_launch MODULES test_launch.sh)
+
         # FIXME(typhoonzero): add these tests back
         # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
         # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
-	set_tests_properties(test_dist_se_resnext_dgc PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_se_resnext_sync PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-	set_tests_properties(test_dist_se_resnext_nccl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_se_resnext_dgc PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_se_resnext_sync PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_dist_se_resnext_nccl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     endif(NOT APPLE)
     # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
@@ -268,7 +285,6 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_crf_auto_growth MODULES test_parallel_executor_crf_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
-set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 740)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
@@ -277,8 +293,9 @@ if(NOT WIN32)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    # change the timeout from 600 to 2200, because in debug mode, this test need more time.
-    set_tests_properties(test_parallel_executor_seresnext PROPERTIES TIMEOUT 2200)
+    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
+    set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 740)
+    set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 450)
 endif()
 
 if (WITH_NGRAPH)
@@ -289,12 +306,9 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
-if(WITH_DISTRIBUTE)
-    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
-            PROPERTIES LABELS "RUN_TYPE=DIST")
-endif()
-
-set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
+set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
+        test_parallel_executor_seresnext_base_gpu test_parallel_executor_seresnext_with_reduce_gpu
+        test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")

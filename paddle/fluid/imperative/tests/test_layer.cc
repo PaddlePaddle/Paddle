@@ -109,18 +109,18 @@ TEST(test_layer, test_clear_backward_info) {
       OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
   std::shared_ptr<imperative::OpBase> preceding_op(
       OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
-  op->InsertPrecedingOps(preceding_op.get());
+  op->InsertGradPendingOps(preceding_op.get());
   *(op->GetMutableInsMap()) = ins;
   *(op->GetMutableOutsMap()) = outs;
   ASSERT_GT(op->GetInsMap().size(), 0);
   ASSERT_GT(op->GetOutsMap().size(), 0);
-  ASSERT_GT(op->PrecedingOps().size(), 0);
+  ASSERT_GT(op->GradPendingOps().size(), 0);
 
   op->ClearBackwardTrace();
 
   ASSERT_EQ(op->GetInsMap().size(), 0);
   ASSERT_EQ(op->GetOutsMap().size(), 0);
-  ASSERT_EQ(op->PrecedingOps().size(), 0);
+  ASSERT_EQ(op->GradPendingOps().size(), 0);
 }
 
 TEST(test_layer, test_varbase_basic) {
