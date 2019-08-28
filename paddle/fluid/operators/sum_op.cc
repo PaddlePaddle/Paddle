@@ -141,7 +141,7 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
-          if (each.numel() != 0) {
+          if (each.numel() != 0 && each.IsInitialized()) {
             return framework::OpKernelType(each.type(), ctx.device_context(),
                                            layout, library);
           }
