@@ -168,8 +168,8 @@ class TestLinearChainCrfPaddingTensor(OpTest):
             offset += l
         return padded
 
-    # Adding for transition_exps
     def seq_pad_exps(self, data, length):
+        # Adding for transition_exps
         max_len = np.max(length)
         shape = [len(length), max_len] + list(data.shape[1:])
         padded = np.ones(shape).astype(data.dtype)
@@ -181,7 +181,6 @@ class TestLinearChainCrfPaddingTensor(OpTest):
 
     def set_test_data_1(self):
         # Fix the unittest by: add padding tensor in inputs 
-
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5
