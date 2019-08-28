@@ -34,7 +34,7 @@ class TestBoxPS(unittest.TestCase):
     def run_boxps(self, is_cpu=True):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x, emb_y = layers.pull_box_sparse([x, y], size=2)
+        emb_x, emb_y = layers._pull_box_sparse([x, y], size=2)
         concat = layers.concat([emb_x, emb_y], axis=1)
         fc = layers.fc(input=concat,
                        name="fc",
@@ -106,11 +106,11 @@ class TestBoxPSPreload(unittest.TestCase):
     def run_boxps_preload(self, is_cpu=True):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x, emb_y = layers.pull_box_sparse([x, y], size=2)
+        emb_x, emb_y = layers._pull_box_sparse([x, y], size=2)
 
         # For variable input for pull_box_sparse (For code coverage)
         # TODO: will add UT for pull_box_sparse op to cover this case
-        emb_xp = layers.pull_box_sparse(x, size=2)
+        emb_xp = layers._pull_box_sparse(x, size=2)
         layers.Print(emb_xp)
 
         concat = layers.concat([emb_x, emb_y], axis=1)

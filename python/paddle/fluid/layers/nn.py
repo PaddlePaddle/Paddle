@@ -216,7 +216,7 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
-    'pull_box_sparse',
+    '_pull_box_sparse',
 ]
 
 kIgnoreIndex = -100
@@ -515,7 +515,7 @@ def embedding(input,
     return tmp
 
 
-def pull_box_sparse(input, size, dtype='float32'):
+def _pull_box_sparse(input, size, dtype='float32'):
     """
     **Pull Box Sparse Layer**
 

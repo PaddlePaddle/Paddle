@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ void BindBoxHelper(py::module* m) {
   py::class_<framework::BoxHelper, std::shared_ptr<framework::BoxHelper>>(
       *m, "BoxPS")
       .def(py::init([](paddle::framework::Dataset* dataset) {
-        // return paddle::framework::BoxWrapper::GetInstance();
         return std::make_shared<paddle::framework::BoxHelper>(dataset);
       }))
       .def("begin_pass", &framework::BoxHelper::BeginPass)

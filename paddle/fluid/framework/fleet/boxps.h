@@ -136,7 +136,7 @@ class FakeBoxPS : public BoxPSBase {
  private:
   std::map<uint64_t, std::vector<float>> emb_;
   int hidden_size_ = 11;  // should be read in config file, hard-cord now
-  float learning_rate_ = 0.01;
+  float learning_rate_ = 0.001;
   void PrintAllEmb() const;
   void DebugPrintKey(const uint64_t *d, int len, const std::string &info) const;
   std::mutex map_mutex;

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/fleet/boxps.h"
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -45,9 +46,13 @@ int FakeBoxPS::FeedPass(int date, const std::vector<uint64_t> &pass_data) {
   for (const auto fea : pass_data) {
     if (emb_.find(fea) == emb_.end()) {
       emb_[fea] = std::vector<float>(hidden_size_, 0.0);
+      for (int i = 0; i < hidden_size_; ++i) {
+        emb_[fea][i] =
+            static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5;
+      }
     }
   }
-  PrintAllEmb();
+  // PrintAllEmb();
   return 0;
 }
 
@@ -78,8 +83,7 @@ int FakeBoxPS::InitializeCPU(const char *conf_file, int minibatch_size) {
 
 int FakeBoxPS::PullSparseCPU(const uint64_t *keys, FeatureValue **vals,
                              int fea_num) {
-  printf("FakeBoxPS:begin pull sparse...\n");
-  this->DebugPrintKey(keys, fea_num, "key in pullsparse cpu:");
+  // this->DebugPrintKey(keys, fea_num, "key in pullsparse cpu:");
 
   *vals = new FeatureValue[fea_num];
   {
@@ -96,25 +100,18 @@ int FakeBoxPS::PullSparseCPU(const uint64_t *keys, FeatureValue **vals,
     const auto *value = iter->second.data();
     // memory in values has been allocated in pull_sparse_op
 
-    printf("value: ");
-    for (int j = 0; j < hidden_size_; ++j) {
-      printf("%f ", value[j]);
-    }
-    printf("\n");
     memcpy(reinterpret_cast<float *>(&((*vals + i)->show)), value,
            hidden_size_ * sizeof(float));
-    printf("FakeBoxPS: i:%d, show:%f, click:%f\n", i, (*vals + i)->show,
-           (*vals + i)->clk);
+    // printf("FakeBoxPS: i:%d, show:%f, click:%f\n", i, (*vals + i)->show,
+    // (*vals + i)->clk);
   }
-  printf("FakeBoxPS:end pull sparse...\n");
   return 0;
 }
 
 int FakeBoxPS::PushSparseCPU(const uint64_t *keys,
                              const FeaturePushValue *push_vals, int fea_num) {
   // should add lock for multi-thread
-  printf("FakeBoxPS:begin push grad sparse...\n");
-  PrintAllEmb();
+  // PrintAllEmb();
   for (int i = 0; i < fea_num; ++i) {
     std::lock_guard<std::mutex> lock(map_mutex);
     auto iter = emb_.find(*(keys + i));
@@ -128,8 +125,7 @@ int FakeBoxPS::PushSparseCPU(const uint64_t *keys,
       para[j] -= learning_rate_ * (*(start_ptr + j));
     }
   }
-  printf("FakeBoxPS: end push grad sparse...\n");
-  PrintAllEmb();
+  // PrintAllEmb();
   return 0;
 }
 
@@ -141,7 +137,6 @@ int FakeBoxPS::InitializeGPU(const char *conf_file, int minibatch_size,
 
 int FakeBoxPS::PullSparseGPU(const uint64_t *keys, FeatureValue **vals,
                              int fea_num, int stream_idx) {
-  printf("FakeBoxPS PullSparseGPU begin\n");
   cudaMalloc(vals, sizeof(FeatureValue) * fea_num);
   {
     std::lock_guard<std::mutex> lock(map_mutex);
@@ -152,11 +147,12 @@ int FakeBoxPS::PullSparseGPU(const uint64_t *keys, FeatureValue **vals,
              cudaMemcpyDeviceToHost);
 
   // Debug info, should be deleted
-  this->DebugPrintKey(cpu_keys, fea_num, "copy keys from gpu to cpu success");
+  // this->DebugPrintKey(cpu_keys, fea_num, "copy keys from gpu to cpu
+  // success");
 
   FeatureValue *cpu_values;
   this->PullSparseCPU(cpu_keys, &cpu_values, fea_num);
-  cudaMemcpy(vals, cpu_values, sizeof(FeatureValue) * fea_num,
+  cudaMemcpy(*vals, cpu_values, sizeof(FeatureValue) * fea_num,
              cudaMemcpyHostToDevice);
   delete[] cpu_keys;
   return 0;
@@ -165,13 +161,13 @@ int FakeBoxPS::PullSparseGPU(const uint64_t *keys, FeatureValue **vals,
 int FakeBoxPS::PushSparseGPU(const uint64_t *keys,
                              const FeaturePushValue *push_vals, int fea_num,
                              int stream_idx) {
-  printf("FakeBoxPS PushSparseGPU begin\n");
   uint64_t *cpu_keys = new uint64_t[fea_num];
   cudaMemcpy(cpu_keys, keys, sizeof(uint64_t) * fea_num,
              cudaMemcpyDeviceToHost);
 
   // Debug, should delete
-  this->DebugPrintKey(cpu_keys, fea_num, "copy keys from gpu to cpu success");
+  // this->DebugPrintKey(cpu_keys, fea_num, "copy keys from gpu to cpu
+  // success");
 
   FeaturePushValue *cpu_grad_values = new FeaturePushValue[fea_num];
   cudaMemcpy(cpu_grad_values, push_vals, sizeof(FeaturePushValue) * fea_num,
