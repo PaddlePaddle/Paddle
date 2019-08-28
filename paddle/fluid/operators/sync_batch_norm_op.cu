@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class SyncBatchNormKernel::Compute(
+void SyncBatchNormKernel::Compute(
     const framework::ExecutionContext &ctx) const override {
   double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
   const float momentum = ctx.Attr<float>("momentum");
@@ -50,7 +50,7 @@ class SyncBatchNormKernel::Compute(
 }
 
 template <typename DeviceContext, typename T>
-class SyncBatchNormGradKernel::Compute(
+void SyncBatchNormGradKernel::Compute(
     const framework::ExecutionContext &ctx) const override {
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                     "It must use CUDAPlace.");
