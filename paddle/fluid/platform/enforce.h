@@ -67,11 +67,13 @@ inline std::string demangle(std::string name) { return name; }
 #endif
 
 template <typename StrType>
-inline std::string GetTraceBackString(StrType&& what, const char* f, int l) {
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
-  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), f, l)
+  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
+                          line)
        << std::endl;
   sout << "PaddlePaddle Call Stacks: " << std::endl;
 #if !defined(_WIN32)

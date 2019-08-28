@@ -39,8 +39,12 @@ class WaitedAllocateSizeGuard {
 
 void RetryAllocator::FreeImpl(Allocation* allocation) {
   // Delete underlying allocation first.
+  size_t size = allocation->size();
   underlying_allocator_->Free(allocation);
   if (UNLIKELY(waited_allocate_size_)) {
+    VLOG(10) << "Free " << size << " bytes and notify all waited threads, "
+                                   "where waited_allocate_size_ = "
+             << waited_allocate_size_;
     cv_.notify_all();
   }
 }
@@ -56,6 +60,8 @@ Allocation* RetryAllocator::AllocateImpl(size_t size) {
   } catch (BadAlloc&) {
     {
       WaitedAllocateSizeGuard guard(&waited_allocate_size_, size);
+      VLOG(10) << "Allocation failed when allocating " << size
+               << " bytes, waited_allocate_size_ = " << waited_allocate_size_;
       // We can just write allocation retry inside the predicate function of
       // wait_until. But it needs to acquire the lock when executing predicate
       // function. For better performance, we use loop here
@@ -65,16 +71,23 @@ Allocation* RetryAllocator::AllocateImpl(size_t size) {
         return cv_.wait_until(lock, end_time);
       };
 
+      size_t retry_time = 0;
       while (wait_until() != std::cv_status::timeout) {
         try {
           return alloc_func();
         } catch (BadAlloc&) {
           // do nothing when it is not timeout
+          ++retry_time;
+          VLOG(10) << "Allocation failed when retrying " << retry_time
+                   << " times when allocating " << size
+                   << " bytes. Wait still.";
         } catch (...) {
           throw;
         }
       }
     }
+    VLOG(10) << "Allocation failed because of timeout when allocating " << size
+             << " bytes.";
     return alloc_func();  // If timeout, try last allocation request.
   } catch (...) {
     throw;

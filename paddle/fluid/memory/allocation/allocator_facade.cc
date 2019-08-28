@@ -166,9 +166,9 @@ class AllocatorFacadePrivate {
   void WrapCUDARetryAllocator(size_t retry_time) {
     PADDLE_ENFORCE_GT(retry_time, 0, "Retry time must be larger than 0");
     for (auto& pair : allocators_) {
-      if (!platform::is_gpu_place(pair.first)) continue;
-
-      pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
     }
   }
 
