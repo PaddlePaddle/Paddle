@@ -205,7 +205,12 @@ class DistributedTranspiler(Fleet):
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
                 sync_mode=config.sync_mode)
-            self.main_program = self._transpiler.get_trainer_program()
+
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                config.wait_port = False
+
+            self.main_program = self._transpiler.get_trainer_program(
+                wait_port=config.wait_port)
             self.startup_program = default_startup_program()
         else:
             self._transpiler.transpile(
