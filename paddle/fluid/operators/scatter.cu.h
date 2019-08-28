@@ -95,14 +95,6 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   int n = slice_size * index_size;
   int grid = (n + block - 1) / block;
 
-  // if not overwrite mode, init data
-  if (!overwrite) {
-    ScatterInitCUDAKernel<T, IndexT><<<
-        grid, block, 0,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-        p_index, p_output, index_size, slice_size, overwrite);
-  }
-
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
