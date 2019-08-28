@@ -1437,14 +1437,16 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
     auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
-    }
+    // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
+    // calculate dy first, so ddy can inplace ddx
     if (dOut) {
       auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
       auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
       dout.device(*d) = dx * ddx * static_cast<T>(-1) / out;
+    }
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -1459,14 +1461,16 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
     auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      ddout.device(*d) = ddx * static_cast<T>(2) * x;
-    }
+    // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
+    // calculate dx first, so ddy can inplace ddx
     if (dX) {
       auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
       auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
       dx.device(*d) = ddx * static_cast<T>(2) * dout;
+    }
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      ddout.device(*d) = ddx * static_cast<T>(2) * x;
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }

@@ -54,7 +54,9 @@ REGISTER_OPERATOR(elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
                   ops::ElementwiseGradNoBufVarsInference,
                   ops::ElementwiseAddDoubleGradDescMaker);
 REGISTER_OPERATOR(elementwise_add_grad_grad,
-                  ops::ElementwiseOpDoubleGradWithoutDXDY);
+                  ops::ElementwiseOpDoubleGradWithoutDXDY,
+                  ops::ElementwiseDoubleGradOpInplace,
+                  ops::ElementwiseDoubleGradNoBufVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,
