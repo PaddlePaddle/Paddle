@@ -61,6 +61,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'instance_norm',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -3225,14 +3226,14 @@ def batch_norm(input,
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized 
-	     with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
-	     Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
@@ -3351,6 +3352,182 @@ def batch_norm(input,
         })
 
     return helper.append_activation(batch_norm_out)
+
+
+def instance_norm(input,
+                  is_test=False,
+                  momentum=0.9,
+                  epsilon=1e-05,
+                  param_attr=None,
+                  bias_attr=None,
+                  name=None,
+                  moving_mean_name=None,
+                  moving_variance_name=None,
+                  do_model_average_for_mean_and_var=False,
+                  use_global_stats=False):
+    """
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for 
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean of one  feature map in mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance of one feature map in mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Args:
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float, Default 0.9): The value used for the moving_mean and
+            moving_var computation. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            will save global mean with the string.
+        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            will save global variance with the string.
+        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying batch normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.instance_norm(input=hidden1)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for bn parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="instance_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+            "Mean": mean,
+            "Variance": variance
+        },
+        outputs={
+            "Y": instance_norm_out,
+            "MeanOut": mean_out,
+            "VarianceOut": variance_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={
+            "momentum": momentum,
+            "epsilon": epsilon,
+            "is_test": is_test,
+            "use_global_stats": use_global_stats
+        })
+
+    return instance_norm_out
 
 
 def data_norm(input,
@@ -4193,7 +4370,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
@@ -4353,22 +4530,22 @@ def sequence_unpad(x, length, name=None):
 
     .. code-block:: text
 
-	Example:
+Example:
 
-	Given input Variable **x**:
-	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
-		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
-		      [11.0, 12.0, 13.0, 14.0, 15.0]],
+Given input Variable **x**:
+    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+      [11.0, 12.0, 13.0, 14.0, 15.0]],
 
-	in which there are 3 sequences padded to length 5, and the acutal length
-	specified by input Variable **length**:
+in which there are 3 sequences padded to length 5, and the acutal length
+specified by input Variable **length**:
 
-	    length.data = [[2], [3], [4]],
+    length.data = [[2], [3], [4]],
 
-	after unpadding, the output Variable will be:
+after unpadding, the output Variable will be:
 
-	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[2, 3, 4]]
+    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+    out.lod = [[2, 3, 4]]
 
     Args:
         x(Variable): Input Variable which contains the padded sequences with
@@ -7395,7 +7572,7 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                   [[38, 39, 40]],
                   [[41, 42, 43]]]]
             Y.shape = (1, 3, 1, 3)
-		And
+And
             pad_value = -1,
 
         Return:
@@ -8326,9 +8503,9 @@ def gather(input, index, overwrite=True):
         index (Variable): The index input with rank=1.
         overwrite (bool): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
-	    if False, use the accumulate mode to update the grad of the same index. 
-	    Default value is True.
-	    
+    if False, use the accumulate mode to update the grad of the same index. 
+    Default value is True.
+    
 
 
     Returns:
@@ -8375,8 +8552,8 @@ def scatter(input, index, updates, name=None, overwrite=True):
         name (str|None): The output variable name. Default None.
         overwrite (bool): The mode that updating the output when has same index.
             If True, use the overwrite mode to update the output of the same index,
-	    if False, use the accumulate mode to update the output of the same index. 
-	    Default value is True.You can set overwrite=False to implement scatter_add.
+    if False, use the accumulate mode to update the output of the same index. 
+    Default value is True.You can set overwrite=False to implement scatter_add.
 
     Returns:
         output (Variable): The output is a tensor with the same shape as input.
@@ -8455,7 +8632,7 @@ def sequence_scatter(input, index, updates, name=None):
     Examples:
 
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -9052,38 +9229,38 @@ def pad2d(input,
     Example:
         .. code-block:: text
 
-	      Given that X is a channel of image from input:
+      Given that X is a channel of image from input:
 
-	      X = [[1, 2, 3],
-		   [4, 5, 6]]
+      X = [[1, 2, 3],
+   [4, 5, 6]]
 
-	      Case 0:
+      Case 0:
 
-		paddings = [0, 1, 2, 3],
-		mode = 'constant'
-		pad_value = 0
+paddings = [0, 1, 2, 3],
+mode = 'constant'
+pad_value = 0
 
-		Out = [[0, 0, 1, 2, 3, 0, 0, 0]
-		       [0, 0, 4, 5, 6, 0, 0, 0]
-		       [0, 0, 0, 0, 0, 0, 0, 0]]
+Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+       [0, 0, 4, 5, 6, 0, 0, 0]
+       [0, 0, 0, 0, 0, 0, 0, 0]]
 
-	      Case 1:
+      Case 1:
 
-		paddings = [0, 1, 2, 1],
-		mode = 'reflect'
+paddings = [0, 1, 2, 1],
+mode = 'reflect'
 
-		Out = [[3, 2, 1, 2, 3, 2]
-		       [6, 5, 4, 5, 6, 5]
-		       [3, 2, 1, 2, 3, 2]]
+Out = [[3, 2, 1, 2, 3, 2]
+       [6, 5, 4, 5, 6, 5]
+       [3, 2, 1, 2, 3, 2]]
 
-	      Case 2:
+      Case 2:
 
-		paddings = [0, 1, 2, 1],
-		mode = 'edge'
+paddings = [0, 1, 2, 1],
+mode = 'edge'
 
-		Out = [[1, 1, 1, 2, 3, 3]
-		       [4, 4, 4, 5, 6, 6]
-		       [4, 4, 4, 5, 6, 6]]
+Out = [[1, 1, 1, 2, 3, 3]
+       [4, 4, 4, 5, 6, 6]
+       [4, 4, 4, 5, 6, 6]]
 
 
     Args:
@@ -9639,7 +9816,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -9805,7 +9982,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
           ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
           filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
           out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
-        		
+        
     """
     helper = LayerHelper('filter_by_instag', **locals())
 
@@ -10965,7 +11142,7 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import numpy as np
 
@@ -11617,7 +11794,7 @@ def get_tensor_from_selected_rows(x, name=None):
 
     Examples:
         .. code-block:: python
-	    
+    
             import paddle.fluid as fluid
             b = fluid.default_main_program().global_block()
             input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
@@ -12130,7 +12307,7 @@ def tree_conv(nodes_vector,
               name=None):
     """ 
     ${comment}
-    		
+    
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -12998,8 +13175,8 @@ def var_conv_2d(input,
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor: 
-                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
-                input.dims = [116, 1]	# where 116 = 60 + 56
+                input.lod = [[60, 56]]# where 60 = input_channel * 5 * 6
+                input.dims = [116, 1]# where 116 = 60 + 56
             
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
