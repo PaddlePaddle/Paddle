@@ -1264,12 +1264,12 @@ class FleetUtil(object):
 
         mae = global_abserr / total_ins_num
         rmse = math.sqrt(global_sqrerr / total_ins_num)
-        actual_ctr = pos_ins_num / total_ins_num
+        return_actual_ctr = pos_ins_num / total_ins_num
         predicted_ctr = global_prob / total_ins_num
         mean_predict_qvalue = global_q_value / total_ins_num
         copc = 0.0
         if abs(predicted_ctr > 1e-6):
-            copc = actual_ctr / predicted_ctr
+            copc = return_actual_ctr / predicted_ctr
 
         # calculate bucket error
         last_ctr = -1.0
@@ -1316,7 +1316,7 @@ class FleetUtil(object):
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
-            auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr, copc,
             mean_predict_qvalue, int(total_ins_num)
         ]
 
