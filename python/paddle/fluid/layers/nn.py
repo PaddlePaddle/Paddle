@@ -1375,53 +1375,62 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     Examples:
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             import numpy as np
-             train_program = fluid.Program()
-             startup_program = fluid.Program()
-     
-             #define net structure, using LodTensor
-             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
-             label = fluid.layers.data(name='Label', shape=[1], dtype='int', lod_level=1)
-             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
-             crf_cost = fluid.layers.linear_chain_crf(
-             input=emission,
-             label=label,
-             param_attr=fluid.ParamAttr(
-                 name='crfw',
-                 learning_rate=0.01)) 
-            
-             #define net structure, using padding  
-             input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32')
-             label = fluid.layers.data(name='Label', shape=[1], dtype='int')
-             label_length = fluid.layers.data(name='Length', shape=[1], dtype='int')
-             emission= fluid.layers.fc(input=input_data, size=10, act="tanh", num_flatten_dims=2)
-             crf_cost = fluid.layers.linear_chain_crf(
-             input=emission,
-             label=label,
-             length=label_length,
-             param_attr=fluid.ParamAttr(
-                 name='crfw',
-                 learning_rate=0.01))
-             
-             use_cuda = False
-             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-             exe = fluid.Executor(place)
-             exe.run(startup_program)
-             
-             #define data, using LoDTensor
-             a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
-             b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
-             feed1 = {'emission':a,'label':b}
-             
-             #define data, using padding
-             cc=np.random.rand(4,10,10).astype('float32')
-             dd=np.random.rand(4,10,1).astype('int64')
-             ll=np.array([[3,3,4,2]])
-             feed1 = {'input_data':cc,'label':dd,'length':ll}
-             
-             loss = exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
-             print(loss) 
+            import paddle.fluid as fluid
+            import numpy as np
+
+            #define net structure, using LodTensor
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=emission,
+                    label=label,
+                    param_attr=fluid.ParamAttr(
+                    name='crfw',
+                    learning_rate=0.01)) 
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)    
+            #define data, using LoDTensor
+            a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
+            b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
+            feed1 = {'input_data':a,'label':b}
+            loss= exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
+            print(loss) 
+
+            #define net structure, using padding
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
+                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
+                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
+                crf_cost2 = fluid.layers.linear_chain_crf(
+                    input=emission2,
+                    label=label2,
+                    length=label_length,
+                    param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.01))
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+
+            #define data, using padding
+            cc=np.random.rand(4,10,10).astype('float32')
+            dd=np.random.rand(4,10,1).astype('int64')
+            ll=np.array([[3,3,4,2]])
+            feed2 = {'input_data2':cc,'label2':dd,'length':ll}
+
+            loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
+            print(loss2) 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
