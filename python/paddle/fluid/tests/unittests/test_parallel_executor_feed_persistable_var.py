@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from functools import partial
 import numpy
 import unittest
 import paddle.fluid.core as core
@@ -26,6 +26,14 @@ class TestFeedPersistableVar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
+        batch_size = 4
+        cls.img, cls.label = init_data(
+            batch_size, img_shape=[784], label_range=9)
+        cls.feed_dict = {
+            'image': cls.img,
+            'label': cls.label,
+            'learning_rate': numpy.array([1.0]).astype("float32")
+        }
 
     def optimizer(self):
         learning_rate = fluid.layers.create_global_var(
@@ -58,15 +66,12 @@ class TestFeedPersistableVar(unittest.TestCase):
             exe.run(program=compiled_prog, feed=feed_dict)
 
     def test_feed_persistable_var(self):
-        batch_size = 4
-        img, label = init_data(batch_size, img_shape=[784], label_range=9)
-        feed_dict = {
-            'image': img,
-            'label': label,
-            'learning_rate': numpy.array([1.0]).astype("float32")
-        }
-        self.check_feed_persistable_var(feed_dict)
-        self.check_feed_persistable_var(feed_dict, use_cuda=True)
+        self.check_feed_persistable_var(self.feed_dict)
+        self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
+
+        self.feed_dict['learning_rate'] = numpy.array(
+            [1.0, 1.0]).astype("float32")
+        self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
 
 if __name__ == '__main__':
