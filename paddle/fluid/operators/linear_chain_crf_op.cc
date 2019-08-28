@@ -271,8 +271,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(label_dims[1], 1,
                         "The Input(Label) 2nd dimensions fixed to 1.");
     }
-    PADDLE_ENFORCE(emission_exps_dims[0],
-                   "An empty mini-batch is not allowed.");
+    PADDLE_ENFORCE_NE(emission_exps_dims[0], 0,
+                      "An empty mini-batch is not allowed.");
 
     PADDLE_INFERSHAPE_ENFORCE_EQ(
         ctx, emission_exps_dims[0], label_dims[0],
