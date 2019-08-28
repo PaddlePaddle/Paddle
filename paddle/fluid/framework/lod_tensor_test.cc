@@ -188,7 +188,15 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1};
+  LoDTensor lod_tensor2;
+  LoD lod2;
+  lod2.push_back(std::vector<size_t>({0}));
+  lod2.push_back(std::vector<size_t>({0}));
+  lod_tensor2.set_lod(lod2);
+  lod_tensor2.Resize({0});
+  dst_ptr = lod_tensor2.mutable_data<float>(place);
+
+  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
 
   LoDTensor lod_tensor;
   lod_tensor.MergeLoDTensor(lods, place);
