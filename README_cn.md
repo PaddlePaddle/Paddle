@@ -85,7 +85,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 ## 交流与反馈
 
 - 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
-- QQ群: 432676488 (PaddlePaddle)
+- QQ群: 796771754 (PaddlePaddle)
 - [论坛](http://ai.baidu.com/forum/topic/list/168): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验, 营造良好的论坛氛围
 
 ## 版权和许可证
