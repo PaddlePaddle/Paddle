@@ -125,6 +125,10 @@ if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
         failed_num=`expr $failed_num + 1`
         echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+        echo "****************"
+        git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep "PADDLE_ENFORCE"
+        failed_paddle_enforce_num=`git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep "PADDLE_ENFORCE |wc -l"`
+        echo -e "\nThere are ${failed_paddle_enforce_num} PADDLE_ENFORCE errors."
     fi
 fi
 

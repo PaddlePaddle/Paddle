@@ -86,12 +86,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   DataFeedDesc data_feed_desc;
   bool success = data_feed_desc.ParseFromString(data_feed_desc_str);
-  PADDLE_ENFORCE(success, "Fail to parse DataFeedDesc from string:\n%s",
+  PADDLE_ENFORCE(success, "Test, Fail to parse DataFeedDesc from string:%s",
                  data_feed_desc_str.c_str());
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
-  PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
+  PADDLE_ENFORCE(file_cnt > 0, "Test, File list cannot be empty");
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
