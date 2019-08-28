@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils"""
+"""HDFS Utils."""
 
 import os
 import sys
@@ -93,6 +93,15 @@ class HDFSClient(object):
         return ret_code, ret_out, ret_err
 
     def cat(self, hdfs_path=None):
+        """
+        cat hdfs file
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            file content
+        """
         if self.is_file(hdfs_path):
             exist_cmd = ['-cat', hdfs_path]
             returncode, output, errors = self.__run_hdfs_cmd(
@@ -101,8 +110,7 @@ class HDFSClient(object):
                 _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
                 return ""
             else:
-                _logger.info("HDFS cat HDFS path: {} succeed".format(
-                    hdfs_path))
+                _logger.info("HDFS cat HDFS path: {} succeed".format(hdfs_path))
                 return output.strip()
 
         else:
@@ -190,7 +198,7 @@ class HDFSClient(object):
         whether the remote HDFS path exists
 
         Args:
-        hdfs_path: HDFS path.
+            hdfs_path: HDFS path.
 
         Returns:
             True or False
@@ -224,8 +232,10 @@ class HDFSClient(object):
         Move a file or folder on HDFS.
 
         Args:
-        hdfs_path(str): HDFS path.
-        overwrite(bool|False): If the path already exists and overwrite is False, will return False.
+            hdfs_src_path(str): HDFS path
+            hdfs_dst_pathh(str): HDFS path
+            overwrite(bool|False): If the path already exists and overwrite is
+                                   False, will return False.
 
         Returns:
             True or False
@@ -332,9 +342,8 @@ class HDFSClient(object):
         list directory contents about HDFS hdfs_path recursively
 
         Args:
-        hdfs_path(str): Remote HDFS path.
-        only_file(bool|True): will discard folders.
-        sort(bool|True): will be sorted by create time.
+            hdfs_path(str): Remote HDFS path.
+            excludes(list): excludes
 
         Returns:
             List: a contents list about hdfs_path.
@@ -402,6 +411,8 @@ class HDFSClient(object):
             hdfs_path(str): path on hdfs
             local_path(str): path on local
             multi_processes(int|5): the download data process at the same time, default=5
+            overwrite(bool): is overwrite
+            retry_times(int): retry times
 
         Returns:
             List:
@@ -497,6 +508,15 @@ class HDFSClient(object):
             return True
 
         def get_local_files(path):
+            """
+            get local files
+
+            Args:
+                path: local path
+
+            Returns:
+                list of local files
+            """
             rlist = []
 
             if not os.path.exists(path):
@@ -538,6 +558,17 @@ class HDFSClient(object):
                                                                 hdfs_path))
 
     def upload_dir(self, dest_dir, local_dir, overwrite=False):
+        """
+        upload dir to hdfs
+
+        Args:
+            dest_dir(str): hdfs dest dir
+            local_dir(str): hdfs local dir
+            overwrite(bool): is overwrite
+
+        Returns:
+            return code
+        """
         local_dir = local_dir.rstrip("/")
         dest_dir = dest_dir.rstrip("/")
         local_basename = os.path.basename(local_dir)
@@ -549,10 +580,11 @@ class HDFSClient(object):
         returncode, output, errors = self.__run_hdfs_cmd(put_command,
                                                          retry_times)
         if returncode != 0:
-            _logger.error("Put local dir: {} to HDFS dir: {} failed".
-                          format(local_dir, dest_dir))
+            _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
+                local_dir, dest_dir))
             return False
         return True
+
 
 if __name__ == "__main__":
     hadoop_home = "/home/client/hadoop-client/hadoop/"
