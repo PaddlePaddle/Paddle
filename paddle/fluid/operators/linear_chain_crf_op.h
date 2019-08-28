@@ -106,15 +106,18 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
-      PADDLE_ENFORCE(seq_num == emission_dims[0] && seq_num == label_dims[0],
-                     "the size of Input(length) must be equal to "
-                     "emission_dims[0] and label_dims[0].");
+      PADDLE_ENFORCE_EQ(seq_num, emission_dims[0],
+                        "the size of Input(length) must be equal to "
+                        "emission_dims[0].");
+      PADDLE_ENFORCE_EQ(seq_num, label_dims[0],
+                        "the size of Input(length) must be equal to "
+                        "label_dims[0].");
     } else {
       seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
       batch_size = emission_dims[0];
       tag_num = emission_dims[1];
       in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
-      PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
+      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
     }
 
     ll->Resize({static_cast<int>(seq_num), 1});
@@ -239,7 +242,8 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
-    PADDLE_ENFORCE(emission_grad, "Output(Emission@Grad) should not be null.");
+    PADDLE_ENFORCE_NE(emission_grad, 0,
+                      "Output(Emission@Grad) should not be null.");
     auto* emission_grad_data =
         emission_grad->mutable_data<T>(platform::CPUPlace());
     memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
@@ -274,7 +278,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     } else {
       seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
       lod = ctx.Input<LoDTensor>("Label")->lod()[0];
-      PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
+      PADDLE_ENFORCE_NE(lod.size(), 0, "Input(Label) must be a sequence.");
     }
 
     Tensor* transition_grad =
