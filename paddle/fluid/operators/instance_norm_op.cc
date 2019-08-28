@@ -584,7 +584,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
     ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, NxC);
 
     // dx = scale * (x - mean) * inv_var / HxW * (np.mean(ddx, axis=(h,w)) *
-    // np.sum(dy, axis=(h,w)) -
+    //      np.sum(dy, axis=(h,w)) -
     //      np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
     //      axis=(h,w)) * inv_var.pow(2) *
     //      np.sum(ddx * (x - mean), axis=(h,w))) + inv_var.pow(3) / HxW *
