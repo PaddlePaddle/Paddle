@@ -242,8 +242,6 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
-    PADDLE_ENFORCE_NE(emission_grad, 0,
-                      "Output(Emission@Grad) should not be null.");
     auto* emission_grad_data =
         emission_grad->mutable_data<T>(platform::CPUPlace());
     memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
