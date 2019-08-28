@@ -26,27 +26,28 @@ namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "Input(X) of ConvOp should not be null.");
+                    "Input(X) of BatchNormOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(Scale) of ConvOp should not be null.");
+                    "Input(Scale) of BatchNormOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    "Input(Bias) of ConvOp should not be null.");
+                    "Input(Bias) of BatchNormOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
-                    "Input(Mean) of ConvOp should not be null.");
+                    "Input(Mean) of BatchNormOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
-                    "Input(Variance) of ConvOp should not be null.");
+                    "Input(Variance) of BatchNormOp should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    "Output(Y) of ConvOp should not be null.");
+                    "Output(Y) of BatchNormOp should not be null.");
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("MeanOut"), true,
-                      "Output(MeanOut) of ConvOp should not be null.");
+                      "Output(MeanOut) of BatchNormOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("VarianceOut"), true,
-                      "Output(VarianceOut) of ConvOp should not be null.");
+                      "Output(VarianceOut) of BatchNormOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("SavedMean"), true,
-                      "Output(SavedMean) of ConvOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("SavedVariance"), true,
-                      "Output(SavedVariance) of ConvOp should not be null.");
+                      "Output(SavedMean) of BatchNormOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("SavedVariance"), true,
+        "Output(SavedVariance) of BatchNormOp should not be null.");
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
