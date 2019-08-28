@@ -84,8 +84,8 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
       const auto &index_type = Ids->type();
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
-      PADDLE_ENFORCE(
-          index_type_match,
+      PADDLE_ENFORCE_EQ(
+          index_type_match, true,
           "scatter_op index holds the wrong type, it holds %s, but desires to "
           "be %s or %s",
           paddle::framework::DataTypeToString(index_type),
