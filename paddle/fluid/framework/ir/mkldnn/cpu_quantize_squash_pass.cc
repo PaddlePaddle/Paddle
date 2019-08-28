@@ -160,6 +160,38 @@ void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
                   found_requant_squash_count);
 }
 
+void CPUQuantizeSquashPass::ConvDequantSquash(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::ConvDequant conv_dequant_pattern{gpd.mutable_pattern(),
+                                             "conv_dequant"};
+  conv_dequant_pattern();
+
+  int found_conv_dequant_squash_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "squash conv-dequant ops pair";
+
+    GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_op, dequant_op, conv_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, conv_dequant_pattern);
+
+    // if conv2d has one output
+    if (conv_out->outputs.size() == 1) {
+      conv_op->Op()->SetAttr("force_fp32_output", true);
+      conv_op->Op()->SetOutput("Output",
+                               std::vector<std::string>({dequant_out->Name()}));
+      IR_NODE_LINK_TO(conv_op, dequant_out);
+      GraphSafeRemoveNodes(graph, {conv_out, dequant_op});
+      found_conv_dequant_squash_count++;
+    }
+  };
+  gpd(graph, handler);
+  AddStatis(found_conv_dequant_squash_count);
+  PrettyLogDetail("---    squashed %d dequant with convs",
+                  found_conv_dequant_squash_count);
+}
+
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
@@ -168,6 +200,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
   ConvRequantSquash(graph);
+  ConvDequantSquash(graph);
 }
 
 }  // namespace ir
