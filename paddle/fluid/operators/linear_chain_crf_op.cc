@@ -167,10 +167,11 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
           "be a 2-D tensor with shape [(D + 2) x D].");
     }
     auto emission_dims = ctx->GetInputDim("Emission");
+    PADDLE_ENFORCE_NE(emission_dims[0], 0,
+                      "An empty mini-batch is not allowed.");
     if (ctx->HasInput("length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
                         "The Input(Emission) should be a 3-D tensor.");
-      PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(label_dims.size(), 3,
                         "The Input(Label) should be a 3-D tensor");
@@ -185,16 +186,15 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                         "The Input(Emission) should be a 2-D tensor.");
-      PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
           ctx, emission_dims[1], transition_dims[1],
           "The 2nd dimension of the Input(Emission) and the Input(Transition) "
           "should be equal to the tag number.");
 
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE(label_dims.size() == 2UL,
-                     "The Input(Label) should be a 2-D tensor with the 2nd "
-                     "dimensions fixed to 1.");
+      PADDLE_ENFORCE_EQ(label_dims.size(), 2,
+                        "The Input(Label) should be a 2-D tensor with the 2nd "
+                        "dimensions fixed to 1.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
           ctx, emission_dims[0], label_dims[0],
           "The height of Input(Emission) and the height of Input(Label) "
@@ -256,9 +256,9 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
           ctx, emission_exps_dims[2], transition_exps_dims[1],
           "The 3nd dimension of the Input(EmissionExps) and the "
           "Input(TransitionExps) should be equal to the tag number.");
-      PADDLE_ENFORCE(label_dims.size() == 3UL,
-                     "The Input(Label) should be a 3-D tensor with the 3nd "
-                     "dimensions fixed to 1.");
+      PADDLE_ENFORCE_EQ(label_dims.size(), 3,
+                        "The Input(Label) should be a 3-D tensor with the 3nd "
+                        "dimensions fixed to 1.");
     } else {
       PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2,
                         "The Input(EmissionExps) should be a 2-D tensor.");
@@ -266,9 +266,10 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
           ctx, emission_exps_dims[1], transition_exps_dims[1],
           "The 2nd dimension of the Input(EmissionExps) and the "
           "Input(TransitionExps) should be equal to the tag number.");
-      PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
-                     "The Input(Label) should be a 2-D tensor with the 2nd "
-                     "dimensions fixed to 1.");
+      PADDLE_ENFORCE_EQ(label_dims.size(), 2 && label_dims[1] == 1UL,
+                        "The Input(Label) should be a 2-D tensor");
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
+                        "The Input(Label) 2nd dimensions fixed to 1.");
     }
     PADDLE_ENFORCE(emission_exps_dims[0],
                    "An empty mini-batch is not allowed.");
