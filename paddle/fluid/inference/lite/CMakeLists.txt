@@ -19,6 +19,6 @@ else()
     # Make target model_optimize_tool. The sequence of glog gflags needs to be attention.
     message(STATUS "LITE_SUBGRAPH_LIB_PATH: ${LITE_SUBGRAPH_LIB_PATH}")
     include_directories(${LITE_SUBGRAPH_PATH}/include)
-    cc_binary(model_optimize_tool SRCS model_optimize_tool.cc DEPS api_full_static glog gflags)
+    cc_binary(test_leaky_relu SRCS test_leaky_relu.cc DEPS api_full_static dynload_cuda glog gflags gtest)
 
 endif()
