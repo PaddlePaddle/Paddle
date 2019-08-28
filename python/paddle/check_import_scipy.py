@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
-from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase
 
-
-class TestResnetWithReduceGPU(TestResnetWithReduceBase):
-    def test_seresnext_with_reduce(self):
-        self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
-
-
-if __name__ == '__main__':
-    unittest.main()
+def check_import_scipy(OsName):
+    print_info = ""
+    if OsName == 'nt':
+        try:
+            import scipy.io as scio
+        except ImportError as e:
+            print_info = str(e)
+        if (len(print_info) > 0):
+            if 'DLL load failed' in print_info:
+                raise ImportError(
+                    print_info +
+                    "\nplease download visual C++ Redistributable for vs 2015, https://www.microsoft.com/en-us/download/details.aspx?id=48145"
+                )
+    return
