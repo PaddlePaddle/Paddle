@@ -471,8 +471,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       auto user_weights_md = platform::MKLDNNMemDesc(
           {weights_tz}, platform::MKLDNNGetDataType<K>(),
-          ((g) == 1) ? mkldnn::memory::format::oihw
-                     : mkldnn::memory::format::goihw);
+          ((g) == 1) ? mkldnn::memory::format_tag::oihw
+                     : mkldnn::memory::format_tag::goihw);
 
       /* create memory descriptor for convolution without specified format
       * ('any') which lets a primitive (convolution in this case) choose
@@ -482,7 +482,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto chosen_memory_format =
           platform::data_format_to_memory_format(data_format);
 
-      std::vector<int> bias_tz;
+      std::vector<int64_t> bias_tz;
 
       auto src_md =
           platform::MKLDNNMemDesc(src_tz, src_dt, chosen_memory_format);
@@ -498,9 +498,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                  : mkldnn::prop_kind::forward_training;
 
       if (bias) {
-        bias_tz = paddle::framework::vectorize2int(bias->dims());
+        bias_tz = paddle::framework::vectorize(bias->dims());
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
-                                               mkldnn::memory::format::x);
+                                               mkldnn::memory::format_tag::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
             mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
