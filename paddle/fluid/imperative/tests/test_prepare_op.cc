@@ -135,28 +135,34 @@ TEST(test_prepare_op, test_prepare_data) {
   platform::CUDAPlace gpu_place(0);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims = {2, 5};
-  // test split
+
+  // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
   vin_tensor->Resize(framework::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
-  var_pair x_pair = var_pair("X", vb_vector(1, vin));
 
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap split_attr_map;
-  const auto& info = framework::OpInfoMap::Instance().Get("split");
+  framework::AttributeMap assign_attr_map;
+  const auto& info = framework::OpInfoMap::Instance().Get("assign");
   framework::VariableNameMap var_in_map =
-      CreateVarNameMap(info, "split", ins, true);
+      CreateVarNameMap(info, "assign", ins, true);
   framework::VariableNameMap var_out_map =
-      CreateVarNameMap(info, "split", outs, false);
-  framework::OperatorWithKernel split_op("split", var_in_map, var_out_map,
-                                         split_attr_map);
+      CreateVarNameMap(info, "assign", outs, false);
+  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
+                                          assign_attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
-  ASSERT_NO_THROW(PreparedOp preparedOp =
-                      PreparedOp::Prepare(ctx, split_op, gpu_place, ins));
+  // test if it can be transformed to GPU place
+  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, gpu_place, ins);
+  for (const auto& name_pair : ins) {
+    for (const auto& vb : name_pair.second) {
+      ASSERT_EQ(vb->Var().Get<framework::LoDTensor>().place(), gpu_place);
+    }
+  }
   // test reshape2
   //  const auto& info2 = framework::OpInfoMap::Instance().Get("reshape2");
   //  std::shared_ptr<imperative::VarBase> vin2(
