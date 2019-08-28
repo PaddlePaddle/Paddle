@@ -40,7 +40,6 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-    out->Resize(out_dims);
     VLOG(2) << "UnsqueezeKernel Compute() function" << std::endl;
   }
 
@@ -90,9 +89,10 @@ template <typename DeviceContext, typename T>
 class UnsqueezeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto in_dims = d_x->dims();
+    auto *d_out =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
@@ -130,11 +130,12 @@ template <typename DeviceContext, typename T>
 class Unsqueeze2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out =
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     // auto in_dims = d_x->dims();
 
-    auto xshape_dims = ctx.Input<framework::Tensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
