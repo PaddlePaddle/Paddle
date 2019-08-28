@@ -102,17 +102,17 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 
 struct EnforceNotMet : public std::exception {
   std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* f, int l) {
+  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-      err_str_ = GetTraceBackString(e.what(), f, l);
+      err_str_ = GetTraceBackString(e.what(), file, line);
       SaveErrorInformation(err_str_);
     }
   }
 
-  EnforceNotMet(const std::string& str, const char* f, int l)
-      : err_str_(GetTraceBackString(str, f, l)) {
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {
     SaveErrorInformation(err_str_);
   }
 
@@ -138,8 +138,8 @@ struct EnforceNotMet : public std::exception {
 
 struct EOFException : public std::exception {
   std::string err_str_;
-  EOFException(const char* err_msg, const char* f, int l) {
-    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, f, l);
+  EOFException(const char* err_msg, const char* file, int line) {
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
   }
 
   const char* what() const noexcept override { return err_str_.c_str(); }

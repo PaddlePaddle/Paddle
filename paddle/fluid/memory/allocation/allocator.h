@@ -28,8 +28,9 @@ namespace allocation {
 
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
-  inline explicit BadAlloc(std::string err_msg, const char* f, int l)
-      : err_str_(platform::GetTraceBackString(std::move(err_msg), f, l)) {}
+  inline explicit BadAlloc(std::string err_msg, const char* file, int line)
+      : err_str_(platform::GetTraceBackString(std::move(err_msg), file, line)) {
+  }
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
