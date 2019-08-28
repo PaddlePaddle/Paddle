@@ -61,7 +61,8 @@ class LookupTableKernel : public framework::OpKernel<T> {
 // parameter server
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch(id_name, out_name, embedding_name, false,
+      auto *table_t = context.Input<LoDTensor>("W");
+      operators::distributed::prefetch(ids_t, output_t, table_t, false,
                                        table_names, epmap, height_sections,
                                        context, context.scope());
 #else

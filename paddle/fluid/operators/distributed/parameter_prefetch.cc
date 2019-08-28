@@ -37,7 +37,6 @@ namespace operators {
 namespace distributed {
 
 using LoDTensor = framework::LoDTensor;
-using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
@@ -159,36 +158,33 @@ void prefetch_core(
   }
 }
 
-void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& persistable_var_name, const bool backfill,
+void prefetch(const LoDTensor& id_tensor, LoDTensor* out_tensor,
+              LoDTensor* persistable_tensor, const bool backfill,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
-  prefetchs({id_name}, {out_name}, persistable_var_name, backfill, table_names,
-            endpoints, height_sections, context, scope);
+  prefetchs({id_tensor}, {out_tensor}, persistable_tensor, backfill,
+            table_names, endpoints, height_sections, context, scope);
 }
 
-void prefetchs(const std::vector<std::string>& id_var_names,
-               const std::vector<std::string>& out_var_names,
-               const std::string& persistable_var_name, const bool backfill,
+void prefetchs(const std::vector<const LoDTensor&>& id_tensors,
+               std::vector<LoDTensor*>* out_tensors,
+               LoDTensor* persistable_tensor, const bool backfill,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const std::vector<int64_t>& height_sections,
                const framework::ExecutionContext& context,
                const framework::Scope& scope) {
-  PADDLE_ENFORCE_GT(id_var_names.size(), 0, "");
-  PADDLE_ENFORCE_EQ(id_var_names.size(), out_var_names.size(), "");
+  PADDLE_ENFORCE_GT(id_tensors.size(), 0, "");
+  PADDLE_ENFORCE_EQ(id_tensors.size(), out_tensors.size(), "");
   PADDLE_ENFORCE_EQ(table_names.size(), endpoints.size(), "");
   PADDLE_ENFORCE_EQ(table_names.size(), height_sections.size(), "");
 
-  auto* reconstruct_var =
-      scope.FindVar(persistable_var_name)->GetMutable<framework::LoDTensor>();
-  const auto vec_dim_1 = reconstruct_var->dims()[1];
+  const auto vec_dim_1 = persistable_tensor->dims()[1];
 
-  const auto place =
-      scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
+  const auto place = id_tensors[0].place();
 
   if (!platform::is_cpu_place(place)) {
     PADDLE_THROW("multi prefetch only support CPU currently");
@@ -199,8 +195,8 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::vector<framework::LoD> ids_lods;
   TableAndEndpoints tables;
 
-  for (auto& id_name : id_var_names) {
-    auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
+  for (auto* id_tensor : id_tensors) {
+    auto& id_tensor = id_var->Get<framework::LoDTensor>();
     auto* id_data = id_tensor.data<int64_t>();
     std::vector<int64_t> ids;
 
@@ -230,10 +226,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   }
 
   // copy vectors to out vars
-  for (int i = 0; i < out_var_names.size(); i++) {
+  for (int i = 0; i < out_tensors.size(); i++) {
     auto& ids = ids_group[i];
-    auto* out_t =
-        scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
+    auto* out_t = out_tensors[i];
     out_t->Resize(
         framework::make_ddim({static_cast<int64_t>(ids.size()), vec_dim_1}));
     out_t->set_lod(ids_lods[i]);
@@ -255,7 +250,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   if (backfill) {
     VLOG(3) << "backfill persistable var's id with vecs";
 
-    auto* reconstruct_d = reconstruct_var->data<float>();
+    auto* reconstruct_d = persistable_tensor->data<float>();
     for (auto& id : ids_union) {
       std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
                 reconstruct_d + id * vec_dim_1);

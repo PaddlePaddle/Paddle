@@ -97,10 +97,10 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
       // w_Out is set to used by prefetch, never change it in other cases
-      auto weight = ctx.Outputs("W_Out").front();
-      operators::distributed::prefetch("Ids@Prefetch", "W@Prefetch", weight,
-                                       true, table_names, epmap,
-                                       height_sections, ctx, local_scope);
+      auto* table_t = context.Output<LoDTensor>("W_Out");
+      operators::distributed::prefetch(x_tensor, w_tensor, table_t, true,
+                                       table_names, epmap, height_sections, ctx,
+                                       local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
@@ -238,8 +238,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
-      PADDLE_ENFORCE(path != nullptr,
-                     "Sparse mode should not be used without custom tree!");
+      PADDLE_ENFORCE_NE(path, nullptr,
+                        "Sparse mode should not be used without custom tree!");
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));

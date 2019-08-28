@@ -24,19 +24,20 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using LoDTensor = framework::LoDTensor;
 constexpr int64_t kNoPadding = -1;
 
-void prefetchs(const std::vector<std::string>& id_var_names,
-               const std::vector<std::string>& out_var_names,
-               const std::string& persistable_var_name, const bool backfill,
+void prefetchs(const std::vector<const LoDTensor&>& id_tensors,
+               std::vector<LoDTensor*>* out_tensors,
+               LoDTensor* persistable_tensor, const bool backfill,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
                const std::vector<int64_t>& height_sections,
                const framework::ExecutionContext& context,
                const framework::Scope& scope);
 
-void prefetch(const std::string& id_name, const std::string& out_name,
-              const std::string& persistable_var_name, const bool backfill,
+void prefetch(const LoDTensor& id_tensor, LoDTensor* out_tensor,
+              LoDTensor* persistable_tensor, const bool backfill,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
               const std::vector<int64_t>& height_sections,
