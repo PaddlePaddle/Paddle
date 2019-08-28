@@ -251,77 +251,89 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             test_with_place(place, [2, 3, 4, 5])
 
 
-##class TestInstanceNormOpInference(unittest.TestCase):
-##    def setUp(self):
-##        self.epsilon=1e-5
-##        self.is_test = True
-##        self.momentum = 0.9
-##
-##    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-##        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
-##
-##    def test_forward_backward(self):
-##        def test_with_place(place, shape):
-##            epsilon = self.epsilon
-##            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
-##            scale_shape = [c]
-##            mean_shape = [n*c]
-##
-##            np.random.seed()
-##            x = np.random.random_sample(shape).astype(np.float32)
-##            scale = np.random.random_sample(scale_shape).astype(np.float32)
-##            bias = np.random.random_sample(scale_shape).astype(np.float32)
-##            mean = np.zeros(mean_shape).astype(np.float32)
-##            variance = np.ones(mean_shape).astype(np.float32)
-##
-##            y = _reference_instance_norm_test(x, scale, bias, epsilon)
-##            saved_mean = mean
-##            saved_variance = variance
-##       
-##            var_dict = locals()
-##            var_names = [
-##                'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
-##                'saved_variance'
-##            ]
-##            ground_truth = {name: var_dict[name] for name in var_names}
-##            program = fluid.Program()
-##            with fluid.program_guard(program):
-##                block = program.global_block()
-##                for name in ground_truth:
-##                    block.create_var(name=name, dtype='float32', shape=ground_truth[name].shape)
-##                in_op = block.append_op(
-##                    type="instance_norm",
-##                    inputs={
-##                        "X": block.var("x"),
-##                        "Scale": block.var("scale"),
-##                        "Bias": block.var("bias"),
-##                        "Mean": block.var("mean"),
-##                        "Variance": block.var("variance")},
-##                    outputs={
-##                        "Y": block.var("y"),
-##                        "MeanOut": block.var("mean"),
-##                        "VarianceOut": block.var("variance"),
-##                        "SavedMean": block.var("saved_mean"),
-##                        "SavedVariance": block.var("saved_variance")},
-##                    attrs={
-##                        "momentum": self.momentum,
-##                        "epsilon": epsilon,
-##                        "is_test": True}),
-##
-##                exe = fluid.Executor(place)
-##                out = exe.run(program,
-##                       feed = {name: var_dict[name] for name in ['x', 'scale', 'bias', 'mean', 'variance']},
-##                       fetch_list = ['y'])
-##
-##                self.__assert_close(y, out[0], 'y')
-##                print("op test forward passes: ", str(place))
-##
-##        places = [core.CPUPlace()]
-##
-##        if core.is_compiled_with_cuda() and core.op_support_gpu("instance_norm"):
-##            places.append(core.CUDAPlace(0))
-##        for place in places:
-##            test_with_place(place, [3, 7, 4, 5])
-##
+class TestInstanceNormOpInference(unittest.TestCase):
+    def setUp(self):
+        self.epsilon = 1e-5
+        self.is_test = True
+        self.momentum = 0.9
+
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+
+    def test_forward_backward(self):
+        def test_with_place(place, shape):
+            epsilon = self.epsilon
+            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+            scale_shape = [c]
+            mean_shape = [n * c]
+
+            np.random.seed()
+            x = np.random.random_sample(shape).astype(np.float32)
+            scale = np.random.random_sample(scale_shape).astype(np.float32)
+            bias = np.random.random_sample(scale_shape).astype(np.float32)
+            mean = np.zeros(mean_shape).astype(np.float32)
+            variance = np.ones(mean_shape).astype(np.float32)
+
+            y = _reference_instance_norm_test(x, scale, bias, epsilon)
+            saved_mean = mean
+            saved_variance = variance
+
+            var_dict = locals()
+            var_names = [
+                'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
+                'saved_variance'
+            ]
+            ground_truth = {name: var_dict[name] for name in var_names}
+            program = fluid.Program()
+            with fluid.program_guard(program):
+                block = program.global_block()
+                for name in ground_truth:
+                    block.create_var(
+                        name=name,
+                        dtype='float32',
+                        shape=ground_truth[name].shape)
+                in_op = block.append_op(
+                    type="instance_norm",
+                    inputs={
+                        "X": block.var("x"),
+                        "Scale": block.var("scale"),
+                        "Bias": block.var("bias"),
+                        "Mean": block.var("mean"),
+                        "Variance": block.var("variance")
+                    },
+                    outputs={
+                        "Y": block.var("y"),
+                        "MeanOut": block.var("mean"),
+                        "VarianceOut": block.var("variance"),
+                        "SavedMean": block.var("saved_mean"),
+                        "SavedVariance": block.var("saved_variance")
+                    },
+                    attrs={
+                        "momentum": self.momentum,
+                        "epsilon": epsilon,
+                        "is_test": True
+                    }),
+
+                exe = fluid.Executor(place)
+                out = exe.run(
+                    program,
+                    feed={
+                        name: var_dict[name]
+                        for name in ['x', 'scale', 'bias', 'mean', 'variance']
+                    },
+                    fetch_list=['y'])
+
+                self.__assert_close(y, out[0], 'y')
+                print("op test forward passes: ", str(place))
+
+        places = [core.CPUPlace()]
+
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "instance_norm"):
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            test_with_place(place, [3, 7, 4, 5])
+
+
 if __name__ == '__main__':
     unittest.main()
