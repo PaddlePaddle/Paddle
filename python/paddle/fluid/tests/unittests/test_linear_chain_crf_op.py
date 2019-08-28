@@ -111,7 +111,7 @@ class TestLinearChainCrfOp(OpTest):
         lod = [[]]
         seq_start_pos = [0]
         for i in range(SEQ_NUM):
-            lod[-1].append(random.randint(0, MAX_SEQ_LEN))
+            lod[-1].append(random.randint(1, MAX_SEQ_LEN))
             seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
         emission = np.random.uniform(
             -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
@@ -190,7 +190,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         lod = [[]]
         seq_start_pos = [0]
         for i in range(SEQ_NUM):
-            lod[-1].append(random.randint(0, MAX_SEQ_LEN))
+            lod[-1].append(random.randint(1, MAX_SEQ_LEN))
             seq_start_pos.append(seq_start_pos[-1] + lod[-1][-1])
         emission = np.random.uniform(
             -1, 1, [seq_start_pos[-1], TAG_NUM]).astype("float64")
@@ -202,12 +202,11 @@ class TestLinearChainCrfPaddingTensor(OpTest):
 
         labels = np.random.randint(
             low=0, high=TAG_NUM, size=(seq_start_pos[-1], 1), dtype="int64")
-
         self.inputs = {
             "Emission": self.seq_pad(emission, lod[0]),
             "Transition": transition,
             "Label": self.seq_pad(labels, lod[0]),
-            "length": np.array(lod[0])
+            "length": np.array(lod).astype("int64")
         }
         crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,
