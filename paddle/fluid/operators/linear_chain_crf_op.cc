@@ -266,7 +266,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
           ctx, emission_exps_dims[1], transition_exps_dims[1],
           "The 2nd dimension of the Input(EmissionExps) and the "
           "Input(TransitionExps) should be equal to the tag number.");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2 && label_dims[1] == 1UL,
+      PADDLE_ENFORCE_EQ(label_dims.size(), 2,
                         "The Input(Label) should be a 2-D tensor");
       PADDLE_ENFORCE_EQ(label_dims[1], 1,
                         "The Input(Label) 2nd dimensions fixed to 1.");
