@@ -55,7 +55,11 @@ namespace framework {
 class FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
-  FleetWrapper() { scale_sparse_gradient_with_batch_size_ = true; }
+  FleetWrapper() {
+    scale_sparse_gradient_with_batch_size_ = true;
+    // trainer sleep some time for pslib core dump
+    sleep_seconds_before_fail_exit_ = 300;
+  }
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
   // Param<out>: fea_values
@@ -195,6 +199,7 @@ class FleetWrapper {
  protected:
   static bool is_initialized_;
   bool scale_sparse_gradient_with_batch_size_;
+  int32_t sleep_seconds_before_fail_exit_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 
