@@ -133,9 +133,14 @@ TEST(test_prepare_op, test_prepare_data) {
   framework::OpDesc desc;
   platform::CPUPlace cpu_place;
   platform::CUDAPlace gpu_place(0);
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims = {2, 5};
   // test split
-  vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
-      cpu_place);
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  vin_tensor->Resize(framework::make_ddim(dims));
+  auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
+  paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
+                       src_data.data(), sizeof(float) * src_data.size());
   var_pair x_pair = var_pair("X", vb_vector(1, vin));
 
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
@@ -185,3 +190,4 @@ TEST(test_prepare_op, test_prepare_data) {
 }  // namespace paddle
 
 USE_OP(split);
+USE_OP(assign);
