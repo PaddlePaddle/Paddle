@@ -527,12 +527,12 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        exe.run(fetch_var_names, fetch_var_name)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        tensors = exe.run(fetch_var_names)._move_to_list()
 
         if return_numpy:
-            return as_numpy(arr)
-        return [arr[i] for i in range(len(arr))]
+            return as_numpy(tensors)
+        else:
+            return tensors
 
     def run(self,
             program=None,
@@ -643,7 +643,6 @@ class Executor(object):
         if not compiled:
             return self._run_program(
                 program,
-                self._default_executor,
                 feed=feed,
                 fetch_list=fetch_list,
                 feed_var_name=feed_var_name,
@@ -653,7 +652,9 @@ class Executor(object):
                 use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
-        if program._is_data_parallel:
+        if program._is_inference:
+            return self._run_inference(program._executor, feed)
+        else:
             return self._run_parallel(
                 program,
                 scope=scope,
@@ -661,26 +662,8 @@ class Executor(object):
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
-        elif program._is_inference:
-            return self._run_inference(program._executor, feed)
-        else:
-            # TODO(panyx0718): Can compile program to optimize executor
-            # performance.
-            # TODO(panyx0718): executor should be able to run graph.
-            assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
-            # use_program_cache is not valid with CompiledProgram
-            return self._run_program(
-                program._program,
-                self._default_executor,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=False)
 
-    def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
+    def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
@@ -742,13 +725,17 @@ class Executor(object):
 
         self._feed_data(program, feed, feed_var_name, scope)
         if not use_program_cache:
-            exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+            self._default_executor.run(program.desc, scope, 0, True, True,
+                                       fetch_var_name)
         else:
-            exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
-        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
+            self._default_executor.run_cached_prepared_ctx(ctx, scope, False,
+                                                           False, False)
+        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        tensors = arr._move_to_list()
         if return_numpy:
-            outs = as_numpy(outs)
-        return outs
+            return as_numpy(tensors)
+        else:
+            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
