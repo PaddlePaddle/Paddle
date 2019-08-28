@@ -168,10 +168,10 @@ class ArchiveBase {
 #else
     if (newsize > Capacity()) {
 #endif
-      Reserve(std::max(Capacity() * 2, newsize));
+      Reserve((std::max)(Capacity() * 2, newsize));
     }
     finish_ = buffer_ + newsize;
-    cursor_ = std::min(cursor_, finish_);
+    cursor_ = (std::min)(cursor_, finish_);
   }
 
   void Reserve(size_t newcap) {
@@ -207,7 +207,7 @@ class ArchiveBase {
 #else
     if (size > size_t(limit_ - finish_)) {
 #endif
-      Reserve(std::max(Capacity() * 2, Length() + size));
+      Reserve((std::max)(Capacity() * 2, Length() + size));
     }
   }
 
