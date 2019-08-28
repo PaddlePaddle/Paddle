@@ -61,11 +61,9 @@ class InplaceABNOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "
              "to indicate the position.");
-    AddAttr<int>("activation",
-                 "(enum int, default leakyrelu) "
-                 "The activation type used for output candidate {h}_t.")
-        .SetDefault(identity)
-        .InEnum({identity, leakyrelu, elu});
+    AddAttr<std::string>("activation",
+                 "(enum string, default leakyrelu) "
+                 "The activation type used for output candidate {h}_t.");
     AddComment(R"DOC(
 )DOC");
   }
