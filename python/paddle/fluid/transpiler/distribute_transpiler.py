@@ -334,9 +334,9 @@ class DistributeTranspiler(object):
 
         transpiler = None
         if collective_mode == 'grad_allreduce':
-            transpiler = collective.GradAllReduce()
+            transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
         elif collective_mode == 'local_sgd':
-            transpiler = collective.LocalSGD()
+            transpiler = collective.LocalSGD(self.config.nccl_comm_num)
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 
