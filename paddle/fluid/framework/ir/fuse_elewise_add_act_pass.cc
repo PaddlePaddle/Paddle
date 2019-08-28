@@ -180,9 +180,10 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
     std::string d_ele_y_n = d_ele_y->Name();
 
     OpDesc desc;
+    imperative::StrVarBaseNode empty_str;
     desc.SetType("fused_elemwise_activation_grad");
-    desc.SetInput("IntermediateOut", {});
-    desc.SetInput("X", {});
+    desc.SetInput("IntermediateOut", empty_str);
+    desc.SetInput("X", empty_str);
     desc.SetInput("Y", std::vector<std::string>({ele_y_n}));
     desc.SetInput("Out", std::vector<std::string>({act_out_n}));
     desc.SetInput(GradVarName("Out"), std::vector<std::string>({d_act_out_n}));
@@ -280,7 +281,8 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_grad_args[0] &&
             out->outputs.empty()) {
-          cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
+          imperative::StrVarBaseNode empty_str;
+          cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), empty_str);
           cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
           need_removed_nodes.insert(std::move(out));
         }

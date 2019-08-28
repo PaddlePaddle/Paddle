@@ -12,6 +12,7 @@
 #include "paddle/fluid/operators/detection/yolov3_loss_op.h"
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace operators {
@@ -279,9 +280,10 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
     op->SetAttrMap(Attrs());
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("GTBox"), {});
-    op->SetOutput(framework::GradVarName("GTLabel"), {});
-    op->SetOutput(framework::GradVarName("GTScore"), {});
+    imperative::StrVarBaseNode empty_node;
+    op->SetOutput(framework::GradVarName("GTBox"), empty_node);
+    op->SetOutput(framework::GradVarName("GTLabel"), empty_node);
+    op->SetOutput(framework::GradVarName("GTScore"), empty_node);
     return std::unique_ptr<framework::OpDesc>(op);
   }
 };

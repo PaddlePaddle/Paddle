@@ -29,5 +29,27 @@ class Tracer;
 using NameVarBaseMap =
     std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
 
+struct StrVarBaseNode {
+  std::vector<std::string> vec_name_;
+  std::vector<std::shared_ptr<VarBase>> vec_var_base_;
+  bool dygraph_mode_;
+
+  bool empty() {
+    if (dygraph_mode_) {
+      return vec_var_base_.empty();
+    } else {
+      return vec_name_.empty();
+    }
+  }
+
+  size_t size() {
+    if (dygraph_mode_) {
+      return vec_var_base_.size();
+    } else {
+      return vec_name_.size();
+    }
+  }
+};
+
 }  // namespace imperative
 }  // namespace paddle

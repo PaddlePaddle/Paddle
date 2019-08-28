@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -180,8 +181,11 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
         const OpDesc& fwd_op,
         const std::unordered_set<std::string>& no_grad_set,
         std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block) {
-      T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
+        const std::vector<BlockDesc*>& grad_block,
+        const imperative::NameVarBaseMap* var_base_in = NULL,
+        const imperative::NameVarBaseMap* var_base_out = NULL) {
+      T maker(fwd_op, no_grad_set, grad_to_var, grad_block, var_base_in,
+              var_base_out);
       return maker();
     };
 

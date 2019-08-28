@@ -328,7 +328,11 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
-    for (auto &each_ig : igs) {
+
+    PADDLE_ENFORCE_EQ(igs.dygraph_mode_, false,
+                      "while op not suport dygraph mode");
+
+    for (auto &each_ig : igs.vec_name_) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
         VLOG(8) << "Ignore " << each_ig;
         each_ig = framework::kEmptyVarName;
@@ -339,11 +343,12 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // OG should be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
-    block_ins.reserve(Input(kX).size() + Output(kOutputs).size());
-    for (auto &p : Input(kX)) {
+    block_ins.reserve(Input(kX).vec_name_.size() +
+                      Output(kOutputs).vec_name_.size());
+    for (auto &p : Input(kX).vec_name_) {
       block_ins.insert(p);
     }
-    for (auto &o : Output(kOutputs)) {
+    for (auto &o : Output(kOutputs).vec_name_) {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;

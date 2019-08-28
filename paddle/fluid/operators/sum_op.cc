@@ -223,17 +223,32 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto x_grads = InputGrad("X", false);
     std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
-    grad_ops.reserve(x_grads.size());
+
+    size_t grads_number = x_grads.vec_name_.size();
+    if (x_grads.dygraph_mode_) {
+      grads_number = x_grads.vec_var_base_.size();
+    }
+
+    grad_ops.reserve(grads_number);
+
     auto og = OutputGrad("Out");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
-                   [&og](const std::string& x_grad) {
-                     auto* grad_op = new framework::OpDesc();
-                     grad_op->SetType("scale");
-                     grad_op->SetInput("X", og);
-                     grad_op->SetOutput("Out", {x_grad});
-                     grad_op->SetAttr("scale", 1.0f);
-                     return std::unique_ptr<framework::OpDesc>(grad_op);
-                   });
+
+    for (size_t i = 0; i < grads_number; ++i) {
+      auto* grad_op = new framework::OpDesc();
+      grad_op->SetType("scale");
+      grad_op->SetInput("X", og);
+      imperative::StrVarBaseNode str_var_base_temp;
+      str_var_base_temp.dygraph_mode_ = x_grads.dygraph_mode_;
+      if (x_grads.dygraph_mode_) {
+        str_var_base_temp.vec_var_base_ = {x_grads.vec_var_base_[i]};
+      } else {
+        str_var_base_temp.vec_name_ = {x_grads.vec_name_[i]};
+      }
+      grad_op->SetAttr("scale", 1.0f);
+
+      grad_ops.push_back(std::unique_ptr<framework::OpDesc>(grad_op));
+    }
+
     return grad_ops;
   }
 };

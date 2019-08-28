@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -52,7 +53,9 @@ using OpCreator = std::function<OperatorBase*(
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const OpDesc&, const std::unordered_set<std::string>& /*no_grad_set*/,
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
-    const std::vector<BlockDesc*>& grad_block)>;
+    const std::vector<BlockDesc*>& grad_block,
+    const imperative::NameVarBaseMap* var_base_in,
+    const imperative::NameVarBaseMap* var_base_out)>;
 
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;

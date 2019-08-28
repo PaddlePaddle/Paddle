@@ -59,7 +59,8 @@ class VarBase {
   static std::vector<std::string> AliveVarNames();
   explicit VarBase(bool has_grad, const std::string& name)
       : name_(name),
-        grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
+        grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr),
+        is_grad_from_grad_maker_(false) {
     if (IsDebugEnabled()) {
       VLOG(10) << "Construct VarBase: " << name;
       name_set_.Insert(name_);
@@ -148,6 +149,9 @@ class VarBase {
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
+  void SetIsGradFromGradMaker(bool grad) { is_grad_from_grad_maker_ = grad; }
+  bool IsGradFromGradMaker() { return is_grad_from_grad_maker_; }
+
  private:
   framework::Variable var_;
   std::string name_;
@@ -163,6 +167,8 @@ class VarBase {
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
   static ThreadSafeNameSet name_set_;
+
+  bool is_grad_from_grad_maker_;
 };
 
 class Layer {
@@ -347,6 +353,10 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   void SortPrecedingOps() {
     std::sort(preceding_ops_.begin(), preceding_ops_.end(),
               [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
+  }
+
+  void SetPrecedingOps(std::vector<OpBase*> vec_temp) {
+    preceding_ops_.swap(vec_temp);
   }
   NameVarBaseMap* GetMutableOutsMap() { return &outs_; }
   NameVarBaseMap* GetMutableInsMap() { return &ins_; }

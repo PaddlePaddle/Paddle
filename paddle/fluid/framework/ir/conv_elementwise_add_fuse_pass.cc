@@ -52,10 +52,11 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = elementwise_add_out->Name();
 
     std::string act_type = "identity";
+    imperative::StrVarBaseNode empty_str;
     framework::OpDesc new_op_desc(base_op_desc, nullptr);
     new_op_desc.SetType("conv2d_fusion");
     new_op_desc.SetInput("Bias", {bias_name});
-    new_op_desc.SetInput("ResidualData", {});
+    new_op_desc.SetInput("ResidualData", empty_str);
     new_op_desc.SetAttr("activation", act_type);
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);

@@ -16,10 +16,12 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -53,6 +55,17 @@ class OpDesc {
 
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
+  void SetInput(const std::string &name,
+                imperative::StrVarBaseNode str_var_base) {
+    if (str_var_base.dygraph_mode_) {
+      if (str_var_base.vec_var_base_.size() > 0) {
+        dygraph_var_base_in_[name] = std::move(str_var_base.vec_var_base_);
+      }
+
+    } else {
+      SetInput(name, str_var_base.vec_name_);
+    }
+  }
 
   const std::vector<std::string> &Output(const std::string &name) const;
 
@@ -60,6 +73,15 @@ class OpDesc {
 
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
+
+  void SetOutput(const std::string &name,
+                 imperative::StrVarBaseNode str_var_base) {
+    if (str_var_base.dygraph_mode_) {
+      dygraph_var_base_out_[name] = std::move(str_var_base.vec_var_base_);
+    } else {
+      SetOutput(name, str_var_base.vec_name_);
+    }
+  }
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -126,6 +148,20 @@ class OpDesc {
 
   const BlockDesc *Block() const { return this->block_; }
 
+  const imperative::NameVarBaseMap &DygraphInput() const {
+    return dygraph_var_base_in_;
+  }
+  const imperative::NameVarBaseMap &DygraphOutput() const {
+    return dygraph_var_base_out_;
+  }
+  void GetDygraphInput(imperative::NameVarBaseMap *in) {
+    dygraph_var_base_in_.swap(*in);
+  }
+
+  void GetDygraphOutput(imperative::NameVarBaseMap *out) {
+    dygraph_var_base_out_.swap(*out);
+  }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -148,6 +184,9 @@ class OpDesc {
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
+
+  imperative::NameVarBaseMap dygraph_var_base_in_;
+  imperative::NameVarBaseMap dygraph_var_base_out_;
 };
 }  // namespace framework
 }  // namespace paddle

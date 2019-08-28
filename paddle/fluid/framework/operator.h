@@ -385,6 +385,8 @@ class ExecutionContext {
     return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
+  const RuntimeContext Context() const { return ctx_; }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;

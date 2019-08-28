@@ -269,7 +269,8 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
 
     auto ddx = OutputGrad(framework::GradVarName("X"));
     auto ddw = OutputGrad(framework::GradVarName("Y"));
-    std::vector<std::string> empty_str = {};
+    // std::vector<std::string> empty_str = {};
+    imperative::StrVarBaseNode empty_str;
 
     retv->SetOutput("DDOut", (ddx.empty())
                                  ? empty_str

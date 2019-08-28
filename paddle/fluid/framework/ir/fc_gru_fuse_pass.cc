@@ -54,7 +54,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       SET_IN(Bias, bias);
     }
 #undef SET_IN
-    op_desc.SetInput("H0", {});
+    imperative::StrVarBaseNode empty_str;
+    op_desc.SetInput("H0", empty_str);
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetAttr("is_reverse", gru->Op()->GetAttr("is_reverse"));
     // TODO(TJ): This should be a option for infer

@@ -1148,8 +1148,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+  for (auto& input : ctx.Context().inputs) {
+    auto& vars = input.second;
     for (size_t i = 0; i < vars.size(); ++i) {
       const Variable* var = vars[i];
       if (var != nullptr) {

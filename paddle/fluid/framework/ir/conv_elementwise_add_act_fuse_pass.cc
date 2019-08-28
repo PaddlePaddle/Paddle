@@ -36,10 +36,11 @@ framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc, const std::string& bias,
     const std::string& activation, const std::string& output) {
   auto proto = base_desc;
+  imperative::StrVarBaseNode empty_str;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
   desc.SetInput("Bias", {bias});
-  desc.SetInput("ResidualData", {});
+  desc.SetInput("ResidualData", empty_str);
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);

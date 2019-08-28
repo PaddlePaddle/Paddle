@@ -192,6 +192,16 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
     return ret;
   }
 
+  static std::string DebugString(imperative::StrVarBaseNode strs) {
+    if (strs.empty()) return "";
+    std::string ret = strs.vec_name_[0];
+    for (size_t i = 1; i < strs.size(); ++i) {
+      ret += " ";
+      ret += strs.vec_name_[i];
+    }
+    return ret;
+  }
+
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
@@ -213,6 +223,8 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
 
     // All forward inputs
     auto fwd_ins = Input("X");
+    PADDLE_ENFORCE_EQ(fwd_ins.dygraph_mode_, false,
+                      "not support pyfunc in dygraph mode");
     // All forward outputs
     auto fwd_outs = Output("Out");
 
@@ -224,13 +236,13 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
         backward_skip_var_list.begin(), backward_skip_var_list.end());
     std::vector<std::string> bwd_ins;
     bwd_ins.reserve(fwd_ins.size() + fwd_outs.size());
-    for (auto &fwd_in : fwd_ins) {
+    for (auto &fwd_in : fwd_ins.vec_name_) {
       if (backward_skip_var_set.count(fwd_in) == 0) {
         bwd_ins.emplace_back(fwd_in);
       }
     }
 
-    for (auto &fwd_out : fwd_outs) {
+    for (auto &fwd_out : fwd_outs.vec_name_) {
       if (backward_skip_var_set.count(fwd_out) == 0) {
         bwd_ins.emplace_back(fwd_out);
       }
@@ -240,7 +252,8 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
     // But in Python side, if OG is kEmptyVarName, input tensor would be None
     auto fwd_out_grads = OutputGrad("Out");
     bwd_ins.reserve(bwd_ins.size() + fwd_out_grads.size());
-    bwd_ins.insert(bwd_ins.end(), fwd_out_grads.begin(), fwd_out_grads.end());
+    bwd_ins.insert(bwd_ins.end(), fwd_out_grads.vec_name_.begin(),
+                   fwd_out_grads.vec_name_.end());
 
     // Backward IG cannot be skipped
     // But in Python side, if IG is not needed, users can just return None

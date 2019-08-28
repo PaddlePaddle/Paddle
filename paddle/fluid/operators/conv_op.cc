@@ -535,13 +535,13 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
     // as key of ops' inputs and outputs.
     auto ddx = OutputGrad(framework::GradVarName("Input"));
     auto ddw = OutputGrad(framework::GradVarName("Filter"));
-    std::vector<std::string> empty_str = {};
+    imperative::StrVarBaseNode empty_node;
 
     op->SetOutput(
         "DDOutput",
-        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
-    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+        ddx.empty() ? empty_node : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? empty_node : InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? empty_node : InputGrad("Input"));
 
     op->SetAttrMap(Attrs());
 

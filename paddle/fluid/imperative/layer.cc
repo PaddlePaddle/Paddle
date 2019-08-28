@@ -53,7 +53,18 @@ static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
   if (op_info.proto_ == nullptr) {
-    return {};
+    framework::VariableNameMap result;
+
+    for (auto& it : varbase_map) {
+      auto& var_vector = it.second;
+      std::vector<std::string> args;
+      args.reserve(var_vector.size());
+      for (auto& var_base : var_vector) {
+        args.emplace_back(var_base->Name());
+      }
+      result[it.first] = std::move(args);
+    }
+    return result;
   }
 
   framework::VariableNameMap result;
