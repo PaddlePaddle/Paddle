@@ -1919,22 +1919,70 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  padding=None,
+                  padding=True,
+                  padding_start=None,
                   bias_attr=None,
                   param_attr=None,
                   act=None,
                   name=None):
     """
-    This function creates the op for sequence_conv, using the inputs and
-    other convolutional configurations for the filters and stride as given
-    in the input parameters to the function.
+    The sequence_conv receives input sequences with variable length and other convolutional
+    configuration parameters for the filter and stride to apply the convolution operation.
+    It fills all-zero padding data on both sides of the sequence by default to ensure that
+    the output is the same length as the input. You can customize the padding behavior by
+    configuring the parameter :attr:`padding\_start`.
+    
+    **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
+
+    .. code-block:: text
+
+            Here we'll illustrate the details of the padding operation:
+            For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
+            Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
+            Besides, for the sake of simplicity, we assume M=1 and N=2.
+            X = [[a1, a2;
+                  b1, b2;
+                  c1, c2]
+                 [d1, d2]]
+
+            This is to say that input (X) has 4 words and the dimension of each word
+            representation is 2.
+
+            * Case1:
+
+                If padding_start is -1 and filter_size is 3.
+                The length of padding data is calculated as follows:
+                up_pad_len = max(0, -padding_start) = 1
+                down_pad_len = max(0, filter_size + padding_start - 1) = 1
+
+                The output of the input sequence after padding is:
+                data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
+                                       a1, a2, b1, b2, c1, c2;
+                                       b1, b2, c1, c2, 0,  0 ]
+                                      [0,  0,  d1, d2, 0,  0 ]]
+
+                It will be multiplied by the filter weight to get the final output.
 
     Args:
         input (Variable): ${x_comment}
-        num_filters (int): number of filters.
-        filter_size (int): the filter size (H and W).
-        filter_stride (int): stride of the filter.
-        padding (bool): if True, add paddings.
+        num_filters (int): the number of filters.
+        filter_size (int): the height of filter, the width is hidden size by default.
+        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+            future. Currently, it will always pad input to make sure the length of the output is
+            the same as input whether :attr:`padding` is set true or false. Because the length of
+            input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
+            result to not be computed correctly. These padding data will not be trainable or updated
+            while trainnig. 
+        padding_start (int|None): It is used to indicate the start index for padding the input
+            sequence, which can be negative. The negative number means to pad
+            :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
+            The positive number means to skip :attr:`padding_start` time-steps of each instance,
+            and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
+            at the end of the sequence to ensure that the output is the same length as the input.
+            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
+            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
+            is padded at the end of each input sequence.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -1953,11 +2001,13 @@ def sequence_conv(input,
         Variable: output of sequence_conv
 
     Examples:
+
         .. code-block:: python
 
              import paddle.fluid as fluid
+
              x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(x,2)
+             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
@@ -1968,6 +2018,8 @@ def sequence_conv(input,
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_variable_for_type_inference(dtype)
+    if padding_start is None:
+        padding_start = -int(filter_size // 2)
 
     helper.append_op(
         type='sequence_conv',
@@ -1978,8 +2030,8 @@ def sequence_conv(input,
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size // 2),
-            'contextLength': filter_size
+            'contextStart': padding_start,
+            'contextLength': filter_size,
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
@@ -5644,7 +5696,13 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
+def warpctc(input,
+            label,
+            blank=0,
+            norm_by_times=False,
+            use_cudnn=False,
+            input_length=None,
+            label_length=None):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -5655,13 +5713,18 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
 
     Args:
        input (Variable): The unscaled probabilities of variable-length sequences,
-         which is a 2-D Tensor with LoD information.
-         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
+         information. When it is a 2-D LodTensor, it's shape is 
+         [Lp, num_classes + 1], where Lp is the sum of all input
          sequences' length and num_classes is the true number of classes.
-         (not including the blank label).
+         (not including the blank label). When it is a 3-D Tensor, it's shape 
+         is [max_logit_length, batch_size, num_classes + 1],
+         where max_logit_length is the length of the longest
+         input logit sequence.
        label (Variable): The ground truth of variable-length sequence,
-         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
-         where Lg is th sum of all labels' length.
+         which is a 2-D Tensor with LoD information or a 2-D Tensor without
+         LoD information. When it is a 2-D LoDTensor or 2-D Tensor, 
+         it is of the shape [Lg, 1], where Lg is th sum of all labels' length.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
@@ -5670,30 +5733,60 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
        use_cudnn (bool, default false): Whether to use cudnn.
+       input_length(Variable): The length for each input sequence if it is 
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       label_length(Variable): The length for each label sequence if it is
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
-
         .. code-block:: python
 
+            # using LoDTensor
             import paddle.fluid as fluid
-            label = fluid.layers.data(name='label', shape=[11, 8],
+            import numpy as np
+            
+            label = fluid.layers.data(name='label', shape=[12, 1],
                                       dtype='float32', lod_level=1)
-            predict = fluid.layers.data(name='predict', shape=[11, 1],
-                                        dtype='float32')
+            predict = fluid.layers.data(name='predict', 
+                                        shape=[11, 8],
+                                        dtype='float32',lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
+
+            # using Tensor
+            input_length = fluid.layers.data(name='logits_length', shape=[11],
+                                         dtype='int64')
+            label_length = fluid.layers.data(name='labels_length', shape=[12],
+                                         dtype='int64')
+            target = fluid.layers.data(name='target', shape=[12, 1],
+                                       dtype='int32')
+            # length of the longest logit sequence
+            max_seq_length = 4
+            # number of logit sequences
+            batch_size = 4
+            output = fluid.layers.data(name='output', 
+                                       shape=[max_seq_length, batch_size, 8],
+                                       dtype='float32')
+            loss = fluid.layers.warpctc(input=output,label=target,
+                                        input_length=input_length,
+                                        label_length=label_length)
 
     """
     helper = LayerHelper('warpctc', **locals())
+    this_inputs = {'Logits': [input], 'Label': [label]}
+    if input_length and label_length:
+        this_inputs['LogitsLength'] = [input_length]
+        this_inputs['LabelLength'] = [label_length]
+
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
     helper.append_op(
         type='warpctc',
-        inputs={'Logits': [input],
-                'Label': [label]},
+        inputs=this_inputs,
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
         attrs={

@@ -127,12 +127,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         """
 
         table_name = self._find_multi_distributed_lookup_table(losses)
-        prefetch_slots = find_distributed_lookup_table_inputs(
-            losses[0].block.program, table_name[0])
         inputs_dict = self._find_distributed_lookup_table_inputs(
             losses[0].block.program, table_name)
-        prefetch_slots_emb = find_distributed_lookup_table_outputs(
-            losses[0].block.program, table_name[0])
 
         outputs_dict = self._find_distributed_lookup_table_outputs(
             losses[0].block.program, table_name)
@@ -191,6 +187,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_params.append(i[0])
                 if not is_data_norm_data:
                     params.append(i[0])
+
             for i in params_grads:
                 is_data_norm_data = False
                 for data_norm_grad in self.data_norm_name:
@@ -199,13 +196,16 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         data_norm_grads.append(i[1])
                 if not is_data_norm_data:
                     grads.append(i[1])
+
             if strategy.get('dense_table') is not None:
                 server.add_dense_table(dense_table_index, params, grads,
-                                       strategy['dense_table'])
+                                       strategy['dense_table'], table_name)
             else:
-                server.add_dense_table(dense_table_index, params, grads, None)
+                server.add_dense_table(dense_table_index, params, grads, None,
+                                       table_name)
             worker.add_dense_table(dense_table_index, self._learning_rate,
-                                   params, grads, dense_start_table_id)
+                                   params, grads, dense_start_table_id,
+                                   table_name)
             program_configs[program_id]["pull_dense"] = [dense_table_index]
             program_configs[program_id]["push_dense"] = [dense_table_index]
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
@@ -214,15 +214,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     server.add_data_norm_table(
                         dense_table_index, self._learning_rate,
                         data_norm_params, data_norm_grads,
-                        strategy['datanorm_table'])
+                        strategy['datanorm_table'], table_name)
                 else:
                     server.add_data_norm_table(
                         dense_table_index, self._learning_rate,
-                        data_norm_params, data_norm_grads, None)
+                        data_norm_params, data_norm_grads, None, table_name)
 
                 worker.add_dense_table(dense_table_index, self._learning_rate,
                                        data_norm_params, data_norm_grads,
-                                       dense_start_table_id)
+                                       dense_start_table_id, table_name)
                 program_configs[program_id]["pull_dense"].extend(
                     [dense_table_index])
                 program_configs[program_id]["push_dense"].extend(
