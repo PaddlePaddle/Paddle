@@ -26,3 +26,15 @@ if (ANAKIN_SUBGRAPH)
   file(APPEND ${pass_file} "USE_PASS(anakin_subgraph_pass);\n")
   set(INFER_IR_PASSES ${INFER_IR_PASSES} anakin_subgraph_pass CACHE INTERNAL "")
 endif()
+
+if (1) 
+  cc_library(lite_subgraph_pass SRCS lite_subgraph_pass.cc DEPS subgraph_detector lite_op_teller)
+
+  set(analysis_deps ${analysis_deps}
+          subgraph_detector lite_subgraph_pass
+          CACHE INTERNAL "")
+
+  set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h)
+  file(APPEND ${pass_file} "USE_PASS(lite_subgraph_pass);\n")
+  set(INFER_IR_PASSES ${INFER_IR_PASSES} lite_subgraph_pass CACHE INTERNAL "")
+endif()

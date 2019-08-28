@@ -115,6 +115,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",
+        "lite_subgraph_pass",
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"

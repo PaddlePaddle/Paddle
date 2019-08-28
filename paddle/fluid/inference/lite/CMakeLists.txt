@@ -21,4 +21,6 @@ else()
     include_directories(${LITE_SUBGRAPH_PATH}/include)
     cc_binary(test_leaky_relu SRCS test_leaky_relu.cc DEPS api_full_static dynload_cuda glog gflags gtest)
 
+    # make op teller
+    cc_library(lite_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost)
 endif()
