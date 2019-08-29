@@ -360,8 +360,9 @@ class Optimizer(object):
         global_block = framework.default_main_program().global_block()
         start = len(global_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
-        self._create_accumulators(global_block,
-                                  [p[0] for p in parameters_and_grads])
+        self._create_accumulators(
+            global_block,
+            [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
         optimize_ops = []
@@ -587,6 +588,20 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif isinstance(no_grad_set, set) or isinstance(
+                no_grad_set, list) or isinstance(no_grad_set, tuple):
+            no_grad_set = set(no_grad_set)
+        else:
+            assert "no_grad_set should be a set, but the passed type is {}".format(
+                type(no_grad_set))
+        parameters = loss.block.program.global_block().all_parameters()
+        param_no_trainable = set(
+            [param.name for param in parameters if param.trainable is False])
+        # If the parameter is no trainable, it should not have a gradient.
+        no_grad_set.update(param_no_trainable)
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -1404,7 +1419,7 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in param_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope("optimizer"):
@@ -1567,7 +1582,7 @@ class AdamaxOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope('adamx'):
