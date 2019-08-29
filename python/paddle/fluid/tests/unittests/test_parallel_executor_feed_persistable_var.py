@@ -73,6 +73,11 @@ class TestFeedPersistableVar(unittest.TestCase):
             [1.0, 1.0]).astype("float32")
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
+        self.feed_dict['learning_rate'] = numpy.array(
+            [1.0, 1.0]).astype("float32")
+        run = partial(self.check_feed_persistable_var, self.feed_dict)
+        self.assertRaises(core.EnforceNotMet, run)
+
         self.feed_dict['image'] = self.img[0, :]
         self.feed_dict['label'] = self.label[0, :]
         run = partial(self.check_feed_persistable_var, self.feed_dict)
