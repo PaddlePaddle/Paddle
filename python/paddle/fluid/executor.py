@@ -496,8 +496,11 @@ class Executor(object):
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
+                    # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
+                    assert isinstance( feed[feed_name], np.ndarray ), \
+                        "The input({}) should be numpy.array, but not {}.".format(
+                        feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 feed_tensor_dict[feed_name] = feed_tensor
 
@@ -518,6 +521,9 @@ class Executor(object):
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
+                        assert isinstance(each[feed_name], np.ndarray), \
+                            "The input({}) should be numpy.array, but not {}.".format(
+                            feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
                     res_dict[feed_name] = tensor

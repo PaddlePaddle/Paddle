@@ -230,5 +230,6 @@ if(WITH_DISTRIBUTE)
 endif()
 
 set_tests_properties(test_recordio_reader test_parallel_executor_test_while_train test_parallel_executor_mnist
+        test_parallel_executor_feed_persistable_var
         test_parallel_executor_seresnext test_parallel_executor_crf test_sync_batch_norm_op
         PROPERTIES LABELS "RUN_TYPE=DIST")
