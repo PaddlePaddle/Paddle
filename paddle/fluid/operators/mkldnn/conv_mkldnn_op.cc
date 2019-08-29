@@ -81,24 +81,18 @@ static mkldnn::memory::data_type GetDstType(bool is_int8,
                                             std::string fuse_activation,
                                             bool fuse_residual_conn,
                                             const Tensor* residual_param) {
-  auto dst_dt = mkldnn::memory::data_type::f32;  // uint8_t, int8_t, float
-  if (is_int8) {
-    if (force_fp32_output) {
-      // when dequantize is squashed, force_fp32_output is true
-      dst_dt = mkldnn::memory::data_type::f32;
+  auto dst_dt = mkldnn::memory::data_type::f32;
+  if (is_int8 && !force_fp32_output) {
+    if (fuse_residual_conn && residual_param) {
+      // when residual exists, dst_dt will follow the residual_param type,
+      // but output will to be set to u8 if relu exists
+      auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
+      dst_dt = residual_dt;
     } else {
-      // for quantize
-      if (fuse_residual_conn && residual_param) {
-        // when residual exists, dst_dt will follow the residual_param type,
-        // but output need to be set to u8 if relu exists
-        auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
-        dst_dt = residual_dt;
-      } else {
-        // when residual does not exist. if (b)relu exist s8 else s8
-        dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
-                     ? mkldnn::memory::data_type::u8
-                     : mkldnn::memory::data_type::s8;
-      }
+      // when residual does not exist, if (b)relu exist s8 else s8
+      dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
+                   ? mkldnn::memory::data_type::u8
+                   : mkldnn::memory::data_type::s8;
     }
   }
   return dst_dt;
