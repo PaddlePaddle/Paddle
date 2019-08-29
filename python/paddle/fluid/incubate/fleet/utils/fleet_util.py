@@ -45,6 +45,7 @@ class FleetUtil(object):
           fleet_util.rank0_print("my log")
 
     """
+
     def rank0_print(self, s):
         """
         Worker of rank 0 print some log.
@@ -1315,9 +1316,8 @@ class FleetUtil(object):
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
-            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
-            copc, mean_predict_qvalue,
-            int(total_ins_num)
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr, copc,
+            mean_predict_qvalue, int(total_ins_num)
         ]
 
     def print_global_metrics(self,
@@ -1409,9 +1409,9 @@ class FleetUtil(object):
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
             prob_name, q_name, pos_ins_num_name, total_ins_num_name)
-        self.rank0_print(
-            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
-            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
-            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
-            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
-             predicted_ctr, copc, mean_predict_qvalue, total_ins_num))
+        self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+                         "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+                         "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+                         (print_prefix, auc, bucket_error, mae, rmse,
+                          actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
+                          total_ins_num))
