@@ -88,7 +88,8 @@ void LiteSubgraphPass::CreateLiteOp(
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
-  framework::ProgramDesc *program_desc = new framework::ProgramDesc();
+  framework::ProgramDesc *program_desc =
+      Get<framework::ProgramDesc *>("program");
   // Add new block for TensorRTEngineOP
   const framework::BlockDesc &main_block =
       program_desc->Block(framework::kRootBlockIndex);
