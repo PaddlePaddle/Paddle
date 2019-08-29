@@ -32,8 +32,10 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
   thread_num_ = readers.size();
   workers_.resize(thread_num_);
-  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size(); i++) {
-    need_merge_var_names_.push_back(trainer_desc.downpour_param().stat_var_names(i));
+  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
+       i++) {
+    need_merge_var_names_.push_back(
+        trainer_desc.downpour_param().stat_var_names(i));
   }
 
   for (int i = 0; i < thread_num_; ++i) {
@@ -81,7 +83,8 @@ void DistMultiTrainer::Finalize() {
     LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>(); 
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
-      Variable *thread_var = cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      Variable *thread_var =
+          cur_thread_scope->FindVar(need_merge_var_names_[i]);
       LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;    
@@ -100,10 +103,11 @@ void DistMultiTrainer::Finalize() {
   root_scope_->DropKids();
 }
 
-template<typename T>
-void DistMultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  T* root_data = root_tensor->data<T>();
-  T* data = tensor->data<T>();
+template <typename T>
+void DistMultiTrainer::MergeToRootScope(LoDTensor* root_tensor,
+                                        LoDTensor* tensor) {
+  T *root_data = root_tensor->data<T>();
+  T *data = tensor->data<T>();
   for (int i = 0; i < tensor->numel(); i++){
     root_data[i] += data[i];
   }
