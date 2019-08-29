@@ -29,8 +29,9 @@ from .hdfs import *
 
 __all__ = ["FleetUtil"]
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class FleetUtil(object):
@@ -45,7 +46,6 @@ class FleetUtil(object):
           fleet_util.rank0_print("my log")
 
     """
-
     def rank0_print(self, s):
         """
         Worker of rank 0 print some log.
@@ -408,11 +408,10 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
                     client.delete(donefile_path)
-                    client.upload(
-                        output_path,
-                        donefile_name,
-                        multi_processes=1,
-                        overwrite=False)
+                    client.upload(output_path,
+                                  donefile_name,
+                                  multi_processes=1,
+                                  overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -421,11 +420,10 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
-                client.upload(
-                    output_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(output_path,
+                              donefile_name,
+                              multi_processes=1,
+                              overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -516,11 +514,10 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
                     client.delete(donefile_path)
-                    client.upload(
-                        output_path,
-                        donefile_name,
-                        multi_processes=1,
-                        overwrite=False)
+                    client.upload(output_path,
+                                  donefile_name,
+                                  multi_processes=1,
+                                  overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -529,11 +526,10 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
-                client.upload(
-                    output_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(output_path,
+                              donefile_name,
+                              multi_processes=1,
+                              overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -601,11 +597,10 @@ class FleetUtil(object):
                     "file_prefix:part\npart_num:16\nkey_num:%d\n" % key_num
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
-                client.upload(
-                    model_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(model_path,
+                              donefile_name,
+                              multi_processes=1,
+                              overwrite=False)
                 self.rank0_error("write %s succeed" % donefile_path)
         fleet._role_maker._barrier_worker()
 
@@ -827,8 +822,8 @@ class FleetUtil(object):
                                          " not found in scope " +
                                          "when pull dense")
                     var_name_list.append(var_name)
-                fleet._fleet_ptr.pull_dense(scope,
-                                            int(table.table_id), var_name_list)
+                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
+                                            var_name_list)
         fleet._role_maker._barrier_worker()
 
     def save_paddle_params(self,
@@ -907,8 +902,11 @@ class FleetUtil(object):
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
-                        executor, "./", program, vars=vars, filename=model_name)
+                    fluid.io.save_vars(executor,
+                                       "./",
+                                       program,
+                                       vars=vars,
+                                       filename=model_name)
                 else:
                     fluid.io.save_vars(executor, model_name, program, vars=vars)
 
@@ -1316,8 +1314,9 @@ class FleetUtil(object):
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
-            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr, copc,
-            mean_predict_qvalue, int(total_ins_num)
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
+            copc, mean_predict_qvalue,
+            int(total_ins_num)
         ]
 
     def print_global_metrics(self,
@@ -1409,9 +1408,9 @@ class FleetUtil(object):
             mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
             prob_name, q_name, pos_ins_num_name, total_ins_num_name)
-        self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
-                         "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
-                         "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
-                         (print_prefix, auc, bucket_error, mae, rmse,
-                          actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
-                          total_ins_num))
+        self.rank0_print(
+            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
+             predicted_ctr, copc, mean_predict_qvalue, total_ins_num))
