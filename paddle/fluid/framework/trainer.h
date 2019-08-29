@@ -76,7 +76,7 @@ class MultiTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
-  std::vector<std::string> need_merge_var_names_; 
+  std::vector<std::string> need_merge_var_names_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
