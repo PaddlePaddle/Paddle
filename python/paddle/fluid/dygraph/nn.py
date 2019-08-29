@@ -1132,8 +1132,8 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype)
         self._variance.stop_gradient = True
 
-        self._data_layout = data_layout
         self._in_place = in_place
+        self._data_layout = data_layout
         self._momentum = momentum
         self._epsilon = epsilon
         self._is_test = is_test
