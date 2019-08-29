@@ -185,6 +185,7 @@ set(TEST_OPS_WITH_GC
   test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
+  test_gather_nd_op
   test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
