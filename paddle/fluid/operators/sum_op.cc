@@ -141,7 +141,7 @@ class SumOp : public framework::OperatorWithKernel {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
-          if (each.numel() != 0) {
+          if (each.numel() != 0 && each.IsInitialized()) {
             return framework::OpKernelType(each.type(), ctx.device_context(),
                                            layout, library);
           }
@@ -238,13 +238,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   }
 };
 
-class SumInplace : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const override {
-    return {{"X", "Out"}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(SumInplace, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
