@@ -85,6 +85,10 @@ limitations under the License. */
 DEFINE_bool(reader_queue_speed_test_mode, false,
             "If set true, the queue.pop will only get data from queue but not "
             "remove the data from queue for speed testing");
+DECLARE_bool(use_mkldnn);
+#ifdef PADDLE_WITH_NGRAPH
+DECLARE_bool(use_ngraph);
+#endif
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -489,10 +493,24 @@ PYBIND11_MODULE(core_noavx, m) {
            Returns:
                out (Tensor): new Tensor(NOT LoDTensor).
            )DOC")
-      .def("__str__", [](const LoDTensor &self) {
-        std::stringstream ostr;
-        ostr << self;
-        return ostr.str();
+      .def("__str__",
+           [](const LoDTensor &self) {
+             std::stringstream ostr;
+             ostr << self;
+             return ostr.str();
+           })
+      .def("_copy", [](const LoDTensor &self, const platform::Place &place) {
+        // follow fetch_op's inplementation
+        LoDTensor dst;
+        if (self.IsInitialized() && self.numel() > 0) {
+          TensorCopySync(self, place, &dst);
+        } else {
+          // Not copy, if the src tensor is empty.
+          dst.clear();
+          dst.Resize({0});
+        }
+        dst.set_lod(self.lod());
+        return dst;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -718,6 +736,17 @@ All parameter, weight, gradient are variables in Paddle.
                        [](std::unique_ptr<OpDesc> &p) { return p.release(); });
         return std::make_pair(grad_op_desc_ptrs, grad_to_var);
       });
+  m.def("has_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
+  });
+  m.def("has_infer_inplace", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
+  });
+  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
+#ifdef PADDLE_WITH_NGRAPH
+  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
+#endif
+
   m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDesc prog_with_targets(origin);
