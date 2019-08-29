@@ -468,7 +468,7 @@ class TransformThroughFP32Pass(object):
         graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_brelu_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
