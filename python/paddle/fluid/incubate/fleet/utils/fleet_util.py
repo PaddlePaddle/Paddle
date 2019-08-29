@@ -1316,8 +1316,8 @@ class FleetUtil(object):
         bucket_error = error_sum / error_count if error_count > 0 else 0.0
 
         return [
-            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr, copc,
-            mean_predict_qvalue, int(total_ins_num)
+            auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
+            copc, mean_predict_qvalue, int(total_ins_num)
         ]
 
     def print_global_metrics(self,
