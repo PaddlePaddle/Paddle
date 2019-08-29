@@ -20,7 +20,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_set.h"
-#include "paddle/fluid/framework/fleet/boxps.h"
+//#include "paddle/fluid/framework/fleet/boxps.h"
+#include <boxps.h>
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
