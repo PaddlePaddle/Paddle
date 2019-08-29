@@ -182,10 +182,6 @@ void BatchNormOpMaker::Make() {
                 "global mean and variance are also used during train time, "
                 "the BN acts as scaling and shiffting.")
       .SetDefault(false);
-  AddAttr<bool>("is_inplace",
-                "(boolean, default false) "
-                "Whether the op reuse the input's variable.")
-      .SetDefault(false);
 
   AddComment(R"DOC(
 Batch Normalization.
@@ -444,7 +440,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = ctx.Attr<bool>("is_inplace");
+    bool is_inplace = x == y;
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]

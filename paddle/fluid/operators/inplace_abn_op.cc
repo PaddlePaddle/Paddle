@@ -103,14 +103,13 @@ class InplaceABNKernel
     : public paddle::operators::BatchNormKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
-    auto cur_x = EigenVector<T>::Flatten(*x);
+    auto cur_x = EigenVector<T>::Flatten(*y);
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
     functor.Compute(activation, place, cur_x, cur_y);
@@ -129,7 +128,6 @@ class InplaceABNGradKernel
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    bool is_inplace = ctx.Attr<bool>("is_inplace");
 
     d_x->mutable_data<T>(ctx.GetPlace());
     auto& px = const_cast<Tensor&>(*x);
@@ -140,7 +138,7 @@ class InplaceABNGradKernel
 
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
-                        is_inplace);
+                        x == y);
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }

@@ -3344,7 +3344,6 @@ def batch_norm(input,
         "use_mkldnn": use_mkldnn,
         "fuse_with_relu": fuse_with_relu,
         "use_global_stats": use_global_stats,
-        "is_inplace": in_place
     }
 
     if use_fused_act:
