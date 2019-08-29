@@ -121,6 +121,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+ 
  protected:
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;

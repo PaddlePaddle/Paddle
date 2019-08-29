@@ -12,22 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-#include <vector>
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
-void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
-                                  Dataset* dataset) {
+void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
+                                  Dataset *dataset) {
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
-  const std::vector<paddle::framework::DataFeed*> readers =
+  const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
 
   thread_num_ = readers.size();
@@ -53,7 +53,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
-void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
   VLOG(3) << "init other env done.";
@@ -72,7 +72,7 @@ void DistMultiTrainer::Run() {
 }
 
 void DistMultiTrainer::Finalize() {
-  for (auto& th : threads_) {
+  for (auto &th : threads_) {
     th.join();
   }
   for (int i = 0; i < need_merge_var_names_.size(); i++) {
@@ -80,20 +80,20 @@ void DistMultiTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>(); 
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
     for (int j = 1; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
       LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
       if (root_tensor->numel() != thread_tensor->numel()) {
-        continue;    
+        continue;
       }
-#define MergeCallback(cpp_type, proto_type) \
-  do {                                            \
-    if (root_tensor->type() == proto_type) {            \
-      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);         \
-    }                                             \
+#define MergeCallback(cpp_type, proto_type)                                    \
+  do {                                                                         \
+    if (root_tensor->type() == proto_type) {                                   \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
+    }                                                                          \
   } while (0)
       _ForEachDataType_(MergeCallback);
     }
@@ -104,13 +104,13 @@ void DistMultiTrainer::Finalize() {
 }
 
 template <typename T>
-void DistMultiTrainer::MergeToRootScope(LoDTensor* root_tensor,
-                                        LoDTensor* tensor) {
+void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
+                                        LoDTensor *tensor) {
   T *root_data = root_tensor->data<T>();
   T *data = tensor->data<T>();
-  for (int i = 0; i < tensor->numel(); i++){
+  for (int i = 0; i < tensor->numel(); i++) {
     root_data[i] += data[i];
   }
 }
-}  // end namespace framework
-}  // end namespace paddle
+} // end namespace framework
+} // end namespace paddle
