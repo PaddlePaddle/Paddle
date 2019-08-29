@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <cstring>
 #include <string>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -40,6 +41,7 @@ elementwise_inner_add(const framework::ExecutionContext& ctx,
                       const IndexT& dist_index, const int& slice_size,
                       const size_t& slice_bytes) {
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+
   blas.VADD(slice_size, src_pointer + src_index * slice_size,
             dist_pointer + dist_index * slice_size,
             result_dist_pointer + dist_index * slice_size);
