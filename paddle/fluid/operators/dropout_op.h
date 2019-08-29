@@ -80,7 +80,9 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       if (upscale_in_train) {
         const auto* X_data = x->data<T>();
         auto* Y_data = y->mutable_data<T>(context.GetPlace());
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
         for (int i = 0; i < x->numel(); i++) {
           Y_data[i] = X_data[i];
         }
