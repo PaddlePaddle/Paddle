@@ -89,11 +89,11 @@ void DistMultiTrainer::Finalize() {
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
-#define MergeCallback(cpp_type, proto_type)                                    \
-  do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
-    }                                                                          \
+#define MergeCallback(cpp_type, proto_type)                   \
+  do {                                                        \
+    if (root_tensor->type() == proto_type) {                  \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor); \
+    }                                                         \
   } while (0)
       _ForEachDataType_(MergeCallback);
     }
@@ -112,5 +112,5 @@ void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
     root_data[i] += data[i];
   }
 }
-} // end namespace framework
-} // end namespace paddle
+}  // end namespace framework
+}  // end namespace paddle

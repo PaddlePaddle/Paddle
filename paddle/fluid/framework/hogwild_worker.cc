@@ -64,11 +64,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
         LoDTensor *root_tensor =
             root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
-#define MemsetCallback(cpp_type, proto_type)                                   \
-  do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim);               \
-    }                                                                          \
+#define MemsetCallback(cpp_type, proto_type)                     \
+  do {                                                           \
+    if (root_tensor->type() == proto_type) {                     \
+      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim); \
+    }                                                            \
   } while (0)
         _ForEachDataType_(MemsetCallback);
       }
@@ -200,5 +200,5 @@ void HogwildWorker::PrintFetchVars() {
   }
 }
 
-} // end namespace framework
-} // end namespace paddle
+}  // end namespace framework
+}  // end namespace paddle
