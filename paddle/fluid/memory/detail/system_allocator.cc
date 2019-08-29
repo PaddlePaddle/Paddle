@@ -25,7 +25,6 @@ limitations under the License. */
 #include <algorithm>  // for std::max
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
