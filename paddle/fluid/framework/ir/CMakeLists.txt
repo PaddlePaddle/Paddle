@@ -76,6 +76,7 @@ pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(fillconstant_elementwisemul_fuse inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
+pass_library(fc_reshape_transpose_fuse_pass inference)
 
 if(ANAKIN_SUBGRAPH)
 pass_library(simplify_anakin_priorbox_detection_out_pass inference)
