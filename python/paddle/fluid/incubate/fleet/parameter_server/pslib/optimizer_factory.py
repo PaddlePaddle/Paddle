@@ -248,6 +248,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["dump_slot"] = False
+        opt_info["dump_converter"] = ""
+        opt_info["dump_fields"] = strategy.get("dump_fields", [])
+        opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
