@@ -34,8 +34,6 @@ from .proto import framework_pb2
 from . import core
 from . import unique_name
 
-import paddle
-
 __all__ = [
     'Program',
     'default_startup_program',
@@ -546,14 +544,23 @@ class Variable(object):
             self.is_data = is_data
 
     def detach(self):
-        new_var = self._cloneVar()
-        self.block.append_op(
-            type="assign",
-            inputs={'X': [self]},
-            outputs={'Out': [new_var]},
-            attrs={'device': 0},
-            stop_gradient=True)
-        return new_var
+        """
+        Returns a new Variable, detached from the current graph.
+        
+        Returns:
+            Variable: The detached Variable.
+        """
+        if in_dygraph_mode():
+            new_var = self._cloneVar()
+            self.block.append_op(
+                type="assign",
+                inputs={'X': [self]},
+                outputs={'Out': [new_var]},
+                attrs={'device': 0},
+                stop_gradient=True)
+            return new_var
+        else:
+            raise Exception("static graph model DO NOT supprt detach")
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)

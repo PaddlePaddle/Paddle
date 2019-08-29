@@ -61,14 +61,13 @@ class Test_Detach(unittest.TestCase):
                      param_attr=fc2_w_param_attrs,
                      bias_attr=fc2_b_param_attrs)
             data = to_variable(data)
-            conv = fc(data)
-            conv1 = fc1(conv)
-            conv2 = fc2(conv)
-            loss = conv1 + conv2
+            x = fc(data)
+            x1 = fc1(x)
+            x2 = fc2(x)
+            loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
-            # print(conv.gradient())
-            return conv.gradient()
+            return x.gradient()
 
     def no_detach_single(self):
         data = self.generate_Data()
@@ -92,13 +91,12 @@ class Test_Detach(unittest.TestCase):
                      param_attr=fc1_w_param_attrs,
                      bias_attr=fc1_b_param_attrs)
             data = to_variable(data)
-            conv = fc(data)
-            conv1 = fc1(conv)
-            loss = conv1
+            x = fc(data)
+            x1 = fc1(x)
+            loss = x1
             # print(loss, loss.shape)
             loss.backward()
-            # print(conv.gradient())
-            return conv.gradient()
+            return x.gradient()
 
     def detach_multi(self):
         data = self.generate_Data()
@@ -131,49 +129,25 @@ class Test_Detach(unittest.TestCase):
                      param_attr=fc2_w_param_attrs,
                      bias_attr=fc2_b_param_attrs)
             data = to_variable(data)
-            conv = fc(data)
-            conv_detach = conv.detach()
-            conv1 = fc1(conv)
-            conv2 = fc2(conv_detach)
-            loss = conv1 + conv2
+            x = fc(data)
+            x_detach = x.detach()
+            x1 = fc1(x)
+            x2 = fc2(x_detach)
+            loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
-            # print(conv.gradient())
-            return conv.gradient()
-
-    def get_Dim(self, array):
-        dim = 1
-        for index_shape in array.shape:
-            dim = dim * index_shape
-        return dim
+            return x.gradient()
 
     def test_NoDetachMulti_DetachMulti(self):
         array_no_detach_multi = self.no_detach_multi()
         array_detach_multi = self.detach_multi()
 
-        array_no_detach_multi_dim = self.get_Dim(array_no_detach_multi)
-
-        array_no_detach_multi = array_no_detach_multi.reshape(
-            array_no_detach_multi_dim)
-        array_detach_multi = array_detach_multi.reshape(
-            array_no_detach_multi_dim)
-        for index_array in range(array_no_detach_multi_dim):
-            self.assertNotEqual(array_no_detach_multi[index_array],
-                                array_detach_multi[index_array])
+        assert not np.array_equal(array_no_detach_multi, array_detach_multi)
 
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
         array_detach_multi = self.detach_multi()
-
-        array_no_detach_single_dim = self.get_Dim(array_no_detach_single)
-
-        array_no_detach_single = array_no_detach_single.reshape(
-            array_no_detach_single_dim)
-        array_detach_multi = array_detach_multi.reshape(
-            array_no_detach_single_dim)
-        for index_array in range(array_no_detach_single_dim):
-            self.assertEqual(array_no_detach_single[index_array],
-                             array_detach_multi[index_array])
+        assert np.array_equal(array_no_detach_single, array_detach_multi)
 
 
 if __name__ == '__main__':
