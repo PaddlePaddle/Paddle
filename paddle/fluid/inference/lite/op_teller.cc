@@ -22,6 +22,8 @@ namespace lite {
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
     teller_set.insert("leaky_relu");
+    teller_set.insert("mul");
+    teller_set.insert("elementwise_add");
   }
 
   bool operator()(const std::string& op_type,

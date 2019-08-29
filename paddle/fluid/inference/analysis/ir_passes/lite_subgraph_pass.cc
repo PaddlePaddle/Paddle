@@ -33,7 +33,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void analysis::LiteSubgraphPass::ApplyImpl(
+void LiteSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("lite_subgraph_pass", graph);
 
@@ -49,7 +49,7 @@ void analysis::LiteSubgraphPass::ApplyImpl(
     return lite::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */);
+  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "");
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -61,14 +61,12 @@ void analysis::LiteSubgraphPass::ApplyImpl(
 
   for (auto *node : graph->Nodes()) {
     LOG(INFO) << "[lite_subgraph_pass] node name = " << node->Name();
-    /*
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateAnakinOp(node, graph, graph_param_names, &repetitive_params);
+      CreateLiteOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
-    */
   }
 
   std::unordered_set<const Node *> nodes2remove;
@@ -82,7 +80,45 @@ void analysis::LiteSubgraphPass::ApplyImpl(
              new std::vector<std::string>(repetitive_params));
 }
 
+void LiteSubgraphPass::CreateLiteOp(
+    framework::ir::Node *node, Graph *graph,
+    const std::vector<std::string> &graph_params,
+    std::vector<std::string> *repetitive_params) const {
+  // auto *op_desc = node->Op();
+  auto &subgraph = *Agent(node).subgraph();
+  PADDLE_ENFORCE(!subgraph.empty());
 
+  framework::ProgramDesc *program_desc = new framework::ProgramDesc();
+  // Add new block for TensorRTEngineOP
+  const framework::BlockDesc &main_block =
+      program_desc->Block(framework::kRootBlockIndex);
+  // const framework::BlockDesc& main_block = program_desc->Block(0);
+  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
+
+  // An fake block desc.
+  framework::proto::BlockDesc block_proto;
+  framework::BlockDesc block_desc(nullptr, &block_proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
+                          subgraph.size());
+  LOG(INFO) << "Hello World!";
+
+  for (auto *node : subgraph) {
+    LOG(INFO) << "[subgraph] node name = " << node->Name();
+    for (auto* in: node->inputs) {
+      LOG(INFO) << "[in] node name = " << in->Name();
+    }
+    for (auto* out: node->outputs) {
+      LOG(INFO) << "[out] node name = " << out->Name();
+    }
+    auto *new_block_op = new_block->AppendOp();
+    auto *op = block_desc.AppendOp();
+    *new_block_op->Proto() = *node->Op()->Proto();
+    *op->Proto() = *node->Op()->Proto();
+  }
+
+}
 
 }  // namespace analysis
 }  // namespace inference
