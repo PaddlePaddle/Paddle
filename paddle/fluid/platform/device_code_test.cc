@@ -20,8 +20,8 @@ limitations under the License. */
 constexpr auto saxpy_code = R"(
 extern "C" __global__
 void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
-  size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid < n) {
+  for (size_t tid = blockIdx.x * blockDim.x + threadIdx.x; tid < n;
+       tid += blockDim.x * gridDim.x) {
     z[tid] = a * x[tid] + y[tid];
   }
 }
@@ -39,7 +39,7 @@ TEST(device_code, cuda) {
 
   float scale = 2;
   auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(64), static_cast<int64_t>(1024)});
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
   cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
 
