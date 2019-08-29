@@ -58,6 +58,9 @@ class Dataset {
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
   // set channel num
   virtual void SetChannelNum(int channel_num) = 0;
+  // set parse ins id
+  virtual void SetParseInsId(bool parse_ins_id) = 0;
+  virtual void SetParseContent(bool parse_content) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
@@ -133,6 +136,8 @@ class DatasetImpl : public Dataset {
                              const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
   virtual void SetChannelNum(int channel_num);
+  virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseContent(bool parse_content);
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins);
@@ -193,6 +198,8 @@ class DatasetImpl : public Dataset {
   int64_t fleet_send_sleep_seconds_;
   std::vector<std::thread> preload_threads_;
   bool merge_by_insid_;
+  bool parse_ins_id_;
+  bool parse_content_;
   bool erase_duplicate_feas_;
   bool keep_unmerged_ins_;
   int min_merge_size_;

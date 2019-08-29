@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,32 +17,34 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistW2V2x2(TestDistBase):
+class TestDistMnistLocalSGDFleetApi(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
-        self._enforce_place = "CPU"
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._gpu_fleet_api = True
+        self._use_local_sgd = True
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
-class TestDistW2V2x2WithMemOpt(TestDistBase):
+class TestDistMnistGradAllReduceFleetApi(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
-        self._mem_opt = True
-        self._enforce_place = "CPU"
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._gpu_fleet_api = True
+        self._ut4grad_allreduce = True
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
-
-
-class TestDistW2V2x2Async(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._enforce_place = "CPU"
-
-    def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=100)
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 if __name__ == "__main__":
