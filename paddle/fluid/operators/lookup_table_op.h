@@ -46,6 +46,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto *table_var = context.InputVar("W");
 
     auto id_name = context.Inputs("Ids").front();
+    auto embedding_name = context.Inputs("W").front();
     auto out_name = context.Outputs("Out").front();
 
     // for remote prefetch
@@ -57,12 +58,12 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     if (remote_prefetch && !epmap.empty()) {
 // if epmap is not empty, then the parameter will be fetched from remote
-// parameter
-// server
+// parameter server
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context,
-                                       context.scope());
+      operators::distributed::prefetch(id_name, out_name, embedding_name, false,
+                                       table_names, epmap, height_sections,
+                                       context, context.scope());
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "
