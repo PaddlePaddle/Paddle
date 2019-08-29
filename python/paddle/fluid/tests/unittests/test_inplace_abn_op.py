@@ -20,7 +20,9 @@ import os
 import six
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import compiler
+import paddle.fluid.unique_name as unique_name
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -31,6 +33,143 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         self.H = 64
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
+
+    # def append_activation(self, input_var):
+    #     act = self.kwargs.get('act', None)
+    #     if act is None:
+    #         return input_var
+    #     if isinstance(act, six.string_types):
+    #         act = {'type': act}
+    #     else:
+    #         raise TypeError(str(act) + " should be unicode or str")
+    #
+    #     act_type = act.pop('type')
+    #
+    #     tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+    #     self.append_op(
+    #         type=act_type,
+    #         inputs={"X": [input_var]},
+    #         outputs={"Out": [tmp]},
+    #         attrs=act)
+    #     return tmp
+    #
+    # def batch_norm(self, block, input,
+    #                act=None,
+    #                is_test=False,
+    #                momentum=0.9,
+    #                epsilon=1e-05,
+    #                param_attr=None,
+    #                bias_attr=None,
+    #                data_layout='NCHW',
+    #                in_place=False,
+    #                name=None,
+    #                moving_mean_name=None,
+    #                moving_variance_name=None,
+    #                do_model_average_for_mean_and_var=False,
+    #                fuse_with_relu=False,
+    #                use_global_stats=False):
+    #     dtype = input.dtype
+    #
+    #     # use fp32 for bn parameter
+    #     if dtype == core.VarDesc.VarType.FP16:
+    #         dtype = core.VarDesc.VarType.FP32
+    #
+    #     input_shape = input.shape
+    #     if data_layout == 'NCHW':
+    #         channel_num = input_shape[1]
+    #     else:
+    #         if data_layout == 'NHWC':
+    #             channel_num = input_shape[-1]
+    #         else:
+    #             raise ValueError("unsupported data layout:" + data_layout)
+    #
+    #     param_shape = [channel_num]
+    #
+    #
+    #     # create parameter
+    #     block.create_var(
+    #         name=unique_name.generate('scale'),
+    #         persistable=True,
+    #         type=core.VarDesc.VarType.RAW,
+    #         shape=param_shape,
+    #         dtype=dtype,
+    #         default_initializer=fluid.Constant(1.0))
+    #     block.create_var(
+    #         name=unique_name.generate('scale'),
+    #         persistable=True,
+    #         type=core.VarDesc.VarType.RAW,
+    #         shape=param_shape,
+    #         dtype=dtype,
+    #         default_initializer=fluid.Constant(1.0))
+    #
+    #     bias = helper.create_parameter(
+    #         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    #
+    #     mean = helper.create_parameter(
+    #         attr=fluid.ParamAttr(
+    #             name=moving_mean_name,
+    #             initializer=fluid.Constant(0.0),
+    #             trainable=False,
+    #             do_model_average=do_model_average_for_mean_and_var),
+    #         shape=param_shape,
+    #         dtype=dtype)
+    #     mean.stop_gradient = True
+    #
+    #     variance = helper.create_parameter(
+    #         attr=fluid.ParamAttr(
+    #             name=moving_variance_name,
+    #             initializer=fluid.Constant(1.0),
+    #             trainable=False,
+    #             do_model_average=do_model_average_for_mean_and_var),
+    #         shape=param_shape,
+    #         dtype=dtype)
+    #     variance.stop_gradient = True
+    #
+    #     # create output
+    #     # mean and mean_out share the same memory
+    #     mean_out = mean
+    #     # variance and variance out share the same memory
+    #     variance_out = variance
+    #     saved_mean = helper.create_variable_for_type_inference(
+    #         dtype=dtype, stop_gradient=True)
+    #     saved_variance = helper.create_variable_for_type_inference(
+    #         dtype=dtype, stop_gradient=True)
+    #
+    #     use_mkldnn = False
+    #     op_type = "batch_norm"
+    #
+    #     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
+    #         dtype)
+    #
+    #     attrs = {
+    #         "momentum": momentum,
+    #         "epsilon": epsilon,
+    #         "is_test": is_test,
+    #         "data_layout": data_layout,
+    #         "use_mkldnn": use_mkldnn,
+    #         "fuse_with_relu": fuse_with_relu,
+    #         "use_global_stats": use_global_stats
+    #     }
+    #
+    #     helper.append_op(
+    #         type=op_type,
+    #         inputs={
+    #             "X": input,
+    #             "Scale": scale,
+    #             "Bias": bias,
+    #             "Mean": mean,
+    #             "Variance": variance
+    #         },
+    #         outputs={
+    #             "Y": batch_norm_out,
+    #             "MeanOut": mean_out,
+    #             "VarianceOut": variance_out,
+    #             "SavedMean": saved_mean,
+    #             "SavedVariance": saved_variance
+    #         },
+    #         attrs=attrs)
+    #
+    #     return self.append_activation(batch_norm_out)
 
     def build_program(self,
                       place,
@@ -59,6 +198,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     use_cudnn=False)
                 bn = fluid.layers.batch_norm(
                     conv,
+                    in_place=inplace_abn,
                     act=activation,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -69,8 +209,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
-                if not inplace_abn:
-                    out = out / core.get_cuda_device_count()
+                # if not inplace_abn:
+                #     out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
@@ -142,23 +282,25 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 str(bn_val) + "\n" + "Inplace ABN " + str(inplace_abn_val))
 
     def test_train(self):
-        if not core.is_compiled_with_cuda():
-            return
+        # if not core.is_compiled_with_cuda():
+        #     return
 
-        places = [core.CUDAPlace(0)]
+        # places = [core.CUDAPlace(0)]
+        places = [core.CPUPlace()]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                for activation in ['elu', ]:
+                for activation in ['elu']:
                     self.compare(place, layout, False, activation)
 
     def test_infer(self):
-        if not core.is_compiled_with_cuda():
-            return
+        # if not core.is_compiled_with_cuda():
+        #     return
 
-        places = [core.CUDAPlace(0)]
+        # places = [core.CUDAPlace(0)]
+        places = [core.CPUPlace()]
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                for activation in ['elu', ]:
+                for activation in ['elu']:
                     self.compare(place, layout, True, activation)
 
 

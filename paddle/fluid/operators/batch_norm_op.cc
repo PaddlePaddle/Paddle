@@ -182,6 +182,7 @@ void BatchNormOpMaker::Make() {
                 "global mean and variance are also used during train time, "
                 "the BN acts as scaling and shiffting.")
       .SetDefault(false);
+
   AddComment(R"DOC(
 Batch Normalization.
 
@@ -224,6 +225,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
+
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
@@ -426,8 +428,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     // SavedVariance have been reverted in forward operator
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
@@ -436,6 +440,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+    bool in_place = x == y;
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -474,6 +479,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     }
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
 
@@ -506,8 +512,26 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     int scale_coefff = use_global_stats ? 1 : N * sample_size;
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coefff;
 
+    // inplace calculation
+    // Y:  ((x - est_mean) * (inv_var) * scale + bias
+    //   formula transform ====>
+    //   (x * inv_var * scale) + (bias - est_mean * inv_var * scale)
+    // X: (y - bias) / scale / (inv_var) + est_mean
+    //   formula transform ====>
+    //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
+        if (in_place) {
+          auto px = const_cast<Tensor &>(*x);
+          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
+                                  sample_size, N * C);
+          ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
+          for (int nc = 0; nc < N * C; ++nc) {
+            x_data.col(nc) =
+                (y_data.col(nc) - bias_arr(nc)) / scale_inv_var_nhw(nc) +
+                mean_arr(nc);
+          }
+        }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
@@ -541,6 +565,13 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         break;
       }
       case DataLayout::kNHWC: {
+        if (in_place) {
+          auto px = const_cast<Tensor &>(*x);
+          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
+                                  N * sample_size);
+          ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
+          x_data = (y_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
+        }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,

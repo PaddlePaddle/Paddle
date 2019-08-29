@@ -60,7 +60,10 @@ class InplaceABNGradKernel
     auto cur_dx = EigenMatrix<T>::From(*d_x);
     auto cur_dy = EigenMatrix<T>::From(*d_y);
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy);
+    bool in_place = x == y;
+
+    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
+                        in_place);
 
     auto inp_cur_dy = EigenMatrix<T>::From(const_cast<Tensor&>(*d_y));
     inp_cur_dy.device(place) = cur_dx;

@@ -21,52 +21,81 @@
 namespace paddle {
 namespace operators {
 
-class InplaceABNOp : public framework::OperatorWithKernel {
+class InplaceABNOp : public paddle::operators::BatchNormOp {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  using paddle::operators::BatchNormOp::BatchNormOp;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
-  }
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    // By default, the type of the scale, bias, mean,
+    // and var tensors should both be float. (For float or float16 input tensor)
+    // or double (For double input tensor).
+    auto bn_param_type = framework::proto::VarType::FP32;
+    if (input_data_type == framework::proto::VarType::FP64) {
+      bn_param_type = framework::proto::VarType::FP64;
+    }
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+                      "Scale input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+                      "Bias input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+                      "Mean input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
+                      "Variance input should be of float type");
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library);
   }
 };
 
-class InplaceABNGradOp : public framework::OperatorWithKernel {
+class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  using paddle::operators::BatchNormGradOp::BatchNormGradOp;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    const auto* var = ctx.InputVar(framework::GradVarName("Y"));
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    if (var == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    const Tensor* t = nullptr;
+    if (var->IsType<Tensor>()) {
+      t = &var->Get<Tensor>();
+    } else if (var->IsType<LoDTensor>()) {
+      t = &var->Get<LoDTensor>();
+    }
+    if (t == nullptr) {
+      PADDLE_THROW("can't find Y@GRAD");
+    }
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library);
   }
 };
 
-class InplaceABNOpMaker : public framework::OpProtoAndCheckerMaker {
+class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
-             "The last dimension of X should be 1. Each value of X is an index "
-             "to indicate the position.");
-    AddAttr<std::string>("activation",
-                 "(enum string, default leakyrelu) "
-                 "The activation type used for output candidate {h}_t.");
-    AddComment(R"DOC(
-)DOC");
+    BatchNormOpMaker::Make();
+    AddAttr<std::string>(
+        "activation",
+        "(enum string, default identity) "
+        "The activation type used for output candidate {h}_t.");
   }
+};
+
+class InplaceABNOpGradMaker : public paddle::operators::BatchNormGradMaker {
+ public:
+  using paddle::operators::BatchNormGradMaker::BatchNormGradMaker;
 };
 
 template <typename DeviceContext, typename T>
@@ -74,15 +103,15 @@ class InplaceABNKernel
     : public paddle::operators::BatchNormKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
-    // apply in-place activation calculate
-    auto cur_x = EigenMatrix<T>::From(*y);
-    auto cur_y = EigenMatrix<T>::From(*y);
+    auto cur_x = EigenVector<T>::Flatten(*x);
+    auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
     functor.Compute(activation, place, cur_x, cur_y);
   }
@@ -101,24 +130,25 @@ class InplaceABNGradKernel
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
 
-    // apply in-place activation calculate
-    auto cur_x = EigenMatrix<T>::From(*x);
-    auto cur_y = EigenMatrix<T>::From(*y);
-    auto cur_dx = EigenMatrix<T>::From(*d_x);
-    auto cur_dy = EigenMatrix<T>::From(*d_y);
+    auto cur_x = EigenVector<T>::Flatten(*x);
+    auto cur_y = EigenVector<T>::Flatten(*y);
+    auto cur_dx = EigenVector<T>::Flatten(*d_x);
+    auto cur_dy = EigenVector<T>::Flatten(*d_y);
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy);
+    bool in_place = x == y;
+    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
+                        in_place);
 
-    auto inp_cur_dy = EigenMatrix<T>::From(const_cast<Tensor&>(*d_y));
-    inp_cur_dy.device(place) = cur_dx;
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker);
+REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
+                  ops::InplaceABNOpGradMaker);
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
 REGISTER_OP_CPU_KERNEL(
