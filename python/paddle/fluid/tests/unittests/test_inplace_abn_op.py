@@ -230,8 +230,11 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         ]
         if not only_forward:
             others = [
-                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                # 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                # 'batch_norm_0.tmp_2@GRAD',
+                'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         bn_fetches = exe.run(program=main,
@@ -250,8 +253,11 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         ]
         if not only_forward:
             others = [
-                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_2@GRAD', 'conv2d_0.tmp_0@GRAD'
+                # 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                # 'batch_norm_0.tmp_2@GRAD',
+                'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         for nm in fetch_names:

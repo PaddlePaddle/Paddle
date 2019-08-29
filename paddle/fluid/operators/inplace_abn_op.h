@@ -65,8 +65,6 @@ class InplaceABNActivation {
   template <typename Device, typename X, typename Y, typename DX, typename DY>
   void GradCompute(const int act_type, const Device &d, X x, Y y, DX dx, DY dy,
                    bool is_inplace) {
-    if (is_inplace) {
-    }
     if (act_type == InplaceABNActivationType::identity) {
       if (is_inplace) {
         //        x.device(d) = y;

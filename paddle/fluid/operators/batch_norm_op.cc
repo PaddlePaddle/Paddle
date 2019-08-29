@@ -182,6 +182,10 @@ void BatchNormOpMaker::Make() {
                 "global mean and variance are also used during train time, "
                 "the BN acts as scaling and shiffting.")
       .SetDefault(false);
+  AddAttr<bool>("is_inplace",
+                "(boolean, default false) "
+                "Whether the op reuse the input's variable.")
+      .SetDefault(false);
 
   AddComment(R"DOC(
 Batch Normalization.
@@ -440,7 +444,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool in_place = x == y;
+    bool is_inplace = ctx.Attr<bool>("is_inplace");
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -521,7 +525,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     //    (y - bias) / (scale * inv_var) + est_mean
     switch (data_layout) {
       case DataLayout::kNCHW: {
-        if (in_place) {
+        if (is_inplace) {
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
@@ -565,7 +569,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         break;
       }
       case DataLayout::kNHWC: {
-        if (in_place) {
+        if (is_inplace) {
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
@@ -617,6 +621,7 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
+  op->SetInput("Y", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
@@ -665,9 +670,9 @@ class BatchNormGradInplaceInToOut : public framework::InplaceOpInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker)
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 // ops::BatchNormInplaceInToOut);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp)
+REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 //                  ops::BatchNormGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL(
