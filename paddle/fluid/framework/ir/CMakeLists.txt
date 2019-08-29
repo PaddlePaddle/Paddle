@@ -71,7 +71,7 @@ pass_library(fillconstant_elementwisemul_fuse inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
-pass_library(remove_reshape_transpose_pass)
+pass_library(remove_reshape_transpose_pass inference)
 
 if(WITH_GPU)
     pass_library(cudnn_placement_pass base DEPS placement_pass_base)
@@ -120,6 +120,8 @@ cc_test(test_seqpool_concat_fuse_pass SRCS seqpool_concat_fuse_pass_tester.cc DE
 cc_test(test_seqpool_cvm_concat_fuse_pass SRCS seqpool_cvm_concat_fuse_pass_tester.cc DEPS seqpool_cvm_concat_fuse_pass framework_proto)
 cc_test(test_is_test_pass SRCS is_test_pass_tester.cc DEPS is_test_pass)
 cc_test(test_simplify_with_basic_ops_pass SRCS simplify_with_basic_ops_pass_tester.cc DEPS simplify_with_basic_ops_pass)
+cc_test(test_remove_reshape_transpose_pass SRCS remove_reshape_transpose_pass_tester.cc DEPS remove_reshape_transpose_pass naive_executor)
+
 if(WITH_GPU)
     cc_test(test_cudnn_placement_pass SRCS cudnn_placement_pass_tester.cc DEPS cudnn_placement_pass)
 endif()

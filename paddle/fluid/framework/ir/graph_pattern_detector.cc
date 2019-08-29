@@ -1792,68 +1792,58 @@ PDNode *patterns::FillConstantElementWiseMulFuse::operator()(
   return elementwise_mul_out;
 }
 
-PDNode *patterns::RmReshapeTranspose::operator()(
-    PDNode *x, bool inverse, bool with_scale) {
+PDNode *patterns::RmReshapeTranspose::operator()(PDNode *x, bool inverse,
+                                                 bool with_scale) {
   auto reshape2_op =
       pattern->NewNode(reshape2_repr())->assert_is_op("reshape2");
-  auto reshape2_out = pattern->NewNode(reshape2_repr())
-                          ->assert_is_op_output("reshape2")
-                          ->assert_is_op_input("transpose2","X")
-                          ->AsIntermediate();
+  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
+                          ->assert_is_op_output("reshape2", "Out");
 
   auto transpose2_op =
       pattern->NewNode(transpose2_repr())->assert_is_op("transpose2");
-  auto reshape2_out = pattern->NewNode(reshape2_repr())
-                          ->assert_is_op_output("transpose2")
-                          ->assert_is_op_input("matmul")
-                          ->AsIntermediate();
+  auto transpose2_out = pattern->NewNode(transpose2_out_repr())
+                            ->assert_is_op_output("transpose2", "Out");
 
-  auto matmul_op =
-      pattern->NewNode(matmul_repr())->assert_is_op("matmul");
-  auto matmul_y = pattern->NewNode(matmul_y_repr())
-                          ->assert_is_op_nth_input("matmul","Y",0);
-  auto matmul_out = pattern->NewNode(matmul_out_repr())
-                          ->assert_is_op_output("matmul");
+  auto matmul_op = pattern->NewNode(matmul_repr())->assert_is_op("matmul");
+  auto matmul_out =
+      pattern->NewNode(matmul_out_repr())->assert_is_op_output("matmul");
+
   auto scale_op = pattern->NewNode(scale_repr())->assert_is_op("scale");
   auto scale_out = pattern->NewNode(scale_out_repr())
-                          ->assert_is_op_output("scale")
-                          ->assert_is_op_input("matmul");
-  if(!inverse){
-      if(with_scale){
-          x->assert_is_op_input("reshape2","X");
-          reshape2_op->LinksFrom({x}).LinksTo({reshape2_out});
-          transpose2_op->LinksFrom({reshape2_out}).LinksTo({transpose2_out});
-          scale_op->LinksFrom({transpose2_out}).LinksTo({scale_out});
-          matmul_op->LinksFrom({scale_out}).LinksTo({matmul_out});
-          return matmul_out;
-      }
-      else{
-          x->assert_is_op_input("reshape2","X");
-          reshape2_op->LinksFrom({x}).LinksTo({reshape2_out});
-          transpose2_op->LinksFrom({reshape2_out}).LinksTo({transpose2_out});
-          matmul_op->LinksFrom({transpose2_out}).LinksTo({matmul_out});
-          return matmul_out;
-      }
-  } else{
-      x->assert_is_op_output("matmul", "Out");
-      transpose2_op->LinksFrom({x}).LinksTo({transpose2_out});
-      reshape2_op->LinksFrom({transpose2_out}).LinksTo({reshape2_out});
-      return reshape2_out;
+                       ->assert_is_op_output("scale")
+                       ->assert_is_op_input("matmul");
+  if (!inverse) {
+    if (with_scale) {
+      x->assert_is_op_input("reshape2", "X");
+      reshape2_op->LinksFrom({x}).LinksTo({reshape2_out});
+      transpose2_op->LinksFrom({reshape2_out}).LinksTo({transpose2_out});
+      scale_op->LinksFrom({transpose2_out}).LinksTo({scale_out});
+      matmul_op->LinksFrom({scale_out}).LinksTo({matmul_out});
+      return matmul_out;
+    } else {
+      x->assert_is_op_input("reshape2", "X");
+      reshape2_op->LinksFrom({x}).LinksTo({reshape2_out});
+      transpose2_op->LinksFrom({reshape2_out}).LinksTo({transpose2_out});
+      matmul_op->LinksFrom({transpose2_out}).LinksTo({matmul_out});
+      return matmul_out;
+    }
+  } else {
+    matmul_out->assert_is_op_output("matmul", "Out");
+    matmul_op->LinksTo({matmul_out});
+    transpose2_op->LinksFrom({matmul_out}).LinksTo({transpose2_out});
+    reshape2_op->LinksFrom({transpose2_out}).LinksTo({reshape2_out});
+    return reshape2_out;
   }
 }
 
-PDNode *patterns::RmReshapeTranspose::operator()(PDNode *x) {
-    x->assert_is_op_input("stack","X");
-    auto stack_op = pattern->NewNode(stack_repr())->assert_is_op("stack");
-    auto stack_out = pattern->NewNode(stack_out_repr())
-                            ->assert_is_op_output("stack");
+PDNode *patterns::RemoveStack::operator()(PDNode *x) {
+  x->assert_is_op_nth_input("stack", "X", 0);
+  auto stack_op = pattern->NewNode(stack_repr())->assert_is_op("stack");
+  auto stack_out =
+      pattern->NewNode(stack_out_repr())->assert_is_op_output("stack");
 
-    auto cast_op = pattern->NewNode(cast_repr())
-                          ->assert_is_op("cast");
-
-    stack_op->LinksFrom({x}).LinksTo({stack_out});
-    cast_op->LinksFrom({stack_out});
-    return cast_op;
+  stack_op->LinksFrom({x}).LinksTo({stack_out});
+  return stack_out;
 }
 
 void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,

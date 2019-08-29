@@ -995,41 +995,38 @@ struct FillConstantElementWiseMulFuse : public PatternBase {
   PATTERN_DECL_NODE(elementwise_mul_out);
 };
 
-struct RmReshapeTranspose : public PatternBase{
-   RmReshapeTranspose(PDPattern* pattern,
-                      const std::string& name_scope)
-      : PatternBase(pattern, name_scope,
-                    "remove_reshape_transpose") {}
-   PDNode* operator()(PDNode* x, bool inversei, bool with_scale);
+struct RmReshapeTranspose : public PatternBase {
+  RmReshapeTranspose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "remove_reshape_transpose") {}
+  PDNode* operator()(PDNode* x, bool inverse, bool with_scale);
 
-   // declare operator node's name
-   PATTERN_DECL_NODE(reshape2);
-   PATTERN_DECL_NODE(transpose2);
-   PATTERN_DECL_NODE(matmul);
-   PATTERN_DECL_NODE(scale);
-   // declare matmul input
-   PATTERN_DECL_NODE(matmal_y);
-   // declare operators' outputs
-   PATTERN_DECL_NODE(reshape2_out);
-   PATTERN_DECL_NODE(transpose2_out);
-   PATTERN_DECL_NODE(matmul_out);
-   PATTERN_DECL_NODE(scale_out);
-} 
+  // declare operator node's name
+  PATTERN_DECL_NODE(reshape2);
+  PATTERN_DECL_NODE(transpose2);
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(scale);
+  // declare matmul input
+  PATTERN_DECL_NODE(matmal_y);
+  // declare operators' outputs
+  PATTERN_DECL_NODE(reshape2_out);
+  PATTERN_DECL_NODE(transpose2_out);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(scale_out);
+};
 
-struct RemoveStack : public PatternBase{
-   RemoveStack(PDPattern* pattern,
-                      const std::string& name_scope)
-      : PatternBase(pattern, name_scope,
-                    "remove_stack_for_attention") {}
-   PDNode* operator()(PDNode* x);
+struct RemoveStack : public PatternBase {
+  RemoveStack(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "remove_stack_for_attention") {}
+  PDNode* operator()(PDNode* x);
 
-   // declare operator node's name
-   PATTERN_DECL_NODE(stack);
-   PATTERN_DECL_NODE(cast);
-   // declare operators' outputs
-   PATTERN_DECL_NODE(stack_out);
-}
-
+  // declare operator node's name
+  PATTERN_DECL_NODE(stack);
+  PATTERN_DECL_NODE(cast);
+  PATTERN_DECL_NODE(elementwise_add);
+  // declare operators' outputs
+  PATTERN_DECL_NODE(stack_out);
+  PATTERN_DECL_NODE(cast_out);
+};
 
 struct QuantDequantOpFuse : public PatternBase {
   QuantDequantOpFuse(PDPattern* pattern, const std::string& name_scope)

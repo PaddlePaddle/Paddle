@@ -153,18 +153,18 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
-                  "fc_lstm_fuse_pass",             //
-                  "mul_lstm_fuse_pass",            //
-                  "fc_gru_fuse_pass",              //
-                  "mul_gru_fuse_pass",             //
-                  "seq_concat_fc_fuse_pass",       //
-                  "fc_fuse_pass",                  //
-                  "repeated_fc_relu_fuse_pass",    //
-                  "squared_mat_sub_fuse_pass",     //
-                  "conv_bn_fuse_pass",             //
-                  "conv_eltwiseadd_bn_fuse_pass",  //
-                  "is_test_pass",                  //
-                  "remove_reshape_transpose_pass", //
+                  "fc_lstm_fuse_pass",              //
+                  "mul_lstm_fuse_pass",             //
+                  "fc_gru_fuse_pass",               //
+                  "mul_gru_fuse_pass",              //
+                  "seq_concat_fc_fuse_pass",        //
+                  "fc_fuse_pass",                   //
+                  "repeated_fc_relu_fuse_pass",     //
+                  "squared_mat_sub_fuse_pass",      //
+                  "conv_bn_fuse_pass",              //
+                  "conv_eltwiseadd_bn_fuse_pass",   //
+                  "is_test_pass",                   //
+                  "remove_reshape_transpose_pass",  //
                   // following pass should be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});
