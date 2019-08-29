@@ -29,6 +29,118 @@ __all__ = [
 ]
 
 
+class ProgramStats(object):
+    def __init__(self, block, ops):
+        self.block = block
+        self.ops = ops
+        self.op_deps = {}  # op-> in_ops, out_ops
+        self.var_op_deps = {}  # var as input op, var as output op
+        self.var_name_dict = collections.defaultdict(int)
+        self.used_var_dict = {}  # like inplace var
+        self.used_var_count = {}
+
+    def get_reserved_vars(self):
+        var_name = []
+        print("lalalala")
+        for op in self.ops:
+            print(op.desc.type())
+            if op.desc.type() == "read":
+                var_name.extend(op.desc.output_arg_names())
+            #if op.desc.type() == "dropout":
+            #var_name.extend(op.desc.output_arg_names())
+        print(var_name)
+        return var_name
+
+    def get_out_of_subgraph_vars(self, begin_op_idx, end_op_idx):
+        var_name = []
+        for i in range(begin_op_idx, end_op_idx, 1):
+            for name in self.ops[i].desc.output_arg_names():
+                if name in self.var_op_deps:
+                    print(self.var_op_deps[name]["var_as_input_ops"])
+                    for idx in self.var_op_deps[name]["var_as_input_ops"]:
+                        if idx > end_op_idx:
+                            var_name.append(name)
+        return var_name
+
+    def is_subgraph(self, var_group1, var_group2):
+        # should traverse from var_group1 to var_group2
+        # max op idx in var_group2
+        # min op idx in var_group1
+        min_op_idx = len(self.ops)
+        max_op_idx = -1
+        for name in var_group1:
+            if name not in self.var_op_deps:
+                return False, min_op_idx, max_op_idx
+        for name in var_group2:
+            if name not in self.var_op_deps:
+                return False, min_op_idx, max_op_idx
+        for name in var_group1:
+            op_idx = self.var_op_deps[name]["var_as_input_ops"]
+            if len(op_idx) == 0:
+                print("no op var name: " + name)
+            for idx in op_idx:
+                min_op_idx = min(min_op_idx, idx)
+        for name in var_group2:
+            op_idx = self.var_op_deps[name]["var_as_output_ops"]
+            if len(op_idx) == 0:
+                print("no op var name: " + name)
+            for idx in op_idx:
+                max_op_idx = max(max_op_idx, idx)
+        print("min op idx: %d, max op idx: %d" % (min_op_idx, max_op_idx))
+        if min_op_idx >= max_op_idx:
+            return False, min_op_idx, max_op_idx
+        return True, min_op_idx, max_op_idx
+
+    def build_stats(self):
+        inorder_count = {}
+        for i, op in enumerate(self.ops):
+            self.op_deps[i] = {"in_ops": [], "out_ops": []}
+            for j, name in enumerate(op.desc.input_arg_names()):
+                if name in self.var_op_deps:
+                    self.op_deps[i]["in_ops"].extend(self.var_op_deps[name][
+                        "var_as_output_ops"])
+            for j, name in enumerate(op.desc.input_arg_names()):
+                if name in self.var_op_deps:
+                    self.var_op_deps[name]["var_as_input_ops"].extend([i])
+                else:
+                    self.var_op_deps[name] = {}
+                    self.var_op_deps[name]["var_as_input_ops"] = [i]
+                    self.var_op_deps[name]["var_as_output_ops"] = []
+
+            for j, name in enumerate(op.desc.output_arg_names()):
+                if name in self.var_op_deps:
+                    self.var_op_deps[name]["var_as_output_ops"].extend([i])
+                else:
+                    self.var_op_deps[name] = {}
+                    self.var_op_deps[name]["var_as_input_ops"] = []
+                    self.var_op_deps[name]["var_as_output_ops"] = [i]
+
+            for op_idx in self.op_deps[i]["in_ops"]:
+                self.op_deps[op_idx]["out_ops"].extend([i])
+
+    def find_op_by_input_name(self, name):
+        if name not in self.var_op_deps:
+            print("var name %s not in program" % name)
+            return []
+        else:
+            return self.var_op_deps[name]["var_as_input_ops"]
+
+    def find_op_by_output_name(self, name):
+        if name not in self.var_op_deps:
+            print("var name %s not in program" % name)
+            return []
+        else:
+            return self.var_op_deps[name]["var_as_output_ops"]
+
+    def find_op_by_name(self, name):
+        if name not in self.var_op_deps:
+            print("var name %s not in program" % name)
+            return []
+        else:
+            return self.var_op_deps[name]["var_as_input_ops"] + \
+                self.var_op_deps[name]["var_as_output_ops"]
+
+
 def _pretty_op_desc_(op_desc, prefix):
     out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
             (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
@@ -79,6 +191,26 @@ def _find_loss_op_(loss):
             break
         if loss.op is None:
             raise ValueError("loss.op is None. Should not happend")
+
+
+def _rename_output_arg_(op_descs,
+                        old_name,
+                        new_name,
+                        begin_idx=None,
+                        end_idx=None):
+    """
+    Traverse all ops in op_descs[begin_idx : end_idx],
+    if any op has inputs/outputs named "old_name", rename it as 'new_name'
+    """
+    if begin_idx is None:
+        begin_idx = 0
+    if end_idx is None:
+        end_idx = len(op_descs)
+    for i in range(begin_idx, end_idx):
+        op_desc = op_descs[i]
+        if isinstance(op_desc, tuple):
+            op_desc = op_desc[0]
+        op_desc._rename_output(old_name, new_name)
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -233,6 +365,8 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
+            if var_name in op_desc.output_arg_names():
+                continue
             if len(grad_var_position[var_name]) > 1:
                 # should insert sum op here
                 input_names = ["%s@RENAME@%d" % (var_name, i) \
@@ -241,13 +375,24 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
                                           {"Out": [var_name]},
                                           {"use_mkldnn": False})
                 for i, idx in enumerate(grad_var_position[var_name]):
+                    print("going to rename %s" % var_name)
                     if idx < len(total_grad_ops):
-                        _rename_arg_([total_grad_ops[idx]], var_name,
-                                     "%s@RENAME@%d" % (var_name, i))
+                        print("id < total grad ops")
+                        print(_pretty_op_desc_(total_grad_ops[idx], "before"))
+                        _rename_output_arg_([total_grad_ops[idx]], var_name,
+                                            "%s@RENAME@%d" % (var_name, i))
+                        print(_pretty_op_desc_(total_grad_ops[idx], "after"))
                     else:
-                        _rename_arg_(result_grad_ops[idx - len(total_grad_ops)],
-                                     var_name, "%s@RENAME@%d" % (var_name, i),
-                                     0, 1)
+                        print("id > total grad ops")
+                        print(_pretty_op_desc_(result_grad_ops[idx - len(
+                            total_grad_ops)], "before"))
+                        _rename_output_arg_(
+                            result_grad_ops[idx - len(total_grad_ops)],
+                            var_name, "%s@RENAME@%d" % (var_name, i), 0, 1)
+                        print(_pretty_op_desc_(result_grad_ops[idx - len(
+                            total_grad_ops)], "after"))
+                print("add sum op")
+                print(_pretty_op_desc_(sum_op, "sum"))
                 result_grad_ops.append(sum_op)
                 grad_var_position[var_name] = [-1]
         for var_name in op_desc.output_arg_names():
@@ -262,7 +407,7 @@ def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
     return result_grad_ops
 
 
-def _addup_repetitive_outputs_(op_descs):
+def _get_sumop_from_addup_repetitive_outputs_(op_descs, renamed_vars):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -283,6 +428,78 @@ def _addup_repetitive_outputs_(op_descs):
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
+                if "@GRAD" not in var_name:
+                    continue
+                if var_name == core.empty_var_name(
+                ) or var_name in op_desc.input_arg_names():
+                    # empty variable or inplace op
+                    continue
+                if len(renamed_vars[var_name]) == 0:
+                    # it's the first time we get the variable
+                    renamed_vars[var_name] = [var_name]
+                    renamed_var_start_idx[var_name] = idx
+                else:
+                    if len(renamed_vars[var_name]) == 1:
+                        new_name = var_name + "@RENAME@" + \
+                            str(var_rename_count[var_name])
+                        var_rename_count[var_name] += 1
+                        renamed_vars[var_name][0] = new_name
+                        _rename_arg_(op_descs, var_name, new_name,
+                                     renamed_var_start_idx[var_name], idx)
+                        _rename_arg_(pending_sum_ops, var_name, new_name)
+                        for p in op_desc.output_names()[:param_idx]:
+                            p_arg_names = op_desc.output(p)
+                            if var_name in p_arg_names:
+                                op_desc.set_output(p, [
+                                    new_name if x == var_name else x
+                                    for x in p_arg_names
+                                ])
+                        arg_names = [
+                            new_name if x == var_name else x
+                            for x in arg_names[:arg_idx]
+                        ] + arg_names[arg_idx:]
+                    new_name = var_name + "@RENAME@" + \
+                               str(var_rename_count[var_name])
+                    var_rename_count[var_name] += 1
+                    arg_names[arg_idx] = new_name
+                    op_desc.set_output(param_name, arg_names)
+                    renamed_vars[var_name].append(new_name)
+
+    for var_name, inputs in six.iteritems(renamed_vars):
+        if len(inputs) > 1:
+            pending_sum_ops.append(
+                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
+                                  {"use_mkldnn": False}), len(op_descs)))
+    return pending_sum_ops
+
+
+def _addup_repetitive_outputs_(op_descs):
+    """
+    In backward part, an variable may be the output of more than one ops.
+    And one op may yield its multiple outputs to the same variable.
+    In these cases, the variable should be the accumulation of all the outputs.
+    `sum_op`s are added to implement the accumulate.
+    """
+    pending_sum_ops = []
+    var_rename_count = collections.defaultdict(int)
+    renamed_vars = collections.defaultdict(list)
+    renamed_var_start_idx = collections.defaultdict(list)
+    for idx, op_desc in enumerate(op_descs):
+        for var_name in op_desc.input_arg_names():
+            if "@GRAD" not in var_name:
+                continue
+            if len(renamed_vars[var_name]) > 1:
+                pending_sum_ops.append((_create_op_desc_(
+                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
+                    {"use_mkldnn": False}), idx))
+                renamed_vars[var_name] = [var_name]
+        for param_idx, param_name in enumerate(op_desc.output_names()):
+            arg_names = op_desc.output(param_name)
+            for arg_idx, var_name in enumerate(arg_names):
+                if "@GRAD" not in var_name:
+                    continue
+                if "@RENAME@" in var_name:
+                    continue
                 if var_name == core.empty_var_name(
                 ) or var_name in op_desc.input_arg_names():
                     # empty variable or inplace op
@@ -552,6 +769,7 @@ def _get_op_idx_with_output_name(checkpoint_name, ops):
 
 def _append_backward_ops_with_checkpoints_(
         block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
+
     checkpoints_name = [x.name for x in checkpoints]
     """
     Create grad ops with forward ops, and insert them into given block
@@ -582,6 +800,22 @@ def _append_backward_ops_with_checkpoints_(
         7) Note3: all variables with new name should be returned so that _append_vars_ can be called
         8) Note4: current forward recomputation backpropagation does not handle programs with subblock
     """
+    local_block = block.program._create_block()
+
+    program_stat = ProgramStats(block, ops)
+    program_stat.build_stats()
+    segments = []
+    start_idx = 0
+    while True:
+        flag, min_idx, max_idx = program_stat.is_subgraph(
+            [checkpoints_name[start_idx]], [checkpoints_name[start_idx + 1]])
+        if flag:
+            print("%d %d" % (min_idx, max_idx))
+            segments.append([min_idx, max_idx + 1])
+        start_idx += 1
+        if start_idx + 1 == len(checkpoints_name) - 1:
+            break
+
     inputs_name = []
     op_output_names = []
     for op in ops:
@@ -609,14 +843,22 @@ def _append_backward_ops_with_checkpoints_(
     checkpoints_name.extend(inputs_name)
     checkpoints_name = list(set(checkpoints_name))
 
-    op_idx_with_checkpoint_input = \
-            _get_op_idx_with_checkpoints_input(
-                checkpoints_name, block, ops)
-
-    recompute_segments = []
-    for i, idx in enumerate(op_idx_with_checkpoint_input[:-1]):
-        recompute_segments.append([idx, op_idx_with_checkpoint_input[i + 1]])
-
+    if segments[0][0] != 0:
+        recompute_segments = [[0, segments[0][0]]] + segments
+    else:
+        recompute_segments = segments
+    vars_should_be_hold = []
+    for segment in recompute_segments:
+        print("begin idx: %d" % segment[0])
+        print("end idx: %d" % segment[1])
+        vars_should_be_hold.extend(
+            program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
+    vars_should_be_hold.extend(program_stat.get_reserved_vars())
+    vars_should_be_hold = list(set(vars_should_be_hold))
+    print("vars should be hold")
+    print(vars_should_be_hold)
+    print("recompute segments")
+    print(recompute_segments)
     # find variables that can not be deleted
     var_count_book = {}
     segment = recompute_segments[-1]
@@ -625,9 +867,7 @@ def _append_backward_ops_with_checkpoints_(
             var_count_book[name] = 1
         for name in op.desc.output_arg_names():
             var_count_book[name] = 1
-
-    vars_should_be_hold = []
-
+    '''
     for i, segment in enumerate(recompute_segments[::-1]):
         ff_ops = ops[segment[0]:segment[1]]
         # variables used beyond this segment should be added
@@ -637,6 +877,9 @@ def _append_backward_ops_with_checkpoints_(
             name_list.extend(op.desc.output_arg_names())
             name_list.extend(op.desc.input_arg_names())
             for name in op.desc.output_arg_names():
+                if name == "scale_0.tmp_0":
+                    print("var name: scale_0.tmp_0")
+                    print(var_count_book)
                 if name in var_count_book and name not in checkpoints_name:
                     vars_should_be_hold.append(name)
             for name in op.desc.input_arg_names():
@@ -644,8 +887,13 @@ def _append_backward_ops_with_checkpoints_(
                     vars_should_be_hold.append(name)
         for name in name_list:
             var_count_book[name] = 1
+    '''
     grad_should_be_hold = [x + "@GRAD" for x in vars_should_be_hold]
     vars_should_be_hold.extend(grad_should_be_hold)
+    print("vars should be held")
+    print(vars_should_be_hold)
+    print("checkpoint vars")
+    print(checkpoints_name)
 
     grad_op_descs = []
     subprogram_num = len(recompute_segments)
@@ -653,14 +901,17 @@ def _append_backward_ops_with_checkpoints_(
 
     # var name -> [[op_idx in grad_op_descs]]
     grad_var_position = collections.defaultdict(list)
-    for op in reversed(ops[(op_idx_with_checkpoint_input[-1]):]):
+    for op in reversed(ops[segments[-1][1]:]):
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-        grad_op_desc = _merge_gradient_if_needed_(grad_op_desc, grad_op_descs,
-                                                  grad_var_position)
-        added_descs = _add_descs_to_block(grad_op_desc, block)
+        #grad_op_desc = _merge_gradient_if_needed_(grad_op_desc, grad_op_descs,
+        #                                          grad_var_position)
+        added_descs = _add_descs_to_block(grad_op_desc, local_block)
         grad_op_descs.extend(added_descs)
         grad_to_var.update(op_grad_to_var)
+
+    for i, desc in enumerate(grad_op_descs):
+        print(_pretty_op_desc_(desc, str(i)))
 
     for i, segment in enumerate(recompute_segments[::-1]):
         ff_ops = ops[segment[0]:segment[1]]
@@ -677,7 +928,7 @@ def _append_backward_ops_with_checkpoints_(
                     continue
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
-        added_descs = _add_descs_to_block(ff_ops, block)
+        added_descs = _add_descs_to_block(ff_ops, local_block)
         # rename variable names in added_descs
         for key in var_name_dict:
             _rename_arg_(added_descs, key, var_name_dict[key])
@@ -685,14 +936,30 @@ def _append_backward_ops_with_checkpoints_(
         grad_op_descs.extend(added_descs)
 
         # c. add backward ops of current recomputation ops
+        print("add backward in recomputation")
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
-            grad_op_desc = _merge_gradient_if_needed_(
-                grad_op_desc, grad_op_descs, grad_var_position)
-            added_descs = _add_descs_to_block(grad_op_desc, block)
-            grad_op_descs.extend(added_descs)
+            #grad_op_desc = _merge_gradient_if_needed_(
+            #    grad_op_desc, grad_op_descs, grad_var_position)
+            #added_descs = _add_descs_to_block(grad_op_desc, block)
+            grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
+        #sumop_descs = _get_sumop_from_addup_repetitive_outputs_(grad_op_descs)
+        #sumop_descs = _addup_repetitive_outputs_(grad_op_descs)
+        #added_sumop_descs = _add_descs_to_block(sumop_descs, block)
+        #grad_op_desc.extend(added_sumop_descs)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    for desc in grad_op_descs:
+        print(_pretty_op_desc_(desc, "recompute_grad"))
+    added_descs = _add_descs_to_block(grad_op_descs, block)
+    print("final op descs")
+    for i, desc in enumerate(added_descs):
+        print(_pretty_op_desc_(desc, "added_desc"))
+
+    print("key mapping")
+    for key in var_name_dict:
+        print("%s\t%s" % (key, var_name_dict[key]))
 
 
 def _append_backward_ops_(block,
@@ -827,7 +1094,10 @@ def _append_vars_(block, start_op_idx, end_op_idx, grad_to_var, grad_info_map):
                 continue
             grad_info_map[grad_to_var[var_name]] = (var_name, block)
         op_desc.infer_var_type(block.desc)
+        print("going to do infer shape")
+        print(_pretty_op_desc_(op_desc, "infer_shape"))
         op_desc.infer_shape(block.desc)
+        print("infer shape done")
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)
@@ -866,7 +1136,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
+        print("going to do infer shape")
+        print(_pretty_op_desc_(op_desc, "infer_shape"))
         op_desc.infer_shape(block.desc)
+        print("infer shape done")
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)
