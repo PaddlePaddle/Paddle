@@ -460,7 +460,6 @@ class TransformThroughFP32Pass(object):
         tensor.set(array, self._place)
 
     def _optimize_fp32_graph(self, graph):
-        graph = self._apply_pass(graph, 'infer_clean_graph_pass')
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
