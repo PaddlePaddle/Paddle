@@ -12,86 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
 import os
-import shutil
 import paddle.fluid.core as core
 import unittest
-
-
-class TestBoxPS(unittest.TestCase):
-    """  TestCases for BoxPS """
-
-    def test_boxps_cpu(self):
-        self.run_boxps(True)
-
-    def test_boxps_gpu(self):
-        self.run_boxps(False)
-
-    def run_boxps(self, is_cpu=True):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x, emb_y = layers._pull_box_sparse([x, y], size=2)
-        concat = layers.concat([emb_x, emb_y], axis=1)
-        fc = layers.fc(input=concat,
-                       name="fc",
-                       size=1,
-                       num_flatten_dims=1,
-                       bias_attr=False)
-        loss = layers.reduce_mean(fc)
-
-        place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-
-        batch_size = 2
-
-        def binary_print(slot, fout):
-            fout.write(str(len(slot)) + " ")
-            for e in slot:
-                fout.write(str(e) + " ")
-
-        batch1 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        batch2 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        data = [batch1, batch2]
-        filelist = []
-        for i in range(2):
-            filelist.append("test_hdfs_" + str(i))
-        for f in filelist:
-            with open(f, "w") as fout:
-                for batch_data in data:
-                    for ins in batch_data:
-                        for slot in ins:
-                            binary_print(slot, fout)
-                    fout.write("\n")
-        dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
-        dataset.set_use_var([x, y])
-        dataset.set_batch_size(2)
-        dataset.set_thread(1)
-        dataset.set_filelist(filelist)
-        dataset.load_into_memory()
-        optimizer.minimize(loss)
-        exe.run(fluid.default_startup_program())
-        dataset.begin_pass()
-        for epoch in range(1):
-            exe.train_from_dataset(
-                fluid.default_main_program(),
-                dataset,
-                thread=1,
-                debug=False,
-                fetch_list=[],
-                fetch_info=[],
-                print_period=1)
-        dataset.end_pass()
-        for f in filelist:
-            os.remove(f)
+from paddle.fluid.layers.nn import _pull_box_sparse
 
 
 class TestBoxPSPreload(unittest.TestCase):
@@ -106,13 +33,9 @@ class TestBoxPSPreload(unittest.TestCase):
     def run_boxps_preload(self, is_cpu=True):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x, emb_y = layers._pull_box_sparse([x, y], size=2)
-
-        # For variable input for pull_box_sparse (For code coverage)
-        # TODO: will add UT for pull_box_sparse op to cover this case
-        emb_xp = layers._pull_box_sparse(x, size=2)
+        emb_x, emb_y = _pull_box_sparse([x, y], size=2)
+        emb_xp = _pull_box_sparse(x, size=2)
         layers.Print(emb_xp)
-
         concat = layers.concat([emb_x, emb_y], axis=1)
         fc = layers.fc(input=concat,
                        name="fc",
@@ -121,13 +44,10 @@ class TestBoxPSPreload(unittest.TestCase):
                        bias_attr=False)
         loss = layers.reduce_mean(fc)
         layers.Print(loss)
-
         place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-
         optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-
         batch_size = 2
 
         def binary_print(slot, fout):
@@ -137,19 +57,15 @@ class TestBoxPSPreload(unittest.TestCase):
 
         batch1 = np.ones(
             (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        batch2 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        data = [batch1, batch2]
         filelist = []
         for i in range(2):
             filelist.append("test_hdfs_" + str(i))
         for f in filelist:
             with open(f, "w") as fout:
-                for batch_data in data:
-                    for ins in batch_data:
-                        for slot in ins:
-                            binary_print(slot, fout)
-                    fout.write("\n")
+                for ins in batch1:
+                    for slot in ins:
+                        binary_print(slot, fout)
+                fout.write("\n")
 
         def create_dataset():
             dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
@@ -162,11 +78,8 @@ class TestBoxPSPreload(unittest.TestCase):
         datasets = []
         datasets.append(create_dataset())
         datasets.append(create_dataset())
-        datasets.append(create_dataset())
-
         optimizer.minimize(loss)
         exe.run(fluid.default_startup_program())
-
         datasets[0].load_into_memory()
         datasets[0].begin_pass()
         datasets[1].preload_into_memory()
@@ -174,24 +87,14 @@ class TestBoxPSPreload(unittest.TestCase):
             program=fluid.default_main_program(),
             dataset=datasets[0],
             print_period=1)
-
         datasets[0].end_pass()
         datasets[1].wait_preload_done()
         datasets[1].begin_pass()
-        datasets[2].preload_into_memory()
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=datasets[1],
             print_period=1)
         datasets[1].end_pass()
-        datasets[2].wait_preload_done()
-        datasets[2].begin_pass()
-        exe.train_from_dataset(
-            program=fluid.default_main_program(),
-            dataset=datasets[2],
-            print_period=1)
-        datasets[2].end_pass()
-
         for f in filelist:
             os.remove(f)
 

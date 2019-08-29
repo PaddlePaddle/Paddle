@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,13 +46,11 @@ SET(BOX_PS_LIB           ${BOX_PS_LIB_DIR}/libbox_ps.so)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${BOX_PS_ROOT}/lib")
 
 INCLUDE_DIRECTORIES(${BOX_PS_INC_DIR})
-
 FILE(WRITE ${BOX_PS_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(BOX_PS)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${BOX_PS_NAME}/include ${BOX_PS_NAME}/lib \n"
   "        DESTINATION ${BOX_PS_DST_DIR})\n")
-
 ExternalProject_Add(
     ${BOX_PS_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -65,7 +63,6 @@ ExternalProject_Add(
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${BOX_PS_INSTALL_ROOT}
     CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${BOX_PS_INSTALL_ROOT}
 )
-
 ADD_LIBRARY(box_ps SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET box_ps PROPERTY IMPORTED_LOCATION ${BOX_PS_LIB})
 ADD_DEPENDENCIES(box_ps ${BOX_PS_PROJECT})

@@ -216,7 +216,6 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
-    '_pull_box_sparse',
 ]
 
 kIgnoreIndex = -100

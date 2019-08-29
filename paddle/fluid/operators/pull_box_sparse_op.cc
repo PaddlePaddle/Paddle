@@ -25,13 +25,11 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
                       "Inputs(Ids) of PullBoxSparseOp should not be empty.");
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       "Outputs(Out) of PullBoxSparseOp should not be empty.");
-
     auto hidden_size = static_cast<int64_t>(ctx->Attrs().Get<int>("size"));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
     std::vector<framework::DDim> outs_dims;
     outs_dims.resize(n_ids);
-
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
@@ -39,14 +37,11 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
                         "Shape error in %lu id, the last dimension of the "
                         "'Ids' tensor must be 1.",
                         i);
-
-      // Make the output dim of all ids
       auto out_dim = framework::vectorize(
           framework::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_dim.push_back(hidden_size);
       outs_dims[i] = framework::make_ddim(out_dim);
     }
-
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
       ctx->ShareLoD("Ids", "Out", i, i);
@@ -92,7 +87,6 @@ class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("push_box_sparse");
-
     op->SetInput("Ids", Input("Ids"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("Out"), OutputGrad("Out"));
@@ -122,8 +116,6 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
                   ops::PullBoxSparseOpMaker, ops::PushBoxSparseOpDescMaker);
-
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
-
 REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
 REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)

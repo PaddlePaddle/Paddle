@@ -27,7 +27,6 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
   auto hidden_size = ctx.Attr<int>("size");
-
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // BoxPS only supports float now
@@ -39,7 +38,6 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
-
     auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
     all_values[i] = output;
   }
@@ -54,7 +52,6 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto d_output =
       ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
   auto hidden_size = ctx.Attr<int>("size");
-
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
@@ -65,7 +62,6 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
-
     const float *grad_value = d_output[i]->data<float>();
     all_grad_values[i] = grad_value;
   }

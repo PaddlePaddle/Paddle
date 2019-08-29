@@ -20,8 +20,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_set.h"
-//#include "paddle/fluid/framework/fleet/boxps.h"
+#ifdef PADDLE_WITH_BOX_PS
 #include <boxps.h>
+#endif
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -54,21 +55,20 @@ class BoxWrapper {
       std::lock_guard<std::mutex> lock(mutex);
       if (nullptr == s_instance_) {
         s_instance_.reset(new paddle::framework::BoxWrapper());
+#ifdef PADDLE_WITH_BOX_PS
         s_instance_->boxps_ptr_.reset(new paddle::boxps::FakeBoxPS());
-        // TODO(hutuxian): should be exposed from pybind
-        s_instance_->boxps_ptr_->InitializeCPU(nullptr, 0);
+#endif
       }
     }
     return s_instance_;
   }
 
  private:
+#ifdef PADDLE_WITH_BOX_PS
   static std::shared_ptr<paddle::boxps::BoxPSBase> boxps_ptr_;
+#endif
   static std::shared_ptr<BoxWrapper> s_instance_;
   int GetDate() const;
-
- protected:
-  static bool is_initialized_;  // no use now
 };
 
 class BoxHelper {

@@ -23,7 +23,9 @@ namespace paddle {
 namespace framework {
 
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
+#ifdef PADDLE_WITH_BOX_PS
 std::shared_ptr<paddle::boxps::BoxPSBase> BoxWrapper::boxps_ptr_ = nullptr;
+#endif
 
 int BoxWrapper::GetDate() const {
   time_t now = time(0);
@@ -40,18 +42,24 @@ int BoxWrapper::GetDate() const {
 }
 
 void BoxWrapper::FeedPass(const std::vector<uint64_t>& feasgin_to_box) const {
+#ifdef PADDLE_WITH_BOX_PS
   int ret = boxps_ptr_->FeedPass(GetDate(), feasgin_to_box);
   PADDLE_ENFORCE_EQ(ret, 0, "FeedPass failed in BoxPS.");
+#endif
 }
 
 void BoxWrapper::BeginPass() const {
+#ifdef PADDLE_WITH_BOX_PS
   int ret = boxps_ptr_->BeginPass();
   PADDLE_ENFORCE_EQ(ret, 0, "BeginPass failed in BoxPS.");
+#endif
 }
 
 void BoxWrapper::EndPass() const {
+#ifdef PADDLE_WITH_BOX_PS
   int ret = boxps_ptr_->EndPass();
   PADDLE_ENFORCE_EQ(ret, 0, "EndPass failed in BoxPS.");
+#endif
 }
 
 void BoxWrapper::PullSparse(const paddle::platform::Place& place,
@@ -59,6 +67,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
                             const std::vector<float*>& values,
                             const std::vector<int64_t>& slot_lengths,
                             const int hidden_size) {
+#ifdef PADDLE_WITH_BOX_PS
   if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -79,7 +88,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
                      slot_lengths[i] * sizeof(uint64_t), nullptr);
 #else
         PADDLE_THROW(
-            "Please compile WITH_GPU option, and for now NCCL doesn't support "
+            "Please compile WITH_GPU option, and NCCL doesn't support "
             "windows.");
 #endif
       }
@@ -141,6 +150,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
     PADDLE_THROW(
         "PaddleBox: PullSparse Only Support CPUPlace and CUDAPlace Now.");
   }
+#endif
 }
 
 void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
@@ -148,6 +158,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                 const std::vector<const float*>& grad_values,
                                 const std::vector<int64_t>& slot_lengths,
                                 const int hidden_size) {
+#ifdef PADDLE_WITH_BOX_PS
   if (platform::is_cpu_place(place) || platform::is_gpu_place(place)) {
     int64_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -178,12 +189,10 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "BoxWrapper::PushSparseGrad: total feasign keys length "
                       "should be equal to the sum of length of all input "
                       "tensors.");
-
     auto buf = memory::AllocShared(
         place, total_length * sizeof(paddle::boxps::FeaturePushValue));
     paddle::boxps::FeaturePushValue* total_grad_values =
         reinterpret_cast<paddle::boxps::FeaturePushValue*>(buf->ptr());
-
     offset = 0;
     for (size_t i = 0; i < grad_values.size(); ++i) {
       int64_t fea_num = slot_lengths[i];
@@ -214,7 +223,6 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                       "BoxWrapper::PushSparseGrad: total emb grad values "
                       "length should be equal to the sum of length of all "
                       "input tensors.");
-
     if (platform::is_cpu_place(place)) {
       int ret = boxps_ptr_->PushSparseCPU(
           reinterpret_cast<uint64_t*>(total_keys), total_grad_values,
@@ -233,6 +241,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
     PADDLE_THROW(
         "PaddleBox: PushSparse Only Support CPUPlace and CUDAPlace Now.");
   }
+#endif
 }
 }  // end namespace framework
 }  // end namespace paddle
