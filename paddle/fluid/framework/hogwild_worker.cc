@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -49,15 +50,36 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc& program) {
       root_scope_, "root_scope should be set before creating thread scope");
 
   thread_scope_ = &root_scope_->NewScope();
+
   for (auto& var : block.AllVars()) {
     if (var->Persistable()) {
       auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
+      if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() && thread_id_ != 0) {
+        int tensor_dim = root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
+        auto* ptr1 = thread_scope_->Var(var->Name());
+        InitializeVariable(ptr1, var->GetType());
+        LoDTensor* thread_tensor = ptr1->GetMutable<LoDTensor>();
+        LoDTensor* root_tensor = root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>(); 
+#define MemsetCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (root_tensor->type() == proto_type) {            \
+      SetZero<cpp_type>(thread_tensor, root_tensor, tensor_dim);         \
+    }                                             \
+  } while (0)
+        _ForEachDataType_(MemsetCallback);
+      }
     } else {
       auto* ptr = thread_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
     }
   }
+}
+
+template<typename T>
+void HogwildWorker::SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim) {
+  T* ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
+  memset(ptr, 0, sizeof(T) * tensor_dim);
 }
 
 void HogwildWorker::BindingDataFeedMemory() {
