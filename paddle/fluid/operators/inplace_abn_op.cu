@@ -25,16 +25,14 @@ class InplaceABNKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
-    int activation = *ctx.Input<Tensor>("activation")->data<int>();
+    auto activation =
+        GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     SyncBatchNormKernel<DeviceContext, T>::Compute(ctx);
 
-    // apply in-place activation calculate
-    // apply in-place activation calculate
-    auto cur_x = EigenMatrix<T>::From(*x);
-    auto cur_y = EigenMatrix<T>::From(*y);
-
+    auto cur_x = EigenVector<T>::Flatten(*x);
+    auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
     functor.Compute(activation, place, cur_x, cur_y);
   }
@@ -48,25 +46,25 @@ class InplaceABNGradKernel
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Y");
-    const auto* d_y = ctx.Input<Tensor>(framework::GradVarName("d_y"));
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("d_x"));
-    int activation = *ctx.Input<Tensor>("activation")->data<int>();
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto activation =
+        GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
+    bool is_inplace = ctx.Attr<bool>("is_inplace");
 
-    // apply in-place activation calculate
-    auto cur_x = EigenMatrix<T>::From(*x);
-    auto cur_y = EigenMatrix<T>::From(*y);
-    auto cur_dx = EigenMatrix<T>::From(*d_x);
-    auto cur_dy = EigenMatrix<T>::From(*d_y);
+    d_x->mutable_data<T>(ctx.GetPlace());
+    auto& px = const_cast<Tensor&>(*x);
+    auto cur_x = EigenVector<T>::Flatten(px);
+    auto cur_y = EigenVector<T>::Flatten(*y);
+    auto cur_dx = EigenVector<T>::Flatten(*d_x);
+    auto cur_dy = EigenVector<T>::Flatten(*d_y);
+
     InplaceABNActivation<DeviceContext, T> functor;
-    bool in_place = x == y;
-
     functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
-                        in_place);
+                        is_inplace);
 
-    auto inp_cur_dy = EigenMatrix<T>::From(const_cast<Tensor&>(*d_y));
-    inp_cur_dy.device(place) = cur_dx;
     SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };

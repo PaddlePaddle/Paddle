@@ -3327,6 +3327,7 @@ def batch_norm(input,
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
         use_mkldnn = False
+        fuse_with_relu = False
         use_fused_act = True
     else:
         op_type = "batch_norm"
@@ -3342,7 +3343,8 @@ def batch_norm(input,
         "data_layout": data_layout,
         "use_mkldnn": use_mkldnn,
         "fuse_with_relu": fuse_with_relu,
-        "use_global_stats": use_global_stats
+        "use_global_stats": use_global_stats,
+        "is_inplace": in_place
     }
 
     if use_fused_act:

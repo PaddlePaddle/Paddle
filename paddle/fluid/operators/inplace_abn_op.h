@@ -41,8 +41,7 @@ inline InplaceABNActivationType GetInplaceABNActivationType(
   } else if (type == "identity" || type == "") {
     return InplaceABNActivationType::identity;
   } else {
-    // use the identity by default
-    return InplaceABNActivationType::identity;
+    PADDLE_THROW("unsupported activation type %s for Op(inplace_abn)", type);
   }
 }
 
@@ -58,8 +57,7 @@ class InplaceABNActivation {
     else if (act_type == InplaceABNActivationType::elu)
       ELUFunctor<T>()(d, x, y);
     else
-      // by default to use identify
-      y.device(d) = x;
+      PADDLE_THROW("unsupported activation type");
   }
 
   template <typename Device, typename X, typename Y, typename DX, typename DY>
@@ -67,33 +65,28 @@ class InplaceABNActivation {
                    bool is_inplace) {
     if (act_type == InplaceABNActivationType::identity) {
       if (is_inplace) {
-        //        x.device(d) = y;
+        x.device(d) = y;
       }
       dx.device(d) = dy;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
       if (is_inplace) {
-        //        LeakyReluGradFunctor<T> functor;
-        //        auto temp1 = static_cast<T>(functor.alpha) *
-        //                     (x < static_cast<T>(0)).template
-        //                     cast<T>().eval();
-        //        auto temp2 = (x >= static_cast<T>(0)).template
-        //        cast<T>().eval();
-        //        x.device(d) = y * (temp1 + temp2).template cast<T>();
+        LeakyReluGradFunctor<T> functor;
+        auto temp1 = static_cast<T>(functor.alpha) *
+                     (x < static_cast<T>(0)).template cast<T>().eval();
+        auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
+        x.device(d) = y * (temp1 + temp2).template cast<T>();
       }
       LeakyReluGradFunctor<T>()(d, x, y, dy, dx);
     } else if (act_type == InplaceABNActivationType::elu) {
       if (is_inplace) {
-        //        ELUGradFunctor<T> functor;
-        //        x.device(d) = y * (x > static_cast<T>(0)).template cast<T>() +
-        //                       y * static_cast<T>(functor.alpha) * x.exp() *
-        //                       (y < static_cast<T>(0)).template cast<T>();
+        ELUGradFunctor<T> functor;
+        x.device(d) = y * (x > static_cast<T>(0)).template cast<T>() +
+                      y * static_cast<T>(functor.alpha) * x.exp() *
+                          (y < static_cast<T>(0)).template cast<T>();
       }
       ELUGradFunctor<T>()(d, x, y, dy, dx);
     } else {
-      if (is_inplace) {
-        //        x.device(d) = y;
-      }
-      dx.device(d) = dy;
+      PADDLE_THROW("unsupported activation type");
     }
   }
 };
