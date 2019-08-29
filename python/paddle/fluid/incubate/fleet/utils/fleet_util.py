@@ -29,9 +29,8 @@ from .hdfs import *
 
 __all__ = ["FleetUtil"]
 
-_logger = get_logger(__name__,
-                     logging.INFO,
-                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class FleetUtil(object):
@@ -408,10 +407,11 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
                     client.delete(donefile_path)
-                    client.upload(output_path,
-                                  donefile_name,
-                                  multi_processes=1,
-                                  overwrite=False)
+                    client.upload(
+                        output_path,
+                        donefile_name,
+                        multi_processes=1,
+                        overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -420,10 +420,11 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
-                client.upload(output_path,
-                              donefile_name,
-                              multi_processes=1,
-                              overwrite=False)
+                client.upload(
+                    output_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -514,10 +515,11 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
                     client.delete(donefile_path)
-                    client.upload(output_path,
-                                  donefile_name,
-                                  multi_processes=1,
-                                  overwrite=False)
+                    client.upload(
+                        output_path,
+                        donefile_name,
+                        multi_processes=1,
+                        overwrite=False)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -526,10 +528,11 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
-                client.upload(output_path,
-                              donefile_name,
-                              multi_processes=1,
-                              overwrite=False)
+                client.upload(
+                    output_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=False)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -597,10 +600,11 @@ class FleetUtil(object):
                     "file_prefix:part\npart_num:16\nkey_num:%d\n" % key_num
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
-                client.upload(model_path,
-                              donefile_name,
-                              multi_processes=1,
-                              overwrite=False)
+                client.upload(
+                    model_path,
+                    donefile_name,
+                    multi_processes=1,
+                    overwrite=False)
                 self.rank0_error("write %s succeed" % donefile_path)
         fleet._role_maker._barrier_worker()
 
