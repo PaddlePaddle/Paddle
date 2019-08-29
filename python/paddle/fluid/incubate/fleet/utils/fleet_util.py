@@ -826,8 +826,8 @@ class FleetUtil(object):
                                          " not found in scope " +
                                          "when pull dense")
                     var_name_list.append(var_name)
-                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
-                                            var_name_list)
+                fleet._fleet_ptr.pull_dense(scope,
+                                            int(table.table_id), var_name_list)
         fleet._role_maker._barrier_worker()
 
     def save_paddle_params(self,
@@ -906,11 +906,8 @@ class FleetUtil(object):
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(executor,
-                                       "./",
-                                       program,
-                                       vars=vars,
-                                       filename=model_name)
+                    fluid.io.save_vars(
+                        executor, "./", program, vars=vars, filename=model_name)
                 else:
                     fluid.io.save_vars(executor, model_name, program, vars=vars)
 
