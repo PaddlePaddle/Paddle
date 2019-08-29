@@ -268,6 +268,15 @@ class TestDataset(unittest.TestCase):
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
 
+    def test_import(self):
+        """
+        Testcase for import dataset
+        and import fleet
+        """
+        import paddle.fluid as fluid
+        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+        fleet_ptr = fluid.core.Fleet()
+
 
 if __name__ == '__main__':
     unittest.main()
