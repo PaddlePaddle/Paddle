@@ -39,6 +39,19 @@ class ProgramStats(object):
         self.used_var_dict = {}  # like inplace var
         self.used_var_count = {}
 
+    def get_input_nodes(self):
+        input_names = []
+        for name in self.var_op_deps:
+            if len(self.var_op_deps[name]["var_as_output_ops"]) <= 0 and \
+               len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                if self.block.var(name).persistable:
+                    continue
+                input_names.append(name)
+        for op in self.ops:
+            if op.desc.type() == "read":
+                input_names.extend(op.desc.output_arg_names())
+        return input_names
+
     def get_reserved_vars(self):
         var_name = []
         print("lalalala")
@@ -804,6 +817,8 @@ def _append_backward_ops_with_checkpoints_(
 
     program_stat = ProgramStats(block, ops)
     program_stat.build_stats()
+    print("inputs of current program")
+    print(program_stat.get_input_nodes())
     segments = []
     start_idx = 0
     while True:
@@ -854,6 +869,7 @@ def _append_backward_ops_with_checkpoints_(
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
+    vars_should_be_hold.extend(program_stat.get_input_nodes())
     vars_should_be_hold = list(set(vars_should_be_hold))
     print("vars should be hold")
     print(vars_should_be_hold)
