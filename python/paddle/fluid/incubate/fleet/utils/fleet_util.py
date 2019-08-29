@@ -1175,7 +1175,7 @@ class FleetUtil(object):
                                                           local_pos_ins.name,
                                                           local_total_ins.name)
 
-              # below is part of model
+              # below is part of example model
               label = fluid.layers.data(name="click", shape=[-1, 1],\
                   dtype="int64", lod_level=0, append_batch_size=False)
               emb = my_slot_net(slots, label) # emb can be fc layer of size 1
