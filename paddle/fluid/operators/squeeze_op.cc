@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+// just test
 class SqueezeOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
