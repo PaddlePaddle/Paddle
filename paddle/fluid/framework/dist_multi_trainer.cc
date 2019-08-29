@@ -35,13 +35,13 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     need_dump_field_ = true;
   }
   if (need_dump_field_) {
-    auto& file_list = dataset->GetFileList();
+    auto &file_list = dataset->GetFileList();
     if (file_list.size() == 0) {
       need_dump_field_ = false;
     }
   }
   mpi_rank_ = trainer_desc.mpi_rank() / 2;
-  const std::vector<paddle::framework::DataFeed*> readers =
+  const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
 
   thread_num_ = readers.size();
@@ -109,7 +109,7 @@ void DistMultiTrainer::FinalizeDumpEnv() {
   queue_.reset();
 }
 
-void DistMultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   if (need_dump_field_) {
     InitDumpEnv();
   }
