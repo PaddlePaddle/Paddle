@@ -18,9 +18,9 @@ ENDIF(NOT ${WITH_BOX_PS})
 
 IF(WIN32 OR APPLE)
     MESSAGE(WARNING
-        "Windows or Mac is not supported with PSLIB in Paddle yet."
+        "Windows or Mac is not supported with BOX_PS in Paddle yet."
         "Force WITH_BOX_PS=OFF")
-    SET(WITH_BOX_PS OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
+    SET(WITH_BOX_PS OFF CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
     return()
 ENDIF()
 
@@ -48,7 +48,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${BOX_PS_ROOT}/lib")
 INCLUDE_DIRECTORIES(${BOX_PS_INC_DIR})
 
 FILE(WRITE ${BOX_PS_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(PSLIB)\n"
+  "PROJECT(BOX_PS)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${BOX_PS_NAME}/include ${BOX_PS_NAME}/lib \n"
   "        DESTINATION ${BOX_PS_DST_DIR})\n")
