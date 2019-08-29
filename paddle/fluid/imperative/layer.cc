@@ -376,8 +376,8 @@ std::vector<VarBasePtrMap> OpBase::ApplyGrad(
     framework::Scope scope;
     PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
     p.op.RuntimeInferShape(scope, place_, ctx);
-    p.func(
-        framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx, nullptr));
+    p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx,
+                                       p.kernel_configs));
   }
 
   platform::RecordEvent record_event("merge_grads");
