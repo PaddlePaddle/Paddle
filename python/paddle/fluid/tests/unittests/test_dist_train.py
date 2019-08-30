@@ -57,8 +57,7 @@ class TestSendOp(unittest.TestCase):
         self.run_local(place)
         self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
 
-        # FIXME(typhoonzero): find a way to gracefully shutdown the server.
-        os.kill(p.pid, signal.SIGKILL)
+        os.kill(p.pid, signal.SIGINT)
         p.join()
 
     def _wait_ps_ready(self, pid):
