@@ -86,10 +86,9 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
 
       if (index_type == framework::proto::VarType::INT32) {
         CPUGather<T, int>(ctx.device_context(), *dOut, *Ids, dUpdates);
-
-    } else if (index_type == framework::proto::VarType::INT64) {
+      } else if (index_type == framework::proto::VarType::INT64) {
         CPUGather<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
-    }
+      }
 
     }
   }
