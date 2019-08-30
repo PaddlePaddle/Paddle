@@ -28,6 +28,8 @@ limitations under the License. */
 
 DECLARE_int32(communicator_max_merge_var_num);
 DECLARE_int32(communicator_send_queue_size);
+DECLARE_int32(communicator_geo_sgd_local_train_loop_nums);
+DECLARE_int32(communicator_trainer_nums);
 
 DEFINE_bool(communicator_independent_recv_thread, true,
             "use an independent to recv vars from parameter server");
@@ -41,11 +43,6 @@ DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
             "merge sparse gradient before sending");
-// for geo-sgd algorithm
-DEFINE_int32(communicator_geo_sgd_local_train_loop_nums, 20,
-             "local train loop nums before push param to pserver");
-DEFINE_int32(communicator_trainer_nums, 2,
-             "trainer node nums");
 
 
 namespace paddle {
@@ -248,7 +245,7 @@ void Communicator::Send(const std::string &var_name,
   VLOG(3) << "communicator send " << var_name;
   // for geo sgd
   if (is_geo_sgd_){
-    VLOG(3) << "run into geo sgd communicator Send()"
+    VLOG(3) << "run into geo sgd communicator Send()";
     GeoSgdSend(var_name,scope);
     return;
   }
@@ -271,7 +268,7 @@ void Communicator::Send(const std::string &var_name,
   }
 }
 
-void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scope& scope){
+void Communicator::GeoSgdSend(const std::string& var_name, framework::Scope& scope){
   VLOG(3) << "geo sgd communicator get loop num"<< var_name;
   if(var_name == "param_init"){
     VLOG(0) << "geo sgd param init";
@@ -286,7 +283,7 @@ void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scop
     is_need_push_ = 0;
     for (auto &iter:send_varname_to_queue_)
     {
-      const std::string local_var_name = iter.first;
+      std::string local_var_name = iter.first;
       auto var_delta = SubVars(local_var_name, &scope,old_scope_,FLAGS_communicator_trainer_nums);
       auto &queue = send_varname_to_queue_.at(local_var_name);
       VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
@@ -295,14 +292,14 @@ void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scop
   }
 }
 
-void Communicator::GeoSgdParamInit(const Scope *scope){
+void Communicator::GeoSgdParamInit(Scope *scope){
   for(auto &iter:send_varname_to_ctx_){
     std::string &var_name = iter.first;
     scope->Var(var_name);
   }
 }
 
-void Communicator::GeoSgdParamCopy(const Scope *scope_x,const Scope *scope_y){
+void Communicator::GeoSgdParamCopy(Scope *scope_x,Scope *scope_y){
   // copy var(send_varname_to_ctx_) from x to y
   for(auto &iter:send_varname_to_ctx_){
     std::string &var_name = iter.first;
@@ -312,7 +309,7 @@ void Communicator::GeoSgdParamCopy(const Scope *scope_x,const Scope *scope_y){
   }
 }
 
-std::shared_ptr<Variable> Communicator::SubVars(const std::string& var_name,
+std::shared_ptr<Variable> Communicator::SubVars(std::string& var_name,
                       framework::Scope *scope_x,framework::Scope *scope_y,int trainers) {
   auto cpu_place = platform::CPUPlace();
   auto *var_x = scope_x->FindVar(var_name);

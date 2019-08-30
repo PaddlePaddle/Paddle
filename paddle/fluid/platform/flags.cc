@@ -99,6 +99,10 @@ DEFINE_int32(communicator_max_merge_var_num, 20,
              "max var num to merge and send");
 DEFINE_int32(communicator_send_queue_size, 20,
              "queue size to recv gradient before send");
+DEFINE_int32(communicator_geo_sgd_local_train_loop_nums, 20,
+             "local train loop nums before push param to pserver");
+DEFINE_int32(communicator_trainer_nums, 2,
+             "trainer node nums");
 #endif
 
 DEFINE_int32(dist_threadpool_size, 0,
