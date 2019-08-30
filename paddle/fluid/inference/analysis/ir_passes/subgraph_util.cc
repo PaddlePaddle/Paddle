@@ -72,7 +72,7 @@ void PrependFeedOps(framework::BlockDesc* global_block,
                     const std::vector<std::string>& feed_target_names,
                     std::string feed_holder_name) {
   framework::VarDesc* feed_var = global_block->Var(feed_holder_name);
-  feed_var->SetDataType(paddle::framework::proto::VarType::FEED_MINIBATCH);
+  feed_var->SetType(paddle::framework::proto::VarType::FEED_MINIBATCH);
   feed_var->SetPersistable(true);
   for (size_t i = 0; i < feed_target_names.size(); i++) {
     framework::OpDesc* feed_op = global_block->AppendOp();
@@ -86,9 +86,9 @@ void PrependFeedOps(framework::BlockDesc* global_block,
 void PrependFetchOps(framework::BlockDesc* global_block,
                     const std::vector<std::string>& fetch_target_names,
                     std::string fetch_holder_name) {
-  framework::VarDesc* feed_var = global_block->Var(fetch_holder_name);
-  feed_var->SetDataType(paddle::framework::proto::VarType::FETCH_LIST);
-  feed_var->SetPersistable(true);
+  framework::VarDesc* fetch_var = global_block->Var(fetch_holder_name);
+  fetch_var->SetType(paddle::framework::proto::VarType::FETCH_LIST);
+  fetch_var->SetPersistable(true);
   for (size_t i = 0; i < fetch_target_names.size(); i++) {
     framework::OpDesc* fetch_op = global_block->AppendOp();
     fetch_op->SetType("fetch");

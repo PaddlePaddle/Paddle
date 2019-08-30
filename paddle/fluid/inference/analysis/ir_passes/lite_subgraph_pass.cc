@@ -21,23 +21,34 @@
 #include <unordered_set>
 #include <vector>
 
+#include <iostream>
+#include <fstream>
+
 #include "paddle/fluid/inference/lite/op_teller.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/message.h"
+
+#include "paddle/fluid/framework/lod_tensor.h"
 
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
-// using namespace google::protobuf;
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
+void StrToBinaryFile(const std::string& path, const std::string& str) {
+  std::ofstream file(path.c_str(), std::ios::binary);
+  file.write(str.c_str(), str.size());
+  file.close();
+}
+
 void LiteSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
+
   framework::ir::FusePassBase::Init("lite_subgraph_pass", graph);
 
   // auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
@@ -52,7 +63,7 @@ void LiteSubgraphPass::ApplyImpl(
     return lite::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "");
+  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "lite_engine");
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -95,6 +106,12 @@ void LiteSubgraphPass::CreateLiteOp(
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
 
+
+
+  for (auto param: graph_params) {
+    LOG(INFO) << "graph_param: " << param;
+  }
+
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
@@ -110,8 +127,33 @@ void LiteSubgraphPass::CreateLiteOp(
   string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
                           subgraph.size());
 
-  std::unordered_set<Node *> io_var_nodes;
-  io_var_nodes = GetRelatedIOVarNodes(subgraph);
+  std::unordered_set<Node *> io_var_nodes = GetRelatedIOVarNodes(subgraph);
+
+  auto serialize_params = [] (std::string* str, framework::Scope* scope,
+       const std::vector<std::string>& params) {
+    std::ostringstream os;
+    platform::CPUDeviceContext ctx;
+      //std::ofstream os("param.bin", std::ios::binary);
+    for (const auto& param: params) {
+      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      LOG(INFO) << "SerializeToStream: " << param;
+      framework::SerializeToStream(os, *tensor, ctx);
+    }
+      //os.close();
+    *str = os.str();
+
+    /*
+    for (const auto& param: params) {
+      
+      std::ifstream is(param + ".bin", std::ios::in | std::ios::binary);
+      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      LOG(INFO) << "DeserializeFromStream: " << param;
+      framework::DeserializeFromStream(is, tensor, ctx);
+      is.close();
+      
+    }
+    */
+  };
 
   for (auto *var_node: io_var_nodes) {
     auto *sub_block_var = sub_block->Var(var_node->Name());
@@ -140,6 +182,14 @@ void LiteSubgraphPass::CreateLiteOp(
   PrependFeedOps(engine_global_block, target_names(node->inputs));
   PrependFetchOps(engine_global_block, target_names(node->outputs));
 
+  auto *scope = param_scope();
+  std::string param_string;
+  *repetitive_params = ExtractParameters(io_var_nodes);
+  serialize_params(&param_string, scope, *repetitive_params);
+  StrToBinaryFile("./param.bin", param_string);
+
+  std::string model_string = engine_program.Proto()->SerializeAsString();
+  StrToBinaryFile("./model.bin", model_string);
 
   std::string str;
   google::protobuf::TextFormat::PrintToString(*(engine_program.Proto()), &str);
