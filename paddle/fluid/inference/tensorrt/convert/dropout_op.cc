@@ -66,8 +66,8 @@ class DropoutOpConverter : public OpConverter {
         nvinfer1::ScaleMode::kUNIFORM, shift_weights.get(), scale_weights.get(),
         power_weights.get());
 
-    engine_->weight_map[op_desc.Output("Out").front() + "_dropout"] =
-        std::move(weight_tensor);
+    engine_->SetWeights(op_desc.Output("Out").front() + "_dropout",
+                        std::move(weight_tensor));
     auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);

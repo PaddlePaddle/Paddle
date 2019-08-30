@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -151,6 +153,14 @@ class TensorRTEngine {
   // in advance, which affecting the construction of TRT Op.
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
+
+  void SetWeights(std::string w_name,
+                  std::unique_ptr<framework::Tensor> w_tensor) {
+    static int suffix_counter = 0;
+    std::string suffix = std::to_string(suffix_counter);
+    weight_map[w_name + suffix] = std::move(w_tensor);
+    suffix_counter += 1;
+  }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {

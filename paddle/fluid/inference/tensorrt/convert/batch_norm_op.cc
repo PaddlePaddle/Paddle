@@ -116,11 +116,10 @@ class BatchNormOpConverter : public OpConverter {
                              scale_weights.get(), power_weights.get());
 
     auto output_name = op_desc.Output("Y").front();
-    engine_->weight_map[op_desc.Input("Bias").front()] =
-        std::move(combile_bias_tensor);
-    engine_->weight_map[op_desc.Input("Scale").front()] =
-        std::move(combile_scale_tensor);
-
+    engine_->SetWeights(op_desc.Input("Bias").front(),
+                        std::move(combile_bias_tensor));
+    engine_->SetWeights(op_desc.Input("Scale").front(),
+                        std::move(combile_scale_tensor));
     RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
   }
 };

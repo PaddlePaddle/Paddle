@@ -241,6 +241,16 @@ struct AnalysisConfig {
                          bool force_update_static_cache = false);
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
+
+  /** \brief Control whether to print profiling report.
+   *
+   * If turned off, no profiling report will be generateed.
+   */
+  void EnableProfile();
+  /** A boolean state telling whether the profiler is activated.
+   */
+  bool profile_enabled() const { return with_profile_; }
+
   void SetInValid() const { is_valid_ = false; }
   bool is_valid() const { return is_valid_; }
 
@@ -306,6 +316,8 @@ struct AnalysisConfig {
   bool specify_input_name_{false};
 
   int cpu_math_library_num_threads_{1};
+
+  bool with_profile_{false};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;
