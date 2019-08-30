@@ -65,7 +65,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       std::vector<int> dst_tz = framework::vectorize2int(output->dims());
       auto src_tz = dst_tz;
-      memory::format output_format{memory::format::format_undef};
+      MKLDNNMemoryFormat output_format{MKLDNNMemoryFormat::format_undef};
       std::vector<float> scales;
       std::vector<memory::primitive_desc> srcs_mpd;
       std::vector<mkldnn::memory> srcs_mem;
@@ -74,17 +74,17 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                      "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
       PADDLE_ENFORCE(input0.layout() == DataLayout::kMKLDNN &&
-                         input0.format() != memory::format::format_undef,
+                         input0.format() != MKLDNNMemoryFormat::format_undef,
                      "Wrong layout/format for inputs[0]");
 
-      memory::format input_format = input0.format();
+      MKLDNNMemoryFormat input_format = input0.format();
 
       for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
                        "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
         PADDLE_ENFORCE(input.layout() == DataLayout::kMKLDNN &&
-                           input.format() != memory::format::format_undef,
+                           input.format() != MKLDNNMemoryFormat::format_undef,
                        "Wrong layout/format for inputs");
 
         if (input.numel() == 0) {
@@ -103,7 +103,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       auto dst_md =
-          memory::desc(dst_tz, memory::data_type::f32, memory::format::any);
+          memory::desc(dst_tz, memory::data_type::f32, MKLDNNMemoryFormat::any);
 
       auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
 
@@ -119,7 +119,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       auto sum_prim = mkldnn::sum(sum_pd, inputs, *dst_mem);
-      output_format = (memory::format)platform::GetMKLDNNFormat(sum_pd);
+      output_format = (MKLDNNMemoryFormat)platform::GetMKLDNNFormat(sum_pd);
 
       primitive reorder_prim;
       std::shared_ptr<memory> target_mem;

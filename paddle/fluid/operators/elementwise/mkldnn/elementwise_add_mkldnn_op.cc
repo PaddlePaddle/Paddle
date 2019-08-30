@@ -55,20 +55,20 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     // broadcast operations need to performed.
     if (x_dims != y_dims_untrimed) {
       Tensor _x;
-      mkldnn::memory::format format;
+      MKLDNNMemoryFormat format;
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
 
       if ((src_x_tz.size() == 3 &&
-           x->format() != (format = memory::format::ncw)) ||
+           x->format() != (format = MKLDNNMemoryFormat::ncw)) ||
           (src_x_tz.size() == 4 &&
-           x->format() != (format = memory::format::nchw)) ||
+           x->format() != (format = MKLDNNMemoryFormat::nchw)) ||
           (src_x_tz.size() == 5 &&
-           x->format() != (format = memory::format::ncdhw))) {
+           x->format() != (format = MKLDNNMemoryFormat::ncdhw))) {
         _x.Resize(x_dims);
 
         mkldnn::memory::data_type in_type = platform::MKLDNNGetDataType<T>();
         auto out_format = platform::MKLDNNFormatForSize(
-            x_dims.size(), mkldnn::memory::format::nchw);
+            x_dims.size(), MKLDNNMemoryFormat::nchw);
 
         const std::string key = platform::ReorderMKLDNNHandler::GetHash(
             src_x_tz, x->format(), out_format, std::to_string(in_type));
@@ -120,10 +120,10 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       z->set_format(format);
     } else {
       PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                         x->format() != memory::format::format_undef,
+                         x->format() != MKLDNNMemoryFormat::format_undef,
                      "Wrong layout/format set for X tensor");
       PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
-                         y->format() != memory::format::format_undef,
+                         y->format() != MKLDNNMemoryFormat::format_undef,
                      "Wrong layout/format set for Y tensor");
 
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
@@ -148,7 +148,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
           paddle::platform::to_void_cast(y_data));
 
       auto dst_md = memory::desc({dst_tz}, platform::MKLDNNGetDataType<T>(),
-                                 memory::format::any);
+                                 MKLDNNMemoryFormat::any);
 
       auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
           {src_x_memory, src_y_memory}, scales, dst_md);
@@ -164,8 +164,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       stream(stream::kind::eager).submit(pipeline).wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format(
-          (memory::format)dst_memory->get_primitive_desc().desc().data.format);
+      z->set_format((MKLDNNMemoryFormat)dst_memory->get_primitive_desc()
+                        .desc()
+                        .data.format);
     }
   }
 };

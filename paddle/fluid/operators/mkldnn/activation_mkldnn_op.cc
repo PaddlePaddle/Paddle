@@ -48,7 +48,7 @@ class MKLDNNActivationKernel
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != memory::format::format_undef,
+                       x->format() != MKLDNNMemoryFormat::format_undef,
                    "Wrong layout/format set for Input x tensor");
 
     Functor functor;
@@ -63,7 +63,7 @@ class MKLDNNActivationGradKernel
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != memory::format::format_undef,
+                       diff_y->format() != MKLDNNMemoryFormat::format_undef,
                    "Wrong layout/format set for Input OutGrad tensor");
 
     PADDLE_ENFORCE(
@@ -97,8 +97,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
-  auto src_format =
-      src_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+  auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   bool is_test = ctx.Attr<bool>("is_test");
 
@@ -152,10 +151,10 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   // diff_dst and src dims should be the same
   auto src_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+      diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   auto diff_y_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : diff_y->format();
+      diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : diff_y->format();
 
   auto diff_dst_md = platform::MKLDNNMemDesc(
       diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);

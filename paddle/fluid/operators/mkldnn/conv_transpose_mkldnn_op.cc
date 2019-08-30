@@ -46,10 +46,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != mkldnn::memory::format::format_undef,
+                       input->format() != MKLDNNMemoryFormat::format_undef,
                    "Wrong layout/format set for Input tensor");
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != mkldnn::memory::format::format_undef,
+                       filter->format() != MKLDNNMemoryFormat::format_undef,
                    "Wrong layout/format set for Filter tensor");
     PADDLE_ENFORCE(input->dims().size() == 4,
                    "Input must be with 4 dimensions, i.e. NCHW");
@@ -58,7 +58,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     if (bias) {
       PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != mkldnn::memory::format::format_undef,
+                         bias->format() != MKLDNNMemoryFormat::format_undef,
                      "Wrong layout/format set for Bias tensor");
       PADDLE_ENFORCE(bias->dims().size() == 1,
                      "Bias must only have 1 dimension, i.e. X");
@@ -129,10 +129,9 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto user_src_md = platform::MKLDNNMemDesc(
         {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
-    auto user_weights_md =
-        platform::MKLDNNMemDesc({weights_tz}, platform::MKLDNNGetDataType<T>(),
-                                (g == 1) ? mkldnn::memory::format::oihw
-                                         : mkldnn::memory::format::goihw);
+    auto user_weights_md = platform::MKLDNNMemDesc(
+        {weights_tz}, platform::MKLDNNGetDataType<T>(),
+        (g == 1) ? MKLDNNMemoryFormat::oihw : MKLDNNMemoryFormat::goihw);
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
@@ -163,7 +162,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (bias) {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
-          bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
+          bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
           fuse_activation, fuse_alpha, fuse_beta, false, fwd_prop_kind);
@@ -198,9 +197,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::deconvolution_forward> conv_p;
     if (bias) {
       const T* bias_data = bias->data<T>();
-      auto user_bias_md =
-          platform::MKLDNNMemDesc({bias_tz}, platform::MKLDNNGetDataType<T>(),
-                                  mkldnn::memory::format::x);
+      auto user_bias_md = platform::MKLDNNMemDesc(
+          {bias_tz}, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       auto user_bias_memory_p = handler.AcquireBiasMemory(
           user_bias_md, platform::to_void_cast<T>(bias_data));
 
