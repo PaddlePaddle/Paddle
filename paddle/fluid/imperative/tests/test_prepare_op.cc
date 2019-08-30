@@ -123,7 +123,7 @@ TEST(test_prepare_op, test_get_tensor_from_var) {
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
-
+#if defined(PADDLE_WITH_CUDA)
 TEST(test_prepare_op, test_prepare_data) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
@@ -160,38 +160,12 @@ TEST(test_prepare_op, test_prepare_data) {
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, gpu_place, ins);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
-      ASSERT_EQ(vb->Var().Get<framework::LoDTensor>().place(), gpu_place);
+      ASSERT_TRUE(platform::is_same_place(
+          vb->Var().Get<framework::LoDTensor>().place(), gpu_place));
     }
   }
-  // test reshape2
-  //  const auto& info2 = framework::OpInfoMap::Instance().Get("reshape2");
-  //  std::shared_ptr<imperative::VarBase> vin2(
-  //      new imperative::VarBase(false, "vin2"));
-  //  std::shared_ptr<imperative::VarBase> shape_var1(
-  //      new imperative::VarBase(false, "ShapeTensor"));
-  //  vin2->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
-  //      gpu_place);
-  //  shape_var1->MutableVar()
-  //      ->GetMutable<framework::LoDTensor>()
-  //      ->mutable_data<float>(cpu_place);
-  //  var_pair x2_pair = var_pair("X", vb_vector(1, vin2));
-  //  var_pair shape_var_pair = var_pair("ShapeTensor", vb_vector(1, vin2));
-  //  var_pair out2_pair = var_pair("Out", vb_vector(1, vout));
-  //  imperative::NameVarBaseMap ins2 = {x2_pair, shape_var_pair};
-  //  imperative::NameVarBaseMap outs2 = {out2_pair};
-  //  framework::VariableNameMap var_in_map2 =
-  //      CreateVarNameMap(info, "reshape2", ins2, true);
-  //  framework::VariableNameMap var_out_map2 =
-  //      CreateVarNameMap(info, "reshape2", outs2, false);
-  //  framework::AttributeMap reshape_attr_map;
-  //  framework::RuntimeContext ctx2 = PrepareRuntimeContext(ins2, outs2);
-  //  framework::OperatorWithKernel reshape_op("reshape2", var_in_map2,
-  //                                           var_out_map2, reshape_attr_map);
-  //  ASSERT_NO_THROW(PreparedOp preparedOp =
-  //                      PreparedOp::Prepare(ctx2, reshape_op, gpu_place,
-  //                      ins2));
 }
-
+#endif
 }  // namespace imperative
 }  // namespace paddle
 

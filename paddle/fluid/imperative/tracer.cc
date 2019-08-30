@@ -45,7 +45,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
                                         op->OutputNameMap(), op->Attrs()),
                   ins, outs);
+    VLOG(6) << "Finish tracking Backward of op: " << type;
   }
+  VLOG(6) << "Finish tracing fwd op: " << type;
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,

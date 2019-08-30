@@ -994,6 +994,105 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
+    def test_compare(self):
+        value_a = np.arange(3)
+        value_b = np.arange(3)
+        # less than
+        with self.static_graph():
+            a = layers.data(name='a', shape=[1], dtype='int64')
+            b = layers.data(name='b', shape=[1], dtype='int64')
+            cond = layers.less_than(x=a, y=b)
+            static_ret = self.get_static_graph_result(
+                feed={"a": value_a,
+                      "b": value_b}, fetch_list=[cond])[0]
+        with self.dynamic_graph():
+            da = base.to_variable(value_a)
+            db = base.to_variable(value_b)
+            dcond = layers.less_than(x=da, y=db)
+
+        for i in range(len(static_ret)):
+            self.assertTrue(dcond.numpy()[i] == static_ret[i])
+
+        # less equal
+        with self.static_graph():
+            a1 = layers.data(name='a1', shape=[1], dtype='int64')
+            b1 = layers.data(name='b1', shape=[1], dtype='int64')
+            cond1 = layers.less_equal(x=a1, y=b1)
+            static_ret1 = self.get_static_graph_result(
+                feed={"a1": value_a,
+                      "b1": value_b}, fetch_list=[cond1])[0]
+        with self.dynamic_graph():
+            da1 = base.to_variable(value_a)
+            db1 = base.to_variable(value_b)
+            dcond1 = layers.less_equal(x=da1, y=db1)
+
+            for i in range(len(static_ret1)):
+                self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
+
+        #greater than
+        with self.static_graph():
+            a2 = layers.data(name='a2', shape=[1], dtype='int64')
+            b2 = layers.data(name='b2', shape=[1], dtype='int64')
+            cond2 = layers.greater_than(x=a2, y=b2)
+            static_ret2 = self.get_static_graph_result(
+                feed={"a2": value_a,
+                      "b2": value_b}, fetch_list=[cond2])[0]
+        with self.dynamic_graph():
+            da2 = base.to_variable(value_a)
+            db2 = base.to_variable(value_b)
+            dcond2 = layers.greater_than(x=da2, y=db2)
+
+            for i in range(len(static_ret2)):
+                self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
+
+        #greater equal
+        with self.static_graph():
+            a3 = layers.data(name='a3', shape=[1], dtype='int64')
+            b3 = layers.data(name='b3', shape=[1], dtype='int64')
+            cond3 = layers.greater_equal(x=a3, y=b3)
+            static_ret3 = self.get_static_graph_result(
+                feed={"a3": value_a,
+                      "b3": value_b}, fetch_list=[cond3])[0]
+        with self.dynamic_graph():
+            da3 = base.to_variable(value_a)
+            db3 = base.to_variable(value_b)
+            dcond3 = layers.greater_equal(x=da3, y=db3)
+
+            for i in range(len(static_ret3)):
+                self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
+
+        # equal
+        with self.static_graph():
+            a4 = layers.data(name='a4', shape=[1], dtype='int64')
+            b4 = layers.data(name='b4', shape=[1], dtype='int64')
+            cond4 = layers.equal(x=a4, y=b4)
+            static_ret4 = self.get_static_graph_result(
+                feed={"a4": value_a,
+                      "b4": value_b}, fetch_list=[cond4])[0]
+        with self.dynamic_graph():
+            da4 = base.to_variable(value_a)
+            db4 = base.to_variable(value_b)
+            dcond4 = layers.equal(x=da4, y=db4)
+
+            for i in range(len(static_ret4)):
+                self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
+
+        # not equal
+        with self.static_graph():
+            a5 = layers.data(name='a5', shape=[1], dtype='int64')
+            b5 = layers.data(name='b5', shape=[1], dtype='int64')
+            cond5 = layers.equal(x=a5, y=b5)
+            static_ret5 = self.get_static_graph_result(
+                feed={"a5": value_a,
+                      "b5": value_b}, fetch_list=[cond5])[0]
+        with self.dynamic_graph():
+            da5 = base.to_variable(value_a)
+            db5 = base.to_variable(value_b)
+            dcond5 = layers.equal(x=da5, y=db5)
+
+            for i in range(len(static_ret5)):
+                self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
