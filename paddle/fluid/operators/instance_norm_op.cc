@@ -513,8 +513,9 @@ std::unique_ptr<framework::OpDesc> InstanceNormDoubleGradMaker::Apply() const {
   return std::unique_ptr<framework::OpDesc>(op);
 }
 
-template <typename DeviceContext, typename T>
-class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
+template <typename T>
+class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *X = ctx.Input<Tensor>("X");
@@ -583,7 +584,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
     ConstEigenArrayMap<T> dy_arr(dY->data<T>(), sample_size, NxC);
     ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, NxC);
 
-    // dx = scale * (x - mean) * inv_var / HxW * (np.mean(ddx, axis=(h,w)) *
+    // dx = scale * ((x - mean) * inv_var / HxW * (np.mean(ddx, axis=(h,w)) *
     //      np.sum(dy, axis=(h,w)) -
     //      np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
     //      axis=(h,w)) * inv_var.pow(2) *
@@ -593,9 +594,10 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
     //      axis=(h,w)) * (x - mean) *
     //      (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var *
     //      np.mean(dy, axis=(h,w)) -
-    //      inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean), axis=(h,w)))
+    //      inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean), axis=(h,w))))
 
-    math::SetConstant<DeviceContext, T> set_constant;
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     Tensor x_sub_mean_mul_invstd;
     x_sub_mean_mul_invstd.Resize({sample_size, NxC});
@@ -608,8 +610,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
     if (!use_global_stats) {
       if (dX) {
         dX->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), dX,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, dX, static_cast<T>(0));
         EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()),
                                 sample_size, NxC);
 
@@ -655,16 +656,14 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
         // dscale = inv_var * (dy - np.mean(dy, axis=(h,w) - (x-mean) *
         //          inv_var.pow(2) * np.mean(dy * (x-mean), axis=(h,w)))) * ddx
         dScale->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), dScale,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, dScale, static_cast<T>(0));
         EigenVectorArrayMap<T> dscale_arr(
             dScale->mutable_data<T>(ctx.GetPlace()), C);
         if (ddX) {
           Tensor first_grad;
           first_grad.Resize({sample_size, NxC});
           first_grad.mutable_data<T>(ctx.GetPlace());
-          set_constant(ctx.template device_context<DeviceContext>(),
-                       &first_grad, static_cast<T>(0));
+          set_constant(dev_ctx, &first_grad, static_cast<T>(0));
           EigenArrayMap<T> first_grad_arr(
               first_grad.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
 
@@ -686,8 +685,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
         //       scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
         //       np.mean(ddx * (x - mean), axis=(h,w)))
         ddY->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), ddY,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, ddY, static_cast<T>(0));
         EigenArrayMap<T> ddy_arr(ddY->mutable_data<T>(ctx.GetPlace()),
                                  sample_size, NxC);
         if (ddX) {
@@ -731,8 +729,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
         ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
 
         dX->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), dX,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, dX, static_cast<T>(0));
         EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()),
                                 sample_size, NxC);
 
@@ -740,16 +737,14 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
       }
       if (dScale && ddX) {
         dScale->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), dScale,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, dScale, static_cast<T>(0));
         EigenVectorArrayMap<T> dscale_arr(
             dScale->mutable_data<T>(ctx.GetPlace()), C);
 
         Tensor dscale_tmp;
         dscale_tmp.Resize({NxC});
         dscale_tmp.mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), &dscale_tmp,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, &dscale_tmp, static_cast<T>(0));
         EigenVectorArrayMap<T> dscale_tmp_data(
             dscale_tmp.mutable_data<T>(ctx.GetPlace()), NxC);
 
@@ -763,8 +758,7 @@ class InstanceNormDoubleGradKernel : public framework::OpKernel<T> {
       }
       if (ddY) {
         ddY->mutable_data<T>(ctx.GetPlace());
-        set_constant(ctx.template device_context<DeviceContext>(), ddY,
-                     static_cast<T>(0));
+        set_constant(dev_ctx, ddY, static_cast<T>(0));
         EigenArrayMap<T> ddy_arr(ddY->mutable_data<T>(ctx.GetPlace()),
                                  sample_size, NxC);
 

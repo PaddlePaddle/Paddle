@@ -235,12 +235,12 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                     },
                     fetch_list=self.fetch_list)
 
-                for id, name in enumerate(self.fetch_list):
-                    if name == 'variance':
-                        self.__assert_close(var_dict[name], out[id], name, 1e-3)
-                    else:
-                        self.__assert_close(var_dict[name], out[id], name)
-                print("op test forward passes: ", str(place))
+            for id, name in enumerate(self.fetch_list):
+                if name == 'variance':
+                    self.__assert_close(var_dict[name], out[id], name, 1e-3)
+                else:
+                    self.__assert_close(var_dict[name], out[id], name)
+            print("op test forward passes: ", str(place))
 
         places = [core.CPUPlace()]
 
