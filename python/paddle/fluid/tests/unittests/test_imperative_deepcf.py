@@ -73,7 +73,6 @@ class MLP(fluid.Layer):
                 self.add_sublayer(
                     'match_layer_%d' % i,
                     fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
-        self._mat
 
     def forward(self, users, items):
         users = self._user_latent(users)

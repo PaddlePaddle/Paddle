@@ -114,6 +114,8 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
+  virtual void SetNeedDump(bool need_dump_field) {}
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -172,6 +174,8 @@ class DownpourWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
@@ -183,8 +187,11 @@ class DownpourWorker : public HogwildWorker {
 
  private:
   bool need_to_push_dense_;
+  bool need_dump_field_;
   bool dump_slot_;
   bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
