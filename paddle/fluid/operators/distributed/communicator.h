@@ -156,24 +156,24 @@ inline void MergeVars(const std::string& var_name,
 }
 
 inline std::shared_ptr<Variable> SubVars(const std::string& var_name,
-                      framework::Scope &scope_x,framework::Scope &scope_y,int trainers) {
+                      framework::Scope *scope_x,framework::Scope *scope_y,int trainers) {
   auto cpu_place = platform::CPUPlace();
-  auto* var_x = scope_x.FindVar(var_name);
-  auto* var_y = scope_y.FindVar(var_name);
-  auto temp_var = std::make_shared<Variable>();
+  auto *var_x = scope_x->FindVar(var_name);
+  auto *var_y = scope_y->FindVar(var_name);
+  auto *temp_var = std::make_shared<Variable>();
   framework::CopyVariable(*var_x, temp_var.get());
 
   if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
-    auto &var_x_tensor = var_x->Get<framework::LoDTensor>();
-    auto &var_y_tensor = var_y->Get<framework::LoDTensor>();
-    auto &temp_var_tensor = temp_var->Get<framework::LoDTensor>();
+    auto *var_x_tensor = var_x->Get<framework::LoDTensor>();
+    auto *var_y_tensor = var_y->Get<framework::LoDTensor>();
+    auto *temp_var_tensor = temp_var->Get<framework::LoDTensor>();
     
     int element_number = var_x_tensor -> numel();
     float* x_mutable_data = var_x_tensor -> mutable_data<float>(var_x_tensor->place());
     float* y_mutable_data = var_y_tensor -> mutable_data<float>(var_y_tensor->place());
     float* temp_mutable_data = temp_var_tensor -> mutable_data<float>(temp_var_tensor->place());
     for(int i = 0; i < element_number; i++){
-      temp_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/trainers;
+      temp_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainers);
     }
   } 
   return temp_var;
@@ -221,9 +221,9 @@ class Communicator {
   // geo-sgd algorithm
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(Scope &scope);
-  void GeoSgdParamCopy(Scope &scope_x,Scope &scope_y);
-
+  void GeoSgdParamInit(const Scope *scope);
+  void GeoSgdParamCopy(const Scope *scope_x,const Scope *scope_y);
+  void DefineGeoSgdStatus(bool status){is_geo_sgd_=status;}
 
 private:
   bool is_geo_sgd_ = false;

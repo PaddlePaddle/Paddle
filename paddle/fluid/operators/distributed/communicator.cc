@@ -268,19 +268,42 @@ void Communicator::Send(const std::string &var_name,
 
 void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scope& scope){
   VLOG(3) << "geo sgd communicator get loop num"<< var_name;
-  if (is_need_push < FLAGS_NEED_PUSH_NUM){
-    is_need_push++;
+  if(var_name == "param_init"){
+    VLOG(0) << "geo sgd param init";
+    GeoSgdParamInit(old_scope_);
+    GeoSgdParamCopy(&scope,old_scope_);
+    return;
+  }
+  if (is_need_push_ < communicator_geo_sgd_local_train_loop_nums){
+    is_need_push_++;
   }
   else{
-    is_need_push = 0;
+    is_need_push_ = 0;
     for (auto &iter:send_varname_to_queue_)
     {
-      std::string local_var_name = iter.first;
-      auto var_delta = SubVars(local_var_name, global_scope_,old_scope_,TRAINERS);
+      const std::string local_var_name = iter.first;
+      auto var_delta = SubVars(local_var_name, &scope,old_scope_,communicator_trainer_nums);
       auto &queue = send_varname_to_queue_.at(local_var_name);
       VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
       queue->Push(var_delta);
     }
+  }
+}
+
+void Communicator::GeoSgdParamInit(const Scope *scope){
+  for(auto &iter:send_varname_to_ctx_){
+    std::string &var_name = iter.first;
+    scope->Var(var_name);
+  }
+}
+
+void Communicator::GeoSgdParamCopy(const Scope *scope_x,const Scope *scope_y){
+  // copy var(send_varname_to_ctx_) from x to y
+  for(auto &iter:send_varname_to_ctx_){
+    std::string &var_name = iter.first;
+    auto *var_x = scope_x->Findvar(var_name);
+    auto *var_y = scope_y->Findvar(var_name);
+    framework::CopyVariable(*var_x,var_y);
   }
 }
 
@@ -329,7 +352,7 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
 void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info){
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
-  is_geo_sgd_ = true;
+  DefineGeoSgdStatus(true);
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto &iter : vars_info) {
