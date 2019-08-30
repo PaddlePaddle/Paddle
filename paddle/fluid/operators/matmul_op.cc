@@ -63,11 +63,13 @@ class MatMulKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context.Attr<int>("head_number");
-    if (1 == head_number) {
-      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
+
+    if (head_number > 1) {
+      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number,
+                          split_vertical_y, out, T(0));
     } else {
-      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
-                          T(0));
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
     }
 #else
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
@@ -300,19 +302,22 @@ class MatMulOp : public framework::OperatorWithKernel {
         math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
                                      context->Attrs().Get<bool>("transpose_Y"));
 
-    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
     if (context->IsRuntime()) {
       PADDLE_ENFORCE(mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
                      mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
     }
     std::vector<int64_t> dim_out;
+    int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context->Attrs().Get<int>("head_number");
-    PADDLE_ENFORCE_GE(head_number, 1);
+    bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     PADDLE_ENFORCE_LE(head_number, mat_dim_x.width_);
-    int64_t dim_out_y = head_number * mat_dim_y.width_;
+
+    if (!split_vertical_y && head_number > 0) {
+      dim_out_y = head_number * mat_dim_y.width_;
+    }
 #else
-    int64_t dim_out_y = mat_dim_y.width_;
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
 #endif
 
     if (mat_dim_x.batch_size_ != 0) {

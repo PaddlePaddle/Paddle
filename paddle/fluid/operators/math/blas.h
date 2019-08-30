@@ -125,7 +125,8 @@ class Blas {
                       const MatDescriptor& dim_a,
                       const framework::Tensor& mat_b,
                       const MatDescriptor& dim_b, T alpha, int head_number,
-                      framework::Tensor* mat_out, T beta) const;
+                      bool mat_y_split_vertical, framework::Tensor* mat_out,
+                      T beta) const;
 #endif
 #endif
 
@@ -194,9 +195,10 @@ class Blas {
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
-                           int M, int N, int K, T alpha, const T* A, const T* B,
-                           T beta, T* C, int batchCount, int64_t strideA,
-                           int64_t strideB, int64_t head_number) const;
+                           int W1, int H1, int W2, int H2, T alpha, const T* A,
+                           const T* B, T beta, T* C, int batchCount,
+                           int64_t strideA, int64_t strideB,
+                           int64_t head_number, bool split_b_vertical) const;
 #endif
 
   template <typename T>
