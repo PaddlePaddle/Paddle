@@ -32,31 +32,24 @@ using mkldnn::softmax_forward;
 using mkldnn::stream;
 using platform::to_void_cast;
 
+template <typename T>
 class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
  public:
   SoftmaxMKLDNNHandler(const std::vector<int>& dims,
-                       framework::proto::VarType::Type vtype,
-                       const mkldnn::memory::data_type dtype,
                        const mkldnn::memory::format fmt,
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
-        vtype_(vtype),
-        dtype_(dtype),
         fmt_(fmt) {}
 
   SoftmaxMKLDNNHandler(const std::vector<int>& dims,
-                       framework::proto::VarType::Type vtype,
-                       const mkldnn::memory::data_type dtype,
                        const mkldnn::memory::format fmt,
                        const mkldnn::memory::format diff_fmt,
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
         dims_(dims),
-        vtype_(vtype),
-        dtype_(dtype),
         fmt_(fmt),
         diff_fmt_(diff_fmt) {
     // If we are in Grad operatgor then update a key with BWD suffix to
@@ -68,21 +61,23 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
   // TODO(jczaja): Once fwd_pd_ are moved to MKLDNNHandler then this function
   // should be moved as well eg. SoftmaxMKLDNNHandler -> MKLDNNHandler<softmax_>
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(void* ptr) {
-    return this->AcquireMemory(dims_, dtype_, fmt_, ptr, "@user_src_mem_p");
+    return this->AcquireMemory(dims_, platform::MKLDNNGetDataType<T>(), fmt_,
+                               ptr, "@user_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(void* ptr) {
-    return this->AcquireMemory(dims_, dtype_, fmt_, ptr, "@user_dst_mem_p");
+    return this->AcquireMemory(dims_, platform::MKLDNNGetDataType<T>(), fmt_,
+                               ptr, "@user_dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(void* ptr) {
-    return this->AcquireMemory(dims_, dtype_, diff_fmt_, ptr,
-                               "@user_diff_dst_mem_p");
+    return this->AcquireMemory(dims_, platform::MKLDNNGetDataType<T>(),
+                               diff_fmt_, ptr, "@user_diff_dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemory(void* ptr) {
-    return this->AcquireMemory(dims_, dtype_, diff_fmt_, ptr,
-                               "@user_diff_src_mem_p");
+    return this->AcquireMemory(dims_, platform::MKLDNNGetDataType<T>(),
+                               diff_fmt_, ptr, "@user_diff_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
@@ -118,8 +113,10 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
     auto softmax_bwd_p = std::static_pointer_cast<mkldnn::softmax_backward>(
         dev_ctx_.GetBlob(prim_key));
     if (softmax_bwd_p == nullptr) {
-      auto data_softmax_md = mkldnn::memory::desc(dims_, dtype_, fmt_);
-      auto diff_softmax_md = mkldnn::memory::desc(dims_, dtype_, diff_fmt_);
+      auto data_softmax_md =
+          mkldnn::memory::desc(dims_, platform::MKLDNNGetDataType<T>(), fmt_);
+      auto diff_softmax_md = mkldnn::memory::desc(
+          dims_, platform::MKLDNNGetDataType<T>(), diff_fmt_);
       // TODO(jczaja): Add support for other axes
       auto softmax_bwd_desc = softmax_backward::desc(
           diff_softmax_md, data_softmax_md, 1 /* dim: C*/);
@@ -155,7 +152,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
         // TODO(jczaja): Make it working along chosen axis and for
         // forward_training
         // Normalization is made after innermost dimension eg. C out of NC
-        auto md = mkldnn::memory::desc(dims_, dtype_, fmt_);
+        auto md =
+            mkldnn::memory::desc(dims_, platform::MKLDNNGetDataType<T>(), fmt_);
         auto softmax_desc =
             softmax_forward::desc(prop_kind::forward_scoring, md, 1 /*dim: C*/);
         fwd_pd_.reset(
@@ -167,8 +165,6 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
 
  private:
   std::vector<int> dims_;
-  framework::proto::VarType::Type vtype_;
-  mkldnn::memory::data_type dtype_;
   mkldnn::memory::format fmt_;
   mkldnn::memory::format diff_fmt_;
   std::shared_ptr<mkldnn::softmax_forward::primitive_desc> fwd_pd_;
@@ -211,9 +207,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
 
-    SoftmaxMKLDNNHandler handler(
-        softmax_tz, input->type(), platform::MKLDNNGetDataType<T>(),
-        mkldnn::memory::format::nc, dev_ctx, mkldnn_engine, key);
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, mkldnn::memory::format::nc,
+                                    dev_ctx, mkldnn_engine, key);
 
     // Currently only NC data format is supported
     auto softmax_src_memory_p =
@@ -293,10 +288,9 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // TODO(jczaja): Add layouts support when there is a need to do so
     // Two dimensional softmax does support NC format
     // Normalization is made after innermost dimension eg. C out of NC
-    SoftmaxMKLDNNHandler handler(
-        softmax_tz, output->type(), platform::MKLDNNGetDataType<T>(),
-        mkldnn::memory::format::nc, mkldnn::memory::format::nc, dev_ctx,
-        mkldnn_engine, key);
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, mkldnn::memory::format::nc,
+                                    mkldnn::memory::format::nc, dev_ctx,
+                                    mkldnn_engine, key);
 
     auto dst_memory_p = handler.AcquireDstMemory(to_void_cast<T>(dst_data));
     auto diff_dst_memory_p =
