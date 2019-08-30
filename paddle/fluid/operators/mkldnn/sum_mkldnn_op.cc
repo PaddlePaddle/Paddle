@@ -139,7 +139,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       output->set_layout(DataLayout::kMKLDNN);
       output->set_format(output_format);
     } else {  // Fallback to naive version
-      // TODO(@mozga-intel) Add MKLDNN SelectedRows & LoDTensorArray support
       SumKernel<CPUDeviceContext, T> reference_kernel;
       reference_kernel.Compute(ctx);
     }

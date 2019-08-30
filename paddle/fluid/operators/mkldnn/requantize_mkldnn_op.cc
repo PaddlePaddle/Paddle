@@ -47,9 +47,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::data_type dst_dt = src_dt;  // TODO(Xiaoli) support
-                                                // requantize from different
-                                                // data type (e.g., s8 to u8)
+    mkldnn::memory::data_type dst_dt = src_dt;
     mkldnn::memory::format src_fmt = memory::format::nhwc;
     mkldnn::memory::format dst_fmt = memory::format::nhwc;
 
