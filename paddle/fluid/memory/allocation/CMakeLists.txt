@@ -45,10 +45,11 @@ cc_library(allocator_strategy SRCS allocator_strategy.cc DEPS gflags ${Allocator
 cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator locked_allocator cpu_allocator)
-if (WITH_GPU)
-  target_link_libraries(retry_allocator_test cuda_allocator)
-endif()
 if (WITH_TESTING)
+  if (WITH_GPU)
+    target_link_libraries(retry_allocator_test cuda_allocator)
+  endif()
+
   set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_property(TEST retry_allocator_test PROPERTY ENVIRONMENT GLOG_vmodule=retry_allocator=10)
 endif()

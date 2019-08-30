@@ -110,8 +110,9 @@ class DummyAllocator : public Allocator {
 };
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
+  size_t retry_ms = 10;
   {
-    RetryAllocator allocator(std::make_shared<DummyAllocator>(), 10);
+    RetryAllocator allocator(std::make_shared<DummyAllocator>(), retry_ms);
     try {
       auto allocation = allocator.Allocate(100);
       ASSERT_TRUE(false);
@@ -125,7 +126,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
 #ifdef PADDLE_WITH_CUDA
   {
     platform::CUDAPlace p(0);
-    RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), 10);
+    RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
     size_t allocate_size = -1UL;  // Very large number
     try {
       auto allocation = allocator.Allocate(allocate_size);
