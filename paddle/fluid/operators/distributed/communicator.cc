@@ -268,12 +268,13 @@ void Communicator::Send(const std::string &var_name,
   }
 }
 
-void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scope& scope){
+void Communicator::GeoSgdSend(const std::string& var_name, 
+                              const framework::Scope& scope) {
   VLOG(3) << "geo sgd communicator get loop num"<< var_name;
   if(var_name == "param_init"){
     VLOG(0) << "geo sgd param init";
-    GeoSgdParamInit(old_scope_);
-    GeoSgdParamCopy(&scope,old_scope_);
+    GeoSgdParamInit(*old_scope_);
+    GeoSgdParamCopy(scope,*old_scope_);
     return;
   }
   if (is_need_push_ < FLAGS_communicator_geo_sgd_local_train_loop_nums){
@@ -292,28 +293,31 @@ void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scop
   }
 }
 
-void Communicator::GeoSgdParamInit(framework::Scope *scope){
+void Communicator::GeoSgdParamInit(const framework::Scope &scope){
   for(auto &iter:send_varname_to_ctx_){
     auto &var_name = iter.first;
-    scope->Var(var_name);
+    scope.Var(var_name);
   }
 }
 
-void Communicator::GeoSgdParamCopy(framework::Scope *scope_x,framework::Scope *scope_y){
+void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
+                                   const framework::Scope &scope_y) {
   // copy var(send_varname_to_ctx_) from x to y
   for(auto &iter:send_varname_to_ctx_){
     auto &var_name = iter.first;
-    auto *var_x = scope_x->Findvar(var_name);
-    auto *var_y = scope_y->Findvar(var_name);
+    auto *var_x = scope_x.Findvar(var_name);
+    auto *var_y = scope_y.Findvar(var_name);
     framework::CopyVariable(*var_x,var_y);
   }
 }
 
 std::shared_ptr<framework::Variable> Communicator::SubVars(std::string& var_name,
-                      framework::Scope *scope_x,framework::Scope *scope_y,int &trainers) {
+                                                           const framework::Scope &scope_x,
+                                                           const framework::Scope &scope_y,
+                                                           int &trainers) {
   auto cpu_place = platform::CPUPlace();
-  auto *var_x = scope_x->FindVar(var_name);
-  auto *var_y = scope_y->FindVar(var_name);
+  auto *var_x = scope_x.FindVar(var_name);
+  auto *var_y = scope_y.FindVar(var_name);
   auto *temp_var = std::make_shared<Variable>();
   framework::CopyVariable(*var_x, temp_var.get());
 
@@ -402,7 +406,8 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
     LOG(WARNING) << "no var need to send and recv!!";
   }
   Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope);
-  Communicator::DefineGeoSgdStatus(true);  
+  bool status = true;
+  Communicator::DefineGeoSgdStatus(status);  
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }

@@ -188,26 +188,33 @@ class Communicator {
   std::unique_ptr<std::thread> send_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
-
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
   
   // for geo-sgd algorithm
+public:
+  void DefineGeoSgdStatus(bool status) {
+    is_geo_sgd_=status;
+    }
+
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(framework::Scope *scope);
-  void GeoSgdParamCopy(framework::Scope *scope_x,framework::Scope *scope_y);
+  void GeoSgdParamInit(const framework::Scope &scope);
+  void GeoSgdParamCopy(const framework::Scope &scope_x,
+                       const framework::Scope &scope_y);
   std::shared_ptr<Variable> SubVars(std::string& var_name,
-                      framework::Scope *scope_x,framework::Scope *scope_y,int &trainers);
-  void DefineGeoSgdStatus(bool status){is_geo_sgd_=status;}
-
+                                    const framework::Scope &scope_x,
+                                    const framework::Scope &scope_y,
+                                    int &trainers);
+  
 private:
   bool is_geo_sgd_ = false;
   Scope* global_scope_;
   Scope* old_scope_;
   int is_need_push_ = 0;
+
 
   // the following code is for initialize the commnunicator
  public:
