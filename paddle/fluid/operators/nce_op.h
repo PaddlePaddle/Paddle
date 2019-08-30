@@ -195,9 +195,10 @@ class NCEKernel : public framework::OpKernel<T> {
       w_tensor->Resize(framework::make_ddim(w_dims));
 
 #ifdef PADDLE_WITH_DISTRIBUTE
+      auto weight = context.Inputs("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
-                                       table_names, epmap, height_sections,
-                                       context, local_scope);
+                                       weight, false, table_names, epmap,
+                                       height_sections, context, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

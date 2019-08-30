@@ -157,7 +157,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     bool is_conv3d = strides.size() == 3U;
 
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
             ? dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
@@ -212,8 +211,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
-                               // Currently used whenever bias is != nullptr.
+    std::vector<int> bias_tz;
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
@@ -364,7 +362,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "residual fusion does not support force output with fp32");
 
     bool is_conv3d = strides.size() == 3U;
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
             ? dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
