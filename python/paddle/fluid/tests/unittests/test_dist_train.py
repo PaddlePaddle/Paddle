@@ -39,7 +39,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 class TestSendOp(unittest.TestCase):
     def test_send(self):
-        remove_ps_flag()
+        remove_ps_flag(os.getpid())
         # Run init_serv in a thread
         place = fluid.CPUPlace()
         # NOTE: python thread will not work here due to GIL.

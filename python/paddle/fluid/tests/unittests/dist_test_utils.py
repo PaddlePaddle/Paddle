@@ -23,5 +23,5 @@ def silentremove(filename):
             raise  # re-raise exception if a different error occurred
 
 
-def remove_ps_flag():
-    slientremove("/tmp/paddle.%d.port" % pid)
+def remove_ps_flag(pid):
+    silentremove("/tmp/paddle.%d.port" % pid)

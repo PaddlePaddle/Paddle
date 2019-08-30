@@ -30,6 +30,7 @@ from op_test import OpTest
 
 
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
+    remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -60,6 +61,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
 
 def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
                                  trainer_id):
+    remove_ps_flag(os.getpid())
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None, bias_attr=False)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -110,7 +112,6 @@ class TestListenAndServOp(unittest.TestCase):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
-        remove_ps_flag()
         p = Process(
             target=pserver_func,
             args=(use_cuda, sync_mode, self.ip, self.port, self.trainers,

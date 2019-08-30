@@ -29,6 +29,7 @@ from dist_test_utils import *
 
 
 def run_pserver(pserver_id, use_cuda, sync_mode):
+    remove_ps_flag(os.getpid())
     scope = fluid.core.Scope()
     program = Program()
     with fluid.scope_guard(scope):
@@ -65,7 +66,6 @@ class TestListenAndServOp(unittest.TestCase):
         self.ps_timeout = 5
 
     def _start_pserver(self, pserver_id, use_cuda, sync_mode, pserver_func):
-        remove_ps_flag()
         p = Process(target=pserver_func, args=(pserver_id, use_cuda, sync_mode))
         p.daemon = True
         p.start()
