@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 
+DECLARE_bool(use_ngraph);
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -401,7 +403,7 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
   // In use for ngraph subgraph pass for parallel executor,
   // this will remove all nodes, bypass this and let ngraph
   // subgraph pass to process outputs
-  if (valid_output.size() == 0) return;
+  if (FLAGS_use_ngraph && valid_output.size() == 0) return;
 
   outputs->assign(valid_output.begin(), valid_output.end());
 }
