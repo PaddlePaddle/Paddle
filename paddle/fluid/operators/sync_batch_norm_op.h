@@ -284,6 +284,20 @@ static __global__ void KeBNBackwardScaleBias(const T *dy, const T *x,
 }
 
 template <typename T, framework::DataLayout layout>
+static __global__ void KeBNRestoreData(const T *x, const T *scale,
+                                       const T *bias, const T *mean,
+                                       const T *variance, const double epsilon,
+                                       const int C, const int M, const int num,
+                                       T *y) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int i = gid; i < num; i += stride) {
+    const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
+    x[i] = (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+  }
+}
+
+template <typename T, framework::DataLayout layout>
 static __global__ void KeBNBackwardData(const T *dy, const T *x, const T *beta,
                                         const T *mean, const T *inv_variance,
                                         const T *g_sum_dy,
@@ -311,12 +325,14 @@ static __global__ void KeBNBackwardData(const T *dy, const T *x, const T *beta,
 template <typename DeviceContext, typename T>
 void SyncBatchNormGradFunctor(
     const framework::ExecutionContext &ctx, const DataLayout layout,
-    const framework::Tensor *x, const framework::Tensor *scale,
+    const framework::Tensor *x, const framework::Tensor *y,
+    const framework::Tensor *scale, const framework::Tensor *bias,
     framework::Tensor *d_x, const framework::Tensor *d_y,
     framework::Tensor *d_scale, framework::Tensor *d_bias,
     const framework::Tensor *mean, const framework::Tensor *variance,
     double epsilon) {
   const auto &x_dims = x->dims();
+  bool is_inplace = x == y;
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
                     "The Input X dim size should be larger than 1.");
@@ -362,11 +378,27 @@ void SyncBatchNormGradFunctor(
   auto alloc_ptr = allocator.Allocate(bytes);
   T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
 
+  const int block = 512;
   const int threads = 256;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int grid = std::min(C, (max_threads + threads - 1) / threads);
   int x_numel = x->numel();
   int fsize = H * W * D;
+
+  if (is_inplace) {
+    int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+    if (layout == framework::DataLayout::kNCHW) {
+      KeBNRestoreData<
+          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+          x_d, scale->data<T>(), bias->data<T>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
+    } else {
+      KeBNRestoreData<
+          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+          x_d, scale->data<T>(), bias->data<T>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
+    }
+  }
 
   if (layout == framework::DataLayout::kNCHW) {
     KeBackwardLocalStats<

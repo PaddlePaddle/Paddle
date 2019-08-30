@@ -65,8 +65,10 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const auto *x = ctx.Input<Tensor>("X");
+    const auto *y = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Scale");
 
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -77,7 +79,7 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
 
     SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(
-        ctx, layout, x, scale, d_x, d_y, d_scale, d_bias, saved_mean,
+        ctx, layout, x, y, scale, bias, d_x, d_y, d_scale, d_bias, saved_mean,
         saved_inv_var, epsilon);
   }
 };
