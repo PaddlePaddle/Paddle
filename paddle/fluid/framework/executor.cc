@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/place.h"
@@ -410,6 +411,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     if (gc && ctx->prog_.Size() > 1) {
       operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
                                                                  ctx->ops_);
+      operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+          ctx->block_id_, ctx->ops_);
     }
   }
 
