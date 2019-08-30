@@ -84,11 +84,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::VariableNameMap &inputs,
                                  const framework::VariableNameMap &outputs,
                                  const framework::AttributeMap &attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {
-  // FIXME(gongwb): this global file flag should not exists.
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  remove(file_path.c_str());
-}
+    : OperatorBase(type, inputs, outputs, attrs) {}
 
 ListenAndServOp::~ListenAndServOp() { Stop(); }
 

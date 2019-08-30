@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
+from dist_test_utils import *
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -103,6 +104,7 @@ class TestListenAndServOp(unittest.TestCase):
         self.ps_timeout = 5
 
     def _start_pserver(self, pserver_id, use_cuda, sync_mode, pserver_func):
+        remote_ps_flag()
         p = Process(target=pserver_func, args=(pserver_id, use_cuda, sync_mode))
         p.daemon = True
         p.start()

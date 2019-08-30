@@ -14,16 +14,7 @@
 
 from __future__ import print_function
 
-import os, errno
-
-
-def silentremove(filename):
-    try:
-        os.remove(filename)
-    except OSError as e:  # this would be "except OSError, e:" before Python 2.6
-        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
-            raise  # re-raise exception if a different error occurred
-
+from dist_test_utils import *
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
@@ -110,7 +101,7 @@ def gen_complete_file_flag(flag_file):
         f.write("complete")
 
 
-class TestListenAndServOp(OpTest):
+class TestListenAndServOp(unittest.TestCase):
     def setUp(self):
         self.ps_timeout = 5
         self.ip = "127.0.0.1"
@@ -119,6 +110,7 @@ class TestListenAndServOp(OpTest):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
+        remove_ps_flag()
         p = Process(
             target=pserver_func,
             args=(use_cuda, sync_mode, self.ip, self.port, self.trainers,

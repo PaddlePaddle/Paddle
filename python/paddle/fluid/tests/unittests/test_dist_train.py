@@ -28,6 +28,7 @@ from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
+from dist_test_utils import *
 
 from paddle.fluid import core
 
@@ -38,6 +39,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 class TestSendOp(unittest.TestCase):
     def test_send(self):
+        remove_ps_flag()
         # Run init_serv in a thread
         place = fluid.CPUPlace()
         # NOTE: python thread will not work here due to GIL.

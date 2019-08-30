@@ -27,6 +27,7 @@ from op_test import OpTest
 import numpy
 import urllib
 import sys
+from dist_test_utils import *
 
 
 def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
@@ -98,6 +99,7 @@ class TestFlListenAndServOp(OpTest):
         self.trainer_id = 0
 
     def _start_pserver(self, use_cuda, sync_mode, pserver_func):
+        remote_ps_flag()
         p = Process(
             target=pserver_func,
             args=(use_cuda, sync_mode, self.ip, self.port, self.trainers,
