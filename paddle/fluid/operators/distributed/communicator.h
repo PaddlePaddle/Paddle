@@ -197,10 +197,10 @@ class Communicator {
   // for geo-sgd algorithm
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(Scope *scope);
-  void GeoSgdParamCopy(Scope *scope_x,Scope *scope_y);
-  std::shared_ptr<Variable> SubVars(td::string& var_name,
-                      framework::Scope *scope_x,framework::Scope *scope_y,int trainers);
+  void GeoSgdParamInit(framework::Scope *scope);
+  void GeoSgdParamCopy(framework::Scope *scope_x,framework::Scope *scope_y);
+  std::shared_ptr<Variable> SubVars(std::string& var_name,
+                      framework::Scope *scope_x,framework::Scope *scope_y,int &trainers);
   void DefineGeoSgdStatus(bool status){is_geo_sgd_=status;}
 
 private:
@@ -211,7 +211,7 @@ private:
 
   // the following code is for initialize the commnunicator
  public:
-  static void Init(const RpcCtxMap&[] send_varname_to_ctx,
+  static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
     if (communicator_ == nullptr) {
       communicator_.reset(new Communicator(send_varname_to_ctx,
