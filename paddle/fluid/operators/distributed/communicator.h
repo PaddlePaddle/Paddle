@@ -221,6 +221,9 @@ class Communicator {
   // geo-sgd algorithm
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
+  void GeoSgdParamInit(Scope &scope);
+  void GeoSgdParamCopy(Scope &scope_x,Scope &scope_y);
+
 
 private:
   bool is_geo_sgd_ = false;
