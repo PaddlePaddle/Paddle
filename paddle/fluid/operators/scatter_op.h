@@ -79,9 +79,18 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
       framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
     }
     if (dUpdates) {
+
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->type();
+
+      if (index_type == framework::proto::VarType::INT32) {
+        CPUGather<T, int>(ctx.device_context(), *dOut, *Ids, dUpdates);
+
+    } else if (index_type == framework::proto::VarType::INT64) {
+        CPUGather<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+    }
+
     }
   }
 };
