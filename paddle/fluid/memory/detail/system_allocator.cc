@@ -26,7 +26,6 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"

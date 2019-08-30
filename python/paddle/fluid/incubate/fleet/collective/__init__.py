@@ -25,6 +25,7 @@ from paddle.fluid import compiler
 
 import os
 import sys
+import six
 
 
 class LambConfig(object):
@@ -99,13 +100,15 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.use_local_sgd = False
         self.use_dist_fc = False
 
-        self.local_sgd_config = None  # LocalSGDConfig
         self.dist_fc_config = None  # DistFCConfig
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
 
         self.exec_strategy = fluid.ExecutionStrategy()
+
+        # configurations below are used for unit test
+        self._ut4grad_allreduce = False
 
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
@@ -161,7 +164,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
     def _check_condition(self, name, **kwargs):
-        for k, v in kwargs.iterms():
+        for k, v in six.iteritems(kwargs):
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
@@ -170,12 +173,13 @@ class CollectiveOptimizer(DistributedOptimizer):
         Check the conflict condtions.
         """
         if strategy.use_local_sgd:
+            strategy.mode = "collective"
+            strategy.collective_mode = "local_sgd"
             self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-            assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
             self._check_condition(
@@ -184,6 +188,14 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+
+        if strategy._ut4grad_allreduce:
+            strategy.mode = "collective"
+            strategy.collective_mode = "grad_allreduce"
+            self._check_condition(
+                "_ut4grad_allreduce",
+                use_dgc=main_program._enable_dgc,
+                use_lamb=main_program._use_lamb)
 
         if self._strategy.collective_mode=="local_sgd" \
                 or self._strategy.collective_mode == "grad_allreduce":
