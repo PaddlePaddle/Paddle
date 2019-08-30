@@ -35,6 +35,17 @@ using framework::ir::Node;
 std::vector<std::string> ExtractParameters(
     const std::unordered_set<Node *> &nodes);
 
+std::unordered_set<Node *> GetRelatedIOVarNodes(
+    const std::vector<Node *> &nodes);
+
+void PrependFeedOps(framework::BlockDesc* global_block,
+                    const std::vector<std::string>& feed_target_names,
+                    std::string feed_holder_name = "feed");
+
+void PrependFetchOps(framework::BlockDesc* global_block,
+                    const std::vector<std::string>& fetch_target_names,
+                    std::string fetch_holder_name = "fetch");
+
 void RenameAndGetOutputs(
     const std::vector<framework::ir::Node *> &subgraph_nodes,
     framework::BlockDesc *block_desc,

@@ -22,12 +22,15 @@
 #include <vector>
 
 #include "paddle/fluid/inference/lite/op_teller.h"
+#include "google/protobuf/text_format.h"
+#include "google/protobuf/message.h"
 
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
+// using namespace google::protobuf;
 
 namespace paddle {
 namespace inference {
@@ -60,7 +63,14 @@ void LiteSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
-    LOG(INFO) << "[lite_subgraph_pass] node name = " << node->Name();
+    LOG(INFO) << "======== [node ] ========"; 
+    LOG(INFO) << "name: " << node->Name();
+    for (auto* in: node->inputs) {
+      LOG(INFO) << "   inputs: " << in->Name();
+    }
+    for (auto* out: node->outputs) {
+      LOG(INFO) << "   outputs: " << out->Name();
+    }
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
       CreateLiteOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
@@ -84,40 +94,57 @@ void LiteSubgraphPass::CreateLiteOp(
     framework::ir::Node *node, Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
-  // auto *op_desc = node->Op();
+
   auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
   framework::ProgramDesc *program_desc =
       Get<framework::ProgramDesc *>("program");
-  // Add new block for TensorRTEngineOP
-  const framework::BlockDesc &main_block =
-      program_desc->Block(framework::kRootBlockIndex);
-  // const framework::BlockDesc& main_block = program_desc->Block(0);
-  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
-  // An fake block desc.
-  framework::proto::BlockDesc block_proto;
-  framework::BlockDesc block_desc(nullptr, &block_proto);
-  block_desc.Proto()->set_parent_idx(-1);
-  block_desc.Proto()->set_idx(0);
+  const framework::BlockDesc &global_block =
+      program_desc->Block(framework::kRootBlockIndex);
+  framework::BlockDesc *sub_block = program_desc->AppendBlock(global_block);
+
+  framework::ProgramDesc engine_program;
+  framework::BlockDesc* engine_global_block = engine_program.MutableBlock(framework::kRootBlockIndex);
   string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
                           subgraph.size());
-  LOG(INFO) << "Hello World!";
 
-  for (auto *node : subgraph) {
-    LOG(INFO) << "[subgraph] node name = " << node->Name();
-    for (auto* in: node->inputs) {
-      LOG(INFO) << "[in] node name = " << in->Name();
-    }
-    for (auto* out: node->outputs) {
-      LOG(INFO) << "[out] node name = " << out->Name();
-    }
-    auto *new_block_op = new_block->AppendOp();
-    auto *op = block_desc.AppendOp();
-    *new_block_op->Proto() = *node->Op()->Proto();
-    *op->Proto() = *node->Op()->Proto();
+  std::unordered_set<Node *> io_var_nodes;
+  io_var_nodes = GetRelatedIOVarNodes(subgraph);
+
+  for (auto *var_node: io_var_nodes) {
+    auto *sub_block_var = sub_block->Var(var_node->Name());
+    auto *var = engine_global_block->Var(var_node->Name());
+    *sub_block_var->Proto() = *var_node->Var()->Proto();
+    *var->Proto() = *var_node->Var()->Proto();
   }
+
+  for (auto *op_node : subgraph) {
+    auto *sub_block_op = sub_block->AppendOp();
+    auto *op = engine_global_block->AppendOp();
+    *sub_block_op->Proto() = *op_node->Op()->Proto();
+    *op->Proto() = *op_node->Op()->Proto();
+  }
+
+  auto target_names = [](const std::vector<framework::ir::Node*>& nodes) {
+    std::vector<std::string> names;
+    for (const auto& node: nodes) {
+      if (node->IsVar() && !node->Var()->Persistable()) { 
+        names.push_back(node->Name());
+      }
+    }
+    return names;
+  };
+
+  PrependFeedOps(engine_global_block, target_names(node->inputs));
+  PrependFetchOps(engine_global_block, target_names(node->outputs));
+
+
+  std::string str;
+  google::protobuf::TextFormat::PrintToString(*(engine_program.Proto()), &str);
+  std::cout << "=====" << std::endl;
+  std::cout << str;
 
 }
 

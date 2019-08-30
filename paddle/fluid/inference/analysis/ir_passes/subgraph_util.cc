@@ -53,6 +53,51 @@ std::vector<std::string> ExtractParameters(
   return parameters;
 }
 
+std::unordered_set<Node *> GetRelatedIOVarNodes(
+    const std::vector<Node *> &nodes) {
+  std::unordered_set<Node *> io_nodes;
+  for (const auto &node : nodes) {
+    if (!node->IsOp()) continue;
+    for (const auto &in : node->inputs) {
+      io_nodes.insert(in);
+    }
+    for (const auto &out : node->outputs) {
+      io_nodes.insert(out);
+    }
+  }
+  return io_nodes;
+}
+
+void PrependFeedOps(framework::BlockDesc* global_block,
+                    const std::vector<std::string>& feed_target_names,
+                    std::string feed_holder_name) {
+  framework::VarDesc* feed_var = global_block->Var(feed_holder_name);
+  feed_var->SetDataType(paddle::framework::proto::VarType::FEED_MINIBATCH);
+  feed_var->SetPersistable(true);
+  for (size_t i = 0; i < feed_target_names.size(); i++) {
+    framework::OpDesc* feed_op = global_block->AppendOp();
+    feed_op->SetType("feed");
+    feed_op->SetInput("X", {feed_holder_name});
+    feed_op->SetOutput("Out", {feed_target_names[i]});
+    feed_op->SetAttr("col", static_cast<int>(i));
+  }
+}
+
+void PrependFetchOps(framework::BlockDesc* global_block,
+                    const std::vector<std::string>& fetch_target_names,
+                    std::string fetch_holder_name) {
+  framework::VarDesc* feed_var = global_block->Var(fetch_holder_name);
+  feed_var->SetDataType(paddle::framework::proto::VarType::FETCH_LIST);
+  feed_var->SetPersistable(true);
+  for (size_t i = 0; i < fetch_target_names.size(); i++) {
+    framework::OpDesc* fetch_op = global_block->AppendOp();
+    fetch_op->SetType("fetch");
+    fetch_op->SetInput("X", {fetch_target_names[i]});
+    fetch_op->SetOutput("Out", {fetch_holder_name});
+    fetch_op->SetAttr("col", static_cast<int>(i));
+  }
+}
+
 void RenameAndGetOutputs(
     const std::vector<framework::ir::Node *> &subgraph_nodes,
     framework::BlockDesc *block_desc,
