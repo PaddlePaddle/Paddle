@@ -37,7 +37,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       pattern->NewNode(patterns::UniqueKey("X"))->assert_var_not_persistable();
 
   fc_rts_pattern(x);
-  LOG(INFO) << "++++build fuse";
   // Create New OpDesc
   auto fuse_creater = [&](
       Node* x, Node* mul, Node* mul_out, Node* mul0_w, Node* mul1_w,
@@ -45,21 +44,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       Node* eltadd1_b, Node* eltadd2_b, Node* reshape2, Node* reshape2_out,
       Node* transpose2, Node* transpose2_out, Node* transpose2_1_out,
       Node* transpose2_2_out, Node* scale, Node* scale_out) {
-#define NEW_NAME(x) name_scope + "/at." #x ".new"
-#define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
-// SET_IN(Weight0X, mul0_w);
-// SET_IN(Weight1X, mul1_w);
-// SET_IN(Weight2X, mul2_w);
-
-// SET_IN(Bias0X, eltadd0_b);
-// SET_IN(Bias1X, eltadd1_b);
-// SET_IN(Bias2X, eltadd2_b);
-
-#undef SET_IN
-
-    // op_desc.SetOutput("OutW", {scale_out->Name()});
-    // op_desc.SetOutput("OutX", {transpose1_out->Name()});
-
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
 
     auto* w0_var = scope->FindVar(mul0_w->Name());
@@ -92,8 +76,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto* w0_data = w0_tensor->mutable_data<float>(platform::CPUPlace());
     // scale for w0
     for (int i = 0; i < w0_tensor->numel(); ++i) {
-      // LOG(INFO)<<"+++ori w0:"<<w0_data[i]<<" scale:"<<scale_attr *
-      // w0_data[i];
       if (after_scale) {
         auto v = w0_data[i];
         w0_data[i] = v * scale_attr + scale_bias;
@@ -107,7 +89,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     int csize = w_init_dim[1] / 3;
     auto cb_size = csize * sizeof(float);
 
-    LOG(INFO) << "+++++w0:";
     for (int i = 0; i < w_init_dim[0]; ++i) {
       memcpy(data, w0_data, cb_size);
       data += csize;
@@ -119,13 +100,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       data += csize;
       w2_data += csize;
     }
-    LOG(INFO) << "+++++newdata:";
-    /*float * tmp = fuse_column_w_tensor->data<float>();
-    for (int i =0; i < w_init_dim[0] * w_init_dim[1]; ++i) {
-        LOG(INFO)<<tmp[i];
-    }*/
-    LOG(INFO) << "++++scale:" << scale_attr << " dims:" << w0_tensor->dims()
-              << "copy size:" << data - fuse_column_w_tensor->data<float>();
 
     auto* eltadd0_var = scope->FindVar(eltadd0_b->Name());
     auto* eltadd0_tensor = eltadd0_var->GetMutable<framework::LoDTensor>();
@@ -161,11 +135,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     memcpy(b_data + bsize, b1_data, copy_size);
     memcpy(b_data + 2 * bsize, b2_data, copy_size);
 
-    // VarDesc transpose_out_desc(patterns::PDNodeName(name_scope,
-    // "transpose_out"));
-    // fuse_column_w_desc.SetPersistable(true);
-    // auto* transpose_out_node = graph->CreateVarNode(&transpose_out_desc);
-
     mul->Op()->SetInput("X", {x->Name()});
     mul->Op()->SetInput("Y", {fuse_column_w_node->Name()});
     mul->Op()->SetOutput("Out", {mul_out->Name()});
@@ -180,100 +149,26 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     reshape2->Op()->SetOutput("Out", {reshape2_out->Name()});
     std::vector<int> shape =
         boost::get<std::vector<int>>(reshape2->Op()->GetAttr("shape"));
-    shape.insert(shape.begin() + 2, 3);
-    // shape[0] = 3;
+    shape[2] *= 3;
     reshape2->Op()->SetAttr("shape", shape);
 
     transpose2->Op()->SetInput("X", {reshape2_out->Name()});
     transpose2->Op()->SetOutput("Out", {transpose2_out->Name()});
-    std::vector<int> axis =
-        boost::get<std::vector<int>>(transpose2->Op()->GetAttr("axis"));
-    axis.push_back(4);
-    axis[0] = 0;
-    axis[1] = 3;
-    axis[2] = 2;
-    axis[3] = 1;
-
-    transpose2->Op()->SetAttr("axis", axis);
-
-    VarDesc split_out_desc(patterns::PDNodeName(name_scope, "split_out"));
-    split_out_desc.SetPersistable(true);
-    auto* scale_out_t = graph->CreateVarNode(&split_out_desc);
-    scope->Var(scale_out_t->Name())
-        ->GetMutable<LoDTensor>()
-        ->mutable_data<float>(platform::CPUPlace());
-
-    VarDesc split_out1_desc(patterns::PDNodeName(name_scope, "split_out1"));
-    auto* transpose2_1_out_t = graph->CreateVarNode(&split_out1_desc);
-    scope->Var(transpose2_1_out_t->Name())
-        ->GetMutable<LoDTensor>()
-        ->mutable_data<float>(platform::CPUPlace());
-    VarDesc split_out2_desc(patterns::PDNodeName(name_scope, "split_out2"));
-    auto* transpose2_2_out_t = graph->CreateVarNode(&split_out2_desc);
-    scope->Var(transpose2_2_out_t->Name())
-        ->GetMutable<LoDTensor>()
-        ->mutable_data<float>(platform::CPUPlace());
 
     OpDesc split_op_desc;
 
-    // split_op_desc.SetOutput("Out", {scale_out->Name(),
-    // transpose2_1_out->Name(), transpose2_2_out->Name()});
-
-    /*#define SET_IMTERMEDIATE_OUT(key) split_op_desc.SetOutput(#key,
-    {NEW_NAME(key)})
-    SET_IMTERMEDIATE_OUT(scale_out_t);
-    SET_IMTERMEDIATE_OUT(transpose2_1_out_t);
-    SET_IMTERMEDIATE_OUT(transpose2_2_out_t);
-    #undef SET_IMTERMEDIATE_OUT
-
-    #define NEW_IMTERMEDIATE_OUT(key)          \
-      scope->Var(NEW_NAME(key))                \
-          ->GetMutable<framework::LoDTensor>() \
-          ->mutable_data<float>(platform::CPUPlace())
-        NEW_IMTERMEDIATE_OUT(scale_out_t);
-        NEW_IMTERMEDIATE_OUT(transpose2_1_out_t);
-        NEW_IMTERMEDIATE_OUT(transpose2_2_out_t);
-    #undef NEW_NAME
-    #undef NEW_IMTERMEDIATE_OUT
-    */
     split_op_desc.SetType("split");
     split_op_desc.SetInput("X", {transpose2_out->Name()});
-    split_op_desc.SetOutput("Out",
-                            {scale_out_t->Name(), transpose2_1_out_t->Name(),
-                             transpose2_2_out_t->Name()});
+    split_op_desc.SetOutput("Out", {scale_out->Name(), transpose2_1_out->Name(),
+                                    transpose2_2_out->Name()});
     split_op_desc.SetAttr("num", 3);
-    split_op_desc.SetAttr("axis", 2);
+    split_op_desc.SetAttr("axis", 1);
 
     auto* split = graph->CreateOpNode(&split_op_desc);
     IR_NODE_LINK_TO(transpose2_out, split);
-    IR_NODE_LINK_TO(split, scale_out_t);
-    IR_NODE_LINK_TO(split, transpose2_1_out_t);
-    IR_NODE_LINK_TO(split, transpose2_2_out_t);
-
-    OpDesc squeeze_op_desc;
-    std::vector<int> axes;
-    axes.push_back(2);
-    squeeze_op_desc.SetType("squeeze");
-    squeeze_op_desc.SetInput("X", {scale_out_t->Name()});
-    squeeze_op_desc.SetOutput("Out", {scale_out->Name()});
-    squeeze_op_desc.SetAttr("axes", axes);
-    auto* squeeze0 = graph->CreateOpNode(&squeeze_op_desc);
-    IR_NODE_LINK_TO(scale_out_t, squeeze0);
-    IR_NODE_LINK_TO(squeeze0, scale_out);
-
-    squeeze_op_desc.SetInput("X", {transpose2_1_out_t->Name()});
-    squeeze_op_desc.SetOutput("Out", {transpose2_1_out->Name()});
-    squeeze_op_desc.SetAttr("axes", axes);
-    auto* squeeze1 = graph->CreateOpNode(&squeeze_op_desc);
-    IR_NODE_LINK_TO(transpose2_1_out_t, squeeze1);
-    IR_NODE_LINK_TO(squeeze1, transpose2_1_out);
-
-    squeeze_op_desc.SetInput("X", {transpose2_2_out_t->Name()});
-    squeeze_op_desc.SetOutput("Out", {transpose2_2_out->Name()});
-    squeeze_op_desc.SetAttr("axes", axes);
-    auto* squeeze2 = graph->CreateOpNode(&squeeze_op_desc);
-    IR_NODE_LINK_TO(transpose2_2_out_t, squeeze2);
-    IR_NODE_LINK_TO(squeeze2, transpose2_2_out);
+    IR_NODE_LINK_TO(split, scale_out);
+    IR_NODE_LINK_TO(split, transpose2_1_out);
+    IR_NODE_LINK_TO(split, transpose2_2_out);
   };
 
   int fusion_count{0};
@@ -341,7 +236,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   };
   gpd(graph, handler);
 
-  LOG(INFO) << "++++fuse count:" << fusion_count;
   return fusion_count;
 }
 
@@ -350,10 +244,6 @@ PDNode* FCReshapeTransposePattern::operator()(
   // Create shared nodes.
   auto* dropout = pattern->NewNode(dropout_repr());
 
-  /*#define NEW_NODE(arg__, io__) \
-    auto *arg__ =               \
-        pattern->NewNode(arg__##_repr())->assert_is_op_##io__("gru", #arg__);
-  */
   auto* dropout_out_var = pattern->NewNode(dropout_out_repr());
   dropout_out_var->assert_is_op_input("mul");
 
@@ -475,9 +365,6 @@ PDNode* FCReshapeTransposePattern::operator()(
   auto* matmul1_out_var =
       pattern->NewNode(matmul1_out_repr())->assert_is_op_output("matmul");
 
-  // auto *reshape2_2 =
-  // pattern->NewNode(reshape2_2_repr())->assert_is_op("reshape2");
-
   // Link all nodes together
   dropout->LinksFrom({x}).LinksTo({dropout_out_var});
   mul0->LinksFrom({dropout_out_var, mul0_w_var}).LinksTo({mul0_out_var});
@@ -514,7 +401,6 @@ PDNode* FCReshapeTransposePattern::operator()(
 void FCReshapeTransposeFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
-  LOG(INFO) << "+++++fcreshape transpose";
   int fusion_count = patterns::BuildFusion(graph, name_scope_, param_scope());
 
   AddStatis(fusion_count);
