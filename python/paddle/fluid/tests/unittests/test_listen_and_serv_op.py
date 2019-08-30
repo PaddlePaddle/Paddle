@@ -14,9 +14,22 @@
 
 from __future__ import print_function
 
+import os, errno
+
+
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:  # this would be "except OSError, e:" before Python 2.6
+        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
+            raise  # re-raise exception if a different error occurred
+
+
+silentremove("test_handle_signal_in_serv_op.flag")
+silentremove("test_list_and_serv_run_empty_optimize_block.flag")
+
 import paddle
 import paddle.fluid as fluid
-import os
 import signal
 import subprocess
 import time
@@ -92,6 +105,11 @@ def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
     exe.run(pserver_prog)
 
 
+def gen_complete_file_flag(flag_file):
+    with open(flag_file, "w") as f:
+        f.write("complete")
+
+
 class TestListenAndServOp(OpTest):
     def setUp(self):
         self.ps_timeout = 5
@@ -148,6 +166,8 @@ class TestListenAndServOp(OpTest):
         print("test_handle_signal_in_serv_op before join p2 pid:", p2.pid)
         p2.join()
 
+        gen_complete_file_flag("test_handle_signal_in_serv_op.flag")
+
     def test_list_and_serv_run_empty_optimize_block(self):
         # run pserver on CPU in sync mode
         p1 = self._start_pserver(False, True, run_pserver_with_empty_block)
@@ -172,6 +192,8 @@ class TestListenAndServOp(OpTest):
         print("test_list_and_serv_run_empty_optimize_block before join p2 pid:",
               p2.pid)
         p2.join()
+        gen_complete_file_flag(
+            "test_list_and_serv_run_empty_optimize_block.flag")
 
 
 if __name__ == '__main__':

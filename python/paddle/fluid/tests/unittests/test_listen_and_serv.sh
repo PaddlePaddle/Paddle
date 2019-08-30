@@ -4,19 +4,16 @@ unset https_proxy http_proxy
 nohup python -u test_listen_and_serv_op.py > test_listen_and_serv_op.log 2>&1 &
 pid=$!
 
-time_out=True
+flag1=test_handle_signal_in_serv_op.flag
+flag2=test_list_and_serv_run_empty_optimize_block.flag
+
 for i in {1..10}; do 
     sleep 3s
-    if ! pgrep -x test_listen_and_serv_op; then
-        time_out=False
-        break
+    if [[ -f "${flag1}" && -f "${flag2}" ]];  then
+        echo "test_listen_and_serv_op exit"
+        exit 0
     fi
 done
-
-if [[ $time_out == "False" ]]; then
-    echo "test_listen_and_serv_op exit"
-    exit 0
-fi
 
 echo "test_listen_and_serv_op.log context"
 cat test_listen_and_serv_op.log
@@ -32,6 +29,10 @@ done
 
 #display /tmp/files
 ls -l /tmp/paddle.*
+
+if ! pgrep -x test_listen_and_serv_op; then
+    exit 1
+fi
 
 kill -9 $pid
 
