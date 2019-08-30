@@ -41,6 +41,12 @@ DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
             "merge sparse gradient before sending");
+// for geo-sgd algorithm
+DEFINE_int32(communicator_geo_sgd_local_train_loop_nums, 20,
+             "local train loop nums before push param to pserver");
+DEFINE_int32(communicator_trainer_nums, 2,
+             "trainer node nums");
+
 
 namespace paddle {
 namespace operators {
@@ -236,6 +242,11 @@ void Communicator::RecvThread() {
 void Communicator::Send(const std::string &var_name,
                         const framework::Scope &scope) {
   VLOG(3) << "communicator send " << var_name;
+  // for geo sgd
+  if (is_geo_sgd_){
+    GeoSgdSend(var_name,scope);
+    return;
+  }
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
@@ -252,6 +263,24 @@ void Communicator::Send(const std::string &var_name,
     auto &queue = send_varname_to_queue_.at(var_name);
     VLOG(3) << "send " << var_name << " queue size " << queue->Size();
     queue->Push(tmp_grad_var);
+  }
+}
+
+void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scope& scope){
+  VLOG(3) << "geo sgd communicator get loop num"<< var_name;
+  if (is_need_push < FLAGS_NEED_PUSH_NUM){
+    is_need_push++;
+  }
+  else{
+    is_need_push = 0;
+    for (auto &iter:send_varname_to_queue_)
+    {
+      std::string local_var_name = iter.first;
+      auto var_delta = SubVars(local_var_name, global_scope_,old_scope_,TRAINERS);
+      auto &queue = send_varname_to_queue_.at(local_var_name);
+      VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
+      queue->Push(var_delta);
+    }
   }
 }
 
@@ -289,13 +318,42 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
     }
   }
-
   // init communicator here
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
     LOG(WARNING) << "no var need to send and recv!!";
   }
   operators::distributed::Communicator::Init(send_varname_to_ctx,
                                              recv_varname_to_ctx, param_scope);
+}
+
+void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
+                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info){
+  VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
+  is_geo_sgd_ = true;
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto &iter : vars_info) {
+      std::string var_name = iter.first;
+      std::vector<std::string> vars_names = iter.second["var_names"];
+      std::vector<std::string> vars_sections_str = iter.second["sections"];
+      std::vector<int64_t> vars_sections_int = {};
+      for (std::string str : vars_sections_str){
+          int64_t str2i = std::stol(str.c_str());
+          vars_sections_int.push_back(str2i);
+      }
+      std::vector<std::string> vars_epmap = iter.second["epmap"];
+      int trainer_id = 0;
+      send_varname_to_ctx[var_name] = operators::distributed::RpcContext(
+          var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
+      recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
+          var_name,vars_names,vars_epmap,{},trainer_id);
+      VLOG(3) << "find and init an send&recv param: "<< send_varname_to_ctx[var_name];
+  }
+  // init communicator here
+  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
+    LOG(WARNING) << "no var need to send and recv!!";
+  }
+  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope);  
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }

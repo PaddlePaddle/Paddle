@@ -155,6 +155,30 @@ inline void MergeVars(const std::string& var_name,
   }
 }
 
+inline std::shared_ptr<Variable> SubVars(const std::string& var_name,
+                      framework::Scope &scope_x,framework::Scope &scope_y,int trainers) {
+  auto cpu_place = platform::CPUPlace();
+  auto* var_x = scope_x.FindVar(var_name);
+  auto* var_y = scope_y.FindVar(var_name);
+  auto temp_var = std::make_shared<Variable>();
+  framework::CopyVariable(*var_x, temp_var.get());
+
+  if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
+    auto &var_x_tensor = var_x->Get<framework::LoDTensor>();
+    auto &var_y_tensor = var_y->Get<framework::LoDTensor>();
+    auto &temp_var_tensor = temp_var->Get<framework::LoDTensor>();
+    
+    int element_number = var_x_tensor -> numel();
+    float* x_mutable_data = var_x_tensor -> mutable_data<float>(var_x_tensor->place());
+    float* y_mutable_data = var_y_tensor -> mutable_data<float>(var_y_tensor->place());
+    float* temp_mutable_data = temp_var_tensor -> mutable_data<float>(temp_var_tensor->place());
+    for(int i = 0; i < element_number; i++){
+      temp_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/trainers;
+    }
+  } 
+  return temp_var;
+}
+
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
 class Communicator {
@@ -188,10 +212,21 @@ class Communicator {
   std::unique_ptr<std::thread> send_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
+
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
+  
+  // geo-sgd algorithm
+private:
+  void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
+
+private:
+  bool is_geo_sgd_ = false;
+  Scope* global_scope_;
+  Scope* old_scope_;
+  int is_need_push_ = 0;
 
   // the following code is for initialize the commnunicator
  public:
@@ -205,6 +240,10 @@ class Communicator {
 
   static void Init(const paddle::framework::ProgramDesc& program,
                    Scope* param_scope);
+
+  // for geo-sgd algorithm
+  static void GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
+                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info);
 
   static Communicator* GetInstance();
 
