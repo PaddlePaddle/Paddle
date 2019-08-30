@@ -44,6 +44,10 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
 namespace paddle {
 namespace framework {
 
+#ifdef _WIN32
+#define strdup _strdup
+#endif
+
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
 
