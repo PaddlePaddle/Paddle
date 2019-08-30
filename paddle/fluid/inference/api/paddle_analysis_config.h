@@ -242,9 +242,9 @@ struct AnalysisConfig {
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
 
-  /** \brief Control whether to print profiling report.
+  /** \brief Turn on profiling report.
    *
-   * If turned off, no profiling report will be generateed.
+   * If not turned on, no profiling report will be generateed.
    */
   void EnableProfile();
   /** A boolean state telling whether the profiler is activated.

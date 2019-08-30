@@ -154,6 +154,8 @@ class TensorRTEngine {
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
 
+  // When setting weight_map, a self-increasing suffix is needed for the names
+  // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
                   std::unique_ptr<framework::Tensor> w_tensor) {
     static int suffix_counter = 0;

@@ -128,6 +128,22 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         }
         break;
       }
+      case PaddleDType::INT8: {
+        int8_t *pdata = static_cast<int8_t *>(out.data.data());
+        int8_t *pdata_ref = static_cast<int8_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::UINT8: {
+        uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
+        uint8_t *pdata_ref = static_cast<uint8_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
     }
   }
 }
@@ -166,6 +182,24 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::INT32: {
         int32_t *pdata = static_cast<int32_t *>(out.data.data());
         int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::INT8: {
+        int8_t *pdata = static_cast<int8_t *>(out.data.data());
+        int8_t *pdata_ref = ref_out.data<int8_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::UINT8: {
+        uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
+        uint8_t *pdata_ref = ref_out.data<uint8_t>(&place, &ref_size);
         EXPECT_EQ(size, ref_size);
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
@@ -445,9 +479,12 @@ void TestPrediction(const PaddlePredictor::Config *config,
 
 void SummarizeAccuracy(float avg_acc_fp32, float avg_acc_int8,
                        int compared_idx) {
-  PADDLE_ENFORCE(compared_idx <= 2 && compared_idx >= 1,
-                 "Compare either top1 accuracy either mAP(top5), the "
-                 "compared_idx is out of range");
+  PADDLE_ENFORCE_LE(compared_idx, 2,
+                    "Compare either top1 accuracy or mAP (top5), the "
+                    "compared_idx is out of range");
+  PADDLE_ENFORCE_GE(compared_idx, 1,
+                    "Compare either top1 accuracy or mAP (top5), the "
+                    "compared_idx is out of range");
   std::string prefix = (compared_idx == 1) ? "top1_accuracy " : "mAP ";
   LOG(INFO) << "--- Accuracy summary --- ";
   LOG(INFO) << "Accepted " << prefix
@@ -485,8 +522,23 @@ void CompareAccuracy(
   float total_accs_quant{0};
   float total_accs_ref{0};
   for (size_t i = 0; i < output_slots_quant.size(); ++i) {
-    PADDLE_ENFORCE(output_slots_quant[i].size() >= 2UL);
-    PADDLE_ENFORCE(output_slots_ref[i].size() >= 2UL);
+    if (compared_idx == 1) {
+      PADDLE_ENFORCE_GE(
+          output_slots_quant[i].size(), 2UL,
+          "To achieve top 1 accuracy, output_slots_quant[i].size()>=2");
+      PADDLE_ENFORCE_GE(
+          output_slots_ref[i].size(), 2UL,
+          "To achieve top 1 accuracy, output_slots_ref[i].size()>=2");
+    } else if (compared_idx == 2) {
+      PADDLE_ENFORCE_GE(output_slots_quant[i].size(), 3UL,
+                        "To achieve mAP, output_slots_quant[i].size()>=3");
+      PADDLE_ENFORCE_GE(output_slots_ref[i].size(), 3UL,
+                        "To achieve mAP, output_slots_ref[i].size()>=3");
+    } else {
+      throw std::invalid_argument(
+          "CompareAccuracy: compared_idx is out of range.");
+    }
+
     if (output_slots_quant[i][compared_idx].lod.size() > 0 ||
         output_slots_ref[i][compared_idx].lod.size() > 0)
       throw std::invalid_argument("CompareAccuracy: output has nonempty LoD.");
@@ -535,8 +587,8 @@ void CompareNativeAndAnalysis(
   std::vector<std::vector<PaddleTensor>> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  PADDLE_ENFORCE(native_outputs.size() > 0, "Native output is empty.");
-  PADDLE_ENFORCE(analysis_outputs.size() > 0, "Analysis output is empty.");
+  PADDLE_ENFORCE_GT(native_outputs.size(), 0, "Native output is empty.");
+  PADDLE_ENFORCE_GT(analysis_outputs.size(), 0, "Analysis output is empty.");
   CompareResult(analysis_outputs.back(), native_outputs.back());
 }
 

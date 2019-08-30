@@ -46,7 +46,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
       "You should call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
-      "function before copying data from cpu.");
+      "function before retrieving mutable_data from input tensor.");
   switch (static_cast<int>(place)) {
     case static_cast<int>(PaddlePlace::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
