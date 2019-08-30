@@ -99,6 +99,8 @@ class DistributedStrategy(fluid.BuildStrategy):
         super(DistributedStrategy, self).__init__()
         self.use_local_sgd = False
         self.use_dist_fc = False
+        self.use_mixed_precision = False
+        self.loss_scaling = 1.0
 
         self.dist_fc_config = None  # DistFCConfig
         self.mode = "nccl2"  # or collective
@@ -188,6 +190,10 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+
+        if strategy.use_mixed_precision:
+            self._check_condition(
+                "use_mixed_precision", use_dist_fc=strategy.use_dist_fc)
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
@@ -346,8 +352,19 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+        if self._strategy.use_mixed_precision:
+            assert self._strategy.loss_scaling > 1.0 and \
+                isinstance(self._strategy.loss_scaling, float), \
+                "The value of loss_scaling should be a float value \
+                 greater than 1.0."
+
+            optimizer = decorate(
+                self._optimizer, init_loss_scaling=self._strategy.loss_scaling)
+            scaled_loss, optimize_ops, param_grads = \
+                self._optimizer.minimize(loss)
+        else:
+            optimize_ops, param_grads = self._optimizer.minimize(
+                loss, startup_program, parameter_list, no_grad_set)
 
         fleet._origin_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
