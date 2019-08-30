@@ -80,7 +80,8 @@ REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
 
 REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
                   ops::ElementwiseDivDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
+                  ops::ElementwiseDivDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,

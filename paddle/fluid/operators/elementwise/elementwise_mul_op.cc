@@ -77,7 +77,8 @@ REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
                   ops::ElementwiseMulOpGradDescMaker);
 REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
                   ops::ElementwiseMulDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+                  ops::ElementwiseMulDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
