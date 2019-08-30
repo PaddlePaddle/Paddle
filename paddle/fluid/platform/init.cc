@@ -206,7 +206,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
   try {
-    LOG(WARNING) << "Signal raises!\n" + std::string(data, size);
+    LOG(WARNING) << std::string(data, size);
     std::ofstream dump_info;
     dump_info.open(file_path, std::ios::app);
     dump_info << std::string(data, size);
