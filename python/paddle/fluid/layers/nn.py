@@ -122,6 +122,7 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather',
+    'gather_nd',
     'scatter',
     'sequence_scatter',
     'random_crop',
@@ -8447,6 +8448,91 @@ def gather(input, index, overwrite=True):
         outputs={"Out": out},
         attrs={'overwrite': overwrite})
     return out
+
+
+def gather_nd(input, index, name=None):
+    """
+    **Gather Nd Layer**
+
+    This function is actually a high-dimensional extension of :code:`gather` 
+    and supports for simultaneous indexing by multiple axes. :attr:`index` is a 
+    K-dimensional integer tensor, which is regarded as a (K-1)-dimensional 
+    tensor of :attr:`index` into :attr:`input`, where each element defines 
+    a slice of params:
+
+    .. math::
+
+        output[(i_0, ..., i_{K-2})] = input[index[(i_0, ..., i_{K-2})]]
+
+    Obviously, :code:`index.shape[-1] <= input.rank` . And, the output tensor has
+    shape :code:`index.shape[:-1] + input.shape[index.shape[-1]:]` .
+
+    .. code-block:: text
+
+            Given:
+                input = [[[ 0,  1,  2,  3],
+                          [ 4,  5,  6,  7],
+                          [ 8,  9, 10, 11]],
+                         [[12, 13, 14, 15],
+                          [16, 17, 18, 19],
+                          [20, 21, 22, 23]]]
+                input.shape = (2, 3, 4)
+
+            * Case 1:
+                index = [[1]]
+                
+                gather_nd(input, index)  
+                         = [input[1, :, :]] 
+                         = [[12, 13, 14, 15],
+                            [16, 17, 18, 19],
+                            [20, 21, 22, 23]]
+
+            * Case 2:
+                index = [[0,2]]
+
+                gather_nd(input, index)
+                         = [input[0, 2, :]]
+                         = [8, 9, 10, 11]
+
+            * Case 3:
+                index = [[1, 2, 3]]
+
+                gather_nd(input, index)
+                         = [input[1, 2, 3]]
+                         = [23]
+
+    Args:
+        input (Variable): The source input
+        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank
+        name (str|None): A name for this layer(optional). If set None, the
+                         layer will be named automatically
+
+    Returns:
+        output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 4, 5], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[2, 2], dtype='int32')
+            output = fluid.layers.gather_nd(x, index)
+
+    """
+    helper = LayerHelper('gather_nd', **locals())
+    dtype = helper.input_dtype()
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type="gather_nd",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": output})
+    return output
 
 
 def scatter(input, index, updates, name=None, overwrite=True):
