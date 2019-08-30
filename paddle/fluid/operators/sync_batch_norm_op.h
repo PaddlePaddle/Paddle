@@ -284,11 +284,10 @@ static __global__ void KeBNBackwardScaleBias(const T *dy, const T *x,
 }
 
 template <typename T, framework::DataLayout layout>
-static __global__ void KeBNRestoreData(const T *x, const T *scale,
-                                       const T *bias, const T *mean,
-                                       const T *variance, const double epsilon,
-                                       const int C, const int M, const int num,
-                                       T *y) {
+static __global__ void KeBNRestoreData(T *x, const T *scale, const T *bias,
+                                       const T *mean, const T *variance,
+                                       const double epsilon, int C, int M,
+                                       int num, const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
@@ -330,7 +329,7 @@ void SyncBatchNormGradFunctor(
     framework::Tensor *d_x, const framework::Tensor *d_y,
     framework::Tensor *d_scale, framework::Tensor *d_bias,
     const framework::Tensor *mean, const framework::Tensor *variance,
-    double epsilon) {
+    const double epsilon) {
   const auto &x_dims = x->dims();
   bool is_inplace = x == y;
 
@@ -380,23 +379,24 @@ void SyncBatchNormGradFunctor(
 
   const int block = 512;
   const int threads = 256;
-  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  int grid = std::min(C, (max_threads + threads - 1) / threads);
   int x_numel = x->numel();
   int fsize = H * W * D;
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  int grid = std::min(C, (max_threads + threads - 1) / threads);
+  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 
   if (is_inplace) {
     int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
     if (layout == framework::DataLayout::kNCHW) {
       KeBNRestoreData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          x_d, scale->data<T>(), bias->data<T>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, y->data<T>());
+          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
+          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
       KeBNRestoreData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          x_d, scale->data<T>(), bias->data<T>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, y->data<T>());
+          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
+          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
     }
   }
 
@@ -419,8 +419,6 @@ void SyncBatchNormGradFunctor(
       comm, stream));
 #endif
 
-  const int block = 512;
-  int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
   if (layout == framework::DataLayout::kNCHW) {
     if (d_scale && d_bias) {
       KeBNBackwardScaleBias<
