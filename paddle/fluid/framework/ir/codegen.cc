@@ -20,7 +20,7 @@ namespace framework {
 namespace ir {
 
 // we get the parameter list code for the expression information
-std::string CodeGen::GetForwardDeclarationCode(
+std::string CodeGen::GetDeclarationCode(
     std::vector<OperationExpression> expression) {
   std::stringstream ret;
   ret << "fuse_kernel";
@@ -64,13 +64,13 @@ std::string CodeGen::GetForwardDeclarationCode(
   return ret.str();
 }
 
-std::string CodeGen::GetForwardOffsetCode() {
+std::string CodeGen::GetOffsetCode() {
   std::stringstream ret;
   ret << indentation << "int offset = idx;" << std::endl;
   return ret.str();
 }
 
-std::string CodeGen::GetForwardComputeCode(
+std::string CodeGen::GetComputeCode(
     std::vector<OperationExpression> expression) {
   // get the right experssion code using suffix expression
   std::stringstream ret;
@@ -82,11 +82,11 @@ std::string CodeGen::GetForwardComputeCode(
 // in order to get the right result of expression, we need to calculate, we
 // store the expression as
 // suffix Expressions using vector
-std::string CodeGen::GetForwardKernelCode(
+std::string CodeGen::GetKernelCode(
     std::vector<OperationExpression> expression) {
-  auto declaration_code = GetForwardDeclarationCode(expression);
-  auto offset_code = GetForwardOffsetCode();
-  auto compute_code = GetForwardComputeCode(expression);
+  auto declaration_code = GetDeclarationCode(expression);
+  auto offset_code = GetOffsetCode();
+  auto compute_code = GetComputeCode(expression);
   auto cuda_kernel = const_kernel_start + declaration_code + const_kernel_mid +
                      offset_code + compute_code + const_kernel_end;
   return cuda_kernel;

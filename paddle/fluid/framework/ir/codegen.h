@@ -22,13 +22,13 @@ namespace ir {
 
 class CodeGen {
  public:
-  std::string GetForwardKernelCode(std::vector<OperationExpression> expression);
+  std::string GetKernelCode(std::vector<OperationExpression> expression);
 
  private:
-  std::string GetForwardDeclarationCode(
-      std::vector<OperationExpression> expression);
-  std::string GetForwardOffsetCode();
-  std::string GetForwardComputeCode(
+  std::string GetDeclarationCode(
+      std::vector<paddle::framework::ir::OperationExpression> expression);
+  std::string GetOffsetCode();
+  std::string GetComputeCode(
       std::vector<paddle::framework::ir::OperationExpression> expression);
 };
 }  // namespace ir

@@ -29,13 +29,15 @@ TEST(codegen, cuda) {
   std::string op1 = "elementwise_mul";
   std::string op2 = "elementwise_add";
   std::string op3 = "sigmoid";
-  OperationExpression opexp1(mul_input, mul_out, op1);
-  OperationExpression opexp2(add_input, add_out, op2);
-  OperationExpression opexp3(sigmod_input, sigmod_out, op3);
+  paddle::framework::ir::OperationExpression opexp1(mul_input, mul_out, op1);
+  paddle::framework::ir::OperationExpression opexp2(add_input, add_out, op2);
+  paddle::framework::ir::OperationExpression opexp3(sigmod_input, sigmod_out,
+                                                    op3);
 
-  std::vector<OperationExpression> fused_op = {opexp1, opexp2, opexp3};
-  CodeGen codegen;
-  std::string result = codegen.GetForwardKernelCode(fused_op);
+  std::vector<paddle::framework::ir::OperationExpression> fused_op = {
+      opexp1, opexp2, opexp3};
+  paddle::framework::ir::CodeGen codegen;
+  std::string result = codegen.GetKernelCode(fused_op);
   std::cout << result << std::endl;
 }
 #endif
