@@ -184,6 +184,7 @@ __all__ = [
     'space_to_depth',
     'affine_grid',
     'sequence_reverse',
+    'sequence_topk_avg_pooling',
     'affine_channel',
     'similarity_focus',
     'hash',
@@ -11130,6 +11131,73 @@ def sequence_reverse(x, name=None):
         inputs={"X": x},
         outputs={"Y": out},
         attrs=dict())
+    return out
+
+
+def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
+    """
+    The :attr:`topks` is a list with incremental values in this function. For each topk,
+    it will average the topk features as an output feature for each channel of every 
+    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
+    and width information for :attr:`input` tensor. If feature size of input sequence is less 
+    than topk, it will padding 0 at the back.
+
+    .. code-block:: text
+
+            If channel_num is 2 and given row LoDTensor and col LoDTensor as follows:
+                row.lod = [[5, 4]]
+                col.lod = [[6, 7]]
+
+            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i] 
+                input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
+                input.dims = [116, 1]   # where 116 = 60 + 56
+
+            If topks is [1, 3, 5], then we get a 1-level LoDTensor:
+                out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
+                out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
+
+    Args:
+        input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
+        row (Variable): The row shoud be 1-level LodTensor to provide the height information
+                        of the input tensor data.
+        col (Variable): The col shoud be 1-level LodTensor to provide the width information
+                        of the input tensor data.
+        topks (list): A list of incremental value to average the topk feature.
+        channel_num (int): The number of input channel.
+
+    Returns:
+        Variable: output LodTensor specified by this layer.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            from paddle.fluid import layers
+
+            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
+            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
+            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            out = layers.sequence_topk_avg_pooling(input=x_lod_tensor,
+                                                   row=row_lod_tensor,
+                                                   col=col_lod_tensor,
+                                                   topks=[1, 3, 5],
+                                                   channel_num=5)
+    """
+    helper = LayerHelper('sequence_topk_avg_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_avg_pooling',
+        inputs={'X': input,
+                'ROW': row,
+                'COLUMN': col},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={'topks': topks,
+               'channel_num': channel_num})
+
     return out
 
 
