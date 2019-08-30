@@ -121,7 +121,7 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   // Dim format SEQ_LEN, BATCH_SIZE, ...
   int64_t seq_len = -1;
   auto &all_inputs = Inputs(kInputs);
-  PADDLE_ENFORCE_EQ(!all_inputs.empty(), true);
+  PADDLE_ENFORCE_EQ(all_inputs.empty(), false);
   for (auto &iname : all_inputs) {
     auto *var = scope.FindVar(iname);
     PADDLE_ENFORCE_NOT_NULL(var);
