@@ -194,11 +194,6 @@ class Communicator {
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
   
   // for geo-sgd algorithm
-public:
-  void DefineGeoSgdStatus(bool status) {
-    is_geo_sgd_=status;
-    }
-
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
   void GeoSgdParamInit(const framework::Scope &scope);
@@ -210,7 +205,6 @@ private:
                                     int &trainers);
   
 private:
-  bool is_geo_sgd_ = false;
   Scope* global_scope_;
   Scope* old_scope_;
   int is_need_push_ = 0;

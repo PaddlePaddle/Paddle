@@ -43,6 +43,8 @@ DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
             "merge sparse gradient before sending");
+DEFINE_bool(communicator_is_geo_sgd,false,
+            "using geo sgd algorithm or not");
 
 
 namespace paddle {
@@ -244,7 +246,7 @@ void Communicator::Send(const std::string &var_name,
                         const framework::Scope &scope) {
   VLOG(3) << "communicator send " << var_name;
   // for geo sgd
-  if (is_geo_sgd_){
+  if (communicator_is_geo_sgd){
     VLOG(3) << "run into geo sgd communicator Send()";
     GeoSgdSend(var_name,scope);
     return;
@@ -285,7 +287,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     for (auto &iter:send_varname_to_queue_)
     {
       std::string local_var_name = iter.first;
-      auto var_delta = SubVars(local_var_name, &scope,old_scope_,FLAGS_communicator_trainer_nums);
+      auto var_delta = SubVars(local_var_name, scope,old_scope_,FLAGS_communicator_trainer_nums);
       auto &queue = send_varname_to_queue_.at(local_var_name);
       VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
       queue->Push(var_delta);
@@ -405,9 +407,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
     LOG(WARNING) << "no var need to send and recv!!";
   }
-  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope);
-  bool status = true;
-  Communicator::DefineGeoSgdStatus(status);  
+  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope);  
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }
