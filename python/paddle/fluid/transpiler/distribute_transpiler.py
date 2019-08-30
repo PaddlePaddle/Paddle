@@ -166,6 +166,10 @@ class DistributeTranspilerConfig(object):
     runtime_split_send_recv = False
     sync_mode = True
 
+    # Geo-sgd algorithm
+    geo_sgd = False
+    geo_sgd_num = 10
+    
     nccl_comm_num = 1
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
@@ -2340,3 +2344,314 @@ class DistributeTranspiler(object):
             else:
                 pass
         return opt_ops, params_grads
+
+
+class GeoSgdTranspiler(DistributeTranspiler):
+    def __init__(self, config=None):
+        if config is not None:
+            self.config = config
+        else:
+            self.config = DistributeTranspilerConfig()
+
+        if self.config.split_method is None:
+            self.config.split_method = RoundRobin
+
+        global PRINT_LOG
+        if self.config.print_log:
+            PRINT_LOG = True
+
+        assert (self.config.min_block_size >= 8192)
+        assert (self.config.split_method.__bases__[0] == PSDispatcher)
+
+    def transpile(self,
+                  trainer_id,
+                  program=None,
+                  pservers="127.0.0.1:6174",
+                  trainers=1,
+                  sync_mode=False,
+                  startup_program=None,
+                  current_endpoint="127.0.0.1:6174"):
+        if program is None:
+            program = default_main_program()
+        if startup_program is None:
+            startup_program = default_startup_program()
+        self.origin_program = program
+        self.startup_program = startup_program
+        self.origin_startup_program = self.startup_program.clone()
+
+        self.trainer_num = trainers
+        self.sync_mode = sync_mode
+        self.trainer_id = trainer_id
+        pserver_endpoints = pservers.split(",")
+        self.pserver_endpoints = pserver_endpoints
+        self.vars_overview = VarsDistributed()
+        self.optimize_ops, self.params_grads = self._get_optimize_pass()
+
+        ps_dispatcher = self.config.split_method(self.pserver_endpoints)
+        self.table_name = find_distributed_lookup_table(self.origin_program)
+        self.has_distributed_lookup_table = self.table_name != None
+        self.param_name_to_grad_name = dict()
+        self.grad_name_to_param_name = dict()
+        for param_var, grad_var in self.params_grads:
+            self.param_name_to_grad_name[param_var.name] = grad_var.name
+            self.grad_name_to_param_name[grad_var.name] = param_var.name
+
+        # get all sparse update ops
+        self.sparse_update_ops = self._get_all_remote_sparse_update_op(
+            self.origin_program)
+        # use_sparse_update_param_name -> split_height_section
+        self.sparse_param_to_height_sections = dict()
+
+        # add distributed attrs to program
+        self.origin_program._is_distributed = True
+        self.origin_program._endpoints = self.pserver_endpoints
+        self.origin_program._ps_endpoint = current_endpoint
+        self.origin_program._is_chief = self.trainer_id == 0
+        self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
+        self.vars_info = collections.OrderedDict()
+        self.split_to_origin_mapping = collections.OrderedDict()
+        # split and create vars, then put splited vars in dicts for later use.
+        # step 1. split and create vars, then put splited vars in dicts for later use.
+        self._init_splited_vars()
+
+        # step 3. create send var (param after optimize)
+        send_vars = []
+        ps_dispatcher.reset()
+        param_var_mapping_items = list(six.iteritems(self.param_var_mapping))
+        self.param_name_to_send_dummy_out = dict()
+        for param_varname, splited_vars in param_var_mapping_items:
+            for _, var in enumerate(splited_vars):
+                send_vars.append(var)
+
+        recv_vars = send_vars
+        ps_dispatcher.reset()
+        eplist = ps_dispatcher.dispatch(recv_vars)
+        for i, ep in enumerate(eplist):
+            self.param_opt_ep_mapping[ep]["params"].append(recv_vars[i])
+            distributed_var = self.vars_overview.get_distributed_var_by_slice(
+                recv_vars[i].name)
+            distributed_var.endpoint = ep
+            origin_name = self.split_to_origin_mapping[recv_vars[i].name]
+            self.vars_info[origin_name]["epmap"].append(ep)
+
+        dummy_output = program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+        batch_num = program.global_block().create_var(
+            name="batch_num")
+        program.global_block().append_op(
+            type="send",
+            inputs={"X": [batch_num]},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": [batch_num.name]}
+        )
+
+        self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
+        self.origin_program._parameters_on_pservers = self.vars_overview
+
+    def _get_vars_info(self):
+        return self.vars_info
+            
+
+    def _get_trainer_startup_program(self, recv_vars, eplist):
+        startup_program = self.startup_program
+
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
+            # Get the eplist of recv vars
+            eps = []
+            for var in splited_var:
+                index = [v.name for v in recv_vars].index(var.name)
+                eps.append(eplist[index])
+
+            for var in splited_var:
+                if startup_program.global_block().has_var(var.name):
+                    continue
+
+                startup_program.global_block().create_var(
+                    name=var.name,
+                    persistable=False,
+                    type=var.type,
+                    dtype=var.dtype,
+                    shape=var.shape,
+                    lod_level=var.lod_level)
+
+            op = startup_program.global_block().append_op(
+                type="recv",
+                inputs={"X": []},
+                outputs={"Out": splited_var},
+                attrs={
+                    "epmap": eps,
+                    "trainer_id": self.trainer_id,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+        fetch_barrier_out = startup_program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+        startup_program.global_block().append_op(
+            type="fetch_barrier",
+            inputs={},
+            outputs={"Out": fetch_barrier_out},
+            attrs={
+                "endpoints": self.pserver_endpoints,
+                "trainer_id": self.trainer_id,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
+            # add concat ops to merge splited parameters received from parameter servers.
+            if len(splited_var) <= 1:
+                continue
+            # NOTE: if enable memory optimization, origin vars maybe removed.
+            if varname in startup_program.global_block().vars:
+                orig_param = startup_program.global_block().vars[varname]
+            else:
+                origin_param_var = self.origin_program.global_block().vars[
+                    varname]
+                orig_param = startup_program.global_block().create_var(
+                    name=varname,
+                    persistable=origin_param_var.persistable,
+                    type=origin_param_var.type,
+                    dtype=origin_param_var.dtype,
+                    shape=origin_param_var.shape)
+            startup_program.global_block().append_op(
+                type="concat",
+                inputs={"X": splited_var},
+                outputs={"Out": [orig_param]},
+                attrs={"axis": 0})
+
+        return startup_program
+
+    def get_trainer_program(self, wait_port=True):
+        # delete table init op
+        if self.has_distributed_lookup_table:
+            table_var = self.startup_program.global_block().vars[
+                self.table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if self.table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
+        self.origin_program.__str__()
+        # if wait_port:
+        #     wait_server_ready(self.pserver_endpoints)
+        return self.origin_program
+
+    def _init_splited_vars(self):
+        param_list = []
+        grad_list = []
+        param_grad_set = set()
+        # step 1. create param_list
+        for p, g in self.params_grads:
+            if type(p) == Parameter and p.trainable == False:
+                continue
+            if p.name not in param_grad_set:
+                param_list.append(p)
+                param_grad_set.add(p.name)
+            if g.name not in param_grad_set:
+                grad_list.append(g)
+                param_grad_set.add(g.name)
+
+        # Todo: update dist lookup table
+        # param_list, grad_list = self._update_dist_lookup_table_vars(
+        #             param_list, grad_list, self.params_grads)
+
+        # step 2. Slice vars into numbers of piece with block_size
+        # when we slice var up into blocks, we will slice the var according to
+        # pserver services' count. A pserver may have two or more listening ports.
+        grad_blocks = slice_variable(grad_list,
+                                     len(self.pserver_endpoints),
+                                     self.config.min_block_size)
+        param_blocks = slice_variable(param_list,
+                                      len(self.pserver_endpoints),
+                                      self.config.min_block_size)
+        assert (len(grad_blocks) == len(param_blocks))
+
+        # step 3. Create splited param from split blocks
+        # origin_param_name -> [splited_param_vars]
+        # Todo: update _create_vars_from_blocklist
+        self.param_var_mapping = self._create_vars_from_blocklist(
+            self.origin_program, param_blocks)
+
+        for origin_name, splited_vars in self.param_var_mapping.items():
+            origin_var = self.origin_program.global_block().var(origin_name)
+            self.vars_info[origin_name] = collections.OrderedDict()
+            self.vars_info[origin_name]["var_names"] = []
+            vars_section = self._get_splited_var_sections(splited_vars)
+            self.vars_info[origin_name]["sections"] = [str(i) for i in vars_section]
+            self.vars_info[origin_name]["epmap"] = []
+            for splited_var in splited_vars:
+                is_slice, block_id, offset = self._get_slice_var_info(splited_var)
+                self.vars_overview.add_distributed_var(
+                    origin_var=origin_var,
+                    slice_var=splited_var,
+                    block_id=block_id,
+                    offset=offset,
+                    is_slice=is_slice,
+                    vtype="Param")
+                self.vars_info[origin_name]["var_names"].append(splited_var.name)
+                self.split_to_origin_mapping[splited_var.name] = origin_name
+
+
+        # step 4. Create splited grad param from split blocks
+        # origin_grad_name -> [splited_grad_vars]
+        self.grad_var_mapping = self._create_vars_from_blocklist(
+            self.origin_program, grad_blocks)
+        # dict(grad_splited_var -> param_splited_var)
+        self.grad_param_mapping = collections.OrderedDict()
+        for g, p in zip(grad_blocks, param_blocks):
+            g_name, g_block_id, _ = g.split(":")
+            p_name, p_block_id, _ = p.split(":")
+            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_block_id)]] = \
+                self.param_var_mapping[p_name][int(p_block_id)]
+
+        # step 5. Create mapping of endpoint -> split var to create pserver side program
+        self.param_opt_ep_mapping = collections.OrderedDict()
+        [
+            self.param_opt_ep_mapping.update({
+                ep: {
+                    "params": [],
+                }
+            }) for ep in self.pserver_endpoints
+        ]
+
+
+    def _init_optimize_mapping(self):
+        optimize_list = []
+        optimize_to_param = dict()
+        param_to_optimize = dict()
+
+        for op in self.optimize_ops:
+            if op.type == "sgd":
+                origin_name = op.output("ParamOut")
+                var = self.origin_program.global_block().var(origin_name[0])
+                new_var_name = "%s.optimize" % (origin_name[0])
+                self.origin_program.global_block().create_var(
+                    name=new_var_name,
+                    persistable=True,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    type=var.type,
+                    lod_level=var.lod_level)
+                new_var = self.origin_program.global_block().var(new_var_name)
+                optimize_list.append(new_var.name)
+                optimize_to_param[new_var.name] = var.name
+                param_to_optimize[var.name] = new_var.name
+                self.origin_program.global_block().append_op(
+                    type="scale",
+                    inputs={"X": var},
+                    outputs={"Out": new_var},
+                    attrs={"scale": 1.0})
+        self._param_to_optimize = param_to_optimize
+        self._optimize_to_param = optimize_to_param
+        self._optimize_var_list = optimize_list

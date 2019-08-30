@@ -36,7 +36,23 @@ void BindCommunicator(py::module* m) {
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
       .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
+        VLOG(0) << "using communicator";
         Communicator::Init(program, param_scope);
+        return Communicator::GetInstantcePtr();
+      }))
+      .def("stop", &Communicator::Stop)
+      .def("start", &Communicator::Start)
+      .def("is_running", &Communicator::IsRunning);
+}
+
+void BindGeoSgdCommunicator(py::module* m) {
+  // Communicator is already used by nccl, change to DistCommunicator
+  py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
+                                                          "GeoSgdCommunicator")
+      .def(py::init([](const ProgramDesc& program, Scope* param_scope,
+                      std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info){
+        VLOG(0) << "using geo sgd communicator";
+        Communicator::GeoSgdInit(program, param_scope,vars_info);
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)

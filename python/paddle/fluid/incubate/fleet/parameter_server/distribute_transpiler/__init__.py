@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import warnings
 
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
@@ -21,12 +20,12 @@ from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.distribute_transpiler import GeoSgdTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class DistributedTranspiler(Fleet):
@@ -53,20 +52,13 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        # if MPISymetricRoleMaker is defined
-        # we suppose a user wants to submit job on mpi cluster
-        if isinstance(self._role_maker, MPISymetricRoleMaker):
-            # check whether server has been initialized
-            from paddle.fluid.transpiler.details.checkport import wait_server_ready
-            wait_server_ready(fleet.server_endpoints(to_string=False))
-
         if not self._transpile_config.sync_mode:
-            self._communicator = Communicator(self.main_program)
-
-            if not self._communicator.is_running():
-                self._communicator.start()
+            if self._transpile_config.geo_sgd:
+                #Todo change param
+                self._communicator = Communicator(self.main_program,self.vars_info)
             else:
-                warnings.warn("communicator has been initialized, skip")
+                self._communicator = Communicator(self.main_program)
+            self._communicator.start()
 
     def init_server(self, model_dir=None):
         """
@@ -117,13 +109,9 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode and self._communicator.is_running(
-        ):
+        if not self._transpile_config.sync_mode:
             self._communicator.stop()
         self._executor.close()
-
-        if isinstance(self._role_maker, MPISymetricRoleMaker):
-            self._role_maker._finalize()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -208,7 +196,10 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         self._transpile_config = config
-        self._transpiler = OriginTranspiler(config)
+        if config.geo_sgd:
+            self._transpiler = GeoSgdTranspiler(config)
+        else:
+            self._transpiler = OriginTranspiler(config)
 
         if self.is_worker():
             self._transpiler.transpile(
@@ -216,13 +207,10 @@ class DistributedTranspiler(Fleet):
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
                 sync_mode=config.sync_mode)
-
-            if isinstance(self._role_maker, MPISymetricRoleMaker):
-                config.wait_port = False
-
-            self.main_program = self._transpiler.get_trainer_program(
-                wait_port=config.wait_port)
+            self.main_program = self._transpiler.get_trainer_program()
             self.startup_program = default_startup_program()
+            if self._transpile_config.geo_sgd:
+                self.vars_info = self._transpiler._get_vars_info()
         else:
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
