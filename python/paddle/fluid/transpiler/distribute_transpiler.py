@@ -2519,6 +2519,17 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        dummy_output = startup_program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+        param_init = startup_program.global_block().create_var(
+            name="param_init")
+        startup_program.global_block().append_op(
+            type="send",
+            inputs={"X": [param_init]},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": [param_init.name]}
+        )
         return startup_program
 
     def get_trainer_program(self, wait_port=True):
