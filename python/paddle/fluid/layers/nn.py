@@ -8760,10 +8760,12 @@ def mean_iou(input, label, num_classes):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            predict = fluid.layers.data(name='predict', shape=[3, 32, 32])
-            label = fluid.layers.data(name='label', shape=[1])
+            iou_shape = [32, 32]
+            num_classes = 5
+            predict = fluid.layers.data(name='predict', shape=iou_shape)
+            label = fluid.layers.data(name='label', shape=iou_shape)
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label,
-                                                          num_classes=5)
+                                                          num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
     dtype = helper.input_dtype()
