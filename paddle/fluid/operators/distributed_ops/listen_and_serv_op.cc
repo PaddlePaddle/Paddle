@@ -513,7 +513,6 @@ void SignalHandler::StopAndExit(int signal_num) {
   // exit will release interal allocated resoureces.
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
   remove(file_path.c_str());
-  VLOG(10) << "remove port file:" << file_path;
   exit(0);
 }
 
