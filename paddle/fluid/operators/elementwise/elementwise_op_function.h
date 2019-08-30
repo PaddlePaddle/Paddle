@@ -54,33 +54,49 @@ inline void get_mid_dims(const framework::DDim &x_dims,
   *pre = 1;
   *n = 1;
   *post = 1;
-  *mid_flag = 0;
-  int mid = 0;
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= x_dims[i];
-  }
-  for (int i = 0; i < y_dims.size(); ++i) {
-    if (x_dims[i + axis] != y_dims[i]) {
-      // only support single y_dims[i] = 1 now.
-      PADDLE_ENFORCE_EQ(*mid_flag, 0,
-                        "Broadcast support y_dims with single 1.");
-      PADDLE_ENFORCE_EQ(y_dims[i], 1, "Broadcast dimension mismatch.");
-      // m*n*k m*1*k
-      for (int j = 0; j < i; ++j) {
-        (*pre) *= y_dims[j];
+  if (mid_flag != NULL) {
+    *mid_flag = 0;
+    int mid = 0;
+    for (int i = 0; i < axis; ++i) {
+      (*pre) *= x_dims[i];
+    }
+    for (int i = 0; i < y_dims.size(); ++i) {
+      if (x_dims[i + axis] != y_dims[i]) {
+        // only support single y_dims[i] = 1 now.
+        PADDLE_ENFORCE_EQ(*mid_flag, 0,
+                          "Broadcast support y_dims with single 1.");
+        PADDLE_ENFORCE_EQ(y_dims[i], 1, "Broadcast dimension mismatch.");
+        // m*n*k m*1*k
+        for (int j = 0; j < i; ++j) {
+          (*pre) *= y_dims[j];
+        }
+        *n = std::max(x_dims[i + axis], y_dims[i]);
+        *mid_flag = 1;
+        mid = i;
+        break;
       }
-      *n = std::max(x_dims[i + axis], y_dims[i]);
-      *mid_flag = 1;
-      mid = i;
-      break;
+      (*n) *= y_dims[i];
     }
-    (*n) *= y_dims[i];
-  }
-  if (*mid_flag) {
-    for (int i = mid + 1; i < x_dims.size(); ++i) {
-      (*post) *= x_dims[i];
+    if (*mid_flag) {
+      for (int i = mid + 1; i < x_dims.size(); ++i) {
+        (*post) *= x_dims[i];
+      }
+    } else {
+      for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
+        (*post) *= x_dims[i];
+      }
     }
-  } else {
+  } else {  // for fused_elementwise_activation_op. keep the old version.
+    for (int i = 0; i < axis; ++i) {
+      (*pre) *= x_dims[i];
+    }
+
+    for (int i = 0; i < y_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
+                        "Broadcast dimension mismatch.");
+      (*n) *= y_dims[i];
+    }
+
     for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
       (*post) *= x_dims[i];
     }
