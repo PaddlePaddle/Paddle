@@ -82,6 +82,10 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
+  VLOG(0) << "communicator_geo_sgd_local_train_loop_nums: "
+          << FLAGS_communicator_geo_sgd_local_train_loop_nums;
+  VLOG(0) << "communicator_trainer_nums: "
+          << communicator_trainer_nums;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
@@ -244,6 +248,7 @@ void Communicator::Send(const std::string &var_name,
   VLOG(3) << "communicator send " << var_name;
   // for geo sgd
   if (is_geo_sgd_){
+    VLOG(3) << "run into geo sgd communicator Send()"
     GeoSgdSend(var_name,scope);
     return;
   }
@@ -274,7 +279,7 @@ void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scop
     GeoSgdParamCopy(&scope,old_scope_);
     return;
   }
-  if (is_need_push_ < communicator_geo_sgd_local_train_loop_nums){
+  if (is_need_push_ < FLAGS_communicator_geo_sgd_local_train_loop_nums){
     is_need_push_++;
   }
   else{
@@ -282,7 +287,7 @@ void Communicator::GeoSgdSend(const std::string& var_name, const framework::Scop
     for (auto &iter:send_varname_to_queue_)
     {
       const std::string local_var_name = iter.first;
-      auto var_delta = SubVars(local_var_name, &scope,old_scope_,communicator_trainer_nums);
+      auto var_delta = SubVars(local_var_name, &scope,old_scope_,FLAGS_communicator_trainer_nums);
       auto &queue = send_varname_to_queue_.at(local_var_name);
       VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
       queue->Push(var_delta);
@@ -305,6 +310,30 @@ void Communicator::GeoSgdParamCopy(const Scope *scope_x,const Scope *scope_y){
     auto *var_y = scope_y->Findvar(var_name);
     framework::CopyVariable(*var_x,var_y);
   }
+}
+
+std::shared_ptr<Variable> Communicator::SubVars(const std::string& var_name,
+                      framework::Scope *scope_x,framework::Scope *scope_y,int trainers) {
+  auto cpu_place = platform::CPUPlace();
+  auto *var_x = scope_x->FindVar(var_name);
+  auto *var_y = scope_y->FindVar(var_name);
+  auto *temp_var = std::make_shared<Variable>();
+  framework::CopyVariable(*var_x, temp_var.get());
+
+  if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
+    auto *var_x_tensor = var_x->Get<framework::LoDTensor>();
+    auto *var_y_tensor = var_y->Get<framework::LoDTensor>();
+    auto *temp_var_tensor = temp_var->Get<framework::LoDTensor>();
+    
+    int element_number = var_x_tensor -> numel();
+    float* x_mutable_data = var_x_tensor -> mutable_data<float>(var_x_tensor->place());
+    float* y_mutable_data = var_y_tensor -> mutable_data<float>(var_y_tensor->place());
+    float* temp_mutable_data = temp_var_tensor -> mutable_data<float>(temp_var_tensor->place());
+    for(int i = 0; i < element_number; i++){
+      temp_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainers);
+    }
+  } 
+  return temp_var;
 }
 
 void Communicator::Init(const paddle::framework::ProgramDesc &program,
@@ -352,7 +381,8 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
 void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info){
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
-  DefineGeoSgdStatus(true);
+  bool status = true;
+  DefineGeoSgdStatus(status);
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto &iter : vars_info) {
