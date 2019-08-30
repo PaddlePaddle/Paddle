@@ -35,8 +35,8 @@ class CSliceGatherOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "CSliceGather op only supports GPUKernel for now.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      "CSliceGather op only supports GPUKernel for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto in_tensor = ctx.Input<framework::Tensor>("X");
     auto out_tensor = ctx.Output<framework::Tensor>("Out");

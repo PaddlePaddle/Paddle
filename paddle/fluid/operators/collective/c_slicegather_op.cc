@@ -23,10 +23,10 @@ class CSliceGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CSliceGather op should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CSliceGather op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of CSliceGather op should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of CSliceGather op should not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
     auto in_dim = ctx->GetInputDim("X");
     in_dim[0] = in_dim[0] / nranks;
