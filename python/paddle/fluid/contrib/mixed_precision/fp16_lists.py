@@ -130,13 +130,8 @@ unsupported_fp16_list = {
     'send_barrier',
     'recv',
     'fetch_barrier',
-    'create_recordio_file_reader',
-    'create_random_data_generator',
     'create_py_reader',
-    'create_shuffle_reader',
-    'create_batch_reader',
     'create_double_buffer_reader',
-    'create_multi_pass_reader',
     'read',
     'load',
     
