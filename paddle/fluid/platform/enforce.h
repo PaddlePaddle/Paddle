@@ -66,25 +66,61 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
+template <typename StrType>
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
+  static constexpr int TRACE_STACK_LIMIT = 100;
+  std::ostringstream sout;
+
+  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
+                          line)
+       << std::endl;
+  sout << "PaddlePaddle Call Stacks: " << std::endl;
+#if !defined(_WIN32)
+  void* call_stack[TRACE_STACK_LIMIT];
+  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack, size);
+  Dl_info info;
+  for (int i = 0; i < size; ++i) {
+    if (dladdr(call_stack[i], &info) && info.dli_sname) {
+      auto demangled = demangle(info.dli_sname);
+      auto addr_offset = static_cast<char*>(call_stack[i]) -
+                         static_cast<char*>(info.dli_saddr);
+      sout << string::Sprintf("%-3d %*0p %s + %zd\n", i, 2 + sizeof(void*) * 2,
+                              call_stack[i], demangled, addr_offset);
+    } else {
+      sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
+                              call_stack[i]);
+    }
+  }
+  free(symbols);
+#else
+  sout << "Windows not support stack backtrace yet.";
+#endif
+  return sout.str();
+}
+
 struct EnforceNotMet : public std::exception {
   std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* f, int l) {
+  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-      Init(e.what(), f, l);
+      err_str_ = GetTraceBackString(e.what(), file, line);
+      SaveErrorInformation(err_str_);
     }
   }
 
-  EnforceNotMet(const std::string& str, const char* f, int l) {
-    Init(str, f, l);
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {
+    SaveErrorInformation(err_str_);
   }
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
  private:
-  const std::string output_file_name{"paddle_err_info"};
-  void saveErrorInformation(const std::string& err) {
+  static void SaveErrorInformation(const std::string& err) {
+    const std::string output_file_name{"paddle_err_info"};
     std::stringstream ss;
     ss << output_file_name;
     std::time_t t = std::time(nullptr);
@@ -98,49 +134,15 @@ struct EnforceNotMet : public std::exception {
       err_file.close();
     }
   }
-
-  template <typename StrType>
-  inline void Init(StrType what, const char* f, int l) {
-    static constexpr int TRACE_STACK_LIMIT = 100;
-    std::ostringstream sout;
-
-    sout << string::Sprintf("%s at [%s:%d]", what, f, l) << std::endl;
-    sout << "PaddlePaddle Call Stacks: " << std::endl;
-#if !defined(_WIN32)
-    void* call_stack[TRACE_STACK_LIMIT];
-    auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-    auto symbols = backtrace_symbols(call_stack, size);
-    Dl_info info;
-    for (int i = 0; i < size; ++i) {
-      if (dladdr(call_stack[i], &info) && info.dli_sname) {
-        auto demangled = demangle(info.dli_sname);
-        auto addr_offset = static_cast<char*>(call_stack[i]) -
-                           static_cast<char*>(info.dli_saddr);
-        sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
-                                2 + sizeof(void*) * 2, call_stack[i], demangled,
-                                addr_offset);
-      } else {
-        sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
-                                call_stack[i]);
-      }
-    }
-    free(symbols);
-#else
-    sout << "Windows not support stack backtrace yet.";
-#endif
-    err_str_ = sout.str();
-
-    saveErrorInformation(err_str_);
-  }
 };
 
 struct EOFException : public std::exception {
   std::string err_str_;
-  EOFException(const char* err_msg, const char* f, int l) {
-    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, f, l);
+  EOFException(const char* err_msg, const char* file, int line) {
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
   }
 
-  const char* what() const noexcept { return err_str_.c_str(); }
+  const char* what() const noexcept override { return err_str_.c_str(); }
 };
 
 // Because most enforce conditions would evaluate to true, we can use
@@ -327,6 +329,12 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
   do {                                                                         \
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
                                            __LINE__);                          \
+  } while (0)
+
+#define PADDLE_THROW_BAD_ALLOC(...)                                  \
+  do {                                                               \
+    throw ::paddle::memory::allocation::BadAlloc(                    \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
 /*
