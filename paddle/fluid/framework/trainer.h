@@ -76,6 +76,7 @@ class MultiTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
+  std::vector<std::string> need_merge_var_names_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -86,6 +87,8 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual void DumpWork();

@@ -87,7 +87,6 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   auto *y = ctx.Output<Tensor>("Out");
 
   const T *x_data = x->data<T>();
-  T *y_data = y->mutable_data<T>(ctx.GetPlace());
 
   const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
@@ -119,7 +118,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   auto src_memory_p = handler.AcquireSrcMemory(md, to_void_cast<T>(x_data));
 
   auto dst_memory_p =
-      handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(y_data));
+      handler.AcquireDstMemoryFromPrimitive<T>(y, ctx.GetPlace());
   auto activation_p = handler.AcquireActivation(dst_memory_p, src_memory_p);
 
   // push primitive to stream and wait until it's executed
