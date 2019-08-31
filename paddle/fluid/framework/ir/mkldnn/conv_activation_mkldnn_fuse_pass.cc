@@ -62,14 +62,10 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
                     boost::get<float>(activation->Op()->GetAttr("threshold")));
     } else {
       desc->SetAttr("fuse_alpha",
-                    activation->Op()->HasAttr("alpha")
-                        ? boost::get<float>(activation->Op()->GetAttr("alpha"))
-                        : 0.0f);
+                    activation->Op()->GetAttrIfExists<float>("alpha"));
     }
     desc->SetAttr("fuse_beta",
-                  activation->Op()->HasAttr("beta")
-                      ? boost::get<float>(activation->Op()->GetAttr("beta"))
-                      : 0.0f);
+                  activation->Op()->GetAttrIfExists<float>("beta"));
 
     GraphSafeRemoveNodes(graph, {activation, conv_out});
 

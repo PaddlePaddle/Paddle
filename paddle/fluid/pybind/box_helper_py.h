@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,26 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
+
+namespace py = pybind11;
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace pybind {
 
-/*
- * Fuse the CONV and ReLU to a ConvReLUOp.
- */
-class ConvReLUFusePass : public FusePassBase {
- public:
-  virtual ~ConvReLUFusePass() {}
+void BindBoxHelper(py::module* m);
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
+}  // namespace pybind
 }  // namespace paddle

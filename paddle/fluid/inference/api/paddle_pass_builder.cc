@@ -104,7 +104,9 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",              //
-    "conv_affine_channel_fuse_pass",                 //
+    "is_test_pass",                                  //
+        "simplify_with_basic_ops_pass",              //
+        "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
@@ -138,7 +140,8 @@ void GpuPassStrategy::EnableNgraph() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"attention_lstm_fuse_pass",       //
+  passes_.assign({"simplify_with_basic_ops_pass",   //
+                  "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
