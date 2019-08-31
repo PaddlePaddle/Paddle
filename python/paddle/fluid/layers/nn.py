@@ -516,6 +516,54 @@ def embedding(input,
     return tmp
 
 
+def _pull_box_sparse(input, size, dtype='float32'):
+    """
+    **Pull Box Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which 
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of 
+            each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports 
+	    float32 now.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.pull_box_sparse(input=data, size=[11])    
+    """
+    helper = LayerHelper('pull_box_sparse', **locals())
+    if dtype != 'float32':
+        raise ValueError(
+            "BoxPS only support float type embedding now, and your type is: " +
+            dtype)
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='pull_box_sparse',
+        inputs={'Ids': inputs},
+        outputs={'Out': outs},
+        attrs={'size': size})
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+
 @templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
