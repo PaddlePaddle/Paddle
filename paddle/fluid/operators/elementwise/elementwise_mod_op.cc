@@ -33,4 +33,6 @@ REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod, ops::ElementwiseOp,
 REGISTER_OP_CPU_KERNEL(
     elementwise_mod,
     ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, double>);
