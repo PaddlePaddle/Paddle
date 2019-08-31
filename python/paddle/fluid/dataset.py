@@ -720,3 +720,54 @@ class FileInstantDataset(DatasetBase):
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")
+
+
+class BoxPSDataset(InMemoryDataset):
+    """
+    BoxPSDataset: derived from InMemoryDataset.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+    """
+
+    def __init__(self):
+        """
+        Init
+        """
+        super(BoxPSDataset, self).__init__()
+        self.boxps = core.BoxPS(self.dataset)
+
+    def begin_pass(self):
+        """
+	Notify BoxPS to begin next pass
+	"""
+        self.boxps.begin_pass()
+
+    def end_pass(self):
+        """
+	Notify BoxPS to end current pass
+	"""
+        self.boxps.end_pass()
+
+    def wait_preload_done(self):
+        """
+	Wait async proload done
+	"""
+        self.boxps.wait_feed_pass_done()
+
+    def load_into_memory(self):
+        """
+	Load next pass into memory and notify boxps to fetch its emb from SSD
+	"""
+        self._prepare_to_run()
+        self.boxps.load_into_memory()
+
+    def preload_into_memory(self):
+        """
+	begin async preload next pass while current pass may be training
+	"""
+        self._prepare_to_run()
+        self.boxps.preload_into_memory()
