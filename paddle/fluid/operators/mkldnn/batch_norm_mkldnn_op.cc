@@ -58,6 +58,15 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
         batch_norm_pd_->variance_primitive_desc(), ptr, "@variance_mem_p");
   }
 
+  template <typename T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(
+      framework::Tensor *output, platform::Place place) {
+    T *ptr = output->mutable_data<T>(
+        place, batch_norm_pd_->dst_primitive_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(
+        batch_norm_pd_->dst_primitive_desc(), ptr, "@dst_mem_p");
+  }
+
   std::shared_ptr<batch_norm_fwd::primitive_desc>
   AcquireBatchNormPrimitiveDescriptor(const batch_norm_fwd::desc &bn_fwd_desc,
                                       const mkldnn::engine &engine) {
@@ -189,7 +198,6 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T *x_data = x->data<T>();
     const T *mean_data = mean->data<T>();
     const T *variance_data = variance->data<T>();
-    T *y_data = y->mutable_data<T>(ctx.GetPlace());
     T *mean_out_data = mean_out->mutable_data<T>(ctx.GetPlace());
     T *variance_out_data = variance_out->mutable_data<T>(ctx.GetPlace());
     T *batch_mean_data = nullptr;
@@ -250,8 +258,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireScaleshiftMemoryFromPrimitive(scaleshift_data.data());
 
     // create mkldnn memory for output y tensor
-    auto dst_memory = handler.AcquireDstMemory(
-        batch_norm_fwd_pd->dst_primitive_desc().desc(), y_data);
+    auto dst_memory =
+        handler.AcquireDstMemoryFromPrimitive<T>(y, ctx.GetPlace());
 
     std::shared_ptr<batch_norm_fwd> batch_norm_p;
     if (global_stats) {
@@ -334,6 +342,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const T *scale_data = scale->data<T>();
     const T *shift_data = shift->data<T>();
     T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
+
     T *diff_scale_data = diff_scale->mutable_data<T>(ctx.GetPlace());
     T *diff_shift_data = diff_shift->mutable_data<T>(ctx.GetPlace());
 
