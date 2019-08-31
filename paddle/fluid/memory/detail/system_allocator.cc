@@ -25,6 +25,7 @@ limitations under the License. */
 #include <algorithm>  // for std::max
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -117,19 +118,19 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
-                 << " MB GPU memory. Please shrink "
-                    "FLAGS_fraction_of_gpu_memory_to_use or "
-                    "FLAGS_initial_gpu_memory_in_mb or "
-                    "FLAGS_reallocate_gpu_memory_in_mb"
-                    "environment variable to a lower value. "
-                 << "Current FLAGS_fraction_of_gpu_memory_to_use value is "
-                 << FLAGS_fraction_of_gpu_memory_to_use
-                 << ". Current FLAGS_initial_gpu_memory_in_mb value is "
-                 << FLAGS_initial_gpu_memory_in_mb
-                 << ". Current FLAGS_reallocate_gpu_memory_in_mb value is "
-                 << FLAGS_reallocate_gpu_memory_in_mb;
-    return nullptr;
+    PADDLE_THROW_BAD_ALLOC(
+        "Cannot malloc " + std::to_string(size / 1024.0 / 1024.0) +
+        " MB GPU memory. Please shrink "
+        "FLAGS_fraction_of_gpu_memory_to_use or "
+        "FLAGS_initial_gpu_memory_in_mb or "
+        "FLAGS_reallocate_gpu_memory_in_mb"
+        "environment variable to a lower value. " +
+        "Current FLAGS_fraction_of_gpu_memory_to_use value is " +
+        std::to_string(FLAGS_fraction_of_gpu_memory_to_use) +
+        ". Current FLAGS_initial_gpu_memory_in_mb value is " +
+        std::to_string(FLAGS_initial_gpu_memory_in_mb) +
+        ". Current FLAGS_reallocate_gpu_memory_in_mb value is " +
+        std::to_string(FLAGS_reallocate_gpu_memory_in_mb));
   }
 }
 

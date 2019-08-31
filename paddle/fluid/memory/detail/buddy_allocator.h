@@ -75,12 +75,6 @@ class BuddyAllocator {
   /*! \brief Find the existing chunk which used to allocation */
   PoolSet::iterator FindExistChunk(size_t size);
 
-  /*! \brief Clean idle fallback allocation */
-  void CleanIdleFallBackAlloc();
-
-  /*! \brief Clean idle normal allocation */
-  void CleanIdleNormalAlloc();
-
  private:
   size_t total_used_ = 0;  // the total size of used memory
   size_t total_free_ = 0;  // the total size of free memory
@@ -97,9 +91,6 @@ class BuddyAllocator {
    * \note  Only store free chunk memory in pool
    */
   PoolSet pool_;
-
-  /*! Record fallback allocation count for auto-scaling */
-  size_t fallback_alloc_count_ = 0;
 
  private:
   /*! Unify the metadata format between GPU and CPU allocations */
