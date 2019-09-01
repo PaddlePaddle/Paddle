@@ -149,6 +149,14 @@ class Test_Detach(unittest.TestCase):
         array_detach_multi = self.detach_multi()
         assert np.array_equal(array_no_detach_single, array_detach_multi)
 
+    def test_detach_exception(self):
+        x = fluid.layers.data(name="a", shape=[3, 4], dtype='float32')
+        y = fluid.layers.fc(input=x, size=10, bias_attr=True)
+        try:
+            y_detach = y.detach()
+        except Exception as e:
+            print(e)
+
 
 if __name__ == '__main__':
     unittest.main()
