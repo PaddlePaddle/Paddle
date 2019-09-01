@@ -572,7 +572,6 @@ class Variable(object):
                 type="assign",
                 inputs={'X': [self]},
                 outputs={'Out': [new_var]},
-                attrs={'device': 0},
                 stop_gradient=True)
             return new_var
         else:
