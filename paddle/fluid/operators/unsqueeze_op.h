@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-    VLOG(2) << "UnsqueezeKernel Compute() function" << std::endl;
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
@@ -56,9 +55,6 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      // PADDLE_ENFORCE(
-      //        cur >= 0 && cur <= cur_output_size,
-      //        "The unsqueeze dims must be within range of current rank.");
       PADDLE_ENFORCE_GE(cur, 0);
       PADDLE_ENFORCE_LE(cur, cur_output_size);
       // Move old axis, and insert new axis
@@ -97,8 +93,6 @@ class UnsqueezeGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
-
-    VLOG(2) << "UnsqueezeGradKernel Compute() function" << std::endl;
   }
 };
 
@@ -121,8 +115,6 @@ class Unsqueeze2Kernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-
-    VLOG(2) << "Unsqueeze2Kernel Compute() function" << std::endl;
   }
 };
 
@@ -141,8 +133,6 @@ class Unsqueeze2GradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(x_dims);
-
-    VLOG(2) << "Unsqueeze2GradKernel Compute() function" << std::endl;
   }
 };
 }  // namespace operators

@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-    VLOG(2) << "UnsqueezeOp Infershape() function" << std::endl;
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> unsqz_dims,
@@ -60,9 +59,6 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      // PADDLE_ENFORCE(
-      //        cur >= 0 && cur <= cur_output_size,
-      //        "The unsqueeze dims must be within range of current rank.");
       PADDLE_ENFORCE_GE(cur, 0);
       PADDLE_ENFORCE_LE(cur, cur_output_size);
       // Move old axis, and insert new axis
