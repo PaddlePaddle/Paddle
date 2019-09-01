@@ -160,8 +160,6 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
           we get:
             Out.shape = (3, 5)
     )DOC");
-
-    // VLOG(2) << "SqueezeOpMaker Make() function" << std::endl;
   }
 };
 
@@ -249,7 +247,6 @@ class Squeeze2OpMaker : public SqueezeOpMaker {
               "XShape is just used to store the shape and lod of X, which will "
               "be used in SqueezeGradOp.")
         .AsIntermediate();
-    // VLOG(2) << "Squeeze2OpMaker Make() function" << std::endl;
   }
 };
 
