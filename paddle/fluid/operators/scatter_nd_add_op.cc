@@ -32,7 +32,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
                       "Input(Updates) of ScatterNdAddOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ScatterOp should not be null.");
+                      "Output(Out) of ScatterNdAddOp should not be null.");
 
     auto ref_dims = ctx->GetInputDim("X");
     auto ref_dims_size = ref_dims.size();
@@ -108,7 +108,7 @@ class ScatterNdAddOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Index",
              "The index input of scatter_nd_add op where X will be updated");
     AddInput("Updates", "The updated value of scatter_nd_add op");
-    AddOutput("Out", "The output of scatter op");
+    AddOutput("Out", "The output of scatter_nd_add op");
     AddComment(R"DOC(
 Scatter_nd_add Operator.
 
@@ -135,8 +135,7 @@ Output is obtained by applying sparse addition to a single value or slice in a V
 
           we get:
 
-            output = [[[64, 15], [-13, -23]],
-                      [[68, 21], [-17, -29]]]
+            output = [[67, 19], [-16, -27]]
 )DOC");
   }
 };

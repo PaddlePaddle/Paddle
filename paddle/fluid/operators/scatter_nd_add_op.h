@@ -72,7 +72,12 @@ class ScatterNdAddGradientOpKernel : public framework::OpKernel<T> {
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      CPUGatherNd<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->type();
+      if (index_type == framework::proto::VarType::INT32) {
+        CPUGatherNd<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      } else {
+        CPUGatherNd<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      }
     }
   }
 };

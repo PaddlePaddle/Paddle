@@ -8592,12 +8592,15 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
     **Scatter_nd_add Layer**
 
-    Output is obtained by applying sparse addition to a single value or slice in a Variable.
-    `ref` is a `Tensor` with rank `R` and `index` is a `Tensor` with rank `K`. Thus, `index` has
-    shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . `updates` is a `Tensor`
-    with rank :math:`K - 1 + R - Q` and its shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
-    According to the :math:`[i_0, i_1, ..., i_{K-2}] of `index`, add the corresponding `updates` slice 
-    to the `ref` slice which is obtained by the last one dimension of `index`.
+    Output is obtained by applying sparse addition to a single value 
+    or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
+    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
+    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` .
+     :attr:`updates` is a Tensor with rank :math:`K - 1 + R - Q` and its 
+    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` . 
+    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` , 
+    add the corresponding :attr:`updates` slice to the :attr:`ref` slice 
+    which is obtained by the last one dimension of :attr:`index` .
 
     .. code-block:: text
         
@@ -8623,8 +8626,7 @@ def scatter_nd_add(ref, index, updates, name=None):
 
           we get:
              
-            output = [[[64, 15], [-13, -23]],
-                      [[68, 21], [-17, -29]]]
+            output = [[67, 19], [-16, -27]]
 
     Args:
         ref (Variable): The ref input.
@@ -8650,8 +8652,8 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
     if ref.dtype != updates.dtype:
-        print("haha ................................")
         raise ValueError("ref and updates must have same data type.")
+
     helper = LayerHelper('scatter_nd_add', **locals())
     dtype = helper.input_dtype()
     if name is None:
@@ -8672,14 +8674,14 @@ def scatter_nd(index, updates, shape, name=None):
     """
     **Scatter_nd Layer**
 
-    Output is obtained by scattering the `updates` in a new tensor according to `index` .
-    This op is similar to :code:`scatter_nd_add`, except the tensor of `shape` is 
-    zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)` is equal 
-    to :code:`scatter_nd_add(fluid.layers.zeros(shape, updates.dtype), index, updates)`. If 
-    `index` has repeated elements, then the corresponding updates are accumulated. Because of 
-    the numerical approximation issues, the different order of repeated elements in `index` may 
-    cause different results. The specific calculation method can be seen :code:`scatter_nd_add` .
-    This op is the inverse of the `gather_nd` op.
+    Output is obtained by scattering the :attr:`updates` in a new tensor according 
+    to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the 
+    tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)` 
+    is equal to :code:`scatter_nd_add(fluid.layers.zeros(shape, updates.dtype), index, updates)` . 
+    If :attr:`index` has repeated elements, then the corresponding updates are accumulated. 
+    Because of the numerical approximation issues, the different order of repeated elements 
+    in :attr:`index` may cause different results. The specific calculation method can be 
+    seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
 
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
@@ -8690,7 +8692,7 @@ def scatter_nd(index, updates, shape, name=None):
         name (str|None): The output variable name. Default None.
 
     Returns:
-        output (Variable): The output is a tensor with the same type as updates.
+        output (Variable): The output is a tensor with the same type as :attr:`updates` .
 
     Examples:
 
@@ -8699,7 +8701,7 @@ def scatter_nd(index, updates, shape, name=None):
             import paddle.fluid as fluid
 
             index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
             shape = [3, 5, 9, 10]
 
             output = fluid.layers.scatter_nd(index, updates, shape)

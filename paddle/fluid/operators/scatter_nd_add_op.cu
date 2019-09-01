@@ -32,7 +32,20 @@ class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
     auto *Out = ctx.Output<Tensor>("Out");
 
     Out->ShareDataWith(*X);
-    GPUScatterNdAdd<DeviceContext, T>(ctx, *Updates, *Ids, Out);
+    const auto &index_type = Ids->type();
+    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
+                            index_type == framework::proto::VarType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
+        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
+        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    if (index_type == framework::proto::VarType::INT32) {
+      GPUScatterNdAdd<DeviceContext, T, int32_t>(ctx, *Updates, *Ids, Out);
+    } else {
+      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *Updates, *Ids, Out);
+    }
   }
 };
 
@@ -53,7 +66,12 @@ class ScatterNdAddGradOpCUDAKernel : public framework::OpKernel<T> {
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather
-      GPUGatherNd<DeviceContext, T>(ctx, *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->type();
+      if (index_type == framework::proto::VarType::INT32) {
+        GPUGatherNd<DeviceContext, T, int32_t>(ctx, *dOut, *Ids, dUpdates);
+      } else {
+        GPUGatherNd<DeviceContext, T, int64_t>(ctx, *dOut, *Ids, dUpdates);
+      }
     }
   }
 };

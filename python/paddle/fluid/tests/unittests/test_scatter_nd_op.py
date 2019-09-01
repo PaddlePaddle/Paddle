@@ -69,6 +69,8 @@ class TestScatterNdAddSimpleOp(OpTest):
         index_np = np.array([[1], [2], [3], [5], [1]]).astype("int32")
         updates_np = np.array([9, 10, 11, 12, 13]).astype("float32")
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        #expect_np = [ 0. 23. 12. 14.  4. 17.  6.  7.  8.] 
+
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
@@ -92,6 +94,8 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
                                [[3, 4], [-3, -4]]]).astype("float32")
 
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        #expect_np = [[67, 19], [-16, -27]]
+
         self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
@@ -138,7 +142,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         shape = (10, 9, 8, 1, 15)
         ref_np = np.random.rand(*shape).astype("double")
         index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
-        index_np = index.reshape([10, 5, 10, 5]).astype("int32")
+        index_np = index.reshape([10, 5, 10, 5]).astype("int64")
         update_shape = judge_update_shape(ref_np, index_np)
         updates_np = np.random.rand(*update_shape).astype("double")
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
