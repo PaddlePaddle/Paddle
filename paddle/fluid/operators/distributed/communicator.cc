@@ -246,7 +246,7 @@ void Communicator::Send(const std::string &var_name,
                         const framework::Scope &scope) {
   VLOG(3) << "communicator send " << var_name;
   // for geo sgd
-  if (communicator_is_geo_sgd){
+  if (FLAGS_communicator_is_geo_sgd){
     VLOG(3) << "run into geo sgd communicator Send()";
     GeoSgdSend(var_name,scope);
     return;
@@ -287,7 +287,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     for (auto &iter:send_varname_to_queue_)
     {
       std::string local_var_name = iter.first;
-      auto var_delta = SubVars(local_var_name, scope,old_scope_,FLAGS_communicator_trainer_nums);
+      auto var_delta = SubVars(local_var_name, scope,*old_scope_,FLAGS_communicator_trainer_nums);
       auto &queue = send_varname_to_queue_.at(local_var_name);
       VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
       queue->Push(var_delta);
@@ -297,8 +297,9 @@ void Communicator::GeoSgdSend(const std::string& var_name,
 
 void Communicator::GeoSgdParamInit(const framework::Scope &scope){
   for(auto &iter:send_varname_to_ctx_){
-    auto &var_name = iter.first;
-    scope.Var(var_name);
+    auto var_name = iter.first;
+    std::string *name = &var_name;
+    scope.Var(name);
   }
 }
 
@@ -307,31 +308,31 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
   // copy var(send_varname_to_ctx_) from x to y
   for(auto &iter:send_varname_to_ctx_){
     auto &var_name = iter.first;
-    auto *var_x = scope_x.Findvar(var_name);
-    auto *var_y = scope_y.Findvar(var_name);
+    auto *var_x = scope_x.FindVar(var_name);
+    auto *var_y = scope_y.FindVar(var_name);
     framework::CopyVariable(*var_x,var_y);
   }
 }
 
-std::shared_ptr<framework::Variable> Communicator::SubVars(std::string& var_name,
+std::shared_ptr<framework::Variable> Communicator::SubVars(const std::string& var_name,
                                                            const framework::Scope &scope_x,
                                                            const framework::Scope &scope_y,
                                                            int &trainers) {
   auto cpu_place = platform::CPUPlace();
   auto *var_x = scope_x.FindVar(var_name);
   auto *var_y = scope_y.FindVar(var_name);
-  auto *temp_var = std::make_shared<Variable>();
+  auto temp_var = std::make_shared<Variable>();
   framework::CopyVariable(*var_x, temp_var.get());
 
   if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
-    auto *var_x_tensor = var_x->Get<framework::LoDTensor>();
-    auto *var_y_tensor = var_y->Get<framework::LoDTensor>();
-    auto *temp_var_tensor = temp_var->Get<framework::LoDTensor>();
+    auto var_x_tensor = var_x->Get<framework::LoDTensor>();
+    auto var_y_tensor = var_y->Get<framework::LoDTensor>();
+    auto temp_var_tensor = temp_var->Get<framework::LoDTensor>();
     
-    int element_number = var_x_tensor -> numel();
-    float* x_mutable_data = var_x_tensor -> mutable_data<float>(var_x_tensor->place());
-    float* y_mutable_data = var_y_tensor -> mutable_data<float>(var_y_tensor->place());
-    float* temp_mutable_data = temp_var_tensor -> mutable_data<float>(temp_var_tensor->place());
+    int element_number = var_x_tensor.numel();
+    float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
+    float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
+    float* temp_mutable_data = temp_var_tensor.mutable_data<float>(temp_var_tensor.place());
     for(int i = 0; i < element_number; i++){
       temp_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainers);
     }

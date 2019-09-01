@@ -199,7 +199,7 @@ private:
   void GeoSgdParamInit(const framework::Scope &scope);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y);
-  std::shared_ptr<Variable> SubVars(std::string& var_name,
+  std::shared_ptr<Variable> SubVars(const std::string& var_name,
                                     const framework::Scope &scope_x,
                                     const framework::Scope &scope_y,
                                     int &trainers);
