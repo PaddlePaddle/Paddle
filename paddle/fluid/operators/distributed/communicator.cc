@@ -275,7 +275,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   VLOG(3) << "geo sgd communicator get loop num"<< var_name;
   if(var_name == "param_init"){
     VLOG(0) << "geo sgd param init";
-    GeoSgdParamInit(*old_scope_);
+    GeoSgdParamInit(old_scope_);
     GeoSgdParamCopy(scope,*old_scope_);
     return;
   }
@@ -295,11 +295,10 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   }
 }
 
-void Communicator::GeoSgdParamInit(const framework::Scope &scope){
+void Communicator::GeoSgdParamInit(framework::Scope *scope){
   for(auto &iter:send_varname_to_ctx_){
     auto var_name = iter.first;
-    std::string *name = &var_name;
-    scope.Var(name);
+    scope->Var(var_name);
   }
 }
 

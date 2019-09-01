@@ -196,7 +196,7 @@ class Communicator {
   // for geo-sgd algorithm
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(const framework::Scope &scope);
+  void GeoSgdParamInit(framework::Scope *scope);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y);
   std::shared_ptr<Variable> SubVars(const std::string& var_name,
