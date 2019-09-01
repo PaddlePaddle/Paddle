@@ -49,7 +49,7 @@ class Communicator(object):
                 op._set_attr('do_not_run', True)
         if vars_info:
             # for geo sgd
-            self.communicator_ = core.GeoSgdCommunicator(program.desc, global_scope(), vars_info)
+            self.communicator_ = core.DistCommunicator(program.desc, global_scope(), vars_info)
         else:
             self.communicator_ = core.DistCommunicator(program.desc, global_scope())
 
