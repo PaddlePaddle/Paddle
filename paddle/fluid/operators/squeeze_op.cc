@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,8 +53,6 @@ class SqueezeOp : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-
-    VLOG(2) << "SqueezeOp Infershape() function" << std::endl;
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
@@ -114,8 +112,6 @@ class SqueezeGradOp : public framework::OperatorWithKernel {
     context->SetOutputDim(framework::GradVarName("X"),
                           context->GetInputDim("X"));
     context->ShareLoD("X", framework::GradVarName("X"));
-
-    VLOG(2) << "SqueezeGradOp Infershape() function" << std::endl;
   }
 
  protected:
@@ -203,8 +199,6 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
-
-    VLOG(2) << "Squeeze2Op Infershape() function" << std::endl;
   }
 };
 
@@ -221,8 +215,6 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
-
-    VLOG(2) << "Squeeze2GradOp Infershape() function" << std::endl;
   }
 
  protected:
@@ -261,7 +253,6 @@ class Squeeze2GradOpMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    VLOG(2) << "Squeeze2GradOpMaker Apply() function" << std::endl;
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };

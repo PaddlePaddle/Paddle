@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,8 +41,6 @@ class SqueezeKernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-
-    VLOG(2) << "SqueezeKernel Compute() function" << std::endl;
   }
 
   static framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
@@ -103,8 +101,6 @@ class SqueezeGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
-
-    VLOG(2) << "SqueezeGradKernel Compute() function" << std::endl;
   }
 };
 
@@ -127,8 +123,6 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-
-    VLOG(2) << "Squeeze2Kernel Compute() function" << std::endl;
   }
 };
 
@@ -147,8 +141,6 @@ class Squeeze2GradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(x_dims);
-
-    VLOG(2) << "Squeeze2GradKernel Compute() function" << std::endl;
   }
 };
 
