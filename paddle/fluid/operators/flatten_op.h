@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,8 +40,6 @@ class FlattenKernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-
-    VLOG(2) << "FlattenKernel Compute() function" << std::endl;
   }
 
   static std::vector<int32_t> GetOutputShape(const int axis,
@@ -73,8 +71,6 @@ class FlattenGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
-
-    VLOG(2) << "FlattenGradKernel Compute() function" << std::endl;
   }
 };
 
@@ -98,8 +94,6 @@ class Flatten2Kernel : public framework::OpKernel<T> {
         *in, context.GetPlace(),
         context.template device_context<platform::DeviceContext>(), out);
     out->Resize(out_dims);
-
-    VLOG(2) << "Flatten2Kernel Compute() function" << std::endl;
   }
 };
 
@@ -117,8 +111,6 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(x_dims);
-
-    VLOG(2) << "Flatten2GradKernel Compute() function" << std::endl;
   }
 };
 
