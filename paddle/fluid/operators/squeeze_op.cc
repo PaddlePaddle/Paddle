@@ -363,7 +363,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::Squeeze2GradKernel < paddle::platform::CUDADeviceContext, int64_t,
+    ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext,
                             plat::float16>);
 #endif
