@@ -22,7 +22,6 @@ namespace paddle {
 namespace pybind {
 
 void BindCommunicator(pybind11::module* m);
-void BindGeoSgdCommunicator(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle
