@@ -8592,14 +8592,14 @@ def scatter_nd_add(ref, index, updates, name=None):
     """
     **Scatter_nd_add Layer**
 
-    Output is obtained by applying sparse addition to a single value 
+    Output is obtained by applying sparse addition to a single value
     or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
     and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
-    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` .
-     :attr:`updates` is a Tensor with rank :math:`K - 1 + R - Q` and its 
-    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` . 
-    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` , 
-    add the corresponding :attr:`updates` slice to the :attr:`ref` slice 
+    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates` 
+    is a Tensor with rank :math:`K - 1 + R - Q` and its
+    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
+    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
+    add the corresponding :attr:`updates` slice to the :attr:`ref` slice
     which is obtained by the last one dimension of :attr:`index` .
 
     .. code-block:: text

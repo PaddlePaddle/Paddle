@@ -231,7 +231,7 @@ class TestScatterNdOpAPI(OpTest):
 
 
 #Test Raise Error
-class TestGatherNdOpRaise(OpTest):
+class TestScatterNdOpRaise(OpTest):
     def test_check_raise(self):
         def check_raise_is_test():
             try:
