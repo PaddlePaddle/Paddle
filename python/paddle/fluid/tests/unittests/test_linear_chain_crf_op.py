@@ -225,6 +225,13 @@ class TestLinearChainCrfPaddingTensor(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(["Emission", "Transition"], "LogLikelihood")
+
+    def test_check_grad_ignore_transition(self):
+        self.check_grad(
+            ["Emission"], "LogLikelihood", no_grad_set=set("Transition"))
+
 
 if __name__ == "__main__":
     unittest.main()

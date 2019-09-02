@@ -264,7 +264,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       length_data = label_length->data<int64_t>();
-      seq_num = label_length->dims()[0];
+      seq_num = label_length->numel();
       auto emission_dims = emission_grad->dims();
       auto label_dims = label->dims();
       emission_grad_tmp.Resize(
