@@ -575,7 +575,7 @@ class Variable(object):
                 stop_gradient=True)
             return new_var
         else:
-            raise Exception("static graph model DO NOT supprt detach")
+            raise AttributeError("static graph model DO NOT supprt detach")
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)

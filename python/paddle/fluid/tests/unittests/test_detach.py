@@ -155,7 +155,8 @@ class Test_Detach(unittest.TestCase):
         try:
             y_detach = y.detach()
         except Exception as e:
-            print(e)
+            assert type(e) == AttributeError
+            assert str(e) == 'static graph model DO NOT supprt detach'
 
 
 if __name__ == '__main__':
