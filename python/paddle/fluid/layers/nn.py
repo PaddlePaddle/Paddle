@@ -3323,7 +3323,7 @@ def batch_norm(input,
         dtype=dtype, stop_gradient=True)
 
     use_mkldnn = False
-    if act in ['identity', 'elu', 'leakyrelu']:
+    if in_place and act in ['identity', 'elu', 'leakyrelu']:
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
         use_mkldnn = False

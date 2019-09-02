@@ -34,7 +34,7 @@ class InplaceABNKernel
     auto cur_x = EigenVector<T>::Flatten(*x);
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.Compute(activation, place, cur_x, cur_y);
+    functor.Compute(ctx, activation, place, cur_x, cur_y);
   }
 };
 
@@ -62,7 +62,7 @@ class InplaceABNGradKernel
     auto cur_dy = EigenVector<T>::Flatten(*d_y);
 
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
+    functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy,
                         is_inplace);
 
     SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);

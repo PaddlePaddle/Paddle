@@ -90,6 +90,9 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
         "activation",
         "(enum string, default identity) "
         "The activation type used for output candidate {h}_t.");
+    AddAttr<float>("fuse_alpha",
+                   "(float, default 1.0) Only used in inplace-abn kernel")
+        .SetDefault(1.0f);
   }
 };
 
@@ -112,7 +115,7 @@ class InplaceABNKernel
     auto cur_x = EigenVector<T>::Flatten(*y);
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.Compute(activation, place, cur_x, cur_y);
+    functor.Compute(ctx, activation, place, cur_x, cur_y);
   }
 };
 
@@ -137,7 +140,7 @@ class InplaceABNGradKernel
     auto cur_dy = EigenVector<T>::Flatten(*d_y);
 
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.GradCompute(activation, place, cur_x, cur_y, cur_dx, cur_dy,
+    functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy,
                         x == y);
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);

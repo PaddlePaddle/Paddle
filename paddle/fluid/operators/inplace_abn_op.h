@@ -33,7 +33,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 enum InplaceABNActivationType { identity = 0, leakyrelu = 1, elu = 2 };
 
 inline InplaceABNActivationType GetInplaceABNActivationType(
-    const std::string &type) {
+    const std::string& type) {
   if (type == "leakyrelu") {
     return InplaceABNActivationType::leakyrelu;
   } else if (type == "elu") {
@@ -49,20 +49,35 @@ template <typename DeviceContext, typename T>
 class InplaceABNActivation {
  public:
   template <typename Device, typename X, typename Y>
-  void Compute(const int act_type, const Device &d, X x, Y y) {
+  void Compute(const framework::ExecutionContext& ctx, const int act_type,
+               const Device& d, X x, Y y) {
     if (act_type == InplaceABNActivationType::identity)
       y.device(d) = x;
-    else if (act_type == InplaceABNActivationType::leakyrelu)
-      LeakyReluFunctor<T>()(d, x, y);
-    else if (act_type == InplaceABNActivationType::elu)
-      ELUFunctor<T>()(d, x, y);
-    else
+    else if (act_type == InplaceABNActivationType::leakyrelu) {
+      LeakyReluFunctor<T> functor;
+      setAttrs(ctx, functor);
+      functor(d, x, y);
+    } else if (act_type == InplaceABNActivationType::elu) {
+      ELUFunctor<T> functor;
+      setAttrs(ctx, functor);
+      functor(d, x, y);
+    } else
       PADDLE_THROW("unsupported activation type");
   }
 
+  void setAttrs(const framework::ExecutionContext& ctx,
+                BaseActivationFunctor<T>& functor) {
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
+  }
+
   template <typename Device, typename X, typename Y, typename DX, typename DY>
-  void GradCompute(const int act_type, const Device &d, X x, Y y, DX dx, DY dy,
-                   bool is_inplace) {
+  void GradCompute(const framework::ExecutionContext& ctx, const int act_type,
+                   const Device& d, X x, Y y, DX dx, DY dy, bool is_inplace) {
+    const float alpha = ctx.Attr<float>("fuse_alpha");
+
     if (act_type == InplaceABNActivationType::identity) {
       if (is_inplace) {
         x.device(d) = y;
@@ -70,23 +85,26 @@ class InplaceABNActivation {
       dx.device(d) = dy;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
       if (is_inplace) {
-        LeakyReluFunctor<T> functor;
-        auto temp1 = (static_cast<T>(1.0) / static_cast<T>(functor.alpha)) *
+        auto temp1 = (static_cast<T>(1.0) / static_cast<T>(alpha)) *
                      (x < static_cast<T>(0)).template cast<T>().eval();
         auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
         x.device(d) = y * (temp1 + temp2).template cast<T>();
       }
-      LeakyReluGradFunctor<T>()(d, x, y, dy, dx);
+
+      LeakyReluGradFunctor<T> functor;
+      setAttrs(ctx, functor);
+      functor(d, x, y, dy, dx);
     } else if (act_type == InplaceABNActivationType::elu) {
       if (is_inplace) {
-        ELUFunctor<T> functor;
-        x.device(d) =
-            y.cwiseMax(static_cast<T>(0)) +
-            (static_cast<T>(1.0) /
-             static_cast<T>(functor.alpha + static_cast<T>(1)) * y.log())
-                .cwiseMin(static_cast<T>(0));
+        x.device(d) = y.cwiseMax(static_cast<T>(0)) +
+                      (static_cast<T>(1.0) /
+                       static_cast<T>(alpha + static_cast<T>(1)) * y.log())
+                          .cwiseMin(static_cast<T>(0));
       }
-      ELUGradFunctor<T>()(d, x, y, dy, dx);
+
+      ELUGradFunctor<T> functor;
+      setAttrs(ctx, functor);
+      functor(d, x, y, dy, dx);
     } else {
       PADDLE_THROW("unsupported activation type");
     }
