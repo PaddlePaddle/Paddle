@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -86,6 +87,9 @@ DEFINE_bool(reader_queue_speed_test_mode, false,
             "If set true, the queue.pop will only get data from queue but not "
             "remove the data from queue for speed testing");
 DECLARE_bool(use_mkldnn);
+#ifdef PADDLE_WITH_NGRAPH
+DECLARE_bool(use_ngraph);
+#endif
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -745,6 +749,9 @@ All parameter, weight, gradient are variables in Paddle.
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
   m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
+#ifdef PADDLE_WITH_NGRAPH
+  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
+#endif
 
   m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
@@ -1690,6 +1697,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindFleetWrapper(&m);
+  BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);
 #endif

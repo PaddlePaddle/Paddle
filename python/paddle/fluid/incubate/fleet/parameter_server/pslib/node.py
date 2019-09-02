@@ -154,7 +154,8 @@ class DownpourServer(Server):
                 table2.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
                 table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
 
-    def add_dense_table(self, table_id, param_var, grad_var, strategy):
+    def add_dense_table(self, table_id, param_var, grad_var, strategy,
+                        sparse_table_names):
         """
         Args:
             table_id(int): id of sparse params table
@@ -163,8 +164,12 @@ class DownpourServer(Server):
             return None 
         """
         fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
+        dense_param_vars = []
+        for p in param_var:
+            if p.name not in sparse_table_names:
+                dense_param_vars.append(p)
+
+        for param in dense_param_vars:
             fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
 
         for table in self._server.downpour_server_param.downpour_table_param:
@@ -211,7 +216,7 @@ class DownpourServer(Server):
         table.accessor.fea_dim = fea_dim
 
     def add_data_norm_table(self, table_id, learning_rate, param_var, grad_var,
-                            strategy):
+                            strategy, sparse_table_names):
         """
         Args:
             table_id(int): id of datanorm table
@@ -220,8 +225,12 @@ class DownpourServer(Server):
             return None 
         """
         fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
+        dense_param_vars = []
+        for p in param_var:
+            if p.name not in sparse_table_names:
+                dense_param_vars.append(p)
+
+        for param in dense_param_vars:
             fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
 
         for table in self._server.downpour_server_param.downpour_table_param:
@@ -316,7 +325,7 @@ class DownpourWorker(Worker):
             [var.name + "@GRAD" for var in slot_value_vars])
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
-                        dense_start_table_id):
+                        dense_start_table_id, sparse_table_names):
         """
         Args:
             table_id(int): id of sparse params table
@@ -327,12 +336,35 @@ class DownpourWorker(Worker):
         Returns:
             return None 
         """
+        sparse_table_name_grad = []
+        for name in sparse_table_names:
+            sparse_table_name_grad.append(name + "@GRAD")
+
+        dense_param_name = []
+        for p in param_vars:
+            if p.name not in sparse_table_names:
+                dense_param_name.append(p.name)
+
+        dense_grad_name = []
+        for g in grad_vars:
+            if g.name not in sparse_table_name_grad:
+                dense_grad_name.append(g.name)
+
+        dense_param_name.sort()
+        dense_grad_name.sort()
+
         for table in self._worker.dense_table:
             if table.table_id == table_id:
-                if filter(lambda x: x.find("embedding") == -1, [p.name for p in param_vars]) ==\
-                        self._worker.dense_table[table_id - dense_start_table_id].dense_variable_name:
-                    if filter(lambda x: x.find("embedding") == -1, [g.name for g in grad_vars]) ==\
-                        self._worker.dense_table[table_id - dense_start_table_id].dense_gradient_variable_name:
+                desc_dense_param_name = list(self._worker.dense_table[
+                    table_id - dense_start_table_id].dense_variable_name)
+                desc_dense_param_name.sort()
+
+                if dense_param_name == desc_dense_param_name:
+                    desc_dense_grad_name = list(self._worker.dense_table[
+                        table_id - dense_start_table_id]
+                                                .dense_gradient_variable_name)
+                    desc_dense_grad_name.sort()
+                    if dense_grad_name == desc_dense_grad_name:
                         return
                     else:
                         raise ValueError(
@@ -344,12 +376,31 @@ class DownpourWorker(Worker):
 
         table = self._worker.dense_table.add()
         table.table_id = table_id
-        table.dense_variable_name.extend(
-            filter(lambda x: x.find("embedding") == -1,
-                   [p.name for p in param_vars]))
+
+        def cmp_fc(x, y):
+            if x.startswith("fc_") and y.startswith("fc_"):
+                index_x = x.find('.')
+                index_y = y.find('.')
+                if index_x > 0 and index_y > 0:
+                    num_x = x[3:index_x]
+                    num_y = y[3:index_y]
+                    if num_x.isdigit() and num_y.isdigit():
+                        if int(num_x) < int(num_y):
+                            return -1
+                        if int(num_x) > int(num_y):
+                            return 1
+                        if x[index_x + 1] == 'w' and y[index_y + 1] == 'b':
+                            return -1
+                        if x[index_x + 1] == 'b' and y[index_y + 1] == 'w':
+                            return 1
+            if x < y:
+                return -1
+            else:
+                return 1
+
+        table.dense_variable_name.extend(sorted(dense_param_name, cmp_fc))
         table.dense_gradient_variable_name.extend(
-            filter(lambda x: x.find("embedding") == -1,
-                   [g.name for g in grad_vars]))
+            sorted(dense_grad_name, cmp_fc))
 
     def get_desc(self):
         """

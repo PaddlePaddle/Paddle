@@ -69,7 +69,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
 
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
@@ -150,8 +149,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
-                               // Currently used whenever bias is != nullptr.
+    std::vector<int> bias_tz;
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
