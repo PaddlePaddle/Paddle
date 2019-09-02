@@ -69,7 +69,6 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
 
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
@@ -142,14 +141,15 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string data_format = ctx.Attr<std::string>("data_format");
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);
-    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+    float fuse_beta = ctx.Attr<float>("fuse_beta");
 
     auto src_md = platform::MKLDNNMemDesc(
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
-                               // Currently used whenever bias is != nullptr.
+    std::vector<int> bias_tz;
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
@@ -166,11 +166,12 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           bias_tz, platform::MKLDNNGetDataType<T>(), mkldnn::memory::format::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
-          fuse_relu, false, false, 0.0, fwd_prop_kind);
+          fuse_activation, fuse_alpha, fuse_beta, false, fwd_prop_kind);
     } else {
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, boost::none, dst_md, strides, paddings,
-          mkldnn_engine, fuse_relu, false, false, 0.0, fwd_prop_kind);
+          mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta, false,
+          fwd_prop_kind);
     }
 
     // create mkldnn memory from input tensors (data/weights)

@@ -421,7 +421,8 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
       out->Resize(out_dims);
     }
     out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(out->format());
+    out->set_format(platform::MKLDNNFormatForSize(
+        out_dims.size(), mkldnn::memory::format::nchw));
   }
 };
 

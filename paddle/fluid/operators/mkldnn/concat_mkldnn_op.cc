@@ -159,8 +159,8 @@ class ConcatPrimitiveFactory {
   std::vector<memory::primitive_desc> srcs_pd;
   std::vector<memory> srcs;
   std::vector<primitive::at> inputs;
-  boost::optional<memory> dst_mem;  // TODO(mgallus): change to std::optional
-};                                  // upon introduction of C++17 to paddle
+  boost::optional<memory> dst_mem;
+};
 
 template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
