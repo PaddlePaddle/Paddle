@@ -48,6 +48,29 @@ class TestOneHotOp(OpTest):
         self.check_output()
 
 
+class TestOneHotOp_Rank1(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot'
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        dimension = 12
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32')
+
+        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+
+        for i in range(np.product(x.shape)):
+            out[i, x[i]] = 1.0
+
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.outputs = {'Out': (out, x_lod)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestOneHotOp_attr(OpTest):
     def setUp(self):
         self.op_type = 'one_hot'
@@ -83,6 +106,29 @@ class TestOneHotOp_default_dtype(OpTest):
 
         out = np.zeros(shape=(np.product(x.shape[:-1]),
                               depth)).astype('float32')
+
+        for i in range(np.product(x.shape)):
+            out[i, x[i]] = 1.0
+
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
+        self.attrs = {}
+        self.outputs = {'Out': (out, x_lod)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestOneHotOp_default_dtype_rank1(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot'
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        dimension = 12
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32')
+
+        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0

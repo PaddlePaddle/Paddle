@@ -76,8 +76,7 @@ class OneHotKernel : public framework::OpKernel<T> {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
       depth = depth_data[0];
-      auto in_dims = in->dims();
-      framework::DDim out_dims(in_dims);
+      auto out_dims = out->dims();
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     }

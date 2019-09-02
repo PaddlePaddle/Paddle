@@ -6897,7 +6897,8 @@ def one_hot(input, depth, allow_out_of_range=False):
     This layer creates the one-hot representations for input indices.
 
     Args:
-        input(Variable): Input indices, last dimension must be 1.
+        input(Variable): Input indices represent locations, which takes value 1.0
+            in indices, while all other locations take value 0.
         depth(scalar): An interger defining the depth of the one-hot dimension.
         allow_out_of_range(bool): A bool value indicating whether the input
             indices could be out of range [0, depth). When input indices are

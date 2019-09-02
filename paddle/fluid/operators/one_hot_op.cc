@@ -24,26 +24,32 @@ class OneHotOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of OneHotOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OneHotOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of OneHotOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of OneHotOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Rank of Input(X) should be at least 2.");
+    PADDLE_ENFORCE_GE(x_dims.size(), 1,
+                      "Rank of Input(X) should be at least 1.");
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
                         "Last dimension of Input(X) should be 1.");
     }
 
-    framework::DDim out_dims(x_dims);
     int depth = ctx->Attrs().Get<int>("depth");
     if (ctx->HasInput("depth_tensor")) {
       depth = -1;
     }
 
-    out_dims[out_dims.size() - 1] = depth;
+    auto out_dims_vec = framework::vectorize(x_dims);
+    if (x_dims.size() == 1 ||
+        (x_dims.size() > 1 && x_dims[x_dims.size() - 1] != 1U)) {
+      out_dims_vec.push_back(depth);
+    } else {
+      out_dims_vec[x_dims.size() - 1] = depth;
+    }
+    auto out_dims = framework::make_ddim(out_dims_vec);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /* --> */ "Out");
   }
