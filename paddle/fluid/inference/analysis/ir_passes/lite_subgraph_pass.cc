@@ -105,9 +105,6 @@ void LiteSubgraphPass::CreateLiteOp(
     framework::ir::Node *node, Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
-
-
-
   for (auto param: graph_params) {
     LOG(INFO) << "graph_param: " << param;
   }
@@ -179,17 +176,28 @@ void LiteSubgraphPass::CreateLiteOp(
     return names;
   };
 
-  PrependFeedOps(engine_global_block, target_names(node->inputs));
-  PrependFetchOps(engine_global_block, target_names(node->outputs));
+  const std::vector<std::string> input_names = target_names(node->inputs);
+  const std::vector<std::string> output_names = target_names(node->outputs);
+
+  PrependFeedOps(engine_global_block, input_names);
+  PrependFetchOps(engine_global_block, output_names);
+
+  LOG(INFO) << "[===output_names===] " << output_names[0];
+
+  auto *op_desc = node->Op();
+  op_desc->SetInput("Xs", input_names);
+  op_desc->SetOutput("Ys", output_names);
+  op_desc->SetType("lite_engine");
+  op_desc->SetAttr("engine_key", std::string());
 
   auto *scope = param_scope();
   std::string param_string;
   *repetitive_params = ExtractParameters(io_var_nodes);
   serialize_params(&param_string, scope, *repetitive_params);
-  StrToBinaryFile("./param.bin", param_string);
+  // StrToBinaryFile("./param.bin", param_string);
 
   std::string model_string = engine_program.Proto()->SerializeAsString();
-  StrToBinaryFile("./model.bin", model_string);
+  // StrToBinaryFile("./model.bin", model_string);
 
   std::string str;
   google::protobuf::TextFormat::PrintToString(*(engine_program.Proto()), &str);

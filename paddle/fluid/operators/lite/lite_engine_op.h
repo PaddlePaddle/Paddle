@@ -34,7 +34,6 @@ class LiteEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::string engine_key_;
-  bool use_gpu_;
 
  public:
   LiteEngineOp(const std::string &type,
@@ -44,8 +43,6 @@ class LiteEngineOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {
     input_names_ = Inputs("Xs");
     engine_key_ = Attr<std::string>("engine_key");
-    auto params = Attr<std::vector<std::string>>("parameters");
-    use_gpu_ = Attr<bool>("use_gpu");
   }
 
  protected:

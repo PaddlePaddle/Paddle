@@ -26,11 +26,9 @@ class LiteEngineOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
-    AddAttr<std::string>("subgraph", "the subgraph.");
     AddAttr<std::string>(
         "engine_key",
-        "The engine_key here is used to distinguish different TRT Engines");
-    AddAttr<framework::BlockDesc *>("sub_block", "the trt block");
+        "The engine_key here is used to distinguish different Lite Engines");
     AddComment("Lite engine operator.");
   }
 };
