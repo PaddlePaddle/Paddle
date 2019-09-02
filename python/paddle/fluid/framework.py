@@ -3235,7 +3235,7 @@ class Program(object):
             targets = [targets]
 
         for var in feeded_var_names:
-            if not isinstance(var, str):
+            if not isinstance(var, six.string_types):
                 raise ValueError("All feeded_var_names of prune() can only be "
                                  "str.")
 
