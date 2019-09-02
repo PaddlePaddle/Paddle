@@ -119,13 +119,25 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
   preserve_vars_.resize(local_scopes_.size());
   tmp_var_infos_.resize(local_scopes_.size());
 
+  const ir::Graph &graph = Graph();
+  details::PseudoPersistableVars *pseudo_persistable_set = nullptr;
+  if (graph.Has(details::kPseudoPersistableVars)) {
+    pseudo_persistable_set = &graph.Get<details::PseudoPersistableVars>(
+        details::kPseudoPersistableVars);
+  }
+  auto is_pseudo_persistable_var = [&pseudo_persistable_set](
+      const std::string &var_name) {
+    return pseudo_persistable_set && pseudo_persistable_set->count(var_name);
+  };
+
   for (auto it = local_scopes_.rbegin(); it != local_scopes_.rend(); ++it) {
     size_t idx = local_scopes_.size() - 1 - (it - local_scopes_.rbegin());
     auto *scope = local_scopes_[idx];
     auto *local_scope = local_exec_scopes_[idx];
 
     for (auto &info : var_infos_) {
-      if (info.persistable_) {  // Persistable
+      if (info.persistable_ &&
+          !is_pseudo_persistable_var(info.name_)) {  // Persistable
         auto var = scope->FindVar(info.name_);
         if (var != nullptr) {
           VLOG(2)

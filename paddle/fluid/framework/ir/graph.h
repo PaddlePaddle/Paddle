@@ -86,6 +86,14 @@ class Graph {
   }
 
   template <typename AttrType>
+  AttrType &GetOrInit(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      Set(attr_name, new AttrType);
+    }
+    return Get<AttrType>(attr_name);
+  }
+
+  template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
                    attr_name);
