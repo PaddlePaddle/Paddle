@@ -511,7 +511,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     int scale_coefff = use_global_stats ? 1 : N * sample_size;
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coefff;
-    const auto scale_inv_var_nhw1 = scale_arr * inv_var_arr;
 
     // inplace calculation
     // Y:  ((x - est_mean) * (inv_var) * scale + bias
