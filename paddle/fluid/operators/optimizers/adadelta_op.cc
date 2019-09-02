@@ -58,7 +58,11 @@ class AdadeltaOp : public framework::OperatorWithKernel {
         "param and grad input of AdadeltaOp should have same dimension");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredGrad"),
                       "Param and AvgSquaredGrad input of AdadeltaOp "
-                      "should have same dimension");
+                      "should have same dimension"
+                      "NOTE: Maybe the Input variable AvgSquaredGrad has not "
+                      "been initialized. You may need to confirm if you put "
+                      "exe.run(startup_program) after optimizer.minimize "
+                      "function.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredUpdate"),
                       "Param and AvgSquaredUpdate input of AdadeltaOp "
                       "should have same dimension");

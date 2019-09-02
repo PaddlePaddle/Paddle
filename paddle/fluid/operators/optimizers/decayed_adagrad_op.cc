@@ -50,7 +50,11 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "LearningRate should have one element");
+                      "LearningRate should have one element"
+                      "NOTE: Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm if you put "
+                      "exe.run(startup_program) after optimizer.minimize "
+                      "function.");
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dims, ctx->GetInputDim("Grad"),
                       "Param and Grad input of DecayedAdagradOp should have "

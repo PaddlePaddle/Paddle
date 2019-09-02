@@ -52,7 +52,10 @@ class AdagradOp : public framework::OperatorWithKernel {
         "Param and Grad input of AdagradOp should have the same dimension.");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment"),
-        "Param and Moment input of AdagradOp should have the same dimension.");
+        "Param and Moment input of AdagradOp should have the same dimension."
+        "NOTE: Maybe the Input variable Moment has not been initialized. "
+        "You may need to confirm if you put exe.run(startup_program) "
+        "after optimizer.minimize function.");
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);

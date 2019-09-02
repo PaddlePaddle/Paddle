@@ -58,7 +58,11 @@ class FTRLOp : public framework::OperatorWithKernel {
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      "Learning Rate should be a scalar."
+                      "NOTE: Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm if you put "
+                      "exe.run(startup_program) after optimizer.minimize "
+                      "function.");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);

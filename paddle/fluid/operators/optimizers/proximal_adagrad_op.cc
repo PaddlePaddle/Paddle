@@ -47,7 +47,10 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("Moment"),
-        "Param and Moment of ProximalAdagrad Op must have same dimension.");
+        "Param and Moment of ProximalAdagrad Op must have same dimension."
+        "NOTE: Maybe the Input variable Moment has not been initialized. "
+        "You may need to confirm if you put exe.run(startup_program) "
+        "after optimizer.minimize function.");
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,

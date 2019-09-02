@@ -62,7 +62,10 @@ class MomentumOp : public framework::OperatorWithKernel {
           "Param and Grad input of MomentumOp should have the same dimension.");
       PADDLE_ENFORCE_EQ(
           param_dim, ctx->GetInputDim("Velocity"),
-          "Param and Velocity of MomentumOp should have the same dimension.");
+          "Param and Velocity of MomentumOp should have the same dimension."
+          "NOTE: Maybe the Input variable Velocity has not been initialized. "
+          "You may need to confirm if you put exe.run(startup_program) "
+          "after optimizer.minimize function.");
     }
     PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
                       "Learning_rate should be a scalar");
