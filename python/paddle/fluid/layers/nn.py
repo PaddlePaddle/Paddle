@@ -1404,7 +1404,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input, label, param_attr=None, length=None):
     """
     Linear Chain CRF.
 
@@ -1414,6 +1414,7 @@ def linear_chain_crf(input, label, param_attr=None):
         input(${emission_type}): ${emission_comment}
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
+        Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
@@ -1424,16 +1425,62 @@ def linear_chain_crf(input, label, param_attr=None):
     Examples:
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
-             crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
+            import paddle.fluid as fluid
+            import numpy as np
 
+            #define net structure, using LodTensor
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=emission,
+                    label=label,
+                    param_attr=fluid.ParamAttr(
+                    name='crfw',
+                    learning_rate=0.01)) 
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)    
+            #define data, using LoDTensor
+            a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
+            b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
+            feed1 = {'input_data':a,'label':b}
+            loss= exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
+            print(loss) 
+
+            #define net structure, using padding
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
+                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
+                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
+                crf_cost2 = fluid.layers.linear_chain_crf(
+                    input=emission2,
+                    label=label2,
+                    length=label_length,
+                    param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.01))
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+
+            #define data, using padding
+            cc=np.random.rand(4,10,10).astype('float32')
+            dd=np.random.rand(4,10,1).astype('int64')
+            ll=np.array([[3,3,4,2]])
+            feed2 = {'input_data2':cc,'label2':dd,'length':ll}
+
+            loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
+            print(loss2) 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1449,11 +1496,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
+    if length:
+        this_inputs['length'] = [length]
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],
