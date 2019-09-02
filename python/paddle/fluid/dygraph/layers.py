@@ -147,7 +147,7 @@ class Layer(core.Layer):
 
     def clear_gradients(self):
         for p in self.parameters():
-            if p.trainable and  p._ivar._grad_ivar().value().get_tensor()._is_initialized():
+            if p.trainable and p._ivar._grad_ivar().value().get_tensor()._is_initialized():
                 p.clear_gradient()
 
     def _build_once(self, *args):
