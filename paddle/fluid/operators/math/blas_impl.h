@@ -128,11 +128,12 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
-
+#if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {
     platform::dynload::mkl_scsrmm(args...);
   }
+#endif
 };
 
 template <>
@@ -238,11 +239,12 @@ struct CBlas<double> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmdErf(args...);
   }
-
+#if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {
     platform::dynload::mkl_dcsrmm(args...);
   }
+#endif
 };
 
 #else
