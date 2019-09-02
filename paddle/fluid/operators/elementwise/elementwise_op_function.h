@@ -47,6 +47,12 @@ namespace operators {
  * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
  *    pre=2*3, n=4*5, post=1
  *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
+ *
+ * New parameter: ***mid_flag*** is added to solve m*n*k & m*1*k broadcast
+ * cases.
+ * 3. shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1, 4, 5)
+ *    mid_flag should not be NULL.
+ *    x.shape(2, 3, 20) * y.shape(2, 1, 20).broadcast(2, 3, 20)
  */
 inline void get_mid_dims(const framework::DDim &x_dims,
                          const framework::DDim &y_dims, const int axis,
