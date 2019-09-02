@@ -85,9 +85,10 @@ def _reference_instance_norm_grad(x, d_y, scale, mean, var, epsilon,
     var_tile = np.reshape(var, (n, c, 1, 1))
     var_tile = np.tile(var_tile, (1, 1, h, w))
 
-    d_scale = np.sum(d_y * (x - mean_tile) / np.sqrt(var_tile + epsilon),
-                     axis=(0, 2, 3))
-    var_inv = 1.0 / np.sqrt(var_tile + epsilon)
+    #d_scale = np.sum(d_y * (x - mean_tile) / np.sqrt(var_tile + epsilon),
+    d_scale = np.sum(d_y * (x - mean_tile) * var_tile, axis=(0, 2, 3))
+    #var_inv = 1.0 / np.sqrt(var_tile + epsilon)
+    var_inv = var_tile
     scale_tile = np.reshape(scale, (1, c, 1, 1))
     scale_tile = np.tile(scale_tile, (n, 1, h, w))
 
@@ -155,8 +156,16 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
             y, saved_mean, variance_tmp = _reference_instance_norm_naive(
                 x, scale, bias, epsilon, self.momentum, self.use_global_stats)
-            mean_out = saved_mean * (1. - momentum) + momentum * mean
-            variance_out = variance_tmp * (1. - momentum) + momentum * variance
+
+            mean_out = np.zeros(mean_shape).astype(np.float32)
+            variance_out = np.ones(mean_shape).astype(np.float32)
+
+            mean_out = saved_mean * (1. - momentum) + momentum * mean_out
+            unbias_var = variance_tmp * (h * w) / (
+                h * w - 1)  ## ubbias variance
+            variance_out = unbias_var * (1. - momentum
+                                         ) + momentum * variance_out
+
             saved_variance = 1 / np.sqrt(variance_tmp + epsilon)
             if self.use_global_stats:
                 saved_mean = np.zeros(saved_mean.shape).astype(np.float32)
@@ -164,8 +173,13 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                     np.float32)
 
             d_x, d_scale, d_bias = _reference_instance_norm_grad(
-                x, d_y, scale, mean_out, variance_out, epsilon,
+                x, d_y, scale, saved_mean, saved_variance, epsilon,
                 self.use_global_stats)
+
+            mean = np.reshape(mean_out, (n, c))
+            mean = np.mean(mean, 0)
+            variance = np.reshape(variance_out, (n, c))
+            variance = np.mean(variance, 0)
 
             var_dict = locals()
             var_dict['y@GRAD'] = d_y
@@ -236,10 +250,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
                     fetch_list=self.fetch_list)
 
             for id, name in enumerate(self.fetch_list):
-                if name == 'variance':
-                    self.__assert_close(var_dict[name], out[id], name, 1e-3)
-                else:
-                    self.__assert_close(var_dict[name], out[id], name)
+                self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passes: ", str(place))
 
         places = [core.CPUPlace()]

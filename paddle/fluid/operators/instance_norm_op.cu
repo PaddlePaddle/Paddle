@@ -43,7 +43,7 @@ static __global__ void repeat_param(const T *input, T *output,
   }
 }
 
-template <typename T, int BlockDim>
+template <typename T, int BlockDim, bool AVG>
 static __global__ void add_param(const T *input, T *output,
                                  const int repeat_num, const int C) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
@@ -59,6 +59,10 @@ static __global__ void add_param(const T *input, T *output,
       output[i] = ou;
     }
     __syncthreads();
+
+    if (AVG) {
+      output[i] /= repeat_num;
+    }
   }
 }
 
@@ -76,8 +80,12 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
 
     auto *x = ctx.Input<Tensor>("X");
     auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        "the dimension of input X must greater than or equal to 2");
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 5,
+        "the dimension of input X must smaller than or equal to 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -140,14 +148,26 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
         functor;
 
+    Tensor est_mean_tmp =
+        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
+    est_mean_tmp.mutable_data<T>(ctx.GetPlace());
+    Tensor est_var_tmp =
+        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
+    est_var_tmp.mutable_data<T>(ctx.GetPlace());
+
     if (is_test || use_global_stats) {
       const auto *est_mean = ctx.Input<Tensor>("Mean");
       const auto *est_var = ctx.Input<Tensor>("Variance");
 
       PADDLE_ENFORCE_EQ(est_mean->dims().size(), 1UL);
       PADDLE_ENFORCE_EQ(est_var->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_mean->dims()[0], NxC);
-      PADDLE_ENFORCE_EQ(est_var->dims()[0], NxC);
+      PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
+      PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
+
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          est_mean->data<T>(), est_mean_tmp.data<T>(), N, C);
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          est_var->data<T>(), est_var_tmp.data<T>(), N, C);
 
       CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardInference(
           handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
@@ -155,8 +175,8 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
           data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
           in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
           bias_tmp.template data<BatchNormParamType<T>>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(), epsilon));
+          est_mean_tmp.template data<BatchNormParamType<T>>(),
+          est_var_tmp.template data<BatchNormParamType<T>>(), epsilon));
     } else {
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
@@ -170,6 +190,9 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
       functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
+      functor(dev_ctx, &est_mean_tmp, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, &est_var_tmp, static_cast<BatchNormParamType<T>>(1));
+
       double factor = 1. - momentum;
       CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
           handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
@@ -177,14 +200,29 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
           data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
           in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
           bias_tmp.template data<BatchNormParamType<T>>(), factor,
-          mean_out->template mutable_data<BatchNormParamType<T>>(
+          est_mean_tmp.template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace()),
-          variance_out->template mutable_data<BatchNormParamType<T>>(
+          est_var_tmp.template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace()),
           epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
                        ctx.GetPlace()),
           saved_variance->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace())));
+
+      // est_mean_tmp.ShareDataWith(*mean_out);
+      // est_var_tmp.ShareDataWith(*variance_out);
+      // functor(dev_ctx, mean_out, static_cast<BatchNormParamType<T>>(0));
+      // functor(dev_ctx, variance_out, static_cast<BatchNormParamType<T>>(0));
+
+      // mean_out->ShareDataWith(est_mean_tmp);
+      // variance_out->ShareDataWith(est_var_tmp);
+
+      add_param<T, block, true><<<grid, block, 0, dev_ctx.stream()>>>(
+          est_mean_tmp.data<T>(), mean_out->mutable_data<T>(ctx.GetPlace()), N,
+          C);
+      add_param<T, block, true><<<grid, block, 0, dev_ctx.stream()>>>(
+          est_var_tmp.data<T>(), variance_out->mutable_data<T>(ctx.GetPlace()),
+          N, C);
     }
 
     CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
@@ -204,7 +242,7 @@ static __global__ void INBwdData(const T *dy,
        i += blockDim.x * gridDim.x) {
     const int nc = i / HxW % NxC;
     const int c = nc % C;
-    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[nc] + epsilon);
+    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
     dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
                            scale[c] * inv_var);
   }
@@ -231,11 +269,10 @@ static __global__ void INBwdScaleBias(const T *dy, const T *x,
       const int stats_index = j / HxW * C + i;
       const int index = stats_index * HxW + j % HxW;
 
-      BatchNormParamType<T> var_i = 1.0 / sqrt(variance[stats_index] + epsilon);
-      ds_sum +=
-          static_cast<BatchNormParamType<T>>(dy[index]) *
-          static_cast<BatchNormParamType<T>>(x[index] - mean[stats_index]) *
-          static_cast<BatchNormParamType<T>>(var_i);
+      BatchNormParamType<T> var_i = 1.0 / sqrt(variance[i] + epsilon);
+      ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
+                static_cast<BatchNormParamType<T>>(x[index] - mean[i]) *
+                static_cast<BatchNormParamType<T>>(var_i);
       db_sum += static_cast<BatchNormParamType<T>>(dy[index]);
     }
     ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
@@ -263,8 +300,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        "the dimension of input X must greater than or equal to 2");
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 5,
+        "the dimension of input X must smaller than or equal to 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -358,9 +399,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
               ctx.GetPlace()),
           epsilon, saved_mean_data, saved_var_data));
 
-      add_param<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
           d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
-      add_param<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
           d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
       CUDNN_ENFORCE(
           platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
@@ -408,10 +449,11 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  T mean_val = mean[ncid];
-  T var_val = variance[ncid];
 
   if (!use_global_stats) {
+    T mean_val = mean[ncid];
+    T var_val = variance[ncid];
+
     typedef cub::BlockReduce<T, BlockDim> BlockReduce;
     __shared__ typename BlockReduce::TempStorage dy_storage;
     __shared__ typename BlockReduce::TempStorage ddx_storage;
@@ -481,6 +523,8 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
       }
     }
   } else {
+    T var_val = variance[c];
+
     var_val = real_sqrt(var_val + epsilon);
     if (ddscale != nullptr) {
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
@@ -501,10 +545,11 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  T mean_val = mean[ncid];
-  T var_val = variance[ncid];
 
   if (!use_global_stats) {
+    T mean_val = mean[ncid];
+    T var_val = variance[ncid];
+
     typedef cub::BlockReduce<T, BlockDim> BlockReduce;
     __shared__ typename BlockReduce::TempStorage ddx_storage;
     __shared__ typename BlockReduce::TempStorage ddx_mul_x_sub_mean_storage;
@@ -547,6 +592,9 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
       }
     }
   } else {
+    T mean_val = mean[c];
+    T var_val = variance[c];
+
     if (ddx != nullptr) {
       var_val = real_sqrt(var_val + epsilon);
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
@@ -576,10 +624,11 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
-  T mean_val = mean[ncid];
-  T var_val = variance[ncid];
 
   if (!use_global_stats) {
+    T mean_val = mean[ncid];
+    T var_val = variance[ncid];
+
     typedef cub::BlockReduce<T, BlockDim> BlockReduce;
     __shared__ typename BlockReduce::TempStorage dy_storage;
     __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
@@ -612,6 +661,7 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
     }
   } else {
     if (ddx != nullptr) {
+      T var_val = variance[c];
       var_val = real_sqrt(var_val + epsilon);
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
         dscale[c] += dy[i] * var_val * ddx[i];

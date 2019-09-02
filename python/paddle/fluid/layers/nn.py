@@ -3468,22 +3468,22 @@ def instance_norm(input,
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
-             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
 	     If the Initializer of the param_attr is not set, the parameter is initialized 
 	     with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
-             If it is set to None or one attribute of ParamAttr, batch_norm
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            is set to None, instance_norm will save global mean with a random name, otherwise, instance_norm 
             will save global mean with the string.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            If it is set to None, instance_norm will save global variance with a random name, otherwise, instance_norm 
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
         use_global_stats(bool, Default False): Whether to use global mean and
@@ -3493,7 +3493,7 @@ def instance_norm(input,
             and variance are also used during train period.
 
     Returns:
-        Variable: A tensor variable which is the result after applying batch normalization on the input.
+        Variable: A tensor variable which is the result after applying instance normalization on the input.
 
     Examples:
 
@@ -3508,7 +3508,7 @@ def instance_norm(input,
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
 
-    # use fp32 for bn parameter
+    # use fp32 for in parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
 
@@ -3524,7 +3524,11 @@ def instance_norm(input,
         dtype=dtype,
         default_initializer=Constant(1.0))
     bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=dtype,
+        is_bias=True,
+        default_initializer=Constant(0.0))
 
     mean = helper.create_parameter(
         attr=ParamAttr(
