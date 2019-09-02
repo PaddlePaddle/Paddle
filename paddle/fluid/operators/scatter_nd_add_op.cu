@@ -31,7 +31,7 @@ class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    Out->ShareDataWith(*X);
+    framework::TensorCopySync(*X, ctx.GetPlace(), Out);
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
