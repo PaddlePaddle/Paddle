@@ -386,7 +386,6 @@ void SyncBatchNormGradFunctor(
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 
   if (is_inplace) {
-    int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
     if (layout == framework::DataLayout::kNCHW) {
       KeBNRestoreData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
