@@ -74,8 +74,7 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
         depth = *depth_tensor->data<int32_t>();
       }
 
-      auto in_dims = in->dims();
-      framework::DDim out_dims(in_dims);
+      auto out_dims = out->dims();
       out_dims[out_dims.size() - 1] = depth;
       out->Resize(out_dims);
     } else {
