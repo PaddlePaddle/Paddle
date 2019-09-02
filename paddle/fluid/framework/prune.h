@@ -22,8 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output,
-           const std::set<std::string>& feed_var_names);
+void Prune(const proto::ProgramDesc& input,
+           const std::set<std::string>& feed_var_names,
+           proto::ProgramDesc* output);
 
 }  // namespace framework
 }  // namespace paddle

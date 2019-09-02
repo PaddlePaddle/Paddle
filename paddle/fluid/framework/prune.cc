@@ -185,8 +185,9 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output,
-           const std::set<std::string>& feed_var_names) {
+void Prune(const proto::ProgramDesc& input,
+           const std::set<std::string>& feed_var_names,
+           proto::ProgramDesc* output) {
   std::set<std::string> dependent_vars;
   output->clear_blocks();
   prune_impl(input, output, 0, -1, &dependent_vars, feed_var_names);

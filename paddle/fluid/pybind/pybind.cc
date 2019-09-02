@@ -756,7 +756,7 @@ All parameter, weight, gradient are variables in Paddle.
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
-    Prune(*prog_with_targets.Proto(), &pruned_desc, feeded_var_names);
+    Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
   m.def("empty_var_name",
