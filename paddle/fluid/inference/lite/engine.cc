@@ -36,7 +36,7 @@ Predictor* EngineManager::Get(const std::string& name) const {
 Predictor* EngineManager::Create(
   const std::string& name, const EngineConfig& cfg) {
   auto* p = new Predictor();
-  p->Build(cfg.model, "", "", cfg.prefer_place, cfg.valid_places, cfg.passes,
+  p->Build(cfg.model, "", "", cfg.prefer_place, cfg.valid_places, cfg.neglect_passes,
     cfg.model_type, cfg.memory_from_memory);
   engines_[name].reset(p);
   return p;

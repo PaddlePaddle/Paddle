@@ -25,9 +25,6 @@
 #include <fstream>
 
 #include "paddle/fluid/inference/lite/op_teller.h"
-#include "google/protobuf/text_format.h"
-#include "google/protobuf/message.h"
-
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
@@ -35,10 +32,21 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
+#include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+std::vector<std::string> IOVarsFilter(const std::vector<framework::ir::Node*>& nodes) {
+  std::vector<std::string> names;
+  for (const auto& node: nodes) {
+    if (node->IsVar() && !node->Var()->Persistable()) { 
+      names.push_back(node->Name());
+    }
+  }
+  return names;
+}
 
 void StrToBinaryFile(const std::string& path, const std::string& str) {
   std::ofstream file(path.c_str(), std::ios::binary);
@@ -72,18 +80,9 @@ void LiteSubgraphPass::ApplyImpl(
   // those parameter already exist in anakin, and should not have another copy
   // in fluid.
   std::vector<std::string> repetitive_params;
-
   for (auto *node : graph->Nodes()) {
-    LOG(INFO) << "======== [node ] ========"; 
-    LOG(INFO) << "name: " << node->Name();
-    for (auto* in: node->inputs) {
-      LOG(INFO) << "   inputs: " << in->Name();
-    }
-    for (auto* out: node->outputs) {
-      LOG(INFO) << "   outputs: " << out->Name();
-    }
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateLiteOp(node, graph, graph_param_names, &repetitive_params);
+      CreateOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
@@ -101,107 +100,80 @@ void LiteSubgraphPass::ApplyImpl(
              new std::vector<std::string>(repetitive_params));
 }
 
-void LiteSubgraphPass::CreateLiteOp(
+void LiteSubgraphPass::CreateOp(
     framework::ir::Node *node, Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
-  for (auto param: graph_params) {
-    LOG(INFO) << "graph_param: " << param;
-  }
-
-  auto &subgraph = *Agent(node).subgraph();
-  PADDLE_ENFORCE(!subgraph.empty());
-
-  framework::ProgramDesc *program_desc =
-      Get<framework::ProgramDesc *>("program");
-
-  const framework::BlockDesc &global_block =
-      program_desc->Block(framework::kRootBlockIndex);
-  framework::BlockDesc *sub_block = program_desc->AppendBlock(global_block);
-
+  framework::ProgramDesc *global_program = Get<framework::ProgramDesc *>("program");
   framework::ProgramDesc engine_program;
-  framework::BlockDesc* engine_global_block = engine_program.MutableBlock(framework::kRootBlockIndex);
+
+  AppendBlocks(node, global_program, &engine_program, repetitive_params);
+  CreateEngine(&engine_program, repetitive_params);
+
+  auto *op_desc = node->Op();
+  op_desc->SetInput("Xs", IOVarsFilter(node->inputs));
+  op_desc->SetOutput("Ys", IOVarsFilter(node->outputs));
+  op_desc->SetType("lite_engine");
+  op_desc->SetAttr("engine_key", std::string());
+}
+
+void LiteSubgraphPass::AppendBlocks(framework::ir::Node *node,
+  framework::ProgramDesc* global_program,
+  framework::ProgramDesc* engine_program,
+  std::vector<std::string> *repetitive_params) const {
+    auto &subgraph = *Agent(node).subgraph();
+  PADDLE_ENFORCE(!subgraph.empty());
+  const framework::BlockDesc &global_block = global_program->Block(framework::kRootBlockIndex);
+  framework::BlockDesc *sub_block = global_program->AppendBlock(global_block);
+
+  framework::BlockDesc* engine_global_block = engine_program->MutableBlock(framework::kRootBlockIndex);
   string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
                           subgraph.size());
 
   std::unordered_set<Node *> io_var_nodes = GetRelatedIOVarNodes(subgraph);
-
-  auto serialize_params = [] (std::string* str, framework::Scope* scope,
-       const std::vector<std::string>& params) {
-    std::ostringstream os;
-    platform::CPUDeviceContext ctx;
-      //std::ofstream os("param.bin", std::ios::binary);
-    for (const auto& param: params) {
-      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
-      LOG(INFO) << "SerializeToStream: " << param;
-      framework::SerializeToStream(os, *tensor, ctx);
-    }
-      //os.close();
-    *str = os.str();
-
-    /*
-    for (const auto& param: params) {
-      
-      std::ifstream is(param + ".bin", std::ios::in | std::ios::binary);
-      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
-      LOG(INFO) << "DeserializeFromStream: " << param;
-      framework::DeserializeFromStream(is, tensor, ctx);
-      is.close();
-      
-    }
-    */
-  };
-
+  *repetitive_params = ExtractParameters(io_var_nodes);
   for (auto *var_node: io_var_nodes) {
     auto *sub_block_var = sub_block->Var(var_node->Name());
     auto *var = engine_global_block->Var(var_node->Name());
     *sub_block_var->Proto() = *var_node->Var()->Proto();
     *var->Proto() = *var_node->Var()->Proto();
   }
-
   for (auto *op_node : subgraph) {
     auto *sub_block_op = sub_block->AppendOp();
     auto *op = engine_global_block->AppendOp();
     *sub_block_op->Proto() = *op_node->Op()->Proto();
     *op->Proto() = *op_node->Op()->Proto();
   }
+  PrependFeedOps(engine_global_block, IOVarsFilter(node->inputs));
+  PrependFetchOps(engine_global_block, IOVarsFilter(node->outputs));
+}
 
-  auto target_names = [](const std::vector<framework::ir::Node*>& nodes) {
-    std::vector<std::string> names;
-    for (const auto& node: nodes) {
-      if (node->IsVar() && !node->Var()->Persistable()) { 
-        names.push_back(node->Name());
-      }
+void LiteSubgraphPass::CreateEngine(framework::ProgramDesc* program,
+  std::vector<std::string> *repetitive_params) const {
+  inference::lite::EngineConfig config;
+  auto *scope = param_scope();
+
+  auto serialize_params = [] (std::string* str, framework::Scope* scope,
+       const std::vector<std::string>& params) {
+    std::ostringstream os;
+    platform::CPUDeviceContext ctx;
+    for (const auto& param: params) {
+      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      LOG(INFO) << "SerializeToStream: " << param;
+      framework::SerializeToStream(os, *tensor, ctx);
     }
-    return names;
+    *str = os.str();
   };
 
-  const std::vector<std::string> input_names = target_names(node->inputs);
-  const std::vector<std::string> output_names = target_names(node->outputs);
-
-  PrependFeedOps(engine_global_block, input_names);
-  PrependFetchOps(engine_global_block, output_names);
-
-  auto *op_desc = node->Op();
-  op_desc->SetInput("Xs", input_names);
-  op_desc->SetOutput("Ys", output_names);
-  op_desc->SetType("lite_engine");
-  op_desc->SetAttr("engine_key", std::string());
-
-  auto *scope = param_scope();
-  std::string param_string;
-  *repetitive_params = ExtractParameters(io_var_nodes);
-  serialize_params(&param_string, scope, *repetitive_params);
-  // StrToBinaryFile("./param.bin", param_string);
-
-  std::string model_string = engine_program.Proto()->SerializeAsString();
-  // StrToBinaryFile("./model.bin", model_string);
-
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(*(engine_program.Proto()), &str);
-  std::cout << "=====" << std::endl;
-  std::cout << str;
-
+  serialize_params(&config.param, scope, *repetitive_params);
+  config.model = program->Proto()->SerializeAsString();
+  config.prefer_place = paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)});
+  config.valid_places = {
+      paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+  };
+  inference::Singleton<inference::lite::EngineManager>::Global()
+      .Create("engine_key", config);
 }
 
 }  // namespace analysis

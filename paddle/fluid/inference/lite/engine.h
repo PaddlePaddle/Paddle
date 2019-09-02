@@ -35,7 +35,7 @@ struct EngineConfig {
   std::string param;
   Place prefer_place;
   std::vector<Place> valid_places;
-  std::vector<std::string> passes;
+  std::vector<std::string> neglect_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool memory_from_memory{true};
 };

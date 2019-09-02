@@ -30,13 +30,18 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
   void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
-  void CreateLiteOp(framework::ir::Node *x, framework::ir::Graph *graph,
+  void CreateOp(framework::ir::Node *x, framework::ir::Graph *graph,
                       const std::vector<std::string> &graph_params,
                       std::vector<std::string> *repetitive_params) const;
+
+  void CreateEngine(framework::ProgramDesc* program,
+    std::vector<std::string> *repetitive_params) const;
+
+  void AppendBlocks(framework::ir::Node *node,
+  framework::ProgramDesc* global_program,
+  framework::ProgramDesc* engine_program,
+  std::vector<std::string> *repetitive_params) const;
 };
-
-
-
 
 }  // namespace analysis
 }  // namespace inference

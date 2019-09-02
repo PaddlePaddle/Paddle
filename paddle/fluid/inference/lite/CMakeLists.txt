@@ -23,4 +23,7 @@ else()
 
     # make op teller
     cc_library(lite_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost)
+
+    # make op teller
+    cc_library(lite_engine SRCS engine.cc DEPS api_full_static)
 endif()
