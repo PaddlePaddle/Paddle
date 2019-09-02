@@ -29,12 +29,12 @@ class TestRunTimeException(OpTest):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            fluid.layers.one_hot(input=label, depth=100)
+            x = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            fluid.layers.fc(input=x, size=3)
 
         def _run_program():
-            x = np.random.random(size=(10)).astype('int64')
-            exe.run(train_program, feed={"label": x})
+            x = np.random.random(size=(10)).astype('float32')
+            exe.run(train_program, feed={"x": x})
 
         self.assertRaises(core.EnforceNotMet, _run_program)
 
@@ -47,9 +47,9 @@ class TestCompileTimeException(OpTest):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(
-                name="label", shape=[1], dtype="int64", append_batch_size=False)
-            fluid.layers.one_hot(input=label, depth=100)
+            x = fluid.layers.data(
+                name="x", shape=[1], dtype="float32", append_batch_size=False)
+            fluid.layers.fc(input=x, size=100)
 
 
 if __name__ == '__main__':
