@@ -38,21 +38,6 @@ std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
   return regs;
 }
 
-std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name) {
-  size_t separator_pos = file_name.find_last_of(kFileFormatSeparator);
-  PADDLE_ENFORCE_NE(separator_pos, std::string::npos,
-                    "File name illegal! A legal file name should be like: "
-                    "[file_name].[file_format] (e.g., 'data_file.recordio').");
-  std::string filetype = file_name.substr(separator_pos + 1);
-
-  auto itor = FileReaderRegistry().find(filetype);
-  PADDLE_ENFORCE(itor != FileReaderRegistry().end(),
-                 "No file reader registered for '%s' format.", filetype);
-  framework::ReaderBase* reader = (itor->second)(file_name);
-  return std::unique_ptr<framework::ReaderBase>(reader);
-}
-
 void FileReaderMakerBase::Make() {
   AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");

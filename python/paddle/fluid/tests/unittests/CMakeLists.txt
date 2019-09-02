@@ -28,6 +28,7 @@ endif(NOT WITH_DISTRIBUTE)
 
 
 if(NOT WITH_GPU OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
@@ -184,6 +185,7 @@ set(TEST_OPS_WITH_GC
   test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
+  test_gather_nd_op
   test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
@@ -309,5 +311,6 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_seresnext_base_gpu test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_parallel_executor_crf test_sync_batch_norm_op
+        test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
