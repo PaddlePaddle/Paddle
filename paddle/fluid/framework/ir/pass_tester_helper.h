@@ -45,6 +45,21 @@ struct Layers {
     return out;
   }
 
+  VarDesc* depthwise_conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
+                            bool use_cudnn) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("depthwise_conv2d");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Filter", {filter->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* pool2d(VarDesc* x, bool use_cudnn) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();

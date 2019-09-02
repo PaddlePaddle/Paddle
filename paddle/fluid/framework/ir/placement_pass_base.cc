@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +31,8 @@ void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      if (op->HasAttr(attr_name) || op->HasProtoAttr(attr_name)) {
+      if ((op->HasAttr(attr_name) || op->HasProtoAttr(attr_name)) &&
+          IsSupport(op->Type())) {
         if (op_types_list.empty()) {
           op->SetAttr(attr_name, true);
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
@@ -40,6 +42,26 @@ void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
+}
+
+bool PlacementPassBase::IsSupport(const std::string& op_type) const {
+  if (GetAttrName() == "use_cudnn") {
+    auto& all_kernels = OperatorWithKernel::AllOpKernels();
+    auto it = all_kernels.find(op_type);
+    if (it == all_kernels.end()) {
+      // All control operators don't have kernel.
+      return false;
+    }
+    for (auto& kernel_pair : it->second) {
+      if (platform::is_gpu_place(kernel_pair.first.place_) &&
+          (kernel_pair.first.library_type_ == LibraryType::kCUDNN)) {
+        return true;
+      }
+    }
+  } else if (GetAttrName() == "use_mkldnn") {
+    return true;
+  }
+  return false;
 }
 
 }  // namespace ir
