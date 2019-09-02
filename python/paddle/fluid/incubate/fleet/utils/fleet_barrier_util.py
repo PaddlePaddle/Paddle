@@ -17,6 +17,10 @@ from paddle.fluid.contrib.utils import HDFSClient
 
 
 def check_all_trainers_ready(ready_path, epoch):
+    ## for unittest
+    if ready_path == "unittest":
+        return
+
     trainer_num = fleet.worker_num()
     trainer_id = fleet.worker_index()
 
