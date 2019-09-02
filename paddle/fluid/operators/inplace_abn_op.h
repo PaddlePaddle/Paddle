@@ -55,11 +55,11 @@ class InplaceABNActivation {
       y.device(d) = x;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
       LeakyReluFunctor<T> functor;
-      setAttrs(ctx, functor);
+      setAttrs(ctx, &functor);
       functor(d, x, y);
     } else if (act_type == InplaceABNActivationType::elu) {
       ELUFunctor<T> functor;
-      setAttrs(ctx, functor);
+      setAttrs(ctx, &functor);
       functor(d, x, y);
     } else {
       PADDLE_THROW("unsupported activation type");
@@ -67,8 +67,8 @@ class InplaceABNActivation {
   }
 
   void setAttrs(const framework::ExecutionContext& ctx,
-                BaseActivationFunctor<T>& functor) {
-    auto attrs = functor.GetAttrs();
+                BaseActivationFunctor<T>* functor) {
+    auto attrs = functor->GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
@@ -93,7 +93,7 @@ class InplaceABNActivation {
       }
 
       LeakyReluGradFunctor<T> functor;
-      setAttrs(ctx, functor);
+      setAttrs(ctx, &functor);
       functor(d, x, y, dy, dx);
     } else if (act_type == InplaceABNActivationType::elu) {
       if (is_inplace) {
@@ -104,7 +104,7 @@ class InplaceABNActivation {
       }
 
       ELUGradFunctor<T> functor;
-      setAttrs(ctx, functor);
+      setAttrs(ctx, &functor);
       functor(d, x, y, dy, dx);
     } else {
       PADDLE_THROW("unsupported activation type");
