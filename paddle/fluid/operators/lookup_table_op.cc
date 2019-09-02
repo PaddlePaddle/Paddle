@@ -39,11 +39,10 @@ class LookupTableOp : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
-    PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
-                      "The last dimension of the 'Ids' tensor must be 1.");
 
+    int valid_rank = (ids_dims[ids_rank - 1] == 1U) ? ids_rank - 1 : ids_rank;
     auto output_dims =
-        framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
+        framework::vectorize(framework::slice_ddim(ids_dims, 0, valid_rank));
     output_dims.push_back(table_dims[1]);
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
 

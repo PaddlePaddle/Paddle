@@ -54,6 +54,21 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
+class TestLookupTableOpWithTensorIdsRemoveLastDim(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.random((17, 31)).astype("float32")
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int64")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+
+
 class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
@@ -69,6 +84,22 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
 
 
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of
+        # paddings makes no sense and we don't test the gradient here.
+        pass
+
+
+class TestLookupTableOpWithTensorIdsAndPadding2(
+        TestLookupTableOpWithTensorIdsRemoveLastDim):
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -136,6 +167,20 @@ class TestLookupTableWIsSelectedRows(OpTest):
             self.check_with_place(place)
 
 
+class TestLookupTableWIsSelectedRowsRemoveLastDim(
+        TestLookupTableWIsSelectedRows):
+    def prepare_ids(self, scope, place):
+        ids_tensor = scope.var('Ids').get_tensor()
+        ids_array = np.array([0, 4, 3, 5]).astype("int64")
+        ids_tensor.set(ids_array, place)
+        return ids_array
+
+    def check_result(self, ids_array, result_array):
+        # all(): return True if all elements of the iterable are true (or if the iterable is empty)
+        for idx, row in enumerate(ids_array):
+            assert (row == result_array[idx]).all()
+
+
 class TestLookupTableWithTensorIdsWIsSelectedRows(
         TestLookupTableWIsSelectedRows):
     def prepare_ids(self, scope, place):
@@ -148,6 +193,16 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
     def check_result(self, ids_array, result_array):
         for idx, row in np.ndenumerate(ids_array):
             assert (row == result_array[idx]).all()
+
+
+class TestLookupTableWithTensorIdsWIsSelectedRowsRemoveLastDim(
+        TestLookupTableWithTensorIdsWIsSelectedRows):
+    def prepare_ids(self, scope, place):
+        ids_tensor = scope.var('Ids').get_tensor()
+        ids_array = np.random.randint(
+            low=0, high=6, size=(2, 4, 3)).astype("int64")
+        ids_tensor.set(ids_array, place)
+        return ids_array
 
 
 if __name__ == "__main__":
