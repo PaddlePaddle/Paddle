@@ -427,9 +427,13 @@ class Categorical(Distribution):
           b = Categorical(b_logits_tensor)
 
           a.entropy()
+          # [0.6931472] with shape: [1]
+
           b.entropy()
-          
+          # [0.6931347] with shape: [1]
+
           a.kl_divergence(b)
+          # [1.2516975e-05] with shape: [1]
 
     """
 
@@ -525,9 +529,12 @@ class MultivariateNormalDiag(Distribution):
             b = MultivariateNormalDiag(b_loc_tensor, b_scale_tensor)
             
             a.entropy()
+            # [2.033158] with shape: [1]
             b.entropy()
+            # [1.7777451] with shaoe: [1]
 
             a.kl_divergence(b)
+            # [0.06542051] with shape: [1]
        
     """
 
