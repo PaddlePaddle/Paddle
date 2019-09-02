@@ -51,9 +51,9 @@ class InplaceABNActivation {
   template <typename Device, typename X, typename Y>
   void Compute(const framework::ExecutionContext& ctx, const int act_type,
                const Device& d, X x, Y y) {
-    if (act_type == InplaceABNActivationType::identity)
+    if (act_type == InplaceABNActivationType::identity) {
       y.device(d) = x;
-    else if (act_type == InplaceABNActivationType::leakyrelu) {
+    } else if (act_type == InplaceABNActivationType::leakyrelu) {
       LeakyReluFunctor<T> functor;
       setAttrs(ctx, functor);
       functor(d, x, y);
@@ -61,8 +61,9 @@ class InplaceABNActivation {
       ELUFunctor<T> functor;
       setAttrs(ctx, functor);
       functor(d, x, y);
-    } else
+    } else {
       PADDLE_THROW("unsupported activation type");
+    }
   }
 
   void setAttrs(const framework::ExecutionContext& ctx,
