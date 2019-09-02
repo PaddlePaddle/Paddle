@@ -76,6 +76,7 @@ class TestListenAndServOp(OpTest):
             opt_info["use_cvm"] = True
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
+            opt_info["stat_var_names"] = []
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
@@ -131,6 +132,7 @@ class TestListenAndServOp(OpTest):
             opt_info["use_cvm"] = False
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
+            opt_info["stat_var_names"] = []
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
