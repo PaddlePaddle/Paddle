@@ -21,43 +21,34 @@
 #include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
-#include "lite/api/paddle_api.h"
-#include "lite/api/paddle_place.h"
+#include "lite/api/cxx_api.h"
+
+using paddle::lite::Place;
+using paddle::lite::Predictor;
 
 namespace paddle {
 namespace inference {
 namespace lite {
 
-using lite_api::PaddlePredictor;
-using lite_api::CxxConfig;
+struct EngineConfig {
+  std::string model;
+  std::string param;
+  Place prefer_place;
+  std::vector<Place> valid_places;
+  std::vector<std::string> passes;
+  lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
+  bool memory_from_memory{true};
+};
 
 class EngineManager {
  public:
-  bool Empty() const { return engines_.size() == 0; }
-  bool Has(const std::string& name) const {
-    if (engines_.count(name) == 0) return false;
-    return engines_.at(name).get() != nullptr;
-  }
-
-  PaddlePredictor* Get(const std::string& name) const {
-    return engines_.at(name).get();
-  }
-
-  PaddlePredictor* Create(
-      const std::string& name, const CxxConfig& config) {
-    std::shared_ptr<PaddlePredictor> p = lite_api::CreatePaddlePredictor(config);
-    engines_[name].reset(p);
-    return p.get();
-  }
-
-  void DeleteAll() {
-    for (auto& item : engines_) {
-      item.second.reset(nullptr);
-    }
-  }
-
+  bool Empty() const;
+  bool Has(const std::string& name) const;
+  Predictor* Get(const std::string& name) const;
+  Predictor* Create(const std::string& name, const EngineConfig& cfg);
+  void DeleteAll();
  private:
-  std::unordered_map<std::string, std::shared_ptr<PaddlePredictor>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<Predictor>> engines_;
 };
 
 }  // namespace lite

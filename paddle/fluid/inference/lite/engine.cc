@@ -11,3 +11,43 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include "paddle/fluid/inference/lite/engine.h"
+
+namespace paddle {
+namespace inference {
+namespace lite {
+
+bool EngineManager::Empty() const {
+    return engines_.size() == 0;
+}
+
+bool EngineManager::Has(const std::string& name) const {
+  if (engines_.count(name) == 0) {
+     return false; 
+  }
+  return engines_.at(name).get() != nullptr;
+}
+
+Predictor* EngineManager::Get(const std::string& name) const {
+  return engines_.at(name).get();
+}
+
+Predictor* EngineManager::Create(
+  const std::string& name, const EngineConfig& cfg) {
+  auto* p = new Predictor();
+  p->Build(cfg.model, "", "", cfg.prefer_place, cfg.valid_places, cfg.passes,
+    cfg.model_type, cfg.memory_from_memory);
+  engines_[name].reset(p);
+  return p;
+}
+
+void EngineManager::DeleteAll() {
+  for (auto& item : engines_) {
+    item.second.reset(nullptr);
+  }
+}
+
+}  // namespace lite
+}  // namespace inference
+}  // namespace paddle
