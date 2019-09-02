@@ -17,41 +17,73 @@ from __future__ import print_function
 import unittest
 
 import contextlib
-import numpy
+import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from test_parallel_executor_mnist import simple_fc_net, fc_with_batchnorm
+import seresnext_net
+from test_parallel_executor_transformer import transformer, get_feed_data_reader
 
 
 class TestProgramPruneBackward(unittest.TestCase):
-    def test_simple_fc_network(self):
+    def check_prune_correctness(self, method, feed_dict, optimizer):
         with self.program_scope_guard():
-            x = fluid.layers.data(name='X', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='Y', shape=[1], dtype='float32')
-            y_ = fluid.layers.fc(input=x, size=1, act=None)
-            loss = fluid.layers.square_error_cost(input=y_, label=y)
-            avg_loss = fluid.layers.mean(loss)
+            loss = method(use_feed=False)
 
             main_program = fluid.default_main_program()
-            test_program_orig = main_program.clone(for_test=True)
-            fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
-            test_program_prune = main_program.clone(for_test=True)
+            test_prog_orig = main_program.clone(for_test=True)
+            optimizer(learning_rate=0.001).minimize(loss)
+            test_prog_prune = main_program.clone(for_test=True)
 
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            input_x = numpy.random.random(size=(10, 13)).astype('float32')
-            input_y = numpy.random.random(size=(10, 1)).astype('float32')
-            loss_data_in_orig, = exe.run(test_program_orig,
-                                         feed={'X': input_x,
-                                               'Y': input_y},
-                                         fetch_list=[avg_loss.name])
-            loss_data_in_prune, = exe.run(test_program_prune,
-                                          feed={'X': input_x,
-                                                'Y': input_y},
-                                          fetch_list=[avg_loss.name])
+            loss_data_orig, = exe.run(test_prog_orig,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
+            loss_data_prune, = exe.run(test_prog_prune,
+                                       feed=feed_dict,
+                                       fetch_list=[loss.name])
 
-            self.assertEqual(loss_data_in_orig, loss_data_in_prune)
+            self.assertEqual(loss_data_orig, loss_data_prune)
+
+    def _init_fc_data(self):
+        np.random.seed(5)
+        img = np.random.random(size=[32, 784]).astype(np.float32)
+        label = np.ones(shape=[32, 1], dtype='int64')
+        return img, label
+
+    def test_simple_fc_net(self):
+        img, label = self._init_fc_data()
+        self.check_prune_correctness(
+            method=simple_fc_net,
+            feed_dict={"image": img,
+                       "label": label},
+            optimizer=fluid.optimizer.SGD)
+
+    def test_batchnorm_fc(self):
+        img, label = self._init_fc_data()
+        self.check_prune_correctness(
+            method=fc_with_batchnorm,
+            feed_dict={"image": img,
+                       "label": label},
+            optimizer=fluid.optimizer.SGD)
+
+    def test_seresnet(self):
+        self.check_prune_correctness(
+            method=seresnext_net.model,
+            feed_dict=seresnext_net.feed_dict(use_cuda=False),
+            optimizer=seresnext_net.optimizer)
+
+    def test_transformer(self):
+        # the program argument is used to distinguish Program and CompiledProgram
+        feed_dict = get_feed_data_reader().get_next(
+            fluid.Executor(core.CPUPlace()), fluid.default_main_program())
+        self.check_prune_correctness(
+            method=transformer,
+            feed_dict=feed_dict,
+            optimizer=fluid.optimizer.Adam)
 
     @contextlib.contextmanager
     def program_scope_guard(self):
