@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -181,8 +181,6 @@ void LiteSubgraphPass::CreateLiteOp(
 
   PrependFeedOps(engine_global_block, input_names);
   PrependFetchOps(engine_global_block, output_names);
-
-  LOG(INFO) << "[===output_names===] " << output_names[0];
 
   auto *op_desc = node->Op();
   op_desc->SetInput("Xs", input_names);
