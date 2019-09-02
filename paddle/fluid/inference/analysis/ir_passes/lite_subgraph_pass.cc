@@ -82,7 +82,7 @@ void LiteSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      CreateOp(node, graph, graph_param_names, &repetitive_params);
+      BuildOperator(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
@@ -100,7 +100,7 @@ void LiteSubgraphPass::ApplyImpl(
              new std::vector<std::string>(repetitive_params));
 }
 
-void LiteSubgraphPass::CreateOp(
+void LiteSubgraphPass::BuildOperator(
     framework::ir::Node *node, Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
