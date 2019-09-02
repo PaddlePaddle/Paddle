@@ -475,14 +475,15 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                if param._ivar._grad_ivar().value().get_tensor()._is_initialized():
-                    # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
+                if param._ivar._grad_ivar() is not None:
+                    if param._ivar._grad_ivar().value().get_tensor()._is_initialized():
+                        # create gradient variable
+                        grad_var = Variable(
+                            block=loss.block,
+                            name=param._ivar._grad_name(),
+                            stop_gradient=True,
+                            ivar=param._ivar._grad_ivar())
+                        params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
