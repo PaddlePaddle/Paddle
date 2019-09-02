@@ -182,7 +182,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNCHW16C(ElementwiseMulOp):
         y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
         self.y = y.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
 
-        self.out = self.x * self.y
+        self.out = x * y
 
     def setUp(self):
         super(TestElementwiseMulMKLDNNOp_FallbackNCHW16C, self).setUp()
@@ -213,7 +213,7 @@ class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
         y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
         self.y = y.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
 
-        self.out = self.x * self.y
+        self.out = x * y
 
     def setUp(self):
         super(TestElementwiseMulMKLDNNOp_FallbackNoReorders, self).setUp()

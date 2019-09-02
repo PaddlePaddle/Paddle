@@ -185,6 +185,7 @@ set(TEST_OPS_WITH_GC
   test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
+  test_gather_nd_op
   test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
@@ -241,14 +242,15 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
-    py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op ENVS ${dist_ENVS})
-    set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20 LABELS "RUN_TYPE=EXCLUSIVE")
-    set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op
-            PROPERTIES LABELS "RUN_TYPE=DIST")
+    #py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op ENVS ${dist_ENVS})
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
+        bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
+        set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 100 LABELS "RUN_TYPE=EXCLUSIVE")
+        set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op PROPERTIES LABELS "RUN_TYPE=DIST")
+
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
         set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
         set_tests_properties(test_dist_mnist_hallreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE")
