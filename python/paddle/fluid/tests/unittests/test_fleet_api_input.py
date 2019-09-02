@@ -21,6 +21,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedCollectiveRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import Role
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import TranspilerOptimizer
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
@@ -41,6 +42,74 @@ class DistributeTranspilerConfigTest(unittest.TestCase):
         self.assertFalse(config.sync_mode)
         self.set_runtime_split_send_recv(config, True)
         self.assertRaises(Exception, self.set_sync_mode, config, True)
+
+
+class FleetTest(unittest.TestCase):
+    def testInvalidInputs(self):
+        self.assertRaises(Exception, fleet.split_files, "files")
+        self.assertRaises(Exception, fleet.init, "pserver")
+
+        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+        hidden = fluid.layers.fc(input=data, size=10)
+        loss = fluid.layers.mean(hidden)
+        adam = fluid.optimizer.Adam()
+        adam.minimize(loss)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        pe = fluid.ParallelExecutor(use_cuda=False, loss_name=loss.name)
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['X'],
+            target_vars=[loss],
+            executor=pe)
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['X'],
+            target_vars=[loss],
+            executor="executor")
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fluid.default_main_program())
+        self.assertRaises(
+            Exception,
+            fleet.save_inference_model,
+            dirname='/tmp/',
+            feeded_var_names=['X'],
+            target_vars=[loss],
+            executor=exe,
+            main_program=compiled_prog)
+        self.assertRaises(
+            Exception, fleet.save_persistables, executor=pe, dirname='/tmp/')
+        self.assertRaises(
+            Exception,
+            fleet.save_persistables,
+            executor="executor",
+            dirname='/tmp/')
+        self.assertRaises(
+            Exception,
+            fleet.save_persistables,
+            executor=exe,
+            dirname='/tmp/',
+            main_program=compiled_prog)
+        self.assertRaises(Exception, fleet._transpile, "config")
+
+
+class TranspilerOptimizerTest(unittest.TestCase):
+    def testInvalidInputs(self):
+        self.assertRaises(Exception, TranspilerOptimizer, "Adam", None)
+        self.assertRaises(Exception, TranspilerOptimizer,
+                          fluid.optimizer.Adam(0.001), "strategy")
+
+        transpiler = TranspilerOptimizer(fluid.optimizer.Adam(0.001))
+        self.assertRaises(Exception, transpiler.minimize, loss=[])
+        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+        hidden = fluid.layers.fc(input=data, size=10)
+        loss = fluid.layers.mean(hidden)
+        self.assertRaises(
+            Exception, transpiler.minimize, loss=loss.name, startup_program=[])
 
 
 class UserDefinedRoleMakerTest(unittest.TestCase):
