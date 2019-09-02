@@ -320,6 +320,10 @@ void ConvertPaddleTensorToZeroCopyTensor(
       ZeroCopyTensorAssignData<float>(tensor.get(), input.data);
     } else if (input.dtype == PaddleDType::INT32) {
       ZeroCopyTensorAssignData<int32_t>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::INT8) {
+      ZeroCopyTensorAssignData<int8_t>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::UINT8) {
+      ZeroCopyTensorAssignData<uint8_t>(tensor.get(), input.data);
     } else {
       LOG(ERROR) << "unsupported feed type " << input.dtype;
     }
