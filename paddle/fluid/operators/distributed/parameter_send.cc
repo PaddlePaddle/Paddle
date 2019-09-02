@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ctime>
 #include <memory>
 #include <set>
 #include <string>
@@ -152,7 +153,8 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto &send_var_name = rpc_ctx.splited_var_names[i];
     auto &endpoint = rpc_ctx.epmap[i];
     if (NeedSend(*local_scope.get(), send_var_name)) {
-      VLOG(3) << "sending " << send_var_name << " to " << endpoint;
+      VLOG(3) << "trainer_id: " << rpc_ctx.trainer_id << " sending "
+              << send_var_name << " to " << endpoint << " at time " << time(0);
       rets.push_back(rpc_client->AsyncSendVar(
           endpoint, cpu_ctx, *local_scope.get(), send_var_name));
     } else {

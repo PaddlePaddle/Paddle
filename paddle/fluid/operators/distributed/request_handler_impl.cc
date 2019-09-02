@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include <ctime>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -54,7 +55,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
   } else {
     // Async
     if (!sync_mode_) {
-      VLOG(3) << "async process var: " << varname;
+      VLOG(3) << "async process var: " << varname << "; time is: " << time(0)
+              << "; trainer_id is " << trainer_id;
       if (varname == BATCH_BARRIER_MESSAGE) {
         PADDLE_THROW(
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
