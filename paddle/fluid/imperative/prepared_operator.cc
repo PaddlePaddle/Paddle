@@ -28,7 +28,7 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   }
 }
 
-platform::Place PreparedOp::PrepareData(
+void PreparedOp::PrepareData(
     const platform::Place& place, const NameVarBaseMap& ins,
     const framework::OperatorWithKernel& op,
     const framework::OpKernelType& expected_kernel_key) {
@@ -41,6 +41,10 @@ platform::Place PreparedOp::PrepareData(
           auto kernel_type_for_var = op.GetKernelTypeForVar(
               name_pair.first, *tensor, expected_kernel_key);
           if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+            VLOG(6) << "No Need to Transform since expected_kernel_key is: "
+                    << expected_kernel_key
+                    << " and it's input: " << var_base->Name()
+                    << "'s kernel Type is: " << kernel_type_for_var;
             continue;
           } else {
             VLOG(3) << "Transform Variable " << var_base->Name() << " from "
@@ -54,7 +58,6 @@ platform::Place PreparedOp::PrepareData(
       }
     }
   }
-  return place;
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -70,9 +73,10 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 
 PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
+                               platform::Place place,
                                const NameVarBaseMap& ins) {
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
@@ -98,6 +102,12 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
   }
   std::vector<framework::KernelConfig>* kernel_configs =
       op.GetKernelConfig(expected_kernel_key);
+
+  if (!(expected_kernel_key.place_ == place)) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
+    place = dev_ctx->GetPlace();
+  }
+
   PrepareData(place, ins, op, expected_kernel_key);
   return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
 }
@@ -106,6 +116,7 @@ void PreparedOp::Run() {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
   op_.RuntimeInferShape(scope, dev_ctx_->GetPlace(), ctx_);
+  VLOG(6) << "Finish Runtime infer shape";
   func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
                                     kernel_configs_));
 }

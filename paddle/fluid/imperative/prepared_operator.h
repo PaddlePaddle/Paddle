@@ -32,17 +32,16 @@ class PreparedOp {
  public:
   static PreparedOp Prepare(const framework::RuntimeContext& ctx,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
-                            const NameVarBaseMap& ins);
+                            platform::Place place, const NameVarBaseMap& ins);
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
 
   void Run();
 
-  static platform::Place PrepareData(
-      const platform::Place& place, const NameVarBaseMap& ins,
-      const framework::OperatorWithKernel& op,
-      const framework::OpKernelType& expected_kernel_key);
+  static void PrepareData(const platform::Place& place,
+                          const NameVarBaseMap& ins,
+                          const framework::OperatorWithKernel& op,
+                          const framework::OpKernelType& expected_kernel_key);
 
  private:
   PreparedOp(const framework::OperatorBase& op,
