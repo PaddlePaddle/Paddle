@@ -120,6 +120,25 @@ class MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(
+      const std::vector<int>& dims, const mkldnn::memory::data_type dtype,
+      const mkldnn::memory::format& fmt, void* ptr, const std::string& suffix) {
+    /*Generate key*/
+    auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      auto md = mkldnn::memory::desc(dims, dtype, fmt);
+
+      mem_p = std::make_shared<mkldnn::memory>(
+          mkldnn::memory::primitive_desc{md, engine_}, ptr);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    } else {
+      mem_p->set_data_handle(ptr);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemory(
       const mkldnn::memory::primitive_desc& mpd, const std::string& suffix) {
     auto local_key = key_ + suffix;
     auto mem_p =
@@ -949,18 +968,7 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const mkldnn::memory::format& fmt, void* ptr) {
-    auto local_key = key_ + "@user_src_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      auto src_md = platform::MKLDNNMemDesc(dims_, dtype_, fmt);
-      mem_p = std::make_shared<mkldnn::memory>(
-          mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-    }
-    return mem_p;
+    return this->AcquireMemory(dims_, dtype_, fmt, ptr, "@user_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(

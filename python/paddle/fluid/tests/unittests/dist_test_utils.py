@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
+import os, errno
 
-fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
 
-from test_parallel_executor_transformer import TestTransformer
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:  # this would be "except OSError, e:" before Python 2.6
+        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
+            raise  # re-raise exception if a different error occurred
 
-if __name__ == '__main__':
-    unittest.main()
+
+def remove_ps_flag(pid):
+    silentremove("/tmp/paddle.%d.port" % pid)
