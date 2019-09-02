@@ -73,14 +73,13 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     } else {
       x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
-
+    // std::cout << "X1 lod: "<< x1_lods.size() << std::endl;
+    // std::cout << "X2 lod: "<< x2_lods.size() << std::endl;
     std::unordered_map<int64_t, int64_t> mmap_aux;
-    std::vector<size_t> ins_after_filter;
     Vector<size_t> out_lods(1, 0);
     for (size_t i = 0; i < x2_lods.size() - 1; i++) {
       for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
         if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
-          ins_after_filter.push_back(x2_lods[i]);
           size_t batch_len = x1_lods[i + 1] - x1_lods[i];
           mmap_aux[out_lods.back()] = x1_lods[i];
           out_lods.push_back(out_lods.back() + batch_len);
@@ -88,7 +87,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
         }
       }
     }
-
+    // std::cout << "Out lod: " <<out_lods.size() << std::endl;
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
@@ -100,12 +99,12 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto* x1_data = x1->data<T>();
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
-    if (ins_after_filter.size() > 0) {
+    if (out_lods.size() - 1 > 0) {
       out->Resize(framework::make_ddim(
           {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({(int64_t)ins_after_filter.size(), 3}));
+      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
       loss_weight->Resize(
-          framework::make_ddim({(int64_t)ins_after_filter.size(), 1}));
+          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
     } else {
       out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
       map->Resize(framework::make_ddim({1, 3}));
@@ -115,15 +114,16 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
     auto* loss_weight_data =
         loss_weight->mutable_data<float>(context.GetPlace());
-    if (ins_after_filter.size() > 0) {
+    if (out_lods.size() - 1 > 0) {
       Vector<size_t> map_lods;
-      for (size_t i = 0; i < ins_after_filter.size(); i++) {
+      for (size_t i = 0; i < out_lods.size() - 1; i++) {
         map_data[i * 3] = (int64_t)out_lods[i];
         map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
         map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
+        // std::cout << "Map: " << map_data[i*3] << "," << map_data[i*3+1] << "," << map_data[i*3+2] << std::endl;
         map_lods.push_back(i);
       }
-      map_lods.push_back(ins_after_filter.size());
+      map_lods.push_back(out_lods.size() - 1);
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.push_back(map_lods);
 
@@ -136,10 +136,15 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < loss_weight->numel(); i++) {
         loss_weight_data[i] = 1;
       }
-      for (size_t i = 0; i < ins_after_filter.size(); i++) {
+      // std::cout << "out line cnt: " << out_lods.back() << std::endl;
+      // std::cout << "sizeof (T): " << sizeof(T) << std::endl;
+
+      for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
-        for (size_t k = x1_lods[ins_after_filter[i]];
-             k < x1_lods[ins_after_filter[i] + 1]; k++) {
+        for (size_t k = map_data[i * 3 + 1];
+             k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
+          // std::cout << "out pos and x1 emb size: " << pos << " "<< x1_embed_size << std::endl;
+          // std::cout << "x1 pos and x1 emb size: " << k << " " << x1_embed_size << std::endl;
           memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
           ++pos;
