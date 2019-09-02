@@ -131,7 +131,14 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
     } else if (data_format == mkldnn::memory::format::nhwc) {
       return mkldnn::memory::format::nwc;
     }
+  } else if (dims_size == 4) {
+    if (data_format == mkldnn::memory::format::goihw) {
+      return mkldnn::memory::format::oihw;
+    }
   } else if (dims_size == 5) {
+    if (data_format == mkldnn::memory::format::goidhw) {
+      return mkldnn::memory::format::oidhw;
+    }
     if (data_format == mkldnn::memory::format::nchw) {
       return mkldnn::memory::format::ncdhw;
     } else if (data_format == mkldnn::memory::format::nhwc) {

@@ -121,12 +121,19 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const Tensor& in, Tensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
+  auto place = expected_kernel_type.place_;
 
   PADDLE_ENFORCE(
       in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
+  innerTransDataLayoutFromMKLDNN(in_layout, out_layout, in, out, place);
+}
+
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
+                                    const Tensor& in, Tensor* out,
+                                    platform::Place place) {
 #ifdef PADDLE_WITH_MKLDNN
   PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
                      in.format() != memory::format::any,
@@ -137,8 +144,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
 
   auto& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(
-      pool.Get(expected_kernel_type.place_));
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
   std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
@@ -165,7 +171,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
     auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
     auto reorder_dst_memory_p =
-        handler.AcquireDstMemory(out, out_format, expected_kernel_type.place_);
+        handler.AcquireDstMemory(out, out_format, place);
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
