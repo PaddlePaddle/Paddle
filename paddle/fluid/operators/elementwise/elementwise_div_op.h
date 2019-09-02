@@ -195,12 +195,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
       auto dout = framework::EigenVector<T>::Flatten(*dOut);
       dout.device(place) = static_cast<T>(-1) * dout;
     }
-    cudaStream_t stream =
-        ctx.template device_context<platform::CUDADeviceContext>().stream();
-
-    PADDLE_ENFORCE(cudaStreamSynchronize(stream));
-    cudaError_t err = cudaGetLastError();
-    printf("ERROR %s\n", cudaGetErrorString(err));
   }
 };
 

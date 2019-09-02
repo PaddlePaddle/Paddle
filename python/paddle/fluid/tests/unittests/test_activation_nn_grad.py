@@ -92,6 +92,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
+        print("in TestSqrtDoubleGradCheck")
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places = [fluid.CUDAPlace(0)]
