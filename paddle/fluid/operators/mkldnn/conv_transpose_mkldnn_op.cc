@@ -45,23 +45,29 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4,
-                   "Input must be with 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4,
-                   "Filter must be with 4 dimensions, i.e. OIHW");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
+
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_EQ(input->dims().size(), 4,
+                      "Input must be with 4 dimensions, i.e. NCHW");
+    PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
+                      "Filter must be with 4 dimensions, i.e. OIHW");
 
     if (bias) {
-      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != MKLDNNMemoryFormat::format_undef,
-                     "Wrong layout/format set for Bias tensor");
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Bias tensor");
+
+      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                        "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");

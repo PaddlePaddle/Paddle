@@ -129,22 +129,38 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
-                   "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
-                   "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
+
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_GE(
+        input->dims().size(), 4,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_LE(
+        input->dims().size(), 5,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+
+    PADDLE_ENFORCE_GE(
+        filter->dims().size(), 4,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_LE(
+        filter->dims().size(), 5,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+
     if (bias) {
-      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != MKLDNNMemoryFormat::format_undef,
-                     "Wrong layout/format set for Bias tensor");
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Bias tensor");
+
+      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                        "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -328,22 +344,38 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
-                   "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
-                   "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
+
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_GE(
+        input->dims().size(), 4,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_LE(
+        input->dims().size(), 5,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+
+    PADDLE_ENFORCE_GE(
+        filter->dims().size(), 4,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_LE(
+        filter->dims().size(), 5,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+
     if (bias) {
-      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != MKLDNNMemoryFormat::format_undef,
-                     "Wrong layout/format set for Bias tensor");
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Bias tensor");
+
+      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                        "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -640,19 +672,23 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(
-        output_grad->layout() == DataLayout::kMKLDNN &&
-            output_grad->format() != MKLDNNMemoryFormat::format_undef,
-        "Wrong layout/format set for output_grad tensor");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
 
-    PADDLE_ENFORCE(
-        !ctx.Attr<bool>("is_test"),
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_EQ(output_grad->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for output_grad tensor");
+    PADDLE_ENFORCE_NE(output_grad->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for output_grad tensor");
+
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
         "is_test attribute should be set to False in training phase.");
 
     if (!input_grad && !filter_grad) return;

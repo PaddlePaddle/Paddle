@@ -42,9 +42,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input tensor");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
@@ -129,15 +130,18 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE(in_x->layout() == DataLayout::kMKLDNN &&
-                       in_x->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input X tensor");
-    PADDLE_ENFORCE(out_grad->layout() == DataLayout::kMKLDNN &&
-                       out_grad->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input output_grad tensor");
+    PADDLE_ENFORCE_EQ(in_x->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(in_x->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
 
-    PADDLE_ENFORCE(
-        !ctx.Attr<bool>("is_test"),
+    PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input output_grad tensor");
+    PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input output_grad tensor");
+
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
         "is_test attribute should be set to False in training phase.");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");

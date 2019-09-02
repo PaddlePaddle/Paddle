@@ -30,11 +30,10 @@ using platform::to_void_cast;
 
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
-    const bool is_layout_correct = input->layout() == DataLayout::kMKLDNN;
-    const bool is_format_defined =
-        input->format() != MKLDNNMemoryFormat::format_undef;
-    PADDLE_ENFORCE(is_layout_correct && is_format_defined,
-                   "Wrong layout/format set for Input tensor");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
   }
 }
 

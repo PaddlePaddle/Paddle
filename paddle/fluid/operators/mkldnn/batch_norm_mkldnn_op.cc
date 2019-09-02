@@ -192,9 +192,10 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *shift = ctx.Input<Tensor>("Bias");
 
-    PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input x tensor");
+    PADDLE_ENFORCE_EQ(x->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for X tensor");
+    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for X tensor");
 
     const T *x_data = x->data<T>();
     const T *mean_data = mean->data<T>();
@@ -332,9 +333,10 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto *diff_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != MKLDNNMemoryFormat::format_undef,
-                   "Wrong layout/format set for Input diff_y tensor");
+    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input diff_y tensor");
+    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input diff_y tensor");
 
     const T *x_data = x->data<T>();
     const T *diff_y_data = diff_y->data<T>();

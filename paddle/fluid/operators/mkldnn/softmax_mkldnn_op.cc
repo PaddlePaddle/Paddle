@@ -165,8 +165,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
 
  private:
   std::vector<int> dims_;
-  mkldnn::MKLDNNMemoryFormat fmt_;
-  mkldnn::MKLDNNMemoryFormat diff_fmt_;
+  MKLDNNMemoryFormat fmt_;
+  MKLDNNMemoryFormat diff_fmt_;
   std::shared_ptr<mkldnn::softmax_forward::primitive_desc> fwd_pd_;
 };
 
@@ -207,8 +207,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
 
-    SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc,
-                                    dev_ctx, mkldnn_engine, key);
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc, dev_ctx,
+                                    mkldnn_engine, key);
 
     // Currently only NC data format is supported
     auto softmax_src_memory_p =

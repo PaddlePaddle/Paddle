@@ -1435,8 +1435,8 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
-  PADDLE_ENFORCE(dst_dims <= 5,
-                 "Dst memory for quantization can not have dims > 5");
+  PADDLE_ENFORCE_LE(dst_dims, 5,
+                    "Dst memory for quantization can not have dims > 5");
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, MKLDNNMemoryFormat::nhwc);
 
   auto dst_md = platform::MKLDNNMemDesc(

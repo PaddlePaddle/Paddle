@@ -70,22 +70,24 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::vector<memory::primitive_desc> srcs_mpd;
       std::vector<mkldnn::memory> srcs_mem;
 
-      PADDLE_ENFORCE(in_vars[0]->IsType<LoDTensor>(),
-                     "Input[0] must be LoDTensors");
+      PADDLE_ENFORCE_EQ(in_vars[0]->IsType<LoDTensor>(), true,
+                        "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
-      PADDLE_ENFORCE(input0.layout() == DataLayout::kMKLDNN &&
-                         input0.format() != MKLDNNMemoryFormat::format_undef,
-                     "Wrong layout/format for inputs[0]");
+      PADDLE_ENFORCE_EQ(input0.layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for inputs[0] tensor");
+      PADDLE_ENFORCE_NE(input0.format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for inputs[0] tensor");
 
       MKLDNNMemoryFormat input_format = input0.format();
 
       for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
-                       "all inputs must be all LoDTensors");
+        PADDLE_ENFORCE_EQ(in_vars[i]->IsType<LoDTensor>(), true,
+                          "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
-        PADDLE_ENFORCE(input.layout() == DataLayout::kMKLDNN &&
-                           input.format() != MKLDNNMemoryFormat::format_undef,
-                       "Wrong layout/format for inputs");
+        PADDLE_ENFORCE_EQ(input.layout(), DataLayout::kMKLDNN,
+                          "Wrong layout set for inputs");
+        PADDLE_ENFORCE_NE(input.format(), MKLDNNMemoryFormat::format_undef,
+                          "Wrong format set for inputs");
 
         if (input.numel() == 0) {
           continue;
