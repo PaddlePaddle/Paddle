@@ -20,6 +20,7 @@ import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
+from paddle.fluid.contrib.mixed_precision.decorator import decorate
 
 from paddle.fluid import compiler
 
@@ -355,13 +356,12 @@ class CollectiveOptimizer(DistributedOptimizer):
         if self._strategy.use_mixed_precision:
             assert self._strategy.loss_scaling > 1.0 and \
                 isinstance(self._strategy.loss_scaling, float), \
-                "The value of loss_scaling should be a float value \
-                 greater than 1.0."
+                "loss_scaling should be a float value greater than 1.0."
 
             optimizer = decorate(
                 self._optimizer, init_loss_scaling=self._strategy.loss_scaling)
             scaled_loss, optimize_ops, param_grads = \
-                self._optimizer.minimize(loss)
+                optimizer.minimize(loss)
         else:
             optimize_ops, param_grads = self._optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set)
