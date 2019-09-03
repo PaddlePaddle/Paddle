@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
+#include <chrono>  // NOLINT
+#include <ctime>
 
 namespace paddle {
 namespace operators {
@@ -21,9 +23,10 @@ namespace distributed {
 DEFINE_int32(trainer_update_interval_secs, 900,
              " the longest time interval between the trainer update variables");
 
-inline time_t GetCurrentUS() {
+inline int GetCurrentUS() {
   // current date/time based on current system
-  time_t now = time(0);
+  time_t t = std::time(0);
+  int now = static_cast<int>(t);
   return now;
 }
 

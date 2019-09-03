@@ -25,8 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include <chrono>  // NOLINT
-#include <ctime>
 #include <thread>  // NOLINT
 
 #include <ThreadPool.h>
@@ -42,14 +40,14 @@ enum TrainerStatus { UNINITED = 0, RUNNING, COMPLETED };
 struct Trainer {
   int id;
   TrainerStatus status;
-  time_t timestamp;
+  int timestamp;
 
   Trainer() {}
 
   explicit Trainer(int trainer_id) {
     this->id = trainer_id;
     this->status = UNINITED;
-    this->timestamp = time(0);
+    this->timestamp = 0;
   }
 };
 
