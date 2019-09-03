@@ -43,24 +43,27 @@ void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
   if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
     auto timestamp = GetCurrentUS();
     Trainer& trainer = trainer_status_map_.at(trainer_id);
-    trainer.status = status;
+
+    if (trainer.status != COMPLETED) {
+      trainer.status = status;
+    }
     trainer.timestamp = timestamp;
     return;
   }
 }
 
 void TrainerHeartBeatMonitor::LostTrainerMonitor() {
-  VLOG(1) << "trainer heartbeat monitor start at NO.0 parameter server";
+  VLOG(1) << "trainer heartbeat monitor start at No.0 parameter server";
   while (running_) {
     for (int id = 0; id < trainers_; ++id) {
       auto& trainer = trainer_status_map_.at(id);
 
       if (trainer.status == UNINITED) {
-        VLOG(4) << "trainer " << trainer.id << " is under UNINITED, skip it";
+        VLOG(4) << "trainer " << trainer.id << " is under UNINITED";
         continue;
       }
       if (trainer.status == COMPLETED) {
-        VLOG(4) << "trainer " << trainer.id << " is under COMPLETED, skip it";
+        VLOG(4) << "trainer " << trainer.id << " is under COMPLETED";
         continue;
       }
 
@@ -75,11 +78,11 @@ void TrainerHeartBeatMonitor::LostTrainerMonitor() {
             "the latest update of trainer %d is %d secs ago, we doubt the "
             "the trainer is not alive and this may have a bad effect on the "
             "fitting result, please check",
-            trainer.id, timestamp);
+            trainer.id, FLAGS_trainer_update_interval_secs);
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
   }
   VLOG(1) << "trainer heartbeat monitor stopped, thread exit";
 }
