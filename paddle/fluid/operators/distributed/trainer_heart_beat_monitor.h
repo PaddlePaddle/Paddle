@@ -75,7 +75,7 @@ class TrainerHeartBeatMonitor {
 
     // we define the No.0 pserver is the first parameter server
     // only No.0 will check the heartbeat of all trainers
-    if (is_chief_) {
+    if (is_chief) {
       monitor_thread_.reset(new std::thread(
           std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
     }
@@ -116,8 +116,8 @@ class TrainerHeartBeatMonitor {
   static std::unique_ptr<TrainerHeartBeatMonitor> monitor_;
 
   int trainers_;
-  std::string varname_;
   bool is_chief_;
+  std::string varname_;
   std::unordered_map<int, Trainer> trainer_status_map_;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::mutex mutex_;
