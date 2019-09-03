@@ -96,8 +96,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             others = [
                 'batch_norm_0.tmp_0',
                 'batch_norm_0.tmp_1',
-                # 'bn_scale@GRAD',
-                # 'bn_bias@GRAD',
             ]
             fetch_names += others
         print(fetch_names)
@@ -122,8 +120,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             others = [
                 'batch_norm_0.tmp_0',
                 'batch_norm_0.tmp_1',
-                # 'bn_scale@GRAD',
-                # 'bn_bias@GRAD',
             ]
             fetch_names1 += others
         print(fetch_names1)
@@ -166,7 +162,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 "NCHW"
             ]  #NHWC can be too slow under cpu mode
             for layout in layouts:
-                for activation in ['relu']:
+                for activation in ['elu']:
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation)
 

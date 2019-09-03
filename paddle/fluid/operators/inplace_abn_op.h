@@ -57,11 +57,11 @@ class InplaceABNActivation {
   }
 
   template <typename Functor, typename... Args>
-  void compute(const framework::ExecutionContext& ctx, Functor& functor,
+  void compute(const framework::ExecutionContext& ctx, const Functor* functor,
                Args... args) {
-    setAttrs(ctx, &functor);
+    setAttrs(ctx, functor);
     functor(args...);
-  };
+  }
 
  public:
   template <typename Device, typename X, typename Y>
@@ -71,10 +71,10 @@ class InplaceABNActivation {
       y.device(d) = x;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
       LeakyReluFunctor<T> functor;
-      compute(ctx, functor, d, x, y);
+      compute(ctx, &functor, d, x, y);
     } else if (act_type == InplaceABNActivationType::elu) {
       ELUFunctor<T> functor;
-      compute(ctx, functor, d, x, y);
+      compute(ctx, &functor, d, x, y);
     } else {
       PADDLE_THROW("unsupported activation type");
     }
@@ -98,7 +98,7 @@ class InplaceABNActivation {
         x.device(d) = y * (temp1 + temp2).template cast<T>();
       }
       LeakyReluGradFunctor<T> functor;
-      compute(ctx, functor, d, x, y, dy, dx);
+      compute(ctx, &functor, d, x, y, dy, dx);
     } else if (act_type == InplaceABNActivationType::elu) {
       if (is_inplace) {
         x.device(d) = y.cwiseMax(static_cast<T>(0)) +
@@ -107,7 +107,7 @@ class InplaceABNActivation {
                           .cwiseMin(static_cast<T>(0));
       }
       ELUGradFunctor<T> functor;
-      compute(ctx, functor, d, x, y, dy, dx);
+      compute(ctx, &functor, d, x, y, dy, dx);
     } else {
       PADDLE_THROW("unsupported activation type");
     }
