@@ -71,8 +71,8 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must be CUDAPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      "It must be CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -282,8 +282,8 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -315,8 +315,8 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE(scale->dims()[0], C);
+    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
+    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -391,10 +391,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
               ctx.GetPlace()),
           epsilon, saved_mean_data, saved_var_data));
 
-      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
-          d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
-      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
-          d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
+      if (d_scale && d_bias) {
+        add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+            d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
+        add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+            d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
+      }
       CUDNN_ENFORCE(
           platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
       CUDNN_ENFORCE(
