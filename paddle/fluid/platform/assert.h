@@ -28,15 +28,6 @@ limitations under the License. */
 #define EXIT() throw std::runtime_error("Exception encounter.")
 #endif
 
-#define PADDLE_ASSERT(_IS_NOT_ERROR)                                          \
-  do {                                                                        \
-    if (!(_IS_NOT_ERROR)) {                                                   \
-      printf("Exception: %s:%d Assertion `%s` failed.\n", __FILE__, __LINE__, \
-             TOSTRING(_IS_NOT_ERROR));                                        \
-      EXIT();                                                                 \
-    }                                                                         \
-  } while (0)
-
 // NOTE: PADDLE_ASSERT is mainly used in CUDA Kernel or HOSTDEVICE function.
 #define PADDLE_ASSERT_MSG(_IS_NOT_ERROR, __FORMAT, ...)                   \
   do {                                                                    \
