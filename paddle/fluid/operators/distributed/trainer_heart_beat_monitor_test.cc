@@ -22,7 +22,24 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-TEST(TrainerHeartBeatMonitor, All) {}
+TEST(TrainerHeartBeatMonitor, All) {
+  int trainers = 10;
+  int pserver_id = 0;
+  std::string var = "nce_w@GRAD.block0";
+  std::string var2 = "nce_w@GRAD.block2";
+
+  TrainerHeartBeatMonitor::Init(trainers, pserver_id == 0, varname);
+  auto* monitor = TrainerHeartBeatMonitor::GetInstance();
+
+  std::vector ids = {1, 3, 5, 7};
+
+  for (auto& id : ids) {
+    monitor->Update(id, var, RUNNING);
+  }
+
+  monitor->Update(9, var2, RUNNING);
+  monitor->Update(2, var, COMPLETED);
+}
 
 }  // namespace distributed
 }  // namespace operators
