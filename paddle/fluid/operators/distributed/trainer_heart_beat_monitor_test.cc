@@ -31,7 +31,7 @@ TEST(TrainerHeartBeatMonitor, All) {
   TrainerHeartBeatMonitor::Init(trainers, pserver_id == 0, varname);
   auto* monitor = TrainerHeartBeatMonitor::GetInstance();
 
-  std::vector ids = {1, 3, 5, 7};
+  std::vector<int> ids{1, 3, 5, 7};
 
   for (auto& id : ids) {
     monitor->Update(id, var, RUNNING);
