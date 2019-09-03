@@ -468,13 +468,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   } else {
     distributed::AsyncSparseParamUpdateRecorder::Init(
         fan_in, sparse_grad_name_to_param_name);
-
-    // we define the No.0 pserver is the first parameter server
-    // only No.0 will record the heartbeat of all trainers
-    if (pserver_id == 0) {
-      distributed::TrainerHeartBeatMonitor::Init(fan_in);
-    }
-
+    distributed::TrainerHeartBeatMonitor::Init(fan_in, pserver_id);
     RunAsyncLoop(&executor, program, &recv_scope);
   }
 }

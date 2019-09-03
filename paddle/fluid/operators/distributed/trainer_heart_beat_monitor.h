@@ -60,15 +60,20 @@ struct Trainer {
 
 class TrainerHeartBeatMonitor {
  public:
-  explicit TrainerHeartBeatMonitor(int trainers)
-      : trainers_(trainers), running_(true) {
+  explicit TrainerHeartBeatMonitor(int trainers, int pserver_id)
+      : trainers_(trainers), pserver_id_(pserver_id) running_(true) {
     PADDLE_ENFORCE_GT(trainers, 0, "trainers must have one or more");
     for (auto trainer_id = 0; trainer_id < trainers; trainer_id++) {
       Trainer trainer(trainer_id);
       trainer_status_map_[trainer_id] = std::move(trainer);
     }
-    monitor_thread_.reset(new std::thread(
-        std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
+
+    // we define the No.0 pserver is the first parameter server
+    // only No.0 will check the heartbeat of all trainers
+    if (pserver_id_ == 0) {
+      monitor_thread_.reset(new std::thread(
+          std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
+    }
   }
 
   ~TrainerHeartBeatMonitor() {
@@ -76,8 +81,9 @@ class TrainerHeartBeatMonitor {
     if (monitor_thread_) monitor_thread_->join();
   }
 
-  static void Init(int trainers) {
-    std::call_once(init_flag_, &TrainerHeartBeatMonitor::InitImpl, trainers);
+  static void Init(int trainers, int pserver_id) {
+    std::call_once(init_flag_, &TrainerHeartBeatMonitor::InitImpl, trainers,
+                   pserver_id);
   }
 
   static TrainerHeartBeatMonitor* GetInstance() {
@@ -95,9 +101,9 @@ class TrainerHeartBeatMonitor {
 
  private:
   // Init is called by GetInstance.
-  static void InitImpl(int trainers) {
+  static void InitImpl(int trainers, int pserver_id) {
     if (monitor_ == nullptr) {
-      monitor_.reset(new TrainerHeartBeatMonitor(trainers));
+      monitor_.reset(new TrainerHeartBeatMonitor(trainers, pserver_id));
     }
   }
 
@@ -105,6 +111,7 @@ class TrainerHeartBeatMonitor {
   static std::unique_ptr<TrainerHeartBeatMonitor> monitor_;
 
   int trainers_;
+  int pserver_id_;
   std::unordered_map<int, Trainer> trainer_status_map_;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::mutex mutex_;
