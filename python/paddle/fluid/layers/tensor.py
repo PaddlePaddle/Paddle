@@ -874,6 +874,7 @@ def range(start, end, step, dtype):
                 'End': end,
                 'Step': step},
         outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
 
 

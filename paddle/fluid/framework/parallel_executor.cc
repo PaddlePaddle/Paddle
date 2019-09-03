@@ -723,15 +723,19 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
+  size_t num_places = member_->places_.size();
   for (auto &pair : tensors) {
+    bool is_persistable = member_->IsPersistable(pair.first);
+    VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
+            << " data (" << pair.first << "), dim:" << pair.second.dims()
+            << ", place: " << pair.second.place();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-    if (member_->places_.size() != lod_tensors.size()) {
-      bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    if (!is_persistable && num_places != lod_tensors.size()) {
       auto error_info = string::Sprintf(
-          "The number(%d) of samples of "
-          "current batch is less than the count(%d) of "
-          "devices(%s), currently, it is not allowed. ",
-          lod_tensors.size(), member_->places_.size(),
+          "The number(%d) of samples[%s] of current batch is less than the "
+          "count(%d) of devices(%s), currently, it is not allowed. ",
+          lod_tensors.size(), pair.first, num_places,
           (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=
@@ -739,10 +743,35 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "to determine the number of devices you need.";
       }
       PADDLE_THROW(error_info);
+    } else if (is_persistable) {
+      if (lod_tensors.size() == 1) {
+        lod_tensors.reserve(num_places);
+        auto &tensor = lod_tensors.front();
+        PADDLE_ENFORCE_EQ(tensor.dims(), pair.second.dims(),
+                          "The dim doesn't match.");
+        PADDLE_ENFORCE_EQ(tensor.place(), member_->places_.at(0),
+                          "The place doesn't match.");
+        for (size_t i = 1; i < num_places; ++i) {
+          lod_tensors.emplace_back();
+          auto &tmp = lod_tensors.back();
+          framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
+        }
+      }
+      if (lod_tensors.size() != num_places) {
+        auto error_info = string::Sprintf(
+            "The number(%d) of samples[%s] of the current batch does not match "
+            "the count(%d) of devices(%s). Because that %s is a persistable "
+            "variable, you can feed just one sample, in that case, the input "
+            "sample will be copied in %d copies and be sent to different "
+            "places separately. If you need that different place has different "
+            "value, you should feed %d samples.",
+            lod_tensors.size(), pair.first, num_places,
+            (is_cpu_place ? "CPU" : "GPU"), pair.first, num_places, num_places);
+        PADDLE_THROW(error_info);
+      }
     }
 
-    bool is_persistable = member_->IsPersistable(pair.first);
-    for (size_t j = 0; j < member_->places_.size(); ++j) {
+    for (size_t j = 0; j < num_places; ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
