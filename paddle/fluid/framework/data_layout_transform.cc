@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif
 
@@ -135,9 +134,10 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place) {
 #ifdef PADDLE_WITH_MKLDNN
-  PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
-                     in.format() != memory::format::any,
-                 "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
+                    "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
+                    "Input tensor should have specified memory format");
 
   // Set default as NCHW in case not specified
   out_layout =
@@ -183,7 +183,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(memory::format::format_undef);
+  out->set_format(MKLDNNMemoryFormat::format_undef);
 #endif
 }
 
