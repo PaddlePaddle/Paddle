@@ -249,16 +249,11 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     if (global_stats) {
       ConstEigenVectorArrayMap<T> var_arr(
           ctx.Input<Tensor>("Variance")->data<T>(), C);
-      inv_std = (var_arr + epsilon)
-                    .sqrt()
-                    .inverse()
-                    .eval()
-                    .transpose()
-                    .replicate(N, 1);
+      inv_std = (var_arr + epsilon).sqrt().inverse().eval().replicate(N, 1);
 
       ConstEigenVectorArrayMap<T> mean_tmp(ctx.Input<Tensor>("Mean")->data<T>(),
                                            C);
-      mean_arr = mean_tmp.transpose().replicate(N, 1);
+      mean_arr = mean_tmp.replicate(N, 1);
     } else {
       EigenVectorArrayMap<T> saved_inv_std(
           ctx.Output<Tensor>("SavedVariance")->data<T>(), NxC);
@@ -367,33 +362,27 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     const T *mean_data = saved_mean->data<T>();
     const T *inv_var_data = saved_inv_variance->data<T>();
     Tensor inv_var_tensor;
+    Tensor mean_tensor;
     if (use_global_stats) {
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
 
-      Tensor mean_tensor;
       mean_tensor.Resize({NxC});
       T *running_mean_data = mean_tensor.mutable_data<T>(ctx.GetPlace());
       EigenVectorArrayMap<T> mean_tmp(running_mean_data, NxC);
-      ConstEigenVectorArrayMap<T> mean_arr(running_mean->data<T>(), C);
+      ConstEigenVectorArrayMap<T> mean_arr_tmp(running_mean->data<T>(), C);
 
-      mean_tmp = mean_arr.transpose().replicate(N, 1);
+      mean_tmp = mean_arr_tmp.eval().replicate(N, 1);
       mean_data = running_mean_data;
-      // mean_data = running_mean->data<T>();
+
       inv_var_tensor.Resize({NxC});
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, NxC);
       ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
+      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval().replicate(N, 1);
       inv_var_data = running_inv_var_data;
-
-      // ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
-      // ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
-    }  // else {
-    //  ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
-    //  ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
-    //}
+    }
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
@@ -581,10 +570,11 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
     const T *mean_data = Saved_mean->data<T>();
     const T *inv_var_data = Saved_variance->data<T>();
+    Tensor mean_tensor;
+    Tensor inv_var_tensor;
     if (use_global_stats) {
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
-      Tensor mean_tensor;
       mean_tensor.Resize({NxC});
       T *running_mean_data = mean_tensor.mutable_data<T>(ctx.GetPlace());
       EigenVectorArrayMap<T> mean_tmp(running_mean_data, NxC);
@@ -592,8 +582,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
       mean_tmp = mean_arr.transpose().replicate(N, 1);
       mean_data = running_mean_data;
-      // mean_data = running_mean->data<T>();
-      Tensor inv_var_tensor;
+
       inv_var_tensor.Resize({NxC});
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, NxC);
@@ -601,13 +590,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
       inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
       inv_var_data = running_inv_var_data;
-
-      // ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
-      // ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
-    }  // else {
-    //  ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
-    //  ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
-    //}
+    }
     ConstEigenArrayMap<T> x_arr(X->data<T>(), sample_size, NxC);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);

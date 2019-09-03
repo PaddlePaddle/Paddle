@@ -22,27 +22,23 @@ from op_test import OpTest
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, momentum,
-                                   use_global_stats):
+                                   use_global_stats, mean, var):
     x_shape = x.shape
     if len(x_shape) == 2:
         x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
     n, c, h, w = x.shape
-    mean = np.reshape(np.mean(x, axis=(2, 3)), (n * c))
-    var = np.reshape(np.var(x, axis=(2, 3)), (n * c))
-
-    mean_pre = np.zeros(n * c).astype(np.float32)
-    variance_pre = np.ones(n * c).astype(np.float32)
+    mean, var = mean, var
 
     if use_global_stats:
-        mean = (1. - momentum) * mean + momentum * mean_pre
-        var = (1. - momentum) * var + momentum * variance_pre
+        mean = np.tile(mean, n)
+        var = np.tile(var, n)
 
     mean_tile = np.reshape(mean, (n, c, 1, 1))
     mean_tile = np.tile(mean_tile, (1, 1, h, w))
     var_tile = np.reshape(var, (n, c, 1, 1))
     var_tile = np.tile(var_tile, (1, 1, h, w))
 
-    x_norm = (x - mean_tile) / np.sqrt(var_tile + epsilon)
+    x_norm = (x - mean_tile) / np.sqrt(var_tile + epsilon).astype('float32')
     scale_tile = np.reshape(scale, (1, c, 1, 1))
     scale_tile = np.tile(scale_tile, (n, 1, h, w))
     bias_tile = np.reshape(bias, (1, c, 1, 1))
@@ -77,17 +73,21 @@ def _reference_instance_norm_grad(x, d_y, scale, mean, var, epsilon,
     # d_scale = sum(d_y * (x-mean) / sqrt(var+epsilon))
     # d_offset = sum(d_y)
     # d_x = scale / sqrt(var+epsilon) * (d_y - np.mean(d_y, axis=(2,3)) - (x-mean)/sqrt(var+epsilon)* np.mean(y_grad * (x-mean)/sqrt(var+epsilon), axis=(2,3)))
+    n, c, h, w = x.shape
+
+    if use_global_stats:
+        mean = np.tile(mean, n)
+        var = 1. / np.sqrt(var + epsilon)
+        var = np.tile(var, n)
+
     d_bias = np.sum(d_y, axis=(0, 2, 3))
 
-    n, c, h, w = x.shape
     mean_tile = np.reshape(mean, (n, c, 1, 1))
     mean_tile = np.tile(mean_tile, (1, 1, h, w))
     var_tile = np.reshape(var, (n, c, 1, 1))
     var_tile = np.tile(var_tile, (1, 1, h, w))
 
-    #d_scale = np.sum(d_y * (x - mean_tile) / np.sqrt(var_tile + epsilon),
     d_scale = np.sum(d_y * (x - mean_tile) * var_tile, axis=(0, 2, 3))
-    #var_inv = 1.0 / np.sqrt(var_tile + epsilon)
     var_inv = var_tile
     scale_tile = np.reshape(scale, (1, c, 1, 1))
     scale_tile = np.tile(scale_tile, (n, 1, h, w))
@@ -119,10 +119,15 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         ### if self.use_global_stats = True in training, fetch_list need to delete saved_mean and saved_variance
         self.use_global_stats = False
         self.no_grad_set = set()
-        self.fetch_list = [
-            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
-            'scale@GRAD', 'bias@GRAD'
-        ]
+        if self.use_global_stats:
+            self.fetch_list = [
+                'y', 'mean', 'variance', 'x@GRAD', 'scale@GRAD', 'bias@GRAD'
+            ]
+        else:
+            self.fetch_list = [
+                'y', 'mean', 'variance', 'saved_mean', 'saved_variance',
+                'x@GRAD', 'scale@GRAD', 'bias@GRAD'
+            ]
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
@@ -134,8 +139,10 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
         ## compute global mean and variance
         if self.use_global_stats:
+            _, _, h, w = x.shape
             momentum = self.momentum
             mean = (1. - momentum) * mean + momentum * mean_pre
+            unbias_var = variance * (h * w) / (h * w - 1)  ## ubbias variance
             variance = (1. - momentum) * variance + momentum * variance_pre
         return mean, variance
 
@@ -147,39 +154,51 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             scale_shape = [c]
             mean_shape = [n * c]
 
-            np.random.seed()
+            np.random.seed(137)
             x = np.random.random_sample(shape).astype(np.float32)
             scale = np.random.random_sample(scale_shape).astype(np.float32)
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_global_mean_var(mean_shape, x)
             d_y = np.random.random_sample(shape).astype(np.float32)
 
-            y, saved_mean, variance_tmp = _reference_instance_norm_naive(
-                x, scale, bias, epsilon, self.momentum, self.use_global_stats)
-
-            mean_out = np.zeros(mean_shape).astype(np.float32)
-            variance_out = np.ones(mean_shape).astype(np.float32)
-
-            mean_out = saved_mean * (1. - momentum) + momentum * mean_out
-            unbias_var = variance_tmp * (h * w) / (
-                h * w - 1)  ## ubbias variance
-            variance_out = unbias_var * (1. - momentum
-                                         ) + momentum * variance_out
-
-            saved_variance = 1 / np.sqrt(variance_tmp + epsilon)
             if self.use_global_stats:
-                saved_mean = np.zeros(saved_mean.shape).astype(np.float32)
-                saved_variance = np.zeros(saved_variance.shape).astype(
-                    np.float32)
+                saved_mean = np.zeros(n * c).astype(np.float32)
+                saved_variance = np.zeros(n * c).astype(np.float32)
 
-            d_x, d_scale, d_bias = _reference_instance_norm_grad(
-                x, d_y, scale, saved_mean, saved_variance, epsilon,
-                self.use_global_stats)
+                mean = np.reshape(mean, (n, c))
+                mean = np.mean(mean, 0)
+                variance = np.reshape(variance, (n, c))
+                variance = np.mean(variance, 0)
 
-            mean = np.reshape(mean_out, (n, c))
-            mean = np.mean(mean, 0)
-            variance = np.reshape(variance_out, (n, c))
-            variance = np.mean(variance, 0)
+            y, saved_mean, variance_tmp = _reference_instance_norm_naive(
+                x, scale, bias, epsilon, self.momentum, self.use_global_stats,
+                mean, variance)
+
+            if self.use_global_stats == False:
+                mean_out = np.zeros(mean_shape).astype(np.float32)
+                variance_out = np.ones(mean_shape).astype(np.float32)
+
+                mean_out = saved_mean * (1. - momentum) + momentum * mean_out
+                unbias_var = variance_tmp * (h * w) / (
+                    h * w - 1)  ## ubbias variance
+                variance_out = unbias_var * (1. - momentum
+                                             ) + momentum * variance_out
+
+                saved_variance = 1 / np.sqrt(variance_tmp + epsilon)
+
+                mean = np.reshape(mean_out, (n, c))
+                mean = np.mean(mean, 0)
+                variance = np.reshape(variance_out, (n, c))
+                variance = np.mean(variance, 0)
+
+            if self.use_global_stats:
+                d_x, d_scale, d_bias = _reference_instance_norm_grad(
+                    x, d_y, scale, mean, variance, epsilon,
+                    self.use_global_stats)
+            else:
+                d_x, d_scale, d_bias = _reference_instance_norm_grad(
+                    x, d_y, scale, saved_mean, saved_variance, epsilon,
+                    self.use_global_stats)
 
             var_dict = locals()
             var_dict['y@GRAD'] = d_y
@@ -260,6 +279,22 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             test_with_place(place, [2, 3, 4, 5])
+
+
+class TestCase1(TestInstanceNormOpTraining):
+    def init_test_case(self):
+        ### if self.use_global_stats = True in training, fetch_list need to delete saved_mean and saved_variance
+        self.use_global_stats = True
+        self.no_grad_set = set()
+        if self.use_global_stats:
+            self.fetch_list = [
+                'y', 'mean', 'variance', 'x@GRAD', 'scale@GRAD', 'bias@GRAD'
+            ]
+        else:
+            self.fetch_list = [
+                'y', 'mean', 'variance', 'saved_mean', 'saved_variance',
+                'x@GRAD', 'scale@GRAD', 'bias@GRAD'
+            ]
 
 
 class TestInstanceNormOpInference(unittest.TestCase):

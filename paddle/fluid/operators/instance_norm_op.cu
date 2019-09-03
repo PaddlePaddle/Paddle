@@ -209,14 +209,6 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
           saved_variance->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace())));
 
-      // est_mean_tmp.ShareDataWith(*mean_out);
-      // est_var_tmp.ShareDataWith(*variance_out);
-      // functor(dev_ctx, mean_out, static_cast<BatchNormParamType<T>>(0));
-      // functor(dev_ctx, variance_out, static_cast<BatchNormParamType<T>>(0));
-
-      // mean_out->ShareDataWith(est_mean_tmp);
-      // variance_out->ShareDataWith(est_var_tmp);
-
       add_param<T, block, true><<<grid, block, 0, dev_ctx.stream()>>>(
           est_mean_tmp.data<T>(), mean_out->mutable_data<T>(ctx.GetPlace()), N,
           C);
