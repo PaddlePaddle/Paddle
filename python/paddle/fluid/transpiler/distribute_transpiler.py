@@ -2642,8 +2642,6 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "grad_to_block_id": param_to_block_id,
         }
 
-
-
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
