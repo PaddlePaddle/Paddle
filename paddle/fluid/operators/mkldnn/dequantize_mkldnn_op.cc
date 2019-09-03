@@ -63,7 +63,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::format src_fmt = input->format();
+    MKLDNNMemoryFormat src_fmt = input->format();
     std::string key = CreateKey(ctx, src_dt, src_tz, reorder_scale[0]);
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
@@ -87,7 +87,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
 
       auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
-                                            memory::format::nchw);
+                                            MKLDNNMemoryFormat::nchw);
       auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
       dst_memory = std::make_shared<mkldnn::memory>(
           dst_pd, to_void_cast<float>(output_data));
