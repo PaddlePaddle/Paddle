@@ -217,6 +217,7 @@ void Communicator::RecvAll() {
       if (!FLAGS_communicator_fake_rpc) {
         recv_functor(iter.second, *recv_scope_);
       }
+      // geo-sgd-recv
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -295,8 +296,8 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   }
 }
 
-void Communicator::GeoSgdParamInit(framework::Scope *scope){
-  for(auto &iter:send_varname_to_ctx_){
+void Communicator::GeoSgdParamInit(RpcCtxMap &varname_to_ctx,framework::Scope *scope){
+  for(auto &iter:varname_to_ctx){
     auto var_name = iter.first;
     scope->Var(var_name);
   }
@@ -370,6 +371,8 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
+      VLOG(3) << "find and init an recv op: "
+              << recv_varname_to_ctx[recv_var_name];
     }
   }
   // init communicator here
@@ -382,6 +385,8 @@ void Communicator::Init(const paddle::framework::ProgramDesc &program,
 
 void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info){
+  // param_scope is global scope
+  // In geo-sgd model, we using pserver_scope to send&recv
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
@@ -406,7 +411,8 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
     LOG(WARNING) << "no var need to send and recv!!";
   }
-  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope);  
+  global_scope_ = param_scope;
+  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, delta_scope_);  
 }
 
 Communicator *Communicator::GetInstance() { return communicator_.get(); }

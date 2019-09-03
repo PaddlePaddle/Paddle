@@ -2554,9 +2554,194 @@ class GeoSgdTranspiler(DistributeTranspiler):
             delete_ops(self.startup_program.global_block(), table_param_init_op)
 
         self.origin_program.__str__()
+        #Todo : delect follow comment when overall test
         # if wait_port:
         #     wait_server_ready(self.pserver_endpoints)
         return self.origin_program
+
+        def get_pserver_programs(self, endpoint):
+        """
+        Get pserver side main program and startup program for distributed training.
+
+        Args:
+            endpoint (str): current pserver endpoint.
+
+        Returns:
+            tuple: (main_program, startup_program), of type "Program"
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              #this is an example, find available endpoints in your case
+              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+              current_endpoint = "192.168.0.1:6174"
+              trainer_id = 0
+              trainers = 4
+              t = fluid.DistributeTranspiler()
+              t.transpile(
+                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
+              pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
+        """
+        pserver_prog = self.get_pserver_program(endpoint)
+        pserver_startup = self.get_pserver_startup_program(
+            endpoint, pserver_program=pserver_prog)
+        return pserver_prog, pserver_startup
+
+    def get_pserver_program(self, endpoint):
+        sys.stderr.write(
+            "get_pserver_program() is deprecated, call get_pserver_programs() to get pserver main and startup in a single call.\n"
+        )
+        # step1
+        pserver_program = Program()
+        pserver_program.random_seed = self.origin_program.random_seed
+        pserver_program._copy_dist_param_info_from(self.origin_program)
+        # step2
+        # step2: Create vars to receive vars at parameter servers.
+        recv_inputs = []
+        for v in self.param_opt_ep_mapping[endpoint]["params"]:
+            self._clone_var(pserver_program.global_block(), v)
+
+        optimize_block = []
+        param_to_block_id = []
+        # append op to the current block
+        pre_block_idx = pserver_program.num_blocks - 1
+        for idx, var in enumerate(self.param_opt_ep_mapping[endpoint]["params"]):
+            per_opt_block = pserver_program._create_block(pre_block_idx)
+            optimize_block.append(per_opt_block)
+            var_name = var.name
+            pserver_block = per_opt_block.program.global_block()
+
+            recv_var = pserver_block.vars[var_name]
+            delta_var_name = "%s.delta" % (recv_var.name)
+            delta_var = pserver_block.create_var(
+                name=delta_var_name,
+                persistable=recv_var.persistable,
+                type=recv_var.type,
+                dtype=recv_var.dtype,
+                shape=recv_var.shape)
+            
+            per_opt_block.append_op(
+                type="scale",
+                inputs={"X": recv_var},
+                outputs={"Out": delta_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
+            
+            per_opt_block.append_op(
+                type="elementwise_add",
+                inputs={"X":delta_var,"Y":recv_var},
+                outputs={"Out":recv_var}
+            )
+            param_to_block_id.append(recv_var.name + ":" + str(per_opt_block.idx))
+
+        attrs = {
+            "optimize_blocks": optimize_block,
+            "endpoint": endpoint,
+            "Fanin": self.trainer_num,
+            "sync_mode": self.sync_mode,
+            "grad_to_block_id": param_to_block_id,
+        }
+
+
+
+        # step5 append the listen_and_serv op
+        pserver_program.global_block().append_op(
+            type="listen_and_serv",
+            inputs={'X': recv_inputs},
+            outputs={},
+            attrs=attrs)
+
+        pserver_program._sync_with_cpp()
+        # save pserver program to generate pserver side startup relatively.
+        self.pserver_program = pserver_program
+        return pserver_program
+
+    def get_pserver_startup_program(self,
+                            endpoint,
+                            pserver_program=None,
+                            startup_program=None):
+        """
+        **Deprecated**
+
+        Get startup program for current parameter server.
+        Modify operator input variables if there are variables that
+        were split to several blocks.
+
+        Args:
+            endpoint (str): current pserver endpoint.
+            pserver_program (Program): deprecated, call get_pserver_program first.
+            startup_program (Program): deprecated, should pass startup_program
+                when initalizing
+
+        Returns:
+            Program: parameter server side startup program.
+
+        Examples:
+        .. code-block:: python
+
+                pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                current_endpoint = "192.168.0.1:6174"
+                trainer_id = 0
+                trainers = 4
+
+                t = fluid.DistributeTranspiler()
+                t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                pserver_program = t.get_pserver_program(current_endpoint)
+                pserver_startup_program = t.get_startup_program(current_endpoint,
+                                                                pserver_program)
+        """
+        s_prog = Program()
+        orig_s_prog = self.startup_program
+        s_prog.random_seed = orig_s_prog.random_seed
+        params = self.param_opt_ep_mapping[endpoint]["params"]
+
+        def _get_splited_name_and_shape(varname):
+            for idx, splited_param in enumerate(params):
+                pname = splited_param.name
+                if same_or_split_var(pname, varname) and varname != pname:
+                    return pname, splited_param.shape
+            return "", []
+
+        # 1. create vars in pserver program to startup program
+        pserver_vars = pserver_program.global_block().vars
+        created_var_map = collections.OrderedDict()
+        for _, var in six.iteritems(pserver_vars):
+            tmpvar = s_prog.global_block()._clone_variable(var)
+            created_var_map[var.name] = tmpvar
+
+        # 2. rename op outputs
+        for op in orig_s_prog.global_block().ops:
+            new_outputs = collections.OrderedDict()
+            # do not append startup op if var is not on this pserver
+            op_on_pserver = False
+            # TODO(gongwb): remove this line.
+            if op.type not in ["recv", "fetch_barrier", "concat"]:
+                for key in op.output_names:
+                    newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                    if newname:
+                        op_on_pserver = True
+                        new_outputs[key] = created_var_map[newname]
+                    elif op.output(key)[0] in pserver_vars:
+                        op_on_pserver = True
+                        new_outputs[key] = pserver_vars[op.output(key)[0]]
+
+            if op_on_pserver:
+                # most startup program ops have no inputs
+                new_inputs = self._get_input_map_from_op(pserver_vars, op)
+
+                if op.type in [
+                    "gaussian_random", "fill_constant", "uniform_random",
+                    "truncated_gaussian_random"
+                ]:
+                    op._set_attr("shape", list(new_outputs["Out"].shape))
+                s_prog.global_block().append_op(
+                    type=op.type,
+                    inputs=new_inputs,
+                    outputs=new_outputs,
+                    attrs=op.all_attrs())
+
+        return s_prog
 
     def _init_splited_vars(self):
         param_list = []
@@ -2646,23 +2831,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
             if op.type == "sgd":
                 origin_name = op.output("ParamOut")
                 var = self.origin_program.global_block().var(origin_name[0])
-                new_var_name = "%s.optimize" % (origin_name[0])
-                self.origin_program.global_block().create_var(
-                    name=new_var_name,
-                    persistable=True,
-                    shape=var.shape,
-                    dtype=var.dtype,
-                    type=var.type,
-                    lod_level=var.lod_level)
-                new_var = self.origin_program.global_block().var(new_var_name)
-                optimize_list.append(new_var.name)
-                optimize_to_param[new_var.name] = var.name
-                param_to_optimize[var.name] = new_var.name
-                self.origin_program.global_block().append_op(
-                    type="scale",
-                    inputs={"X": var},
-                    outputs={"Out": new_var},
-                    attrs={"scale": 1.0})
+                optimize_list.append(var.name)
+                optimize_to_param[var.name] = var.name
+                param_to_optimize[var.name] = var.name
         self._param_to_optimize = param_to_optimize
         self._optimize_to_param = optimize_to_param
         self._optimize_var_list = optimize_list

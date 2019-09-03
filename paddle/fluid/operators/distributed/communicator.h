@@ -196,7 +196,7 @@ class Communicator {
   // for geo-sgd algorithm
 private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(framework::Scope *scope);
+  void GeoSgdParamInit(RpcCtxMap &varname_to_ctx,framework::Scope *scope);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y);
   std::shared_ptr<Variable> SubVars(const std::string& var_name,
@@ -205,8 +205,9 @@ private:
                                     int &trainers);
   
 private:
+  Scope* delta_scope_; //parameter on pserver == send_scope
+  Scope* old_scope_; //parameter local, storage the param after last recv
   Scope* global_scope_;
-  Scope* old_scope_;
   int is_need_push_ = 0;
 
 
