@@ -48,11 +48,11 @@ inline double GetCurrentUS() {
 }
 
 struct Trainer {
-  const int id;
+  int id;
   TrainerStatus status;
   double timestamp;
 
-  explicit Trainer(const int trainer_id) {
+  explicit Trainer(int trainer_id) {
     this->id = trainer_id;
     this->status = UNINITED;
     this->timestamp = 0;
@@ -68,7 +68,7 @@ class TrainerHeartBeatMonitor {
       trainer_status_map_[trainer_id] = Trainer(trainer_id);
     }
     monitor_thread_.reset(new std::thread(
-        std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)))
+        std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
   }
 
   ~TrainerHeartBeatMonitor() {
@@ -83,7 +83,7 @@ class TrainerHeartBeatMonitor {
     double timestamp = GetCurrentUS();
 
     if (status == UNINITED || status == COMPLETED) {
-      VLOG(4) << "trainer " << trainer.id << " is << " status << " at "
+      VLOG(4) << "trainer " << trainer.id << " is << " << status << " at "
               << timestamp;
     } else if (status == RUNNING) {
       VLOG(4) << "update trainer " << trainer_id << "'s timestamp from "
@@ -98,11 +98,11 @@ class TrainerHeartBeatMonitor {
     }
   }
 
-  bool LostTrainerMonitor() {
+  void LostTrainerMonitor() {
     VLOG(1) << "trainer heartbeat monitor start at NO.0 parameter server";
     while (running_) {
       for (int id = 0; id < trainers_; ++id) {
-        auto& trainer = trainer_status_map_.at[id];
+        auto& trainer = trainer_status_map_.at(id);
 
         if (trainer.status == UNINITED) {
           VLOG(4) << "trainer " << trainer.id << " is under UNINITED, skip it";
