@@ -60,6 +60,9 @@ IF(NOT ${CBLAS_FOUND})
     )
     ELSE(NOT WIN32)
         SET(CBLAS_FOUND false)
+        SET(CBLAS_LIBRARIES
+            "${CBLAS_INSTALL_DIR}/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            CACHE FILEPATH "openblas library." FORCE)
         INCLUDE_DIRECTORIES(${CBLAS_INC_DIR}/openblas) # For openbals code to include its own headers.
         INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install)
         ExternalProject_Add(
