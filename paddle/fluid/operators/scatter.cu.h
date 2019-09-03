@@ -90,12 +90,16 @@ template <typename T, typename IndexT = int>
 void GPUScatterAssign(const framework::ExecutionContext& context,
                       const Tensor& src, const Tensor& index, Tensor* output,
                       bool overwrite = true) {
-  // PADDLE_ENFORCE(platform::is_gpu_place(place));
   // check index of shape 1-D
-
   const auto& ctx = context.device_context();
-  PADDLE_ENFORCE(index.dims().size() == 1 ||
-                 (index.dims().size() == 2 && index.dims()[1] == 1));
+  if (index.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
+                      "index.dims()[1] should be 1 when index.dims().size() == "
+                      "2 in scatter_op.");
+  } else {
+    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
+                      "index.dims().size() should be 1 or 2 in scatter_op.");
+  }
   int index_size = index.dims()[0];
 
   auto src_dims = src.dims();
