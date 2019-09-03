@@ -383,7 +383,7 @@ paddle.fluid.layers.square (ArgSpec(args=['x', 'name'], varargs=None, keywords=N
 paddle.fluid.layers.softplus (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'be4533a4cd97c84424512dca76142083'))
 paddle.fluid.layers.softsign (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '410f27a44b7365cc60d5d5ff5a53407e'))
 paddle.fluid.layers.uniform_random (ArgSpec(args=['shape', 'dtype', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', -1.0, 1.0, 0)), ('document', '6de6775d9e9ed885056e764982130cfd'))
-paddle.fluid.layers.softshrink (ArgSpec(args=['x', 'alpha'], varargs=None, keywords=None, defaults=(None,)), ('document', '7bba614c12b7a2992e853b4333ac2734'))
+paddle.fluid.layers.softshrink (ArgSpec(args=['x', 'alpha'], varargs=None, keywords=None, defaults=(None,)), ('document', '958c7bfdfb0b5e92af6ca4a90d24e5ef'))
 paddle.fluid.layers.hard_shrink (ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,)), ('document', '386a4103d2884b2f1312ebc1e8ee6486'))
 paddle.fluid.layers.cumsum (ArgSpec(args=['x', 'axis', 'exclusive', 'reverse'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '5ab9d5721a6734fe127069e4314e1309'))
 paddle.fluid.layers.thresholded_relu (ArgSpec(args=['x', 'threshold'], varargs=None, keywords=None, defaults=(None,)), ('document', '9a0464425426a9b9c1b7500ede2836c1'))
