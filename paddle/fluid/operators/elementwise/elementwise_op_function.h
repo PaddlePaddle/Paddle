@@ -663,9 +663,10 @@ void ElemwiseGradComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, mid_flag;
+  int pre, n, post, mid_flag=0;
   get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &mid_flag);
   if (mid_flag) {
+    PADDLE_ENFORCE_EQ(mid_flag, 1, "mid_flag should be no more than 1.")
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
       ElemwiseGradBroadcastMid2CUDA(
@@ -834,7 +835,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                  "Axis should be in range [0, x_dims)");
   auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
-  int pre, n, post, mid_flag;
+  int pre, n, post, mid_flag = 0;
   get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post, &mid_flag);
   if (mid_flag) {
     functor.RunMidRowWise(n, pre, post);
