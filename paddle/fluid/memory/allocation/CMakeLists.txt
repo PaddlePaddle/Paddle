@@ -51,7 +51,6 @@ if (WITH_TESTING)
   endif()
 
   set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  set_property(TEST retry_allocator_test PROPERTY ENVIRONMENT GLOG_vmodule=retry_allocator=10)
 endif()
 
 cc_test(allocator_facade_abs_flags_test SRCS allocator_facade_abs_flags_test.cc DEPS allocator_facade)
