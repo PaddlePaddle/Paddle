@@ -14,13 +14,10 @@
 
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.contrib.utils import HDFSClient
+import os
 
 
 def check_all_trainers_ready(ready_path, epoch):
-    ## for unittest
-    if ready_path == "unittest":
-        return
-
     trainer_num = fleet.worker_num()
     trainer_id = fleet.worker_index()
 
