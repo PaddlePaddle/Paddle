@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -40,13 +41,31 @@ struct Layers {
   VarDesc* dropout(VarDesc* x, float dropout_prob,
                    std::string dropout_implementation) {
     VarDesc* out = lod_tensor(unique_name());
+    VarDesc* mask = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("dropout");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
+    op->SetOutput("Mask", {mask->Name()});
     op->SetAttr("is_test", true);
     op->SetAttr("dropout_prob", dropout_prob);
     op->SetAttr("dropout_implementation", dropout_implementation);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("stack");
+    std::vector<std::string> input_names(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      input_names[i] = inputs[i]->Name();
+    }
+    op->SetInput("X", input_names);
+    op->SetOutput("Y", {out->Name()});
+    op->SetAttr("axis", axis);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
@@ -175,7 +194,7 @@ static std::string DebugString(Node* node) {
   return os.str();
 }
 
-static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(Graph* graph) {
   std::ostringstream os;
   os << "Graph: {\n";
   for (auto* node : graph->Nodes()) {

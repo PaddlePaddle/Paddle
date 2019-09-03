@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
+#include <sstream>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
@@ -31,22 +32,28 @@ namespace ir {
  *   replace dropout_op with scale_op (downgrade_in_infer) when is_test is true
  */
 void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
+  // LOG(INFO) << DebugString(*graph);
   VLOG(3) << "Simplify the Graph with basic ops.";
   std::unordered_set<const Node*> del_node_set;
+  std::vector<int> info;
   for (Node* n : graph->Nodes()) {
     if (n->IsOp() && n->Op()) {
       if (n->Op()->Type() == "dropout") {
-        SimplifyDropout(graph, n, &del_node_set);
+        SimplifyDropout(graph, n, &del_node_set, &info);
+        // } else if (n->Op()->Type() == "stack") {
+        //   SimplifyStack(graph, n, &del_node_set, &info);
       }
     }
   }
 
   GraphSafeRemoveNodes(graph, del_node_set);
+  // LOG(INFO) << DebugString(graph);
+  PrintStatis(info);
 }
 
 bool SimplifyWithBasicOpsPass::SimplifyDropout(
-    Graph* graph, Node* n,
-    std::unordered_set<const Node*>* del_node_set) const {
+    Graph* graph, Node* n, std::unordered_set<const Node*>* del_node_set,
+    std::vector<int>* info) const {
   OpDesc* dropout_op_desc = n->Op();
   bool is_test = false;
   // In the model used in test_analyzer_bert, the is_test's AttrType of
@@ -122,6 +129,7 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     }
 
     del_node_set->insert(dropout_out);
+    AddStatis(info, SimplifyOption::DELETE_DROPOIUT_OPS);
   } else {
     // Use a scale_op replaces the dropout_op
     // dropout_x -> dropout_op -> dropout_out -> next_op -> next_out
@@ -142,9 +150,45 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     auto* scale_op_node = graph->CreateOpNode(&new_op_desc);
     IR_NODE_LINK_TO(dropout_x, scale_op_node);
     IR_NODE_LINK_TO(scale_op_node, dropout_out);
+
+    AddStatis(info, SimplifyOption::REPLACE_DROPOUT_WITH_SCALE_OPS);
   }
 
   del_node_set->insert(n);
+  if (dropout_op_desc->Output("Mask").size() > 0UL) {
+    Node* dropout_mask = GetOutputVar(n, dropout_op_desc->Output("Mask")[0]);
+    del_node_set->insert(dropout_mask);
+  }
+  return true;
+}
+
+bool SimplifyWithBasicOpsPass::SimplifyStack(
+    Graph* graph, Node* n, std::unordered_set<const Node*>* del_node_set,
+    std::vector<int>* info) const {
+  OpDesc* stack_op_desc = n->Op();
+  LOG(INFO) << DebugString(n);
+
+  OpDesc new_op_desc;
+  new_op_desc.SetType("concat");
+  new_op_desc.SetInput("X", stack_op_desc->Input("X"));
+  new_op_desc.SetOutput("Out", stack_op_desc->Output("Y"));
+  new_op_desc.SetAttr("axis", boost::get<int>(stack_op_desc->GetAttr("axis")));
+  new_op_desc.SetAttr("use_quantizer", false);
+
+  auto* concat_op_node = graph->CreateOpNode(&new_op_desc);
+  // LOG(INFO) << "stack_op has " << n->inputs.size() << " inputs";
+  // LOG(INFO) << "stack_op has " << n->outputs.size() << " outputs";
+  for (auto* in : n->inputs) {
+    IR_NODE_LINK_TO(in, concat_op_node);
+  }
+  for (auto* out : n->outputs) {
+    IR_NODE_LINK_TO(concat_op_node, out);
+  }
+
+  LOG(INFO) << DebugString(concat_op_node);
+
+  del_node_set->insert(n);
+  AddStatis(info, SimplifyOption::REPLACE_STACK_WITH_CONCAT_OPS);
   return true;
 }
 
@@ -192,6 +236,28 @@ void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
       }
     }
   }
+}
+
+void SimplifyWithBasicOpsPass::AddStatis(std::vector<int>* info,
+                                         SimplifyOption option) const {
+  if (info->size() == 0) {
+    info->resize(SimplifyOption::NUM_SUPPORT_OPTIONS);
+    for (size_t i = 0; i < info->size(); ++i) {
+      info->at(i) = 0;
+    }
+  }
+  info->at(static_cast<int>(option))++;
+}
+
+void SimplifyWithBasicOpsPass::PrintStatis(const std::vector<int>& info) const {
+  LOG(INFO) << "-- delete " << info[SimplifyOption::DELETE_DROPOIUT_OPS]
+            << " dropout ops";
+  LOG(INFO) << "-- replace "
+            << info[SimplifyOption::REPLACE_DROPOUT_WITH_SCALE_OPS]
+            << " dropout ops with scale ops";
+  LOG(INFO) << "-- replace "
+            << info[SimplifyOption::REPLACE_STACK_WITH_CONCAT_OPS]
+            << " stack ops with concat ops";
 }
 
 }  // namespace ir
