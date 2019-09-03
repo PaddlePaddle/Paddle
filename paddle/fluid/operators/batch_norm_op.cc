@@ -440,7 +440,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = x == y;
+    bool is_inplace = (x == y);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -522,14 +522,15 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
+          std::cout << "DataLayout::kNCHW" << std::endl;
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
           ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
-            x_data.col(nc) =
-                (y_data.col(nc) - bias_arr(nc)) / scale_inv_var_nhw(nc) +
-                mean_arr(nc);
+            x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
+                                 scale_inv_var_nhw(nc % C) +
+                             mean_arr(nc % C);
           }
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -566,6 +567,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
+          std::cout << "DataLayout::kNHWC" << std::endl;
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);

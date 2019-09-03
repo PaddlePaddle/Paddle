@@ -1090,6 +1090,7 @@ struct ELUFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
+    std::cout << "ELUFunctor" << alpha << std::endl;
     out.device(d) = x.cwiseMax(static_cast<T>(0)) +
                     (static_cast<T>(alpha) * (x.exp() - static_cast<T>(1)))
                         .cwiseMin(static_cast<T>(0));
@@ -1105,6 +1106,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    std::cout << "ELUGradFunctor" << alpha << std::endl;
     dx.device(d) = dout * (x > static_cast<T>(0)).template cast<T>() +
                    dout * static_cast<T>(alpha) * x.exp() *
                        (x < static_cast<T>(0)).template cast<T>();

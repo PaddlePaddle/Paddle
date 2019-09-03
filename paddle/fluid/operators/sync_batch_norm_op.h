@@ -331,7 +331,7 @@ void SyncBatchNormGradFunctor(
     const framework::Tensor *mean, const framework::Tensor *variance,
     const double epsilon) {
   const auto &x_dims = x->dims();
-  bool is_inplace = x == y;
+  bool is_inplace = (x == y);
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
                     "The Input X dim size should be larger than 1.");
