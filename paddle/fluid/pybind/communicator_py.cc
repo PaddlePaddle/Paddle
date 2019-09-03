@@ -44,7 +44,7 @@ void BindCommunicator(py::module* m) {
                       std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info,
                       int &trainers,int &geo_need_push_nums){
         VLOG(0) << "using geo sgd communicator";
-        Communicator::GeoSgdInit(program, param_scope,vars_info);
+        Communicator::GeoSgdInit(program, param_scope,vars_info,trainers,geo_need_push_nums);
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
