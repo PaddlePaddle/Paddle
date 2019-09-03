@@ -90,9 +90,9 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
         "activation",
         "(enum string, default identity) "
         "The activation type used for output candidate {h}_t.");
-    AddAttr<float>("fuse_alpha",
+    AddAttr<float>("alpha",
                    "(float, default 1.0) Only used in inplace-abn kernel")
-        .SetDefault(1.0f);
+        .SetDefault(0.1f);
   }
 };
 
