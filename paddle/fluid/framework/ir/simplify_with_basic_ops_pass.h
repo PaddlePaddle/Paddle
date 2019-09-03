@@ -31,9 +31,6 @@ class SimplifyWithBasicOpsPass : public Pass {
   bool SimplifyDropout(Graph* graph, Node* n,
                        std::unordered_set<const Node*>* del_node_set,
                        std::vector<int>* info) const;
-  bool SimplifyStack(Graph* graph, Node* n,
-                     std::unordered_set<const Node*>* del_node_set,
-                     std::vector<int>* info) const;
 
   Node* GetInputVar(Node* n, const std::string& name) const;
   Node* GetOutputVar(Node* n, const std::string& name) const;
@@ -44,8 +41,7 @@ class SimplifyWithBasicOpsPass : public Pass {
   enum SimplifyOption {
     DELETE_DROPOIUT_OPS = 0,
     REPLACE_DROPOUT_WITH_SCALE_OPS = 1,
-    REPLACE_STACK_WITH_CONCAT_OPS = 2,
-    NUM_SUPPORT_OPTIONS = 3
+    NUM_SUPPORT_OPTIONS = 2
   };
 
   void AddStatis(std::vector<int>* info, SimplifyOption option) const;

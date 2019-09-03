@@ -71,25 +71,6 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
   }
 }
 
-TEST(SimplyfiWithBasicOpsPass, stack) {
-  Layers layers;
-  auto* x = layers.data("x");
-  auto* y = layers.data("y");
-  auto* mul_out = layers.mul(x, y);
-  layers.stack({mul_out, mul_out, mul_out});
-
-  std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-  auto pass = PassRegistry::Instance().Get("simplify_with_basic_ops_pass");
-  int num_stack_nodes_before = GetNumOpNodes(graph, "stack");
-  VLOG(3) << DebugString(graph.get());
-
-  graph.reset(pass->Apply(graph.release()));
-  int num_concat_nodes_after = GetNumOpNodes(graph, "concat");
-  VLOG(3) << DebugString(graph.get());
-
-  PADDLE_ENFORCE_EQ(num_stack_nodes_before, num_concat_nodes_after);
-}
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
