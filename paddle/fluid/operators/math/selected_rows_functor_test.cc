@@ -242,24 +242,21 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
       cpu_place);
   functor(ctx, in_value, 1.0);
 
-  std::unique_ptr<paddle::framework::SelectedRows> output;
-
   paddle::operators::math::scatter::MergeAverage<
       paddle::platform::CPUDeviceContext, float>
       merge_average_functor;
-  paddle::framework::SelectedRows tmp_out =
+  paddle::framework::SelectedRows output =
       merge_average_functor(ctx, *selected_rows);
-  output = &tmp_out;
 
-  auto out_height = output->height();
+  auto out_height = output.height();
   EXPECT_EQ(out_height, height);
 
-  auto& out_rows = output->rows();
+  auto& out_rows = output.rows();
   EXPECT_EQ(out_rows[0], 0);
   EXPECT_EQ(out_rows[1], 4);
   EXPECT_EQ(out_rows[2], 7);
 
-  auto* out_data = output->value().data<float>();
+  auto* out_data = output.value().data<float>();
 
   EXPECT_EQ(out_data[0 * row_numel], 1.0);
   EXPECT_EQ(out_data[1 * row_numel], 2.0);
