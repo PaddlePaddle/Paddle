@@ -121,7 +121,7 @@ class MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(
       const std::vector<int>& dims, const mkldnn::memory::data_type dtype,
-      const mkldnn::memory::format& fmt, void* ptr, const std::string& suffix) {
+      const MKLDNNMemoryFormat& fmt, void* ptr, const std::string& suffix) {
     /*Generate key*/
     auto local_key = key_ + suffix;
     auto mem_p =
@@ -236,7 +236,7 @@ class MKLDNNHandler {
       const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
       const std::vector<int>& paddings, const std::vector<int>& dilations,
       const int& groups, const mkldnn::memory::data_type& srcdt,
-      const mkldnn::memory::format& format, const std::string& fuse_activation,
+      const MKLDNNMemoryFormat& format, const std::string& fuse_activation,
       const bool& residual, const std::string& suffix) {
     AppendKeyDims(key, input_dims);
 
@@ -454,9 +454,8 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
 
   static std::string GetHash(const memory::dims& input_dims,
                              const mkldnn::algorithm algorithm,
-                             const mkldnn::memory::format fmt,
-                             const float alpha, const float beta,
-                             const std::string& suffix) {
+                             const MKLDNNMemoryFormat fmt, const float alpha,
+                             const float beta, const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
     platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
@@ -606,7 +605,7 @@ class LRNMKLDNNHandler : public MKLDNNHandler {
 
   static std::string GetHash(const memory::dims& input_dims, const int n,
                              const float alpha, const float beta, const float k,
-                             const memory::format& fmt,
+                             const MKLDNNMemoryFormat& fmt,
                              const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
@@ -691,7 +690,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
         pooling_type_ == "max"
             ? fwd_pd_->workspace_primitive_desc()
             : mkldnn::memory::primitive_desc(
-                  {{}, dt_, mkldnn::memory::format::nchw}, engine_);
+                  {{}, dt_, MKLDNNMemoryFormat::nchw}, engine_);
     // Pooling PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
@@ -801,7 +800,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       const memory::dims& input_dims, const std::string& pooling_type,
       const std::vector<int>& ksize, const std::vector<int>& strides,
       const std::vector<int>& paddings, const memory::data_type& dt,
-      const memory::format& fmt, const std::string& suffix) {
+      const MKLDNNMemoryFormat& fmt, const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
     platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
@@ -855,7 +854,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
         logical_axis_(dims.size(), 0) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::format& fmt, void* ptr) {
+      const MKLDNNMemoryFormat& fmt, void* ptr) {
     auto local_key = key_ + "@user_src_mem_p";
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
@@ -865,7 +864,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       for (size_t i = 0; i < logical_axis_.size(); ++i) {
         logical_axis_[i] = i;
       }
-      auto src_md = fmt != mkldnn::memory::format::nchw
+      auto src_md = fmt != MKLDNNMemoryFormat::nchw
                         ? platform::MKLDNNMemDesc(
                               dims_, platform::MKLDNNGetDataType<float>(), fmt)
                         : Axis2MemoryDesc(dims_, logical_axis_);
@@ -967,12 +966,12 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
         dtype_(dtype) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::format& fmt, void* ptr) {
+      const MKLDNNMemoryFormat& fmt, void* ptr) {
     return this->AcquireMemory(dims_, dtype_, fmt, ptr, "@user_src_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      framework::Tensor* output, const mkldnn::memory::format& fmt,
+      framework::Tensor* output, const MKLDNNMemoryFormat& fmt,
       platform::Place place) {
     auto local_key = key_ + "@user_dst_mem_p";
     auto mem_p =
@@ -1007,8 +1006,8 @@ class ReorderMKLDNNHandler : public MKLDNNHandler {
   }
 
   static std::string GetHash(std::vector<int>& shape,  // NOLINT
-                             mkldnn::memory::format in_fmt,
-                             mkldnn::memory::format out_fmt,
+                             MKLDNNMemoryFormat in_fmt,
+                             MKLDNNMemoryFormat out_fmt,
                              const std::string& suffix) {
     return dims2str(shape) + std::to_string(in_fmt) + "->" +
            std::to_string(out_fmt) + "#" + suffix;
@@ -1071,8 +1070,8 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return conv_pd_->dst_primitive_desc().get_size();
   }
 
-  mkldnn::memory::format GetDstFormat() const {
-    return static_cast<mkldnn::memory::format>(
+  MKLDNNMemoryFormat GetDstFormat() const {
+    return static_cast<MKLDNNMemoryFormat>(
         conv_pd_->dst_primitive_desc().desc().data.format);
   }
 
@@ -1435,10 +1434,10 @@ static void SetDstMemoryQuantized(
     std::shared_ptr<mkldnn::memory>& dst_memory) {            // NOLINT
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
-  memory::format dst_fmt;
-  PADDLE_ENFORCE(dst_dims <= 5,
-                 "Dst memory for quantization can not have dims > 5");
-  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, memory::format::nhwc);
+  MKLDNNMemoryFormat dst_fmt;
+  PADDLE_ENFORCE_LE(dst_dims, 5,
+                    "Dst memory for quantization can not have dims > 5");
+  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, MKLDNNMemoryFormat::nhwc);
 
   auto dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(
