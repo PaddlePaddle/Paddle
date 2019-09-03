@@ -462,7 +462,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = (x == y);
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]

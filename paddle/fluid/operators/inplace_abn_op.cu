@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
-#include "paddle/fluid/operators/sync_batch_norm_op.h"
+#include "paddle/fluid/operators/sync_batch_norm_op.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -46,13 +46,13 @@ class InplaceABNGradKernel
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    const auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    bool is_inplace = x == y;
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     d_x->mutable_data<T>(ctx.GetPlace());
     auto& px = const_cast<Tensor&>(*x);

@@ -88,10 +88,13 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
     BatchNormOpMaker::Make();
     AddAttr<std::string>(
         "activation",
-        "(enum string, default identity) "
+        "(enum string, default identity, can be identity|elu|leakyrelu) "
         "The activation type used for output candidate {h}_t.");
     AddAttr<float>("alpha",
-                   "(float, default 1.0) Only used in inplace-abn kernel")
+                   "(float, default 1.0) Only used in inplace-abn kernel,"
+                   "the activation type(identity|elu|leakyrelu) would be fused "
+                   "with batch_norm, "
+                   "this is the alpha value for elu|leakyrelu.")
         .SetDefault(0.1f);
   }
 };
@@ -141,7 +144,7 @@ class InplaceABNGradKernel
 
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy,
-                        x == y);
+                        x->data<T>() == y->data<T>());
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
@@ -152,7 +155,7 @@ class InplaceABNGradKernel
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
-                  ops::InplaceABNOpGradMaker);
+                  ops::InplaceABNOpGradMaker, ops::BatchNormOpInferVarType);
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
 REGISTER_OP_CPU_KERNEL(

@@ -3867,8 +3867,8 @@ def batch_norm(input,
         op_type = "batch_norm"
         use_fused_act = False
 
-    batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
-        dtype)
+    # in-place would be controlled by build_strategy.enable_inplace flag
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
     attrs = {
         "momentum": momentum,

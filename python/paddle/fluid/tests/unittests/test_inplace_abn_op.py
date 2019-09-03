@@ -80,7 +80,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     sgd_opt.backward(out)
         return main, startup, [out, bn]
 
-    def compare(self, place, layout, only_forward, activation):
+    def compare(self, place, layout, only_forward, activation, use_cuda):
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
@@ -125,7 +125,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
         build_strategy = fluid.BuildStrategy()
-        build_strategy.enable_inplace = False
+        build_strategy.sync_batch_norm = use_cuda
+        build_strategy.enable_inplace = True
         build_strategy.memory_optimize = False
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1 if os.name == 'nt' else 0
@@ -144,7 +145,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 inplace_abn_val = inplace_abn_val[:bn_val.shape[0]]
             self.assertTrue(
                 np.allclose(
-                    bn_val, inplace_abn_val, atol=1e-3),
+                    bn_val, inplace_abn_val, atol=1e-2),
                 "Output (" + fetch_names[i] + ":" + fetch_names1[i] +
                 ") has diff. \n" + "\nBN     " + str(bn_val) + "\n" +
                 "Inplace ABN " + str(inplace_abn_val))
@@ -162,7 +163,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             for layout in layouts:
                 for activation in ['elu', 'relu']:
                     for infer_only in [False, True]:
-                        self.compare(place, layout, infer_only, activation)
+                        self.compare(place, layout, infer_only, activation,
+                                     use_cuda)
 
 
 if __name__ == '__main__':

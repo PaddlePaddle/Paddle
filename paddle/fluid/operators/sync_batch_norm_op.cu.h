@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -146,12 +147,10 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     mean_data = mean->data<T>();
     var_data = variance->data<T>();
   } else {
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(T);
-    alloc_ptr = allocator.Allocate(bytes);
+    alloc_ptr = memory::Alloc(dev_ctx, bytes);
 
     T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
     const int threads = 256;
@@ -330,8 +329,8 @@ void SyncBatchNormGradFunctor(
     framework::Tensor *d_scale, framework::Tensor *d_bias,
     const framework::Tensor *mean, const framework::Tensor *variance,
     const double epsilon) {
+  bool is_inplace = (x->data<T>() == y->data<T>());
   const auto &x_dims = x->dims();
-  bool is_inplace = (x == y);
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
                     "The Input X dim size should be larger than 1.");
@@ -372,9 +371,8 @@ void SyncBatchNormGradFunctor(
 
   const T *saved_mean = mean->data<T>();
   const T *saved_inv_var = variance->data<T>();
-  auto &allocator = platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
   const int bytes = (C * 2 + 1) * sizeof(T);
-  auto alloc_ptr = allocator.Allocate(bytes);
+  auto alloc_ptr = memory::Alloc(dev_ctx, bytes);
   T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
 
   const int block = 512;
