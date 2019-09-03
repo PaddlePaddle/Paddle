@@ -312,13 +312,24 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   ShrinkDepsOpFunctor shrink_func(
       ir::FilterByNodeWrapper<details::OpHandleBase>(*graph));
 
+  details::PseudoPersistableVars *pseudo_persistable_set = nullptr;
+  if (graph->Has(details::kPseudoPersistableVars)) {
+    pseudo_persistable_set = &graph->Get<details::PseudoPersistableVars>(
+        details::kPseudoPersistableVars);
+  }
+  auto is_pseudo_persistable_var = [&pseudo_persistable_set](
+      const std::string &var_name) {
+    return pseudo_persistable_set && pseudo_persistable_set->count(var_name);
+  };
+
   VLOG(1) << "Place number: " << vars.size();
   for (size_t i = 0; i < vars.size(); ++i) {
     for (auto &name_var_pair : vars[i]) {
       // Whether this variable can be reused or deleted? If not, we do not
       // compute reference counts and dependencies.
       VarDesc *var_desc = TryGetLatestVarDesc(name_var_pair.second);
-      if (var_desc == nullptr || var_desc->Persistable()) {
+      if (var_desc == nullptr || var_desc->Persistable() ||
+          is_pseudo_persistable_var(var_desc->Name())) {
         continue;
       }
 

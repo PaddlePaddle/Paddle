@@ -290,7 +290,7 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
           details::kPseudoPersistableVars);
 
   auto vars_info = GetVarInfo(*result);
-  // Set Gradients as Persistable to prevent this var becoming reusable.
+  // The Gradients should not be reused during memory optimization.
   for (auto &grad_var_name : grads) {
     auto iter = vars_info.find(grad_var_name);
     PADDLE_ENFORCE(iter != vars_info.end());
@@ -300,10 +300,7 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
                    "Currently the gradient type only should be LoDTensor when "
                    "fusing optimizer ops.");
     for (auto var : iter->second) {
-      if (!var->Var()->Persistable()) {
-        pseudo_persistable_set.insert(var->Var()->Name());
-      }
-      var->Var()->SetPersistable(true);
+      pseudo_persistable_set.insert(var->Var()->Name());
     }
   }
 

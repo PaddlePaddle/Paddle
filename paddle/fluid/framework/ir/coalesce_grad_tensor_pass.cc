@@ -127,13 +127,11 @@ class CoalesceGradTensorPass : public ir::Pass {
         graph->GetOrInit<details::PseudoPersistableVars>(
             details::kPseudoPersistableVars);
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
-      SetGradientPersistable(p_g_dense_grad, vars_info,
-                             &pseudo_persistable_set);
+      RecordGradients(p_g_dense_grad, vars_info, &pseudo_persistable_set);
       CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
-        SetGradientPersistable(p_g_dense_grad, vars_info,
-                               &pseudo_persistable_set);
+        RecordGradients(p_g_dense_grad, vars_info, &pseudo_persistable_set);
         PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
                        "The data type of the same group is not consistent.");
         CoalesceTensors(vars_info, sub_param_grad, &result);
@@ -141,23 +139,18 @@ class CoalesceGradTensorPass : public ir::Pass {
     }
   }
 
-  void SetGradientPersistable(
+  void RecordGradients(
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       std::unordered_set<std::string> *pseudo_persistable_set) const {
+    // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
       PADDLE_ENFORCE(iter != vars_info.end(), "%s is not found.", p_g.second);
       PADDLE_ENFORCE(!iter->second.empty());
-      // The reason for setting persistable here is to make this variable avoid
-      // optimized. It is not appropriate, because the persistable variable
-      // should be placed in the global scope, but not to avoid optimized.
       for (auto it : iter->second) {
         PADDLE_ENFORCE_NOT_NULL(it->Var());
-        if (!it->Var()->Persistable()) {
-          pseudo_persistable_set->insert(it->Var()->Name());
-        }
-        it->Var()->SetPersistable(true);
+        pseudo_persistable_set->insert(it->Var()->Name());
       }
       PADDLE_ENFORCE(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)));
     }
