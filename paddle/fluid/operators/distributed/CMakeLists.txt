@@ -13,7 +13,7 @@ cc_library(async_sparse_param_update_recorder SRCS async_sparse_param_update_rec
 cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS async_sparse_param_update_recorder)
 
 cc_library(trainer_heart_beat_monitor SRCS trainer_heart_beat_monitor.cc DEPS enforce simple_threadpool)
-cc_library(trainer_heart_beat_monitor_test SRCS trainer_heart_beat_monitor_test.cc DEPS trainer_heart_beat_monitor)
+cc_test(trainer_heart_beat_monitor_test SRCS trainer_heart_beat_monitor_test.cc DEPS trainer_heart_beat_monitor)
 
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")

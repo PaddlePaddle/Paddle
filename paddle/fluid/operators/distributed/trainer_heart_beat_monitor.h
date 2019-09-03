@@ -52,6 +52,8 @@ struct Trainer {
   TrainerStatus status;
   double timestamp;
 
+  Trainer() {}
+
   explicit Trainer(int trainer_id) {
     this->id = trainer_id;
     this->status = UNINITED;
@@ -65,7 +67,8 @@ class TrainerHeartBeatMonitor {
       : trainers_(trainers), running_(true) {
     PADDLE_ENFORCE_GT(trainers, 0, "trainers must have one or more");
     for (auto trainer_id = 0; trainer_id < trainers; trainer_id++) {
-      trainer_status_map_[trainer_id] = Trainer(trainer_id);
+      Trainer trainer(trainer_id);
+      trainer_status_map_[trainer_id] = std::move(trainer);
     }
     monitor_thread_.reset(new std::thread(
         std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
