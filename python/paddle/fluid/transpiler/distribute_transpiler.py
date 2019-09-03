@@ -1107,6 +1107,7 @@ class DistributeTranspiler(object):
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
+            "pserver_id": self.pserver_endpoints.index(endpoint),
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,

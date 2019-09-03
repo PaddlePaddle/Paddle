@@ -78,25 +78,21 @@ class TrainerHeartBeatMonitor {
 
   void Update(const int trainer_id, TrainerStatus status) {
     std::lock_guard<std::mutex> guard(mutex_);
-    Trainer& trainer = trainer_status_map_.at(trainer_id);
 
+    Trainer& trainer = trainer_status_map_.at(trainer_id);
     double timestamp = GetCurrentUS();
 
-    if (trainer.status == UNINITED) {
-      VLOG(4) << "change trainer " << trainer.id
-              << " from UNINITED to RUNNING at " << timestamp;
-      trainer.status == RUNNING;
-      trainer.timestamp = timestamp;
-
-    } else if (trainer.status == RUNNING) {
+    if (status == UNINITED || status == COMPLETED) {
+      VLOG(4) << "trainer " << trainer.id << " is << " status << " at "
+              << timestamp;
+    } else if (status == RUNNING) {
       VLOG(4) << "update trainer " << trainer_id << "'s timestamp from "
               << trainer.timestamp << " to " << timestamp << " the interval is "
               << timestamp - trainer.timestamp;
 
+      trainer.status = status;
       trainer.timestamp = timestamp;
-    } else if (trainer.status == COMPLETED) {
-      PADDLE_THROW("trainer %d 's status is COMPLETED, cannot be updated",
-                   trainer_id);
+
     } else {
       PADDLE_THROW("trainer %d 's status can not be verified.", trainer_id);
     }
@@ -141,7 +137,7 @@ class TrainerHeartBeatMonitor {
     if (monitor_ == nullptr) {
       PADDLE_THROW(
           "TrainerHeartBeatMonitor is not inited, call "
-          "TrainerHeartBeatMonitor::InitInstance first");
+          "TrainerHeartBeatMonitor::Init first");
     }
     return monitor_.get();
   }
