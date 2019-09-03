@@ -65,12 +65,12 @@ double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 class CoalesceGradTensorPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const {
-    ir::Graph &result = *graph;
     if (Get<size_t>(details::kNRanks) <= 1) {
       VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
               << ", there doesn't need apply FuseAllReduceOpPass.";
       return;
     }
+    ir::Graph &result = *graph;
     details::ParamsAndGrads params_grads;
     RecordParamsAndGrads(result, &params_grads);
 
@@ -80,10 +80,6 @@ class CoalesceGradTensorPass : public ir::Pass {
                                             &result);
     ResetAttribute<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads, &result);
-
-    auto &pseudo_persistable_set =
-        graph->GetOrInit<details::PseudoPersistableVars>(
-            details::kPseudoPersistableVars);
 
     VLOG(10) << "The number of params and grads is:" << params_grads.size();
     if (params_grads.size() == 0) {
@@ -127,6 +123,9 @@ class CoalesceGradTensorPass : public ir::Pass {
         p_g_dense_grad.size(), num_of_p_g_dense_grad,
         "The number of p_g_dense_grad is not consistent with before.");
 
+    auto &pseudo_persistable_set =
+        graph->GetOrInit<details::PseudoPersistableVars>(
+            details::kPseudoPersistableVars);
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
       SetGradientPersistable(p_g_dense_grad, vars_info,
                              &pseudo_persistable_set);

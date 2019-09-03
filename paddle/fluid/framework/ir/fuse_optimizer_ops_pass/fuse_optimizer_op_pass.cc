@@ -107,36 +107,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
         "The number of dense gradients should be little than optimizer ops.");
     if (VLOG_IS_ON(6)) {
-      std::stringstream out;
-      auto params_and_dense_grads_tmp = params_and_dense_grads;
-      std::sort(params_and_dense_grads_tmp.begin(),
-                params_and_dense_grads_tmp.end(),
-                [](const std::pair<std::string, std::string> &item1,
-                   const std::pair<std::string, std::string> &item2) {
-                  return item1.second < item2.second;
-                });
-      out << "ParamsAndDenseGrads: ";
-      for (auto &p_g : params_and_dense_grads_tmp) {
-        out << p_g.second << "(" << p_g.first << "), ";
-      }
-      VLOG(6) << out.str();
-      std::stringstream out2;
-      std::vector<std::pair<std::string, std::string>> param_grads_tmp;
-      param_grads_tmp.reserve(aux_var_set[kGrad].size());
-      for (size_t i = 0; i < aux_var_set[kGrad].size(); ++i) {
-        param_grads_tmp.emplace_back(
-            std::make_pair(aux_var_set[kParam][i], aux_var_set[kGrad][i]));
-      }
-      std::sort(param_grads_tmp.begin(), param_grads_tmp.end(),
-                [](const std::pair<std::string, std::string> &item1,
-                   const std::pair<std::string, std::string> &item2) {
-                  return item1.second < item2.second;
-                });
-      out2 << "Grads: ";
-      for (auto &p_g : param_grads_tmp) {
-        out2 << p_g.second << "(" << p_g.first << "), ";
-      }
-      VLOG(6) << out2.str();
+      PrintParamAndGradInfo(aux_var_set, params_and_dense_grads);
     }
 
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
@@ -209,6 +180,41 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   for (auto &opt_op : opt_nodes) {
     graph->RemoveNode(opt_op);
   }
+}
+
+void FuseOptimizerOpPass::PrintParamAndGradInfo(
+    const std::unordered_map<std::string, std::vector<std::string>>
+        &aux_var_set,
+    const details::ParamsAndGrads &params_and_dense_grads) const {
+  auto print_praram_grad = [](
+      const std::string &info,
+      std::vector<std::pair<std::string, std::string>> &param_grads_tmp) {
+    std::sort(param_grads_tmp.begin(), param_grads_tmp.end(),
+              [](const std::pair<std::string, std::string> &item1,
+                 const std::pair<std::string, std::string> &item2) {
+                return item1.second < item2.second;
+              });
+    std::stringstream out;
+    out << info;
+    for (auto &p_g : param_grads_tmp) {
+      out << p_g.second << "(" << p_g.first << "), ";
+    }
+    VLOG(6) << out.str();
+  };
+
+  std::vector<std::pair<std::string, std::string>> params_and_dense_grads_tmp =
+      params_and_dense_grads;
+  print_praram_grad("CoalesceGradTensorPass-ParamsAndDenseGrads: ",
+                    params_and_dense_grads_tmp);
+
+  std::vector<std::pair<std::string, std::string>> param_grads_tmp;
+  param_grads_tmp.reserve(aux_var_set.at(kGrad).size());
+  for (size_t i = 0; i < aux_var_set.at(kGrad).size(); ++i) {
+    param_grads_tmp.emplace_back(
+        std::make_pair(aux_var_set.at(kParam)[i], aux_var_set.at(kGrad)[i]));
+  }
+  print_praram_grad("FuseOptimizerOpPass-ParamsAndDenseGrads: ",
+                    param_grads_tmp);
 }
 
 bool FuseOptimizerOpPass::HasVarDepsBetweenOps(

@@ -95,6 +95,11 @@ class FuseOptimizerOpPass : public ir::Pass {
 
   bool HasVarDepsBetweenOps(const std::vector<Node *> &topo_nodes,
                             const std::vector<Node *> &opt_nodes) const;
+
+  void PrintParamAndGradInfo(
+      const std::unordered_map<std::string, std::vector<std::string>>
+          &aux_var_set,
+      const details::ParamsAndGrads &params_and_dense_grads) const;
 };
 
 }  // namespace ir
