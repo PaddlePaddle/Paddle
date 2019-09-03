@@ -13653,9 +13653,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 
     .. math::
         
-        assert index_num % nshards == 0
-
-        shard_size = index_num / nshards
+        shard_size = (index_num + nshards - 1) // nshards
 
         y = x % shard_size if x / shard_size == shard_id else ignore_value
 
@@ -13705,10 +13703,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_num % nshards != 0:
-        raise ValueError(
-            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
-            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))
