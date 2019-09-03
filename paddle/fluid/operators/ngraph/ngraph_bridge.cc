@@ -44,8 +44,7 @@ bool NgraphBridge::isSupported(
   if (!isRegister(op_type)) {
     if (skip_op_list.count(op_type)) {
       if (op_type == "lookup_table" || op_type == "lookup_table_grad") {
-        if (op_attrs.Get<bool>("is_sparse") ||
-            (op_attrs.Get<int64_t>("padding_idx") != kNoPadding)) {
+        if (op_attrs.Get<bool>("is_sparse")) {
           result = false;
         }
       } else if ((op_type == "reshape") || (op_type == "reshape2")) {
