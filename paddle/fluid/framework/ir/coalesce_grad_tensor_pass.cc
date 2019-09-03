@@ -123,15 +123,14 @@ class CoalesceGradTensorPass : public ir::Pass {
         p_g_dense_grad.size(), num_of_p_g_dense_grad,
         "The number of p_g_dense_grad is not consistent with before.");
 
-    auto &pseudo_persistable_set =
-        graph->GetOrInit<details::PseudoPersistableVars>(
-            details::kPseudoPersistableVars);
+    auto &pinned_var_set =
+        graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
-      RecordGradients(p_g_dense_grad, vars_info, &pseudo_persistable_set);
+      RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
       CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
-        RecordGradients(p_g_dense_grad, vars_info, &pseudo_persistable_set);
+        RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
         PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
                        "The data type of the same group is not consistent.");
         CoalesceTensors(vars_info, sub_param_grad, &result);
@@ -142,7 +141,7 @@ class CoalesceGradTensorPass : public ir::Pass {
   void RecordGradients(
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
-      std::unordered_set<std::string> *pseudo_persistable_set) const {
+      std::unordered_set<std::string> *pinned_var_set) const {
     // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
@@ -150,7 +149,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       PADDLE_ENFORCE(!iter->second.empty());
       for (auto it : iter->second) {
         PADDLE_ENFORCE_NOT_NULL(it->Var());
-        pseudo_persistable_set->insert(it->Var()->Name());
+        pinned_var_set->insert(it->Var()->Name());
       }
       PADDLE_ENFORCE(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)));
     }

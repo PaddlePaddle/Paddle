@@ -312,15 +312,14 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   ShrinkDepsOpFunctor shrink_func(
       ir::FilterByNodeWrapper<details::OpHandleBase>(*graph));
 
-  details::PseudoPersistableVars *pseudo_persistable_set = nullptr;
-  if (graph->Has(details::kPseudoPersistableVars)) {
-    pseudo_persistable_set = &graph->Get<details::PseudoPersistableVars>(
-        details::kPseudoPersistableVars);
+  details::PinnedVars *pinned_var_set = nullptr;
+  if (graph->Has(details::kPinnedVars)) {
+    pinned_var_set = &graph->Get<details::PinnedVars>(details::kPinnedVars);
   }
-  auto is_pseudo_persistable_var = [&pseudo_persistable_set](
-      const std::string &var_name) {
-    return pseudo_persistable_set && pseudo_persistable_set->count(var_name);
-  };
+  auto is_pseudo_persistable_var =
+      [&pinned_var_set](const std::string &var_name) {
+        return pinned_var_set && pinned_var_set->count(var_name);
+      };
 
   VLOG(1) << "Place number: " << vars.size();
   for (size_t i = 0; i < vars.size(); ++i) {

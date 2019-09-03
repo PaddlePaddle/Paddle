@@ -285,9 +285,8 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
     ir::Graph *result) const {
-  auto &pseudo_persistable_set =
-      result->GetOrInit<details::PseudoPersistableVars>(
-          details::kPseudoPersistableVars);
+  auto &pinned_var_set =
+      result->GetOrInit<details::PinnedVars>(details::kPinnedVars);
 
   auto vars_info = GetVarInfo(*result);
   // The Gradients should not be reused during memory optimization.
@@ -300,7 +299,7 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
                    "Currently the gradient type only should be LoDTensor when "
                    "fusing optimizer ops.");
     for (auto var : iter->second) {
-      pseudo_persistable_set.insert(var->Var()->Name());
+      pinned_var_set.insert(var->Var()->Name());
     }
   }
 
