@@ -3761,7 +3761,7 @@ def group_norm(input,
             bias :math:`b`. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act(str): Activation to be applied to the output of group normalizaiton.
-        data_layout(string|NCHW): Only NCHW is supported.
+        data_layout(string, default NCHW): NCHW(num_batch, channels, h, w) or NHWC(num_batch, h, w, channels).
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -3780,9 +3780,12 @@ def group_norm(input,
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
-    if data_layout != 'NCHW':
-        raise ValueError("unsupported data layout:" + data_layout)
-    param_shape = [input_shape[1]]
+    if data_layout != 'NCHW' and data_layout != 'NHWC':
+        raise ValueError(
+            "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
+            + data_layout + " but only NCHW or NHWC supported.")
+    channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
+    param_shape = [channel_num]
     if param_attr:
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3808,8 +3811,11 @@ def group_norm(input,
             "Mean": mean_out,
             "Variance": variance_out,
         },
-        attrs={"epsilon": epsilon,
-               "groups": groups})
+        attrs={
+            "epsilon": epsilon,
+            "groups": groups,
+            "data_layout": data_layout
+        })
 
     return helper.append_activation(group_norm_out)
 
