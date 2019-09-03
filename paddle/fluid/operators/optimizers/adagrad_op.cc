@@ -45,17 +45,18 @@ class AdagradOp : public framework::OperatorWithKernel {
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "LearningRate should have one element");
+                      "LearningRate should have one element\n"
+                      "NOTE: Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),
         "Param and Grad input of AdagradOp should have the same dimension.");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment"),
-        "Param and Moment input of AdagradOp should have the same dimension."
-        "NOTE: Maybe the Input variable Moment has not been initialized. "
-        "You may need to confirm if you put exe.run(startup_program) "
-        "after optimizer.minimize function.");
+        "Param and Moment input of AdagradOp should have the same dimension.");
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);

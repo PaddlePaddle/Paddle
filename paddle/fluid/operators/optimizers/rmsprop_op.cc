@@ -55,11 +55,7 @@ class RmspropOp : public framework::OperatorWithKernel {
         "Param and grad input of RmspropOp should have the same dimension.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Moment"),
                       "Param and Momentum input of RmspropOp "
-                      "should have the same dimension."
-                      "NOTE: Maybe the Input variable Moment has not been "
-                      "initialized. You may need to confirm if you put "
-                      "exe.run(startup_program) after optimizer.minimize "
-                      "function.");
+                      "should have the same dimension.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("MeanSquare"),
                       "Param and Momentum input of RmspropOp "
                       "should have the same dimension.");

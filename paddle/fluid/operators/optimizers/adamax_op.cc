@@ -55,7 +55,7 @@ class AdamaxOp : public framework::OperatorWithKernel {
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "Learning rate should have 1 dimension"
+                      "Learning rate should have 1 dimension\n"
                       "NOTE: Maybe the Input variable LearningRate has not "
                       "been initialized. You may need to confirm if you put "
                       "exe.run(startup_program) after optimizer.minimize "
