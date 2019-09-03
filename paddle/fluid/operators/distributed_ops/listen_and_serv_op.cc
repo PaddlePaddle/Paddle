@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
+#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
 #include "paddle/fluid/platform/profiler.h"
@@ -466,6 +467,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   } else {
     distributed::AsyncSparseParamUpdateRecorder::Init(
         fan_in, sparse_grad_name_to_param_name);
+    distributed::TrainerHeartBeatMonitor::Init(fan_in);
     RunAsyncLoop(&executor, program, &recv_scope);
   }
 }
