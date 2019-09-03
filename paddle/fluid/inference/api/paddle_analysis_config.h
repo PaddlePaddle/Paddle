@@ -101,6 +101,13 @@ struct AnalysisConfig {
    */
   float fraction_of_gpu_memory_for_pool() const;
 
+  /** Turn on CUDNN
+   */
+  void EnableCUDNN();
+  /** A boolean state telling whether to use cuDNN.
+   */
+  bool cudnn_enabled() const { return use_cudnn_; }
+
   /** \brief Control whether to perform IR graph optimization.
    *
    * If turned off, the AnalysisConfig will act just like a NativeConfig.
@@ -268,6 +275,8 @@ struct AnalysisConfig {
   bool use_gpu_{false};
   int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+
+  bool use_cudnn_{false};
 
   // TensorRT related.
   bool use_tensorrt_{false};
