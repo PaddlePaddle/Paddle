@@ -150,6 +150,10 @@ class TestDygraphCheckpoint(unittest.TestCase):
                         dy_param_init_value[param.name] = param.numpy()
 
                     restore, _ = fluid.dygraph.load_persistables("save_dir")
+
+                    self.assertRaises(IOError, fluid.dygraph.load_persistables,
+                                      "not_exist_dir")
+
                     mnist.load_dict(restore)
 
                     self.assertEqual(len(dy_param_init_value), len(restore))

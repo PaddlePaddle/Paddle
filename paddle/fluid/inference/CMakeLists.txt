@@ -2,7 +2,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
@@ -47,7 +47,7 @@ if (ANAKIN_FOUND)
     set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
 endif()
 set(SHARED_INFERENCE_SRCS
-    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_set.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc

@@ -46,6 +46,7 @@ struct AnalysisConfig {
   enum class Precision {
     kFloat32 = 0,
     kInt8,
+    kHalf,
   };
 
   /** Set model with a directory.
@@ -99,6 +100,13 @@ struct AnalysisConfig {
   /** Get the proportion of the initial memory pool size compared to the device.
    */
   float fraction_of_gpu_memory_for_pool() const;
+
+  /** Turn on CUDNN
+   */
+  void EnableCUDNN();
+  /** A boolean state telling whether to use cuDNN.
+   */
+  bool cudnn_enabled() const { return use_cudnn_; }
 
   /** \brief Control whether to perform IR graph optimization.
    *
@@ -267,6 +275,8 @@ struct AnalysisConfig {
   bool use_gpu_{false};
   int device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+
+  bool use_cudnn_{false};
 
   // TensorRT related.
   bool use_tensorrt_{false};
