@@ -261,9 +261,10 @@ class Flatten2GradOp : public framework::OperatorBase {
     attrs["inplace"] = false;
 
     auto reshape_grad_op = framework::OpRegistry::CreateOp(
-        "reshape2_grad",
-        {{"Out@GRAD", {dout_name}}, {"Shape", {}}, {"XShape", {xshape_name}}},
-        {{"X@GRAD", {dx_name}}}, attrs);
+        "reshape2_grad", {{framework::GradVarName("Out"), {dout_name}},
+                          {"Shape", {}},
+                          {"XShape", {xshape_name}}},
+        {{framework::GradVarName("X"), {dx_name}}}, attrs);
     reshape_grad_op->Run(scope, place);
   }
 };

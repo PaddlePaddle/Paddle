@@ -143,13 +143,19 @@ class DropoutGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(DropoutInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(DropoutGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
-                  ops::DropoutGradOpDescMaker);
-REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
+                  ops::DropoutGradOpDescMaker, ops::DropoutInplaceInferer);
+REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad,
+                  ops::DropoutGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>);

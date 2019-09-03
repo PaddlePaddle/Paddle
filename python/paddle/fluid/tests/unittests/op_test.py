@@ -151,6 +151,16 @@ class OpTest(unittest.TestCase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
+    def _disable_backward_inplace_check(self):
+        if hasattr(self, "disable_backward_inplace_check"):
+            if self.disable_backward_inplace_check:
+                warnings.warn(
+                    "!!!Caution! By default, you should not disable backward inplace check!"
+                )
+            return self.disable_backward_inplace_check
+        else:
+            return False
+
     def try_call_once(self, data_type):
         if not self.call_once:
             self.call_once = True
@@ -670,8 +680,10 @@ class OpTest(unittest.TestCase):
             warnings.warn(
                 "check inplace_grad for ops using ngraph is not supported")
             return
-        self.check_inplace_grad_output_with_place(
-            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
+
+        if not self._disable_backward_inplace_check():
+            self.check_inplace_grad_output_with_place(
+                place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
     def _get_places(self):
         if self.dtype == np.float16:
