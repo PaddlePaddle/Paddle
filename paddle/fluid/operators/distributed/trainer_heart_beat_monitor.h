@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <chrono>  // NOLINT
+#include <ctime>
 #include <thread>  // NOLINT
 
 #include <ThreadPool.h>
@@ -38,23 +39,17 @@ namespace distributed {
 
 enum TrainerStatus { UNINITED = 0, RUNNING, COMPLETED };
 
-inline double GetCurrentUS() {
-  struct timeval time;
-  gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
-}
-
 struct Trainer {
   int id;
   TrainerStatus status;
-  double timestamp;
+  time_t timestamp;
 
   Trainer() {}
 
   explicit Trainer(int trainer_id) {
     this->id = trainer_id;
     this->status = UNINITED;
-    this->timestamp = 0;
+    this->timestamp = time(0);
   }
 };
 

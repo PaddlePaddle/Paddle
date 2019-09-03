@@ -21,6 +21,12 @@ namespace distributed {
 DEFINE_int32(trainer_update_interval_secs, 900,
              " the longest time interval between the trainer update variables");
 
+inline time_t GetCurrentUS() {
+  // current date/time based on current system
+  time_t now = time(0);
+  return now;
+}
+
 void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
                                      TrainerStatus status) {
   if (status == UNINITED) {
@@ -28,7 +34,7 @@ void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
   }
 
   if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
-    double timestamp = GetCurrentUS();
+    auto timestamp = GetCurrentUS();
     Trainer& trainer = trainer_status_map_.at(trainer_id);
 
     VLOG(4) << "trainer " << trainer_id << " status transform from "
@@ -58,10 +64,10 @@ void TrainerHeartBeatMonitor::LostTrainerMonitor() {
         continue;
       }
 
-      double timestamp = GetCurrentUS();
+      auto timestamp = GetCurrentUS();
       if (timestamp - trainer.timestamp >= FLAGS_trainer_update_interval_secs) {
         PADDLE_THROW(
-            "the latest update of trainer %d is %f secs ago, we doubt the "
+            "the latest update of trainer %d is %d secs ago, we doubt the "
             "the trainer is not alive and this may have a bad effect on the "
             "fitting result, please check",
             trainer.id, timestamp);
