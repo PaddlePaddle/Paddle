@@ -64,7 +64,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
     output->set_layout(DataLayout::kNCHW);
-    output->set_format(mkldnn::memory::format::format_undef);
+    output->set_format(MKLDNNMemoryFormat::format_undef);
   }
 };
 

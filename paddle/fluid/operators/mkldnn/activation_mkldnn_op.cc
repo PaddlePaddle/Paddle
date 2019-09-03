@@ -47,9 +47,10 @@ class MKLDNNActivationKernel
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
-    PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input x tensor");
+    PADDLE_ENFORCE_EQ(x->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for X tensor");
+    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for X tensor");
 
     Functor functor;
     functor(ctx);
@@ -62,12 +63,13 @@ class MKLDNNActivationGradKernel
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input OutGrad tensor");
+    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input OutGrad tensor");
+    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input OutGrad tensor");
 
-    PADDLE_ENFORCE(
-        !ctx.Attr<bool>("is_test"),
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
         "is_test attribute should be set to False in training phase.");
 
     Functor functor;
@@ -97,8 +99,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
-  auto src_format =
-      src_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+  auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   bool is_test = ctx.Attr<bool>("is_test");
 
@@ -152,10 +153,10 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   // diff_dst and src dims should be the same
   auto src_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : x->format();
+      diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
   auto diff_y_format =
-      diff_dst_tz.size() == 2 ? mkldnn::memory::format::nc : diff_y->format();
+      diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : diff_y->format();
 
   auto diff_dst_md = platform::MKLDNNMemDesc(
       diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
