@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/assert.h"
 
 namespace paddle {
 namespace operators {

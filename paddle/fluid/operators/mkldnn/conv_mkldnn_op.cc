@@ -60,12 +60,12 @@ inline void GetWeightsTz(std::vector<int>& weights_tz, int groups,  // NOLINT
   }
 }
 
-inline mkldnn::memory::format GetWeightsFormat(mkldnn::memory::format format,
-                                               int groups, bool is_conv3d) {
+inline MKLDNNMemoryFormat GetWeightsFormat(MKLDNNMemoryFormat format,
+                                           int groups, bool is_conv3d) {
   if (is_conv3d) {
-    return (groups == 1) ? format : mkldnn::memory::format::goidhw;
+    return (groups == 1) ? format : MKLDNNMemoryFormat::goidhw;
   } else {
-    return (groups == 1) ? format : mkldnn::memory::format::goihw;
+    return (groups == 1) ? format : MKLDNNMemoryFormat::goihw;
   }
 }
 
@@ -129,22 +129,38 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
-                   "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
-                   "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
+
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_GE(
+        input->dims().size(), 4,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_LE(
+        input->dims().size(), 5,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+
+    PADDLE_ENFORCE_GE(
+        filter->dims().size(), 4,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_LE(
+        filter->dims().size(), 5,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+
     if (bias) {
-      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != memory::format::format_undef,
-                     "Wrong layout/format set for Bias tensor");
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Bias tensor");
+
+      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                        "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -157,7 +173,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     bool is_conv3d = strides.size() == 3U;
 
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
             ? dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
@@ -183,7 +198,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<primitive> pipeline;
 
     auto src_format = input->format();
-    mkldnn::memory::format weights_format =
+    MKLDNNMemoryFormat weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);
 
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -199,9 +214,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);
 
-    weights_format = mkldnn::memory::format::any;
+    weights_format = MKLDNNMemoryFormat::any;
     // Check the format for user's special output
-    if (chosen_memory_format != mkldnn::memory::format::any) {
+    if (chosen_memory_format != MKLDNNMemoryFormat::any) {
       if (is_conv3d) {
         chosen_memory_format =
             platform::MKLDNNFormatForSize(src_tz.size(), chosen_memory_format);
@@ -212,8 +227,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), weights_format);
-    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
-                               // Currently used whenever bias is != nullptr.
+    std::vector<int> bias_tz;
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
@@ -226,7 +240,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (bias) {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
-          bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
+          bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
           src_md, weights_md, bias_md, dst_md, strides, paddings, mkldnn_engine,
           fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
@@ -297,7 +311,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (bias) {
       const T* bias_data = bias->data<T>();
       auto user_bias_md = platform::MKLDNNMemDesc(
-          {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format::x);
+          {bias_tz}, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       user_bias_memory_p =
           handler.AcquireBiasMemory(user_bias_md, to_void_cast<T>(bias_data));
 
@@ -330,22 +344,38 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 5,
-                   "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4 || filter->dims().size() == 5,
-                   "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
+
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_GE(
+        input->dims().size(), 4,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_LE(
+        input->dims().size(), 5,
+        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+
+    PADDLE_ENFORCE_GE(
+        filter->dims().size(), 4,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_LE(
+        filter->dims().size(), 5,
+        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+
     if (bias) {
-      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
-                         bias->format() != memory::format::format_undef,
-                     "Wrong layout/format set for Bias tensor");
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Bias tensor");
+
+      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                        "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -364,7 +394,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "residual fusion does not support force output with fp32");
 
     bool is_conv3d = strides.size() == 3U;
-    // TODO(tpatejko): add support for dilation
     PADDLE_ENFORCE(
         is_conv3d
             ? dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
@@ -459,8 +488,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       auto user_weights_md = platform::MKLDNNMemDesc(
           {weights_tz}, platform::MKLDNNGetDataType<K>(),
-          ((g) == 1) ? mkldnn::memory::format::oihw
-                     : mkldnn::memory::format::goihw);
+          ((g) == 1) ? MKLDNNMemoryFormat::oihw : MKLDNNMemoryFormat::goihw);
 
       /* create memory descriptor for convolution without specified format
       * ('any') which lets a primitive (convolution in this case) choose
@@ -488,7 +516,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (bias) {
         bias_tz = paddle::framework::vectorize2int(bias->dims());
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
-                                               mkldnn::memory::format::x);
+                                               MKLDNNMemoryFormat::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
             src_md, weights_md, bias_md, dst_md, strides, paddings,
             mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
@@ -548,7 +576,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (bias) {
         const K* bias_data = bias->data<K>();
         auto user_bias_md = platform::MKLDNNMemDesc(
-            {bias_tz}, platform::MKLDNNGetDataType<K>(), memory::format::x);
+            {bias_tz}, platform::MKLDNNGetDataType<K>(), MKLDNNMemoryFormat::x);
         auto user_bias_memory_p = handler->AcquireBiasMemory(
             user_bias_md, to_void_cast<K>(bias_data));
         std::shared_ptr<mkldnn::memory> bias_memory_p;
@@ -644,18 +672,23 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
-    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
-                       input->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input tensor");
-    PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
-                       filter->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Filter tensor");
-    PADDLE_ENFORCE(output_grad->layout() == DataLayout::kMKLDNN &&
-                       output_grad->format() != memory::format::format_undef,
-                   "Wrong layout/format set for output_grad tensor");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
 
-    PADDLE_ENFORCE(
-        !ctx.Attr<bool>("is_test"),
+    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Filter tensor");
+
+    PADDLE_ENFORCE_EQ(output_grad->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for output_grad tensor");
+    PADDLE_ENFORCE_NE(output_grad->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for output_grad tensor");
+
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
         "is_test attribute should be set to False in training phase.");
 
     if (!input_grad && !filter_grad) return;
@@ -680,7 +713,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dst_tz =
         paddle::framework::vectorize2int(output_grad->dims());
     auto src_format = input->format();
-    mkldnn::memory::format weights_format =
+    MKLDNNMemoryFormat weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);
 
     // Get an unique name from "argument" name of "input" and "Filter" variable
@@ -709,9 +742,9 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);
 
-    weights_format = mkldnn::memory::format::any;
+    weights_format = MKLDNNMemoryFormat::any;
     // Check the format for user's special output
-    if (chosen_memory_format != mkldnn::memory::format::any) {
+    if (chosen_memory_format != MKLDNNMemoryFormat::any) {
       if (is_conv3d) {
         chosen_memory_format =
             platform::MKLDNNFormatForSize(src_tz.size(), chosen_memory_format);
