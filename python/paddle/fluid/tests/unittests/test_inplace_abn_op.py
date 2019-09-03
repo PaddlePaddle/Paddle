@@ -98,7 +98,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 'batch_norm_0.tmp_1',
             ]
             fetch_names += others
-        print(fetch_names)
         for nm in fetch_names:
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
@@ -122,7 +121,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 'batch_norm_0.tmp_1',
             ]
             fetch_names1 += others
-        print(fetch_names1)
         for nm in fetch_names1:
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
@@ -130,7 +128,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
         exec_strategy = fluid.ExecutionStrategy()
-        # exec_strategy.num_threads = 1
+        exec_strategy.num_threads = 1 if os.name == 'nt' else 0
         comp_prog = compiler.CompiledProgram(main).with_data_parallel(
             outs[0].name if not only_forward else None,
             build_strategy=build_strategy,
@@ -162,7 +160,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 "NCHW"
             ]  #NHWC can be too slow under cpu mode
             for layout in layouts:
-                for activation in ['elu']:
+                for activation in ['elu', 'relu']:
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation)
 

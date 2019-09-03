@@ -3270,7 +3270,8 @@ def batch_norm(input,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=False,
                fuse_with_relu=False,
-               use_global_stats=False):
+               use_global_stats=False,
+               fuse_alpha=1.0):
     """
     **Batch Normalization Layer**
 
@@ -3353,7 +3354,7 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-
+        fuse_alpha(float, Default 1.0): when fuse activation(elu|leakyrelu) for inplace_abn, give the alpha parameter.
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
 
@@ -3449,7 +3450,7 @@ def batch_norm(input,
     }
 
     if use_fused_act:
-        attrs.update({"activation": act})
+        attrs.update({"activation": act, "alpha": fuse_alpha})
 
     helper.append_op(
         type=op_type,

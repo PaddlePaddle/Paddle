@@ -48,8 +48,8 @@ inline InplaceABNActivationType GetInplaceABNActivationType(
 template <typename DeviceContext, typename T>
 class InplaceABNActivation {
  private:
-  void setAttrs(const framework::ExecutionContext& ctx,
-                BaseActivationFunctor<T>* functor) {
+  template <typename Functor>
+  void setAttrs(const framework::ExecutionContext& ctx, Functor* functor) {
     auto attrs = functor->GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
