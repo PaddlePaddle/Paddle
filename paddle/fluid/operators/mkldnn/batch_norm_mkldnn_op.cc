@@ -214,8 +214,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                            ? mkldnn::prop_kind::forward_scoring
                            : mkldnn::prop_kind::forward_training;
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto src_tz = paddle::framework::vectorize<int>(x->dims());
+    auto scale_tz = paddle::framework::vectorize<int>(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
     const unsigned int ic = scale_tz[0];
 
@@ -349,11 +349,11 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     T *diff_scale_data = diff_scale->mutable_data<T>(ctx.GetPlace());
     T *diff_shift_data = diff_shift->mutable_data<T>(ctx.GetPlace());
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
+    auto src_tz = paddle::framework::vectorize<int>(x->dims());
     auto diff_src_tz = src_tz;
     auto dst_tz = src_tz;
     auto diff_dst_tz = dst_tz;
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto scale_tz = paddle::framework::vectorize<int>(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
 
     const unsigned int ic = scale_tz[0];

@@ -109,7 +109,7 @@ class FCPrimitiveFactory {
 
   static mkldnn::memory::desc CreateMemDescriptor(const Tensor* tensor,
                                                   MKLDNNMemoryFormat format) {
-    auto dims = framework::vectorize2int(tensor->dims());
+    auto dims = framework::vectorize<int>(tensor->dims());
     return CreateMemDescriptor(dims, format);
   }
 
@@ -124,7 +124,7 @@ class FCPrimitiveFactory {
   }
 
   mkldnn::memory TransposeWeights(const Tensor* weights) {
-    auto dims = framework::vectorize2int(weights->dims());
+    auto dims = framework::vectorize<int>(weights->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor(dims, MKLDNNMemoryFormat::io);
     auto dst_desc = CreateMemDescriptor(dims, MKLDNNMemoryFormat::oi);
@@ -182,8 +182,8 @@ class FCPrimitiveFactory {
 
   mkldnn::memory CreateFourDimWeightsMemory(const Tensor* input,
                                             const Tensor* weights) {
-    auto input_dims = framework::vectorize2int(input->dims());
-    auto weight_dims = framework::vectorize2int(weights->dims());
+    auto input_dims = framework::vectorize<int>(input->dims());
+    auto weight_dims = framework::vectorize<int>(weights->dims());
     auto dims = {weight_dims[1], input_dims[1], input_dims[2], input_dims[3]};
 
     auto dst_format = MatchWeightFormat(input->format());
