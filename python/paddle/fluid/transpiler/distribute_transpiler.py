@@ -2559,7 +2559,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         #     wait_server_ready(self.pserver_endpoints)
         return self.origin_program
 
-        def get_pserver_programs(self, endpoint):
+    def get_pserver_programs(self, endpoint):
         """
         Get pserver side main program and startup program for distributed training.
 
@@ -2572,16 +2572,16 @@ class GeoSgdTranspiler(DistributeTranspiler):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              #this is an example, find available endpoints in your case
-              pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-              current_endpoint = "192.168.0.1:6174"
-              trainer_id = 0
-              trainers = 4
-              t = fluid.DistributeTranspiler()
-              t.transpile(
-                   trainer_id, pservers=pserver_endpoints, trainers=trainers)
-              pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
+                import paddle.fluid as fluid
+                #this is an example, find available endpoints in your case
+                pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+                current_endpoint = "192.168.0.1:6174"
+                trainer_id = 0
+                trainers = 4
+                t = fluid.DistributeTranspiler()
+                t.transpile(
+                    trainer_id, pservers=pserver_endpoints, trainers=trainers)
+                pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
         """
         pserver_prog = self.get_pserver_program(endpoint)
         pserver_startup = self.get_pserver_startup_program(
