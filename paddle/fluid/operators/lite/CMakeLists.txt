@@ -1,1 +1,1 @@
-op_library(lite_engine_op DEPS)
+op_library(lite_engine_op DEPS memcpy)

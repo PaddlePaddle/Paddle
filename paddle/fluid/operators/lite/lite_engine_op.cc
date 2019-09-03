@@ -25,7 +25,7 @@ class LiteEngineOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
-    AddOutput("Ys", "A list of outputs").AsDuplicable();
+    AddOutput("Ys", "A list of outputs.").AsDuplicable();
     AddAttr<std::string>(
         "engine_key",
         "The engine_key here is used to distinguish different Lite Engines");
@@ -42,7 +42,6 @@ class LiteInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OPERATOR(lite_engine, ops::LiteEngineOp, ops::LiteEngineOpMaker,
                   ops::LiteEngineOpMaker);
 

@@ -12,11 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define LITE_WITH_CUDA 1
+
 #include "paddle/fluid/inference/lite/engine.h"
+#include "lite/core/context.h"
+#include "lite/core/device_info.h"
 
 namespace paddle {
 namespace inference {
 namespace lite {
+
+/*
+template <typename SrcT, typename DstT, typename DatT>
+void CopyTensor(const SrcT& tensor_src, DstT* tensor_dst) {
+  const std::vector<int64_t> src_shape = tensor_src.dims().Vectorize();
+  const std::vector<std::vector<uint64_t>> src_lod = tensor_src.lod();
+  const DatT* data_src = tensor_src.data<DatT>();
+  DatT* data_dst = tensor_dst->mutable_data<DatT>();
+  tensor_dst->Resize(src_shape);
+  tensor_dst->set_lod(src_lod);
+}
+*/
 
 bool EngineManager::Empty() const {
     return engines_.size() == 0;
@@ -35,8 +51,9 @@ paddle::lite::Predictor* EngineManager::Get(const std::string& name) const {
 
 paddle::lite::Predictor* EngineManager::Create(
   const std::string& name, const EngineConfig& cfg) {
+  paddle::lite::Env<TARGET(kCUDA)>::Init();
   auto* p = new paddle::lite::Predictor();
-  p->Build(cfg.model, "", "", cfg.prefer_place, cfg.valid_places, cfg.neglected_passes,
+  p->Build("", cfg.model, cfg.param, cfg.prefer_place, cfg.valid_places, cfg.neglected_passes,
     cfg.model_type, cfg.memory_from_memory);
   engines_[name].reset(p);
   return p;
