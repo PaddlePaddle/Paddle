@@ -522,7 +522,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
-          std::cout << "DataLayout::kNCHW" << std::endl;
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
@@ -567,7 +566,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
-          std::cout << "DataLayout::kNHWC" << std::endl;
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
