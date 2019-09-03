@@ -81,6 +81,31 @@ class TrainerDesc(object):
     def _set_dump_slot(self, dump_slot):
         self.proto_desc.dump_slot = dump_slot
 
+    def _set_mpi_rank(self, mpi_rank):
+        self.proto_desc.mpi_rank = mpi_rank
+
+    def _set_dump_fields(self, dump_fields):
+        for field in dump_fields:
+            self.proto_desc.dump_fields.append(field)
+
+    def _set_dump_fields_path(self, path):
+        self.proto_desc.dump_fields_path = path
+
+    def _set_dump_converter(self, converter):
+        self.proto_desc.dump_converter = converter
+
+    def _set_adjust_ins_weight(self, config_dict):
+        self.proto_desc.adjust_ins_weight_config.need_adjust = \
+                config_dict.get("need_adjust", False)
+        self.proto_desc.adjust_ins_weight_config.nid_slot = \
+                config_dict.get("nid_slot", "")
+        self.proto_desc.adjust_ins_weight_config.nid_adjw_threshold = \
+                config_dict.get("nid_adjw_threshold", 0.0)
+        self.proto_desc.adjust_ins_weight_config.nid_adjw_ratio = \
+                config_dict.get("nid_adjw_ratio", 0.0)
+        self.proto_desc.adjust_ins_weight_config.ins_weight_slot = \
+                config_dict.get("ins_weight_slot", "")
+
     def _desc(self):
         from google.protobuf import text_format
         return self.proto_desc.SerializeToString()
