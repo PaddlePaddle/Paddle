@@ -47,7 +47,15 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             out = layers.detection_output(
                 scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
+            out2, index = layers.detection_output(
+                scores=scores,
+                loc=loc,
+                prior_box=pb,
+                prior_box_var=pbv,
+                return_index=True)
             self.assertIsNotNone(out)
+            self.assertIsNotNone(out2)
+            self.assertIsNotNone(index)
             self.assertEqual(out.shape[-1], 6)
         print(str(program))
 
@@ -520,7 +528,11 @@ class TestMulticlassNMS(unittest.TestCase):
                 name='bboxes', shape=[-1, 10, 4], dtype='float32')
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
+            output2, index = layers.multiclass_nms(
+                bboxes, scores, 0.3, 400, 200, 0.7, return_index=True)
             self.assertIsNotNone(output)
+            self.assertIsNotNone(output2)
+            self.assertIsNotNone(index)
 
 
 class TestCollectFpnPropsals(unittest.TestCase):
