@@ -127,11 +127,16 @@ softshrink.__doc__ = """
 Args:
     x: Input of Softshrink operator
     alpha (FLOAT): non-negative offset
-Examples:
+    
+Returns:
+    Output of Softshrink operator
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[784])
-    >>> result = fluid.layers.softshrink(x=data, alpha=0.3)
+Examples:
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[784])
+        result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
 
 __all__ += ['hard_shrink']
