@@ -10253,6 +10253,31 @@ def slice(input, axes, starts, ends):
     return out
 
 
+def strided_slice(input, begin, end, strides):
+    """
+    Strided Slice OP
+    Atrgs:
+       input (Varibale): the input variable.
+       begin (List): the begin index 
+       end (List): the end index
+       stride (List): the stride index
+
+    """
+    helper = LayerHelper('strided_slice', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+
+    helper.append_op(
+        type='strided_slice',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={'begin': begin,
+               'end': end,
+               'stride': stride})
+
+    return out
+
+
 def shape(input):
     """
     **Shape Layer**
