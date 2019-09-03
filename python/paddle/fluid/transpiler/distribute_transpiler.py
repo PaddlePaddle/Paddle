@@ -167,8 +167,8 @@ class DistributeTranspilerConfig(object):
     sync_mode = True
 
     # Geo-sgd algorithm
-    geo_sgd = False
-    geo_sgd_num = 10
+    geo_sgd_mode = False
+    geo_sgd_need_push_nums = 100
     
     nccl_comm_num = 1
     #The picture here illustrates the principle:

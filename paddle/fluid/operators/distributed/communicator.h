@@ -161,6 +161,7 @@ class Communicator {
  public:
   Communicator(const RpcCtxMap& send_varname_to_ctx,
                const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
+  
 
   ~Communicator();
 
@@ -193,24 +194,6 @@ class Communicator {
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
   
-  // for geo-sgd algorithm
-private:
-  void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(RpcCtxMap &varname_to_ctx,framework::Scope *scope);
-  void GeoSgdParamCopy(const framework::Scope &scope_x,
-                       const framework::Scope &scope_y);
-  std::shared_ptr<Variable> SubVars(const std::string& var_name,
-                                    const framework::Scope &scope_x,
-                                    const framework::Scope &scope_y,
-                                    int &trainers);
-  
-private:
-  Scope* delta_scope_; //parameter on pserver == send_scope
-  Scope* old_scope_; //parameter local, storage the param after last recv
-  Scope* global_scope_;
-  int is_need_push_ = 0;
-
-
   // the following code is for initialize the commnunicator
  public:
   static void Init(const RpcCtxMap& send_varname_to_ctx,
@@ -220,20 +203,49 @@ private:
                                            recv_varname_to_ctx, recv_scope));
     }
   }
-
   static void Init(const paddle::framework::ProgramDesc& program,
                    Scope* param_scope);
-
-  // for geo-sgd algorithm
-  static void GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
-                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info);
-
   static Communicator* GetInstance();
-
   static std::shared_ptr<Communicator> GetInstantcePtr();
 
  private:
   static std::shared_ptr<Communicator> communicator_;
+ 
+ public:
+  // for geo-sgd algorithm
+  Communicator(const RpcCtxMap& send_varname_to_ctx,
+               const RpcCtxMap& recv_varname_to_ctx,Scope* recv_scope,
+               int &trainers,int &geo_need_push_nums);
+
+  static void GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
+                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
+                        int &trainers, int &geo_need_push_nums);
+
+  static void Init(const RpcCtxMap& send_varname_to_ctx,
+                   const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope,
+                   int &trainers,int &geo_need_push_nums) {
+      if(communicator_ == nullptr) {
+        communicator_.reset(new Communicator(send_varname_to_ctx, recv_varname_to_ctx, 
+                                             recv_scope, trainers, geo_need_push_nums));
+      }
+  }
+
+ private:
+  void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
+  void GeoSgdParamInit(framework::Scope *scope);
+  void GeoSgdParamCopy(const framework::Scope &scope_x,
+                       const framework::Scope &scope_y,
+                       const std::string &var_name);
+  void SendUpdateVars(const std::string& var_name);
+  void RecvUpdateVars(const std::string& var_name);
+ private:
+  int trainer_nums_ = 1;
+  int geo_need_push_nums_ = 100;
+  bool is_geo_sgd_ = false;
+  std::shared_ptr<Scope> delta_scope_; //parameter on pserver == send_scope
+  std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
+  int is_need_push_ = 0;
+ 
 };
 
 }  // namespace distributed

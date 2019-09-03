@@ -41,7 +41,8 @@ void BindCommunicator(py::module* m) {
         return Communicator::GetInstantcePtr();
       }))
       .def(py::init([](const ProgramDesc& program, Scope* param_scope,
-                      std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info){
+                      std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info,
+                      int &trainers,int &geo_need_push_nums){
         VLOG(0) << "using geo sgd communicator";
         Communicator::GeoSgdInit(program, param_scope,vars_info);
         return Communicator::GetInstantcePtr();

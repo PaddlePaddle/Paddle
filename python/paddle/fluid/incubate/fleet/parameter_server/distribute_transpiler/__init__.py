@@ -53,9 +53,10 @@ class DistributedTranspiler(Fleet):
             None
         """
         if not self._transpile_config.sync_mode:
-            if self._transpile_config.geo_sgd:
-                #Todo change param
-                self._communicator = Communicator(self.main_program,self.vars_info)
+            if self._transpile_config.geo_sgd_mode:
+                self._communicator = Communicator(self.main_program,self.vars_info,
+                                                  fleet.worker_num(),
+                                                  self._transpile_config.geo_sgd_need_push_nums)
             else:
                 self._communicator = Communicator(self.main_program)
             self._communicator.start()
