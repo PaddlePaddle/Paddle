@@ -57,10 +57,10 @@ class InplaceABNActivation {
   }
 
   template <typename Functor, typename... Args>
-  void compute(const framework::ExecutionContext& ctx, const Functor* functor,
+  void compute(const framework::ExecutionContext& ctx, Functor* functor,
                Args... args) {
     setAttrs(ctx, functor);
-    functor(args...);
+    (*functor)(args...);
   }
 
  public:
