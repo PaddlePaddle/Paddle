@@ -35,6 +35,10 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
 endif()
 
+if(WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_boxps)
+endif()
+
 LIST(REMOVE_ITEM TEST_OPS test_launch)
 
 if (NOT ${WITH_GPU})
