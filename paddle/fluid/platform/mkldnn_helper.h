@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace platform {
 
@@ -82,22 +81,24 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
 
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_undef;
+  return mkldnn::memory::data_type::data_undef;
 }
 
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::f32;
+  return mkldnn::memory::data_type::f32;
 }
-
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return mkldnn::memory::data_type::s32;
+}
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
-  return mkldnn::memory::s8;
+  return mkldnn::memory::data_type::s8;
 }
-
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
-  return mkldnn::memory::u8;
+  return mkldnn::memory::data_type::u8;
 }
 
 inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
@@ -130,7 +131,14 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
     } else if (data_format == mkldnn::memory::format::nhwc) {
       return mkldnn::memory::format::nwc;
     }
+  } else if (dims_size == 4) {
+    if (data_format == mkldnn::memory::format::goihw) {
+      return mkldnn::memory::format::oihw;
+    }
   } else if (dims_size == 5) {
+    if (data_format == mkldnn::memory::format::goidhw) {
+      return mkldnn::memory::format::oidhw;
+    }
     if (data_format == mkldnn::memory::format::nchw) {
       return mkldnn::memory::format::ncdhw;
     } else if (data_format == mkldnn::memory::format::nhwc) {
