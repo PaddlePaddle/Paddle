@@ -52,7 +52,7 @@ struct Trainer {
   TrainerStatus status;
   double timestamp;
 
-  explicit Trainer(const trainer_id) {
+  explicit Trainer(const int trainer_id) {
     this->id = trainer_id;
     this->status = UNINITED;
     this->timestamp = 0;
@@ -154,7 +154,7 @@ class TrainerHeartBeatMonitor {
   static std::unique_ptr<TrainerHeartBeatMonitor> monitor_;
 
   int trainers_;
-  std::unoredered_map<int, Trainer> trainer_status_map_;
+  std::unordered_map<int, Trainer> trainer_status_map_;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::mutex mutex_;
   bool running_ = false;
