@@ -28,7 +28,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'diag'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
 ]
 
 
@@ -49,6 +49,7 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
     helper = LayerHelper("create_tensor", **locals())
@@ -85,6 +86,7 @@ def create_parameter(shape,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
@@ -123,6 +125,7 @@ def create_global_var(shape,
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                           persistable=True, force_cpu=True, name='new_var')
@@ -157,6 +160,7 @@ def cast(x, dtype):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             data = fluid.layers.data(name='x', shape=[13], dtype='float32')
             result = fluid.layers.cast(x=data, dtype='float64')
     """
@@ -190,6 +194,7 @@ def concat(input, axis=0, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
             b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
             c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
@@ -482,6 +487,7 @@ def argmin(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmin(x, axis=0)
             out = fluid.layers.argmin(x, axis=-1)
@@ -514,6 +520,7 @@ def argmax(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out = fluid.layers.argmax(x, axis=0)
             out = fluid.layers.argmax(x, axis=-1)
@@ -565,6 +572,7 @@ def argsort(input, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
             out, indices = fluid.layers.argsort(input=x, axis=0)
     """
@@ -712,6 +720,7 @@ def save_combine(x, file_path, overwrite=True):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             v1 = fluid.layers.data(name="data",
                                    shape=(4, 6),
                                    dtype="float32")
@@ -808,10 +817,11 @@ def isfinite(x):
 
         .. code-block:: python
 
+            import paddle.fluid as fluid
             var = fluid.layers.data(name="data",
                                     shape=(4, 6),
                                     dtype="float32")
-            out = fluid.layers.isfinite(v)
+            out = fluid.layers.isfinite(var)
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -843,6 +853,7 @@ def range(start, end, step, dtype):
 
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
@@ -863,6 +874,7 @@ def range(start, end, step, dtype):
                 'End': end,
                 'Step': step},
         outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
 
 
@@ -884,6 +896,7 @@ def linspace(start, stop, num, dtype):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
              data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
 
@@ -925,6 +938,7 @@ def zeros_like(x, out=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
@@ -975,4 +989,110 @@ def diag(diagonal):
         type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
 
     out.stop_gradient = True
+    return out
+
+
+def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
+    """
+    **eye**
+
+    This function constructs an identity tensor, or a batch of tensor.
+
+    Args:
+        num_rows(int): the number of rows in each batch tensor.
+        num_columns(int): the number of columns in each batch tensor.
+                          If None, default: num_rows.
+        batch_shape(list(int)): If provided, the returned tensor will have a leading
+                                batch size of this shape.
+        dtype(string): 'float32'|'int32'|..., the data type of the returned tensor.
+
+    Returns:
+        Variable: An identity tensor of shape batch_shape + [num_rows, num_columns].
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+ 	  data = fluid.layers.eye(3, dtype='int32')
+	  # [[1, 0, 0]
+          #  [0, 1, 0]
+	  #  [0, 0, 1]]
+    
+          data = fluid.layers.eye(2, 3, dtype='int32')
+	  # [[1, 0, 0]
+          #  [0, 1, 0]]
+    
+	  data = fluid.layers.eye(2, batch_shape=[3])
+          # Construct a batch of 3 identity tensors, each 2 x 2.
+          # data[i, :, :] is a 2 x 2 identity tensor, i = 0, 1, 2.
+
+    """
+
+    helper = LayerHelper("eye", **locals())
+    if not isinstance(num_rows, int) or num_rows < 0:
+        raise TypeError("num_rows should be a non-negative int")
+    if num_columns is not None:
+        if not isinstance(num_columns, int) or num_columns < 0:
+            raise TypeError("num_columns should be a non-negative int")
+    else:
+        num_columns = num_rows
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='eye',
+        inputs={},
+        outputs={'Out': [out]},
+        attrs={
+            'num_rows': num_rows,
+            'num_columns': num_columns,
+            'dtype': c_dtype
+        },
+        stop_gradient=True)
+    out.stop_gradient = True
+
+    if batch_shape is not None:
+        if not isinstance(batch_shape, list):
+            raise TypeError("batch_shape should be a list")
+        from .nn import stack
+        for batch_val in reversed(batch_shape):
+            if batch_val <= 0:
+                raise TypeError("batch_shape should be a positive int list")
+            else:
+                stack_vars = [out for _ in numpy.arange(batch_val)]
+                out = stack(stack_vars, axis=0)
+    return out
+
+
+def ones_like(x, out=None):
+    """
+    **ones_like**
+
+    This function creates a ones tensor which has identical shape and dtype 
+    with `x`.
+
+    Args:
+        x(Variable): The input tensor which specifies shape and dtype.
+        out(Variable): The output tensor.
+
+    Returns:
+        out(Variable): The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
+
+    """
+
+    helper = LayerHelper("ones_like", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [x]},
+        attrs={'value': 1.0},
+        outputs={'Out': [out]})
     return out

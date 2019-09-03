@@ -17,11 +17,15 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import numpy as np
+import paddle.fluid.core as core
+
+from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
-import numpy as np
-import paddle.fluid.core as core
+
+np.random.seed(123)
 
 
 class PyRNNBase(object):
@@ -67,8 +71,8 @@ class PySimpleRNN2(PyRNNBase):
         super(PySimpleRNN2, self).__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
-        self.W = np.random.normal(size=(input_dim, input_dim)).astype("float32")
-        self.U = np.random.normal(size=(input_dim, input_dim)).astype("float32")
+        self.W = np.ones(shape=(input_dim, input_dim)).astype("float32")
+        self.U = np.zeros(shape=(input_dim, input_dim)).astype("float32")
         self.h_boot = np.ones(shape=(batch_size, input_dim)).astype("float32")
 
         men_dim = (seq_len, batch_size, input_dim)
@@ -182,7 +186,7 @@ class RecurrentOpTest1(unittest.TestCase):
                        fetch_list=fetch_list,
                        return_numpy=False)
 
-    def test_backward(self, rtol=0.1):
+    def test_backward(self, rtol=0.01):
         self.check_forward()
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -204,7 +208,7 @@ class RecurrentOpTest1(unittest.TestCase):
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
+        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0
@@ -274,14 +278,20 @@ class RecurrentOpTest2(RecurrentOpTest1):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            temp_l = layers.fc(input=x_t,
-                               size=self.input_dim,
-                               param_attr='W',
-                               bias_attr=False)
-            temp_r = layers.fc(input=h_pre,
-                               size=self.input_dim,
-                               param_attr='U',
-                               bias_attr=False)
+            temp_l = layers.fc(
+                input=x_t,
+                size=self.input_dim,
+                param_attr=ParamAttr(
+                    name='W',
+                    initializer=fluid.initializer.ConstantInitializer(1.0)),
+                bias_attr=False)
+            temp_r = layers.fc(
+                input=h_pre,
+                size=self.input_dim,
+                param_attr=ParamAttr(
+                    name='U',
+                    initializer=fluid.initializer.ConstantInitializer(0.0)),
+                bias_attr=False)
 
             h = layers.sigmoid(x=layers.elementwise_add(x=temp_l, y=temp_r))
 
@@ -291,7 +301,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         return rnn()
 
     def test_backward(self):
-        super(RecurrentOpTest2, self).test_backward(rtol=0.2)
+        super(RecurrentOpTest2, self).test_backward(rtol=0.01)
 
 
 class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
@@ -450,6 +460,144 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             mem = layers.elementwise_add(x=mem_pre, y=x_t)
             rnn.update_memory(mem_pre, mem)
             rnn.output(mem)
+
+        return rnn()
+
+
+class RecurrentOpSubBlockTest(RecurrentOpTest1):
+    '''
+    Test RNNOp with subblock variable
+    equation:
+        y_ = emb * w1
+        h_t = \concat([x, h_{t-1}])
+        h_t = h_t * w2
+        h_t = \\unsqueeze(h_t, 1)
+        h_t = \dot_attention(h_t, y_)
+        h_t = \squeeze(h_t, 1)
+        y = h_t
+    vars:
+        - x
+        - w1
+        - w2
+    memories:
+        - h
+    outputs:
+       - y
+    '''
+
+    class PySimpleRNN5(PyRNNBase):
+        def __init__(self, input_shape, output_shape):
+            super(RecurrentOpSubBlockTest.PySimpleRNN5, self).__init__(
+                input_shape, output_shape)
+
+            seq_len, batch_size, input_dim = input_shape
+            self.w1 = np.random.uniform(
+                -0.1, 0.1, size=(input_dim, input_dim)).astype("float32")
+            self.w2 = np.random.uniform(
+                -0.1, 0.1, size=(input_dim * 2, input_dim)).astype("float32")
+
+            self.emb = np.random.uniform(
+                -0.1, 0.1, size=(seq_len, batch_size,
+                                 input_dim)).astype("float32")
+
+            men_dim = (seq_len, batch_size, input_dim)
+            self.mems = np.zeros(shape=men_dim).astype("float32")
+            self.oy = np.matmul(self.emb, self.w1)
+
+        def step(self, step_id, x):
+            def dot_attention(query, memory):
+                attn = np.matmul(query, memory.transpose((0, 2, 1)))
+                weight = softmax(attn)
+                weight_memory = np.matmul(weight, memory)
+                return weight_memory, weight
+
+            def softmax(x):
+                return np.exp(x) / sum(np.exp(x))
+
+            if step_id == 0:
+                pre_mem = np.zeros_like(x)
+            else:
+                pre_mem = self.mems[step_id - 1]
+            concat_in = np.concatenate([x, pre_mem], 1)
+            new_mem = np.matmul(concat_in, self.w2)
+
+            new_mem = np.expand_dims(new_mem, 1)
+            new_mem, _ = dot_attention(new_mem, self.oy)
+            new_mem = np.squeeze(new_mem, 1)
+
+            self.mems[step_id] = new_mem
+            self.y[step_id] = self.mems[step_id]
+
+    input_dim = 2
+    batch_size = 3
+    sent_len = 3
+
+    def setUp(self):
+        self.setup_program()
+
+        self.data_field = {"x", "emb", "w1", "w2"}
+
+        self.input_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
+        self.py_rnn = RecurrentOpSubBlockTest.PySimpleRNN5(self.input_shape,
+                                                           self.output_shape)
+
+        with fluid.program_guard(self.main_program, self.startup_program):
+            rnn_out = self.create_rnn_op()
+            self.output = layers.mean(rnn_out)
+
+    def create_rnn_op(self):
+        x = layers.data(
+            shape=[self.sent_len, self.batch_size, self.input_dim],
+            dtype='float32',
+            name='x',
+            append_batch_size=False)
+        x.stop_gradient = False
+
+        emb = layers.data(
+            name='emb',
+            shape=[self.sent_len, self.batch_size, self.input_dim],
+            dtype='float32',
+            append_batch_size=False)
+        emb.stop_gradient = False
+
+        w1 = layers.data(
+            shape=[self.input_dim, self.input_dim],
+            dtype='float32',
+            name='w1',
+            append_batch_size=False)
+        w1.stop_gradient = False
+        w2 = layers.data(
+            shape=[self.input_dim * 2, self.input_dim],
+            dtype='float32',
+            name='w2',
+            append_batch_size=False)
+        w2.stop_gradient = False
+
+        rnn = layers.StaticRNN()
+
+        def dot_attention(query, memory):
+            attn = layers.matmul(query, memory, transpose_y=True)
+            weight = layers.softmax(attn)
+            weight_memory = layers.matmul(weight, memory)
+
+            return weight_memory, weight
+
+        y = layers.matmul(emb, w1)
+        with rnn.step():
+            pre_h = rnn.memory(
+                shape=(self.sent_len, self.input_dim),
+                batch_ref=x,
+                init_value=0.0)
+            step_in = rnn.step_input(x)
+            concat_in = layers.concat([step_in, pre_h], 1)
+            new_h = layers.matmul(concat_in, w2)
+            new_h = layers.unsqueeze(new_h, [1])
+            new_h, _ = dot_attention(new_h, y)
+            new_h = layers.squeeze(new_h, [1])
+
+            rnn.update_memory(pre_h, new_h)
+            rnn.step_output(new_h)
 
         return rnn()
 

@@ -38,18 +38,14 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
                                    bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(0);
+    T total(read_dst ? out[id] : static_cast<T>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
         total += tmp[id];
       }
     }
-    if (read_dst) {
-      out[id] += total;
-    } else {
-      out[id] = total;
-    }
+    out[id] = total;
     id += blockDim.x * gridDim.x;
   }
 }
@@ -115,8 +111,15 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   auto *out = context.Output<LoDTensor>("Out");
   bool in_place = in_vars[0] == context.OutputVar("Out");
+
   if (!in_place) {
-    out->mutable_data<T>(context.GetPlace());
+    auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+    if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+      auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+      if (in_0_tensor.numel() > 0) {
+        in_place = (in_0_tensor.data<T>() == out_ptr);
+      }
+    }
   }
 
   // Sum of two tensors

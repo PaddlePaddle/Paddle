@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -31,10 +32,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
+DECLARE_bool(check_nan_inf);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(fast_check_nan_inf, false,
+            "Fast checking NAN/INF after each operation. It will be a little"
+            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -65,9 +67,6 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return DDim({-1});
-    }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -183,28 +182,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     } else {
       RunImpl(scope, place);
     }
-
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw std::move(exception);
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw std::move(exception);
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
+    framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
@@ -668,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
+    auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
@@ -882,12 +862,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  if (!enable_cache_runtime_context && HasAttr(kEnableCacheRuntimeContext))
-    enable_cache_runtime_context = true;
-  if (!all_kernels_must_compute_runtime_shape &&
+  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context_ = true;
+  if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
-    all_kernels_must_compute_runtime_shape = true;
-  if (!enable_cache_runtime_context) {
+    all_kernels_must_compute_runtime_shape_ = true;
+  if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
   } else {
@@ -928,7 +908,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx = pool.Get(kernel_type_->place_);
   }
 
-  if (!all_kernels_must_compute_runtime_shape) {
+  if (!all_kernels_must_compute_runtime_shape_) {
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -947,6 +927,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     dev_ctx->Wait();
   }
 
+  if (FLAGS_fast_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      // only check inserted vars,
+      // please see executor.py for details of fast_check_nan_inf
+      if (vname.rfind("debug_var") == 0) {
+        VLOG(3) << "debugging nan/inf in var " << vname;
+
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+        } else if (var->IsType<framework::SelectedRows>()) {
+          CheckTensorNANOrInf(type_, vname,
+                              var->Get<framework::SelectedRows>().value());
+        }
+      }
+    }
+  }
+
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
@@ -958,6 +957,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                             var->Get<framework::SelectedRows>().value());
       }
     }
+  }
+
+  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+  // do not cache transfer scope, hence in this case delete transfer scope
+  // after run to avoid memory leak
+  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
+    scope.DeleteScope(transfer_scope);
   }
 }
 
@@ -1092,9 +1098,18 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      if (!run_by_executor_) {
+      //
+      // To solve issue #15032, have a discussion with @Luotao for cpu
+      // inference, for all cpu kernels cases without GPU participation, here
+      // not do transfer scope caching, and cpu inference performance is not
+      // impacted by test.
+      enable_cache_transfer_scope_ = false;
+      if (!run_by_executor_ &&
+          (platform::is_gpu_place(kernel_type_for_var.place_) ||
+           platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        enable_cache_transfer_scope_ = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
@@ -1103,11 +1118,11 @@ Scope* OperatorWithKernel::PrepareData(
       // each result of different input will be the same with the first one.
       // The reason is that if a gpu tensor is the input of a cpu kernel,
       // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context, we get the cpu tensor each
+      // However, if enable_cache_runtime_context_, we get the cpu tensor each
       // time, not the gpu tensor.
       // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
       // RunImpl().
-      if (enable_cache_runtime_context) {
+      if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
 

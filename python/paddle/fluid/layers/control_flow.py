@@ -58,6 +58,7 @@ def split_lod_tensor(input, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[1])
           x.persistable = True
 
@@ -107,6 +108,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = layers.data(
                       name='x', shape=[1], dtype='float32', stop_gradient=False)
           y = layers.data(
@@ -135,7 +137,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 def Print(input,
           first_n=-1,
           message=None,
-          summarize=-1,
+          summarize=20,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -177,12 +179,26 @@ def Print(input,
            
            import paddle.fluid as fluid
            
-           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           input = fluid.layers.Print(input, message = "The content of input layer:")
-           # value = some_layer(...)
-           # Print(value, summarize=10,
-           #    message="The content of some_layer: ")
+           input = fluid.layers.fill_constant(shape=[10,2], value=3, dtype='int64')
+           input = fluid.layers.Print(input, message="The content of input layer:")
+           
+           main_program = fluid.default_main_program()
+           exe = fluid.Executor(fluid.CPUPlace())
+           exe.run(main_program)
 
+    Output at runtime:
+        .. code-block:: bash 
+           
+           1564546375   The content of input layer:     The place is:CPUPlace
+           Tensor[fill_constant_0.tmp_0]
+               shape: [10,2,]
+               dtype: x
+               data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
+               
+           # The information of dtype at runtime may vary in different environments.
+           # Eg: 
+           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
+           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -307,6 +323,7 @@ class StaticRNN(object):
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
                 rnn.update_memory(prev, hidden)  # set prev to hidden
                 rnn.step_output(hidden)
+                rnn.output(word)
 
             result = rnn()
 
@@ -448,7 +465,7 @@ class StaticRNN(object):
             raise TypeError("step input takes a Variable")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
-        elif self.seq_len != x.shape[0]:
+        elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
             raise ValueError("Static RNN only take fix seq_len input")
 
         ipt = self.helper.create_variable(
@@ -559,7 +576,7 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
-        parameters = [parent_block.var(name) for name in params]
+        parameters = [parent_block.var(name) for name in set(params)]
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -756,6 +773,7 @@ def lod_rank_table(x, level=0):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[10],
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
@@ -822,6 +840,7 @@ def lod_tensor_to_array(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -855,6 +874,7 @@ def array_to_lod_tensor(x, table):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           x = fluid.layers.data(name='x', shape=[10])
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
@@ -964,6 +984,7 @@ def create_array(dtype):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.create_array(dtype='float32')
 
     """
@@ -991,6 +1012,7 @@ def less_than(x, y, force_cpu=None, cond=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           label = fluid.layers.data(name='y', shape=[1], dtype='int64')
           limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
           cond = fluid.layers.less_than(x=label, y=limit)
@@ -1356,6 +1378,7 @@ class ConditionalBlock(object):
     Examples:
         .. code-block:: python
 
+             import paddle.fluid as fluid
              cond = layers.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)

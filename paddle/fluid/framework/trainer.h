@@ -74,8 +74,9 @@ class MultiTrainer : public TrainerBase {
  protected:
   int thread_num_;
   std::vector<std::thread> threads_;
-  std::vector<std::shared_ptr<DataFeed>> readers_;
+  std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
+  std::vector<std::string> need_merge_var_names_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -86,9 +87,23 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  virtual void FinalizeDumpEnv();
+  virtual void InitDumpEnv();
+  virtual void DumpWork();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::thread dump_thread_;
+  std::shared_ptr<FILE> fp_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
+
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  std::vector<std::string> dump_fields_;
+  int mpi_rank_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -136,7 +151,7 @@ class PipelineTrainer : public TrainerBase {
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
   std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
 
-  std::vector<std::shared_ptr<DataFeed>> readers_;
+  std::vector<DataFeed*> readers_;
 
   void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
                            const ProgramDesc& main_program);

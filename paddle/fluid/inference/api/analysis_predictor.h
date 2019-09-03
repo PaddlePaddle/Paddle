@@ -80,8 +80,6 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *scope() { return scope_.get(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
-  void SetMkldnnThreadID(int tid);
-
   std::string GetSerializedProgram() const override;
 
   bool MkldnnQuantize();
@@ -111,6 +109,11 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
+  // PreSet and PostReset for Mkldnn multi-thread and dynamic shape input.
+  // Used in AnalysisPredictor::Run(), do not support
+  // AnalysisPredictor::ZeroRun() now.
+  void MkldnnPreSet(const std::vector<PaddleTensor> &inputs);
+  void MkldnnPostReset();
 
 #if PADDLE_WITH_TENSORRT
   // When we use Paddle-TRT INT8 engine, we need to generate calibration table
@@ -175,10 +178,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   // Some status here that help to determine the status inside the predictor.
-  bool status_program_optimized_{false};
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
-  bool status_ir_optim_enabled_{false};
 };
 
 }  // namespace paddle

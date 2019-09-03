@@ -97,11 +97,11 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
     auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
 
     for (size_t i = 0; i < in_array.size(); ++i) {
-      if (in_array[i].numel() != 0) {
+      if (in_array[i].IsInitialized() && (in_array[i].numel() != 0)) {
         if (i >= out_array.size()) {
           out_array.resize(i + 1);
         }
-        if (out_array[i].numel() == 0) {
+        if (!out_array[i].IsInitialized() || (out_array[i].numel() == 0)) {
           framework::TensorCopy(in_array[i], in_array[i].place(),
                                 context.device_context(), &out_array[i]);
           out_array[i].set_lod(in_array[i].lod());
@@ -128,10 +128,15 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = context.Output<LoDTensor>("Out");
-      if (!in_place) {
-        out->mutable_data<T>(context.GetPlace());
+      auto *out = out_var->GetMutable<framework::LoDTensor>();
+      auto *out_ptr = out->mutable_data<T>(context.GetPlace());
+      if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
+        auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+        if (in_0_tensor.numel() > 0) {
+          in_place = (in_0_tensor.data<T>() == out_ptr);
+        }
       }
+
       auto result = EigenVector<T>::Flatten(*out);
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();

@@ -81,6 +81,12 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
   platform::MKLDNNHandler::AppendKey(&key,
                                      std::to_string(multi_input[0]->format()));
+  if (platform::get_cur_mkldnn_session_id() ==
+      platform::kMKLDNNSessionID_Default) {
+    platform::MKLDNNHandler::AppendKey(&key, "-t:");
+    platform::MKLDNNHandler::AppendKey(
+        &key, platform::MKLDNNHandler::ThreadIDasStr());
+  }
   return key;
 }
 
@@ -153,8 +159,8 @@ class ConcatPrimitiveFactory {
   std::vector<memory::primitive_desc> srcs_pd;
   std::vector<memory> srcs;
   std::vector<primitive::at> inputs;
-  boost::optional<memory> dst_mem;  // TODO(mgallus): change to std::optional
-};                                  // upon introduction of C++17 to paddle
+  boost::optional<memory> dst_mem;
+};
 
 template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {

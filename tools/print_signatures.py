@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
+    ./print_signature  "paddle.fluid" > signature.txt
 """
 from __future__ import print_function
 
@@ -28,7 +28,7 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.dygraph", "paddle.fluid.LoDTensorset"}
+experimental_namespace = {"paddle.fluid.LoDTensorset"}
 
 
 def md5(doc):
@@ -37,28 +37,36 @@ def md5(doc):
     return hash.hexdigest()
 
 
+def queue_dict(member, cur_name):
+    try:
+        doc = ('document', md5(member.__doc__))
+        if inspect.isclass(member):
+            args = member.__module__ + "." + member.__name__
+        else:
+            args = inspect.getargspec(member)
+        all = (args, doc)
+        member_dict[cur_name] = all
+    except TypeError:  # special for PyBind method
+        if cur_name in check_modules_list:
+            return
+        member_dict[cur_name] = "  ".join([
+            line.strip() for line in pydoc.render_doc(member).split('\n')
+            if "->" in line
+        ])
+
+
 def visit_member(parent_name, member):
     if parent_name + member.__name__ in experimental_namespace:
         return
     cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
+        queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
             if hasattr(value, '__name__') and (not name.startswith("_") or
                                                name == "__init__"):
                 visit_member(cur_name, value)
     elif callable(member):
-        try:
-            doc = ('document', md5(member.__doc__))
-            args = inspect.getargspec(member)
-            all = (args, doc)
-            member_dict[cur_name] = all
-        except TypeError:  # special for PyBind method
-            if cur_name in check_modules_list:
-                return
-            member_dict[cur_name] = "  ".join([
-                line.strip() for line in pydoc.render_doc(member).split('\n')
-                if "->" in line
-            ])
+        queue_dict(member, cur_name)
     elif inspect.isgetsetdescriptor(member):
         return
     else:

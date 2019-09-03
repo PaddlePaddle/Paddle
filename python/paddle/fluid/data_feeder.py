@@ -171,7 +171,7 @@ class DataFeeder(object):
         
         feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
         reader = feeder.decorate_reader(
-                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=False)
+                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=True)
 
     Args:
         feed_list(list): The Variables or Variables'name that will
@@ -278,8 +278,8 @@ class DataFeeder(object):
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
-                "The number of fields in data (%s) does not match " +
-                "len(feed_list) (%s)") % (len(each_sample), len(converter))
+                "The number of fields in data (%d) does not match " +
+                "len(feed_list) (%d)") % (len(each_sample), len(converter))
             for each_converter, each_slot in six.moves.zip(converter,
                                                            each_sample):
                 each_converter.feed(each_slot)
@@ -312,13 +312,15 @@ class DataFeeder(object):
                 
                 def reader(limit=10):
                     for i in range(limit):
-                        yield [random.random([784]).astype('float32'), random.randint(10)],
+                        yield [random.random([784]).astype('float32'), random.random([1]).astype('float32')],
                 
                 x = fluid.layers.data(name='x', shape=[1, 28, 28])
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                
+                fluid.layers.elementwise_add(x, y)
                 
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
+                place_num = 2 
                 places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -393,8 +395,9 @@ class DataFeeder(object):
                 import numpy.random as random
                 import paddle
                 import paddle.fluid as fluid
+                import paddle.fluid.compiler as compiler
                 
-                def reader(limit=5):
+                def reader(limit=10):
                     for i in range(limit):
                         yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
                 
@@ -402,13 +405,18 @@ class DataFeeder(object):
                 data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
                 
+                hidden = fluid.layers.fc(input=data, size=10)
+                
                 feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=False)
+                reader = feeder.decorate_reader(reader, multi_devices=True)
                 
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
-                for data in reader():
-                    exe.run(feed=data)
+                compiled_prog = compiler.CompiledProgram(
+                         fluid.default_main_program()).with_data_parallel()
+                for i,data in enumerate(reader()):
+                    print('iteration : ', i + 1)
+                    ret = exe.run(compiled_prog, feed=data, fetch_list=[hidden])
         """
 
         def __reader_creator__():

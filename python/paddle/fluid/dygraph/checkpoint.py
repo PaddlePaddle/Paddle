@@ -43,35 +43,38 @@ def save_persistables(model_dict, dirname='save_dir', optimizers=None):
         optimizers(fluid.Optimizer|list(fluid.Optimizer)|None): The optimizers to be saved
 
     Returns:
+        None
 
     Examples:
+
         .. code-block:: python
-            ptb_model = PtbModel(
+
+          ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
                 init_scale=init_scale)
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
-            x_data = np.arange(12).reshape(4, 3).astype('int64')
-            y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-            x_data = x_data.reshape((-1, num_steps, 1))
-            y_data = y_data.reshape((-1, 1))
-            init_hidden_data = np.zeros(
+          sgd = fluid.optimizer.SGD(learning_rate=0.01)
+          x_data = np.arange(12).reshape(4, 3).astype('int64')
+          y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+          x_data = x_data.reshape((-1, num_steps, 1))
+          y_data = y_data.reshape((-1, 1))
+          init_hidden_data = np.zeros(
                 (num_layers, batch_size, hidden_size), dtype='float32')
-            init_cell_data = np.zeros(
+          init_cell_data = np.zeros(
                 (num_layers, batch_size, hidden_size), dtype='float32')
-            x = to_variable(x_data)
-            y = to_variable(y_data)
-            init_hidden = to_variable(init_hidden_data)
-            init_cell = to_variable(init_cell_data)
-            dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+          x = to_variable(x_data)
+          y = to_variable(y_data)
+          init_hidden = to_variable(init_hidden_data)
+          init_cell = to_variable(init_cell_data)
+          dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                         init_cell)
-            dy_loss.backward()
-            sgd.minimize(dy_loss)
-            ptb_model.clear_gradient()
-            param_path = "./my_paddle_model"
-            fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path, sgd)
+          dy_loss.backward()
+          sgd.minimize(dy_loss)
+          ptb_model.clear_gradient()
+          param_path = "./my_paddle_model"
+          fluid.dygraph.save_persistables(ptb_model.state_dict(), dirname=param_path, sgd)
     """
     if isinstance(model_dict, collections.OrderedDict):
         _save_var_to_file(model_dict, optimizers, dirname, None)
@@ -95,13 +98,15 @@ def load_persistables(dirname='save_dir'):
         optimizer dict: The optimizer
 
     Examples:
-        .. code-block:: python
-            my_layer = layer(fluid.Layer)
-            param_path = "./my_paddle_model"
-            sgd = SGDOptimizer(learning_rate=1e-3)
-            param_dict, optimizer_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
-            param_1 = param_dict['PtbModel_0.w_1']
-            sgd.load(optimizer_dict)
+
+         .. code-block:: python
+
+           my_layer = layer(fluid.Layer)
+           param_path = "./my_paddle_model"
+           sgd = SGDOptimizer(learning_rate=1e-3)
+           param_dict, optimizer_dict = fluid.dygraph.load_persistables(my_layer.parameters(), param_path)
+           param_1 = param_dict['PtbModel_0.w_1']
+           sgd.load(optimizer_dict)
 
         """
     return _load_var_from_file(dirname)
@@ -169,6 +174,9 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
 
 
 def _load_var_from_file(file_dir):
+    if not os.path.exists(file_dir):
+        raise IOError("{} not exist".format(file_dir))
+
     def walk_filename(file_dir):
         base_path = os.path.join(file_dir)
         var_name_list = []

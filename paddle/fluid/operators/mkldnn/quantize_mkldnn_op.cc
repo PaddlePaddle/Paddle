@@ -85,11 +85,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<mkldnn::memory::primitive_desc> dst_pd;
       if (is_negative) {
-        platform::ConvMKLDNNHandler::SetDstMemory<int8_t>(
-            ctx, output, dst_tz, engine, dst_pd, dst_memory);
+        platform::SetDstMemoryQuantized<int8_t>(ctx, output, dst_tz, engine,
+                                                dst_pd, dst_memory);
       } else {
-        platform::ConvMKLDNNHandler::SetDstMemory<uint8_t>(
-            ctx, output, dst_tz, engine, dst_pd, dst_memory);
+        platform::SetDstMemoryQuantized<uint8_t>(ctx, output, dst_tz, engine,
+                                                 dst_pd, dst_memory);
       }
       auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
           new reorder::primitive_desc(src_pd, *dst_pd, attri));
@@ -123,8 +123,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-
-// TODO(Xiaoli) Support FP32->S8 quantization.
 
 REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

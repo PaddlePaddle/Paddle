@@ -31,7 +31,7 @@ from nltk.corpus import movie_reviews
 
 import paddle.dataset.common
 
-__all__ = ['train', 'test', 'get_word_dict', 'convert']
+__all__ = ['train', 'test', 'get_word_dict']
 NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
 
@@ -134,11 +134,3 @@ def test():
 
 def fetch():
     nltk.download('movie_reviews', download_dir=paddle.dataset.common.DATA_HOME)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train, 1000, "sentiment_train")
-    paddle.dataset.common.convert(path, test, 1000, "sentiment_test")

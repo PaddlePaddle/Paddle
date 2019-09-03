@@ -167,12 +167,15 @@ class Communicator {
   void Start();
   void Stop();
 
+  bool IsRunning() { return running_; }
+
   // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
 
  private:
   // recv all parameter
   void RecvAll();
+  void RecvNonIndependent();
   void SendThread();
   void RecvThread();
 

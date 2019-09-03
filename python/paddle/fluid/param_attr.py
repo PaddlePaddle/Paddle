@@ -42,8 +42,8 @@ class ParamAttr(object):
         trainable(bool): Whether this parameter is trainable. Default True.
         gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
             gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average.
-            Default False.
+        do_model_average(bool): Whether this parameter should do model average 
+            when model average is enabled. Default True.
 
     Examples:
         .. code-block:: python
@@ -65,14 +65,14 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  gradient_clip=None,
-                 do_model_average=False):
+                 do_model_average=True):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
         self.gradient_clip = gradient_clip
-        self.model_average = do_model_average
+        self.do_model_average = do_model_average
 
     def _set_default_initializer(self, initializer):
         """
@@ -170,7 +170,7 @@ class ParamAttr(object):
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'gradient_clip_attr': self.gradient_clip,
-            'model_average': self.model_average
+            'do_model_average': self.do_model_average
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -180,14 +180,14 @@ class ParamAttr(object):
 class WeightNormParamAttr(ParamAttr):
     """
     Used for weight Norm. Weight Norm is a reparameterization of the weight vectors
-    in a neural network that decouples the length of those weight vectors from
+    in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
     Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 
     Args:
-        dim(list): The parameter's name. Default None.
+        dim(int): Dimension over which to compute the norm. Default None.
         name(str): The parameter's name. Default None.
         initializer(Initializer): The method to initial this parameter. Default None.
         learning_rate(float): The parameter's learning rate. The learning rate when

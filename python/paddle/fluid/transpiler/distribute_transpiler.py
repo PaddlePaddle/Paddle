@@ -47,6 +47,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
+from . import collective
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -157,7 +158,7 @@ class DistributeTranspilerConfig(object):
     split_method = None
     min_block_size = 8192
     enable_dc_asgd = False
-    # supported modes: pserver, nccl2
+    # supported modes: pserver, nccl2, collective
     mode = "pserver"
     print_log = False
     wait_port = True
@@ -171,8 +172,10 @@ class DistributeTranspilerConfig(object):
     use_hierarchical_allreduce = False
     #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
-    #Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to nodes number.
-    hierarchical_allreduce_exter_nranks = 0
+
+    # if mode is collective
+    # supported modes: grad_allreduce, local_sgd
+    collective_mode = None
 
 
 class DistributeTranspiler(object):
@@ -305,6 +308,46 @@ class DistributeTranspiler(object):
         else:
             raise ValueError("must set trainer_id > 0")
 
+    def _transpile_collective(self,
+                              collective_mode,
+                              trainer_id,
+                              trainers,
+                              current_endpoint,
+                              startup_program=None,
+                              main_program=None,
+                              wait_port=True):
+        if isinstance(trainers, str):
+            endpoints = trainers.split(",")
+        elif isinstance(trainers, list):
+            endpoints = trainers
+        else:
+            raise ValueError('invalid trainers config: ' + str(trainers))
+
+        if len(endpoints) == 1:
+            raise ValueError('invalid trainer number in distributed: 1')
+
+        if startup_program is None:
+            startup_program = default_startup_program()
+
+        if main_program is None:
+            main_program = default_main_program()
+
+        transpiler = None
+        if collective_mode == 'grad_allreduce':
+            transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
+        elif collective_mode == 'local_sgd':
+            transpiler = collective.LocalSGD(self.config.nccl_comm_num)
+        else:
+            raise ValueError('invalid collective_mode: %s' % collective_mode)
+
+        transpiler.transpile(
+            startup_program=startup_program,
+            main_program=main_program,
+            rank=trainer_id,
+            endpoints=endpoints,
+            current_endpoint=current_endpoint,
+            wait_port=wait_port)
+
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
         sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
@@ -314,14 +357,49 @@ class DistributeTranspiler(object):
                 sparse_update_ops.append(op)
         return sparse_update_ops
 
-    def _update_remote_sparse_update_op(self, param_varname, height_sections,
-                                        endpint_map, table_names):
+    def _update_remote_sparse_update_op(self, program, param_varname,
+                                        height_sections, endpoints,
+                                        table_names):
+
+        ops = []
+        op_type = ""
+
         for op in self.sparse_update_ops:
-            if param_varname in op.input_arg_names:
-                op._set_attr('epmap', endpint_map)
-                op._set_attr('table_names', table_names)
-                op._set_attr('height_sections', height_sections)
-                op._set_attr('trainer_id', self.trainer_id)
+            if param_varname in op.input_arg_names and op_type == "":
+                op_type = op.type
+                ops.append(op)
+
+            elif param_varname in op.input_arg_names and op_type == op.type:
+                ops.append(op)
+
+        if op_type == "lookup_table":
+            all_ops = program.global_block().ops
+            op_idxs = [all_ops.index(op) for op in ops]
+            inputs = [
+                program.global_block().vars[op.input("Ids")[0]] for op in ops
+            ]
+            w = program.global_block().vars[ops[0].input("W")[0]]
+            padding_idx = ops[0].attr("padding_idx")
+            outputs = [
+                program.global_block().vars[op.output("Out")[0]] for op in ops
+            ]
+
+            for idx in op_idxs[::-1]:
+                program.global_block()._remove_op(idx)
+
+            program.global_block()._insert_op(
+                index=op_idxs[0],
+                type="distributed_lookup_table",
+                inputs={"Ids": inputs,
+                        'W': w},
+                outputs={"Outputs": outputs},
+                attrs={
+                    "table_names": table_names,
+                    "height_sections": height_sections,
+                    "endpoints": endpoints,
+                    "padding_idx": padding_idx,
+                    "trainer_id": self.trainer_id
+                })
 
     def _is_input_of_remote_sparse_update_op(self, param_name):
         for op in self.sparse_update_ops:
@@ -383,15 +461,39 @@ class DistributeTranspiler(object):
             self.origin_program._trainers_endpoints = trainers.split(",")
             self.origin_program._nccl_comm_num = self.config.nccl_comm_num
             self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
-            self.origin_program._hierarchical_allreduce_inter_nranks = \
-                int(self.config.hierarchical_allreduce_inter_nranks)
-            self.origin_program._hierarchical_allreduce_exter_nranks = \
-                int(self.config.hierarchical_allreduce_exter_nranks)
+            # check use_hierarchical_allreduce options
+            if self.config.use_hierarchical_allreduce:
+                trainers_num = len(self.origin_program._trainers_endpoints)
+                # selected automaticly
+                if self.config.hierarchical_allreduce_inter_nranks <= 1:
+                    self.config.hierarchical_allreduce_inter_nranks = core.get_cuda_device_count(
+                    )
+
+                assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
+                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+
+                assert trainers_num % self.config.hierarchical_allreduce_inter_nranks == 0, \
+                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+
+                self.origin_program._hierarchical_allreduce_inter_nranks = \
+                    int(self.config.hierarchical_allreduce_inter_nranks)
+
             self._transpile_nccl2(
                 trainer_id,
                 trainers,
                 current_endpoint,
                 startup_program=startup_program,
+                wait_port=self.config.wait_port)
+            return
+
+        if self.config.mode == "collective":
+            self._transpile_collective(
+                collective_mode=self.config.collective_mode,
+                trainer_id=trainer_id,
+                trainers=trainers,
+                current_endpoint=current_endpoint,
+                startup_program=startup_program,
+                main_program=program,
                 wait_port=self.config.wait_port)
             return
 
@@ -456,17 +558,12 @@ class DistributeTranspiler(object):
                 splited_grad_varname = splited_vars[0].name
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
-                if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
-                    sparse_param_name = self.grad_name_to_param_name[
-                        grad_varname]
-                    if self._is_input_of_remote_sparse_update_op(
-                            sparse_param_name):
-                        self.sparse_param_to_height_sections[
-                            sparse_param_name] = [splited_vars[0].shape[0]]
+
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
                 index = find_op_by_output_arg(
                     program.global_block(), splited_grad_varname, reverse=True)
+
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
                                           splited_vars)
@@ -474,6 +571,13 @@ class DistributeTranspiler(object):
             else:
                 AssertionError("Can not insert the send op by original "
                                "variable name :", splited_grad_varname)
+
+            if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+                sparse_param_name = self.grad_name_to_param_name[grad_varname]
+                if self._is_input_of_remote_sparse_update_op(sparse_param_name):
+                    self.sparse_param_to_height_sections[sparse_param_name] = [
+                        splited_var.shape[0] for splited_var in splited_vars
+                    ]
 
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
@@ -507,8 +611,7 @@ class DistributeTranspiler(object):
                     OP_ROLE_VAR_ATTR_NAME: [
                         self.grad_name_to_param_name[grad_varname],
                         splited_grad_varname
-                    ],
-                    "sync_mode": not self.sync_mode,
+                    ]
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -528,7 +631,6 @@ class DistributeTranspiler(object):
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
-                    "sync_mode": self.sync_mode,
                     "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
@@ -574,7 +676,6 @@ class DistributeTranspiler(object):
                 recv_op_role_var_name = splited_trainer_grad[0].name
 
             if param_varname in self.sparse_param_to_height_sections:
-
                 for table_name in table_names:
                     distributed_var = self.vars_overview.get_distributed_var_by_slice(
                         table_name)
@@ -583,7 +684,7 @@ class DistributeTranspiler(object):
                 height_sections = self.sparse_param_to_height_sections[
                     param_varname]
                 self._update_remote_sparse_update_op(
-                    param_varname, height_sections, eps, table_names)
+                    program, param_varname, height_sections, eps, table_names)
             else:
                 recv_varnames = []
                 if self.config.runtime_split_send_recv:
@@ -602,8 +703,7 @@ class DistributeTranspiler(object):
                         "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
-                        [param_varname, recv_op_role_var_name],
-                        "sync_mode": not self.sync_mode
+                        [param_varname, recv_op_role_var_name]
                     })
 
         if self.sync_mode:
@@ -1481,7 +1581,6 @@ class DistributeTranspiler(object):
                         if self.sync_mode else []
                     },
                     attrs={
-                        "sync_mode": not self.sync_mode,
                         "epmap": pserver_endpoints,
                         "trainer_id": self.trainer_id,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,

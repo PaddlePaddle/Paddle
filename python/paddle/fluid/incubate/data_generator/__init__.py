@@ -15,7 +15,7 @@
 import os
 import sys
 
-__all__ = ['MultiSlotDataGenerator']
+__all__ = ['MultiSlotDataGenerator', 'MultiSlotStringDataGenerator']
 
 
 class DataGenerator(object):
@@ -235,6 +235,50 @@ class DataGenerator(object):
         return local_iter
 
 
+# TODO: guru4elephant
+# add more generalized DataGenerator that can adapt user-defined slot
+# for example, [(name, float_list), (name, str_list), (name, int_list)]
+class MultiSlotStringDataGenerator(DataGenerator):
+    def _gen_str(self, line):
+        '''
+        Further processing the output of the process() function rewritten by
+        user, outputting data that can be directly read by the MultiSlotDataFeed,
+        and updating proto_info infomation.
+
+        The input line will be in this format:
+            >>> [(name, [str(feasign), ...]), ...]
+            >>> or ((name, [str(feasign), ...]), ...)
+        The output will be in this format:
+            >>> [ids_num id1 id2 ...] ...
+
+        For example, if the input is like this:
+            >>> [("words", ["1926", "08", "17"]), ("label", ["1"])]
+            >>> or (("words", ["1926", "08", "17"]), ("label", ["1"]))
+        the output will be:
+            >>> 3 1234 2345 3456 1 1
+
+        Args:
+            line(str): the output of the process() function rewritten by user.
+
+        Returns:
+            Return a string data that can be read directly by the MultiSlotDataFeed.
+        '''
+        if not isinstance(line, list) and not isinstance(line, tuple):
+            raise ValueError(
+                "the output of process() must be in list or tuple type"
+                "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]")
+        output = ""
+        for index, item in enumerate(line):
+            name, elements = item
+            if output:
+                output += " "
+            out_str = []
+            out_str.append(str(len(elements)))
+            out_str.extend(elements)
+            output += " ".join(out_str)
+        return output + "\n"
+
+
 class MultiSlotDataGenerator(DataGenerator):
     def _gen_str(self, line):
         '''
@@ -266,7 +310,8 @@ class MultiSlotDataGenerator(DataGenerator):
         '''
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
-                "the output of process() must be in list or tuple type")
+                "the output of process() must be in list or tuple type"
+                "Example: [('words', [1926, 08, 17]), ('label', [1])]")
         output = ""
 
         if self._proto_info is None:
@@ -312,7 +357,7 @@ class MultiSlotDataGenerator(DataGenerator):
                     )
                 if name != self._proto_info[index][0]:
                     raise ValueError(
-                        "the field name of two given line are not match: require<%s>, get<%d>."
+                        "the field name of two given line are not match: require<%s>, get<%s>."
                         % (self._proto_info[index][0], name))
                 if output:
                     output += " "

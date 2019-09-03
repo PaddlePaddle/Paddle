@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/inlined_vector.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -26,14 +27,14 @@ namespace memory {
 namespace allocation {
 
 // Exception when `Alloc`/`AllocShared` failed
-class BadAlloc : public std::exception {
- public:
-  inline explicit BadAlloc(std::string msg) : msg_(std::move(msg)) {}
+struct BadAlloc : public std::exception {
+  inline explicit BadAlloc(std::string err_msg, const char* file, int line)
+      : err_str_(platform::GetTraceBackString(std::move(err_msg), file, line)) {
+  }
 
-  inline const char* what() const noexcept override { return msg_.c_str(); }
+  const char* what() const noexcept override { return err_str_.c_str(); }
 
- private:
-  std::string msg_;
+  std::string err_str_;
 };
 
 class Allocator;
@@ -161,6 +162,9 @@ class Allocator {
   using AllocationPtr = std::unique_ptr<Allocation, AllocationDeleter>;
 
   // Allocate an allocation.
+  // size may be 0, but it would be too complex if we handle size == 0
+  // in each Allocator. So we handle size == 0 inside AllocatorFacade
+  // in our design.
   inline AllocationPtr Allocate(size_t size) {
     auto ptr = AllocateImpl(size);
     ptr->RegisterDecoratedAllocator(this);
@@ -183,6 +187,17 @@ class Allocator {
 
 using AllocationDeleter = Allocator::AllocationDeleter;
 using AllocationPtr = Allocator::AllocationPtr;
+
+inline size_t AlignedSize(size_t size, size_t alignment) {
+  auto remaining = size % alignment;
+  return remaining == 0 ? size : size + alignment - remaining;
+}
+
+inline size_t AlignedPtrOffset(const void* ptr, size_t alignment) {
+  auto ptr_addr = reinterpret_cast<uintptr_t>(ptr);
+  auto diff = ptr_addr % alignment;
+  return diff == 0 ? 0 : alignment - diff;
+}
 
 }  // namespace allocation
 }  // namespace memory
