@@ -34,7 +34,6 @@ class FlattenKernel : public framework::OpKernel<T> {
     auto x_dims = in->dims();
     auto out_dims = framework::make_ddim(GetOutputShape(axes, x_dims));
 
-    out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
@@ -88,7 +87,6 @@ class Flatten2Kernel : public framework::OpKernel<T> {
     auto out_dims = framework::make_ddim(
         FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
 
-    out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
