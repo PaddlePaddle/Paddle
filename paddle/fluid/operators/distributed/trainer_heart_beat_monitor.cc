@@ -33,6 +33,10 @@ void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
     PADDLE_THROW("UNINITED can not be used in Update, something may error");
   }
 
+  if (!is_chief_) {
+    return;
+  }
+
   if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
     auto timestamp = GetCurrentUS();
     Trainer& trainer = trainer_status_map_.at(trainer_id);
