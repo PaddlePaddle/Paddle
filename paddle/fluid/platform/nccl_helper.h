@@ -63,11 +63,11 @@ class NCCLGroupGuard {
 
   inline NCCLGroupGuard() {
     NCCLMutex().lock();
-    PADDLE_ENFORCE(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
   }
 
   inline ~NCCLGroupGuard() {
-    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
@@ -94,7 +94,7 @@ struct NCCLContextMap {
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE(!places.empty());
+    PADDLE_ENFORCE_EQ(!places.empty(), true);
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
@@ -109,7 +109,7 @@ struct NCCLContextMap {
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(nccl_id);
@@ -126,8 +126,8 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+          PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }
@@ -249,13 +249,13 @@ class NCCLCommunicator {
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
-    PADDLE_ENFORCE(trainers_num == inter_trainers_num * exter_trainers_num,
-                   "trainers_num:%llu != inter_trainers_num:%llu * "
-                   "exter_trainers_num:%llu",
-                   trainers_num, inter_trainers_num, exter_trainers_num);
+    PADDLE_ENFORCE_EQ(trainers_num, inter_trainers_num * exter_trainers_num,
+                      "trainers_num:%llu != inter_trainers_num:%llu * "
+                      "exter_trainers_num:%llu",
+                      trainers_num, inter_trainers_num, exter_trainers_num);
 
-    PADDLE_ENFORCE(inter_trainers_num > 1, "inter_trainers_num:%llu must > 1",
-                   inter_trainers_num);
+    PADDLE_ENFORCE_GT(inter_trainers_num, 1, "inter_trainers_num:%llu must > 1",
+                      inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {

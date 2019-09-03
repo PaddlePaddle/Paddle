@@ -1133,6 +1133,7 @@ class BatchNorm(layers.Layer):
         self._variance.stop_gradient = True
 
         self._in_place = in_place
+        self._data_layout = data_layout
         self._momentum = momentum
         self._epsilon = epsilon
         self._is_test = is_test
@@ -1177,6 +1178,7 @@ class BatchNorm(layers.Layer):
                 "momentum": self._momentum,
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
+                "data_layout": self._data_layout,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
