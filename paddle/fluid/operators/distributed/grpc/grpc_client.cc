@@ -346,6 +346,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
+  req.set_trainer_id(trainer_id_);
   req.set_varname(COMPLETE_MESSAGE);
 
   platform::RecordRPCEvent record_event(method);
