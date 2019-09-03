@@ -40,13 +40,6 @@ void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
   if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
     auto timestamp = GetCurrentUS();
     Trainer& trainer = trainer_status_map_.at(trainer_id);
-
-    VLOG(4) << "trainer " << trainer_id << " status transform from "
-            << trainer.status << " to " << status << " "
-            << " it's timestamp change from " << trainer.timestamp << " to "
-            << timestamp << " the interval is "
-            << timestamp - trainer.timestamp;
-
     trainer.status = status;
     trainer.timestamp = timestamp;
     return;
@@ -69,6 +62,11 @@ void TrainerHeartBeatMonitor::LostTrainerMonitor() {
       }
 
       auto timestamp = GetCurrentUS();
+
+      VLOG(4) << "trainer " << trainer.id << " status is " << trainer.status
+              << " timestamp is " << trainer.timestamp << " the interval is "
+              << timestamp - trainer.timestamp;
+
       if (timestamp - trainer.timestamp >= FLAGS_trainer_update_interval_secs) {
         PADDLE_THROW(
             "the latest update of trainer %d is %d secs ago, we doubt the "
@@ -78,7 +76,7 @@ void TrainerHeartBeatMonitor::LostTrainerMonitor() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
   }
   VLOG(1) << "trainer heartbeat monitor stopped, thread exit";
 }
