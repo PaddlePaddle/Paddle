@@ -48,8 +48,8 @@ namespace operators {
  *    pre=2*3, n=4*5, post=1
  *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
  *
- * New parameter: ***mid_flag*** is added to solve m*n*k & m*1*k broadcast
- * cases.
+ * New parameter: *mid_flag* is added to solve m*n*k & m*1*k
+ * broadcast cases.
  * 3. shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1, 4, 5)
  *    mid_flag should not be NULL.
  *    x.shape(2, 3, 20) * y.shape(2, 1, 20).broadcast(2, 3, 20)
@@ -663,7 +663,7 @@ void ElemwiseGradComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, mid_flag=0;
+  int pre, n, post, mid_flag = 0;
   get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &mid_flag);
   if (mid_flag) {
     PADDLE_ENFORCE_EQ(mid_flag, 1, "mid_flag should be no more than 1.")
