@@ -38,9 +38,9 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
     std::vector<std::string> *repetitive_params) const;
 
   void AppendBlocks(framework::ir::Node *node,
-  framework::ProgramDesc* global_program,
-  framework::ProgramDesc* engine_program,
-  std::vector<std::string> *repetitive_params) const;
+    framework::ProgramDesc* global_program,
+    framework::ProgramDesc* engine_program,
+    std::vector<std::string> *repetitive_params) const;
 };
 
 }  // namespace analysis

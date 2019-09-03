@@ -23,9 +23,6 @@
 
 #include "lite/api/cxx_api.h"
 
-using paddle::lite::Place;
-using paddle::lite::Predictor;
-
 namespace paddle {
 namespace inference {
 namespace lite {
@@ -33,8 +30,8 @@ namespace lite {
 struct EngineConfig {
   std::string model;
   std::string param;
-  Place prefer_place;
-  std::vector<Place> valid_places;
+  paddle::lite::Place prefer_place;
+  std::vector<paddle::lite::Place> valid_places;
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool memory_from_memory{true};
@@ -44,11 +41,11 @@ class EngineManager {
  public:
   bool Empty() const;
   bool Has(const std::string& name) const;
-  Predictor* Get(const std::string& name) const;
-  Predictor* Create(const std::string& name, const EngineConfig& cfg);
+  paddle::lite::Predictor* Get(const std::string& name) const;
+  paddle::lite::Predictor* Create(const std::string& name, const EngineConfig& cfg);
   void DeleteAll();
  private:
-  std::unordered_map<std::string, std::unique_ptr<Predictor>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<paddle::lite::Predictor>> engines_;
 };
 
 }  // namespace lite

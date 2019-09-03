@@ -29,13 +29,13 @@ bool EngineManager::Has(const std::string& name) const {
   return engines_.at(name).get() != nullptr;
 }
 
-Predictor* EngineManager::Get(const std::string& name) const {
+paddle::lite::Predictor* EngineManager::Get(const std::string& name) const {
   return engines_.at(name).get();
 }
 
-Predictor* EngineManager::Create(
+paddle::lite::Predictor* EngineManager::Create(
   const std::string& name, const EngineConfig& cfg) {
-  auto* p = new Predictor();
+  auto* p = new paddle::lite::Predictor();
   p->Build(cfg.model, "", "", cfg.prefer_place, cfg.valid_places, cfg.neglected_passes,
     cfg.model_type, cfg.memory_from_memory);
   engines_[name].reset(p);
