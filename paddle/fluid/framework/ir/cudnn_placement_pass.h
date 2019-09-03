@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ namespace framework {
 namespace ir {
 
 /*
- * Specifies which operators should use MKLDNN.
+ * Specifies which operators should use cuDNN.
  */
-class MKLDNNPlacementPass : public PlacementPassBase {
+class CUDNNPlacementPass : public PlacementPassBase {
  private:
-  const std::string GetPlacementName() const { return "MKLDNN"; }
+  const std::string GetPlacementName() const { return "cuDNN"; }
 
-  const std::string GetAttrName() const { return "use_mkldnn"; }
+  const std::string GetAttrName() const { return "use_cudnn"; }
 
   const std::unordered_set<std::string> GetOpTypesList() const {
-    return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+    return Get<std::unordered_set<std::string>>("cudnn_enabled_op_types");
   }
 };
 
