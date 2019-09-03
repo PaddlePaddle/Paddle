@@ -82,10 +82,8 @@ class Collective(object):
 
         self.wait_port = wait_port
 
-        self.startup_program._origin_program = self.startup_program.clone()
         self._transpile_startup_program()
 
-        self.main_program._origin_program = self.main_program.clone()
         self._transpile_main_program()
 
     def _transpile_main_program(self):
