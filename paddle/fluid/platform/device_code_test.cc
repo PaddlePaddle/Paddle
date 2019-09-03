@@ -28,7 +28,7 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 )";
 
 #ifdef PADDLE_WITH_CUDA
-TEST(device_code, cuda) {
+TEST(DeviceCode, cuda) {
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
@@ -74,5 +74,24 @@ TEST(device_code, cuda) {
     PADDLE_ENFORCE_EQ(cpu_z.data<float>()[i],
                       static_cast<float>(i) * scale + 0.5);
   }
+}
+
+TEST(DeviceCodePool, cuda) {
+  paddle::framework::InitDevices(false, {0});
+  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  paddle::platform::DeviceCodePool& pool =
+      paddle::platform::DeviceCodePool::Init({place});
+  size_t num_device_codes_before = pool.size(place);
+  PADDLE_ENFORCE_EQ(num_device_codes_before, 0UL);
+
+  std::unique_ptr<paddle::platform::DeviceCode> code(
+      new paddle::platform::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
+  LOG(INFO) << "origin ptr: " << code.get();
+  pool.Set(std::move(code));
+  size_t num_device_codes_after = pool.size(place);
+  PADDLE_ENFORCE_EQ(num_device_codes_after, 1UL);
+
+  paddle::platform::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
+  LOG(INFO) << "get ptr: " << code_get;
 }
 #endif

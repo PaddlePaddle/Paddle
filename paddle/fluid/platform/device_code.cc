@@ -14,10 +14,63 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
 #include <algorithm>
+#include <set>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
+
+DeviceCodePool* DeviceCodePool::pool = nullptr;
+
+void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
+  Place place = code->GetPlace();
+  std::string name = code->GetName();
+
+  auto iter = device_codes_.find(place);
+  if (iter == device_codes_.end()) {
+    PADDLE_THROW("Place %s is not supported.", place);
+  }
+
+  auto& codes_map = iter->second;
+  codes_map.emplace(name, std::move(code));
+}
+
+platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
+                                          const std::string& name) {
+  auto iter = device_codes_.find(place);
+  if (iter == device_codes_.end()) {
+    PADDLE_THROW("Place %s is not supported.", place);
+  }
+
+  auto& codes_map = iter->second;
+  auto code_iter = codes_map.find(name);
+  if (code_iter == codes_map.end()) {
+    PADDLE_THROW("There is not a device code named %s for place %s.",
+                 name.c_str(), place);
+  }
+
+  return code_iter->second.get();
+}
+
+DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
+  PADDLE_ENFORCE_GT(places.size(), 0);
+  // Remove the duplicated places
+  std::set<Place> set;
+  for (auto& p : places) {
+    set.insert(p);
+  }
+  for (auto& p : set) {
+    if (is_gpu_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+      device_codes_.emplace(p, DeviceCodeMap());
+#else
+      PADDLE_THROW(
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    }
+  }
+}
 
 #ifdef PADDLE_WITH_CUDA
 inline bool is_error(nvrtcResult stat) { return stat != NVRTC_SUCCESS; }
@@ -42,6 +95,9 @@ CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
 }
 
 void CUDADeviceCode::Compile() {
+  PADDLE_ENFORCE_EQ(dynload::HasNVRTC(), true,
+                    "NVRTC is need for JIT compiling of CUDA code.");
+
   nvrtcProgram program;
   PADDLE_ENFORCE_EQ(dynload::nvrtcCreateProgram(&program,
                                                 kernel_.c_str(),  // buffer
@@ -96,9 +152,12 @@ void CUDADeviceCode::Compile() {
       name_.c_str());
 
   max_threads_ = dev_ctx->GetMaxPhysicalThreadCount();
+  is_compiled_ = true;
 }
 
 void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
+  PADDLE_ENFORCE_EQ(is_compiled_, true, "Please compile the code first.");
+
   int max_blocks = std::max(max_threads_ / num_threads_, 1);
   int workload_per_block = workload_per_thread_ * num_threads_;
   int num_blocks =
