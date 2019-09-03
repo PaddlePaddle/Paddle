@@ -21,26 +21,25 @@ namespace distributed {
 DEFINE_int32(trainer_update_interval_secs, 900,
              " the longest time interval between the trainer update variables");
 
-void TrainerHeartBeatMonitor::Update(const int trainer_id,
+void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
                                      TrainerStatus status) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  if (status == UNINITED) {
+    PADDLE_THROW("UNINITED can not be used in Update, something may error");
+  }
 
-  Trainer& trainer = trainer_status_map_.at(trainer_id);
-  double timestamp = GetCurrentUS();
+  if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
+    double timestamp = GetCurrentUS();
+    Trainer& trainer = trainer_status_map_.at(trainer_id);
 
-  if (status == UNINITED || status == COMPLETED) {
-    VLOG(4) << "trainer " << trainer.id << " is << " << status << " at "
-            << timestamp;
-  } else if (status == RUNNING) {
-    VLOG(4) << "update trainer " << trainer_id << "'s timestamp from "
-            << trainer.timestamp << " to " << timestamp << " the interval is "
+    VLOG(4) << "trainer " << trainer_id << " status transform from "
+            << trainer.status << " to " << status << " "
+            << " it's timestamp change from " << trainer.timestamp << " to "
+            << timestamp << " the interval is "
             << timestamp - trainer.timestamp;
 
     trainer.status = status;
     trainer.timestamp = timestamp;
-
-  } else {
-    PADDLE_THROW("trainer %d 's status can not be verified.", trainer_id);
+    return;
   }
 }
 

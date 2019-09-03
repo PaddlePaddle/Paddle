@@ -468,7 +468,19 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   } else {
     distributed::AsyncSparseParamUpdateRecorder::Init(
         fan_in, sparse_grad_name_to_param_name);
-    distributed::TrainerHeartBeatMonitor::Init(fan_in, pserver_id);
+
+    VLOG(2) << "RunAsyncLoop";
+    auto grad_to_block_id_str =
+        Attr<std::vector<std::string>>("grad_to_block_id");
+
+    if (grad_to_block_id_str.size() == 0) {
+      VLOG(0) << "there are no gradients on this parameter server";
+    } else {
+      std::vector<std::string> pieces;
+      split(grad_to_block_id_str[0], ':', &pieces);
+      distributed::TrainerHeartBeatMonitor::Init(fan_in, pserver_id == 0,
+                                                 pieces[0]);
+    }
     RunAsyncLoop(&executor, program, &recv_scope);
   }
 }

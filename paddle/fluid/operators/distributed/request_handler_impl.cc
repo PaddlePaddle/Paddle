@@ -52,7 +52,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
-    TrainerHeartBeatMonitor::GetInstance()->Update(trainer_id, COMPLETED);
+    TrainerHeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
     rpc_server_->Complete();
   } else {
     // Async
@@ -63,7 +63,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
-      TrainerHeartBeatMonitor::GetInstance()->Update(trainer_id, RUNNING);
+      TrainerHeartBeatMonitor::GetInstance()->Update(trainer_id, varname,
+                                                     RUNNING);
 
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                     scope);
