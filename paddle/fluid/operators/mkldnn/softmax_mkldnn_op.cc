@@ -36,7 +36,7 @@ template <typename T>
 class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
  public:
   SoftmaxMKLDNNHandler(const std::vector<int>& dims,
-                       const mkldnn::memory::format fmt,
+                       const MKLDNNMemoryFormat fmt,
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
@@ -44,8 +44,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
         fmt_(fmt) {}
 
   SoftmaxMKLDNNHandler(const std::vector<int>& dims,
-                       const mkldnn::memory::format fmt,
-                       const mkldnn::memory::format diff_fmt,
+                       const MKLDNNMemoryFormat fmt,
+                       const MKLDNNMemoryFormat diff_fmt,
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key),
@@ -165,8 +165,8 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
 
  private:
   std::vector<int> dims_;
-  mkldnn::memory::format fmt_;
-  mkldnn::memory::format diff_fmt_;
+  MKLDNNMemoryFormat fmt_;
+  MKLDNNMemoryFormat diff_fmt_;
   std::shared_ptr<mkldnn::softmax_forward::primitive_desc> fwd_pd_;
 };
 
@@ -199,16 +199,16 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = flattened_input.data<T>();
     T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
-    std::vector<int> dst_tz = src_tz;
+    auto src_tz = paddle::framework::vectorize<int>(flattened_dims);
+    auto dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
     // Generate keys for storing/retriving primitives for this operator
     const std::string key =
         platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
 
-    SoftmaxMKLDNNHandler<T> handler(softmax_tz, mkldnn::memory::format::nc,
-                                    dev_ctx, mkldnn_engine, key);
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc, dev_ctx,
+                                    mkldnn_engine, key);
 
     // Currently only NC data format is supported
     auto softmax_src_memory_p =
@@ -268,8 +268,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     const T* diff_dst_ptr = flattened_dout.template data<T>();
     T* diff_src_ptr = flattened_dx.template mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(flattened_dims);
-    std::vector<int> src_tz(dst_tz);
+    auto dst_tz = paddle::framework::vectorize<int>(flattened_dims);
+    auto src_tz(dst_tz);
 
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
@@ -288,8 +288,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // TODO(jczaja): Add layouts support when there is a need to do so
     // Two dimensional softmax does support NC format
     // Normalization is made after innermost dimension eg. C out of NC
-    SoftmaxMKLDNNHandler<T> handler(softmax_tz, mkldnn::memory::format::nc,
-                                    mkldnn::memory::format::nc, dev_ctx,
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc,
+                                    MKLDNNMemoryFormat::nc, dev_ctx,
                                     mkldnn_engine, key);
 
     auto dst_memory_p = handler.AcquireDstMemory(to_void_cast<T>(dst_data));
