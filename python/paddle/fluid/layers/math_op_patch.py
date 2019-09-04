@@ -42,7 +42,9 @@ def monkey_patch_variable():
                 'shape': shape,
                 'value': value,
                 'force_cpu': force_init_on_cpu()
-            })
+            },
+            stop_gradient=True)
+        var.stop_gradient = True
         return var
 
     def create_scalar(block, value, dtype):
@@ -68,7 +70,10 @@ def monkey_patch_variable():
                 'value': value,
                 'input_dim_idx': batch_dim,
                 'output_dim_idx': batch_dim
-            })
+            },
+            stop_gradient=True)
+
+        var.stop_gradient = True
         return var
 
     def astype(self, dtype):
@@ -174,6 +179,8 @@ def monkey_patch_variable():
         ("__rtruediv__", "elementwise_div", True),
         ("__pow__", "elementwise_pow", False),
         ("__rpow__", "elementwise_pow", True),
+        ("__floordiv__", "elementwise_floordiv", False),
+        ("__mod__", "elementwise_mod", False),
             # for logical compare
         ("__eq__", "equal", False),
         ("__ne__", "not_equal", False),

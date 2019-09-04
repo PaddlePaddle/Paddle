@@ -27,7 +27,7 @@ class TestDropoutOp(OpTest):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64)).astype('float32')
+            'Mask': np.ones((32, 64)).astype('uint8')
         }
 
     def test_check_output(self):
@@ -44,7 +44,7 @@ class TestDropoutOp2(TestDropoutOp):
         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': np.zeros((32, 64)).astype('float32'),
-            'Mask': np.zeros((32, 64)).astype('float32')
+            'Mask': np.zeros((32, 64)).astype('uint8')
         }
 
 
@@ -55,7 +55,7 @@ class TestDropoutOp3(TestDropoutOp):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64, 2)).astype('float32')
+            'Mask': np.ones((32, 64, 2)).astype('uint8')
         }
 
 
@@ -97,7 +97,7 @@ class TestDropoutOp6(TestDropoutOp):
         }
         self.outputs = {
             'Out': np.zeros((32, 64)).astype('float32'),
-            'Mask': np.zeros((32, 64)).astype('float32')
+            'Mask': np.zeros((32, 64)).astype('uint8')
         }
 
 
@@ -113,7 +113,7 @@ class TestDropoutOp7(TestDropoutOp):
         }
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64, 2)).astype('float32')
+            'Mask': np.ones((32, 64, 2)).astype('uint8')
         }
 
 

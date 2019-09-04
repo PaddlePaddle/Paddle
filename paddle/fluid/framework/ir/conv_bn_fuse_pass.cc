@@ -101,10 +101,9 @@ void recompute_bias_and_weights(const Scope* scope,
   weights_array_2d.colwise() *= variance_array;
 }
 
-std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -137,17 +136,20 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
       return;
     }
 
+    // Get batch norm bias
+    auto* bn_bias_tensor =
+        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
+
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    eltwise_y_in_desc.SetShape(framework::vectorize(bn_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(bn_bias_tensor->type());
+    eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
     eltwise_y_in_desc.SetPersistable(true);
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
         scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
-
-    // Get batch norm bias
-    auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
     // Initialize eltwise_y
     eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
@@ -187,7 +189,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
                             std::vector<std::string>({bn_out->Name()}));
 
       GraphSafeRemoveNodes(
-          graph.get(),
+          graph,
           {conv_out, bn_scale, bn_bias, bn_mean, bn_variance, batch_norm,
            bn_mean_out, bn_variance_out, bn_saved_mean, bn_saved_variance});
 
@@ -203,10 +205,9 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
       desc.SetAttr("axis", 1);
       auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
-      GraphSafeRemoveNodes(
-          graph.get(),
-          {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
-           bn_variance_out, bn_saved_mean, bn_saved_variance});
+      GraphSafeRemoveNodes(graph, {bn_scale, bn_bias, bn_mean, bn_variance,
+                                   batch_norm, bn_mean_out, bn_variance_out,
+                                   bn_saved_mean, bn_saved_variance});
 
       IR_NODE_LINK_TO(conv_out, eltwise_op);
       IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
@@ -215,16 +216,14 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     }
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_conv_bn_count);
-  return graph;
 }
 
-std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -274,7 +273,7 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
     eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
 
     GraphSafeRemoveNodes(
-        graph.get(),
+        graph,
         {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
          bn_variance_out, bn_saved_mean, bn_saved_variance, eltwise_out});
 
@@ -283,10 +282,9 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
     found_conv_bn_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_conv_bn_count);
-  return graph;
 }
 
 }  // namespace ir

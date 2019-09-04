@@ -108,24 +108,24 @@ class TestConv3dOp(OpTest):
         }
         self.outputs = {'Output': output}
 
-    def testcudnn(self):
+    def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
             place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
@@ -135,7 +135,7 @@ class TestConv3dOp(OpTest):
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
             place, ['Input'],
             'Output',

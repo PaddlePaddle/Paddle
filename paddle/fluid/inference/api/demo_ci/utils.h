@@ -88,13 +88,20 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
       }
       break;
     }
-    case PaddleDType::FLOAT32:
+    case PaddleDType::FLOAT32: {
       for (size_t i = 0; i < numel; ++i) {
         CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
             1e-5);
       }
       break;
+    }
+    case PaddleDType::INT32: {
+      for (size_t i = 0; i < numel; ++i) {
+        CHECK_EQ(static_cast<int32_t*>(output.data.data())[i], refer.data[i]);
+      }
+      break;
+    }
   }
 }
 
@@ -113,11 +120,18 @@ static std::string SummaryTensor(const PaddleTensor& tensor) {
       }
       break;
     }
-    case PaddleDType::FLOAT32:
+    case PaddleDType::FLOAT32: {
       for (int i = 0; i < std::min(num_elems, 10); i++) {
         ss << static_cast<float*>(tensor.data.data())[i] << " ";
       }
       break;
+    }
+    case PaddleDType::INT32: {
+      for (int i = 0; i < std::min(num_elems, 10); i++) {
+        ss << static_cast<int32_t*>(tensor.data.data())[i] << " ";
+      }
+      break;
+    }
   }
   return ss.str();
 }

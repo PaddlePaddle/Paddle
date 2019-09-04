@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -32,53 +33,59 @@ class SGDOpKernel : public framework::OpKernel<T> {
     if (param_var->IsType<framework::LoDTensor>()) {
       const auto *param = ctx.Input<framework::Tensor>("Param");
       auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-
       // Actually, all tensors are LoDTensor except SelectedRows.
       if (grad_var->IsType<framework::LoDTensor>()) {
-        param_out->mutable_data<T>(ctx.GetPlace());
         const auto *grad = ctx.Input<framework::Tensor>("Grad");
+        auto sz = param_out->numel();
+        PADDLE_ENFORCE_EQ(param->numel(), sz);
+        PADDLE_ENFORCE_EQ(grad->numel(), sz);
 
-        auto p = framework::EigenVector<T>::Flatten(*param);
-        auto g = framework::EigenVector<T>::Flatten(*grad);
-        auto o = framework::EigenVector<T>::Flatten(*param_out);
-        auto *lr = learning_rate->data<T>();
+        jit::sgd_attr_t attr(1, sz, 1, sz, 1);
+        const T *lr = learning_rate->data<T>();
+        const T *param_data = param->data<T>();
+        const T *grad_data = grad->data<T>();
+        int64_t rows_idx = 0;
+        T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
-        o = p - lr[0] * g;
+        auto sgd =
+            jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
+                attr);
+        sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
       } else if (grad_var->IsType<framework::SelectedRows>()) {
         // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
         // This manual optimization brings difficulty to track data dependency.
         // It's better to find a more elegant solution.
         PADDLE_ENFORCE_EQ(param, param_out);
         const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+        auto &grad_rows = grad->rows();
 
         // for distributed training, a sparse var may be empty,
         // just skip updating.
-        if (grad->rows().size() == 0) {
+        if (grad_rows.size() == 0) {
           return;
         }
 
-        auto grad_height = grad->height();
         auto out_dims = param_out->dims();
-        PADDLE_ENFORCE_EQ(grad_height, out_dims[0]);
-
+        PADDLE_ENFORCE_EQ(grad->height(), out_dims[0]);
         auto &grad_value = grad->value();
-        auto &grad_rows = grad->rows();
+        const T *param_data = param->data<T>();
+        const T *grad_data = grad_value.data<T>();
+        const T *lr = learning_rate->data<T>();
+        const int64_t *rows_data = grad_rows.data();
+        T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
-        size_t grad_row_numel = grad_value.numel() / grad_rows.size();
-        PADDLE_ENFORCE_EQ(static_cast<int64_t>(grad_row_numel),
-                          param_out->numel() / grad_height);
+        jit::sgd_attr_t attr;
+        attr.param_height = out_dims[0];
+        attr.param_width = param_out->numel() / attr.param_height;
+        attr.grad_height = grad_rows.size();  // note: it is not grad->height()
+        attr.grad_width = grad_value.numel() / attr.grad_height;
+        attr.selected_rows_size = grad_rows.size();
+        PADDLE_ENFORCE_EQ(attr.grad_width, attr.param_width);
 
-        auto *grad_data = grad_value.data<T>();
-        auto *out_data = param_out->data<T>();
-        auto *lr = learning_rate->data<T>();
-        for (size_t i = 0; i < grad_rows.size(); i++) {
-          PADDLE_ENFORCE(grad_rows[i] < grad_height,
-                         "Input rows index should less than height");
-          for (size_t j = 0; j < grad_row_numel; j++) {
-            out_data[grad_rows[i] * grad_row_numel + j] -=
-                lr[0] * grad_data[i * grad_row_numel + j];
-          }
-        }
+        auto sgd =
+            jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
+                attr);
+        sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
       }

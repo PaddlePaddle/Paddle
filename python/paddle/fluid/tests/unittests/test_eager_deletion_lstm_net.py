@@ -16,6 +16,8 @@ from test_eager_deletion_dynamic_rnn_base import TestBase
 import paddle.fluid as fluid
 import unittest
 
+fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
+
 
 def lstm_net(data,
              label,

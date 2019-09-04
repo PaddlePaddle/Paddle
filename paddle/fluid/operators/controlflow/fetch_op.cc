@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -54,7 +55,22 @@ class FetchOp : public framework::OperatorBase {
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
-    TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+    if (src_item.IsInitialized() && src_item.numel() > 0) {
+      // Conversion from MKL-DNN to Paddle
+      if (src_item.layout() == framework::DataLayout::kMKLDNN) {
+        framework::Tensor out;
+        framework::innerTransDataLayoutFromMKLDNN(
+            src_item.layout(), framework::DataLayout::kNCHW, src_item, &out,
+            platform::CPUPlace());
+        TensorCopySync(out, platform::CPUPlace(), &dst_item);
+      } else {
+        TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+      }
+    } else {
+      // Not copy, if the src tensor is empty.
+      dst_item.clear();
+      dst_item.Resize({0});
+    }
     dst_item.set_lod(src_item.lod());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;

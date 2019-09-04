@@ -14,10 +14,7 @@
 
 from . import executor
 from .executor import *
-from . import graph
-from .graph import *
-from . import graph_pass
-from .graph_pass import *
+from . import graph_wrapper
+from .graph_wrapper import *
 __all__ = executor.__all__
-__all__ += graph.__all__
-__all__ += graph_pass.__all__
+__all__ += graph_wrapper.__all__

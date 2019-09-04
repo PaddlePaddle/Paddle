@@ -544,5 +544,44 @@ class TestFtrlOptimizer(unittest.TestCase):
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
 
+class TestLookaheadOptimizer(unittest.TestCase):
+    def test_lookahead_optimizer(self):
+        init_program = framework.Program()
+        program = framework.Program()
+        block = program.global_block()
+        init_block = init_program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
+        init_mul_x = init_block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+
+        sgd = optimizer.SGD(learning_rate=0.01)
+        lookahead = optimizer.LookaheadOptimizer(sgd, alpha=0.5, k=5)
+        with framework.program_guard(program, init_program):
+            opts, _ = lookahead.minimize(mean_out)
+        self.assertEqual(len(opts), 3)
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", "sgd"])
+
+
 if __name__ == '__main__':
     unittest.main()

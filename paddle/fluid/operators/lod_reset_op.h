@@ -29,6 +29,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* in = ctx.Input<framework::LoDTensor>("X");
     auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
+    bool append = ctx.Attr<bool>("append");
 
     out->ShareDataWith(*in);
 
@@ -63,7 +64,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
                       "Target LoD should be a vector end with the "
                       "first dimension of Input(X).");
     for (size_t i = 0; i < level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(level0[i + 1] > level0[i],
+      PADDLE_ENFORCE(level0[i + 1] >= level0[i],
                      "Target LoD should be an ascending vector.");
     }
 
@@ -71,9 +72,14 @@ class LoDResetKernel : public framework::OpKernel<T> {
     std::vector<size_t> ulevel0(level0.size(), 0);
     std::transform(level0.begin(), level0.end(), ulevel0.begin(),
                    [](int a) { return static_cast<size_t>(a); });
-    framework::LoD target_lod;
-    target_lod.push_back(ulevel0);
-    out->set_lod(target_lod);
+    if (append) {
+      auto* out_lod = out->mutable_lod();
+      out_lod->push_back(ulevel0);
+    } else {
+      framework::LoD target_lod;
+      target_lod.push_back(ulevel0);
+      out->set_lod(target_lod);
+    }
   }
 };
 

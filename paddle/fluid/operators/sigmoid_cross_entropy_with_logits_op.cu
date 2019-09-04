@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "cub/cub.cuh"
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -20,11 +21,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-static HOSTDEVICE float real_exp(float x) { return expf(x); }
-static HOSTDEVICE float real_exp(double x) { return exp(x); }
-static HOSTDEVICE float real_log(float x) { return logf(x); }
-static HOSTDEVICE float real_log(double x) { return log(x); }
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;

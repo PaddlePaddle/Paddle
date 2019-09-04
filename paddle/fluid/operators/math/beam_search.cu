@@ -119,6 +119,18 @@ __device__ __forceinline__ int SelectTopBeam(
       __syncthreads();
     }
 
+    if ((num_used_threads & 0x1) != 0) {
+      // If num_used_threads is a odd number, merge local top_beam of thread 0
+      // and num_used_threads - 1
+      if (tid_of_seq == 0) {
+        int index_in_sh = (num_used_threads - 1 + tid) * beam_size;
+        for (int i = 0; i < beam_size; i++) {
+          Insert(top_beam_local, top_beam[index_in_sh], beam_size);
+          index_in_sh++;
+        }
+      }
+    }
+
     num_used_threads = num_used_threads >> 1;
     if (tid_of_seq < num_used_threads) {
       int index_in_sh = (num_used_threads + tid) * beam_size;
@@ -156,6 +168,7 @@ __device__ __forceinline__ bool PruneEndBeams(Triple* top_beam_local,
   return finish_flag;
 }
 
+template <bool ReturnParentIdx = false>
 __device__ __forceinline__ void WriteBack(
     int64_t* selected_ids, float* selected_scores, int* parent_idx,
     size_t* selected_offsets, Triple* top_beam_local,
@@ -171,7 +184,9 @@ __device__ __forceinline__ void WriteBack(
         selected_ids[global_index] =
             static_cast<int64_t>(top_beam_local[local_index].id);
         selected_scores[global_index] = top_beam_local[local_index].score;
-        parent_idx[global_index] = static_cast<int>(global_offset);
+        if (ReturnParentIdx) {
+          parent_idx[global_index] = static_cast<int>(global_offset);
+        }
         global_index++;
       }
     }
@@ -229,9 +244,15 @@ __device__ void BeamSearchDetails(
       selected_offsets[0] = 0;
     }
 
-    WriteBack(selected_ids, selected_scores, parent_idx, selected_offsets,
-              top_beam_local, seq_offset_start, seq_offset_end,
-              selected_seq_start, selected_seq_length);
+    if (parent_idx) {
+      WriteBack<true>(selected_ids, selected_scores, parent_idx,
+                      selected_offsets, top_beam_local, seq_offset_start,
+                      seq_offset_end, selected_seq_start, selected_seq_length);
+    } else {
+      WriteBack<false>(selected_ids, selected_scores, parent_idx,
+                       selected_offsets, top_beam_local, seq_offset_start,
+                       seq_offset_end, selected_seq_start, selected_seq_length);
+    }
   }
 }
 
@@ -325,8 +346,12 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
         selected_ids->mutable_data<int64_t>(selected_dims, context.GetPlace());
     float* selected_scores_data =
         selected_scores->mutable_data<float>(selected_dims, context.GetPlace());
-    int* parent_idx_data = parent_idx->mutable_data<int>(
-        {static_cast<int64_t>(num_seqs * beam_size)}, context.GetPlace());
+    int* parent_idx_data =
+        parent_idx
+            ? parent_idx->mutable_data<int>(
+                  {static_cast<int64_t>(num_seqs * beam_size)},
+                  context.GetPlace())
+            : nullptr;
 
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
@@ -384,7 +409,9 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
           {static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
-      parent_idx->Resize({static_cast<int64_t>(selected_lod[1].back())});
+      if (parent_idx) {
+        parent_idx->Resize({static_cast<int64_t>(selected_lod[1].back())});
+      }
     }
   }
 };

@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -23,12 +25,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times>
-std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -115,34 +114,24 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     concat_out->inputs.push_back(new_conv_op);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), delete_nodes);
+    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
-template class TransposeFlattenConcatFusePass<1>;
-template class TransposeFlattenConcatFusePass<3>;
-template class TransposeFlattenConcatFusePass<4>;
-template class TransposeFlattenConcatFusePass<5>;
-template class TransposeFlattenConcatFusePass<6>;
+void TransposeFlattenConcatFusePass::ApplyImpl(ir::Graph *graph) const {
+  const int pattern_nums = 6;
+  const std::string pattern_name = "transpose_flatten_concat_fuse";
+  FusePassBase::Init(pattern_name, graph);
+  for (int i = 1; i <= pattern_nums; i++) {
+    RunTransposeFlattenConcatFuse(graph, i);
+  }
+}
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(transpose_flatten_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<1>);
-
-REGISTER_PASS(transpose_flatten3_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<3>);
-
-REGISTER_PASS(transpose_flatten4_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<4>);
-
-REGISTER_PASS(transpose_flatten5_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<5>);
-
-REGISTER_PASS(transpose_flatten6_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<6>);
+              paddle::framework::ir::TransposeFlattenConcatFusePass);

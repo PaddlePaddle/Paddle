@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
+#include <ThreadPool.h>
+#include <list>
 #include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
@@ -38,6 +41,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ScopeBufferedSSAGraphExecutor(
       ExecutionStrategy strategy, std::vector<Scope*> local_scopes,
+      std::vector<Scope*> local_exec_scopes,
       std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
       std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
 
@@ -47,20 +51,25 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
 
- private:
-  inline void WaitComputationalStreams() {
-    // Wait All computational streams
-    for (auto p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-    }
-  }
+  void DropLocalExeScopes();
+
+  bool NeedCreateLocalExeScope();
+
+  void PrepareLocalExeScopes();
 
  private:
+  void InitVariables();
+
   size_t drop_scope_counter_{0};
-
   ExecutionStrategy strategy_;
   std::unique_ptr<SSAGraphExecutor> underlying_executor_;
   std::vector<Scope*> local_scopes_;
+
+  std::vector<Scope*> local_exec_scopes_;
+  std::vector<std::unordered_set<Variable*>> preserve_vars_;
+  std::vector<std::vector<std::pair<Variable*, proto::VarType::Type>>>
+      tmp_var_infos_;
+
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
 };

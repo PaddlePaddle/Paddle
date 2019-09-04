@@ -198,7 +198,9 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
             roi2image[j] = i
 
     out = np.zeros([rois_num, channels, transformed_height, transformed_width])
-
+    mask = np.zeros(
+        [rois_num, 1, transformed_height, transformed_width]).astype('int')
+    matrix = np.zeros([rois_num, 9], dtype=in_data.dtype)
     for n in range(rois_num):
         roi_x = []
         roi_y = []
@@ -208,7 +210,7 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
         image_id = roi2image[n]
         transform_matrix = get_transform_matrix(
             transformed_width, transformed_height, roi_x, roi_y)
-
+        matrix[n] = transform_matrix
         for c in range(channels):
             for out_h in range(transformed_height):
                 for out_w in range(transformed_width):
@@ -219,9 +221,11 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
                                 in_h, -0.5) and lt_e(in_h, in_height - 0.5):
                         out[n][c][out_h][out_w] = bilinear_interpolate(
                             in_data, image_id, c, in_w, in_h)
+                        mask[n][0][out_h][out_w] = 1
                     else:
                         out[n][c][out_h][out_w] = 0.0
-    return out.astype("float32")
+                        mask[n][0][out_h][out_w] = 0
+    return out.astype("float32"), mask, matrix
 
 
 class TestROIPoolOp(OpTest):
@@ -236,10 +240,14 @@ class TestROIPoolOp(OpTest):
             'transformed_height': self.transformed_height,
             'transformed_width': self.transformed_width
         }
-        out = roi_transform(self.x, self.rois, self.rois_lod,
-                            self.transformed_height, self.transformed_width,
-                            self.spatial_scale)
-        self.outputs = {'Out': out}
+        out, mask, transform_matrix = roi_transform(
+            self.x, self.rois, self.rois_lod, self.transformed_height,
+            self.transformed_width, self.spatial_scale)
+        self.outputs = {
+            'Out': out,
+            'Mask': mask,
+            'TransformMatrix': transform_matrix
+        }
 
     def init_test_case(self):
         self.batch_size = 2
@@ -299,6 +307,10 @@ class TestROIPoolOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        self.outputs['Out2InIdx'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("int32")
+        self.outputs['Out2InWeights'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("float32")
         self.check_grad(['X'], 'Out')
 
 

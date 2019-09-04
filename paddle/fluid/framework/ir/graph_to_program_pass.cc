@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -26,8 +28,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
-    std::unique_ptr<Graph> graph) const {
+void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
   if (graph->Has(kGraphToProgramVarsToRemove)) {
@@ -73,7 +74,6 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
   }
 
   program.CopyFrom(*program_pb);
-  return graph;
 }
 
 }  // namespace ir
