@@ -492,11 +492,9 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       for (auto &iter:send_varname_to_queue_) {
         std::string local_var_name = iter.first;
         auto &queue = send_varname_to_queue_.at(local_var_name);
-        VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();
-        
+        VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();   
         SendUpdateVars(local_var_name);
-        auto *delta_var = delta_scope_->FindVar(var_name);
-
+        auto *delta_var = delta_scope_->FindVar(local_var_name);
         auto tmp_param_var = std::make_shared<Variable>();
         framework::CopyVariable(*delta_var, tmp_param_var.get());
         queue->Push(tmp_param_var);
@@ -504,8 +502,6 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       need_push_.store(0);
     }
   }
-  
-  
 }
 
 void Communicator::GeoSgdParamInit(framework::Scope *scope){
