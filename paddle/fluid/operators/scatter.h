@@ -136,6 +136,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
     memset(result_p_output + slice_size * index_, 0, slice_bytes);
   }
 
+  // if not in overwrite mode, need to init output data
   for (int i = 0; i < index_size; ++i) {
     const IndexT& index_ = p_index[i];
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
