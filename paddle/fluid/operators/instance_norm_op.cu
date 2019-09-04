@@ -397,6 +397,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
         add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
             d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
       }
+
       CUDNN_ENFORCE(
           platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
       CUDNN_ENFORCE(
@@ -466,13 +467,16 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
     T dy_mul_x_sub_mean_sum = 0;
     T ddx_mul_x_sub_mean_sum = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      dy_sum += dy[i];
-      ddx_sum += ddx[i];
-      dy_mul_ddx_sum += (ddx[i] * dy[i]);
-
+      T ddx_i = ddx[i];
+      T dy_i = dy[i];
       T tmp = x[i] - mean_val;
-      dy_mul_x_sub_mean_sum += (dy[i] * tmp);
-      ddx_mul_x_sub_mean_sum += (ddx[i] * tmp);
+
+      dy_sum += dy_i;
+      ddx_sum += ddx_i;
+      dy_mul_ddx_sum += (ddx_i * dy_i);
+
+      dy_mul_x_sub_mean_sum += (dy_i * tmp);
+      ddx_mul_x_sub_mean_sum += (ddx_i * tmp);
     }
 
     dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
@@ -510,8 +514,8 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
     __syncthreads();
     if (ddscale != nullptr) {
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dx[i] += (dy[i] * var_val - dy_sum / sample_size * var_val -
-                  (x[i] - mean_val) * var_val * dy_mul_x_sub_mean_sum *
+        dx[i] += (dy[i] * var_val - dy_sum_val / sample_size * var_val -
+                  (x[i] - mean_val) * var_val * dy_mul_x_sub_mean_sum_val *
                       var_val / sample_size) *
                  ddscale[c];
       }
@@ -553,8 +557,9 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
     T ddx_sum = 0;
     T ddx_mul_x_sub_mean_sum = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      ddx_sum += ddx[i];
-      ddx_mul_x_sub_mean_sum += (ddx[i] * (x[i] - mean_val));
+      T ddx_i = ddx[i];
+      ddx_sum += ddx_i;
+      ddx_mul_x_sub_mean_sum += (ddx_i * (x[i] - mean_val));
     }
     ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
     ddx_mul_x_sub_mean_sum = BlockReduce(ddx_mul_x_sub_mean_storage)
@@ -580,6 +585,7 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
         ddy[i] += (x[i] - mean_val) * var_val * ddscale[c];
       }
     }
+    __syncthreads();
     if (ddbias != nullptr) {
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
         ddy[i] += ddbias[c];
@@ -626,14 +632,16 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
     typedef cub::BlockReduce<T, BlockDim> BlockReduce;
     __shared__ typename BlockReduce::TempStorage dy_storage;
     __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
+    __shared__ typename BlockReduce::TempStorage dscale_tmp_storage;
     __shared__ T dy_sum_val;
     __shared__ T dy_mul_x_sub_mean_sum_val;
 
     T dy_sum = 0;
     T dy_mul_x_sub_mean_sum = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      dy_sum += dy[i];
-      dy_mul_x_sub_mean_sum += (dy[i] * (x[i] - mean_val));
+      T dy_i = dy[i];
+      dy_sum += dy_i;
+      dy_mul_x_sub_mean_sum += (dy_i * (x[i] - mean_val));
     }
     dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
     dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
@@ -646,11 +654,17 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
     __syncthreads();
 
     if (ddx != nullptr) {
+      T dscale_tmp = 0;
       for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dscale[c] +=
+        dscale_tmp +=
             ddx[i] * var_val * (dy[i] - dy_sum_val / sample_size -
                                 dy_mul_x_sub_mean_sum_val * (x[i] - mean_val) *
                                     var_val * var_val / sample_size);
+      }
+      dscale_tmp =
+          BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
+      if (threadIdx.x == 0) {
+        dscale[c] = dscale_tmp;
       }
     }
   } else {
