@@ -23,6 +23,33 @@ import paddle.fluid.core as core
 from test_parallel_executor_mnist import simple_fc_net, fc_with_batchnorm
 import seresnext_net
 from test_parallel_executor_transformer import transformer, get_feed_data_reader
+from fake_reader import fake_imdb_reader
+
+
+def lstm_net(use_feed):
+    dict_dim = 5147
+    emb_dim = 128
+    hid_dim = 128
+    hid_dim2 = 96
+    class_dim = 2
+    emb_lr = 30.0
+    data = fluid.layers.data(
+        name="words", shape=[1], dtype="int64", lod_level=1)
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    emb = fluid.layers.embedding(
+        input=data,
+        size=[dict_dim, emb_dim],
+        param_attr=fluid.ParamAttr(learning_rate=emb_lr))
+    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
+    lstm_h, c = fluid.layers.dynamic_lstm(
+        input=fc0, size=hid_dim * 4, is_reverse=False)
+    lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
+    lstm_max_tanh = fluid.layers.tanh(lstm_max)
+    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
+    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
+    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
+    return avg_cost
 
 
 class TestProgramPruneBackward(unittest.TestCase):
@@ -39,37 +66,39 @@ class TestProgramPruneBackward(unittest.TestCase):
             block_a = program_a.blocks[idx]
             block_b = program_b.blocks[idx]
             self.assertEqual(len(block_a.ops), len(block_b.ops))
-            # self.assertEqual(len(block_a.vars), len(block_b.vars))
             for op_idx in range(len(block_a.ops)):
                 self.assertEqual(block_a.ops[op_idx].type,
                                  block_b.ops[op_idx].type)
             for var_key in list(block_a.vars.keys()):
-                if block_a.vars[var_key].type == core.VarDesc.VarType.RAW:
+                # FIXME(chenweihang): these variables are independent in scope, and used for cache.
+                # Because they are not associated with op, the prune function can't find them.
+                # Pruning these variabels doesn't affect the correctness of execution
+                if block_a.vars[var_key].name == "kCUDNNFwdAlgoCache" or \
+                        block_a.vars[var_key].name == "kCUDNNBwdDataAlgoCache" or \
+                        block_a.vars[var_key].name == "kCUDNNBwdFilterAlgoCache":
                     continue
                 self.assertTrue(block_b.has_var(var_key))
 
     def check_prune_correctness(self, method, feed_dict, optimizer):
-        with self.program_scope_guard():
-            loss = method(use_feed=False)
+        loss = method(use_feed=False)
 
-            main_program = fluid.default_main_program()
-            test_prog_orig = main_program.clone(for_test=True)
-            optimizer().minimize(loss)
-            test_prog_prune = main_program.clone(for_test=True)
+        main_program = fluid.default_main_program()
+        test_prog_orig = main_program.clone(for_test=True)
+        optimizer().minimize(loss)
+        test_prog_prune = main_program.clone(for_test=True)
+        self.program_compare(test_prog_orig, test_prog_prune)
 
-            place = core.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
 
-            loss_data_orig, = exe.run(test_prog_orig,
-                                      feed=feed_dict,
-                                      fetch_list=[loss.name])
-            loss_data_prune, = exe.run(test_prog_prune,
-                                       feed=feed_dict,
-                                       fetch_list=[loss.name])
-
-            self.program_compare(test_prog_orig, test_prog_prune)
-            self.assertEqual(loss_data_orig, loss_data_prune)
+        loss_data_orig, = exe.run(test_prog_orig,
+                                  feed=feed_dict,
+                                  fetch_list=[loss.name])
+        loss_data_prune, = exe.run(test_prog_prune,
+                                   feed=feed_dict,
+                                   fetch_list=[loss.name])
+        self.assertEqual(loss_data_orig, loss_data_prune)
 
     def _init_fc_data(self):
         np.random.seed(5)
@@ -84,12 +113,13 @@ class TestProgramPruneBackward(unittest.TestCase):
                 regularization=fluid.regularizer.L2Decay(1e-4))
             return optimizer
 
-        img, label = self._init_fc_data()
-        self.check_prune_correctness(
-            method=simple_fc_net,
-            feed_dict={"image": img,
-                       "label": label},
-            optimizer=optimizer)
+        with self.program_scope_guard():
+            img, label = self._init_fc_data()
+            self.check_prune_correctness(
+                method=simple_fc_net,
+                feed_dict={"image": img,
+                           "label": label},
+                optimizer=optimizer)
 
     def test_batchnorm_fc(self):
         def optimizer():
@@ -98,18 +128,20 @@ class TestProgramPruneBackward(unittest.TestCase):
                 regularization=fluid.regularizer.L2Decay(1e-4))
             return optimizer
 
-        img, label = self._init_fc_data()
-        self.check_prune_correctness(
-            method=fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
-            optimizer=optimizer)
+        with self.program_scope_guard():
+            img, label = self._init_fc_data()
+            self.check_prune_correctness(
+                method=fc_with_batchnorm,
+                feed_dict={"image": img,
+                           "label": label},
+                optimizer=optimizer)
 
     def test_seresnet(self):
-        self.check_prune_correctness(
-            method=seresnext_net.model,
-            feed_dict=seresnext_net.feed_dict(use_cuda=False),
-            optimizer=seresnext_net.optimizer)
+        with self.program_scope_guard():
+            self.check_prune_correctness(
+                method=seresnext_net.model,
+                feed_dict=seresnext_net.feed_dict(use_cuda=False),
+                optimizer=seresnext_net.optimizer)
 
     def test_transformer(self):
         def optimizer():
@@ -118,11 +150,31 @@ class TestProgramPruneBackward(unittest.TestCase):
                 regularization=fluid.regularizer.L2Decay(1e-4))
             return optimizer
 
-        # the program argument is used to distinguish Program and CompiledProgram
-        feed_dict = get_feed_data_reader().get_next(
-            fluid.Executor(core.CPUPlace()), fluid.default_main_program())
-        self.check_prune_correctness(
-            method=transformer, feed_dict=feed_dict, optimizer=optimizer)
+        with self.program_scope_guard():
+            # the program argument is used to distinguish Program and CompiledProgram
+            feed_dict = get_feed_data_reader().get_next(
+                fluid.Executor(core.CPUPlace()), fluid.default_main_program())
+            self.check_prune_correctness(
+                method=transformer, feed_dict=feed_dict, optimizer=optimizer)
+
+    def test_lstm(self):
+        def optimizer():
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=0.001,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            return optimizer
+
+        with self.program_scope_guard():
+            word_dict_size = 5147
+            reader = fake_imdb_reader(word_dict_size, 1)
+            data = fluid.layers.data(
+                name="words", shape=[1], dtype="int64", lod_level=1)
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            feeder = fluid.DataFeeder(
+                feed_list=[data, label], place=core.CPUPlace())
+            feed_data = feeder.feed(reader())
+            self.check_prune_correctness(
+                method=lstm_net, feed_dict=feed_data, optimizer=optimizer)
 
     @contextlib.contextmanager
     def program_scope_guard(self):
