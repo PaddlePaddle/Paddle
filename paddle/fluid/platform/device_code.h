@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_CUDA
