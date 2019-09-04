@@ -114,7 +114,7 @@ Communicator::~Communicator() {
 }
 
 void Communicator::SendThread() {
-  VLOG(3) << "SendThread start!";
+  VLOG(1) << "SendThread start!";
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
@@ -164,7 +164,7 @@ void Communicator::SendThread() {
                     << after_send - after_merge;
           }
           else if (is_geo_sgd_) {
-            VLOG(3) << "geo sgd send var: "<< var_name;
+            VLOG(1) << "geo sgd send var: "<< var_name;
             auto before_send = GetCurrentUS();
             auto send_functor = distributed::ParameterSend<float>();
             auto &ctx = send_varname_to_ctx_.at(var_name);
@@ -172,7 +172,7 @@ void Communicator::SendThread() {
               send_functor(ctx, *delta_scope_.get(), true);
             }
             auto after_send = GetCurrentUS();
-            VLOG(3) << "send " << var_name << " use time "
+            VLOG(1) << "send " << var_name << " use time "
                     << after_send - before_send;
           }
         };
@@ -209,7 +209,7 @@ void Communicator::RecvNonIndependent() {
 }
 
 void Communicator::RecvAll() {
-  VLOG(3) << "parallel run recv graph";
+  VLOG(1) << "parallel run recv graph";
   if (!running_) return;
   auto before_send = GetCurrentUS();
   std::vector<std::future<void>> task_futures;
@@ -217,7 +217,7 @@ void Communicator::RecvAll() {
   for (auto &iter : recv_varname_to_ctx_) {
     auto recv_task = [this, &iter] {
       auto &var_name = iter.first;
-      VLOG(4) << "recv var " << var_name;
+      VLOG(1) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
       if (!FLAGS_communicator_fake_rpc && !is_geo_sgd_) {
         recv_functor(iter.second, *recv_scope_);
@@ -238,7 +238,7 @@ void Communicator::RecvAll() {
 }
 
 void Communicator::RecvThread() {
-  VLOG(3) << "RecvThread start!";
+  VLOG(1) << "RecvThread start!";
   while (running_) {
     auto grad_num = grad_num_.load();
     if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
@@ -413,11 +413,11 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   }
   is_geo_sgd_ = true;
   delta_scope_.reset(new Scope()); //parameter on pserver
-  VLOG(3) << "Init delta scope";
+  VLOG(1) << "Init delta scope";
   GeoSgdParamInit(delta_scope_.get());
   
   old_scope_.reset(new Scope()); //parameter local, storage the param after last recv
-  VLOG(3) << "Init old scope";
+  VLOG(1) << "Init old scope";
   GeoSgdParamInit(old_scope_.get());
 }
 
@@ -444,7 +444,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
           var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
-      VLOG(3) << "find and init an send&recv param: "<< send_varname_to_ctx[var_name];
+      VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[var_name];
   }
   // init communicator here
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
@@ -455,7 +455,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
 
 void Communicator::GeoSgdSend(const std::string& var_name, 
                               const framework::Scope& scope) {
-  VLOG(3) << "geo sgd communicator get loop num"<< var_name;
+  VLOG(1) << "geo sgd communicator get loop num"<< var_name;
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
@@ -475,7 +475,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     {
       std::string local_var_name = iter.first;
       auto &queue = send_varname_to_queue_.at(local_var_name);
-      VLOG(3) << "send " << local_var_name << " queue size " << queue->Size();
+      VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();
       
       SendUpdateVars(local_var_name);
       auto *delta_var = delta_scope_->FindVar(var_name);
@@ -520,15 +520,20 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     auto var_x_tensor = var_x->Get<framework::LoDTensor>();
     auto var_y_tensor = var_y->Get<framework::LoDTensor>();
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
-
     int element_number = var_x_tensor.numel();
     float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
     float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
+    VLOG(1) << "Send before update Vars recv_scope: "<<x_mutable_data;
+    VLOG(1) << "Send before update Vars old_scope: "<<y_mutable_data;
+    VLOG(1) << "Send before update Vars delta_scope: "<<z_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] += z_mutable_data[i] / (float)(trainer_nums_);
     }
+    VLOG(1) << "Send after update Vars recv_scope: "<<x_mutable_data;
+    VLOG(1) << "Send after update Vars old_scope: "<<y_mutable_data;
+    VLOG(1) << "Send after update Vars delta_scope: "<<z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
@@ -551,10 +556,16 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
     float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
+    VLOG(1) << "Recv before update Vars recv_scope: "<<x_mutable_data;
+    VLOG(1) << "Recv before update Vars old_scope: "<<y_mutable_data;
+    VLOG(1) << "Recv before update Vars delta_scope: "<<z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] += z_mutable_data[i];
     }
+    VLOG(1) << "Recv after update Vars recv_scope: "<<x_mutable_data;
+    VLOG(1) << "Recv after update Vars old_scope: "<<y_mutable_data;
+    VLOG(1) << "Recv after update Vars delta_scope: "<<z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
