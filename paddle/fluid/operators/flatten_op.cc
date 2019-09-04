@@ -147,7 +147,7 @@ class FlattenGradOp : public framework::OperatorBase {
     auto in_dims =
         scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(in_dims);
+    attrs["shape"] = framework::vectorize<int>(in_dims);
     attrs["inplace"] = false;
 
     auto reshape_op = framework::OpRegistry::CreateOp(
@@ -257,7 +257,7 @@ class Flatten2GradOp : public framework::OperatorBase {
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["shape"] = framework::vectorize<int>(x_dims);
     attrs["inplace"] = false;
 
     auto reshape_grad_op = framework::OpRegistry::CreateOp(
