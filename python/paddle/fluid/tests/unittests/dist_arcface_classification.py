@@ -17,22 +17,24 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.layers.collective as collective
+import paddle.fluid.layers.dist_algo as dist_algo
 from paddle.fluid.initializer import NumpyArrayInitializer
-from test_dist_classification_base import DistClassificationRunner, runtime_main
+from dist_classification_base import DistClassificationRunner
+from test_dist_collective_base import runtime_main
 
 
-# TODO donot transpose weight
+# TODO(gavin1332) check whether it is necessary to transpose weight
 class DistArcfaceClassificationRunner(DistClassificationRunner):
     @classmethod
-    def add_arguments(cls, parser):
+    def add_other_arguments(cls, parser):
         parser.add_argument('--arcface_margin', type=float, default=0.0)
         parser.add_argument('--arcface_scale', type=float, default=1.0)
 
     def __init__(self, args):
         super(DistArcfaceClassificationRunner, self).__init__(args)
         np.random.seed(1024)
-        self.param_value = np.random.rand(args.class_num, args.feature_size)
+        self.param_value = np.random.rand(self.args.class_num,
+                                          self.args.feature_size)
 
     def local_classify_subnet(self, feature, label):
         args = self.args
@@ -76,7 +78,7 @@ class DistArcfaceClassificationRunner(DistClassificationRunner):
         shard_start = shard_dim * args.rank
         rank_param_value = self.param_value[shard_start:(shard_start + shard_dim
                                                          ), :]
-        cost = layers.collective._distributed_arcface_classify(
+        cost = layers.dist_algo._distributed_arcface_classify(
             x=feature,
             label=label,
             class_num=args.class_num,

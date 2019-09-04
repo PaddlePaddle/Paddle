@@ -17,16 +17,13 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.fluid.layers.dist_algo as dist_algo
 from paddle.fluid.initializer import NumpyArrayInitializer
-from test_dist_classification_base import DistClassificationRunner, runtime_main
+from dist_classification_base import DistClassificationRunner
+from test_dist_collective_base import runtime_main
 
 
-# TODO bias attr
 class DistSoftmaxClassificationRunner(DistClassificationRunner):
-    @classmethod
-    def add_arguments(cls, parser):
-        pass
-
     def __init__(self, args):
         super(DistSoftmaxClassificationRunner, self).__init__(args)
         np.random.seed(1024)
@@ -47,7 +44,7 @@ class DistSoftmaxClassificationRunner(DistClassificationRunner):
         shard_start = shard_dim * args.rank
         rank_param_value = self.param_value[:, shard_start:(shard_start +
                                                             shard_dim)]
-        cost = layers.collective._distributed_fc_classify(
+        cost = layers.dist_algo._distributed_softmax_classify(
             x=feature,
             label=label,
             class_num=args.class_num,

@@ -51,19 +51,26 @@ class Collective(object):
         self.op_role_key = op_maker.kOpRoleAttrName()
         self.op_role_var_key = op_maker.kOpRoleVarAttrName()
 
-    def transpile(self, startup_program, main_program, rank, endpoints,
-                  current_endpoint, wait_port):
+    def transpile(self,
+                  rank,
+                  endpoints,
+                  current_endpoint,
+                  wait_port,
+                  startup_program=None,
+                  main_program=None):
         # in case of '127.0.0.1:6700,127.0.0.1:6701,...'
         if isinstance(endpoints, str):
             endpoints = endpoints.split(',')
 
-        self.startup_program = startup_program
         if startup_program is None:
             self.startup_program = default_startup_program()
+        else:
+            self.startup_program = startup_program
 
-        self.main_program = main_program
         if main_program is None:
             self.main_program = default_main_program()
+        else:
+            self.main_program = main_program
 
         self.nranks = len(endpoints)
         if self.nranks == 1:

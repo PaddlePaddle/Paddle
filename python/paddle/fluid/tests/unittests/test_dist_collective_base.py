@@ -25,14 +25,9 @@ import pickle
 import numpy as np
 import paddle.fluid as fluid
 
-from paddle.fluid.transpiler.collective import \
-    GradAllReduce, DistributedClassificationOptimizer
+from paddle.fluid.transpiler.collective import GradAllReduce
 
 DEFAULT_BATCH_SIZE = 2
-DEFAULT_FEATURE_SIZE = 4
-DEFAULT_CLASS_NUM = 4
-DEFAULT_LR = 0.001
-
 RUN_STEPS = 5
 
 
@@ -55,51 +50,64 @@ def elog(ref, message, to_pipe=False):
         print(log_str, file=sys.stderr)
 
 
-class DistClassificationRunner(object):
+class DistCollectiveRunner(object):
+    ##################################
+    ##### user specified methods #####
+
+    @classmethod
+    def add_arguments(cls, parser):
+        pass
+
+    def build_local_net(self):
+        raise NotImplementedError(
+            'local_net should be implemented by child classes.')
+
+    def build_parall_net(self):
+        raise NotImplementedError(
+            'parall_net should be implemented by child classes.')
+
+    def yield_sample(self, np_random):
+        raise NotImplementedError(
+            'data_generator should be implemented by child classes')
+
+    def create_optimizer(self):
+        return fluid.optimizer.SGD(learning_rate=0.001)
+
+    def dist_optimize(self, optimizer, loss):
+        args = self.args
+        optimizer.minimize(loss)
+        transpiler = GradAllReduce()
+        transpiler.transpile(
+            rank=args.rank,
+            endpoints=args.endpoints,
+            current_endpoint=args.current_endpoint,
+            wait_port=True)
+
+    ##### user specified methods #####
+    ##################################
+
     def __init__(self, args):
-        args.rank = int(os.getenv('PADDLE_TRAINER_ID', '0'))
-        args.current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
-        args.nranks = int(os.getenv('PADDLE_TRAINERS_NUM', '1'))
-        args.endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS', '').split(',')
-        args.device_id = int(os.getenv('FLAGS_selected_gpus', '0'))
         self.args = args
-
-    def elog(self, message, to_pipe=False):
-        elog(self, message, to_pipe)
-
-    def local_classify_subnet(self, feature, label):
-        raise NotImplementedError(
-            'get_local_model should be implemented by child classes.')
-
-    def parall_classify_subnet(self, feature, label):
-        raise NotImplementedError(
-            'get_parall_model should be implemented by child classes.')
 
     def build_net(self):
         args = self.args
-        main_prog = fluid.Program()
-        start_prog = fluid.Program()
-        optimizer = fluid.optimizer.SGD(learning_rate=args.lr)
-        with fluid.program_guard(main_prog, start_prog):
-            feature = fluid.layers.data(
-                name='feature', shape=[args.feature_size], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            if args.nranks <= 1:
-                elog(self, 'build local network')
-                loss = self.local_classify_subnet(feature, label)
-                optimizer.minimize(loss)
-            else:
-                elog(self, 'build parallel network')
-                loss = self.parall_classify_subnet(feature, label)
-                # TODO why need batch size?
-                optimizer_wrapper = DistributedClassificationOptimizer(
-                    optimizer, args.batch_size)
-                optimizer_wrapper.minimize(loss)
-                self.transpile(main_prog, start_prog)
+        if args.nranks <= 1:
+            elog(self, 'build local network')
+            data, loss = self.build_local_net()
+        else:
+            elog(self, '[r%d] build parallel network' % args.rank)
+            data, loss = self.build_parall_net()
+        return data, loss
 
-        return [feature, label], loss, start_prog
+    def optimize(self, loss):
+        args = self.args
+        optimizer = self.create_optimizer()
+        if args.nranks <= 1:
+            optimizer.minimize(loss)
+        else:
+            self.dist_optimize(optimizer, loss)
 
-    def gen_rank_batch(self):
+    def get_rank_batch(self):
         args = self.args
 
         def generate_global_batch():
@@ -109,10 +117,10 @@ class DistClassificationRunner(object):
             self.seed += 1
 
             global_batch_size = args.batch_size * args.nranks
-            return [[
-                np.random.rand(args.feature_size),
-                np.random.randint(args.class_num)
-            ] for i in range(global_batch_size)]
+            return [
+                next(self.yield_sample(np.random))
+                for i in range(global_batch_size)
+            ]
 
         rank_batch = []
         global_batch = generate_global_batch()
@@ -122,34 +130,26 @@ class DistClassificationRunner(object):
 
         return rank_batch
 
-    def transpile(self, main_prog, start_prog):
-        args = self.args
-        transpiler = GradAllReduce()
-        transpiler.transpile(
-            startup_program=start_prog,
-            main_program=main_prog,
-            rank=args.rank,
-            endpoints=args.endpoints,
-            current_endpoint=args.current_endpoint,
-            wait_port=True)
-
     def run(self):
-        feed_vars, loss, start_prog = self.build_net()
-        main_prog = loss.block.program
+        main_prog = fluid.Program()
+        start_prog = fluid.Program()
+        with fluid.program_guard(main_prog, start_prog):
+            data, loss = self.build_net()
+            self.optimize(loss)
 
         place = fluid.CUDAPlace(self.args.device_id)
         exe = fluid.Executor(place)
         exe.run(start_prog)
         elog(self, 'finish running startup program.')
 
-        feeder = fluid.DataFeeder(feed_vars, place)
+        feeder = fluid.DataFeeder(data, place)
 
         elog(self, 'start to train')
         out_losses = []
         for i in range(RUN_STEPS):
             losses = exe.run(main_prog,
                              fetch_list=[loss],
-                             feed=feeder.feed(self.gen_rank_batch()))
+                             feed=feeder.feed(self.get_rank_batch()))
             out_losses.append(losses[0][0])
             elog(self, "step %d loss: %f" % (i, losses[0][0]))
 
@@ -157,21 +157,19 @@ class DistClassificationRunner(object):
 
         print2pipe(out_losses)
 
-    @classmethod
-    def add_arguments(cls, parser):
-        pass
-
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(
         description='Run distributed classification test.')
     parser.add_argument('--batch_size', type=int, required=True)
-    parser.add_argument(
-        '--feature_size', type=int, default=DEFAULT_FEATURE_SIZE)
-    parser.add_argument('--class_num', type=int, default=DEFAULT_CLASS_NUM)
-    parser.add_argument('--lr', type=float, default=DEFAULT_LR)
     test_class.add_arguments(parser)
     args = parser.parse_args()
+
+    args.rank = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+    args.current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
+    args.nranks = int(os.getenv('PADDLE_TRAINERS_NUM', '1'))
+    args.endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS', '').split(',')
+    args.device_id = int(os.getenv('FLAGS_selected_gpus', '0'))
 
     trainer = test_class(args)
     trainer.run()
@@ -181,7 +179,26 @@ import socket
 from contextlib import closing
 
 
-class TestDistClassificationBase(unittest.TestCase):
+class TestDistCollectiveBase(unittest.TestCase):
+    ##################################
+    ##### user specified methods #####
+
+    # override configurations in setUp
+    def update_config(self):
+        pass
+
+    def append_common_cmd(self):
+        return ''
+
+    def append_local_cmd(self):
+        return ''
+
+    def append_parall_cmd(self):
+        return ''
+
+    ##### user specified methods #####
+    ##################################
+
     def setUp(self):
         self.nranks = 2
         self.batch_size = DEFAULT_BATCH_SIZE
@@ -201,42 +218,36 @@ class TestDistClassificationBase(unittest.TestCase):
                 port = s.getsockname()[1]
                 return port
 
-    # override configurations in setUp
-    def update_config(self):
-        pass
-
-    def append_common_cmd(self):
-        return ''
-
-    def append_local_cmd(self):
-        return ''
-
-    def append_parall_cmd(self):
-        return ''
-
-    def run_local(self, train_script, user_env):
+    def run_local(self, train_script, update_env):
         env = {}
-        cmd = '%s -u %s --batch_size %d' % (sys.executable, train_script,
-                                            self.global_batch_size)
+        cmd = sys.executable + ' -u'
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
+            cmd += ' -m coverage run --branch -p'
+
+        cmd += ' %s --batch_size %d' % (train_script, self.global_batch_size)
         if self.append_common_cmd():
             cmd += ' ' + self.append_common_cmd().strip()
         if self.append_local_cmd():
             cmd += ' ' + self.append_local_cmd().strip()
 
-        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            cmd += ' -m coverage run --branch -p'
-        env.update(user_env)
+        env.update(update_env)
 
         elog(self, 'local_cmd: %s' % cmd)
         elog(self, 'local_env: %s' % env)
 
-        ferr = open('/tmp/local.log', 'w')
-        proc = subprocess.Popen(
-            cmd.split(' '), stdout=subprocess.PIPE, stderr=ferr, env=env)
+        local_log = '/tmp/local.log'
+        with open(local_log, 'w') as ferr:
+            proc = subprocess.Popen(
+                cmd.split(' '), stdout=subprocess.PIPE, stderr=ferr, env=env)
+            out, err = proc.communicate()
 
-        out, err = proc.communicate()
-        ferr.close()
+        with open(local_log, 'r') as fin:
+            proc_log_str = ''.join(fin.readlines())
+            message = 'local_stderr:\n%s\nlocal_stderr end' % proc_log_str
+            if proc.returncode != 0:
+                raise RuntimeError(message)
+            elog(self, message)
 
         elog(self, 'local_stdout: %s' % pickle.loads(out))
 
@@ -254,25 +265,27 @@ class TestDistClassificationBase(unittest.TestCase):
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
         return env
 
-    def run_parall(self, train_script, user_env):
-        cmd = '%s -u %s --batch_size %d' % (sys.executable, train_script,
-                                            self.batch_size)
+    def run_parall(self, train_script, update_env):
+        cmd = sys.executable + ' -u'
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            cmd += ' -m coverage run --branch -p'
+
+        cmd += ' %s --batch_size %d' % (train_script, self.batch_size)
         if self.append_common_cmd():
             cmd += ' ' + self.append_common_cmd().strip()
         if self.append_parall_cmd():
             cmd += ' ' + self.append_parall_cmd().strip()
-        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            cmd += ' -m coverage run --branch -p'
 
         procs = []
         ferrs = []
+        parall_log_format = '/tmp/parall_tr%d.log'
         for rank in range(self.nranks):
             env = self.get_parall_env(rank)
-            env.update(user_env)
+            env.update(update_env)
             elog(self, '[r%d] parall_cmd: %s' % (rank, cmd))
             elog(self, '[r%d] parall_env: %s' % (rank, env))
 
-            ferr = open('/tmp/parall_tr%d.log' % rank, 'w')
+            ferr = open(parall_log_format % rank, 'w')
             proc = subprocess.Popen(
                 cmd.strip().split(' '),
                 stdout=subprocess.PIPE,
@@ -286,22 +299,31 @@ class TestDistClassificationBase(unittest.TestCase):
             out, err = procs[rank].communicate()
             ferrs[rank].close()
 
+            with open(parall_log_format % rank, 'r') as fin:
+                proc_log_str = ''.join(fin.readlines())
+                message = '[r%d] parall_stderr:\n%s\nparall_stderr end' % (
+                    rank, proc_log_str)
+                if procs[rank].returncode != 0:
+                    raise RuntimeError(message)
+                elog(self, message)
+
+            elog(self, '[r%d] parall_stdout: %s' % (rank, pickle.loads(out)))
             outs.append(out)
 
         return [pickle.loads(outs[i]) for i in range(self.nranks)]
 
-    def compare_parall_to_local(self, train_script, delta=1e-3, user_envs={}):
+    def compare_parall_to_local(self, train_script, delta=1e-3, update_envs={}):
         required_envs = {
             'PATH': os.getenv('PATH', ''),
             'PYTHONPATH': os.getenv('PYTHONPATH', ''),
             'LD_LIBRARY_PATH': os.getenv('LD_LIBRARY_PATH', ''),
             'FLAGS_fraction_of_gpu_memory_to_use': '0.15',
-            'FLAGS_rpc_deadline': '30000',  # 5s to fail fast
+            'FLAGS_rpc_deadline': '5000',  # 5s to fail fast
             'FLAGS_cudnn_deterministic': '1',
             'NCCL_P2P_DISABLE': '1',
             'NCCL_SHM_DISABLE': '1'
         }
-        required_envs.update(user_envs)
+        required_envs.update(update_envs)
 
         local_losses = self.run_local(train_script, required_envs)
         parall_losses = self.run_parall(train_script, required_envs)

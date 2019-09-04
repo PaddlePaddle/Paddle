@@ -14,14 +14,11 @@
 
 import unittest
 import paddle.fluid as fluid
-from test_dist_classification_base import TestDistClassificationBase
+from test_dist_collective_base import TestDistCollectiveBase
 
 
-class TestDistSoftmaxClassification(TestDistClassificationBase):
-    def setup_config(self):
-        pass
-
-    def test_dist_train(self):
+class TestDistSoftmaxClassification(TestDistCollectiveBase):
+    def test_training(self):
         if fluid.core.is_compiled_with_cuda():
             self.compare_parall_to_local(
                 "dist_softmax_classification.py", delta=1e-5)
