@@ -31,7 +31,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-std::string randomString(
+inline std::string randomString(
     unsigned int l = 15,
     std::string charIndex =
         "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
