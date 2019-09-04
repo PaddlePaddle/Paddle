@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,52 +15,49 @@ limitations under the License. */
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
 #include "paddle/fluid/operators/scatter.cu.h"
-#include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/fluid/operators/scatter_nd_add_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class ScatterOpCUDAKernel : public framework::OpKernel<T> {
+template <typename DeviceContext, typename T>
+class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      "This kernel only runs on GPU device.");
     auto *X = ctx.Input<Tensor>("X");
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Ids = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
-    bool overwrite = ctx.Attr<bool>("overwrite");
 
-    Out->ShareDataWith(*X);
-    // use template class to support int32_t and int64_t
+    framework::TensorCopySync(*X, ctx.GetPlace(), Out);
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
         index_type_match, true,
-        "scatter_op Index holds the wrong type, it holds %s, but desires to be "
-        "%s or %s",
+        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
         paddle::framework::DataTypeToString(index_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
     if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterAssign<T, int32_t>(ctx, *Updates, *Ids, Out, overwrite);
+      GPUScatterNdAdd<DeviceContext, T, int32_t>(ctx, *Updates, *Ids, Out);
     } else {
-      GPUScatterAssign<T, int64_t>(ctx, *Updates, *Ids, Out, overwrite);
+      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *Updates, *Ids, Out);
     }
   }
 };
 
-template <typename T>
-class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
+template <typename DeviceContext, typename T>
+class ScatterNdAddGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "This kernel only runs on GPU device.");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      "This kernel only runs on GPU device.");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Ids = ctx.Input<Tensor>("Index");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
     if (dX) {
       // In place gradient: dX = dO
@@ -68,23 +65,12 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     }
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
-      // Gradient by Gather: dUpdates = dO[Ids]
+      // Gradient by Gather
       const auto &index_type = Ids->type();
-      bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                              index_type == framework::proto::VarType::INT64;
-      PADDLE_ENFORCE_EQ(
-          index_type_match, true,
-          "scatter_op Index holds the wrong type, it holds %s, but desires to "
-          "be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              framework::proto::VarType::INT64));
-      // Gradient by Gather: dUpdates = dO[Ids]
       if (index_type == framework::proto::VarType::INT32) {
-        GPUGather<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+        GPUGatherNd<DeviceContext, T, int32_t>(ctx, *dOut, *Ids, dUpdates);
       } else {
-        GPUGather<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+        GPUGatherNd<DeviceContext, T, int64_t>(ctx, *dOut, *Ids, dUpdates);
       }
     }
   }
@@ -94,5 +80,19 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>);
+using CUDA = paddle::platform::CUDADeviceContext;
+namespace plat = paddle::platform;
+
+REGISTER_OP_CUDA_KERNEL(scatter_nd_add,
+                        ops::ScatterNdAddOpCUDAKernel<CUDA, float>,
+                        ops::ScatterNdAddOpCUDAKernel<CUDA, double>,
+                        ops::ScatterNdAddOpCUDAKernel<CUDA, int64_t>,
+                        ops::ScatterNdAddOpCUDAKernel<CUDA, int>,
+                        ops::ScatterNdAddOpCUDAKernel<CUDA, plat::float16>);
+
+REGISTER_OP_CUDA_KERNEL(scatter_nd_add_grad,
+                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, float>,
+                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, double>,
+                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, int64_t>,
+                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, int>,
+                        ops::ScatterNdAddGradOpCUDAKernel<CUDA, plat::float16>);
