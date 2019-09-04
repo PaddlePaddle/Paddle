@@ -69,8 +69,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     auto input_format = input->format();
     MKLDNNMemoryFormat output_format{MKLDNNMemoryFormat::format_undef};
@@ -166,10 +166,8 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     T* in_x_grad_data = in_x_grad->mutable_data<T>(ctx.GetPlace());
     MKLDNNMemoryFormat in_x_grad_format{MKLDNNMemoryFormat::format_undef};
 
-    std::vector<int> diff_src_tz =
-        paddle::framework::vectorize2int(in_x_grad->dims());
-    std::vector<int> diff_dst_tz =
-        paddle::framework::vectorize2int(out_grad->dims());
+    auto diff_src_tz = paddle::framework::vectorize<int>(in_x_grad->dims());
+    auto diff_dst_tz = paddle::framework::vectorize<int>(out_grad->dims());
 
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
