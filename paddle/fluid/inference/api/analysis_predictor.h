@@ -178,10 +178,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   // Some status here that help to determine the status inside the predictor.
-  bool status_program_optimized_{false};
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
-  bool status_ir_optim_enabled_{false};
 };
 
 }  // namespace paddle

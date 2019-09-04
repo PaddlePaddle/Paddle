@@ -65,7 +65,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 
     for (auto &node : not_need_ctrl_var_nodes) {
       // remove this node from the input op node.
-      PADDLE_ENFORCE(!node->inputs.empty());
+      PADDLE_ENFORCE(!node->inputs.empty(),
+                     "The input should not be empty here.");
       auto op_node = node->inputs.front();
       PADDLE_ENFORCE(op_node->IsOp());
       op_node->outputs.erase(

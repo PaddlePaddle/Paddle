@@ -25,30 +25,12 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 
+DECLARE_double(eager_delete_tensor_gb);
+DECLARE_double(memory_fraction_of_eager_deletion);
+DECLARE_bool(fast_eager_deletion_mode);
+
 namespace paddle {
 namespace framework {
-
-// Disable gc by default when inference library is built
-#ifdef PADDLE_ON_INFERENCE
-static const double kDefaultEagerDeleteTensorGB = -1;
-#else
-static const double kDefaultEagerDeleteTensorGB = 0;
-#endif
-
-DEFINE_double(
-    eager_delete_tensor_gb, kDefaultEagerDeleteTensorGB,
-    "Memory size threshold (GB) when the garbage collector clear tensors."
-    "Disabled when this value is less than 0");
-
-DEFINE_bool(fast_eager_deletion_mode, true,
-            "Fast eager deletion mode. If enabled, memory would release "
-            "immediately without waiting GPU kernel ends.");
-
-DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
-              "Fraction of eager deletion. If less than 1.0, all variables in "
-              "the program would be sorted according to its memory size, and "
-              "only the FLAGS_memory_fraction_of_eager_deletion of the largest "
-              "variables would be deleted.");
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)

@@ -98,46 +98,27 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     auto id_name = context.Inputs("Ids").front();
     auto out_name = context.Outputs("Out").front();
 
-    // for remote prefetch
-    auto epmap = context.Attr<std::vector<std::string>>("epmap");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-    auto table_names = context.Attr<std::vector<std::string>>("table_names");
+    size_t N = table_t->dims()[0];
+    size_t D = table_t->dims()[1];
+    size_t K = ids_t->numel();
 
-    if (!epmap.empty()) {
-// if epmap is not empty, then the parameter will be fetched from remote
-// parameter
-// server
-#ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context,
-                                       context.scope());
-#else
-      PADDLE_THROW(
-          "paddle is not compiled with distribute support, can not do "
-          "parameter prefetch!");
-#endif
-    } else {
-      size_t N = table_t->dims()[0];
-      size_t D = table_t->dims()[1];
-      size_t K = ids_t->numel();
+    auto *ids = ids_t->data<int64_t>();
+    auto *table = table_t->data<T>();
+    auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-      auto *ids = ids_t->data<int64_t>();
-      auto *table = table_t->data<T>();
-      auto *output = output_t->mutable_data<T>(context.GetPlace());
+    dim3 threads(128, 8);
+    dim3 grids(8, 1);
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
-
-      if (padding_idx == -1)
-        LookupTable<T, 128, 8, 8, false><<<
-            grids, threads, 0, context.cuda_device_context().stream()>>>(
-            output, table, ids, N, K, D, padding_idx);
-      else
-        LookupTable<T, 128, 8, 8, true><<<
-            grids, threads, 0, context.cuda_device_context().stream()>>>(
-            output, table, ids, N, K, D, padding_idx);
-    }
+    if (padding_idx == -1)
+      LookupTable<
+          T, 128, 8, 8,
+          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          output, table, ids, N, K, D, padding_idx);
+    else
+      LookupTable<
+          T, 128, 8, 8,
+          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          output, table, ids, N, K, D, padding_idx);
   }
 };
 

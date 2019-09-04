@@ -83,7 +83,7 @@ void ConvConcatReLUFusePass::FuseConvConcatReLU(
 
     // Transform Conv node into ConvReLU node.
     OpDesc* conv_desc = conv_op->Op();
-    conv_desc->SetAttr("fuse_relu", true);
+    conv_desc->SetAttr("fuse_activation", std::string("relu"));
 
     // Remove ReLU when all Convs were transformed.
     auto number_of_unfused_convs_left =

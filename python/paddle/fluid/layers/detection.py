@@ -53,6 +53,7 @@ __all__ = [
     'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'multiclass_nms2',
     'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
@@ -953,7 +954,7 @@ def yolo_box(x,
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
+        boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -2737,7 +2738,7 @@ def multiclass_nms(bboxes,
             background_label = 0
             score_threshold = 0
 
-            
+
         Then:
             iou = 4/11 > 0.3
             out.data = [[1, 0.3, 3.0, 4.0, 8.0, 5.0],    
