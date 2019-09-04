@@ -82,10 +82,10 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> iohw_weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
-    std::vector<int> weights_tz = iohw_weights_tz;
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto iohw_weights_tz = paddle::framework::vectorize<int>(filter->dims());
+    auto weights_tz = iohw_weights_tz;
+
     // IOHW -> OIHW
     weights_tz[0] = iohw_weights_tz[1];
     weights_tz[1] = iohw_weights_tz[0];
@@ -124,7 +124,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       weights_tz[3] = h;
       weights_tz[4] = w;
     }
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvTransposeMKLDNNHandler::GetHash(
@@ -166,7 +166,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
     if (bias) {
-      bias_tz = paddle::framework::vectorize2int(bias->dims());
+      bias_tz = paddle::framework::vectorize<int>(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_transpose_pd = handler.AcquireConvolutionPrimitiveDescriptor(

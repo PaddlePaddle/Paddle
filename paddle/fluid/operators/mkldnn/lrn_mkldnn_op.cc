@@ -56,7 +56,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
     e_mid = e_mid.constant(k);
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    auto dims = paddle::framework::vectorize<int>(x->dims());
 
     // Format and dims are assumed to be the same for dst and src
     auto md = paddle::platform::MKLDNNMemDesc(
@@ -119,7 +119,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto x_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
     auto out_grad_data = out_grad->data<T>();
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    auto dims = paddle::framework::vectorize<int>(x->dims());
 
     const std::string key = platform::LRNMKLDNNHandler::GetHash(
         dims, n, alpha, beta, k, x->format(), ctx.op().Input("Out"));
