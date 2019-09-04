@@ -347,6 +347,21 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
+    def clear_model(self):
+        """
+        clear_model() will be called by user. It will clear sparse model.
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_model()
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_model()
+        self._role_maker._barrier_worker()
+
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
@@ -385,6 +400,7 @@ class PSLib(Fleet):
                   fout.write(my_program.desc.serialize_to_string())
 
         """
+        self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
         scope = kwargs.get("scope", None)
         model_proto_file = kwargs.get("model_proto_file", None)
@@ -558,7 +574,7 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-
+        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]
