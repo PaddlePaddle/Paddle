@@ -43,10 +43,12 @@ def check_all_trainers_ready(ready_path, epoch):
 
     print("PUT {} ON HDFS {} OK".format(node_ready, ready_path))
 
-    ready_num = len(client.ls(ready_path))
-    while ready_num % trainer_num != 0:
+    while True:
+        ready_num = len(client.ls(ready_path))
         print("have {} trainers need to be ready".format(trainer_num - ready_num
                                                          % trainer_num))
+        if ready_num % trainer_num == 0:
+            break
         time.sleep(10)
         ready_num = len(client.ls(ready_path))
 
