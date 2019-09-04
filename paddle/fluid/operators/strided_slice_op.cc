@@ -53,17 +53,24 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       stride_index = stride[i];
       int axis_size = in_dims[i];
       if (start_index < 0) {
-        start_index = (start_index + axis_size) % axis_size;
+        start_index = start_index + axis_size;
       }
       if (end_index < 0) {
-        end_index = (end_index + axis_size) % axis_size;
+        end_index = end_index + axis_size;
+      }
+
+      if (stride_index < 0) {
+        start_index = start_index + 1;
+        end_index = end_index + 1;
       }
 
       bool zero_dim_condition =
           ((stride_index < 0 && (start_index < end_index)) ||
            (stride_index > 0 && (start_index > end_index)));
-      auto out_dims_index =
-          std::abs(end_index - start_index) / std::abs(stride_index);
+      int left = std::max(0, std::min(start_index, end_index));
+      int right = std::min(axis_size, std::max(start_index, end_index));
+      int step = std::abs(stride_index);
+      auto out_dims_index = (std::abs(right - left) + step - 1) / step;
       if (zero_dim_condition) {
         out_dims_index = 0;
       }
