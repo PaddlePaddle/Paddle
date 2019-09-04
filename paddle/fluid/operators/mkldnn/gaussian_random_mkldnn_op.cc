@@ -40,8 +40,6 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
       data[i] = dist(engine);
     }
 
-    // The format of output is set as the mkldnn's format
-    // TODO(@mozga-intel) The format of matrix sets inside the another layers.
     tensor->set_layout(DataLayout::kMKLDNN);
     tensor->set_format(mkldnn::memory::format::oihw);
   }

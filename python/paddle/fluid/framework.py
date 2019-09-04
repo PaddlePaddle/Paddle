@@ -543,6 +543,40 @@ class Variable(object):
             self._stop_gradient = stop_gradient
             self.is_data = is_data
 
+    def detach(self):
+        """
+        Returns a new Variable, detached from the current graph.
+        
+        Returns:
+            Variable: The detached Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    y = x.detach()
+
+        """
+        if in_dygraph_mode():
+            new_var = self._cloneVar()
+            self.block.append_op(
+                type="assign",
+                inputs={'X': [self]},
+                outputs={'Out': [new_var]},
+                stop_gradient=True)
+            return new_var
+        else:
+            raise AttributeError("static graph model DO NOT supprt detach")
+
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())

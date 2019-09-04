@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -1691,6 +1692,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindFleetWrapper(&m);
+  BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);
 #endif
