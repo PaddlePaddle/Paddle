@@ -1414,7 +1414,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
         input(${emission_type}): ${emission_comment}
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
-        param_attr(ParamAttr): The attribute of the learnable parameter.you can use find_var to get transition parameter.
+        param_attr(ParamAttr): The attribute of the learnable parameter.It is transition parameter.
 
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
@@ -1480,6 +1480,10 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
+            
+            #you can use find_var to get transition parameter.
+            transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
+            print(transition)
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
