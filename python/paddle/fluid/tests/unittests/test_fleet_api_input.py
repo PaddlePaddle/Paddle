@@ -116,31 +116,28 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
     def createRoleMaker(self,
                         current_id=0,
                         role=Role.WORKER,
-                        worker_num=0,
-                        server_endpoints=None):
+                        worker_num=1,
+                        server_endpoints=["127.0.0.1:8080"]):
         role = UserDefinedRoleMaker(current_id, role, worker_num,
                                     server_endpoints)
 
     def testRoleMaker(self):
-        self.createRoleMaker(
-            current_id=0,
-            role=Role.WORKER,
-            worker_num=1,
-            server_endpoints=["127.0.0.1:8080"])
+        self.createRoleMaker()
         ## test all invalid server_endpoints
         self.assertRaises(
-            Exception, self.createRoleMaker)  # server_endpoints must be as list
+            Exception, self.createRoleMaker,
+            server_endpoints=None)  # server_endpoints must be as list
         self.assertRaises(
             Exception, self.createRoleMaker,
             server_endpoints=[])  # server_endpoints can't be empty
         self.assertRaises(
-            Exception, self.createRoleMaker, server_endpoint=[
+            Exception, self.createRoleMaker, server_endpoints=[
                 3, []
             ])  # element in server_endpoints must be as string
         self.assertRaises(
             Exception,
             self.createRoleMaker,
-            server_endpoint=["127.0.0.1:8080", "127.0.0.1:8080"]
+            server_endpoints=["127.0.0.1:8080", "127.0.0.1:8080"]
         )  # element in server_endpoints can't be duplicate
         ## test all invalid current_id 
         self.assertRaises(
@@ -170,25 +167,27 @@ class UserDefinedRoleMakerTest(unittest.TestCase):
 
 
 class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
-    def createRoleMaker(self, current_id=0, worker_endpoints=None):
+    def createRoleMaker(self, current_id=0,
+                        worker_endpoints=["127.0.0.1:8080"]):
         role = UserDefinedCollectiveRoleMaker(current_id, worker_endpoints)
 
     def testRoleMaker(self):
-        self.createRoleMaker(current_id=0, worker_endpoints=["127.0.0.1:8080"])
+        self.createRoleMaker()
         ## test all invalid worker_endpoints
         self.assertRaises(
-            Exception, self.createRoleMaker)  # worker_endpoints must be as list
+            Exception, self.createRoleMaker,
+            worker_endpoints=None)  # worker_endpoints must be as list
         self.assertRaises(
             Exception, self.createRoleMaker,
             worker_endpoints=[])  # worker_endpoints can't be empty
         self.assertRaises(
             Exception, self.createRoleMaker,
-            worker_endpoint=[3,
-                             []])  # element worker_endpoints must be as string
+            worker_endpoints=[3,
+                              []])  # element worker_endpoints must be as string
         self.assertRaises(
             Exception,
             self.createRoleMaker,
-            worker_endpoint=["127.0.0.1:8080", "127.0.0.1:8080"]
+            worker_endpoints=["127.0.0.1:8080", "127.0.0.1:8080"]
         )  # element in worker_endpoints can't be duplicate
         ## test all invalid current_id
         self.assertRaises(
