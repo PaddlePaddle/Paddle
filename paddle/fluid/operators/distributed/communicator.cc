@@ -199,8 +199,8 @@ void Communicator::RecvNonIndependent() {
   if (FLAGS_communicator_independent_recv_thread && !is_geo_sgd_) {
     return;
   }
-  auto grad_num = :q
-  .load();
+  auto grad_num = grad_num_.load();
+
   if (is_geo_sgd_) {
     if (grad_num >= geo_need_push_nums_ ) {
       RecvAll();
