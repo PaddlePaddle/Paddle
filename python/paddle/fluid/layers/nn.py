@@ -1415,7 +1415,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
-        param_attr(ParamAttr): The attribute of the learnable parameter.
+        param_attr(ParamAttr): The attribute of the learnable parameter.you can use find_var to get transition parameter.
 
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
