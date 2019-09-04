@@ -167,7 +167,7 @@ class CudnnHolder {
   inline void ResetWorkspace() {
     if (workspace_) {
       // Maybe someone is using the current workspace
-      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(*stream_));
       workspace_ = nullptr;
     }
   }
@@ -306,7 +306,7 @@ class CUDADeviceContext : public DeviceContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
 
   template <typename Callback>
