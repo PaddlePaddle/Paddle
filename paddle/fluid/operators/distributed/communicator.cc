@@ -141,7 +141,6 @@ void Communicator::SendThread() {
                 continue;
               } else {
                 wait_times = 0;
-
                 vars.push_back(var_queue->Pop());
                 // only count the send number of the first var
                 if (var_name == send_varname_to_queue_.begin()->first) {
@@ -167,9 +166,6 @@ void Communicator::SendThread() {
           else if (is_geo_sgd_) {
             VLOG(3) << "geo sgd send var: "<< var_name;
             auto before_send = GetCurrentUS();
-            if (var_name == send_varname_to_queue_.begin()->first) {
-                  grad_num_.fetch_add(1, std::memory_order_relaxed);
-                }
             auto send_functor = distributed::ParameterSend<float>();
             auto &ctx = send_varname_to_ctx_.at(var_name);
             if (!FLAGS_communicator_fake_rpc) {
@@ -466,15 +462,15 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     for(auto &iter:send_varname_to_ctx_){
       auto var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name);
+      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),var_name);
     }
     return;
   }
-  if (is_need_push_ < geo_need_push_nums_){
-    //Todo: using atomic fetch_add method?
-    is_need_push_++;
+  auto grad_num = grad_num_.load();
+  if (grad_num < geo_need_push_nums_){
+    grad_num_.fetch_add(1, std::memory_order_relaxed);
   }
   else{
-    is_need_push_ = 0;
     for (auto &iter:send_varname_to_queue_)
     {
       std::string local_var_name = iter.first;

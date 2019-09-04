@@ -20,7 +20,7 @@ from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
-from paddle.fluid.transpiler.distribute_transpiler import GeoSgdTranspiler
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
@@ -197,7 +197,7 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         self._transpile_config = config
-        if config.geo_sgd:
+        if config.geo_sgd_mode:
             self._transpiler = GeoSgdTranspiler(config)
         else:
             self._transpiler = OriginTranspiler(config)
@@ -210,7 +210,7 @@ class DistributedTranspiler(Fleet):
                 sync_mode=config.sync_mode)
             self.main_program = self._transpiler.get_trainer_program()
             self.startup_program = default_startup_program()
-            if self._transpile_config.geo_sgd:
+            if self._transpile_config.geo_sgd_mode:
                 self.vars_info = self._transpiler._get_vars_info()
         else:
             self._transpiler.transpile(
