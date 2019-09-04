@@ -494,8 +494,10 @@ def detection_output(loc,
         return_index(bool): Whether return selected index. Default: False
 
     Returns:
+
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned. 
+
         Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
         has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
         the total number of detections in this mini-batch. For each instance, 
@@ -503,9 +505,11 @@ def detection_output(loc,
         N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
         detected results, if it is 0, the i-th image has no detected results. 
 
-        If all images have not detected results, all elements in LoD will be
-        0, and output tensor is empty (None).
-
+        If all images have not detected results, LoD will be set to {1}, and 
+        output tensor only contains one value, which is -1.
+        (After version 1.3, when no boxes detected, the lod is changed
+        from {0} to {1}.)       
+ 
         Index: Only return when return_index is True. A 2-D LoDTensor with 
         shape [No, 1] represents the selected index which type is Integer. 
         The index is the absolute value cross batches. No is the same number 

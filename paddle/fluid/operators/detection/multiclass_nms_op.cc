@@ -520,10 +520,6 @@ independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.
-
-If there is no detected boxes for all images, all the elements in LoD are 0,
-and the Out is empty.
-
 )DOC");
   }
 };
