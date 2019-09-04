@@ -203,6 +203,7 @@ void Communicator::RecvNonIndependent() {
 
   if (is_geo_sgd_) {
     auto push_num = have_push_.load();
+    VLOG(1)<<"Push num is: "<< push_num;
     if (push_num >= var_nums_ ) {
       RecvAll();
       have_push_.store(0);
@@ -428,6 +429,7 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   is_geo_sgd_ = true;
   FLAGS_communicator_independent_recv_thread = false;
   var_nums_ = send_varname_to_ctx.size();
+  VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
 
   delta_scope_.reset(new Scope()); //parameter on pserver
