@@ -272,7 +272,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     if (it != grad_to_block_id.end()) {
       grad_to_prepared_ctx[it->first] = optimize_prepared[i];
       VLOG(4) << "grad_to_prepared_ctx: "<< it->first 
-              << "is "<< blkid;
+              << " is "<< blkid;
     }
   }
 

@@ -193,6 +193,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     dtype=var.dtype,
                     shape=var.shape,
                     lod_level=var.lod_level)
+            print("trainer startup program, create var %s"%varname)
             startup_program.global_block().append_op(
                 type="recv",
                 inputs={"X": []},
