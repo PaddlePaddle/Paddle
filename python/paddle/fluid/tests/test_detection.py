@@ -528,7 +528,18 @@ class TestMulticlassNMS(unittest.TestCase):
                 name='bboxes', shape=[-1, 10, 4], dtype='float32')
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
-            output2, index = layers.multiclass_nms(
+            self.assertIsNotNone(output)
+
+
+class TestMulticlassNMS2(unittest.TestCase):
+    def test_multiclass_nms2(self):
+        program = Program()
+        with program_guard(program):
+            bboxes = layers.data(
+                name='bboxes', shape=[-1, 10, 4], dtype='float32')
+            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
+            output = layers.multiclass_nms2(bboxes, scores, 0.3, 400, 200, 0.7)
+            output2, index = layers.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7, return_index=True)
             self.assertIsNotNone(output)
             self.assertIsNotNone(output2)
