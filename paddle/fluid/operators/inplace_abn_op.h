@@ -92,9 +92,9 @@ class InplaceABNActivation {
       dx.device(d) = dy;
     } else if (act_type == InplaceABNActivationType::leakyrelu) {
       if (is_inplace) {
-        auto temp1 = (static_cast<T>(1.0) / static_cast<T>(alpha)) *
-                     (x < static_cast<T>(0)).template cast<T>().eval();
-        auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
+        auto temp1 = (y < static_cast<T>(0)).template cast<T>().eval() /
+                     static_cast<T>(alpha);
+        auto temp2 = (y >= static_cast<T>(0)).template cast<T>().eval();
         x.device(d) = y * (temp1 + temp2).template cast<T>();
       }
       LeakyReluGradFunctor<T> functor;
@@ -102,12 +102,10 @@ class InplaceABNActivation {
     } else if (act_type == InplaceABNActivationType::elu) {
       if (is_inplace) {
         auto temp1 = (y >= static_cast<T>(0)).template cast<T>().eval();
-        auto temp2 = ((y < static_cast<T>(0) / static_cast<T>(alpha))
-                          .template cast<T>()
-                          .eval() +
-                      static_cast<T>(1))
-                         .log();
-        x.device(d) = y * (temp1 + temp2).template cast<T>();
+        auto temp = (y < static_cast<T>(0)).template cast<T>().eval();
+        auto temp2 =
+            (y * temp / static_cast<T>(alpha) + static_cast<T>(1)).log();
+        x.device(d) = (y * temp1 + temp2).template cast<T>();
       }
       ELUGradFunctor<T> functor;
       compute(ctx, &functor, d, x, y, dy, dx);
