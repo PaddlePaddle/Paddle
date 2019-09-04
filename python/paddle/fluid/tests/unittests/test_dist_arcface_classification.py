@@ -14,17 +14,17 @@
 
 import unittest
 import paddle.fluid as fluid
-from test_dist_classification_base import TestDistClassificationBase
+from test_dist_collective_base import TestDistCollectiveBase
 
 
-class TestDistArcfaceClassification(TestDistClassificationBase):
+class TestDistArcfaceClassification(TestDistCollectiveBase):
     def test_training(self):
         if fluid.core.is_compiled_with_cuda():
             self.compare_parall_to_local(
                 'dist_arcface_classification.py', delta=1e-5)
 
 
-class TestDistArcfaceClassificationParam(TestDistClassificationBase):
+class TestDistArcfaceClassificationParam(TestDistCollectiveBase):
     def append_common_cmd(self):
         return '--arcface_margin 0.5 --arcface_scale 64'
 

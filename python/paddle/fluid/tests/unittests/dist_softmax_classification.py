@@ -18,15 +18,12 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.initializer import NumpyArrayInitializer
-from test_dist_classification_base import DistClassificationRunner, runtime_main
+from test_dist_classification_base import DistClassificationRunner
+from test_dist_collective_base import runtime_main
 
 
 # TODO bias attr
 class DistSoftmaxClassificationRunner(DistClassificationRunner):
-    @classmethod
-    def add_arguments(cls, parser):
-        pass
-
     def __init__(self, args):
         super(DistSoftmaxClassificationRunner, self).__init__(args)
         np.random.seed(1024)
