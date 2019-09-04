@@ -462,7 +462,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
-    VLOG(1) <<"Parameter init from recv_scope"
+    VLOG(1) <<"Parameter init from recv_scope";
     for(auto &iter:send_varname_to_ctx_){
       auto var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name);
