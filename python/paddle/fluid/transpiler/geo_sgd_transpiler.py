@@ -170,14 +170,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.origin_program._parameters_on_pservers = self.vars_overview
 
     def _get_vars_info(self):
-        # Todo :for dense param test,delete it when sparse method finish
-        self.new_vars_info = collections.OrderedDict()
-        sparse_str = 'SparseFeatFactors'
-        for var in self.vars_info:
-            if sparse_str not in var:
-                self.new_vars_info[var] = self.vars_info[var]
-        print(str(self.new_vars_info))
-        return self.new_vars_info
+        
+        return self.vars_info
             
     def _get_trainer_startup_program(self, recv_vars, eplist):
         startup_program = self.startup_program
