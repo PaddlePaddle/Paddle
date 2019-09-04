@@ -53,5 +53,15 @@ class SingleOpInplaceInToOut : public InplaceOpInference {
   }
 };
 
+#define DECLARE_INPLACE_OP_INFERER(class_name, ...)                         \
+  class class_name final : public ::paddle::framework::InplaceOpInference { \
+   public:                                                                  \
+    std::unordered_map<std::string, std::string> operator()(                \
+        const ::paddle::framework::OpDesc& op_desc,                         \
+        bool use_cuda) const final {                                        \
+      return {__VA_ARGS__};                                                 \
+    }                                                                       \
+  }
+
 }  // namespace framework
 }  // namespace paddle

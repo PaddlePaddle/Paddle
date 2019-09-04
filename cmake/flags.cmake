@@ -204,7 +204,7 @@ foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-if(WIN32)
+if(WIN32 AND MSVC_STATIC_CRT)
 # windows build turn off warnings.
 safe_set_static_flag()
     foreach(flag_var
