@@ -38,16 +38,14 @@ class CSliceGatherOp : public framework::OperatorWithKernel {
 class CSliceGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) tensor to be slicegather");
-    AddOutput("Out", "(Tensor) the slicegather result");
-    AddAttr<int>("ring_id", "(int) communication ring id.").SetDefault(0);
-    AddAttr<int>("nranks",
-                 "Total trainer count of the distributed training job")
-        .SetDefault(1);
+    AddInput("X", "(Tensor), The input tensor to slicegather");
+    AddOutput("Out", "(Tensor), The output of this op.");
+    AddAttr<int>("ring_id", "(int), The communication ring id.").SetDefault(0);
+    AddAttr<int>("nranks", "(int), Total number of trainers.").SetDefault(1);
     AddComment(R"DOC(
 ***CSliceGather Operator***
 
-Call NCCL collective  AllGather internally. Note that this op must be used when one
+Call NCCL collective AllGather internally. Note that this op must be used when one
 thread is managing one GPU device.
 )DOC");
   }
