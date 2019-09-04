@@ -73,7 +73,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
                 sigmoid = fluid.layers.sigmoid(conv)
                 out = fluid.layers.reduce_sum(sigmoid)
-                if use_cuda and not inplace_abn:
+                if use_cuda:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
@@ -144,7 +144,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 inplace_abn_val = inplace_abn_val[:bn_val.shape[0]]
             self.assertTrue(
                 np.allclose(
-                    bn_val, inplace_abn_val, atol=1e-3),
+                    bn_val, inplace_abn_val, atol=1e-2),
                 "Output (" + fetch_names[i] + ":" + fetch_names1[i] +
                 ") has diff. \n" + "\nBN     " + str(bn_val) + "\n" +
                 "Inplace ABN " + str(inplace_abn_val))
