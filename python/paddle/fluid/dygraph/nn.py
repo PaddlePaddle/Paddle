@@ -2403,9 +2403,9 @@ class GroupNorm(layers.Layer):
 
     def forward(self, input):
         inputs = {'X': input}
-        if self._bias:
+        if self._bias_attr:
             inputs['Bias'] = self._bias
-        if self._scale:
+        if self._param_attr:
             inputs['Scale'] = self._scale
 
         # create output

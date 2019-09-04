@@ -112,6 +112,7 @@ class TestSendOp(unittest.TestCase):
                 dtype='float32',
                 name='X',
                 append_batch_size=False)
+            x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
             get_var = main.global_block().create_var(
@@ -121,6 +122,13 @@ class TestSendOp(unittest.TestCase):
                 shape=[32, 32])
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
 
+            # NOTE(zjl): `Send` is async send, which means that the sent 
+            # variable would be needed even though `Send` op runs. 
+            # Is it a right design? If I do not set `x.persistable = True`,
+            # this unittest would hang in rpc client after x is deleted. 
+            #
+            # BTW, `Send` is not a public API to users. So I set 
+            # `x.persistable = True` to be a hot fix of this unittest. 
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 

@@ -174,6 +174,9 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
 
 
 def _load_var_from_file(file_dir):
+    if not os.path.exists(file_dir):
+        raise IOError("{} not exist".format(file_dir))
+
     def walk_filename(file_dir):
         base_path = os.path.join(file_dir)
         var_name_list = []
