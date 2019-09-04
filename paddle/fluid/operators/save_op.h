@@ -36,11 +36,12 @@ inline std::string randomString(
     std::string charIndex =
         "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
   unsigned int seed = time(NULL);
-  unsigned int length = rand_r(&seed) % l + 1;
+  srand(seed);
+  unsigned int length = rand() % l + 1;  // NOLINT
 
   unsigned int ri[15];
   for (unsigned int i = 0; i < length; ++i)
-    ri[i] = rand_r(&seed) % charIndex.length();
+    ri[i] = rand() % charIndex.length();  // NOLINT
 
   std::string rs = "";
   for (unsigned int i = 0; i < length; ++i) rs += charIndex[ri[i]];
