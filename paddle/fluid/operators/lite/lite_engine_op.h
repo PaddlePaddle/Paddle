@@ -61,6 +61,7 @@ class LiteEngineOp : public framework::OperatorBase {
     platform::CPUPlace cpu_place;
     platform::CUDAPlace gpu_place;
     cudaStream_t stream;
+    cudaStreamCreate(&stream);
     for (size_t i = 0; i < in_names_.size(); i++) {
       const framework::LoDTensor& src_t = inference::analysis::GetFromScope<framework::LoDTensor>(scope, in_names_[i]);
       paddle::lite::Tensor* dst_t = engine_->GetInput(i);

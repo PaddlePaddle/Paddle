@@ -22,25 +22,13 @@ namespace paddle {
 namespace inference {
 namespace lite {
 
-/*
-template <typename SrcT, typename DstT, typename DatT>
-void CopyTensor(const SrcT& tensor_src, DstT* tensor_dst) {
-  const std::vector<int64_t> src_shape = tensor_src.dims().Vectorize();
-  const std::vector<std::vector<uint64_t>> src_lod = tensor_src.lod();
-  const DatT* data_src = tensor_src.data<DatT>();
-  DatT* data_dst = tensor_dst->mutable_data<DatT>();
-  tensor_dst->Resize(src_shape);
-  tensor_dst->set_lod(src_lod);
-}
-*/
-
 bool EngineManager::Empty() const {
     return engines_.size() == 0;
 }
 
 bool EngineManager::Has(const std::string& name) const {
   if (engines_.count(name) == 0) {
-     return false; 
+     return false;
   }
   return engines_.at(name).get() != nullptr;
 }

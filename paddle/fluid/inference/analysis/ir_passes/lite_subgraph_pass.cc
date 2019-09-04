@@ -58,6 +58,7 @@ void LiteSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
 
   framework::ir::FusePassBase::Init("lite_subgraph_pass", graph);
+  framework::ProgramDesc* global_program = Get<framework::ProgramDesc *>("program");
 
   // auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
   std::vector<std::string> lite_ops_filter = {};
@@ -82,7 +83,7 @@ void LiteSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      BuildOperator(node, graph, graph_param_names, &repetitive_params);
+      BuildOperator(node, global_program, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
@@ -101,27 +102,27 @@ void LiteSubgraphPass::ApplyImpl(
 }
 
 void LiteSubgraphPass::BuildOperator(
-    framework::ir::Node *node, Graph *graph,
+    framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
-  framework::ProgramDesc *global_program = Get<framework::ProgramDesc *>("program");
+  
   framework::ProgramDesc engine_program;
 
-  AppendBlocks(node, global_program, &engine_program, repetitive_params);
+  AppendBlocks(merged_node, global_program, &engine_program, repetitive_params);
   SetUpEngine(&engine_program, repetitive_params);
 
-  auto *op_desc = node->Op();
-  op_desc->SetInput("Xs", IOVarsFilter(node->inputs));
-  op_desc->SetOutput("Ys", IOVarsFilter(node->outputs));
+  auto *op_desc = merged_node->Op();
+  op_desc->SetInput("Xs", IOVarsFilter(merged_node->inputs));
+  op_desc->SetOutput("Ys", IOVarsFilter(merged_node->outputs));
   op_desc->SetType("lite_engine");
   op_desc->SetAttr("engine_key", std::string("engine_key"));
 }
 
-void LiteSubgraphPass::AppendBlocks(framework::ir::Node *node,
+void LiteSubgraphPass::AppendBlocks(framework::ir::Node *merged_node,
   framework::ProgramDesc* global_program,
   framework::ProgramDesc* engine_program,
   std::vector<std::string> *repetitive_params) const {
-  auto &subgraph = *Agent(node).subgraph();
+  auto &subgraph = *Agent(merged_node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
   const framework::BlockDesc &global_block = global_program->Block(framework::kRootBlockIndex);
   framework::BlockDesc *sub_block = global_program->AppendBlock(global_block);
@@ -132,7 +133,7 @@ void LiteSubgraphPass::AppendBlocks(framework::ir::Node *node,
 
   std::unordered_set<Node *> io_var_nodes = GetRelatedIOVarNodes(subgraph);
   *repetitive_params = ExtractParameters(io_var_nodes);
-  PrependFeedOps(engine_global_block, IOVarsFilter(node->inputs));
+  PrependFeedOps(engine_global_block, IOVarsFilter(merged_node->inputs));
   for (auto *var_node: io_var_nodes) {
     auto *sub_block_var = sub_block->Var(var_node->Name());
     auto *var = engine_global_block->Var(var_node->Name());
@@ -145,7 +146,7 @@ void LiteSubgraphPass::AppendBlocks(framework::ir::Node *node,
     *sub_block_op->Proto() = *op_node->Op()->Proto();
     *op->Proto() = *op_node->Op()->Proto();
   }
-  PrependFetchOps(engine_global_block, IOVarsFilter(node->outputs));
+  PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
 }
 
 void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
