@@ -12,29 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.contrib.slim import ConfigFactory
+from paddle.fluid.contrib.slim.core import ConfigFactory
 import unittest
 
 
 class TestFactory(unittest.TestCase):
-    def test_parse(self):
-        factory = ConfigFactory('./configs/config.yaml')
+    def test_parse_pruning(self):
+        factory = ConfigFactory('./configs/filter_pruning.yaml')
 
-        pruner = factory.instance('pruner_1')
-        self.assertEquals(pruner.ratios['conv1_1.w'], 0.3)
+        pruner_1 = factory.instance('pruner_1')
+        self.assertEquals(pruner_1.pruning_axis['*'], 0)
+        self.assertEquals(pruner_1.criterions['*'], 'l1_norm')
 
-        pruner = factory.instance('pruner_2')
-        self.assertEquals(pruner.ratios['*'], 0.7)
+        strategy = factory.instance('sensitive_pruning_strategy')
+        pruner_1 = strategy.pruner
+        self.assertEquals(pruner_1.criterions['*'], 'l1_norm')
 
-        strategy = factory.instance('strategy_1')
-        pruner = strategy.pruner
-        self.assertEquals(pruner.ratios['*'], 0.7)
-
-        compress_pass = factory.get_compress_pass()
-        self.assertEquals(compress_pass.epoch, 100)
-
-        strategy = compress_pass.strategies[0]
-        self.assertEquals(strategy.delta_rate, 0.2)
+        self.assertEquals(strategy.start_epoch, 0)
+        self.assertEquals(strategy.sensitivities_file,
+                          'mobilenet_acc_top1_sensitive.data')
 
 
 if __name__ == '__main__':

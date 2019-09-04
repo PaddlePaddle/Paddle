@@ -26,9 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
 namespace paddle {
 namespace framework {
 
@@ -53,32 +50,8 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  if (!platform::is_cpu_place(t.place())) {
-    LoDTensor cpu_tensor;
-    cpu_tensor.set_lod(t.lod());
-    framework::TensorCopy(t, platform::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(t.place());
-    dev_ctx.Wait();
-
-    os << cpu_tensor;
-    return os;
-  }
-
-  os << "dim: " << t.dims() << "\n";
-  os << "lod: " << t.lod() << "\n";
-
-  // only print first ten elements
-  int64_t size = t.numel() < 10 ? t.numel() : 10;
-  for (int64_t i = 0; i < size; ++i) {
-    if (t.type() == proto::VarType::FP32) {
-      os << t.data<float>()[i] << " ";
-    } else if (t.type() == proto::VarType::INT64) {
-      os << t.data<int64_t>()[i] << " ";
-    } else {
-      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
-    }
-  }
+  os << "\tlod: " << t.lod() << "\n";
+  os << static_cast<Tensor>(t) << "\n";
 
   return os;
 }
@@ -158,7 +131,7 @@ bool CheckLoD(const LoD &in, int tensor_height) {
     if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be ascending(allow same items)
+    // check: all the offsets in a level should be non-descending
     if (!std::is_sorted(level.begin(), level.end())) {
       return false;
     }
@@ -182,7 +155,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
   if (in.empty()) return true;
   for (const auto &level : in) {
     // check: all the offsets in a level should be ascending(no same items
-    // allows).
+    // allowed).
     if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
           if (a < b) return true;
           return false;
@@ -297,36 +270,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   }
   // the 3st filed, Tensor
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
-}
-
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {
-  std::stringstream buffer;
-  size_t sz = tensor.size();
-  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
-  for (auto &each : tensor) {
-    SerializeToStream(buffer, each, dev_ctx);
-  }
-  writer->Write(buffer.str());
-}
-
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  if (!scanner->HasNext()) {
-    return false;
-  }
-  std::istringstream sin(scanner->Next());
-  uint32_t sz;
-  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-  auto &result = *result_ptr;
-  result.resize(sz);
-  for (uint32_t i = 0; i < sz; ++i) {
-    DeserializeFromStream(sin, &result[i], dev_ctx);
-  }
-
-  return true;
 }
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(

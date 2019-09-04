@@ -16,12 +16,14 @@ from __future__ import print_function
 
 import os
 import unittest
+import warnings
 import numpy as np
 import random
 import six
 import time
 import itertools
 import collections
+from collections import defaultdict
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -231,9 +233,11 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
-        # infer variable type and infer shape in compile-time
+        # infer variable type and infer shape in compile-time 
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
+
+        return op
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
@@ -257,8 +261,71 @@ class OpTest(unittest.TestCase):
         outs, _ = self._calc_output(place)
         return outs
 
-    def _calc_output(self, place, parallel=False, no_check_set=None):
+    def _create_var_from_numpy(self, value):
+        if isinstance(value, tuple):
+            data = value[0]
+            lod = value[1]
+            v = fluid.dygraph.base.to_variable(value=data)
+            v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
+            return v
+        else:
+            return fluid.dygraph.base.to_variable(value)
 
+    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        with fluid.dygraph.base.guard(place=place):
+            block = fluid.default_main_program().global_block()
+
+            # prepare input variable
+            inputs = defaultdict(list)
+            for name, np_value in six.iteritems(self.inputs):
+                if not isinstance(np_value, list):
+                    np_value = [np_value]
+
+                for i in range(len(np_value)):
+                    inputs[name].append(
+                        self._create_var_from_numpy(np_value[i]))
+
+            # prepare output variable
+            outputs = defaultdict(list)
+            for name, np_value in six.iteritems(self.outputs):
+                if not isinstance(np_value, list):
+                    np_value = [np_value]
+
+                for i in range(len(np_value)):
+                    value = np_value[i]
+                    if isinstance(value, tuple):
+                        v = block.create_var(
+                            name="%s_out%d" % (name, i),
+                            dtype=value[0].dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=False)
+                        v._ivar.value().get_tensor(
+                        ).set_recursive_sequence_lengths(value[1])
+                    else:
+                        v = block.create_var(
+                            name="%s_out%d" % (name, i),
+                            dtype=value.dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=False)
+                    outputs[name].append(v)
+
+            block.append_op(
+                type=self.op_type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=self.attrs)
+
+            return outputs
+
+    def _calc_output(self,
+                     place,
+                     parallel=False,
+                     no_check_set=None,
+                     loss=None,
+                     enable_inplace=None,
+                     for_inplace_grad_test=None):
         program = Program()
         block = program.global_block()
         self._append_ops(block)
@@ -267,15 +334,21 @@ class OpTest(unittest.TestCase):
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
 
+        if for_inplace_grad_test is not None:
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+            # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
+            for name, var in block.vars.items():
+                if 0 in var.shape:
+                    var.persistable = True
         if parallel:
             use_cuda = False
-            if isinstance(place, fluid.CUDAPlace(0)):
+            if isinstance(place, fluid.CUDAPlace):
                 use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
-        else:
-            executor = Executor(place)
-
+            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
+                loss_name=loss.name if loss else None, places=place)
+            program = compiled_prog
         fetch_list = getattr(self, "fetch_list", [])
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
@@ -295,18 +368,191 @@ class OpTest(unittest.TestCase):
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = list(map(block.var, fetch_list))
+
+        if enable_inplace is not None:
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = enable_inplace
+
+            compiled_prog = fluid.CompiledProgram(program).with_data_parallel(
+                build_strategy=build_strategy, places=place)
+            program = compiled_prog
+
+        executor = Executor(place)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
         return outs, fetch_list
 
+    def check_inplace_output_with_place(self,
+                                        place,
+                                        no_check_set=None,
+                                        inplace_atol=None):
+        # can`t enable inplace 
+        if not fluid.core.has_infer_inplace(self.op_type):
+            return
+        expect_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=False)
+        actual_outs, fetch_list = self._calc_output(
+            place, no_check_set=no_check_set, enable_inplace=True)
+
+        # compare expect_outs and actual_outs
+        for i, out in enumerate(fetch_list):
+            if inplace_atol is not None:
+                self.assertTrue(
+                    np.allclose(
+                        np.array(expect_outs[i]),
+                        np.array(actual_outs[i]),
+                        atol=inplace_atol),
+                    "Output (" + out.name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__)
+            else:
+                self.assertTrue(
+                    np.array_equal(
+                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    "Output (" + out.name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__ + '\n')
+
+    def check_inplace_grad_output_with_place(self,
+                                             place,
+                                             no_check_set=None,
+                                             inplace_atol=None):
+        # create forward program to get forward vars
+        program = Program()
+        block = program.global_block()
+        op = self._append_ops(block)
+        inputs = self._get_inputs(block)
+        outputs = self._get_outputs(block)
+        feed_map = self.feed_var(inputs, place)
+
+        # get grad_op 
+        if not fluid.core.has_grad_op_maker(op.desc.type()):
+            return
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
+                                                                  set(), [])
+        # has grad_op_maker but no grad_op 
+        if not grad_op_desc_list:
+            return
+
+        for i, grad_op_desc in enumerate(grad_op_desc_list):
+            # grad_op can not inplace
+            if not fluid.core.has_infer_inplace(grad_op_desc.type()):
+                continue
+            # get forward outs
+            forward_outs, fetch_list = self._calc_output(
+                place, no_check_set=no_check_set, for_inplace_grad_test=True)
+
+            # create grad program
+            grad_program = Program()
+            grad_block = grad_program.global_block()
+            new_op_desc = grad_block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc)
+            grad_program._sync_with_cpp()
+
+            # create grad vars based on forward vars (shape and dtype)
+            for arg in grad_op_desc.input_arg_names(
+            ) + grad_op_desc.output_arg_names():
+                forward_var_name = op_grad_to_var.get(arg, None)
+                if forward_var_name is None:
+                    forward_var_name = arg
+                forward_var = block.vars.get(forward_var_name)
+                assert forward_var is not None, "{} cannot be found".format(
+                    forward_var_name)
+                grad_var = grad_block.create_var(
+                    name=arg,
+                    dtype=forward_var.dtype,
+                    shape=forward_var.shape,
+                    type=forward_var.type,
+                    persistable=False)
+                # some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
+                # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+                # set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+                # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
+                if 0 in grad_var.shape:
+                    grad_var.persistable = True
+            grad_program._sync_with_cpp()
+            grad_fetch_list = grad_op_desc.output_arg_names()
+
+            def _calc_grad_output(enable_inplace=None):
+                # generate feed_map for grad_program
+                # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
+                # we use forward outs (also inputs sometimes) as grad (fake) feeds
+                p = core.Place()
+                p.set_place(place)
+                grad_feed_map = {}
+                for arg in grad_op_desc.input_arg_names():
+                    if arg in feed_map.keys():
+                        grad_feed_map[arg] = feed_map[arg]._copy(p)
+                    else:
+                        forward_var_name = op_grad_to_var.get(arg, None)
+                        if forward_var_name is None:
+                            forward_var_name = arg
+                        for i, out in enumerate(fetch_list):
+                            if out.name == forward_var_name:
+                                # don't feed variables whose tensors hold no buffer (shape contains 0 like shape = [0,2,5] and holder_ is NULL), like XShape in reshape2 op.
+                                # get them from global_scope directly since we have set them persistable in forward execution
+                                if 0 in out.shape:
+                                    continue
+                                else:
+                                    grad_feed_map[arg] = forward_outs[i]._copy(
+                                        p)
+
+                exe = Executor(place)
+                build_strategy = fluid.BuildStrategy()
+                build_strategy.enable_inplace = enable_inplace
+                compiled_program = fluid.CompiledProgram(
+                    grad_program).with_data_parallel(
+                        loss_name="",
+                        build_strategy=build_strategy,
+                        places=place)
+                outs = exe.run(compiled_program,
+                               feed=grad_feed_map,
+                               fetch_list=grad_fetch_list,
+                               return_numpy=False)
+                return outs
+
+            expect_outs = _calc_grad_output(enable_inplace=False)
+            actual_outs = _calc_grad_output(enable_inplace=True)
+
+            # compare expect_outs and actual_outs
+            for i, out_name in enumerate(grad_fetch_list):
+                if inplace_atol is not None:
+                    self.assertTrue(
+                        np.allclose(
+                            np.array(expect_outs[i]),
+                            np.array(actual_outs[i]),
+                            atol=inplace_atol),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        " when using and not using inplace" + "\nExpect " +
+                        str(expect_outs[i]) + "\n" + "But Got" +
+                        str(actual_outs[i]) + " in class " +
+                        self.__class__.__name__)
+                else:
+                    self.assertTrue(
+                        np.array_equal(
+                            np.array(expect_outs[i]), np.array(actual_outs[i])),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        " when using and not using inplace" + "\nExpect " +
+                        str(expect_outs[i]) + "\n" + "But Got" +
+                        str(actual_outs[i]) + " in class " +
+                        self.__class__.__name__)
+
     def check_output_with_place(self,
                                 place,
                                 atol,
                                 no_check_set=None,
-                                equal_nan=False):
+                                equal_nan=False,
+                                check_dygraph=False,
+                                inplace_atol=None):
+        if check_dygraph:
+            dygraph_outs = self._calc_dygraph_output(
+                place, no_check_set=no_check_set)
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
+
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -330,6 +576,10 @@ class OpTest(unittest.TestCase):
                                          type(sub_out))
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
+                    if check_dygraph:
+                        imperative_actual = dygraph_outs[sub_out_name][0]
+                        imperative_actual_t = np.array(
+                            imperative_actual._ivar.value().get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -340,12 +590,31 @@ class OpTest(unittest.TestCase):
                             actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
+                    if check_dygraph:
+                        self.assertTrue(
+                            np.allclose(
+                                imperative_actual_t,
+                                expect_t,
+                                atol=atol,
+                                equal_nan=equal_nan),
+                            "Output (" + sub_out_name + ") has diff at " +
+                            str(place) + " in dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
+                    if check_dygraph:
+                        self.assertListEqual(
+                            imperative_actual._ivar.value().get_tensor()
+                            .recursive_sequence_lengths(), expect[1],
+                            "Output (" + out_name + ") has different lod at " +
+                            str(place) + " in dygraph mode")
             else:
+                if check_dygraph:
+                    imperative_actual = dygraph_outs[out_name][0]
+                    imperative_actual_t = np.array(
+                        imperative_actual._ivar.value().get_tensor())
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -357,10 +626,52 @@ class OpTest(unittest.TestCase):
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
+                if check_dygraph:
+                    self.assertTrue(
+                        np.allclose(
+                            imperative_actual_t,
+                            expect_t,
+                            atol=atol,
+                            equal_nan=equal_nan),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                        str(imperative_actual_t) + " in class " +
+                        self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
                                          ") has different lod at " + str(place))
+                    if check_dygraph:
+                        self.assertListEqual(
+                            imperative_actual._ivar.value().get_tensor()
+                            .recursive_sequence_lengths(), expect[1],
+                            "Output (" + out_name + ") has different lod at " +
+                            str(place) + " in dygraph mode")
+
+        # inplace_atol only used when op doesn't ensure computational consistency
+        if inplace_atol is not None:
+            warnings.warn(
+                "By default, inplace_atol should not be set, please check it")
+        self.check_inplace_output_with_place(
+            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
+
+        # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
+        # skip use_mkldnn currently
+        flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
+        attrs_use_mkldnn = hasattr(
+            self, 'attrs') and bool(self.attrs.get('use_mkldnn', False))
+        if flags_use_mkldnn or attrs_use_mkldnn:
+            warnings.warn(
+                "check inplace_grad for ops using mkldnn is not supported")
+            return
+        use_ngraph = fluid.core.is_compiled_with_ngraph(
+        ) and fluid.core.get_flags_use_ngraph()
+        if use_ngraph:
+            warnings.warn(
+                "check inplace_grad for ops using ngraph is not supported")
+            return
+        self.check_inplace_grad_output_with_place(
+            place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
     def _get_places(self):
         if self.dtype == np.float16:
@@ -375,7 +686,8 @@ class OpTest(unittest.TestCase):
                 return []
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
-        use_ngraph = bool(os.getenv("FLAGS_use_ngraph", False))
+        use_ngraph = fluid.core.is_compiled_with_ngraph(
+        ) and fluid.core.get_flags_use_ngraph()
         if use_ngraph:
             cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
@@ -383,10 +695,16 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5, no_check_set=None, equal_nan=False):
+    def check_output(self,
+                     atol=1e-5,
+                     no_check_set=None,
+                     equal_nan=False,
+                     check_dygraph=False,
+                     inplace_atol=None):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check_set, equal_nan)
+            self.check_output_with_place(place, atol, no_check_set, equal_nan,
+                                         check_dygraph)
 
     def check_output_customized(self, checker):
         places = self._get_places()
@@ -543,12 +861,12 @@ class OpTest(unittest.TestCase):
         fetch_list = [g for p, g in param_grad_list]
         if parallel:
             use_cuda = False
-            if isinstance(place, fluid.CUDAPlace(0)):
+            if isinstance(place, fluid.CUDAPlace):
                 use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=prog)
-        else:
-            executor = Executor(place)
+            compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
+                loss_name=loss.name, places=place)
+            prog = compiled_prog
+        executor = fluid.Executor(place)
         return list(
             map(np.array,
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))

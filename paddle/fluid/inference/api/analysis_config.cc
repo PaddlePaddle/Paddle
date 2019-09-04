@@ -21,6 +21,8 @@
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
+extern const std::vector<std::string> kTRTSubgraphPasses;
+extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -85,12 +87,16 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Model related.
   CP_MEMBER(model_dir_);
-  CP_MEMBER(prog_file_);
-  CP_MEMBER(params_file_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
-  // Gpu related.
+
+  CP_MEMBER(opt_cache_dir_);
+  prog_file_ = std::move(other.prog_file_);
+  params_file_ = std::move(other.params_file_);
+
+  // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cudnn_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
@@ -103,9 +109,26 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_use_static_engine_);
+  CP_MEMBER(trt_use_calib_mode_);
+  // NGRAPH related.
+  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
+  CP_MEMBER(mkldnn_cache_capacity_);
+  // Quantization related.
+  CP_MEMBER(use_mkldnn_quantizer_);
+  CP_MEMBER(mkldnn_quantizer_config_);
+
+  CP_MEMBER(use_anakin_);
+  CP_MEMBER(anakin_max_batchsize_);
+  CP_MEMBER(anakin_max_input_shape_);
+  CP_MEMBER(anakin_min_subgraph_size_);
+  CP_MEMBER(anakin_precision_mode_);
+  CP_MEMBER(anakin_auto_config_layout_);
+  CP_MEMBER(anakin_passes_filter_);
+  CP_MEMBER(anakin_ops_filter_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -130,9 +153,19 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
+void AnalysisConfig::EnableCUDNN() {
+#ifdef PADDLE_WITH_CUDA
+  use_cudnn_ = use_gpu_;
+#else
+  LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
+  use_cudnn_ = false;
+#endif
+
+  Update();
+}
+
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
-  pass_builder()->EnableMKLDNN();
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -142,9 +175,48 @@ void AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
+void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
+#ifdef PADDLE_WITH_MKLDNN
+  mkldnn_cache_capacity_ = capacity;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
+  mkldnn_cache_capacity_ = 0;
+#endif
+}
+
+void AnalysisConfig::EnableMkldnnQuantizer() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!mkldnn_quantizer_config_)
+    mkldnn_quantizer_config_.reset(new MkldnnQuantizerConfig());
+  use_mkldnn_quantizer_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
+  use_mkldnn_quantizer_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::EnableNgraph() {
+#ifdef PADDLE_WITH_NGRAPH
+  pass_builder()->EnableNgraph();
+  use_ngraph_ = true;
+#else
+  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+  use_ngraph_ = false;
+#endif
+}
+
+MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
+  PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
+                          "MkldnnQuantizer was not enabled yet.");
+  return mkldnn_quantizer_config_.get();
+}
+
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
-    AnalysisConfig::Precision precision_mode) {
+    AnalysisConfig::Precision precision_mode, bool use_static,
+    bool use_calib_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -156,6 +228,8 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
+  trt_use_static_engine_ = use_static;
+  trt_use_calib_mode_ = use_calib_mode;
 
   Update();
 #else
@@ -181,7 +255,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
-
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
@@ -194,30 +267,84 @@ void AnalysisConfig::Update() {
   }
 
   if (use_tensorrt_) {
-    const auto &passes = pass_builder_->AllPasses();
-    if (std::find(passes.begin(), passes.end(), "tensorrt_subgraph_pass") ==
-        std::end(passes)) {
-      // Append after the Affine_channel_conv_fuse pass.
-      pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kTRTSubgraphPasses) {
+      pass_builder()->AppendPass(pass);
     }
   }
 
-  if (use_mkldnn_) {
+  if (use_gpu() && use_cudnn_) {
+#ifdef PADDLE_WITH_CUDA
     if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
+      LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableCUDNN();
     }
-#ifdef PADDLE_WITH_MKLDNN
-    pass_builder()->EnableMKLDNN();
-    use_mkldnn_ = true;
-#else
-    LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-    use_mkldnn_ = false;
 #endif
   }
 
+  if (use_ngraph_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableNgraph() only works when IR optimization is enabled.";
+    }
+#ifdef PADDLE_WITH_NGRAPH
+    pass_builder()->EnableNgraph();
+    use_ngraph_ = true;
+#else
+    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
+    use_ngraph_ = false;
+#endif
+  }
+
+  if (use_mkldnn_) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableMKLDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableMKLDNN();
+    }
+#endif
+  }
+
+  // Quantization passes must come after all other optimization passes
+  if (use_mkldnn_quantizer_) {
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
+                    "is enabled.";
+    }
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnQuantizer();
+#endif
+  }
+
+#ifdef PADDLE_WITH_MKLDNN
+  // Do not optimize before quantization
+  if (enable_memory_optim_ && !use_mkldnn_quantizer_) {
+#else
   if (enable_memory_optim_) {
+#endif
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+  }
+
+  if (use_anakin_) {
+    PADDLE_ENFORCE(!use_tensorrt_,
+                   "Anakin sub-graph and TensorRT sub-graph are not allowed to "
+                   "run at the same time!");
+    if (use_gpu_) {
+      LOG(INFO) << "Run Anakin GPU mode";
+    } else {
+      LOG(INFO) << "Run Anakin CPU mode";
+    }
+
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kAnakinSubgraphPasses) {
+      if (std::find(anakin_passes_filter_.begin(), anakin_passes_filter_.end(),
+                    pass) == anakin_passes_filter_.end()) {
+        pass_builder()->AppendPass(pass);
+      }
+    }
   }
 
   if (ir_debug_) {
@@ -244,10 +371,14 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << static_memory_optim_;
   ss << static_memory_optim_force_update_;
 
+  ss << use_ngraph_;
+
   ss << use_mkldnn_;
+  ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
+  ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
 
   ss << enable_ir_optim_;
@@ -256,7 +387,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
-
+  ss << use_anakin_;
+  ss << anakin_min_subgraph_size_;
   return ss.str();
 }
 
@@ -272,6 +404,7 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_used, gpu_available;
+  platform::SetDeviceId(device_id_);
   platform::GpuMemoryUsage(&gpu_used, &gpu_available);
   double total_gpu_memory = (gpu_used + gpu_available) / 1024. / 1024.;
   float fraction_of_gpu_memory =
@@ -321,6 +454,28 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
 void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
+}
+void AnalysisConfig::EnableAnakinEngine(
+    int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
+    int min_subgraph_size, AnalysisConfig::Precision precision_mode,
+    bool auto_config_layout, std::vector<std::string> passes_filter,
+    std::vector<std::string> ops_filter) {
+  anakin_max_batchsize_ = max_batch_size;
+  anakin_max_input_shape_ = max_input_shape;
+  anakin_min_subgraph_size_ = min_subgraph_size;
+  anakin_passes_filter_ = passes_filter;
+  anakin_ops_filter_ = ops_filter;
+  use_anakin_ = true;
+  anakin_precision_mode_ = precision_mode;
+  anakin_auto_config_layout_ = auto_config_layout;
+  Update();
+}
+
+void AnalysisConfig::PartiallyRelease() {
+  prog_file_.clear();
+  prog_file_.shrink_to_fit();
+  params_file_.clear();
+  params_file_.shrink_to_fit();
 }
 
 }  // namespace paddle

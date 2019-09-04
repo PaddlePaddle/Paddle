@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
@@ -36,20 +38,9 @@ void BuildFillConstantNode(
     shape.push_back(sp);
   }
   float value = op_attrs.Get<float>("value");
-  ngraph::element::Type ng_dtype;
-  auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
-      op_attrs.Get<int>("dtype"));
-  if (data_type == paddle::framework::proto::VarType::FP32) {
-    ng_dtype = ngraph::element::f32;
-  } else if (data_type == paddle::framework::proto::VarType::FP64) {
-    ng_dtype = ngraph::element::f64;
-  } else if (data_type == paddle::framework::proto::VarType::INT64) {
-    ng_dtype = ngraph::element::i64;
-  } else if (data_type == paddle::framework::proto::VarType::INT32) {
-    ng_dtype = ngraph::element::i32;
-  } else {
-    PADDLE_THROW("unsupported data type: %s", data_type);
-  }
+  auto ng_dtype =
+      platform::GetNgType(static_cast<paddle::framework::proto::VarType::Type>(
+          op_attrs.Get<int>("dtype")));
   auto out = ngraph::op::Constant::create(ng_dtype, shape, {value});
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }

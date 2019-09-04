@@ -49,11 +49,41 @@ class TestSequenceEraseOpInt32(OpTest):
         self.check_output()
 
 
+class TestSequenceEraseOpInt32LoD2(OpTest):
+    def setUp(self):
+        self.op_type = "sequence_erase"
+        in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
+        lod = [[1, 3], [9, 4, 11, 6]]
+        tokens = [2, 3, 5]
+        out_seq, new_lod0 = sequence_erase(in_seq, lod[-1], tokens)
+        self.attrs = {'tokens': tokens}
+        self.inputs = {'X': (in_seq, lod)}
+        self.outputs = {'Out': (out_seq, lod[:-1] + [new_lod0])}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestSequenceEraseOpInt64(OpTest):
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
         lod = [[9, 4, 11, 6]]
+        tokens = [2, 3, 5]
+        out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
+        self.attrs = {'tokens': tokens}
+        self.inputs = {'X': (in_seq, lod)}
+        self.outputs = {'Out': (out_seq, [new_lod0])}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSequenceEraseOpInt64SeqLen0(OpTest):
+    def setUp(self):
+        self.op_type = "sequence_erase"
+        in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
+        lod = [[0, 9, 0, 0, 10, 11, 0]]
         tokens = [2, 3, 5]
         out_seq, new_lod0 = sequence_erase(in_seq, lod[0], tokens)
         self.attrs = {'tokens': tokens}

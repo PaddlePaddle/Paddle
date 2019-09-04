@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cast_op.h"
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -30,7 +31,8 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 Cast Operator.
 
 This Operator casts the input tensor to another data type and
-returns tha Output Tensor.
+returns the Output Tensor. It's meaningless if the output dtype equals
+the input dtype, but it's fine if you do so.
 
 )DOC");
   }

@@ -68,5 +68,33 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
         ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
   }
 };
+
+template <typename DeviceContext, typename T>
+class ElementwiseSubDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>("DOut");
+    auto* ddx = ctx.Input<Tensor>("DDX");
+    auto* ddy = ctx.Input<Tensor>("DDY");
+
+    auto* ddout = ctx.Output<Tensor>("DDOut");
+
+    // DDOut = ddx - ddy
+    if (ddout) {
+      Tensor ddx_safe, ddy_safe;
+      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, dout, ddx, &ddx_safe);
+      GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
+
+      ddout->mutable_data<T>(ctx.GetPlace());
+      int axis = ctx.Attr<int>("axis");
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &ddx_safe, &ddy_safe, axis, SubFunctor<T>(), ddout);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

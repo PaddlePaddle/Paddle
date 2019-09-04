@@ -31,8 +31,7 @@ class ConvBNFusePass : public FusePassBase {
   virtual ~ConvBNFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_bn_fuse"};
 };
 
@@ -41,8 +40,7 @@ class ConvEltwiseAddBNFusePass : public FusePassBase {
   virtual ~ConvEltwiseAddBNFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_bn_fuse"};
 };
 

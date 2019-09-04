@@ -50,10 +50,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
     Examples:
         .. code-block:: python
 
+           import paddle.fluid as fluid
            data = fluid.layers.data(name="data", shape=[-1, 32, 32], dtype="float32")
-           label = fluid.layers.data(name="data", shape=[-1,1], dtype="int32")
+           label = fluid.layers.data(name="label", shape=[-1,1], dtype="int32")
            predict = fluid.layers.fc(input=data, size=10)
-           acc = fluid.layers.accuracy(input=predict, label=label, k=5)
+           accuracy_out = fluid.layers.accuracy(input=predict, label=label, k=5)
 
     """
     helper = LayerHelper("accuracy", **locals())
@@ -114,14 +115,18 @@ def auc(input,
 
 
     Returns:
-        Variable: A scalar representing the current AUC.
+        Variable: A tuple representing the current AUC.
+        The return tuple is auc_out, batch_auc_out, [
+        batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
 
     Examples:
         .. code-block:: python
 
-            # network is a binary classification model and label the ground truth
-            prediction = network(image, is_infer=True)
-            auc_out=fluid.layers.auc(input=prediction, label=label)
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[1], dtype="int32")
+            predict = fluid.layers.fc(input=data, size=2)
+            auc_out = fluid.layers.auc(input=predict, label=label)
     """
     helper = LayerHelper("auc", **locals())
     auc_out = helper.create_variable_for_type_inference(dtype="float64")

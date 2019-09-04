@@ -39,12 +39,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
+  void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(op_desc.GetAttr("dtype")));
-    auto& out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetDataType(data_type);
+        boost::get<int>(ctx->GetAttr("dtype")));
+    auto& out_var_name = ctx->Output("Out").front();
+    ctx->SetDataType(out_var_name, data_type);
   }
 };
 

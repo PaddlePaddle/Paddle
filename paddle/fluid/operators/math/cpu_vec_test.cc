@@ -65,12 +65,11 @@ void ref_relu(const int n, const T* x, T* y) {
 }
 
 template <typename T>
-void RandomVec(const int n, T* a) {
+void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
+               const T upper = static_cast<T>(20.f)) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
-  const T lower = static_cast<T>(-20.f);
-  const T upper = static_cast<T>(20.f);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
@@ -142,6 +141,126 @@ TEST(CpuVecTest, relu) {
                         ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
+}
+
+template <typename T>
+void compare_sum(size_t n, std::function<void(const size_t, const T*, T*)> tgt,
+                 std::function<void(const size_t, const T*, T*)> ref) {
+  std::vector<T> x(n);
+  T ytgt_data, yref_data;
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  tgt(n, x_data, &ytgt_data);
+  ref(n, x_data, &yref_data);
+  EXPECT_NEAR(ytgt_data, yref_data, 1e-3);
+}
+
+TEST(CpuVecTest, vec_sum) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_sum<float>(sz, vec_sum<float>, vec_sum<float, platform::isa_any>);
+    compare_sum<float>(sz, vec_sum<float, platform::avx>,
+                       vec_sum<float, platform::isa_any>);
+  }
+  compare_sum<double>(30U, vec_sum<double>, vec_sum<double, platform::isa_any>);
+}
+
+template <typename T>
+void compare_clip(
+    size_t n, T threshold,
+    std::function<void(const size_t, const T, const T*, T*)> tgt,
+    std::function<void(const size_t, const T, const T*, T*)> ref) {
+  std::vector<T> x(n);
+  std::vector<T> ytgt(n), yref(n);
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  T* yref_data = yref.data();
+  T* ytgt_data = ytgt.data();
+  tgt(n, threshold, x_data, ytgt_data);
+  ref(n, threshold, x_data, yref_data);
+  for (int i = 0; i < n; ++i) {
+    EXPECT_NEAR(ytgt_data[i], yref_data[i], 1e-3);
+  }
+}
+
+TEST(CpuVecTest, vec_clip) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_clip<float>(sz, -4.f, vec_clip<float>,
+                        vec_clip<float, platform::isa_any>);
+    compare_clip<float>(sz, -1.1f, vec_clip<float, platform::avx>,
+                        vec_clip<float, platform::isa_any>);
+  }
+  compare_clip<double>(30U, 1.0, vec_clip<double>,
+                       vec_clip<double, platform::isa_any>);
+}
+
+template <typename T>
+void compare_mul(
+    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    std::function<void(const size_t, const T*, const T*, T*)> ref) {
+  std::vector<T> x(n), y(n);
+  std::vector<T> ztgt(n), zref(n);
+
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+  RandomVec<T>(n, y.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  const T* y_data = y.data();
+  T* ztgt_data = ztgt.data();
+  T* zref_data = zref.data();
+
+  tgt(n, x_data, y_data, ztgt_data);
+  ref(n, x_data, y_data, zref_data);
+  for (size_t i = 0; i < n; ++i) {
+    EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+  }
+}
+
+TEST(CpuVecTest, vec_mul) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_mul<float>(sz, vec_mul<float>, vec_mul<float, platform::isa_any>);
+    compare_mul<float>(sz, vec_mul<float, platform::avx>,
+                       vec_mul<float, platform::isa_any>);
+  }
+  compare_mul<double>(30U, vec_mul<double>, vec_mul<double, platform::isa_any>);
+}
+
+template <typename T>
+void compare_mul_reduce(
+    size_t n, std::function<void(const size_t, const T*, const T*, T*)> tgt,
+    std::function<void(const size_t, const T*, const T*, T*)> ref) {
+  std::vector<T> x(n), y(n);
+  T ztgt_data, zref_data;
+
+  RandomVec<T>(n, x.data(), static_cast<T>(-2), static_cast<T>(2));
+  RandomVec<T>(n, y.data(), static_cast<T>(-2), static_cast<T>(2));
+
+  const T* x_data = x.data();
+  const T* y_data = y.data();
+
+  tgt(n, x_data, y_data, &ztgt_data);
+  ref(n, x_data, y_data, &zref_data);
+  EXPECT_NEAR(ztgt_data, zref_data, 1e-3);
+}
+
+TEST(CpuVecTest, vec_mul_reduce) {
+  namespace platform = paddle::platform;
+  using namespace paddle::operators::math;  // NOLINT
+  for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    compare_mul_reduce<float>(sz, vec_mul_reduce<float>,
+                              vec_mul_reduce<float, platform::isa_any>);
+    compare_mul_reduce<float>(sz, vec_mul_reduce<float, platform::avx>,
+                              vec_mul_reduce<float, platform::isa_any>);
+  }
+  compare_mul_reduce<double>(30U, vec_mul_reduce<double>,
+                             vec_mul_reduce<double, platform::isa_any>);
 }
 
 template <typename T>

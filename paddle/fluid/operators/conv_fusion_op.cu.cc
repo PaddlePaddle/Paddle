@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
-DEFINE_int64(cudnn_exhaustive_search_times, -1,
-             "Exhaustive search times for cuDNN convolution, "
-             "defalut is 1, only search once.");
+DECLARE_int64(cudnn_exhaustive_search_times);
 
 namespace paddle {
 namespace operators {
@@ -30,6 +28,8 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using ScopedActivationDescriptor = platform::ScopedActivationDescriptor;
 using DataLayout = platform::DataLayout;
+using framework::AlgorithmsCache;
+
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
@@ -93,10 +93,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
+    size_t workspace_size_limit = 0;
     if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
       int64_t max_user_size =
-          std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+          std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                    user_workspace_size);
       workspace_size_limit = max_user_size * 1024 * 1024;
     }
@@ -130,7 +130,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
                   fwd_perf_stat.data(), cudnn_workspace, workspace_size_limit));
         };
-        workspace_handle.RunFunc(cudnn_find_func, workspace_size_limit);
+        workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
         VLOG(3) << "Perf result: (algo: stat, time, memory)";
         for (int i = 0; i < returned_algo_count; ++i) {
           const auto& stat = fwd_perf_stat[i];
@@ -139,38 +139,21 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         }
         return fwd_perf_stat[0].algo;
       };
-      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* algo_cache = nullptr;
+      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
+          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
+      // TODO(dangqingqing): Unify this if-else.
       if (search_times > 0) {
         // The searched algo will be cached by `search_times` times for
         // different input dimension. For other dimensions, select the algo
         // of closest area.
-        auto var_name = ctx.Inputs("AlgoCache")[0];
-        algo_cache =
-            ctx.scope()
-                .FindVar(var_name)
-                ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        algo = algo_cache->GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
-                                        search_func);
+        algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
+                                       search_func);
       } else {
-        // Cache searched algo in Var(kCUDNNFwdAlgoCache).
-        // all conv ops use the same kCUDNNFwdAlgoCache variable.
-        if (ctx.scope().FindVar(kCUDNNFwdAlgoCache)) {
-          algo_cache =
-              ctx.scope()
-                  .FindVar(kCUDNNFwdAlgoCache)
-                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        } else {
-          // TODO(qingqing) remove const_cast
-          algo_cache =
-              const_cast<framework::Scope*>(ctx.scope().parent())
-                  ->Var(kCUDNNFwdAlgoCache)
-                  ->GetMutable<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>();
-        }
-        algo = algo_cache->GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                        dilations, 0, search_func);
+        algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
+                                       dilations, 0, search_func);
       }
       VLOG(3) << "choose algo " << algo;
     }

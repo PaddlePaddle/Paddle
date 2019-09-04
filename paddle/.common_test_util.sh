@@ -26,7 +26,7 @@ chmod a+rw $PORT_FILE $PORT_LOCK_FILE 2>/dev/null
 #
 # There are two parameter of this method
 # param 1: the begin of port range
-# param 2: the lenght of port range.
+# param 2: the length of port range.
 # so, the port range is [param1, param1+param2)
 acquire_ports(){
   (

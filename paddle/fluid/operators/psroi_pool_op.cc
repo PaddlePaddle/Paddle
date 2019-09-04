@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/psroi_pool_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -154,12 +155,29 @@ class PSROIPoolGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class PSROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("psroi_pool_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(psroi_pool, ops::PSROIPoolOp, ops::PSROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::PSROIPoolGradDescMaker);
 REGISTER_OPERATOR(psroi_pool_grad, ops::PSROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     psroi_pool,
