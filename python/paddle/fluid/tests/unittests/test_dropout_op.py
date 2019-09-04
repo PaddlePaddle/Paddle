@@ -67,7 +67,6 @@ class TestDropoutOp4(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
         }
-        self.disable_backward_inplace_check = True
 
     def test_check_output(self):
         self.check_output()
@@ -81,7 +80,6 @@ class TestDropoutOp5(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
         }
-        self.disable_backward_inplace_check = True
 
     def test_check_output(self):
         self.check_output()
@@ -130,7 +128,6 @@ class TestDropoutOp8(OpTest):
             'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {'Out': self.inputs['X']}
-        self.disable_backward_inplace_check = True
 
     def test_check_output(self):
         self.check_output()
@@ -146,7 +143,6 @@ class TestDropoutOp9(OpTest):
             'dropout_implementation': 'upscale_in_train'
         }
         self.outputs = {'Out': self.inputs['X']}
-        self.disable_backward_inplace_check = True
 
     def test_check_output(self):
         self.check_output()
@@ -166,7 +162,6 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True
         }
         self.outputs = {'Out': out}
-        self.disable_backward_inplace_check = True
 
     def init_test_case(self):
         self.input_size = [32, 64]
