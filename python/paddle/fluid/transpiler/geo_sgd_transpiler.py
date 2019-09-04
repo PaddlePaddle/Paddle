@@ -166,7 +166,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 "send_varnames": [batch_num.name]}
         )
 
-        self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
+        self.trainer_startup_program = self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
         self.origin_program._parameters_on_pservers = self.vars_overview
 
     def _get_vars_info(self):

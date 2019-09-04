@@ -212,6 +212,7 @@ class DistributedTranspiler(Fleet):
             self.startup_program = default_startup_program()
             if self._transpile_config.geo_sgd_mode:
                 self.vars_info = self._transpiler._get_vars_info()
+                self.startup_program = self._transpiler.trainer_startup_program
         else:
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
