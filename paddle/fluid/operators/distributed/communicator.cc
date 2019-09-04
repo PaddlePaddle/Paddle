@@ -199,7 +199,8 @@ void Communicator::RecvNonIndependent() {
   if (FLAGS_communicator_independent_recv_thread && !is_geo_sgd_) {
     return;
   }
-  auto grad_num = grad_num_.load();
+  auto grad_num = :q
+  .load();
   if (is_geo_sgd_) {
     if (grad_num >= geo_need_push_nums_ ) {
       RecvAll();
@@ -484,7 +485,8 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   else if (var_name == "batch_num" ) {
     auto grad_num = grad_num_.load();
     grad_num_.fetch_add(1, std::memory_order_relaxed);
-    if (grad_num >= geo_need_push_nums_){
+    auto current_num = grad_num_.load();
+    if (current_num >= geo_need_push_nums_){
       for (auto &iter:send_varname_to_queue_) {
         std::string local_var_name = iter.first;
         auto &queue = send_varname_to_queue_.at(local_var_name);
