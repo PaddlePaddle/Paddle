@@ -146,7 +146,7 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  PADDLE_ENFORCE(platform::is_cpu_place(src.place()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(src.place()), true);
 
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
