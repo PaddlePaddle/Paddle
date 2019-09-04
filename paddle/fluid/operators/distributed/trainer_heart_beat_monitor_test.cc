@@ -28,7 +28,7 @@ TEST(TrainerHeartBeatMonitor, All) {
   std::string var = "nce_w@GRAD.block0";
   std::string var2 = "nce_w@GRAD.block2";
 
-  TrainerHeartBeatMonitor::Init(trainers, pserver_id == 0, varname);
+  TrainerHeartBeatMonitor::Init(trainers, pserver_id == 0, var);
   auto* monitor = TrainerHeartBeatMonitor::GetInstance();
 
   std::vector<int> ids{1, 3, 5, 7};
