@@ -126,6 +126,9 @@ class TestDistRunnerBase(object):
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
+        if args.use_mixed_precision:
+            dist_strategy.use_mixed_precision = True
+            dist_strategy.loss_scaling = 64.0
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -402,6 +405,7 @@ def runtime_main(test_class):
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
+    parser.add_argument('--use_mixed_precision', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -485,6 +489,7 @@ class TestDistBase(unittest.TestCase):
         self._enable_backward_deps = False
         self._gpu_fleet_api = False
         self._use_local_sgd = False
+        self._use_mixed_precision = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._setup_config()
