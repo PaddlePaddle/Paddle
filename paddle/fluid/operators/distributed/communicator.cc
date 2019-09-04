@@ -412,6 +412,9 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
         new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
   is_geo_sgd_ = true;
+  FLAGS_communicator_independent_recv_thread = false;
+  VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
+
   delta_scope_.reset(new Scope()); //parameter on pserver
   VLOG(1) << "Init delta scope";
   GeoSgdParamInit(delta_scope_.get());
@@ -459,6 +462,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
+    VLOG(1) <<"Parameter init from recv_scope"
     for(auto &iter:send_varname_to_ctx_){
       auto var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name);
@@ -466,25 +470,26 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     }
     return;
   }
-  auto grad_num = grad_num_.load();
-  if (grad_num < geo_need_push_nums_){
+  else if (var_name == "batch_num" ) {
+    auto grad_num = grad_num_.load();
     grad_num_.fetch_add(1, std::memory_order_relaxed);
-  }
-  else{
-    for (auto &iter:send_varname_to_queue_)
-    {
-      std::string local_var_name = iter.first;
-      auto &queue = send_varname_to_queue_.at(local_var_name);
-      VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();
-      
-      SendUpdateVars(local_var_name);
-      auto *delta_var = delta_scope_->FindVar(var_name);
+    if (grad_num >= geo_need_push_nums_){
+      for (auto &iter:send_varname_to_queue_) {
+        std::string local_var_name = iter.first;
+        auto &queue = send_varname_to_queue_.at(local_var_name);
+        VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();
+        
+        SendUpdateVars(local_var_name);
+        auto *delta_var = delta_scope_->FindVar(var_name);
 
-      auto tmp_param_var = std::make_shared<Variable>();
-      framework::CopyVariable(*delta_var, tmp_param_var.get());
-      queue->Push(tmp_param_var);
+        auto tmp_param_var = std::make_shared<Variable>();
+        framework::CopyVariable(*delta_var, tmp_param_var.get());
+        queue->Push(tmp_param_var);
+      }
     }
   }
+  
+  
 }
 
 void Communicator::GeoSgdParamInit(framework::Scope *scope){
@@ -510,7 +515,7 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
 void Communicator::SendUpdateVars(const std::string& var_name) {
   // calc var_delata = (var_recv - var_old) / trainers
   // calc var_old += var_delta/trainer_nums
-  VLOG(3) << "Geo-Sgd Communicator Send update Vars: "<< var_name;
+  VLOG(1) << "Geo-Sgd Communicator Send update Vars: "<< var_name;
   // Todo: add check
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
@@ -541,7 +546,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
 void Communicator::RecvUpdateVars(const std::string& var_name) {
   // calc var_recv = var_delta - var_old
   // calc var_old = var_delta
-  VLOG(3) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
+  VLOG(1) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
   // Todo: add check
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
