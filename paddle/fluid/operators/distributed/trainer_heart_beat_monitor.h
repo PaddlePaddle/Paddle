@@ -93,6 +93,18 @@ class TrainerHeartBeatMonitor {
     return monitor_.get();
   }
 
+  void Stop() {
+    running_ = false;
+    if (!monitor_) {
+      VLOG(0) << "TrainerHeartBeatMonitor is not inited, do nothing";
+    } else {
+      if (monitor_thread_) {
+        monitor_thread_->join();
+        monitor_thread_.reset(nullptr);
+      }
+    }
+  }
+
   void Update(const int trainer_id, std::string varname, TrainerStatus status);
 
   void LostTrainerMonitor();

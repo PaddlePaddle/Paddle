@@ -116,6 +116,9 @@ void StartServer(const std::string& rpc_name) {
   g_req_handler->SetExecutor(&exe);
 
   g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
+
+  distributed::TrainerHeartBeatMonitor::Init(2, true, "w@grad");
+
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
