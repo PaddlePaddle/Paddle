@@ -41,9 +41,9 @@ class TestStrideSliceOp(OpTest):
     def setUp(self):
         self.op_type = 'strided_slice'
         self.input = np.random.rand(8)
-        self.begin = [0]
-        self.end = [-1]
-        self.stride = [1]
+        self.begin = [-1]
+        self.end = [-3]
+        self.stride = [-1]
         self.output = strided_slice_native_forward(self.input, self.begin,
                                                    self.end, self.stride)
 
