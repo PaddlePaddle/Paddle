@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,24 +16,25 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/ir/placement_pass_base.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 /*
- * Specifies which operators should use MKLDNN.
+ * Specifies which operators should use cuDNN.
  */
-class MKLDNNPlacementPass : public PlacementPassBase {
+class PlacementPassBase : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+  virtual const std::string GetPlacementName() const = 0;
+  virtual const std::string GetAttrName() const = 0;
+  virtual const std::unordered_set<std::string> GetOpTypesList() const = 0;
+
  private:
-  const std::string GetPlacementName() const { return "MKLDNN"; }
-
-  const std::string GetAttrName() const { return "use_mkldnn"; }
-
-  const std::unordered_set<std::string> GetOpTypesList() const {
-    return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
-  }
+  bool IsSupport(const std::string& op_type) const;
 };
 
 }  // namespace ir

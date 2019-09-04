@@ -158,7 +158,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
       char* scratch =
           static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
     }
     return semaphore_;
@@ -179,7 +179,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
@@ -239,10 +239,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
-      PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_),
-                     "Failed to create Cudnn handle in DeviceContext");
-      PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_),
-                     "Failed to set stream for Cudnn handle in DeviceContext");
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnCreate(&cudnn_handle_),
+          "Failed to create Cudnn handle in DeviceContext");
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnSetStream(cudnn_handle_, stream_),
+          "Failed to set stream for Cudnn handle in DeviceContext");
     } else {
       cudnn_handle_ = nullptr;
     }
@@ -259,14 +261,14 @@ CUDADeviceContext::~CUDADeviceContext() {
   cublas_tensor_core_handle_.reset();
   eigen_stream_.reset();
   eigen_device_.reset();
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
   if (cudnn_handle_) {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_),
-                   "Failed to destory Cudnn handle");
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                "Failed to destory Cudnn handle");
   }
 #if !defined(_WIN32)
   if (nccl_comm_) {
-    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
 #endif
 }

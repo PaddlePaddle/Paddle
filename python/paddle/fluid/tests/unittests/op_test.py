@@ -664,6 +664,12 @@ class OpTest(unittest.TestCase):
             warnings.warn(
                 "check inplace_grad for ops using mkldnn is not supported")
             return
+        use_ngraph = fluid.core.is_compiled_with_ngraph(
+        ) and fluid.core.get_flags_use_ngraph()
+        if use_ngraph:
+            warnings.warn(
+                "check inplace_grad for ops using ngraph is not supported")
+            return
         self.check_inplace_grad_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
