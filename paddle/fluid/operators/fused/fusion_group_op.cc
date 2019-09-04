@@ -27,23 +27,29 @@ class FusionGroupOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       "The number of outputs should be no less than 1.");
 
+    const size_t num_ins = ctx->Inputs("X").size();
+    const size_t num_outs = ctx->Outputs("Out").size();
+
     int type = ctx->Attrs().Get<int>("type");
     PADDLE_ENFORCE_EQ(type, 0UL,
                       "Only support fusion of elementwise operations.");
 
     std::vector<framework::DDim> x_dims = ctx->GetInputsDim("X");
-    const size_t num_ins = x_dims.size();
-    PADDLE_ENFORCE_GE(num_ins, 1UL,
-                      "The number of inputs should be no less that 1.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), num_ins);
+
     if (type == 0) {
       for (size_t i = 1; i < num_ins; ++i) {
         PADDLE_ENFORCE_EQ(x_dims[0], x_dims[i],
                           "All the inputs' dims should be the same.");
       }
+      std::vector<framework::DDim> out_dims;
+      for (size_t j = 0; j < num_outs; ++j) {
+        out_dims.push_back(x_dims[0]);
+      }
+      ctx->SetOutputsDim("Out", out_dims);
     }
 
     // Only lod of X[0] would be shared with Out.
-    size_t num_outs = ctx->Outputs("Out").size();
     for (size_t j = 0; j < num_outs; ++j) {
       ctx->ShareLoD("X", /*->*/ "Out", 0, j);
     }

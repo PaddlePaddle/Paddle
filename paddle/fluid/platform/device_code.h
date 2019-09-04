@@ -75,7 +75,7 @@ class DeviceCodePool {
   explicit DeviceCodePool(const std::vector<platform::Place>& places);
 
   static DeviceCodePool& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(pool, "Need to creat DeviceCodePool first!");
+    PADDLE_ENFORCE_NOT_NULL(pool, "Need to create DeviceCodePool first!");
     return *pool;
   }
 

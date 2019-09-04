@@ -17,12 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace operators {
 
-using DeviceKernelFunc = std::function<void(size_t n, std::vector<void*> args)>;
+using CPUKernelFunc = std::function<void(size_t n, std::vector<void*> args)>;
 
 template <typename T>
 framework::Tensor* CreateTensor(framework::Scope* scope,
@@ -31,7 +32,9 @@ framework::Tensor* CreateTensor(framework::Scope* scope,
                                 const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  tensor->mutable_data<T>(framework::make_ddim(shape), place);
+  if (shape.size() > 0) {
+    tensor->mutable_data<T>(framework::make_ddim(shape), place);
+  }
   return tensor;
 }
 
@@ -45,7 +48,7 @@ void SetupRandomCPUTensor(framework::Tensor* tensor,
   T* ptr = tensor->mutable_data<T>(framework::make_ddim(shape),
                                    platform::CPUPlace());
   for (int64_t i = 0; i < tensor->numel(); ++i) {
-    ptr[i] = static_cast<T>(uniform_dist(rng));
+    ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
 }
 
@@ -80,11 +83,60 @@ framework::OpDesc* CreateFusionGroupOp(
   return op;
 }
 
+void PrepareDeviceCode(platform::Place place, std::string func_name,
+                       std::string cuda_kernel_str) {
+  paddle::platform::DeviceCodePool& pool =
+      paddle::platform::DeviceCodePool::Init({place});
+
+  std::unique_ptr<paddle::platform::DeviceCode> code(
+      new paddle::platform::CUDADeviceCode(place, func_name, cuda_kernel_str));
+  code->Compile();
+  pool.Set(std::move(code));
+}
+
+void CheckOutputs(framework::Scope* scope,
+                  const std::vector<std::string>& output_names,
+                  std::vector<framework::Tensor>* cpu_tensors,
+                  size_t num_inputs, CPUKernelFunc cpu_kernel_func) {
+  std::vector<framework::Tensor> cpu_outputs;
+  cpu_outputs.resize(output_names.size());
+  for (size_t j = 0; j < output_names.size(); ++j) {
+    auto* var = scope->Var(output_names[j]);
+    const auto& dev_tensor = var->Get<framework::LoDTensor>();
+    TensorCopySync(dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
+
+    cpu_tensors->at(num_inputs + j)
+        .mutable_data<float>(dev_tensor.dims(), platform::CPUPlace());
+  }
+
+  size_t n = cpu_tensors->at(0).numel();
+  std::vector<void*> args;
+  for (size_t i = 0; i < cpu_tensors->size(); ++i) {
+    args.push_back(cpu_tensors->at(i).data<float>());
+  }
+  cpu_kernel_func(n, args);
+
+  for (size_t j = 0; j < output_names.size(); ++j) {
+    auto* dev_ptr = cpu_outputs[j].data<float>();
+    auto* cpu_ptr = cpu_tensors->at(num_inputs + j).data<float>();
+    int64_t length = cpu_outputs[j].numel();
+    LOG(INFO) << "Check the " << j << "th output...";
+    for (int64_t i = 0; i < length; ++i) {
+      PADDLE_ENFORCE_LT(fabs(dev_ptr[i] - cpu_ptr[i]), 1.E-05);
+    }
+  }
+}
+
 void TestMain(const std::vector<std::string>& input_names,
               const std::vector<std::vector<int64_t>>& input_shapes,
               const std::vector<std::string>& output_names, int type,
               std::string func_name, std::string cuda_kernel_str,
-              DeviceKernelFunc cpu_kernel_func) {
+              CPUKernelFunc cpu_kernel_func) {
+  // Compile the device code
+  paddle::framework::InitDevices(false, {0});
+  platform::CUDAPlace place = platform::CUDAPlace(0);
+  PrepareDeviceCode(place, func_name, cuda_kernel_str);
+
   // Create a ProgramDesc that has a fusion_group_op.
   framework::ProgramDesc program;
   framework::OpDesc* op_desc = CreateFusionGroupOp(
@@ -92,7 +144,6 @@ void TestMain(const std::vector<std::string>& input_names,
   auto fusion_group_op = framework::OpRegistry::CreateOp(*op_desc);
 
   framework::Scope scope;
-  platform::CUDAPlace place = platform::CUDAPlace(0);
 
   // Prepare input tensors.
   std::vector<framework::Tensor> cpu_tensors;
@@ -103,8 +154,20 @@ void TestMain(const std::vector<std::string>& input_names,
         CreateTensor<float>(&scope, place, input_names[i], input_shapes[i]);
     TensorCopySync(cpu_tensors[i], place, dev_tensor);
   }
+  // Create output tensors.
+  std::vector<int64_t> empty_shape;
+  for (size_t j = 0; j < output_names.size(); ++j) {
+    CreateTensor<float>(&scope, place, output_names[j], empty_shape);
+  }
 
   fusion_group_op->Run(scope, place);
+
+  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx->Wait();
+
+  // Check the output.
+  CheckOutputs(&scope, output_names, &cpu_tensors, input_names.size(),
+               cpu_kernel_func);
 }
 
 TEST(FusionGroupOp, elementwise) {
@@ -113,7 +176,7 @@ TEST(FusionGroupOp, elementwise) {
   std::vector<std::string> output_names = {"z"};
   std::vector<std::vector<int64_t>> input_shapes = {{256, 256}, {256, 256}};
   constexpr auto kernel = R"(
-static inline __device__ void relu(float x) {
+static inline __device__ float relu(float x) {
   return x * (x > 0);
 }
 

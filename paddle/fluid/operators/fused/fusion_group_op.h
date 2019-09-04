@@ -26,12 +26,14 @@ template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
     int type = ctx.Attr<int>("type");
 
-    auto place = ctx.GetPlace();
+    size_t num_ins = ins.size();
     size_t num_outs = outs.size();
+
+    auto place = ctx.GetPlace();
     for (size_t i = 0; i < num_outs; ++i) {
       outs[i]->mutable_data<T>(place);
     }
@@ -39,18 +41,20 @@ class FusionGroupKernel : public framework::OpKernel<T> {
     std::string func_name = ctx.Attr<std::string>("func_name");
     platform::DeviceCode* dev_code =
         platform::DeviceCodePool::Instance().Get(place, func_name);
+    VLOG(3) << "func_name: " << func_name;
 
     if (type == 0) {
       size_t n = ins[0]->numel();
       std::vector<void*> args;
       args.push_back(&n);
-      for (size_t i = 0; i < ins.size(); ++i) {
-        auto* ins_data_i = ins[i]->data<T>();
-        args.push_back(&ins_data_i);
+      std::vector<const T*> ptrs(num_ins + num_outs);
+      for (size_t i = 0; i < num_ins; ++i) {
+        ptrs[i] = ins[i]->data<T>();
+        args.push_back(&ptrs[i]);
       }
-      for (size_t j = 0; j < outs.size(); ++j) {
-        auto* outs_data_j = outs[j]->data<T>();
-        args.push_back(&outs_data_j);
+      for (size_t j = 0; j < num_outs; ++j) {
+        ptrs[num_ins + j] = outs[j]->data<T>();
+        args.push_back(&ptrs[num_ins + j]);
       }
       dev_code->Launch(n, &args);
     }

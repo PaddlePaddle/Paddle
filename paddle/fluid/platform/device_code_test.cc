@@ -70,6 +70,9 @@ TEST(DeviceCode, cuda) {
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
+  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx->Wait();
+
   TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
     PADDLE_ENFORCE_EQ(cpu_z.data<float>()[i],
