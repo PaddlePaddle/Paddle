@@ -202,10 +202,10 @@ void Communicator::RecvNonIndependent() {
   }
 
   if (is_geo_sgd_) {
-    push_num = have_push_.load();
+    auto push_num = have_push_.load();
     if (push_num >= var_nums_ ) {
       RecvAll();
-      grad_num_.store(0);
+      have_push_.store(0);
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

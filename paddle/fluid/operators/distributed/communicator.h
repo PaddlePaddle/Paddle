@@ -247,7 +247,7 @@ class Communicator {
   std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
   int is_need_push_ = 0;
   std::atomic_uint need_push_{0};
-  std::atmoic_unit have_push_{0};
+  std::atomic_uint have_push_{0};
  
 };
 
