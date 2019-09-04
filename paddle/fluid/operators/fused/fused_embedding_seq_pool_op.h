@@ -36,7 +36,7 @@ using DDim = framework::DDim;
 constexpr int64_t kNoPadding = -1;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
 template <typename T>
 void prepare_csr_data(const std::vector<uint64_t> &offset,
                       const int64_t *ids_data, const size_t idx_width,
@@ -138,7 +138,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
 
     if (combiner_type == "sum") {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
       auto output = output_t->mutable_data<T>(context.GetPlace());
       int64_t table_height = table_var->dims()[0];
@@ -188,13 +188,13 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     DDim table_dim;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
     } else {
       PADDLE_THROW(
           "The parameter W of a FusedEmbeddingSeqPoolGradKernel "
-          "must be either LoDTensor");
+          "must be LoDTensor");
     }
     auto *ids = context.Input<LoDTensor>("Ids");
     auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -203,7 +203,6 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
 
     d_table->Resize(table_dim);
     auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
-    memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
     const auto &ids_lod = ids->lod();
     PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
