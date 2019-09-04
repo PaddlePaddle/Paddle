@@ -282,4 +282,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+    inference_analysis_test(trt_inference_test SRCS trt_inference_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
 endif()

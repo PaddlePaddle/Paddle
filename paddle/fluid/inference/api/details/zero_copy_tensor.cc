@@ -87,13 +87,11 @@ PaddleDType ZeroCopyTensor::type() const {
     return PaddleDType::INT64;
   } else if (type == framework::proto::VarType::INT32) {
     return PaddleDType::INT32;
-  } else if (type == framework::proto::VarType::INT8) {
-    return PaddleDType::INT8;
   } else if (type == framework::proto::VarType::UINT8) {
     return PaddleDType::UINT8;
   } else {
     LOG(ERROR) << "Unknown type. Currently support types: float32, int64, "
-                  "int32, int8, uint8.";
+                  "int32, uint8. Using float32 instead.";
   }
   return PaddleDType::FLOAT32;
 }
@@ -152,12 +150,10 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 template void ZeroCopyTensor::copy_from_cpu<float>(const float *data);
 template void ZeroCopyTensor::copy_from_cpu<int64_t>(const int64_t *data);
 template void ZeroCopyTensor::copy_from_cpu<int32_t>(const int32_t *data);
-template void ZeroCopyTensor::copy_from_cpu<int8_t>(const int8_t *data);
 template void ZeroCopyTensor::copy_from_cpu<uint8_t>(const uint8_t *data);
 template void ZeroCopyTensor::copy_to_cpu<float>(float *data);
 template void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
 template void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
-template void ZeroCopyTensor::copy_to_cpu<int8_t>(int8_t *data);
 template void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
 
 template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
@@ -166,14 +162,11 @@ template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
                                                 int *size) const;
 template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
                                                 int *size) const;
-template int8_t *ZeroCopyTensor::data<int8_t>(PaddlePlace *place,
-                                              int *size) const;
 template uint8_t *ZeroCopyTensor::data<uint8_t>(PaddlePlace *place,
                                                 int *size) const;
 template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
 template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
-template int8_t *ZeroCopyTensor::mutable_data<int8_t>(PaddlePlace place);
 template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
