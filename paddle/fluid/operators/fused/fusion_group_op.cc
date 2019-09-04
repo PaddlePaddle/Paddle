@@ -59,12 +59,20 @@ class FusionGroupOp : public framework::OperatorWithKernel {
 class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The inputs of fusion_group op.").AsDuplicable();
-    AddOutput("Out", "The outputs of fusion_group op.").AsDuplicable();
+    AddInput("X", "(std::vector<LoDTensor>) The inputs of fusion_group op.")
+        .AsDuplicable();
+    AddOutput("Out", "(std::vector<LoDTensor>) The outputs of fusion_group op.")
+        .AsDuplicable();
     AddAttr<int>("type", "Fusion type.").SetDefault(0);
-    AddAttr<std::string>("func_name", "Name of the generated codes.")
+    AddAttr<std::string>("func_name", "Name of the generated functions.")
         .SetDefault("");
     AddComment(R"DOC(
+fusion_group Operator.
+
+It is used to execute a generated CUDA kernel which fuse the computation of
+multiple operators into one. It supports serveral types:
+0, fused computation of elementwise operations in which all the dims of inputs
+    and outputs should be exactly the same.
 )DOC");
   }
 };
