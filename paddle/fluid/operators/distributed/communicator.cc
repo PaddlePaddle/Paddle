@@ -200,12 +200,23 @@ void Communicator::RecvNonIndependent() {
     return;
   }
   auto grad_num = grad_num_.load();
-  if (grad_num > 0) {
-    RecvAll();
-    grad_num_.store(0);
-  } else {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (is_geo_sgd_) {
+    if (grad_num >= geo_need_push_nums_ ) {
+      RecvAll();
+      grad_num_.store(0);
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
+  else {
+    if (grad_num > 0) {
+      RecvAll();
+      grad_num_.store(0);
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+  
 }
 
 void Communicator::RecvAll() {
