@@ -666,7 +666,7 @@ void ElemwiseGradComputeWithBroadcast(
   int pre, n, post, mid_flag = 0;
   get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &mid_flag);
   if (mid_flag) {
-    PADDLE_ENFORCE_EQ(mid_flag, 1, "mid_flag should be no more than 1.")
+    PADDLE_ENFORCE_EQ(mid_flag, 1, "mid_flag should be no more than 1.");
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
       ElemwiseGradBroadcastMid2CUDA(
