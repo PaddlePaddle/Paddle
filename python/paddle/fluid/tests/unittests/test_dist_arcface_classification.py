@@ -17,14 +17,21 @@ import paddle.fluid as fluid
 from test_dist_classification_base import TestDistClassificationBase
 
 
-class TestDistSoftmaxClassification(TestDistClassificationBase):
-    def setup_config(self):
-        pass
-
-    def test_dist_train(self):
+class TestDistArcfaceClassification(TestDistClassificationBase):
+    def test_training(self):
         if fluid.core.is_compiled_with_cuda():
             self.compare_parall_to_local(
-                "dist_softmax_classification.py", delta=1e-5)
+                'dist_arcface_classification.py', delta=1e-5)
+
+
+class TestDistArcfaceClassificationParam(TestDistClassificationBase):
+    def append_common_cmd(self):
+        return '--arcface_margin 0.5 --arcface_scale 64'
+
+    def test_training(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.compare_parall_to_local(
+                "dist_arcface_classification.py", delta=1e-5)
 
 
 if __name__ == "__main__":

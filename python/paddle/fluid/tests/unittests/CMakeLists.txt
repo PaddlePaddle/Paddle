@@ -24,6 +24,8 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_softmax_classification)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_arcface_classification)
 endif(NOT WITH_DISTRIBUTE)
 
 
