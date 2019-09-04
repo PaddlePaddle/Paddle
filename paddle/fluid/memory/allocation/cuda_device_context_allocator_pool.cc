@@ -33,7 +33,7 @@ AllocationPtr CUDADeviceContextAllocatorPool::Alloc(
     const platform::CUDADeviceContext &dev_ctx, size_t size) {
   auto iter =
       allocators_.find(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()));
-  PADDLE_ENFORCE_NE(iter, allocators_.end(),
+  PADDLE_ENFORCE_EQ(iter != allocators_.end(), true,
                     "CUDADeviceContextAllocatorPool initialization error");
   auto &allocator = iter->second;
   AllocationPtr allocation = allocator->Allocate(size);
