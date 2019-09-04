@@ -52,7 +52,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
-
+  VLOG(4) << "recv_var is: " << rpc_ctx.var_name;
   // recv all vars to local scope
   if (recv_var->IsType<framework::LoDTensor>()) {
     std::vector<distributed::VarHandlePtr> rets;

@@ -57,7 +57,10 @@ class RecvOp : public framework::OperatorBase {
 
     std::vector<std::string> recv_varnames =
         Attr<std::vector<std::string>>("recv_varnames");
-
+    for(auto recv_varname : recv_varnames) {
+      VLOG(4) << "recv_varnames is " << recv_varname;
+    }
+    
     if (recv_varnames.size() > 0) {
       auto recv_functor = distributed::ParameterRecv<float>();
       auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {},

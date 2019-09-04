@@ -50,6 +50,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
+  VLOG(4) << "send_var is: "<<rpc_ctx.var_name;
   size_t out_num = rpc_ctx.splited_var_names.size();
   if (send_var->IsType<framework::LoDTensor>()) {
     if (out_num > 1) {

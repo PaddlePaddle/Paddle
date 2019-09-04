@@ -261,6 +261,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
       grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
           grad_to_block_id.end()) {
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
+    VLOG(4) << "executor RunPreparedContext finished";
   }
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
@@ -270,13 +271,15 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     auto it = grad_to_block_id.find_value(blkid);
     if (it != grad_to_block_id.end()) {
       grad_to_prepared_ctx[it->first] = optimize_prepared[i];
+      VLOG(4) << "grad_to_prepared_ctx: "<< it->first 
+              << "is "<< blkid;
     }
   }
 
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
-
+  VLOG(4) << "handler prepare";
   while (true) {
     if (rpc_service_->IsExit()) {
       VLOG(4) << "get exit!rpc_processor break!";
