@@ -30,6 +30,10 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(DeviceCode, cuda) {
+  if (!dynload::HasNVRTC()) {
+    return;
+  }
+
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
@@ -81,6 +85,10 @@ TEST(DeviceCode, cuda) {
 }
 
 TEST(DeviceCodePool, cuda) {
+  if (!dynload::HasNVRTC()) {
+    return;
+  }
+
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::DeviceCodePool& pool =

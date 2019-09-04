@@ -171,6 +171,10 @@ void TestMain(const std::vector<std::string>& input_names,
 }
 
 TEST(FusionGroupOp, elementwise) {
+  if (!platform::dynload::HasNVRTC()) {
+    return;
+  }
+
   // z = relu(x + y)
   std::vector<std::string> input_names = {"x", "y"};
   std::vector<std::string> output_names = {"z"};
