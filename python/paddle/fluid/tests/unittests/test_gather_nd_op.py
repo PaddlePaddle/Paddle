@@ -158,7 +158,7 @@ class TestGatherNdOpRaise(OpTest):
                 output = fluid.layers.gather_nd(x, index)
             except Exception as e:
                 t = \
-                "Input(Index).shape[-1] <= Input(X).rank"
+                "Input(Index).shape[-1] should be no greater than Input(X).rank"
                 if t in str(e):
                     raise IndexError
 
