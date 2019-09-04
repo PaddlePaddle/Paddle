@@ -184,6 +184,7 @@ void Communicator::SendThread() {
     }
     for (auto &task_f : task_futures) {
       task_f.wait();
+      have_push_.fetch_add(1, std::memory_order_relaxed);
     }
     auto after_run_send_graph = GetCurrentUS();
 
@@ -199,10 +200,10 @@ void Communicator::RecvNonIndependent() {
   if (FLAGS_communicator_independent_recv_thread && !is_geo_sgd_) {
     return;
   }
-  auto grad_num = grad_num_.load();
 
   if (is_geo_sgd_) {
-    if (grad_num >= geo_need_push_nums_ ) {
+    push_num = have_push_.load();
+    if (push_num >= var_nums_ ) {
       RecvAll();
       grad_num_.store(0);
     } else {
@@ -210,6 +211,7 @@ void Communicator::RecvNonIndependent() {
     }
   }
   else {
+    auto grad_num = grad_num_.load();
     if (grad_num > 0) {
       RecvAll();
       grad_num_.store(0);
@@ -425,6 +427,7 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   }
   is_geo_sgd_ = true;
   FLAGS_communicator_independent_recv_thread = false;
+  var_nums_ = send_varname_to_ctx.size();
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
 
   delta_scope_.reset(new Scope()); //parameter on pserver
@@ -483,9 +486,9 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     return;
   }
   else if (var_name == "batch_num" ) {
-    grad_num_.fetch_add(1, std::memory_order_relaxed);
-    auto grad_num = grad_num_.load();
-    if (grad_num >= geo_need_push_nums_){
+    need_push_.fetch_add(1, std::memory_order_relaxed);
+    auto need_push = need_push_.load();
+    if (need_push >= geo_need_push_nums_){
       for (auto &iter:send_varname_to_queue_) {
         std::string local_var_name = iter.first;
         auto &queue = send_varname_to_queue_.at(local_var_name);
@@ -498,6 +501,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
         framework::CopyVariable(*delta_var, tmp_param_var.get());
         queue->Push(tmp_param_var);
       }
+      need_push_.store(0);
     }
   }
   

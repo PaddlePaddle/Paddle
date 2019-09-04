@@ -241,10 +241,13 @@ class Communicator {
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;
+  int var_nums_ = 0;
   bool is_geo_sgd_ = false;
   std::shared_ptr<Scope> delta_scope_; //parameter on pserver == send_scope
   std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
   int is_need_push_ = 0;
+  std::atomic_uint need_push_{0};
+  std::atmoic_unit have_push_{0};
  
 };
 
