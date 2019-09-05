@@ -41,7 +41,7 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 
     int numel = x->numel();
     auto dim = x->dims();
-    std::vector<int> input_shape = framework::vectorize2int(dim);
+    std::vector<int> input_shape = framework::vectorize<int>(dim);
 
     if (mode == "channel") {
       math::PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
@@ -157,7 +157,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 
     int numel = x->numel();
     auto dim = x->dims();
-    std::vector<int> input_shape = framework::vectorize2int(dim);
+    std::vector<int> input_shape = framework::vectorize<int>(dim);
     auto stream = context.cuda_device_context().stream();
 
     T* dalpha_tmp_ptr;
