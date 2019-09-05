@@ -147,7 +147,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   } else {
     PADDLE_THROW("unsupported var type to send!");
   }
-
+  VLOG(4) << "search var "<< rpc_ctx.var_name <<" in scope "<< &scope<<" done";
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
@@ -156,14 +156,17 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
       rets.push_back(rpc_client->AsyncSendVar(
           endpoint, cpu_ctx, *local_scope.get(), send_var_name));
+      VLOG(4) << "send var "<<send_var_name<< " async handle done";
     } else {
       VLOG(3) << "don't send non-initialized variable: "
               << rpc_ctx.splited_var_names[i];
     }
   }
 
+  VLOG(4) << "Prepare to send var "<<rpc_ctx.var_name;
   if (sync) {
     for (auto &handle : rets) {
+      VLOG(4) << "Wait send var to pserver handle: "<<handle;
       PADDLE_ENFORCE(handle->Wait(), "internal error in RPCClient");
     }
   }
