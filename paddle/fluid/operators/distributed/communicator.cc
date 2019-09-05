@@ -458,7 +458,8 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   RpcCtxMap recv_varname_to_ctx;
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
-      std::string send_var_name = var_name.append(".delta");
+      std::string send_var_name = var_name;
+      send_var_name.append(".delta");
       std::vector<std::string> vars_names = iter.second["var_names"];
       std::vector<std::string> vars_sections_str = iter.second["sections"];
       std::vector<int64_t> vars_sections_int = {};
@@ -533,10 +534,10 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
                                    const std::string var_name, bool send) {
   // copy var(send_varname_to_ctx_) from x to y
   VLOG(1) <<"Copy parameter from scope: "<< &scope_x 
-          <<"To scope: "<< &scope_y 
-          <<"Parameter name: "<< var_name; 
+          <<" To scope: "<< &scope_y 
+          <<" Parameter name: "<< var_name; 
   auto *var_x = scope_x.FindVar(var_name);
-  auto copy_var_name = send ? VarToDeltaVar(var_name) : var_name;
+  auto copy_var_name = send? VarToDeltaVar(var_name):var_name;
   auto *var_y = scope_y.FindVar(copy_var_name);
   framework::CopyVariable(*var_x,var_y);
 }
