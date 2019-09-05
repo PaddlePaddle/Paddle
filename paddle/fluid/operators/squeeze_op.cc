@@ -257,36 +257,23 @@ class Squeeze2GradOpMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class SqueezeOpInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"X", "Out"}};
-  }
-};
-
-class SqueezeGradInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(SequeezeInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SequeezeGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::SqueezeOpInplaceInToOut);
-REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp,
-                  ops::SqueezeGradInplaceInToOut);
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
-                  ops::Squeeze2GradOpMaker, ops::SqueezeOpInplaceInToOut);
+                  ops::Squeeze2GradOpMaker, ops::SequeezeInplaceInferer);
 REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
-                  ops::SqueezeGradInplaceInToOut);
+                  ops::SequeezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     squeeze, ops::SqueezeKernel<paddle::platform::CPUDeviceContext, float>,

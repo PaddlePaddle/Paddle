@@ -186,7 +186,7 @@ class NCEKernel : public framework::OpKernel<T> {
       std::memcpy(x_tensor->data<int64_t>(), labels.data(),
                   labels.size() * sizeof(int64_t));
 
-      std::vector<int> w_dims = paddle::framework::vectorize2int(
+      std::vector<int> w_dims = paddle::framework::vectorize<int>(
           context.Input<Tensor>("Weight")->dims());
       w_dims[0] = static_cast<int>(labels.size());
 

@@ -131,6 +131,7 @@ fi
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e ${echo_list[@]}
+  git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep "PADDLE_ENFORCE"
   echo "There are ${failed_num} approved errors."
   echo "****************"
   exit 1

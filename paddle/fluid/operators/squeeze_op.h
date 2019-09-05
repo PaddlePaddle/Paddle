@@ -35,7 +35,6 @@ class SqueezeKernel : public framework::OpKernel<T> {
     auto x_dims = in->dims();
     auto out_dims = GetOutputShape(axes, x_dims);
 
-    out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
@@ -117,7 +116,6 @@ class Squeeze2Kernel : public framework::OpKernel<T> {
     auto out_dims =
         SqueezeKernel<DeviceContext, T>::GetOutputShape(axes, x_dims);
 
-    out->Resize(out_dims);
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
