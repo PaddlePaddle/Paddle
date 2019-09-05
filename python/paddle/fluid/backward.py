@@ -24,20 +24,15 @@ from .. import compat as cpt
 from . import unique_name
 
 __all__ = [
-    'append_backward',
-    'gradients',
+    'append_backward', 'gradients',
 ]
-
 
 class ProgramStats(object):
     def __init__(self, block, ops):
         self.block = block
         self.ops = ops
-        self.op_deps = {}  # op-> in_ops, out_ops
-        self.var_op_deps = {}  # var as input op, var as output op
-        self.var_name_dict = collections.defaultdict(int)
-        self.used_var_dict = {}  # like inplace var
-        self.used_var_count = {}
+        self.op_deps = {} # op-> in_ops, out_ops
+        self.var_op_deps = {} # var as input op, var as output op
 
     def get_input_nodes(self):
         input_names = []
@@ -54,14 +49,10 @@ class ProgramStats(object):
 
     def get_reserved_vars(self):
         var_name = []
-        print("lalalala")
         for op in self.ops:
-            print(op.desc.type())
-            if op.desc.type() == "read":
-                var_name.extend(op.desc.output_arg_names())
+            pass
             #if op.desc.type() == "dropout":
             #var_name.extend(op.desc.output_arg_names())
-        print(var_name)
         return var_name
 
     def get_out_of_subgraph_vars(self, begin_op_idx, end_op_idx):
@@ -69,11 +60,19 @@ class ProgramStats(object):
         for i in range(begin_op_idx, end_op_idx, 1):
             for name in self.ops[i].desc.output_arg_names():
                 if name in self.var_op_deps:
-                    print(self.var_op_deps[name]["var_as_input_ops"])
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
                         if idx > end_op_idx:
                             var_name.append(name)
         return var_name
+
+    def var_num(self, op_begin_idx, op_end_idx):
+        var_dict = {}
+        for op in self.ops[op_begin_idx:op_end_idx]:
+            for name in op.desc.input_arg_names():
+                var_dict[name] = 1
+            for name in op.desc.output_arg_names():
+                var_dict[name] = 1
+        return var_dict
 
     def is_subgraph(self, var_group1, var_group2):
         # should traverse from var_group1 to var_group2
@@ -89,17 +88,12 @@ class ProgramStats(object):
                 return False, min_op_idx, max_op_idx
         for name in var_group1:
             op_idx = self.var_op_deps[name]["var_as_input_ops"]
-            if len(op_idx) == 0:
-                print("no op var name: " + name)
             for idx in op_idx:
                 min_op_idx = min(min_op_idx, idx)
         for name in var_group2:
             op_idx = self.var_op_deps[name]["var_as_output_ops"]
-            if len(op_idx) == 0:
-                print("no op var name: " + name)
             for idx in op_idx:
                 max_op_idx = max(max_op_idx, idx)
-        print("min op idx: %d, max op idx: %d" % (min_op_idx, max_op_idx))
         if min_op_idx >= max_op_idx:
             return False, min_op_idx, max_op_idx
         return True, min_op_idx, max_op_idx
@@ -107,11 +101,10 @@ class ProgramStats(object):
     def build_stats(self):
         inorder_count = {}
         for i, op in enumerate(self.ops):
-            self.op_deps[i] = {"in_ops": [], "out_ops": []}
+            self.op_deps[i] = {"in_ops":[], "out_ops": []}
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
-                    self.op_deps[i]["in_ops"].extend(self.var_op_deps[name][
-                        "var_as_output_ops"])
+                    self.op_deps[i]["in_ops"].extend(self.var_op_deps[name]["var_as_output_ops"])
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
                     self.var_op_deps[name]["var_as_input_ops"].extend([i])
@@ -133,33 +126,28 @@ class ProgramStats(object):
 
     def find_op_by_input_name(self, name):
         if name not in self.var_op_deps:
-            print("var name %s not in program" % name)
             return []
         else:
             return self.var_op_deps[name]["var_as_input_ops"]
 
     def find_op_by_output_name(self, name):
         if name not in self.var_op_deps:
-            print("var name %s not in program" % name)
             return []
         else:
             return self.var_op_deps[name]["var_as_output_ops"]
 
     def find_op_by_name(self, name):
         if name not in self.var_op_deps:
-            print("var name %s not in program" % name)
             return []
         else:
             return self.var_op_deps[name]["var_as_input_ops"] + \
                 self.var_op_deps[name]["var_as_output_ops"]
-
 
 def _pretty_op_desc_(op_desc, prefix):
     out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
             (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
              prefix + "_output", " ".join(op_desc.output_arg_names()))
     return out_s
-
 
 def _add_descs_to_block(descs, block):
     if len(descs) == 0:
@@ -197,20 +185,17 @@ def _add_var_to_block_with_new_name_(block, var, name):
 
 def _find_loss_op_(loss):
     for op in reversed(loss.block.ops):
+        print(op.type)
         assert isinstance(op, framework.Operator)
+        print(op.output_arg_names)
         if len(op.output_arg_names) == 1 and op.output_arg_names[
                 0] == loss.name:
             loss.op = op
             break
-        if loss.op is None:
-            raise ValueError("loss.op is None. Should not happend")
+    if loss.op is None:
+        raise ValueError("loss.op is None. Should not happend")
 
-
-def _rename_output_arg_(op_descs,
-                        old_name,
-                        new_name,
-                        begin_idx=None,
-                        end_idx=None):
+def _rename_output_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
     """
     Traverse all ops in op_descs[begin_idx : end_idx],
     if any op has inputs/outputs named "old_name", rename it as 'new_name'
@@ -224,7 +209,6 @@ def _rename_output_arg_(op_descs,
         if isinstance(op_desc, tuple):
             op_desc = op_desc[0]
         op_desc._rename_output(old_name, new_name)
-
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
     """
@@ -371,121 +355,6 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _merge_gradient_if_needed_(current_grad_ops, total_grad_ops,
-                               grad_var_position):
-    result_grad_ops = []
-    for op_desc in current_grad_ops:
-        for var_name in op_desc.input_arg_names():
-            if "@GRAD" not in var_name:
-                continue
-            if var_name in op_desc.output_arg_names():
-                continue
-            if len(grad_var_position[var_name]) > 1:
-                # should insert sum op here
-                input_names = ["%s@RENAME@%d" % (var_name, i) \
-                               for i, idx in enumerate(grad_var_position[var_name])]
-                sum_op = _create_op_desc_("sum", {"X": input_names},
-                                          {"Out": [var_name]},
-                                          {"use_mkldnn": False})
-                for i, idx in enumerate(grad_var_position[var_name]):
-                    print("going to rename %s" % var_name)
-                    if idx < len(total_grad_ops):
-                        print("id < total grad ops")
-                        print(_pretty_op_desc_(total_grad_ops[idx], "before"))
-                        _rename_output_arg_([total_grad_ops[idx]], var_name,
-                                            "%s@RENAME@%d" % (var_name, i))
-                        print(_pretty_op_desc_(total_grad_ops[idx], "after"))
-                    else:
-                        print("id > total grad ops")
-                        print(_pretty_op_desc_(result_grad_ops[idx - len(
-                            total_grad_ops)], "before"))
-                        _rename_output_arg_(
-                            result_grad_ops[idx - len(total_grad_ops)],
-                            var_name, "%s@RENAME@%d" % (var_name, i), 0, 1)
-                        print(_pretty_op_desc_(result_grad_ops[idx - len(
-                            total_grad_ops)], "after"))
-                print("add sum op")
-                print(_pretty_op_desc_(sum_op, "sum"))
-                result_grad_ops.append(sum_op)
-                grad_var_position[var_name] = [-1]
-        for var_name in op_desc.output_arg_names():
-            if var_name in grad_var_position:
-                grad_var_position[var_name].append(
-                    len(total_grad_ops) + len(result_grad_ops))
-            else:
-                grad_var_position[
-                    var_name] = [len(total_grad_ops) + len(result_grad_ops)]
-        result_grad_ops.append(op_desc)
-
-    return result_grad_ops
-
-
-def _get_sumop_from_addup_repetitive_outputs_(op_descs, renamed_vars):
-    """
-    In backward part, an variable may be the output of more than one ops.
-    And one op may yield its multiple outputs to the same variable.
-    In these cases, the variable should be the accumulation of all the outputs.
-    `sum_op`s are added to implement the accumulate.
-    """
-    pending_sum_ops = []
-    var_rename_count = collections.defaultdict(int)
-    renamed_vars = collections.defaultdict(list)
-    renamed_var_start_idx = collections.defaultdict(list)
-    for idx, op_desc in enumerate(op_descs):
-        for var_name in op_desc.input_arg_names():
-            if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append((_create_op_desc_(
-                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
-                    {"use_mkldnn": False}), idx))
-                renamed_vars[var_name] = [var_name]
-        for param_idx, param_name in enumerate(op_desc.output_names()):
-            arg_names = op_desc.output(param_name)
-            for arg_idx, var_name in enumerate(arg_names):
-                if "@GRAD" not in var_name:
-                    continue
-                if var_name == core.empty_var_name(
-                ) or var_name in op_desc.input_arg_names():
-                    # empty variable or inplace op
-                    continue
-                if len(renamed_vars[var_name]) == 0:
-                    # it's the first time we get the variable
-                    renamed_vars[var_name] = [var_name]
-                    renamed_var_start_idx[var_name] = idx
-                else:
-                    if len(renamed_vars[var_name]) == 1:
-                        new_name = var_name + "@RENAME@" + \
-                            str(var_rename_count[var_name])
-                        var_rename_count[var_name] += 1
-                        renamed_vars[var_name][0] = new_name
-                        _rename_arg_(op_descs, var_name, new_name,
-                                     renamed_var_start_idx[var_name], idx)
-                        _rename_arg_(pending_sum_ops, var_name, new_name)
-                        for p in op_desc.output_names()[:param_idx]:
-                            p_arg_names = op_desc.output(p)
-                            if var_name in p_arg_names:
-                                op_desc.set_output(p, [
-                                    new_name if x == var_name else x
-                                    for x in p_arg_names
-                                ])
-                        arg_names = [
-                            new_name if x == var_name else x
-                            for x in arg_names[:arg_idx]
-                        ] + arg_names[arg_idx:]
-                    new_name = var_name + "@RENAME@" + \
-                               str(var_rename_count[var_name])
-                    var_rename_count[var_name] += 1
-                    arg_names[arg_idx] = new_name
-                    op_desc.set_output(param_name, arg_names)
-                    renamed_vars[var_name].append(new_name)
-
-    for var_name, inputs in six.iteritems(renamed_vars):
-        if len(inputs) > 1:
-            pending_sum_ops.append(
-                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
-                                  {"use_mkldnn": False}), len(op_descs)))
-    return pending_sum_ops
-
-
 def _addup_repetitive_outputs_(op_descs):
     """
     In backward part, an variable may be the output of more than one ops.
@@ -511,8 +380,8 @@ def _addup_repetitive_outputs_(op_descs):
             for arg_idx, var_name in enumerate(arg_names):
                 if "@GRAD" not in var_name:
                     continue
-                if "@RENAME@" in var_name:
-                    continue
+                #if "@RENAME@" in var_name:
+                #    continue
                 if var_name == core.empty_var_name(
                 ) or var_name in op_desc.input_arg_names():
                     # empty variable or inplace op
@@ -810,52 +679,33 @@ def _append_backward_ops_with_checkpoints_(
         4) remove no grad branch as it is in _remove_no_grad_branch_
         5) Note1: all appended ops' OpRole are Backward
         6) Note2: variables that are used across segments will be held in memory
-        7) Note3: all variables with new name should be returned so that _append_vars_ can be called
+        7) Note3: all variables with new name should be returned so that _append_backward_vars_ can be called
         8) Note4: current forward recomputation backpropagation does not handle programs with subblock
     """
     local_block = block.program._create_block()
 
     program_stat = ProgramStats(block, ops)
     program_stat.build_stats()
+    print("var num")
+    print(len(program_stat.var_op_deps))
     print("inputs of current program")
     print(program_stat.get_input_nodes())
+    print("total op num")
+    print(len(program_stat.ops))
     segments = []
     start_idx = 0
     while True:
+        if start_idx >= len(checkpoints_name) - 1:
+            break
         flag, min_idx, max_idx = program_stat.is_subgraph(
-            [checkpoints_name[start_idx]], [checkpoints_name[start_idx + 1]])
+            [checkpoints_name[start_idx]],
+            [checkpoints_name[start_idx + 1]])
         if flag:
-            print("%d %d" % (min_idx, max_idx))
             segments.append([min_idx, max_idx + 1])
         start_idx += 1
-        if start_idx + 1 == len(checkpoints_name) - 1:
-            break
 
-    inputs_name = []
-    op_output_names = []
-    for op in ops:
-        if op.desc.type() == "read":
-            continue
-        op_output_names.extend(op.desc.output_arg_names())
-
-    for op in ops:
-        if op.desc.type() == "read":
-            inputs_name.extend(op.desc.output_arg_names())
-            continue
-
-    for op in ops:
-        for name in op.desc.output_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.output_arg_names())
-                break
-        for name in op.desc.input_arg_names():
-            if name in checkpoints_name:
-                checkpoints_name.extend(op.desc.input_arg_names())
-                break
-
-    checkpoints_name_grad = [x + "@GRAD" for x in checkpoints_name]
-    checkpoints_name.extend(checkpoints_name_grad)
-    checkpoints_name.extend(inputs_name)
+    #checkpoints_name_grad = [x + "@GRAD" for x in checkpoints_name]
+    #checkpoints_name.extend(checkpoints_name_grad)
     checkpoints_name = list(set(checkpoints_name))
 
     if segments[0][0] != 0:
@@ -864,56 +714,32 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
     vars_should_be_hold = []
     for segment in recompute_segments:
-        print("begin idx: %d" % segment[0])
-        print("end idx: %d" % segment[1])
-        vars_should_be_hold.extend(
-            program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
+        vars_should_be_hold.extend(program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     vars_should_be_hold.extend(program_stat.get_input_nodes())
     vars_should_be_hold = list(set(vars_should_be_hold))
+    print("checkpoint names")
+    print(checkpoints_name)
     print("vars should be hold")
     print(vars_should_be_hold)
     print("recompute segments")
     print(recompute_segments)
+    for segment in recompute_segments:
+        print("var num in op idx from %d to %d" % (segment[0], segment[1]))
+        segment_vars = program_stat.var_num(segment[0], segment[1])
+        print(len(segment_vars))
+        print(segment_vars.keys())
     # find variables that can not be deleted
-    var_count_book = {}
     segment = recompute_segments[-1]
-    for op in ops[segment[0]:segment[1]]:
-        for name in op.desc.input_arg_names():
-            var_count_book[name] = 1
-        for name in op.desc.output_arg_names():
-            var_count_book[name] = 1
-    '''
-    for i, segment in enumerate(recompute_segments[::-1]):
-        ff_ops = ops[segment[0]:segment[1]]
-        # variables used beyond this segment should be added
-        # to vars_should_be_hold
-        name_list = []
-        for op in ff_ops:
-            name_list.extend(op.desc.output_arg_names())
-            name_list.extend(op.desc.input_arg_names())
-            for name in op.desc.output_arg_names():
-                if name == "scale_0.tmp_0":
-                    print("var name: scale_0.tmp_0")
-                    print(var_count_book)
-                if name in var_count_book and name not in checkpoints_name:
-                    vars_should_be_hold.append(name)
-            for name in op.desc.input_arg_names():
-                if name in var_count_book and name not in checkpoints_name:
-                    vars_should_be_hold.append(name)
-        for name in name_list:
-            var_count_book[name] = 1
-    '''
+
     grad_should_be_hold = [x + "@GRAD" for x in vars_should_be_hold]
     vars_should_be_hold.extend(grad_should_be_hold)
-    print("vars should be held")
-    print(vars_should_be_hold)
-    print("checkpoint vars")
-    print(checkpoints_name)
 
     grad_op_descs = []
     subprogram_num = len(recompute_segments)
     var_name_dict = {}
+
+    print(len(set(vars_should_be_hold + checkpoints_name)))
 
     # var name -> [[op_idx in grad_op_descs]]
     grad_var_position = collections.defaultdict(list)
@@ -965,9 +791,13 @@ def _append_backward_ops_with_checkpoints_(
         #sumop_descs = _addup_repetitive_outputs_(grad_op_descs)
         #added_sumop_descs = _add_descs_to_block(sumop_descs, block)
         #grad_op_desc.extend(added_sumop_descs)
+    print("renamed var num")
+    print(len(var_name_dict))
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
     for desc in grad_op_descs:
         print(_pretty_op_desc_(desc, "recompute_grad"))
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx])
     added_descs = _add_descs_to_block(grad_op_descs, block)
     print("final op descs")
     for i, desc in enumerate(added_descs):
@@ -976,7 +806,7 @@ def _append_backward_ops_with_checkpoints_(
     print("key mapping")
     for key in var_name_dict:
         print("%s\t%s" % (key, var_name_dict[key]))
-
+    return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
 
 def _append_backward_ops_(block,
                           ops,
@@ -1092,33 +922,6 @@ def _append_backward_ops_(block,
                 cb(block=target_block, context=grad_to_var)
 
 
-def _append_vars_(block, start_op_idx, end_op_idx, grad_to_var, grad_info_map):
-    for op_idx in range(start_op_idx, end_op_idx, 1):
-        op_desc = block.desc.op(op_idx)
-        if op_desc.has_attr("sub_block"):
-            sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
-            _append_vars_(sub_block, 0,
-                          sub_block.desc.op_size(), grad_to_var, grad_info_map)
-        new_vars = set()
-        for var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
-                    var_name)) or var_name == core.empty_var_name():
-                continue
-            block.desc.var(cpt.to_bytes(var_name))
-            new_vars.add(var_name)
-            if var_name not in grad_to_var:
-                continue
-            grad_info_map[grad_to_var[var_name]] = (var_name, block)
-        op_desc.infer_var_type(block.desc)
-        print("going to do infer shape")
-        print(_pretty_op_desc_(op_desc, "infer_shape"))
-        op_desc.infer_shape(block.desc)
-        print("infer shape done")
-        for arg in op_desc.output_arg_names():
-            if arg in new_vars:
-                _infer_var_data_type_(arg, block)
-
-
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     Create new variables required by backward pass.
@@ -1197,11 +1000,8 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-def append_backward(loss,
-                    parameter_list=None,
-                    no_grad_set=None,
-                    callbacks=None,
-                    checkpoints=None):
+def append_backward(loss, parameter_list=None, no_grad_set=None,
+                    callbacks=None, checkpoints=None):
     """
     Append backward part to main_program.
 
@@ -1315,12 +1115,23 @@ def append_backward(loss,
     if program._appending_grad_times > 1:
         input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
+    program_stat = None
+    checkpoint_names = None
+    vars_should_be_hold = None
+
     if checkpoints != None and \
        isinstance(checkpoints, list) and \
        len(checkpoints) > 0:
-        _append_backward_ops_with_checkpoints_(root_block, op_path, root_block,
-                                               no_grad_dict, grad_to_var,
-                                               checkpoints)
+        program_stat, checkpoint_names, \
+        vars_should_be_hold, \
+        recompute_segments = \
+                        _append_backward_ops_with_checkpoints_(
+                            root_block,
+                            op_path,
+                            root_block,
+                            no_grad_dict,
+                            grad_to_var,
+                            checkpoints)
     else:
         _append_backward_ops_(
             root_block,
@@ -1381,6 +1192,164 @@ def append_backward(loss,
             attr_val.extend(g.op.attr(op_role_var_attr_name))
         g.op._set_attr(op_role_var_attr_name, attr_val)
 
+    def _get_var_size(block, name, batch):
+        if not block.desc.find_var(cpt.to_bytes(name)):
+            print("get var size failed, can not find var name %s" % name)
+            return 0
+        print(block.desc.var(cpt.to_bytes(name)))
+        if block.desc.var(cpt.to_bytes(name)).type() != core.VarDesc.VarType.LOD_TENSOR:
+            print("not lod tensor var, var name %s" % name)
+            return 0
+        var = block.var(name)
+        if var.shape[0] == -1:
+            res =  -reduce(lambda x, y: x * y, var.shape) * batch
+        else:
+            res = reduce(lambda x, y: x * y, var.shape)
+        if res < 0:
+            return -res
+        return res
+
+    if program_stat:
+        return recompute_segments, params_and_grads
+	
+	"""	
+	memory_timeline = []
+	# Get all vars
+        op_var_count = collections.defaultdict(int)
+        for op in root_block.ops:
+            print(op.type)
+            for name in op.desc.input_arg_names():
+                op_var_count[name] += 1
+            for name in op.desc.output_arg_names():
+                op_var_count[name] += 1
+	# print("op_var_count: ", op_var_count)
+         
+	#for var in root_block.desc.all_vars():
+        #    print(var.name())
+
+        all_var_size = []
+        for name in op_var_count:
+            all_var_size.append((name, _get_var_size(root_block, name, 32)))
+        
+	
+        sorted_var_size = sorted(all_var_size, key=lambda x:x[1], reverse=True)
+        print("sorted var size")
+        for item in sorted_var_size:
+            print("%s\t%d" % (item[0], item[1]))
+        
+        forward_var_count = collections.defaultdict(int)
+        for i, op in enumerate(root_block.ops):
+            input_var_count = []
+            output_var_count = []
+            for name in op.desc.input_arg_names():
+                forward_var_count[name] += 1
+                count = op_var_count[name] - forward_var_count[name]
+                input_var_count.append(count)
+            for name in op.desc.output_arg_names():
+                forward_var_count[name] += 1
+                count = op_var_count[name] - forward_var_count[name]
+                output_var_count.append(count)
+            memory_timeline.append([input_var_count, output_var_count])
+ 
+
+        print("memory_timeline: ", memory_timeline)
+        op_memory_size = []
+        first_var = {}
+        op_size = 0
+        parameter_name = {}
+        for var in root_block.program.global_block().all_parameters():
+            parameter_name[var.name] = 1
+            op_size += _get_var_size(root_block.program.global_block(), var.name, 32)
+            first_var[var.name] = 1
+        print("model size: %d" % op_size)
+        persistable_size = 0
+        for name in op_var_count:
+            local_var = root_block.var(name)
+            if local_var.persistable:
+                if local_var.name not in parameter_name:
+                    print("persistable var name: " + local_var.name)
+                    persistable_size += _get_var_size(root_block.program.global_block(),
+                                                      local_var.name, 32)
+        print("persistable var size")
+        print(persistable_size)
+        forward_erase_num = 0
+        backward_erase_num = 0
+        current_seg_idx = 0
+        segment_dict_list = []
+	print("recompute segment: ", recompute_segments)
+        recompute_segments.append([recompute_segments[-1][1], len(root_block.ops)])
+	print("recompute segment: ", recompute_segments)
+        recompute_segments_memory = []
+        for i, op in enumerate(root_block.ops):
+            segment_dict = {"new_var":[], "del_var":[]}
+            if i > recompute_segments[current_seg_idx][1]:
+                recompute_segments_memory.append(op_memory_size[-1])
+                current_seg_idx += 1
+            for name in op.desc.input_arg_names():
+                if name not in first_var:
+                    op_size += _get_var_size(root_block, name, 32)
+                    first_var[name] = 1
+                    segment_dict["new_var"].append((name, _get_var_size(root_block, name, 32)))
+            for name in op.desc.output_arg_names():
+                if name not in first_var:
+                    op_size += _get_var_size(root_block, name, 32)
+                    first_var[name] = 1
+                    segment_dict["new_var"].append((name, _get_var_size(root_block, name, 32)))
+            for j, name in enumerate(op.desc.input_arg_names()):
+                if memory_timeline[i][0][j] <= 0:
+                    op_size -= _get_var_size(root_block, name, 32)
+                    if i <= fwd_op_num:
+                        forward_erase_num += 1
+                    else:
+                        backward_erase_num += 1
+                    segment_dict["del_var"].append((name, _get_var_size(root_block, name, 32)))
+            for j, name in enumerate(op.desc.output_arg_names()):
+                if memory_timeline[i][1][j] <= 0:
+                    op_size -= _get_var_size(root_block, name, 32)
+                    if i <= fwd_op_num:
+                        forward_erase_num += 1
+                    else:
+                        backward_erase_num += 1
+                    segment_dict["del_var"].append((name, _get_var_size(root_block, name, 32)))
+            segment_dict_list.append(segment_dict)
+            op_memory_size.append(op_size)
+        print("erase details")
+        for i, segment in enumerate(segment_dict_list):
+            if i >= fwd_op_num:
+                print("forward done.")
+            for name in segment["del_var"]:
+                print(name)
+        print("segment memory remained")
+        for i, m_size in enumerate(recompute_segments_memory):
+            print("segment[%d]: %f" % (i, m_size))
+        print("op memory size")
+        print("forward erase num")
+        print(forward_erase_num)
+        print("backward erase num")
+        print(backward_erase_num)
+        for i, op_size in enumerate(op_memory_size):
+            if i == fwd_op_num:
+                print("forward done.")
+            #print(_pretty_op_desc_(root_block.ops[i].desc, "%d" % i))
+            print(op_size)
+        # checkpoint_names
+        # vars should be hold
+        var_op_deps = program_stat.var_op_deps
+        cp_vars_size = 0
+        hold_vars_size = 0
+        other_vars_size = 0
+        for name in checkpoint_names:
+            cp_vars_size += _get_var_size(root_block, name, 32)
+        for name in vars_should_be_hold:
+            hold_vars_size += _get_var_size(root_block, name, 32)
+        for name in var_op_deps:
+            if name not in vars_should_be_hold and name not in checkpoint_names:
+                other_vars_size += _get_var_size(root_block, name, 32)
+        print("checkpoint var size: %d" % cp_vars_size)
+        print("hold var size: %d" % hold_vars_size)
+        print("other var size: %d" % other_vars_size)
+        #exit(0)
+	"""
     return params_and_grads
 
 

@@ -36,6 +36,7 @@ from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -2973,6 +2974,207 @@ class PipelineOptimizer(object):
             "param_need_sync": param_need_sync
         }
 
+        
+class RecomputeOptimizer(object):
+    """
+    Recompute Optimizer Wrapper
+    """
+
+    def __init__(self, optimizer, debug=False, debug_batchsize=32):
+        self._optimizer = optimizer
+        self._checkpoints = None
+	self.debug=debug
+	self.debug_batchsize=debug_batchsize
+
+    def _set_checkpoints(self, checkpoints):
+        self._checkpoints = checkpoints
+
+    def _get_var_size(self, block, name, batch):
+	
+	dtype_to_size = {
+    		core.VarDesc.VarType.FP16: 2,
+    		core.VarDesc.VarType.FP32: 4,
+    		core.VarDesc.VarType.FP64: 8,
+    		core.VarDesc.VarType.INT16: 2,
+    		core.VarDesc.VarType.INT32: 4,
+    		core.VarDesc.VarType.INT64: 8,
+    		core.VarDesc.VarType.BOOL: 1,
+    		core.VarDesc.VarType.UINT8: 1,
+	}
+        if not block.desc.find_var(cpt.to_bytes(name)):
+            print("get var size failed, can not find var name %s" % name)
+            return 0
+        #print(block.desc.var(cpt.to_bytes(name)))
+        if block.desc.var(cpt.to_bytes(name)).type() != core.VarDesc.VarType.LOD_TENSOR:
+            print("not lod tensor var, var name %s" % name)
+            return 0
+        var = block.var(name)
+        if var.shape[0] == -1:
+            res =  -reduce(lambda x, y: x * y, var.shape) * batch * dtype_to_size[var.dtype]
+        else:
+            res = reduce(lambda x, y: x * y, var.shape) * dtype_to_size[var.dtype]
+        if res < 0:
+            return -res
+        return res
+
+    def draw(self, memory_with_position, memory_with_position_no_recompute, recompute_segments):
+	print("memory_with_position: ", memory_with_position)
+	print("recompute_segments", recompute_segments)
+
+        import matplotlib
+	matplotlib.use('agg')
+	import matplotlib.pyplot as plt
+
+
+        x = [i - 2 for i in range(len(memory_with_position))]
+        y = [(i * 1.0) / 1024 / 1024 for i in memory_with_position]
+	x2 = [i - 2 for i in range(len(memory_with_position_no_recompute))]
+	y2 =  [(i * 1.0) / 1024 / 1024 for i in memory_with_position_no_recompute]
+
+	if recompute_segments is not None:
+            for i in recompute_segments:
+                plt.axvline(x=i[1], color='r')
+    	        #plt.text(i[1],0,i[1],rotation=0)
+
+	plt.plot(x, y, label="with_recompute")
+        plt.plot(x2, y2, label="without_recompute") 
+      
+	plt.legend(loc='upper right')
+	plt.xlabel("op_idx")
+	plt.ylabel('MB')
+	# plt.grid()
+	plt.title('')
+	plt.savefig('memory_anal.png')
+
+	import SimpleHTTPServer 
+        import SocketServer 
+ 
+        PORT = 8233 
+ 
+        Handler = SimpleHTTPServer.SimpleHTTPRequestHandler 
+ 
+        httpd = SocketServer.TCPServer(("", PORT), Handler) 
+ 
+        print("serving at port", PORT)
+        httpd.serve_forever()	
+
+    def analysis_memory_usage(self, block):
+	# find all vars()
+        all_var_names = [x.name() for x in block.desc.all_vars()]
+	print("all_var_names")
+	for a in all_var_names: 
+	    print(a)
+	
+	vars_create_position = {}
+	vars_delete_position = {}
+	for name in all_var_names:
+	    vars_create_position[name] = -1
+	    vars_delete_position[name] = -1
+
+	for idx, op in enumerate(block.ops):
+	    print(idx, op.type)
+	    for name in op.desc.input_arg_names():
+		vars_delete_position[name] = idx
+            for name in op.desc.output_arg_names():
+	        vars_delete_position[name] = idx
+                if vars_create_position[name] == -1:
+                    vars_create_position[name] = idx
+	
+	for name in all_var_names:
+	    if block.var(name).persistable:
+	        vars_create_position[name] = -1
+	        vars_delete_position[name] = len(block.ops) - 1
+
+	for name in all_var_names:
+	    print(name, vars_create_position[name], vars_delete_position[name])	
+	    #if vars_create_position[name] == -1:
+	    #	print("not created var: ", name)
+	    #if vars_delete_position[name] == -1:
+            #    print("not deleted var: ", name)
+	    #if block.var(name).persistable:
+	    #    print("pesistable var: ", name)
+	
+	position_to_var = {}
+	for i in range(-1, len(block.ops)):
+	    position_to_var[i] = {"create": [],
+				  "delete": []}
+
+	for name in all_var_names:
+	    position_to_var[vars_create_position[name]]['create'].append(name)
+            position_to_var[vars_delete_position[name]]['delete'].append(name)
+	
+	print('position_to_var: ', position_to_var)
+
+	memory_timeline = 0
+	memory_with_position = [0]
+	for i in range(-1, len(block.ops)):
+	    for var_name in position_to_var[i]['create']:
+		#print('Create ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
+		memory_timeline += self._get_var_size(block, var_name, self.debug_batchsize)
+            memory_with_position.append(memory_timeline)
+            for var_name in position_to_var[i]['delete']:
+		#print('Delete ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
+                memory_timeline -= self._get_var_size(block, var_name, self.debug_batchsize)
+	    #memory_with_position.append(memory_timeline)
+	    #print(i, memory_timeline)
+	
+	return memory_with_position
+
+	#self.draw(memory_with_position, recompute_segments)
+	
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+        if self._checkpoints == None:
+            raise ValueError("You should call _set_checkpoints first")
+
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        self._dtype = loss.dtype
+        program = loss.block.program
+	if self.debug == True:
+	    cloned_program = program.clone()
+	    if startup_program is None:
+		cloned_startup_program = default_startup_program().clone()
+	    else:
+	        cloned_startup_program = startup_program.clone()
+
+	    with program_guard(cloned_program, cloned_startup_program):
+		print(cloned_program.global_block().var(loss.name))
+		print(loss)
+                cloned_params_grads = append_backward(
+                    cloned_program.global_block().var(loss.name),
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=None)
+
+        with program_guard(program, startup_program): 
+            recompute_segments, params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                checkpoints=self._checkpoints)
+
+            if grad_clip:
+                # TODO(guru4elephant): should add grad_clip for static graph
+                pass
+        optimize_ops = self._optimizer.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+	if self.debug == True:
+            # analysis of the memory usage
+ 	    memory_with_position = self.analysis_memory_usage(loss.block)
+	    cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
+            self.draw(memory_with_position, 
+			cloned_memory_with_position, 
+			recompute_segments=None)
+
+        return optimize_ops, params_grads
 
 class LookaheadOptimizer(object):
     """
@@ -3126,44 +3328,3 @@ class LookaheadOptimizer(object):
                 pass
         return mini_out
 
-class RecomputeOptimizer(object):
-    """
-    Recompute Optimizer Wrapper
-    """
-
-    def __init__(self, optimizer):
-        self._optimizer = optimizer
-        self._checkpoints = None
-
-    def _set_checkpoints(self, checkpoints):
-        self._checkpoints = checkpoints
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 grad_clip=None):
-        if self._checkpoints == None:
-            raise ValueError("You should call _set_checkpoints first")
-
-        if framework.in_dygraph_mode():
-            raise NotImplementedError(
-                "DyGraph current does not support recompute")
-
-        self._dtype = loss.dtype
-        program = loss.block.program
-        with program_guard(program, startup_program):
-            params_grads = append_backward(
-                loss,
-                parameter_list,
-                no_grad_set,
-                checkpoints=self._checkpoints)
-
-            if grad_clip:
-                # TODO(guru4elephant): should add grad_clip for static graph
-                pass
-        optimize_ops = self._optimizer.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
-
-        return optimize_ops, params_grads
