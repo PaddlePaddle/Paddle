@@ -306,9 +306,8 @@ class TypedAttrChecker {
       attr_map->emplace(attr_name_, default_value_setter_[0]());
     } else {
       if (value_checkers_.size() > 0) {
-        Attribute& attr = attr_map->at(attr_name_);
         ExtractAttribute<T> extract_attr(attr_name_);
-        T* attr_value = extract_attr(attr);
+        T* attr_value = extract_attr(it->second);
         for (const auto& checker : value_checkers_) {
           checker(*attr_value);
         }
