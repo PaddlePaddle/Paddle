@@ -22,7 +22,8 @@ namespace paddle {
 namespace operators {
 
 // use for loop to speed up Eigen broadcast. 4 timer faster then broadcast
-template <typename DeviceContext, typename T, typename Functor>
+template <typename DeviceContext, typename T, typename Functor,
+          bool kNoNeedBufferX = false>
 class ReduceSumGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -72,7 +73,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
     }
 
     // default use Eigen broadcast
-    ReduceGradKernel<DeviceContext, T, Functor> kernel;
+    ReduceGradKernel<DeviceContext, T, Functor, kNoNeedBufferX> kernel;
     kernel.Compute(context);
   }
 };

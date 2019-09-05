@@ -20,7 +20,6 @@ rank_loss
 reduce_max
 reduce_min
 reduce_prod
-reduce_sum
 reshape
 rnn_memory_helper
 sequence_softmax
