@@ -94,7 +94,7 @@ class UnsqueezeOp : public framework::OperatorBase {
     auto out_dims = UnsqueezeOpInferShape::GetOutputShape(axes, x_dims);
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(out_dims);
+    attrs["shape"] = framework::vectorize<int>(out_dims);
     // Invoke Reshape op.
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -159,7 +159,7 @@ class UnsqueezeGradOp : public framework::OperatorBase {
     auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["shape"] = framework::vectorize<int>(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
@@ -213,7 +213,7 @@ class Unsqueeze2Op : public framework::OperatorBase {
     auto out_dims = Unsqueeze2OpInferShape::GetOutputShape(axes, x_dims);
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(out_dims);
+    attrs["shape"] = framework::vectorize<int>(out_dims);
     // Invoke Reshape op.
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape2", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -266,7 +266,7 @@ class Unsqueeze2GradOp : public framework::OperatorBase {
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["shape"] = framework::vectorize<int>(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape2_grad", {{framework::GradVarName("Out"), {dout_name}},
