@@ -167,7 +167,7 @@ void Communicator::SendThread() {
             VLOG(1) << "geo sgd send var: "<< var_name;
             auto before_send = GetCurrentUS();
             auto send_functor = distributed::ParameterSend<float>();
-            while(var_queue->size()>0) {
+            while(var_queue->Size()>0) {
               var_queue->Pop();
             }       
             auto &ctx = send_varname_to_ctx_.at(var_name);
