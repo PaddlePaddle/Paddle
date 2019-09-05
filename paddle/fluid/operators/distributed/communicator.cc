@@ -492,7 +492,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       auto var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name, false);
       GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),var_name, false);
-      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),var_name, true);
+      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),VarToDeltaVar(var_name), true);
     }
     return;
   }
