@@ -123,7 +123,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         " MB GPU memory. Please shrink "
         "FLAGS_fraction_of_gpu_memory_to_use or "
         "FLAGS_initial_gpu_memory_in_mb or "
-        "FLAGS_reallocate_gpu_memory_in_mb"
+        "FLAGS_reallocate_gpu_memory_in_mb "
         "environment variable to a lower value. " +
         "Current FLAGS_fraction_of_gpu_memory_to_use value is " +
         std::to_string(FLAGS_fraction_of_gpu_memory_to_use) +

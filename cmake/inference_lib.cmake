@@ -159,7 +159,7 @@ copy(zlib_lib
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
-set(framework_lib_deps framework_py_proto)
+set(framework_lib_deps framework_proto)
 
 copy(framework_lib DEPS ${framework_lib_deps}
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h

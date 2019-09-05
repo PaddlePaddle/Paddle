@@ -1912,7 +1912,7 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.softshrink(input, name='softshrink')
+            out = layers.softshrink(input, alpha=0.3)
             return (out)
 
     def make_iou_similarity(self):
@@ -2443,6 +2443,15 @@ class TestBook(LayerTest):
                 input_length=input_length,
                 label_length=label_length)
             return (output)
+
+    def test_edit_distance(self):
+        with self.static_graph():
+            predict = layers.data(
+                name='predict', shape=[-1, 1], dtype='int64', lod_level=1)
+            label = layers.data(
+                name='label', shape=[-1, 1], dtype='int64', lod_level=1)
+            evaluator = fluid.evaluator.EditDistance(predict, label)
+            return evaluator.metrics
 
 
 if __name__ == '__main__':

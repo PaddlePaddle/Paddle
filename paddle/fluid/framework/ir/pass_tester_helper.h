@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -28,6 +29,52 @@ struct Layers {
   const ProgramDesc& main_program() { return program_; }
 
   VarDesc* data(std::string name) { return lod_tensor(name); }
+
+  VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
+                  bool use_cudnn) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("conv2d");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Filter", {filter->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* depthwise_conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
+                            bool use_cudnn) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("depthwise_conv2d");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Filter", {filter->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* pool2d(VarDesc* x, bool use_cudnn) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("pool2d");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* relu(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("relu", x, out);
+  }
 
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
     return binary_op("mul", x, y, out);
@@ -52,11 +99,40 @@ struct Layers {
     return out;
   }
 
+  VarDesc* concat(std::vector<VarDesc*> inputs, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("concat");
+    std::vector<std::string> input_names(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      input_names[i] = inputs[i]->Name();
+    }
+    op->SetInput("X", input_names);
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axis", axis);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
  private:
   VarDesc* lod_tensor(std::string name) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
     return var;
+  }
+
+  VarDesc* unary_op(std::string type, VarDesc* x, VarDesc* out = nullptr) {
+    if (!out) {
+      out = lod_tensor(unique_name());
+    }
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType(type);
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
   }
 
   VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y,
