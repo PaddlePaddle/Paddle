@@ -459,8 +459,10 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   RpcCtxMap recv_varname_to_ctx;
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
+      VLOG(1) <<"var_name: "<<var_name;
       std::string send_var_name = var_name;
       send_var_name = send_var_name.append(".delta");
+      VLOG(1) <<"send_var_name: "<<send_var_name;
       std::vector<std::string> vars_names = iter.second["var_names"];
       std::vector<std::string> vars_sections_str = iter.second["sections"];
       std::vector<int64_t> vars_sections_int = {};
