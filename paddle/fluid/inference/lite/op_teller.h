@@ -30,14 +30,21 @@ namespace lite {
  * issues such as op_desc.
  */
 struct Teller {
-  virtual bool operator()(const std::string& op_type, const framework::OpDesc& op_desc) = 0;
+  virtual bool operator()(const std::string& op_type,
+                          const framework::OpDesc& op_desc) {
+    return false;
+  };
 
-  virtual bool operator()(const std::string& op_type, const framework::OpDesc& op_desc,
-                    const framework::ProgramDesc& prog_desc) {
+  virtual bool operator()(const std::string& op_type,
+                          const framework::OpDesc& op_desc,
+                          const framework::ProgramDesc& prog_desc) {
     return this->operator()(op_type, op_desc);
   }
 
   virtual ~Teller() = default;
+
+ protected:
+  Teller() = default;
 };
 /*
  * A real example:

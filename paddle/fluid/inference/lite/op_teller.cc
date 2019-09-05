@@ -76,6 +76,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
 OpTeller::OpTeller() {
   std::call_once(init_flag_, [this]() {
     tellers_.emplace_back(new SimpleOpTeller);
+    tellers_.emplace_back(new ControlOpTeller);
   });
 }
 
