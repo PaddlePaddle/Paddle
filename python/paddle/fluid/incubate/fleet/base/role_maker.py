@@ -334,45 +334,34 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def generate_role(self):
         if not self._role_is_generated:
             if not self._is_collective:
-                self.port = os.getenv("PADDLE_PORT",
-                                      "6174")  # port of current server
-                self.pserver_ips = os.getenv("PADDLE_PSERVERS",
-                                             "")  # ip of server
+                port = os.environ["PADDLE_PORT"]
+                pserver_ips = os.environ["PADDLE_PSERVERS"]
 
-                if "," in self.port:
-                    ports = self.port.split(",")
+                if "," in port:
+                    ports = port.split(",")
                 else:
-                    ports = [self.port for i in self.pserver_ips.split(",")]
+                    ports = [port] * len(pserver_ips.split(","))
                 eplist = []
                 # note that, we usually assign the same port to different ips
                 # if we run parameter server training in local mode
                 # port should be different in environment variables
-                for i, ip in enumerate(self.pserver_ips.split(",")):
+                for i, ip in enumerate(pserver_ips.split(",")):
                     eplist.append(':'.join([ip, ports[i]]))
-                self.endpoints = ",".join(eplist)
-                self._trainers_num = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-                # ip of current node, either a worker or a pserver
-                current_ip = os.getenv("POD_IP", "")
-                if current_ip == "":
-                    self._current_endpoint = os.getenv("CURRENT_ENDPOINT")
-                else:
-                    self._current_endpoint = current_ip + ports[0]
-                self.role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-                # for trainer, only POD_IP and current trainer id is needed
-                # we usually do not need to know other trainer ips
-                self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-                self.eplist = eplist
-                self.endpoints = self.endpoints.split(",")
-                self._server_endpoints = self.endpoints
-                self._worker_endpoints = self.endpoints
-                if self.role.upper() == "PSERVER":
-                    # current endpoint index among all pservers
-                    self._current_id = self.endpoints.index(
-                        self._current_endpoint)
-                    self._role = Role.SERVER
-                else:
-                    self._current_id = self.trainer_id
+
+                self._server_endpoints = eplist
+                self._trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+
+                if os.environ["TRAINING_ROLE"] == "TRAINER":
                     self._role = Role.WORKER
+                    self._current_id = os.environ["PADDLE_TRAINER_ID"]
+                elif os.environ["TRAINING_ROLE"] == "PSERVER":
+                    self._role = Role.SERVER
+                    cur_ip = os.environ["POD_IP"]
+                    cur_idx = pserver_ips.index(cur_ip)
+                    self._current_id = eplist.index(":".join(
+                        [cur_ip, ports[cur_idx]]))
+                else:
+                    raise ValueError("TRAINING_ROLE muse in [PSERVER, TRAINER]")
             else:
                 self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
                 self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
