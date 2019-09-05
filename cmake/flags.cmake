@@ -158,6 +158,7 @@ set(COMMON_FLAGS
     -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     -Wno-error=parentheses # Warning in boost gcc 8.2
     -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+    -Wno-format-truncation # Warning in boost gcc 8.2
     ${fsanitize}
 )
 
