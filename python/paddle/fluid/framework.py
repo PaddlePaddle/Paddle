@@ -3247,7 +3247,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, targets):
+    def _prune(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3263,8 +3263,16 @@ class Program(object):
             Program:  A new, pruned program.
 
         """
+        if not isinstance(feeded_var_names, list):
+            feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
             targets = [targets]
+
+        for var in feeded_var_names:
+            if not isinstance(var, six.string_types):
+                raise ValueError("All feeded_var_names of prune() can only be "
+                                 "str.")
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -3291,7 +3299,7 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx)
+        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
