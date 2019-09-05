@@ -75,13 +75,13 @@ void LiteSubgraphPass::ApplyImpl(
   SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "lite_engine");
   fuser();
 
-  std::vector<std::string> graph_param_names =
-      ExtractParameters(graph->Nodes());
+  // std::vector<std::string> graph_param_names =
+  //     ExtractParameters(graph->Nodes());
 
   std::vector<std::string> repetitive_params;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !Agent(node).subgraph()->empty()) {
-      BuildOperator(node, global_program, graph_param_names, &repetitive_params);
+      BuildOperator(node, global_program, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
           Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
@@ -101,13 +101,12 @@ void LiteSubgraphPass::ApplyImpl(
 
 void LiteSubgraphPass::BuildOperator(
     framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
-    const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
   
   framework::ProgramDesc engine_program;
 
   AppendBlocks(merged_node, global_program, &engine_program, repetitive_params);
-  SetUpEngine(&engine_program, repetitive_params);
+  //SetUpEngine(&engine_program, repetitive_params);
 
   auto *op_desc = merged_node->Op();
   op_desc->SetInput("Xs", IOVarsFilter(merged_node->inputs));

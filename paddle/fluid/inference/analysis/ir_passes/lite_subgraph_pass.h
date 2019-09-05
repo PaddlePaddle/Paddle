@@ -31,7 +31,6 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
 
  private:
   void BuildOperator(framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
-                      const std::vector<std::string> &graph_params,
                       std::vector<std::string> *repetitive_params) const;
 
   void SetUpEngine(framework::ProgramDesc* program,

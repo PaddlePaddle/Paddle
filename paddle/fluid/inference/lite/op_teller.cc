@@ -42,8 +42,8 @@ struct SimpleOpTeller : public Teller {
   std::unordered_set<std::string> ops_;
 };
 
-struct ControlOpTeller : public Teller {
-  ControlOpTeller() {
+struct SingleBlockOpTeller : public Teller {
+  SingleBlockOpTeller() {
     ops_.insert("while");
   }
 
@@ -81,7 +81,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
 
 OpTeller::OpTeller() {
   tellers_.emplace_back(new SimpleOpTeller);
-  tellers_.emplace_back(new ControlOpTeller);
+  tellers_.emplace_back(new SingleBlockOpTeller);
 }
 
 }  // namespace lite
