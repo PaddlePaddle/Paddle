@@ -78,6 +78,15 @@ struct OpInfo {
     return grad_op_maker_;
   }
 
+  // some op has no grad_op_maker, add check before use GradOpMaker()
+  bool HasGradOpMaker() const {
+    return grad_op_maker_ != nullptr ? true : false;
+  }
+
+  bool HasInferInplace() const {
+    return infer_inplace_ != nullptr ? true : false;
+  }
+
   const OpAttrChecker* Checker() const { return checker_; }
 
   const InferNoNeedBufferVarsFN& NoNeedBufferVarsInferer() const {
