@@ -492,5 +492,12 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
         self.check_output()
 
 
+class TestMulticlassNMS2LoDNoOutput(TestMulticlassNMS2LoDInput):
+    def set_argument(self):
+        # Here set 2.0 to test the case there is no outputs.
+        # In practical use, 0.0 < score_threshold < 1.0
+        self.score_threshold = 2.0
+
+
 if __name__ == '__main__':
     unittest.main()
