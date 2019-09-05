@@ -475,7 +475,7 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                if param._ivar._grad_ivar_is_initialized():
+                if param._ivar._grad_ivar() is not None:
                     # create gradient variable
                     grad_var = Variable(
                         block=loss.block,
