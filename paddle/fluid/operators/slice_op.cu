@@ -84,9 +84,9 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
     dim3 threads(PADDLE_CUDA_NUM_THREADS);
     auto stream = ctx.cuda_device_context().stream();
 
-    auto out_shape = framework::vectorize2int(out_dims);
+    auto out_shape = framework::vectorize<int>(out_dims);
     thrust::device_vector<int> out_dims_vec(out_shape.begin(), out_shape.end());
-    auto in_shape = framework::vectorize2int(in_dims);
+    auto in_shape = framework::vectorize<int>(in_dims);
     thrust::device_vector<int> in_dims_vec(in_shape.begin(), in_shape.end());
     thrust::device_vector<int> offsets_vec(offsets.begin(), offsets.end());
     const int* out_dims_ptr = thrust::raw_pointer_cast(out_dims_vec.data());

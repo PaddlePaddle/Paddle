@@ -7,7 +7,7 @@ function(math_library TARGET)
     set(cc_srcs)
     set(cu_srcs)
     set(hip_srcs)
-    set(math_common_deps device_context framework_proto)
+    set(math_common_deps device_context framework_proto enforce)
     set(multiValueArgs DEPS)
     cmake_parse_arguments(math_library "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})

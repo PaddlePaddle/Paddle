@@ -135,6 +135,26 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         }
 
 
+class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(2, 1, 4).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float64),
+            'Y': np.random.rand(2, 3, 1, 5).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
