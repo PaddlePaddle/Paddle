@@ -25,6 +25,7 @@
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(rpc_retry_times);
 
 namespace paddle {
 namespace operators {
