@@ -489,10 +489,10 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     // old_scope param will copy it for storage
     VLOG(1) <<"Parameter init from recv_scope";
     for(auto &iter:recv_varname_to_ctx_){
-      auto var_name = iter.first;
-      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name, false);
-      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),var_name, false);
-      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),VarToDeltaVar(var_name), true);
+      auto local_var_name = iter.first;
+      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),local_var_name, false);
+      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),local_var_name, false);
+      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),local_var_name, true);
     }
     return;
   }
@@ -532,7 +532,7 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
                                    const framework::Scope &scope_y,
                                    const std::string var_name, bool send) {
   // copy var(send_varname_to_ctx_) from x to y
-  VLOG(3) <<"Copy parameter from scope: "<< &scope_x 
+  VLOG(1) <<"Copy parameter from scope: "<< &scope_x 
           <<"To scope: "<< &scope_y 
           <<"Parameter name: "<< var_name; 
   auto *var_x = scope_x.FindVar(var_name);
