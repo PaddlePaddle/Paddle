@@ -67,14 +67,14 @@ TEST(DeviceCode, cuda) {
   TensorCopySync(cpu_x, place, &x);
   TensorCopySync(cpu_y, place, &y);
 
-  code.Compile();
+  PADDLE_ENFORCE_EQ(code.Compile(), true, "Compiling of device code failed.");
 
   std::vector<void*> args = {&scale, &x_data, &y_data, &z_data, &n};
   code.SetNumThreads(1024);
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
   TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
@@ -85,7 +85,7 @@ TEST(DeviceCode, cuda) {
 }
 
 TEST(DeviceCodePool, cuda) {
-  if (!dynload::HasNVRTC()) {
+  if (!paddle::platform::dynload::HasNVRTC()) {
     return;
   }
 

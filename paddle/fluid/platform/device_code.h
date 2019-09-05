@@ -31,7 +31,7 @@ namespace platform {
 class DeviceCode {
  public:
   virtual ~DeviceCode() {}
-  virtual void Compile() = 0;
+  virtual bool Compile() = 0;
   virtual void Launch(const size_t n, std::vector<void*>* args) const = 0;
 
   Place GetPlace() const { return place_; }
@@ -48,7 +48,7 @@ class CUDADeviceCode : public DeviceCode {
  public:
   explicit CUDADeviceCode(const Place& place, const std::string& name,
                           const std::string& kernel);
-  void Compile() override;
+  bool Compile() override;
   void Launch(const size_t n, std::vector<void*>* args) const override;
 
   void SetNumThreads(int num_threads) { num_threads_ = num_threads; }
@@ -57,6 +57,8 @@ class CUDADeviceCode : public DeviceCode {
   }
 
  private:
+  bool CheckNVRTCResult(nvrtcResult result, std::string function);
+
   bool is_compiled_{false};
   int max_threads_{0};
   int num_threads_{1024};

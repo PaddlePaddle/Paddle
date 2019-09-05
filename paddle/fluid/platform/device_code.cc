@@ -74,16 +74,6 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 }
 
 #ifdef PADDLE_WITH_CUDA
-inline bool is_error(nvrtcResult stat) { return stat != NVRTC_SUCCESS; }
-
-inline void throw_on_error(nvrtcResult stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(dynload::nvrtcGetErrorString(stat) + msg);
-#else
-  LOG(FATAL) << dynload::nvrtcGetErrorString(stat) << msg;
-#endif
-}
-
 CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
                                const std::string& kernel) {
   if (!is_gpu_place(place)) {
@@ -95,19 +85,23 @@ CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
   kernel_ = kernel;
 }
 
-void CUDADeviceCode::Compile() {
-  PADDLE_ENFORCE_EQ(dynload::HasNVRTC(), true,
-                    "NVRTC is need for JIT compiling of CUDA code.");
+bool CUDADeviceCode::Compile() {
+  is_compiled_ = false;
+  if (!dynload::HasNVRTC()) {
+    LOG(WARNING) << "NVRTC is need for JIT compiling of CUDA code.";
+    return false;
+  }
 
   nvrtcProgram program;
-  PADDLE_ENFORCE_EQ(dynload::nvrtcCreateProgram(&program,
-                                                kernel_.c_str(),  // buffer
-                                                name_.c_str(),    // name
-                                                0,                // numHeaders
-                                                nullptr,          // headers
-                                                nullptr),  // includeNames
-                    NVRTC_SUCCESS,
-                    "nvrtcCreateProgram failed.");
+  if (!CheckNVRTCResult(dynload::nvrtcCreateProgram(&program,
+                                                    kernel_.c_str(),  // buffer
+                                                    name_.c_str(),    // name
+                                                    0,         // numHeaders
+                                                    nullptr,   // headers
+                                                    nullptr),  // includeNames
+                        "nvrtcCreateProgram")) {
+    return false;
+  }
 
   // Compile the program for specified compute_capability
   auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
@@ -124,25 +118,39 @@ void CUDADeviceCode::Compile() {
   if (compile_result == NVRTC_ERROR_COMPILATION) {
     // Obtain compilation log from the program
     size_t log_size;
-    PADDLE_ENFORCE_EQ(dynload::nvrtcGetProgramLogSize(program, &log_size),
-                      NVRTC_SUCCESS, "nvrtcGetProgramLogSize failed.");
+    if (!CheckNVRTCResult(dynload::nvrtcGetProgramLogSize(program, &log_size),
+                          "nvrtcGetProgramLogSize")) {
+      return false;
+    }
     std::vector<char> log;
     log.resize(log_size + 1);
-    PADDLE_ENFORCE_EQ(dynload::nvrtcGetProgramLog(program, log.data()),
-                      NVRTC_SUCCESS, "nvrtcGetProgramLog failed.");
-    LOG(FATAL) << "JIT compiling of CUDA code failed:\n" << log.data();
+    if (!CheckNVRTCResult(dynload::nvrtcGetProgramLog(program, log.data()),
+                          "nvrtcGetProgramLog")) {
+      return false;
+    }
+    LOG(WARNING) << "JIT compiling of CUDA code failed:"
+                 << "\n  Kernel name: " << name_ << "\n  Kernel body:\n"
+                 << kernel_ << "\n  Compiling log: " << log.data();
+
+    return false;
   }
 
   // Obtain PTX from the program
   size_t ptx_size;
-  PADDLE_ENFORCE_EQ(dynload::nvrtcGetPTXSize(program, &ptx_size), NVRTC_SUCCESS,
-                    "nvrtcGetPTXSize failed.");
+  if (!CheckNVRTCResult(dynload::nvrtcGetPTXSize(program, &ptx_size),
+                        "nvrtcGetPTXSize")) {
+    return false;
+  }
   ptx_.resize(ptx_size + 1);
-  PADDLE_ENFORCE_EQ(dynload::nvrtcGetPTX(program, ptx_.data()), NVRTC_SUCCESS,
-                    "nvrtcGetPTX failed.");
+  if (!CheckNVRTCResult(dynload::nvrtcGetPTX(program, ptx_.data()),
+                        "nvrtcGetPTX")) {
+    return false;
+  }
 
-  PADDLE_ENFORCE_EQ(dynload::nvrtcDestroyProgram(&program), NVRTC_SUCCESS,
-                    "nvrtcDestroyProgram failed.");
+  if (!CheckNVRTCResult(dynload::nvrtcDestroyProgram(&program),
+                        "nvrtcDestroyProgram")) {
+    return false;
+  }
 
   PADDLE_ENFORCE_EQ(
       dynload::cuModuleLoadData(&module_, ptx_.data()), CUDA_SUCCESS,
@@ -154,6 +162,7 @@ void CUDADeviceCode::Compile() {
 
   max_threads_ = dev_ctx->GetMaxPhysicalThreadCount();
   is_compiled_ = true;
+  return true;
 }
 
 void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
@@ -176,6 +185,16 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
                               nullptr),
       CUDA_SUCCESS, "Fail to launch kernel %s (in cuLaunchKernel.)",
       name_.c_str());
+}
+
+bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
+                                      std::string function) {
+  if (result != NVRTC_SUCCESS) {
+    LOG(WARNING) << "Call " << function
+                 << " failed: " << dynload::nvrtcGetErrorString(result);
+    return false;
+  }
+  return true;
 }
 #endif
 
