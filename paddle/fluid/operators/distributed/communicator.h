@@ -232,19 +232,26 @@ class Communicator {
 
  private:
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(framework::Scope *scope);
+  void GeoSgdParamInit(framework::Scope *scope, bool send);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
-                       const std::string &var_name);
+                       const std::string var_name, bool send);
   void SendUpdateVars(const std::string& var_name);
   void RecvUpdateVars(const std::string& var_name);
+  const std::string VarToDeltaVar(const std::string var_name) {
+    std::string delta_name = var_name;
+    const std::string send_name = delta_name.append(".delta");
+    return send_name;
+  }
+
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;
   int var_nums_ = 0;
   bool is_geo_sgd_ = false;
-  std::shared_ptr<Scope> delta_scope_; //parameter on pserver == send_scope
+  std::shared_ptr<Scope> delta_scope_; //parameter local delta: recv - old
   std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
+  std::shared_ptr<Scope> pserver_scope_; //parameter on pserver,gloabl scope
   int is_need_push_ = 0;
   std::atomic_uint need_push_{0};
   std::atomic_uint have_push_{0};

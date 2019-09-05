@@ -167,7 +167,9 @@ void Communicator::SendThread() {
             VLOG(1) << "geo sgd send var: "<< var_name;
             auto before_send = GetCurrentUS();
             auto send_functor = distributed::ParameterSend<float>();
-            var_queue->Pop();
+            while(!var_queue->empty()) {
+              var_queue->Pop();
+            }
             auto &ctx = send_varname_to_ctx_.at(var_name);
             if (!FLAGS_communicator_fake_rpc) {
               send_functor(ctx, *delta_scope_.get(), true);
@@ -238,8 +240,8 @@ void Communicator::RecvAll() {
         recv_functor(iter.second, *recv_scope_);
       }
       // for geo-sgd
-      if(is_geo_sgd_) {
-        recv_functor(iter.second, *delta_scope_.get());
+      if(!FLAGS_communicator_fake_rpc && is_geo_sgd_) {
+        recv_functor(iter.second, *pserver_scope_.get());
         RecvUpdateVars(var_name);
       }
     };
@@ -429,16 +431,21 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   is_geo_sgd_ = true;
   FLAGS_communicator_independent_recv_thread = false;
   var_nums_ = send_varname_to_ctx.size();
+
   VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
 
-  delta_scope_.reset(new Scope()); //parameter on pserver
-  VLOG(1) << "Init delta scope";
-  GeoSgdParamInit(delta_scope_.get());
+  delta_scope_.reset(new Scope()); //parameter local: recv(train) - old
+  VLOG(1) << "Init delta scope, for send";
+  GeoSgdParamInit(delta_scope_.get(), true);
   
   old_scope_.reset(new Scope()); //parameter local, storage the param after last recv
   VLOG(1) << "Init old scope";
-  GeoSgdParamInit(old_scope_.get());
+  GeoSgdParamInit(old_scope_.get(), false);
+
+  pserver_scope_.reset(new Scope()); //parameter on pserver, global scope
+  VLOG(1) << "Init pserver(global) scope";
+  GeoSgdParamInit(pserver_scope_.get(), false);
 }
 
 void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
@@ -451,6 +458,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   RpcCtxMap recv_varname_to_ctx;
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
+      std::string send_var_name = var_name.append(".delta");
       std::vector<std::string> vars_names = iter.second["var_names"];
       std::vector<std::string> vars_sections_str = iter.second["sections"];
       std::vector<int64_t> vars_sections_int = {};
@@ -461,7 +469,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
       std::vector<std::string> vars_epmap = iter.second["epmap"];
       int trainer_id = 0;
       send_varname_to_ctx[var_name] = operators::distributed::RpcContext(
-          var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
+          send_var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
       VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[var_name];
@@ -480,10 +488,11 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
     VLOG(1) <<"Parameter init from recv_scope";
-    for(auto &iter:send_varname_to_ctx_){
+    for(auto &iter:recv_varname_to_ctx_){
       auto var_name = iter.first;
-      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name);
-      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),var_name);
+      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),var_name, false);
+      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),var_name, false);
+      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),var_name, true);
     }
     return;
   }
@@ -491,12 +500,12 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     need_push_.fetch_add(1, std::memory_order_relaxed);
     auto need_push = need_push_.load();
     if (need_push >= geo_need_push_nums_){
-      for (auto &iter:send_varname_to_queue_) {
+      for (auto &iter:recv_varname_to_ctx_) {
         std::string local_var_name = iter.first;
-        auto &queue = send_varname_to_queue_.at(local_var_name);
+        auto &queue = send_varname_to_queue_.at(VarToDeltaVar(local_var_name));
         VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();   
         SendUpdateVars(local_var_name);
-        auto *delta_var = delta_scope_->FindVar(local_var_name);
+        auto *delta_var = delta_scope_->FindVar(VarToDeltaVar(local_var_name));
         auto tmp_param_var = std::make_shared<Variable>();
         framework::CopyVariable(*delta_var, tmp_param_var.get());
         queue->Push(tmp_param_var);
@@ -506,34 +515,40 @@ void Communicator::GeoSgdSend(const std::string& var_name,
   }
 }
 
-void Communicator::GeoSgdParamInit(framework::Scope *scope){
+void Communicator::GeoSgdParamInit(framework::Scope *scope,bool send){
   VLOG(3) << "Init scope parameter from send_varname_to_ctx_, Scope ptr: "<< scope;
-  for(auto &iter:send_varname_to_ctx_){
+  for(auto &iter:recv_varname_to_ctx_){
     auto var_name = iter.first;
-    scope->Var(var_name);
+    if (send) {
+      auto send_var_name = VarToDeltaVar(var_name);
+      scope->Var(send_var_name);
+    } else {
+      scope->Var(var_name);
+    }
   }
 }
 
 void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
                                    const framework::Scope &scope_y,
-                                   const std::string &var_name) {
+                                   const std::string var_name, bool send) {
   // copy var(send_varname_to_ctx_) from x to y
   VLOG(3) <<"Copy parameter from scope: "<< &scope_x 
           <<"To scope: "<< &scope_y 
           <<"Parameter name: "<< var_name; 
   auto *var_x = scope_x.FindVar(var_name);
-  auto *var_y = scope_y.FindVar(var_name);
+  auto copy_var_name = send ? VarToDeltaVar(var_name) : var_name;
+  auto *var_y = scope_y.FindVar(copy_var_name);
   framework::CopyVariable(*var_x,var_y);
 }
 
 void Communicator::SendUpdateVars(const std::string& var_name) {
-  // calc var_delata = (var_recv - var_old)
-  // calc var_old += var_delta/trainer_nums
+  // calc var_delata = (var_recv - var_old)/trainer_nums
+  // calc var_old += var_delta
   VLOG(1) << "Geo-Sgd Communicator Send update Vars: "<< var_name;
   // Todo: add check
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
-  auto *var_z = delta_scope_.get()->FindVar(var_name);
+  auto *var_z = delta_scope_.get()->FindVar(VarToDeltaVar(var_name));
 
   if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
     auto var_x_tensor = var_x->Get<framework::LoDTensor>();
@@ -547,8 +562,8 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;delta_scope(param local delta): "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
-      z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i]);
-      y_mutable_data[i] += z_mutable_data[i] / (float)(trainer_nums_);
+      z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
+      y_mutable_data[i] += z_mutable_data[i];
     }
     VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
@@ -558,13 +573,13 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
 }
 
 void Communicator::RecvUpdateVars(const std::string& var_name) {
-  // calc var_recv = var_delta - var_old
-  // calc var_old = var_delta
+  // calc var_recv = var_pserver - var_old
+  // calc var_old = var_pserver
   VLOG(1) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
   // Todo: add check
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
-  auto *var_z = delta_scope_.get()->FindVar(var_name);
+  auto *var_z = pserver_scope_.get()->FindVar(var_name);
 
   if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
     auto var_x_tensor = var_x->Get<framework::LoDTensor>();

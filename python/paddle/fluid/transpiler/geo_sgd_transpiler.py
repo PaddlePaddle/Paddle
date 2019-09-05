@@ -329,29 +329,23 @@ class GeoSgdTranspiler(DistributeTranspiler):
             optimize_block.append(per_opt_block)
             var_name = var.name
             pserver_block = per_opt_block.program.global_block()
-            recv_var = pserver_block.vars[var_name]
+            param = pserver_block.vars[var_name]
             # Todo: sparse param calc delta 
             if var.type != core.VarDesc.VarType.SELECTED_ROWS:
-                delta_var_name = "%s.delta" % (recv_var.name)
+                delta_var_name = "%s.delta" % (param.name)
                 delta_var = pserver_block.create_var(
                     name=delta_var_name,
-                    persistable=recv_var.persistable,
-                    type=recv_var.type,
-                    dtype=recv_var.dtype,
-                    shape=recv_var.shape)
-                
-                per_opt_block.append_op(
-                    type="scale",
-                    inputs={"X": recv_var},
-                    outputs={"Out": delta_var},
-                    attrs={"scale": 1.0 / float(self.trainer_num)})
+                    persistable=False,
+                    type=param.type,
+                    dtype=param.dtype,
+                    shape=param.shape)
                 
                 per_opt_block.append_op(
                     type="elementwise_add",
-                    inputs={"X":delta_var,"Y":recv_var},
-                    outputs={"Out":recv_var}
+                    inputs={"X":delta_var,"Y":param},
+                    outputs={"Out":param}
                 )
-            param_to_block_id.append(recv_var.name + ":" + str(per_opt_block.idx))
+            param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
 
         attrs = {
             "optimize_blocks": optimize_block,
