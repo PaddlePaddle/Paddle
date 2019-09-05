@@ -186,7 +186,7 @@ class NCEKernel : public framework::OpKernel<T> {
       std::memcpy(x_tensor->data<int64_t>(), labels.data(),
                   labels.size() * sizeof(int64_t));
 
-      std::vector<int> w_dims = paddle::framework::vectorize2int(
+      std::vector<int> w_dims = paddle::framework::vectorize<int>(
           context.Input<Tensor>("Weight")->dims());
       w_dims[0] = static_cast<int>(labels.size());
 
@@ -195,9 +195,10 @@ class NCEKernel : public framework::OpKernel<T> {
       w_tensor->Resize(framework::make_ddim(w_dims));
 
 #ifdef PADDLE_WITH_DISTRIBUTE
+      auto weight = context.Inputs("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
-                                       table_names, epmap, height_sections,
-                                       context, local_scope);
+                                       weight, false, table_names, epmap,
+                                       height_sections, context, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

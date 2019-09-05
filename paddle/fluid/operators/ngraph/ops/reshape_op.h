@@ -57,8 +57,7 @@ static void BuildReshapeNode(
   std::shared_ptr<ngraph::Node> input =
       platform::GetInputNode(op, "X", ngb_node_map);
   auto input_shape = input->get_shape();
-  // TODO(mozga-intel) The vector of shape is not supported yet, that's
-  // asDispensable() operator"
+
   std::shared_ptr<ngraph::Node> shape =
       platform::GetInputNode(op, "Shape", ngb_node_map);
 
