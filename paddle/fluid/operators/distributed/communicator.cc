@@ -460,7 +460,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
       std::string send_var_name = var_name;
-      send_var_name.append(".delta");
+      send_var_name = send_var_name.append(".delta");
       std::vector<std::string> vars_names = iter.second["var_names"];
       std::vector<std::string> vars_sections_str = iter.second["sections"];
       std::vector<int64_t> vars_sections_int = {};
