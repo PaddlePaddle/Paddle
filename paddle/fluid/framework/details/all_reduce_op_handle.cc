@@ -117,7 +117,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const std::vector<std::string> &out_var_names) {
   if (is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
+    PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
     ncclDataType_t nccl_dtype = platform::ToNCCLDataType(dtype);
     std::vector<std::function<void()>> all_reduce_calls;
     for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
