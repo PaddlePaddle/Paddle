@@ -544,14 +544,14 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param local delta): "<< *z_mutable_data
+            <<" ;delta_scope(param local delta): "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] += z_mutable_data[i] / (float)(trainer_nums_);
     }
     VLOG(1) << "Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param local delta): "<< *z_mutable_data
+            <<" ;delta_scope(param local delta): "<< *z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
@@ -576,14 +576,14 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param on pserver): "<< *z_mutable_data
+            <<" ;delta_scope(param on pserver): "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
     }
     VLOG(1) << "Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param on pserver): "<< *z_mutable_data
+            <<" ;delta_scope(param on pserver): "<< *z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
