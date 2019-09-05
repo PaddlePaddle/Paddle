@@ -151,5 +151,6 @@ TEST(Prune, multi_target) {
 
   f::proto::ProgramDesc pruned;
   std::set<std::string> feed_var_names = {"a"};
+  f::Prune(*pdesc, feed_var_names, &pruned);
   PADDLE_ENFORCE_EQ(pruned.blocks(0).ops_size(), 3);
 }
