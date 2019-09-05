@@ -145,8 +145,6 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
         bias->data<T>(), bias_tmp.data<T>(), N, C);
 
     auto handle = dev_ctx.cudnn_handle();
-    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-        functor;
 
     Tensor est_mean_tmp =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
@@ -178,6 +176,8 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
           est_mean_tmp.template data<BatchNormParamType<T>>(),
           est_var_tmp.template data<BatchNormParamType<T>>(), epsilon));
     } else {
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
@@ -664,8 +664,9 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
       dscale_tmp =
           BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
       if (threadIdx.x == 0) {
-        dscale[c] = dscale_tmp;
+        dscale[ncid] += dscale_tmp;
       }
+      __syncthreads();
     }
   } else {
     if (ddx != nullptr) {
@@ -724,7 +725,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
-    const int grid = std::min(NxC, max_blocks);
+    const int grid = NxC;
 
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
 
@@ -744,11 +745,18 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
           ddy_data);
     }
     if (dScale) {
+      Tensor dscale_tmp =
+          ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
+      set_zero(dev_ctx, &dscale_tmp, static_cast<T>(0));
+      T *dscale_tmp_data = dscale_tmp.mutable_data<T>(ctx.GetPlace());
+
       T *dscale_data = dScale->mutable_data<T>(ctx.GetPlace());
       set_zero(dev_ctx, dScale, static_cast<T>(0));
       DoubleGradComputeDScale<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, mean_data, variance_data, ddx_data, dy_data, C, sample_size,
-          use_global_stats, epsilon, dscale_data);
+          use_global_stats, epsilon, dscale_tmp_data);
+      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+          dscale_tmp.data<T>(), dScale->data<T>(), N, C);
     }
   }
 };
