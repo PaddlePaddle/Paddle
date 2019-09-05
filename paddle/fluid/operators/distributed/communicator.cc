@@ -167,9 +167,9 @@ void Communicator::SendThread() {
             VLOG(1) << "geo sgd send var: "<< var_name;
             auto before_send = GetCurrentUS();
             auto send_functor = distributed::ParameterSend<float>();
-            while(!var_queue->empty()) {
+            while(var_queue->size()>0) {
               var_queue->Pop();
-            }
+            }       
             auto &ctx = send_varname_to_ctx_.at(var_name);
             if (!FLAGS_communicator_fake_rpc) {
               send_functor(ctx, *delta_scope_.get(), true);
