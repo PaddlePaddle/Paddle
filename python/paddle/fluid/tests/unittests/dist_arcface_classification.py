@@ -23,7 +23,6 @@ from dist_classification_base import DistClassificationRunner
 from test_dist_collective_base import runtime_main
 
 
-# TODO(gavin1332) check whether it is necessary to transpose weight
 class DistArcfaceClassificationRunner(DistClassificationRunner):
     @classmethod
     def add_other_arguments(cls, parser):
@@ -33,15 +32,15 @@ class DistArcfaceClassificationRunner(DistClassificationRunner):
     def __init__(self, args):
         super(DistArcfaceClassificationRunner, self).__init__(args)
         np.random.seed(1024)
-        self.param_value = np.random.rand(self.args.class_num,
-                                          self.args.feature_size)
+        self.param_value = np.random.rand(self.args.feature_size,
+                                          self.args.class_num)
 
     def local_classify_subnet(self, feature, label):
         args = self.args
 
         weight = layers.create_parameter(
             dtype=feature.dtype,
-            shape=[args.class_num, args.feature_size],
+            shape=[args.feature_size, args.class_num],
             default_initializer=NumpyArrayInitializer(self.param_value),
             is_bias=False)
 
@@ -52,9 +51,8 @@ class DistArcfaceClassificationRunner(DistClassificationRunner):
         norm_feature = layers.elementwise_div(feature, feature_l2, axis=0)
 
         # normalize weight
-        weight_l2 = layers.sqrt(layers.reduce_sum(layers.square(weight), dim=1))
-        norm_weight = layers.elementwise_div(weight, weight_l2, axis=0)
-        norm_weight = layers.transpose(norm_weight, perm=[1, 0])
+        weight_l2 = layers.sqrt(layers.reduce_sum(layers.square(weight), dim=0))
+        norm_weight = layers.elementwise_div(weight, weight_l2, axis=1)
 
         cos = layers.mul(norm_feature, norm_weight)
 
@@ -76,8 +74,8 @@ class DistArcfaceClassificationRunner(DistClassificationRunner):
         args = self.args
         shard_dim = (args.class_num + args.nranks - 1) // args.nranks
         shard_start = shard_dim * args.rank
-        rank_param_value = self.param_value[shard_start:(shard_start + shard_dim
-                                                         ), :]
+        rank_param_value = self.param_value[:, shard_start:(shard_start +
+                                                            shard_dim)]
         cost = layers.dist_algo._distributed_arcface_classify(
             x=feature,
             label=label,

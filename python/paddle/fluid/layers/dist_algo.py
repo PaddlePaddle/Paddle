@@ -151,7 +151,6 @@ class DistributedClassifier(object):
             dtype=x.dtype,
             in_dim=flatten_dim,
             param_attr=param_attr,
-            transpose_weight=True,
             use_bias=False)
 
         # normalize x
@@ -169,12 +168,12 @@ class DistributedClassifier(object):
             nshards=self.nranks,
             shard_id=self.rank_id,
             ignore_value=-1)
+        # TODO check necessary
         shard_label.stop_gradient = True
 
         # normalize weight
-        weight_l2 = ops.sqrt(nn.reduce_sum(nn.square(weight), dim=1))
-        norm_weight = nn.elementwise_div(weight, weight_l2, axis=0)
-        norm_weight = nn.transpose(norm_weight, perm=[1, 0])
+        weight_l2 = ops.sqrt(nn.reduce_sum(nn.square(weight), dim=0))
+        norm_weight = nn.elementwise_div(weight, weight_l2, axis=1)
 
         shard_cos = nn.mul(norm_x_all, norm_weight, x_num_col_dims=1)
 
@@ -183,6 +182,7 @@ class DistributedClassifier(object):
 
         shard_one_hot = nn.one_hot(
             shard_label, depth=self.shard_dim, allow_out_of_range=True)
+        # TODO check necessary
         shard_one_hot.stop_gradient = True
 
         diff = (margin_cos - shard_cos) * shard_one_hot
