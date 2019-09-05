@@ -18,6 +18,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 import logging
+import objgraph
 
 __all__ = [
     'no_grad',
@@ -123,7 +124,7 @@ def guard(place=None):
     """
     train = framework.Program()
     startup = framework.Program()
-    tracer = Tracer(train.current_block().desc)
+    tracer = Tracer()
 
     if place is None:
         if core.is_compiled_with_cuda():
@@ -138,19 +139,22 @@ def guard(place=None):
                     yield
 
 
-def _print_debug_msg():
+def _print_debug_msg(limit=5, is_test=False):
     if not core._is_dygraph_debug_enabled():
         logging.warn(
             'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
         )
         return
-
     unique_name_size = len(framework.unique_name.generator.ids)
     tracer_var_size = len(framework._dygraph_tracer()._vars)
     alive_cpp_var_size = len(core.VarBase._alive_vars())
-    logging.warn(
-        'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-        .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
+    if not is_test:
+        logging.warn(
+            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
+            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
+        objgraph.show_growth(limit=limit)
+    else:
+        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 def to_variable(value, block=None, name=None):
