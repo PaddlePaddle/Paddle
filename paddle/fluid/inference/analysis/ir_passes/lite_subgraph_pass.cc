@@ -63,18 +63,16 @@ void LiteSubgraphPass::ApplyImpl(
   // auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
   std::vector<std::string> lite_ops_filter = {};
 
-  lite::OpTeller teller(*global_program);
-
-  auto is_lite_op = [&lite_ops_filter, &teller](const framework::ir::Node *node) {
+  auto teller = [&lite_ops_filter](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op())
       return false;
     else if (std::find(lite_ops_filter.begin(), lite_ops_filter.end(),
                        node->Op()->Type()) != lite_ops_filter.end())
       return false;
-    return teller.Tell(node->Op()->Type(), *node->Op());
+    return lite::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph, is_lite_op, 0 /* min_subgraph_size */, "lite_engine");
+  SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "lite_engine");
   fuser();
 
   std::vector<std::string> graph_param_names =

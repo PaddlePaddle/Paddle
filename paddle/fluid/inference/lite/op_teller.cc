@@ -35,55 +35,33 @@ struct SimpleOpTeller : public Teller {
 
 struct ControlOpTeller : public Teller {
   ControlOpTeller() {
-    control_ops_.insert("while");
-    ops_.insert("leaky_relu");
+    ops_.insert("while");
   }
 
   bool operator()(const std::string& op_type,
-                  const framework::OpDesc& op_desc,
-                  const framework::ProgramDesc& prog_desc) override {
-    if (control_ops_.count(op_type)) {
-      LOG(INFO) << "[ControlOpTeller op_type] = " << op_type;
-      return true;
+                  const framework::OpDesc& op_desc) override {
+    if (ops_.count(op_type)) {
+
     }
     return false;
   }
 
  private:
-  std::unordered_set<std::string> control_ops_;
   std::unordered_set<std::string> ops_;
 };
 
 
-
-
-extern std::vector<std::unique_ptr<Teller>> OpTeller::tellers_;
-extern std::once_flag OpTeller::init_flag_;
-
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
-  if (prog_desc_) {
-    for (auto& teller : tellers_) {
-      if ((*teller)(op_type, desc, *prog_desc_)) return true;
-    }
-  } else {
-    for (auto& teller : tellers_) {
-      if ((*teller)(op_type, desc)) return true;
-    }
+  for (auto& teller : tellers_) {
+    if ((*teller)(op_type, desc)) return true;
   }
   return false;
 }
 
-OpTeller::OpTeller() {
-  std::call_once(init_flag_, [this]() {
-    tellers_.emplace_back(new SimpleOpTeller);
-    tellers_.emplace_back(new ControlOpTeller);
-  });
-}
-
-OpTeller::OpTeller(const framework::ProgramDesc& prog_desc) : OpTeller() {
-  prog_desc_ = &prog_desc;
-};
+OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTeller); }
 
 }  // namespace lite
 }  // namespace inference
 }  // namespace paddle
+
+
