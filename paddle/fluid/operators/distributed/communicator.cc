@@ -472,7 +472,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
       }
       std::vector<std::string> vars_epmap = iter.second["epmap"];
       int trainer_id = 0;
-      send_varname_to_ctx[var_name] = operators::distributed::RpcContext(
+      send_varname_to_ctx[delta_var_name] = operators::distributed::RpcContext(
           delta_var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
