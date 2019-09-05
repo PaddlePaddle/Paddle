@@ -476,7 +476,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
           delta_var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
-      VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[var_name];
+      VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[delta_var_name];
   }
   // init communicator here
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
