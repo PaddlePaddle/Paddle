@@ -166,7 +166,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
     size_t place_num = places_.size();
     for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
       auto var_name = in_var_handles[j]->name();
-      auto var = local_scope->FindLocalVar(var_name);
+      auto var = local_scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
       auto &lod_tensor = var->Get<LoDTensor>();
       if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
@@ -186,7 +186,7 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
     auto var_name = in_var_handles[j]->name();
     PADDLE_ENFORCE_EQ(var_name, out_var_handles[j]->name());
-    auto var = local_scope->FindLocalVar(var_name);
+    auto var = local_scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
     auto &lod_tensor = var->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(lod_tensor.place(), places_.at(scope_idx),

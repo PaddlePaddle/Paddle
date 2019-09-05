@@ -80,12 +80,20 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+          << "fuse_all_reduce_ops doesn't work under "
+             "parallel_graph.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.is_distribution_) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
           << "Currently, fuse_all_optimizer_ops only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+          << "Currently, fuse_all_reduce_ops_ only works under "
+             "Non-distributed mode.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
