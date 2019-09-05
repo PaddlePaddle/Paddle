@@ -151,7 +151,10 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
+    VLOG(4) <<"send var name: "<<send_var_name;
     auto &endpoint = rpc_ctx.epmap[i];
+    VLOG(4) <<"send var endpoint: "<<endpoint;
+    VLOG(4) <<"need send: "<< NeedSend(*local_scope.get(), send_var_name);
     if (NeedSend(*local_scope.get(), send_var_name)) {
       VLOG(3) << "sending " << send_var_name << " to " << endpoint;
       rets.push_back(rpc_client->AsyncSendVar(
