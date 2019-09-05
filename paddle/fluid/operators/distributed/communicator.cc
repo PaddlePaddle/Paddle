@@ -462,6 +462,11 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
       std::string delta_var_name = send_var_name.append(".delta");
       VLOG(1) <<"delta_var_name: "<<delta_var_name;
       std::vector<std::string> vars_names = iter.second["var_names"];
+      std::vector<std::string> delta_var_names;
+      for(auto origin_var_name :vars_names) {
+        std::string delta_name = origin_var_name.append(".delta");
+        delta_var_names.push_back(delta_name);
+      }
       std::vector<std::string> vars_sections_str = iter.second["sections"];
       std::vector<int64_t> vars_sections_int = {};
       for (std::string str : vars_sections_str){
@@ -471,7 +476,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
       std::vector<std::string> vars_epmap = iter.second["epmap"];
       int trainer_id = 0;
       send_varname_to_ctx[delta_var_name] = operators::distributed::RpcContext(
-          delta_var_name,vars_names,vars_epmap,vars_sections_int,trainer_id);
+          delta_var_name,delta_var_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
       VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[delta_var_name];
