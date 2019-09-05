@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace inference {
@@ -29,8 +30,12 @@ namespace lite {
  * issues such as op_desc.
  */
 struct Teller {
-  virtual bool operator()(const std::string& op_type,
-                          const framework::OpDesc& desc) = 0;
+  virtual bool operator()(const std::string& op_type, const framework::OpDesc& op_desc) = 0;
+
+  virtual bool operator()(const std::string& op_type, const framework::OpDesc& op_desc,
+                    const framework::ProgramDesc& prog_desc) {
+    return this->operator()(op_type, op_desc);
+  }
 
   virtual ~Teller() = default;
 };
@@ -51,18 +56,14 @@ struct Teller {
  */
 class OpTeller {
  public:
-  static OpTeller& Global() {
-    static std::unique_ptr<OpTeller> x(new OpTeller);
-    return *x;
-  }
-
+  OpTeller();
+  OpTeller(const framework::ProgramDesc& prog_desc);
   bool Tell(const std::string& op_type, const framework::OpDesc& desc);
 
  private:
-  OpTeller();
-
- private:
-  std::vector<std::unique_ptr<Teller>> tellers_;
+  static std::vector<std::unique_ptr<Teller>> tellers_;
+  framework::ProgramDesc const * prog_desc_;
+  static std::once_flag init_flag_;
 };
 
 }  // namespace lite
