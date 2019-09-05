@@ -228,7 +228,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // keys for backward pass
     const std::string key = BatchNormMKLDNNHandler::GetHash(
         src_tz, epsilon, flags, global_stats, input_format,
-        ctx.op().Output("SavedMean"));
+        ctx.OutputName("SavedMean"));
     BatchNormMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -359,7 +359,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // keys from forward pass
     const std::string key = BatchNormMKLDNNHandler::GetHash(
         src_tz, epsilon, flags, false, input_format,
-        ctx.op().Input("SavedMean"));
+        ctx.InputName("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
     // keys for primitives reuse

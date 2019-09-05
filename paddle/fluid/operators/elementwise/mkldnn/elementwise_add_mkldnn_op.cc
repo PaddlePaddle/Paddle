@@ -134,7 +134,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       std::vector<float> scales = {1.0f, 1.0f};
 
       const std::string key = platform::MKLDNNHandler::GetHash(
-          src_x_tz, ctx.op().Output("Out") + std::to_string(x->format()) +
+          src_x_tz, ctx.OutputName("Out") + std::to_string(x->format()) +
                         std::to_string(y->format()));
 
       platform::SumMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);

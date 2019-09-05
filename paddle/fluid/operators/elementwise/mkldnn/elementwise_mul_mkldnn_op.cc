@@ -34,7 +34,7 @@ using platform::StringToMKLDNNFormat;
 
 static void UpdateDataFormat(const framework::ExecutionContext& ctx,
                              framework::Tensor* tensor, const char* attribute) {
-  if (ctx.op().HasAttr(attribute)) {
+  if (ctx.HasAttr(attribute)) {
     auto format_as_string = ctx.Attr<std::string>(attribute);
     auto format = StringToMKLDNNFormat(&format_as_string);
     if (format != memory::format::any) {

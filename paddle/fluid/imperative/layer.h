@@ -422,6 +422,61 @@ class Layer {
   }
 };
 
+class DygraphExecutionContext : public framework::ExecutionContext {
+ public:
+  DygraphExecutionContext(const framework::OperatorBase& op,
+                          const framework::Scope& scope,
+                          const platform::DeviceContext& device_context,
+                          const framework::RuntimeContext& ctx,
+                          std::vector<framework::KernelConfig>* configs,
+                          const VarBasePtrMap& var_base_map_in,
+                          const VarBasePtrMap& var_base_map_out)
+      : ExecutionContext(op, scope, device_context, ctx, configs),
+        var_base_map_in_(var_base_map_in),
+        var_base_map_out_(var_base_map_out) {}
+
+  std::string InputName(const std::string& name) const {
+    auto it = var_base_map_in_.find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_.end(), "Can not find [%s] in Input",
+                   name);
+    return it->second[0]->Name();
+  }
+  std::vector<std::string> InputNames(const std::string& name) const {
+    auto it = var_base_map_in_.find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_.end(), "Can not find [%s] in Input",
+                   name);
+    std::vector<std::string> vec_res;
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++it) {
+      vec_res.push_back(it->second[i]->Name());
+    }
+    return vec_res;
+  }
+
+  std::string OuputName(const std::string& name) const {
+    auto it = var_base_map_out_.find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_.end(), "Can not find [%s] in Output",
+                   name);
+    return it->second[0]->Name();
+  }
+
+  std::vector<std::string> OutputNames(const std::string& name) const {
+    auto it = var_base_map_out_.find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_.end(), "Can not find [%s] in Output",
+                   name);
+    std::vector<std::string> vec_res;
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++it) {
+      vec_res.push_back(it->second[i]->Name());
+    }
+    return vec_res;
+  }
+
+ private:
+  const VarBasePtrMap& var_base_map_in_;
+  const VarBasePtrMap& var_base_map_out_;
+};
+
 // infer var type context for imperative mode
 class PYBIND11_HIDDEN RuntimeInferVarTypeContext
     : public framework::InferVarTypeContext {

@@ -80,7 +80,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const std::string key = platform::PoolingMKLDNNHandler::GetHash(
         src_tz, pooling_type, ksize, strides, paddings, dt, fmt,
-        ctx.op().Output("Out"));
+        ctx.OutputName("Out"));
 
     platform::PoolingMKLDNNHandler handler(pooling_type, dt,
                                            ctx.Attr<bool>("is_test"), dev_ctx,
@@ -172,7 +172,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // This name will be used as key when referring info from device context
     const std::string key = platform::PoolingMKLDNNHandler::GetHash(
         diff_src_tz, pooling_type, ksize, strides, paddings,
-        memory::data_type::f32, in_x->format(), ctx.op().Input("Out"));
+        memory::data_type::f32, in_x->format(), ctx.InputName("Out"));
 
     platform::PoolingMKLDNNHandler handler(
         pooling_type, paddle::framework::ToMKLDNNDataType(in_x_grad->type()),

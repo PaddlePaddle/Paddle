@@ -124,7 +124,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvTransposeMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
-        ctx.op().Output("Output"));
+        ctx.OutputName("Output"));
 
     std::vector<mkldnn::primitive> pipeline;
 

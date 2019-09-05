@@ -239,7 +239,7 @@ std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
     const MKLDNNDeviceContext& dev_ctx, const ExecutionContext& ctx,
     const Tensor* input, const Tensor* weights,
     const mkldnn::engine& mkldnn_engine) {
-  const std::string key = GetHash(input, weights, ctx.op().Output("Out"));
+  const std::string key = GetHash(input, weights, ctx.OutputName("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));

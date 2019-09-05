@@ -238,8 +238,27 @@ class ExecutionContext {
         device_context_(device_context),
         ctx_(ctx),
         kernel_configs_(configs) {}
+  virtual ~ExecutionContext() {}
+  // const OperatorBase& op() const { return op_; }
 
-  const OperatorBase& op() const { return op_; }
+  virtual std::string InputName(const std::string& name) const {
+    return op_.Input(name);
+  }
+  virtual std::vector<std::string> InputNames(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+  virtual std::string OutputName(const std::string& name) const {
+    return op_.Output(name);
+  }
+
+  virtual std::vector<std::string> OutputNames(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
+  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
+  const AttributeMap& Attrs() const { return op_.Attrs(); }
+
+  const std::string& Type() const { return op_.Type(); }
 
   const Scope& scope() const { return scope_; }
 

@@ -39,7 +39,7 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(src_dt));
   platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
+  platform::MKLDNNHandler::AppendKey(&key, ctx.OutputName("Output"));
   return key;
 }
 

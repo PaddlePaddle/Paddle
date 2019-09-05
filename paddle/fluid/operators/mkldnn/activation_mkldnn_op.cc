@@ -89,8 +89,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const T *x_data = x->data<T>();
   T *y_data = y->mutable_data<T>(ctx.GetPlace());
 
-  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   PADDLE_ENFORCE(
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
@@ -104,7 +104,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   bool is_test = ctx.Attr<bool>("is_test");
 
   std::string key = platform::ActivationMKLDNNHandler::GetHash(
-      src_tz, algorithm, src_format, alpha, beta, ctx.op().Input("X"));
+      src_tz, algorithm, src_format, alpha, beta, ctx.InputName("X"));
 
   platform::ActivationMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
@@ -146,8 +146,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T *diff_y_data = diff_y->data<T>();
   T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
 
-  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
 
@@ -162,7 +162,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
       diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
 
   std::string key = platform::ActivationMKLDNNHandler::GetHash(
-      diff_dst_tz, algorithm, src_format, alpha, beta, ctx.op().Input("X"));
+      diff_dst_tz, algorithm, src_format, alpha, beta, ctx.InputName("X"));
 
   const std::string key_src_data = key + "@eltwise_fwd_src_data";
 
