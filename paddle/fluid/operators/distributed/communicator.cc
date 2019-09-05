@@ -418,6 +418,7 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
               FLAGS_communicator_send_queue_size);
+      VLOG(1)<< "send_varname_to_queue "<<iter.first<<" done";
     }
     send_threadpool_.reset(
         new ::ThreadPool(FLAGS_communicator_thread_pool_size));
@@ -503,6 +504,7 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     if (need_push >= geo_need_push_nums_){
       for (auto &iter:recv_varname_to_ctx_) {
         std::string local_var_name = iter.first;
+        VLOG(1) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
         auto &queue = send_varname_to_queue_.at(VarToDeltaVar(local_var_name));
         VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();   
         SendUpdateVars(local_var_name);
