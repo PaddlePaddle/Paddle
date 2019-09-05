@@ -13,14 +13,40 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
 
+class WaitedAllocateSizeGuard {
+ public:
+  WaitedAllocateSizeGuard(std::atomic<size_t>* waited_size,
+                          size_t requested_size)
+      : waited_size_(waited_size), requested_size_(requested_size) {
+    waited_size_->fetch_add(requested_size_,
+                            std::memory_order::memory_order_relaxed);
+  }
+
+  ~WaitedAllocateSizeGuard() {
+    waited_size_->fetch_sub(requested_size_,
+                            std::memory_order::memory_order_relaxed);
+  }
+
+ private:
+  std::atomic<size_t>* waited_size_;
+  size_t requested_size_;
+};
+
 void RetryAllocator::FreeImpl(Allocation* allocation) {
   // Delete underlying allocation first.
+  size_t size = allocation->size();
   underlying_allocator_->Free(allocation);
-  cv_.notify_all();
+  if (UNLIKELY(waited_allocate_size_)) {
+    VLOG(10) << "Free " << size << " bytes and notify all waited threads, "
+                                   "where waited_allocate_size_ = "
+             << waited_allocate_size_;
+    cv_.notify_all();
+  }
 }
 
 Allocation* RetryAllocator::AllocateImpl(size_t size) {
@@ -31,29 +57,38 @@ Allocation* RetryAllocator::AllocateImpl(size_t size) {
   // But it would add lock even when allocation success at the first time
   try {
     return alloc_func();
-  } catch (BadAlloc& bad_alloc) {
+  } catch (BadAlloc&) {
     {
+      WaitedAllocateSizeGuard guard(&waited_allocate_size_, size);
+      VLOG(10) << "Allocation failed when allocating " << size
+               << " bytes, waited_allocate_size_ = " << waited_allocate_size_;
       // We can just write allocation retry inside the predicate function of
-      // wait_until
-      // But it needs to acquire the lock when executing predicate function
-      // For better performance, we use loop here
+      // wait_until. But it needs to acquire the lock when executing predicate
+      // function. For better performance, we use loop here
       auto end_time = std::chrono::high_resolution_clock::now() + retry_time_;
       auto wait_until = [&, this] {
         std::unique_lock<std::mutex> lock(mutex_);
         return cv_.wait_until(lock, end_time);
       };
+
+      size_t retry_time = 0;
       while (wait_until() != std::cv_status::timeout) {
         try {
           return alloc_func();
-        } catch (BadAlloc& ex) {
-          bad_alloc = ex;
+        } catch (BadAlloc&) {
+          // do nothing when it is not timeout
+          ++retry_time;
+          VLOG(10) << "Allocation failed when retrying " << retry_time
+                   << " times when allocating " << size
+                   << " bytes. Wait still.";
         } catch (...) {
           throw;
         }
       }
-
-      throw;  // rethrow the original exception or throw the internal bad_alloc
     }
+    VLOG(10) << "Allocation failed because of timeout when allocating " << size
+             << " bytes.";
+    return alloc_func();  // If timeout, try last allocation request.
   } catch (...) {
     throw;
   }
