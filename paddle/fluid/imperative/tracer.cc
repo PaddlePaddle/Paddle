@@ -32,6 +32,16 @@ static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
   }
 }
 
+static void PassStopGradient(const NameVarBaseMap& outs, bool stop_gradient) {
+  for (const auto& name_pair : outs) {
+    for (const auto& vb : name_pair.second) {
+      VLOG(6) << "Set output: " << vb->Name() << "'s StopGradient as "
+              << stop_gradient;
+      vb->SetStopGradient(stop_gradient);
+    }
+  }
+}
+
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
@@ -49,10 +59,22 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
-                                 const NameVarBaseMap outs,
+                                 const NameVarBaseMap& outs,
                                  bool trace_backward) {
-  // TODO(jiabin): Implement auto prune here
-  return trace_backward;
+  if (!trace_backward) return false;
+
+  for (const auto& name_pair : ins) {
+    for (const auto& var_base : name_pair.second) {
+      if (!var_base->StopGradient()) {
+        VLOG(6) << "Find out input: " << var_base->Name()
+                << "'s StopGradient is False";
+        PassStopGradient(outs, var_base->StopGradient());
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
@@ -146,6 +168,11 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
           PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
                             "Cannot find forward variable named %s",
                             grad_in_var_name);
+          VLOG(6) << "Set fwd input: " << (*(fwd_var_iter->second))->Name()
+                  << " of grad op: " << grad_op->Type()
+                  << "StopGradient as False";
+
+          (*(fwd_var_iter->second))->SetStopGradient(false);
           bwd_in.emplace_back(*(fwd_var_iter->second));
         }
 
@@ -171,16 +198,23 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
                           "Cannot find forward variable named %s",
                           iter->second);
-        PADDLE_ENFORCE_NOT_NULL(
-            (*(fwd_var_iter->second))->GradVarBase(),
-            "Grad of %s should "
-            "not be NULL when we Track_Backward Output of %s",
-            (*(fwd_var_iter->second))->Name(), grad_op->Type());
-        bwd_out.emplace_back((*(fwd_var_iter->second))->GradVarBase());
-        VLOG(3) << "Set backward output " << grad_outs.first << " of "
-                << grad_op->Type() << " to be "
-                << (bwd_out.back() ? bwd_out.back()->Name() : "nullptr");
+        const auto& tmp = (*(fwd_var_iter->second))->GradVarBase();
 
+        PADDLE_ENFORCE_NOT_NULL(tmp,
+                                "Grad output: %s of op: %s should not be NULL",
+                                (tmp->Name(), grad_op->Type()));
+        tmp->SetStopGradient(false);
+        if (!tmp->OverridedStopGradient()) {
+          VLOG(3) << "Set backward output " << grad_outs.first << " of "
+                  << grad_op->Type() << " to be "
+                  << (bwd_out.back() ? bwd_out.back()->Name() : "nullptr");
+          bwd_out.emplace_back(tmp);
+          engine_->InsertGradVar(tmp.get());
+        } else {
+          VLOG(3) << "Skip backward output " << grad_outs.first << " of "
+                  << grad_op->Type() << " to be "
+                  << (bwd_out.back() ? bwd_out.back()->Name() : "nullptr");
+        }
         auto preceding_ops =
             (*(fwd_var_iter->second))->GradVarBase()->GradOps();
 

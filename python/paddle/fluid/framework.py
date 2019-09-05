@@ -456,12 +456,14 @@ class Variable(object):
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
+            force_require_grad = kwargs.get("require_grad", False)
             if not self._ivar:
                 self._ivar = core.VarBase(
                     name, type
                     if type else core.VarDesc.VarType.LOD_TENSOR, dtype
                     if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [], stop_gradient, True
+                    list(shape) if shape else [], True
+                    if not force_require_grad else False, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)

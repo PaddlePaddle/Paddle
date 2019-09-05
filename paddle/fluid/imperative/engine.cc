@@ -70,6 +70,9 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
   auto* grad_var =
       var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
+  VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
+          << " as stop_gradient false";
+  var->GradVarBase()->SetStopGradient(false);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());
   grad_var->Resize(fwd_var.dims());
   grad_var->mutable_data(fwd_var.place(), fwd_var.type());
@@ -79,8 +82,22 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
 bool BasicEngine::CheckBackwardInputs(OpBase* op) {
   for (auto& pair : op->GetInsMap()) {
     for (auto& var : pair.second) {
-      if (var && !var->StopGradient()) {
-        return true;
+      if (var) {
+        // if grad var has OverridedStopGradient skip this Op
+        if (IsGrad(var.get()) && var->OverridedStopGradient()) {
+          return false;
+        }
+        if (!var->StopGradient() && !var->OverridedStopGradient()) {
+          return true;
+        } else if (var->StopGradient() && !var->OverridedStopGradient()) {
+          PADDLE_THROW(
+              "Grad: %s has never been created, set it as stop_gradient=false "
+              "is"
+              "likely to cause program error",
+              var->Name());
+        } else {
+          continue;
+        }
       }
     }
   }
@@ -127,7 +144,6 @@ void BasicEngine::PrepareDeps() {
     VLOG(3) << "Checking grads of op " << cur_op->Type();
 
     if (!CheckBackwardInputs(cur_op)) {
-      // TODO(zjl): clear ops that do not need grad before running autograd
       VLOG(3) << "Stop checking preceding ops of " << cur_op->Type()
               << " because all of its backward inputs is stop_gradient=True";
       continue;

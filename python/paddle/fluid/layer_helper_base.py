@@ -266,7 +266,8 @@ class LayerHelperBase(object):
                          shape,
                          dtype,
                          is_bias=False,
-                         default_initializer=None):
+                         default_initializer=None,
+                         require_grad=True):
         """Create parameters for this layers.
 
            Args:
@@ -320,6 +321,7 @@ class LayerHelperBase(object):
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                require_grad=require_grad,
                 **attr._to_kwargs(with_initializer=True))
         else:
             self.startup_program.global_block().create_parameter(
