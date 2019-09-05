@@ -20,7 +20,7 @@ import contextlib
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from test_parallel_executor_mnist import simple_fc_net, fc_with_batchnorm
+from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
 import seresnext_net
 from test_parallel_executor_transformer import transformer, get_feed_data_reader
 from fake_reader import fake_imdb_reader
@@ -66,17 +66,11 @@ class TestProgramPruneBackward(unittest.TestCase):
             block_a = program_a.blocks[idx]
             block_b = program_b.blocks[idx]
             self.assertEqual(len(block_a.ops), len(block_b.ops))
+            self.assertEqual(len(block_a.vars), len(block_b.vars))
             for op_idx in range(len(block_a.ops)):
                 self.assertEqual(block_a.ops[op_idx].type,
                                  block_b.ops[op_idx].type)
             for var_key in list(block_a.vars.keys()):
-                # FIXME(chenweihang): these variables are independent in scope, and used for cache.
-                # Because they are not associated with op, the prune function can't find them.
-                # Pruning these variabels doesn't affect the correctness of execution
-                if block_a.vars[var_key].name == "kCUDNNFwdAlgoCache" or \
-                        block_a.vars[var_key].name == "kCUDNNBwdDataAlgoCache" or \
-                        block_a.vars[var_key].name == "kCUDNNBwdFilterAlgoCache":
-                    continue
                 self.assertTrue(block_b.has_var(var_key))
 
     def check_prune_correctness(self, method, feed_dict, optimizer):
@@ -92,19 +86,13 @@ class TestProgramPruneBackward(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        loss_data_orig, = exe.run(test_prog_orig,
-                                  feed=feed_dict,
-                                  fetch_list=[loss.name])
         loss_data_prune, = exe.run(test_prog_prune,
                                    feed=feed_dict,
                                    fetch_list=[loss.name])
+        loss_data_orig, = exe.run(test_prog_orig,
+                                  feed=feed_dict,
+                                  fetch_list=[loss.name])
         self.assertEqual(loss_data_orig, loss_data_prune)
-
-    def _init_fc_data(self):
-        np.random.seed(5)
-        img = np.random.random(size=[32, 784]).astype(np.float32)
-        label = np.ones(shape=[32, 1], dtype='int64')
-        return img, label
 
     def test_simple_fc_net(self):
         def optimizer():
@@ -114,7 +102,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             return optimizer
 
         with self.program_scope_guard():
-            img, label = self._init_fc_data()
+            img, label = init_data()
             self.check_prune_correctness(
                 method=simple_fc_net,
                 feed_dict={"image": img,
@@ -129,7 +117,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             return optimizer
 
         with self.program_scope_guard():
-            img, label = self._init_fc_data()
+            img, label = init_data()
             self.check_prune_correctness(
                 method=fc_with_batchnorm,
                 feed_dict={"image": img,
