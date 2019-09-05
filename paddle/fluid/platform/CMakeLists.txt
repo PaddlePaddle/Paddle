@@ -114,3 +114,10 @@ nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
+
+if(NOT APPLE AND NOT WIN32)
+  cc_library(device_code SRCS device_code.cc DEPS device_context)
+  if(WITH_GPU)
+    cc_test(device_code_test SRCS device_code_test.cc DEPS device_code lod_tensor)
+  endif()
+endif()
