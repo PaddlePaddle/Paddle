@@ -73,8 +73,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     } else {
       x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
     }
-    // std::cout << "X1 lod: "<< x1_lods.size() << std::endl;
-    // std::cout << "X2 lod: "<< x2_lods.size() << std::endl;
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
     for (size_t i = 0; i < x2_lods.size() - 1; i++) {
@@ -87,7 +85,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
         }
       }
     }
-    // std::cout << "Out lod: " <<out_lods.size() << std::endl;
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
@@ -120,7 +117,6 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
         map_data[i * 3] = (int64_t)out_lods[i];
         map_data[i * 3 + 1] = mmap_aux[map_data[i * 3]];
         map_data[i * 3 + 2] = out_lods[i + 1] - out_lods[i];
-        // std::cout << "Map: " << map_data[i*3] << "," << map_data[i*3+1] << "," << map_data[i*3+2] << std::endl;
         map_lods.push_back(i);
       }
       map_lods.push_back(out_lods.size() - 1);
@@ -136,15 +132,11 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < loss_weight->numel(); i++) {
         loss_weight_data[i] = 1;
       }
-      // std::cout << "out line cnt: " << out_lods.back() << std::endl;
-      // std::cout << "sizeof (T): " << sizeof(T) << std::endl;
 
       for (size_t i = 0; i < out_lods.size() - 1; i++) {
         size_t pos = out_lods[i];
         for (size_t k = map_data[i * 3 + 1];
              k < map_data[i * 3 + 1] + map_data[i * 3 + 2]; k++) {
-          // std::cout << "out pos and x1 emb size: " << pos << " "<< x1_embed_size << std::endl;
-          // std::cout << "x1 pos and x1 emb size: " << k << " " << x1_embed_size << std::endl;
           memcpy(out_data + pos * x1_embed_size, x1_data + k * x1_embed_size,
                  x1_embed_size * sizeof(T));
           ++pos;
