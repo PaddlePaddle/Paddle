@@ -70,6 +70,10 @@ class Scope {
   // Erase all variables except the given `vars`
   void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
 
+  // Erase the memory except the specified vars.
+  void MoveMemoryHolderExcept(
+      const std::vector<std::string>& skipped_var_names);
+
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.

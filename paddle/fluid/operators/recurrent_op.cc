@@ -83,11 +83,13 @@ framework::Scope &StepScopes::ExScope() {
 }
 
 void StepScopes::BackwardNext(const platform::DeviceContext &dev_ctx,
+                              const std::vector<std::string> &skipped_var_names,
                               framework::Scope *parent_scope) {
   PADDLE_ENFORCE_EQ(is_backward_, true,
                     "Cannot get backward next scope when is forward");
   if (counter_ + 2 == scopes_->size()) {
-    parent_scope->DeleteScope((*scopes_)[counter_ + 1]);
+    // parent_scope->DeleteScope((*scopes_)[counter_ + 1]);
+    (*scopes_)[counter_ + 1]->MoveMemoryHolderExcept(skipped_var_names);
     scopes_->pop_back();
     VLOG(3) << "Deleted scope at " << counter_ + 1;
   }
@@ -329,9 +331,18 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   framework::Executor executor(place);
   auto *block = Attr<framework::BlockDesc *>(kStepBlock);
   auto *program = block->Program();
-  auto ctx = executor.Prepare(
-      *program, block->ID(), Attr<std::vector<std::string>>(
-                                 kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
+
+  std::vector<std::string> skipped_var_names =
+      Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
+  {
+    auto &param_names = Inputs(kParameters);
+    for (size_t param_id = 0; param_id < param_names.size(); ++param_id) {
+      auto inside_grad_name = framework::GradVarName(param_names[param_id]);
+      skipped_var_names.push_back(inside_grad_name);
+    }
+  }
+  auto ctx = executor.Prepare(*program, block->ID(),
+                              skipped_var_names /*skip_ref_cnt_vars*/);
 
   std::vector<std::vector<const framework::Tensor *>> inside_grad_tensors;
   std::vector<framework::Tensor *> outside_grad_tensors;
@@ -421,8 +432,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     // Record the inside and outside parameter_gards.
     {
       auto &pg_names = Outputs(kParamGrads);
-      auto &p_names = Inputs(kParameters);
-      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
+      auto &param_names = Inputs(kParameters);
+      PADDLE_ENFORCE_EQ(pg_names.size(), param_names.size());
 
       if (step_id == 0) {
         inside_grad_tensors.resize(pg_names.size());
@@ -432,8 +443,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         PADDLE_ENFORCE_EQ(outside_grad_tensors.size(), pg_names.size());
       }
 
-      for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
-        auto inside_grad_name = framework::GradVarName(p_names[param_id]);
+      for (size_t param_id = 0; param_id < param_names.size(); ++param_id) {
+        auto inside_grad_name = framework::GradVarName(param_names[param_id]);
 
         // If does not compute gradient of that variable inside rnn, just
         // continue
@@ -492,7 +503,8 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         VLOG(5) << "Link initialize state gradient finished ";
       }
     }
-    scopes.BackwardNext(dev_ctx, const_cast<framework::Scope *>(&scope));
+    scopes.BackwardNext(dev_ctx, skipped_var_names,
+                        const_cast<framework::Scope *>(&scope));
   }
 
   // Accumulate params

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <set>
 #include <unordered_set>
 #include "glog/logging.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -139,6 +140,29 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
       it = vars_.erase(it);
     } else {
       ++it;
+    }
+  }
+}
+
+void Scope::MoveMemoryHolderExcept(
+    const std::vector<std::string>& skipped_var_names) {
+  std::set<std::string> skipped_var_names_set(skipped_var_names.begin(),
+                                              skipped_var_names.end());
+  SCOPE_KIDS_WRITER_LOCK
+  for (auto iter = vars_.begin(); iter != vars_.end(); ++iter) {
+    if (skipped_var_names_set.find(iter->first) ==
+        skipped_var_names_set.end()) {
+      auto& var = iter->second;
+      if (var->IsType<LoDTensor>()) {
+        var->GetMutable<LoDTensor>()->MoveMemoryHolder();
+      } else if (var->IsType<SelectedRows>()) {
+        var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder();
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        for (auto& t : *tensor_arr) {
+          t.MoveMemoryHolder();
+        }
+      }
     }
   }
 }

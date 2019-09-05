@@ -55,6 +55,7 @@ class StepScopes {
   // Delete ex-scope after using it, then move to next time step when
   // backwarding
   void BackwardNext(const platform::DeviceContext &dev_ctx,
+                    const std::vector<std::string> &skipped_var_names,
                     framework::Scope *parent_scope);
 
  private:
