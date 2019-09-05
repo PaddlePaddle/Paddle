@@ -83,13 +83,6 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
 
     return framework::make_ddim(output_shape);
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
-  }
 };
 
 class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -135,13 +128,6 @@ class UnsqueezeGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->ShareLoD("X", framework::GradVarName("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
   }
 };
 
@@ -235,6 +221,10 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(UnsqueezeInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 }  // namespace operators
 }  // namespace paddle
 
@@ -244,8 +234,9 @@ REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
 REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp);
 
 REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
-                  ops::Unsqueeze2GradOpMaker);
-REGISTER_OPERATOR(unsqueeze2_grad, ops::Unsqueeze2GradOp);
+                  ops::Unsqueeze2GradOpMaker, ops::UnsqueezeInplaceInferer);
+REGISTER_OPERATOR(unsqueeze2_grad, ops::Unsqueeze2GradOp,
+                  ops::UnsqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     unsqueeze, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,

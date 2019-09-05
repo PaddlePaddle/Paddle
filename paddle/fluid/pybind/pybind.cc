@@ -51,6 +51,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -748,13 +749,15 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("prune", [](const ProgramDesc &origin,
+                    const std::set<std::string> &feeded_var_names,
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDesc prog_with_targets(origin);
+
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
-    Prune(*prog_with_targets.Proto(), &pruned_desc);
+    Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
   m.def("empty_var_name",
@@ -1691,6 +1694,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindFleetWrapper(&m);
+  BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);
 #endif

@@ -725,7 +725,7 @@ function gen_dockerfile() {
     CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1).$(echo $CUDA_VERSION | cut -d '.' -f 2)"
     CUDNN_MAJOR=$(echo $CUDNN_VERSION | cut -d '.' -f 1)
     if [[ ${WITH_GPU} == "ON" ]]; then
-        BASE_IMAGE="nvidia/cuda:${CUDA_MAJOR}-cudnn${CUDNN_MAJOR}-runtime-ubuntu16.04"
+        BASE_IMAGE="nvidia/cuda:${CUDA_MAJOR}-cudnn${CUDNN_MAJOR}-devel-ubuntu16.04"
     else
         BASE_IMAGE="ubuntu:16.04"
     fi
@@ -744,7 +744,84 @@ function gen_dockerfile() {
     Generate ${PADDLE_ROOT}/build/Dockerfile ...
     ========================================
 EOF
+    
+    ref_CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1)"
+    if [[ ${WITH_GPU} == "ON"  ]]; then
+        ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
+    else
+        ref_gpu=cpu
+    fi
+    if [[ ${WITH_GPU} == "ON"  ]]; then
+        install_gpu="_gpu"
+    else
+        install_gpu=""
+    fi
+    if [[ ${WITH_MKL} == "ON" ]]; then
+        ref_mkl=mkl
+    else
+        ref_mkl=openblas
+    fi
 
+    ref_web=https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}
+
+    ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
+    ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
+    ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
+    ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
+
+    ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
+    ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
+    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
+
+    if [[ ${PADDLE_BRANCH} != "latest" && ${WITH_MKL} == "ON" && ${WITH_GPU} == "ON" ]]; then
+        ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
+        ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
+        ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
+        ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
+        ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
+        ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
+        ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
+        ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
+    fi
+
+    #ref_paddle2_mv1=""
+    #ref_paddle2_mv2=""
+    ref_paddle35_mv1=""
+    ref_paddle35_mv2=""
+    ref_paddle36_mv1=""
+    ref_paddle36_mv2=""
+    #ref_paddle37_mv1=""
+    #ref_paddle37_mv2=""
+    if [[ ${PADDLE_BRANCH} == "latest" && ${WITH_GPU} == "ON" ]]; then
+        #ref_paddle2_whl=paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl
+        ref_paddle35_whl=paddlepaddle_gpu-1.5.1-cp35-cp35m-linux_x86_64.whl
+        ref_paddle36_whl=paddlepaddle_gpu-1.5.1-cp36-cp36m-linux_x86_64.whl
+        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
+        #ref_paddle2_mv1="mv ref_paddle2 paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl &&"
+        #ref_paddle2_mv2="&& mv paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl ref_paddle2"
+        ref_paddle35_mv1="mv ${ref_paddle35} ${ref_paddle35_whl} &&"
+        ref_paddle35_mv2="&& mv ${ref_paddle35_whl} ${ref_paddle35}"
+        ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
+        ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
+        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
+        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
+    fi
+    if [[ ${PADDLE_BRANCH} == "latest" && ${WITH_GPU} != "ON" ]]; then
+        #ref_paddle2_whl=paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl
+        ref_paddle35_whl=paddlepaddle-1.5.1-cp35-cp35m-linux_x86_64.whl
+        ref_paddle36_whl=paddlepaddle-1.5.1-cp36-cp36m-linux_x86_64.whl
+        #ref_paddle37_whl=paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl
+        #ref_paddle2_mv1="mv ref_paddle2 paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl &&"
+        #ref_paddle2_mv2="&& mv paddlepaddle_gpu-1.5.1-cp27-cp27mu-linux_x86_64.whl ref_paddle2"
+        ref_paddle35_mv1="mv ${ref_paddle35} ${ref_paddle35_whl} &&"
+        ref_paddle35_mv2="&& mv ${ref_paddle35_whl} ${ref_paddle35}"
+        ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
+        ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
+        #ref_paddle37_mv1="mv ref_paddle37 paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl &&"
+        #ref_paddle37_mv2="&& mv paddlepaddle_gpu-1.5.1-cp37-cp37m-linux_x86_64.whl ref_paddle37"
+    fi
+    
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
     FROM ${BASE_IMAGE}
     MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -752,32 +829,31 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-change-held-packages libnccl2=2.4.7-1+cuda${CUDA_MAJOR} libnccl-dev=2.4.7-1+cuda${CUDA_MAJOR} || true"
+        NCCL_DEPS="apt-get install -y --allow-downgrades --allow-change-held-packages libnccl2=2.4.7-1+cuda${CUDA_MAJOR} libnccl-dev=2.4.7-1+cuda${CUDA_MAJOR} || true"
     else
         NCCL_DEPS="true"
     fi
 
+    if [[ ${WITH_GPU} == "ON" && ${CUDA_MAJOR} = "8.0" ]]; then 
+        NCCL_DEPS="apt-get install -y --allow-downgrades --allow-change-held-packages libnccl2=2.2.13-1+cuda8.0 libnccl-dev=2.2.13-1+cuda8.0"
+    fi
+
     PADDLE_VERSION="paddle version"
     CMD='"paddle", "version"'
-
-    if [ "$1" == "cp35-cp35m" ]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    ADD python/dist/*.whl /
+    
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python3 python3-pip libgtk2.0-dev dmidecode python3-tk && \
-        pip3 install opencv-python py-cpuinfo==5.0.0 && pip3 install /*.whl; apt-get install -f -y && \
+        pip3 install opencv-python py-cpuinfo==5.0.0 && wget ${ref_web}/${ref_paddle35} && ${ref_paddle35_mv1} pip3 install ${ref_paddle35_whl} ${ref_paddle35_mv2}; apt-get install -f -y && \
         apt-get clean -y && \
-        rm -f /*.whl && \
-        ${PADDLE_VERSION} && \
+        rm -f ${ref_paddle35} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_CUBLAS_DSO}
     ${DOCKERFILE_GPU_ENV}
 EOF
-    elif [ "$1" == "cp36-cp36m" ]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    ADD python/dist/*.whl /
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
@@ -789,20 +865,14 @@ EOF
         wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
         tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-        make -j8 > /dev/null && make altinstall > /dev/null
-    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && \
-        pip3.6 install opencv-python && pip3.6 install /*.whl; apt-get install -f -y && \
+        make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.6.0.tgz
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
+        pip3.6 install opencv-python && wget ${ref_web}/${ref_paddle36} && ${ref_paddle36_mv1} pip3.6 install ${ref_paddle36_whl} ${ref_paddle36_mv2}; apt-get install -f -y && \
         apt-get clean -y && \
-        rm -f /*.whl && \
-        ${PADDLE_VERSION} && \
+        rm -f ${ref_paddle36} && \
         ldconfig
-    ${DOCKERFILE_CUDNN_DSO}
-    ${DOCKERFILE_CUBLAS_DSO}
-    ${DOCKERFILE_GPU_ENV}
 EOF
-    elif [ "$1" == "cp37-cp37m" ]; then
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    ADD python/dist/*.whl /
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
@@ -811,33 +881,23 @@ EOF
     RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
         tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-        make -j8 > /dev/null && make altinstall > /dev/null
-    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && \
-        pip3.7 install opencv-python && pip3.7 install /*.whl; apt-get install -f -y && \
+        make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.7.0.tgz
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
+        pip3.7 install opencv-python && wget ${ref_web}/${ref_paddle37} && pip3.7 install ${ref_paddle37_whl}; apt-get install -f -y && \
         apt-get clean -y && \
-        rm -f /*.whl && \
-        ${PADDLE_VERSION} && \
+        rm -f ${ref_paddle37} && \
         ldconfig
-    ${DOCKERFILE_CUDNN_DSO}
-    ${DOCKERFILE_CUBLAS_DSO}
-    ${DOCKERFILE_GPU_ENV}
 EOF
-    else
-        cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
-    ADD python/dist/*.whl /
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
-        pip install /*.whl; apt-get install -f -y && \
+        wget ${ref_web}/${ref_paddle2} && pip install ${ref_paddle2_whl}; apt-get install -f -y && \
         apt-get clean -y && \
-        rm -f /*.whl && \
+        rm -f ${ref_paddle2} && \
         ${PADDLE_VERSION} && \
         ldconfig
-    ${DOCKERFILE_CUDNN_DSO}
-    ${DOCKERFILE_CUBLAS_DSO}
-    ${DOCKERFILE_GPU_ENV}
 EOF
-    fi
 
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
