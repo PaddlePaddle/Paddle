@@ -67,7 +67,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     LOG_FIRST_N(WARNING, 1)
         << "FLAGS_use_ngraph=True, garbage collection strategy is "
            "disabled in Executor";
-    force_disable_gc = true;
   }
 #endif
   force_disable_gc_ = force_disable_gc;
