@@ -27,26 +27,25 @@ class TestImperativePartitialBackward(unittest.TestCase):
             fc1 = fluid.dygraph.FC("fc1", 10, num_flatten_dims=2)
             fc2 = fluid.dygraph.FC("fc2", 10, num_flatten_dims=2)
 
-            for _ in range(10):
-                y = fc1(x[:, :2])
-                z = fc2(x[:, 2:])
-                loss = fluid.layers.reduce_mean(y)
-                loss.backward()
+            y = fc1(x[:, :2])
+            z = fc2(x[:, 2:])
+            loss = fluid.layers.reduce_mean(y)
+            loss.backward()
 
-                for param in fc1.parameters():
-                    self.assertTrue(param._ivar._grad_ivar_is_initialized())
+            for param in fc1.parameters():
+                self.assertTrue(param._ivar._grad_ivar_is_initialized())
 
-                for param in fc2.parameters():
-                    self.assertFalse(param._ivar._grad_ivar_is_initialized())
+            for param in fc2.parameters():
+                self.assertFalse(param._ivar._grad_ivar_is_initialized())
 
-                optimizer = fluid.optimizer.AdamOptimizer()
-                _, params_grads = optimizer.minimize(loss)
+            optimizer = fluid.optimizer.AdamOptimizer()
+            _, params_grads = optimizer.minimize(loss)
 
-                self.assertListEqual(fc1.parameters(),
-                                     [p_g[0] for p_g in params_grads])
+            self.assertListEqual(fc1.parameters(),
+                                 [p_g[0] for p_g in params_grads])
 
-                fc1.clear_gradients()
-                fc2.clear_gradients()
+            fc1.clear_gradients()
+            fc2.clear_gradients()
 
 
 if __name__ == '__main__':
