@@ -748,6 +748,8 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
                 tr_cmd += " --ut4grad_allreduce"
+            if self._use_mixed_precision:
+                tr_cmd += " --use_mixed_precision"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
