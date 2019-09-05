@@ -287,11 +287,18 @@ class Squeeze2GradOp : public framework::OperatorBase {
     attrs["shape"] = framework::vectorize<int>(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
+        "reshape2_grad", {{framework::GradVarName("Out"), {dout_name}},
+                          {"Shape", {}},
+                          {"XShape", {xshape_name}}},
+        {{framework::GradVarName("X"), {dx_name}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(SequeezeInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SequeezeGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -306,6 +313,7 @@ REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp, ops::SqueezeGradInferShape);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
-                  ops::Squeeze2OpInferShape, ops::Squeeze2GradOpMaker);
+                  ops::Squeeze2OpInferShape, ops::Squeeze2GradOpMaker,
+                  ops::SequeezeInplaceInferer);
 REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
-                  ops::Squeeze2GradInferShape);
+                  ops::Squeeze2GradInferShape, ops::SequeezeGradInplaceInferer);
