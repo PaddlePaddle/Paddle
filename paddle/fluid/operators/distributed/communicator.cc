@@ -527,7 +527,7 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
 }
 
 void Communicator::SendUpdateVars(const std::string& var_name) {
-  // calc var_delata = (var_recv - var_old) / trainers
+  // calc var_delata = (var_recv - var_old)
   // calc var_old += var_delta/trainer_nums
   VLOG(1) << "Geo-Sgd Communicator Send update Vars: "<< var_name;
   // Todo: add check
@@ -580,7 +580,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     VLOG(1) << "Recv " << var_name<< " before update Vars delta_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
-      y_mutable_data[i] += z_mutable_data[i];
+      y_mutable_data[i] = z_mutable_data[i];
     }
     VLOG(1) << "Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data;
     VLOG(1) << "Recv " << var_name<< " after update Vars old_scope: "<< *y_mutable_data;
