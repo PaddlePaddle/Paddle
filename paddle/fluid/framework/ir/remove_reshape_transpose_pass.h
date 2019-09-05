@@ -32,10 +32,6 @@ class RemoveReshapeTransposeForAttentionPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  void ReshapeTranspose(Graph* graph) const;
-  void TransposeReshape(Graph* graph) const;
-  void ReshapeTransposeScale(Graph* graph) const;
-  void RemoveStack(Graph* graph) const;
 };
 
 }  // namespace ir

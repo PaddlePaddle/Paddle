@@ -20,14 +20,11 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
-int head_number = 0;
-
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void RemoveReshapeTransposeForAttentionPass::ReshapeTranspose(
-    Graph* graph) const {
+static int ReshapeTranspose(Graph* graph) {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("rm_head/x")
@@ -50,7 +47,7 @@ void RemoveReshapeTransposeForAttentionPass::ReshapeTranspose(
                               rm_reshape_transpose_pattern);
 
     auto reshape_desc = reshape->Op();
-    head_number =
+    int head_number =
         boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
     auto matmul_op_desc = matmul->Op();
     matmul_op_desc->SetAttr("head_number", head_number);
@@ -63,11 +60,10 @@ void RemoveReshapeTransposeForAttentionPass::ReshapeTranspose(
     found_count++;
   };
   gpd(graph, handler);
-  AddStatis(found_count);
+  return found_count;
 }
 
-void RemoveReshapeTransposeForAttentionPass::TransposeReshape(
-    Graph* graph) const {
+static int TransposeReshape(Graph* graph) {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("rm_inverse/x")
@@ -99,11 +95,10 @@ void RemoveReshapeTransposeForAttentionPass::TransposeReshape(
     found_count++;
   };
   gpd(graph, handler);
-  AddStatis(found_count);
+  return found_count;
 }
 
-void RemoveReshapeTransposeForAttentionPass::ReshapeTransposeScale(
-    Graph* graph) const {
+static int ReshapeTransposeScale(Graph* graph) {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("rm_head_scale/x")
@@ -129,7 +124,7 @@ void RemoveReshapeTransposeForAttentionPass::ReshapeTransposeScale(
     GET_IR_NODE_FROM_SUBGRAPH(scale, scale, rm_reshape_transpose_scale_pattern);
 
     auto reshape_desc = reshape->Op();
-    head_number =
+    int head_number =
         boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
     auto matmul_op_desc = matmul->Op();
     matmul_op_desc->SetAttr("head_number", head_number);
@@ -143,10 +138,10 @@ void RemoveReshapeTransposeForAttentionPass::ReshapeTransposeScale(
     found_count++;
   };
   gpd(graph, handler);
-  AddStatis(found_count);
+  return found_count;
 }
 
-void RemoveReshapeTransposeForAttentionPass::RemoveStack(Graph* graph) const {
+static int RemoveStack(Graph* graph) {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("rm_stack/x")
@@ -171,17 +166,44 @@ void RemoveReshapeTransposeForAttentionPass::RemoveStack(Graph* graph) const {
     found_count++;
   };
   gpd(graph, handler);
-  AddStatis(found_count);
+  return found_count;
+}
+
+static int DetectStack(Graph* graph) {
+  GraphPatternDetector gpd;
+  auto* x = gpd.mutable_pattern()
+                ->NewNode("rm_stack/x")
+                ->AsInput()
+                ->assert_is_op_input("stack", "X");
+  patterns::RemoveStack remove_stack_pattern(gpd.mutable_pattern(),
+                                             "remove_stack_pattern");
+  remove_stack_pattern(x);
+  int found_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "handle remove stack pattern";
+    GET_IR_NODE_FROM_SUBGRAPH(stack, stack, remove_stack_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(stack_out, stack_out, remove_stack_pattern);
+
+    found_count++;
+  };
+  gpd(graph, handler);
+  return found_count;
 }
 
 void RemoveReshapeTransposeForAttentionPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init("remove_reshape_transpose", graph);
-
-  ReshapeTranspose(graph);
-  TransposeReshape(graph);
-  ReshapeTransposeScale(graph);
-  RemoveStack(graph);
+  int count0 = 0, count1 = 0, count2 = 0, count3 = 0;
+  count0 = DetectStack(graph);
+  if (count0 != 0) {
+    count1 = ReshapeTranspose(graph);
+    count2 = TransposeReshape(graph);
+    count3 = ReshapeTransposeScale(graph);
+    if (count1 && count2 && count3) {
+      RemoveStack(graph);
+    }
+  }
 }
 
 }  // namespace ir
