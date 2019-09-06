@@ -607,7 +607,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     }
     VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param on pserver): "<< *z_mutable_data;
+            <<" ;pserver_scope(param on pserver): "<< *z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
