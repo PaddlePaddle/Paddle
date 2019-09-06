@@ -31,15 +31,27 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
 
  private:
   void BuildOperator(framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
-                      std::vector<std::string> *repetitive_params) const;
+                     std::vector<std::string> *repetitive_params) const;
 
   void SetUpEngine(framework::ProgramDesc* program,
-    std::vector<std::string> *repetitive_params) const;
+                   std::vector<std::string> *repetitive_params) const;
 
   void OrganizeProgram(framework::ir::Node *merged_node,
-    framework::ProgramDesc* global_program,
-    framework::ProgramDesc* engine_program,
-    std::vector<std::string> *repetitive_params) const;
+                       framework::ProgramDesc* global_program,
+                       framework::ProgramDesc* engine_program,
+                       std::vector<std::string> *repetitive_params) const;
+
+  void ModifyHostProgram(framework::ProgramDesc* host_program,
+                         framework::BlockDesc* host_sub_block,
+                         const std::unordered_set<framework::ir::Node *>& io_var_nodes,
+                         const std::vector<framework::OpDesc*>& subgraph_ops) const;
+
+  void ModifyEngineProgram(framework::ir::Node *merged_node,
+                           framework::ProgramDesc* host_program,
+                           framework::ProgramDesc* engine_program,
+                           framework::BlockDesc* host_sub_block,
+                           const std::unordered_set<framework::ir::Node *>& io_var_nodes,
+                           const std::vector<framework::OpDesc*>& subgraph_ops) const;
 };
 
 }  // namespace analysis

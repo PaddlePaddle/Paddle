@@ -42,7 +42,7 @@ namespace analysis {
 
 using framework::ir::Node;
 
-std::vector<std::string> IOVarsFilter(const std::vector<framework::ir::Node*>& nodes) {
+std::vector<std::string> IOVarsFilter(const std::vector<Node*>& nodes) {
   std::vector<std::string> names;
   for (const auto& node: nodes) {
     if (node->IsVar() && !node->Var()->Persistable()) { 
@@ -67,7 +67,7 @@ void LiteSubgraphPass::ApplyImpl(
   // auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
   std::vector<std::string> lite_ops_filter = {};
 
-  auto teller = [&lite_ops_filter](const framework::ir::Node *node) {
+  auto teller = [&lite_ops_filter](const Node *node) {
     if (!node->IsOp() || !node->Op())
       return false;
     else if (std::find(lite_ops_filter.begin(), lite_ops_filter.end(),
@@ -78,9 +78,6 @@ void LiteSubgraphPass::ApplyImpl(
 
   SubGraphFuser fuser(graph, teller, 0 /* min_subgraph_size */, "lite_engine");
   fuser();
-
-  // std::vector<std::string> graph_param_names =
-  //     ExtractParameters(graph->Nodes());
 
   std::vector<std::string> repetitive_params;
   for (auto *node : graph->Nodes()) {
@@ -104,7 +101,7 @@ void LiteSubgraphPass::ApplyImpl(
 }
 
 void LiteSubgraphPass::BuildOperator(
-    framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
+    Node *merged_node, framework::ProgramDesc* global_program,
     std::vector<std::string> *repetitive_params) const {
   
   framework::ProgramDesc engine_program;
@@ -123,15 +120,14 @@ void LiteSubgraphPass::BuildOperator(
 // (initial) -> proto::desc (flush) -> framework::desc (final).
 // Ir::Graph is limited to changing the main block, so the sub block
 // needs to be processed here.
-void LiteSubgraphPass::OrganizeProgram(framework::ir::Node *merged_node,
+void LiteSubgraphPass::OrganizeProgram(Node *merged_node,
   framework::ProgramDesc* host_program,
   framework::ProgramDesc* engine_program,
   std::vector<std::string> *repetitive_params) const {
-  auto &subgraph = *Agent(merged_node).subgraph();
+  std::vector<framework::ir::Node *>& subgraph = *Agent(merged_node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
   const framework::BlockDesc &host_global_block = host_program->Block(framework::kRootBlockIndex);
-  framework::BlockDesc *host_sub_block = host_program->AppendBlock(host_global_block);
-  framework::BlockDesc* engine_global_block = engine_program->MutableBlock(framework::kRootBlockIndex);
+  framework::BlockDesc* host_sub_block = host_program->AppendBlock(host_global_block);
 
   string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
                           subgraph.size());
@@ -144,63 +140,11 @@ void LiteSubgraphPass::OrganizeProgram(framework::ir::Node *merged_node,
     subgraph_ops.push_back(op_node->Op());
   }
 
-  // 1. Modify the fluid program.
-  for (auto *var_node: io_var_nodes) {
-    framework::VarDesc* sub_block_var = host_sub_block->Var(var_node->Name());
-    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
-  }
-  for (auto *op_desc : subgraph_ops) {
-    framework::OpDesc* sub_block_op = host_sub_block->AppendOp();
-    sub_block_op->Proto()->CopyFrom(*op_desc->Proto());
-    if (op_desc->HasAttr("sub_block")) {
-      int32_t global_sub_id = host_sub_block->ID();
-      framework::BlockDesc *op_sub_block = host_program->MutableBlock(op_desc->GetBlockAttrId("sub_block"));
-      op_sub_block->Proto()->set_parent_idx(global_sub_id);
-    }
-  }
-  // 2. Fill the main block of lite program.
-  PrependFeedOps(engine_global_block, IOVarsFilter(merged_node->inputs));
-  for (auto *var_node: io_var_nodes) {
-    framework::VarDesc* sub_block_var = engine_global_block->Var(var_node->Name());
-    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
-  }
-  PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
+  ModifyHostProgram(host_program, host_sub_block, io_var_nodes, subgraph_ops);
 
-  // 3. Append sub blocks in the lite program.
-  std::unordered_map<int32_t, int32_t> sub_blocks_map;
-  std::unordered_set<int32_t> copied_host_ids;
-  sub_blocks_map[host_sub_block->ID()] = framework::kRootBlockIndex;
-  std::function<void(const std::vector<framework::OpDesc*>&)> append_sub_blocks;
-  append_sub_blocks = [&](const std::vector<framework::OpDesc*>& ops) {
-    for (auto *op_desc : ops) {
-      if (op_desc->HasAttr("sub_block")) {
-        int32_t host_op_sub_id = op_desc->GetBlockAttrId("sub_block");
-        if (copied_host_ids.count(host_op_sub_id)) continue;
-        size_t engine_block_size = engine_program->Size();
-        framework::BlockDesc* host_op_sub_block = host_program->MutableBlock(host_op_sub_id);
-        framework::BlockDesc* engine_op_sub_block = engine_program->AppendBlock(*(op_desc->Block()));
-        for (auto* var: host_op_sub_block->AllVars()) {
-          framework::VarDesc* engine_var = engine_op_sub_block->Var(var->Name());
-          engine_var->Proto()->CopyFrom(*var->Proto());
-        }
-        for (auto* op: host_op_sub_block->AllOps()) {
-          framework::OpDesc* engine_op = engine_op_sub_block->AppendOp();
-          engine_op->Proto()->CopyFrom(*op->Proto());
-        }
-        sub_blocks_map[host_op_sub_id] = engine_block_size;
-        append_sub_blocks(host_op_sub_block->AllOps());
-      }
-    }
-  };
-  append_sub_blocks(subgraph_ops);
-  for (size_t i = 0; i < engine_program->Size(); i++) {
-    for (auto *op_desc : engine_program->Block(i).AllOps()) {
-      if (op_desc->HasAttr("sub_block")) {
-        int32_t id = op_desc->GetBlockAttrId("sub_block");
-        op_desc->SetAttr("sub_block", sub_blocks_map[id]);
-      }
-    }
-  }
+  ModifyEngineProgram(merged_node, host_program, engine_program, host_sub_block,
+                      io_var_nodes, subgraph_ops);
+
   host_program->Flush();
   engine_program->Flush();
 
@@ -236,6 +180,78 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
   };
   inference::Singleton<inference::lite::EngineManager>::Global()
       .Create("engine_key", config);
+}
+
+void LiteSubgraphPass::ModifyHostProgram(framework::ProgramDesc* host_program,
+  framework::BlockDesc* host_sub_block,
+  const std::unordered_set<Node *>& io_var_nodes,
+  const std::vector<framework::OpDesc*>& subgraph_ops) const {
+  for (auto *var_node: io_var_nodes) {
+    auto* sub_block_var = host_sub_block->Var(var_node->Name());
+    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
+  }
+  for (auto *op_desc : subgraph_ops) {
+    auto* sub_block_op = host_sub_block->AppendOp();
+    sub_block_op->Proto()->CopyFrom(*op_desc->Proto());
+    if (op_desc->HasAttr("sub_block")) {
+      int32_t global_sub_id = host_sub_block->ID();
+      auto *op_sub_block = host_program->MutableBlock(op_desc->GetBlockAttrId("sub_block"));
+      op_sub_block->Proto()->set_parent_idx(global_sub_id);
+    }
+  }
+}
+
+void LiteSubgraphPass::ModifyEngineProgram(Node *merged_node,
+  framework::ProgramDesc* host_program,
+  framework::ProgramDesc* engine_program,
+  framework::BlockDesc* host_sub_block,
+  const std::unordered_set<Node *>& io_var_nodes,
+  const std::vector<framework::OpDesc*>& subgraph_ops) const {
+
+  // 1. Fill the main block of lite program.
+  framework::BlockDesc* engine_global_block = engine_program->MutableBlock(framework::kRootBlockIndex);
+  PrependFeedOps(engine_global_block, IOVarsFilter(merged_node->inputs));
+  for (auto *var_node: io_var_nodes) {
+    framework::VarDesc* sub_block_var = engine_global_block->Var(var_node->Name());
+    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
+  }
+  PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
+
+  // 2. Append sub blocks in the lite program.
+  std::unordered_map<int32_t, int32_t> sub_blocks_map;
+  std::unordered_set<int32_t> copied_host_ids;
+  sub_blocks_map[host_sub_block->ID()] = framework::kRootBlockIndex;
+  std::function<void(const std::vector<framework::OpDesc*>&)> append_sub_blocks;
+  append_sub_blocks = [&](const std::vector<framework::OpDesc*>& ops) {
+    for (auto *op_desc : ops) {
+      if (op_desc->HasAttr("sub_block")) {
+        int32_t host_op_sub_id = op_desc->GetBlockAttrId("sub_block");
+        if (copied_host_ids.count(host_op_sub_id)) continue;
+        size_t engine_block_size = engine_program->Size();
+        auto* host_op_sub_block = host_program->MutableBlock(host_op_sub_id);
+        auto* engine_op_sub_block = engine_program->AppendBlock(*(op_desc->Block()));
+        for (auto* var: host_op_sub_block->AllVars()) {
+          auto* engine_var = engine_op_sub_block->Var(var->Name());
+          engine_var->Proto()->CopyFrom(*var->Proto());
+        }
+        for (auto* op: host_op_sub_block->AllOps()) {
+          auto* engine_op = engine_op_sub_block->AppendOp();
+          engine_op->Proto()->CopyFrom(*op->Proto());
+        }
+        sub_blocks_map[host_op_sub_id] = engine_block_size;
+        append_sub_blocks(host_op_sub_block->AllOps());
+      }
+    }
+  };
+  append_sub_blocks(subgraph_ops);
+  for (size_t i = 0; i < engine_program->Size(); i++) {
+    for (auto *op_desc : engine_program->Block(i).AllOps()) {
+      if (op_desc->HasAttr("sub_block")) {
+        int32_t id = op_desc->GetBlockAttrId("sub_block");
+        op_desc->SetAttr("sub_block", sub_blocks_map[id]);
+      }
+    }
+  }
 }
 
 }  // namespace analysis
