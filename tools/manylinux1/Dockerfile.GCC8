@@ -46,7 +46,7 @@ RUN /bin/bash -c "source /usr/local/bin/virtualenvwrapper.sh\
  && pip install numpy protobuf wheel"
 
 RUN apt install -y ccache
-RUN echo export PATH=/usr/lib/ccache:$PATH >> ~/.bashrc
+RUN echo export PATH=/usr/lib/ccache:/root/.virtualenvs/paddle-venv/bin/:$PATH >> ~/.bashrc
 RUN apt install -y module-init-tools
 
 CMD source ~/.bashrc
