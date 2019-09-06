@@ -94,6 +94,7 @@ gray_list = {
     'elementwise_pow',
     'elementwise_mod',
     'elementwise_floordiv',
+    'batch_norm',
     'tanh',
     'sigmoid',
     'lookup_table',
