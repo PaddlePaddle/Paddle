@@ -132,9 +132,9 @@ class CudnnCTCKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     auto cu_logits_desc = logits_desc.descriptor<T>(
-        layout, framework::vectorize<int>(warpctc_logits.dims()));
+        layout, framework::vectorize2int(warpctc_logits.dims()));
     auto cu_grad_desc = grad_desc.descriptor<T>(
-        layout, framework::vectorize<int>(warpctc_grad->dims()));
+        layout, framework::vectorize2int(warpctc_grad->dims()));
     auto cu_ctcloss_desc = ctcloss_desc.descriptor<T>();
 
     auto handle = dev_ctx.cudnn_handle();
