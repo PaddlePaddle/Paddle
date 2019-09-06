@@ -142,9 +142,9 @@ void GPUSampleWithProb<T>::operator()(
 
   int num_tries = UniqSampler<T>(sampler, num_samples, s_data);
   VLOG(1) << "num_tries: " << num_tries;
-  PADDLE_ENFORCE(cudaMemcpy(samples_data + num_true, s_data,
-                            sizeof(int64_t) * num_samples,
-                            cudaMemcpyHostToDevice));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(samples_data + num_true, s_data,
+                                         sizeof(int64_t) * num_samples,
+                                         cudaMemcpyHostToDevice));
 
   int threads = 512;
   const size_t size = batch_size * num_sampled_classes;
