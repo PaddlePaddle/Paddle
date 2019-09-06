@@ -334,46 +334,59 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def generate_role(self):
         if not self._role_is_generated:
             if not self._is_collective:
-                port = os.environ["PADDLE_PORT"]
-                pserver_ips = os.environ["PADDLE_PSERVERS"]
+                try:
+                    port = os.environ["PADDLE_PORT"]
+                    pserver_ips = os.environ["PADDLE_PSERVERS"]
+                    if "," in port:
+                        ports = port.split(",")
+                    else:
+                        ports = [port] * len(pserver_ips.split(","))
+                    eplist = []
+                    # note that, we usually assign the same port to different ips
+                    # if we run parameter server training in local mode
+                    # port should be different in environment variables
+                    for i, ip in enumerate(pserver_ips.split(",")):
+                        eplist.append(':'.join([ip, ports[i]]))
 
-                if "," in port:
-                    ports = port.split(",")
-                else:
-                    ports = [port] * len(pserver_ips.split(","))
-                eplist = []
-                # note that, we usually assign the same port to different ips
-                # if we run parameter server training in local mode
-                # port should be different in environment variables
-                for i, ip in enumerate(pserver_ips.split(",")):
-                    eplist.append(':'.join([ip, ports[i]]))
+                    trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+                    training_role = os.environ["TRAINING_ROLE"]
 
+                    if training_role not in ["TRAINER", "PSERVER"]:
+                        raise ValueError(
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
+
+                    if training_role == "TRAINER":
+                        role = Role.WORKER
+                        current_id = os.environ["PADDLE_TRAINER_ID"]
+                    elif training_role == "PSERVER":
+                        role = Role.SERVER
+                        cur_ip = os.environ["POD_IP"]
+                        cur_idx = pserver_ips.index(cur_ip)
+                        current_id = eplist.index(":".join(
+                            [cur_ip, ports[cur_idx]]))
+                    else:
+                        raise ValueError(
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
+                except Exception as e:
+                    raise Exception(
+                        "something wrong with paddlecloud, please check ENV, exp: {}".
+                        format(e.message))
+
+                self._trainers_num = trainers_num
                 self._server_endpoints = eplist
-                self._trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+                self._role = role
+                self._current_id = current_id
+        else:
+            self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+            self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
+            assert (self._training_role == "TRAINER")
+            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+            self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+            assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+            self._worker_endpoints = self._worker_endpoints.split(",")
+            self._trainers_num = len(self._worker_endpoints)
 
-                if os.environ["TRAINING_ROLE"] == "TRAINER":
-                    self._role = Role.WORKER
-                    self._current_id = os.environ["PADDLE_TRAINER_ID"]
-                elif os.environ["TRAINING_ROLE"] == "PSERVER":
-                    self._role = Role.SERVER
-                    cur_ip = os.environ["POD_IP"]
-                    cur_idx = pserver_ips.index(cur_ip)
-                    self._current_id = eplist.index(":".join(
-                        [cur_ip, ports[cur_idx]]))
-                else:
-                    raise ValueError("TRAINING_ROLE muse in [PSERVER, TRAINER]")
-            else:
-                self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-                self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
-                                                "TRAINER")
-                assert (self._training_role == "TRAINER")
-                self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-                self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-                assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
-                self._worker_endpoints = self._worker_endpoints.split(",")
-                self._trainers_num = len(self._worker_endpoints)
-
-            self._role_is_generated = True
+        self._role_is_generated = True
 
     def get_pserver_endpoints(self):
         if not self._role_is_generated:
