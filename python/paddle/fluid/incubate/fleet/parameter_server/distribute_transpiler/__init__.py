@@ -28,6 +28,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.fleet_base import HDFS_PREFIX
+from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 
 
 class DistributedTranspiler(Fleet):
@@ -96,7 +97,8 @@ class DistributedTranspiler(Fleet):
                         HDFS_PREFIX):]):
                     raise ValueError("There is no hadoop directory named '%s'",
                                      model_dir[len(HDFS_PREFIX):])
-                tmp_path = self.generate_random_path(model_dir)
+                fleet_util_instance = FleetUtil()
+                tmp_path = fleet_util_instance.generate_random_path()
                 model_dir = model_dir[len(HDFS_PREFIX):]
                 self._hdfs_client_trainer.download(model_dir, tmp_path)
                 model_dir = tmp_path
@@ -173,7 +175,8 @@ class DistributedTranspiler(Fleet):
         hdfs_dirname = None
         if dirname.startswith(HDFS_PREFIX):
             hdfs_dirname = dirname
-            dirname = generate_random_path()
+            fleet_util_instance = FleetUtil()
+            dirname = fleet_util_instance.generate_random_path()
 
         if main_program is not None:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
@@ -311,9 +314,8 @@ class DistributedTranspiler(Fleet):
                 block.append_op(type='delete_var', inputs={'X': slice_vars})
             executor.run(prog)
 
-        def __save_distributed_lookup_tables(executor, dirname,
-                                             distributed_lookup_table,
-                                             endpoints, hdfs_dirname):
+        def __save_distributed_lookup_tables(
+                executor, dirname, distributed_lookup_table, endpoints):
             """
             because the distributed lookup table may too huge to merge and save at one place,
             it will be saved at parameter server independent respectively.
@@ -326,9 +328,7 @@ class DistributedTranspiler(Fleet):
             lookup_table_filename = os.path.join(dirname, "__lookup_table__")
             attrs = {}
             attrs['epmap'] = endpoints
-            attrs['dir'] = os.path.join(
-                hdfs_dirname,
-                "__lookup_table__") if hdfs_dirname else lookup_table_filename
+            attrs['dir'] = lookup_table_filename
             attrs['lookup_table'] = distributed_lookup_table
             block.append_op(
                 type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
@@ -357,7 +357,8 @@ class DistributedTranspiler(Fleet):
         hdfs_dirname = None
         if dirname.startswith(HDFS_PREFIX):
             hdfs_dirname = dirname
-            dirname = generate_random_path()
+            fleet_util_instance = Fleet_Util()
+            dirname = fleet_util_instance.generate_random_path()
 
         remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
             ["Optimizer", "RemotePrefetch"], groupby=True)
@@ -394,7 +395,7 @@ class DistributedTranspiler(Fleet):
                     __save_distributed_lookup_tables(
                         executor, dirname,
                         main_program._distributed_lookup_table,
-                        main_program._endpoints, hdfs_dirname)
+                        main_program._endpoints)
         if hdfs_dirname:
             self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
                                              dirname)
