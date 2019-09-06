@@ -509,9 +509,9 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     if (need_push >= geo_need_push_nums_){
       for (auto &iter:recv_varname_to_ctx_) {
         std::string local_var_name = iter.first;
-        VLOG(1) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
+        VLOG(4) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
         auto &queue = send_varname_to_queue_.at(VarToDeltaVar(local_var_name));
-        VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();   
+        VLOG(4) << "send " << local_var_name << " queue size " << queue->Size();   
         SendUpdateVars(local_var_name);
         auto *delta_var = delta_scope_->FindVar(VarToDeltaVar(local_var_name));
         auto tmp_param_var = std::make_shared<Variable>();
@@ -540,7 +540,7 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
                                    const framework::Scope &scope_y,
                                    const std::string var_name, bool send) {
   // copy var(send_varname_to_ctx_) from x to y
-  VLOG(1) <<"Copy parameter from scope: "<< &scope_x 
+  VLOG(4) <<"Copy parameter from scope: "<< &scope_x 
           <<" To scope: "<< &scope_y 
           <<" Parameter name: "<< var_name; 
   auto *var_x = scope_x.FindVar(var_name);
@@ -566,19 +566,21 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
     float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
-    VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+    VLOG(4) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;delta_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
+      /*
       if(var_name == "SparseFeatFactors" && fabs(x_mutable_data[i]- y_mutable_data[i])>0.000001 && i<1000) {
         VLOG(1) << "SparseFeatFactors Ids after send "<< i <<" recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
                 <<" ;delta_scope: "<< z_mutable_data[i];
       }
+      */
     }
-    VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
+    VLOG(4) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;delta_scope: "<< *z_mutable_data;
   }
@@ -603,19 +605,21 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
     float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
-    VLOG(1) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+    VLOG(4) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;pserver_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
+      /*
       if(var_name == "SparseFeatFactors" && fabs(z_mutable_data[i]- x_mutable_data[i])>0.0000001 && i<1000) {
         VLOG(1) << "SparseFeatFactors Ids after recv "<< i <<" recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
                 <<" ;pserver_scope: "<< z_mutable_data[i];
       }
+      */
     }
-    VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
+    VLOG(4) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;pserver_scope: "<< *z_mutable_data;
   }
