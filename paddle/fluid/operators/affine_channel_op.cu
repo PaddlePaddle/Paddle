@@ -151,11 +151,6 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     int grid1 = (num + block - 1) / block;
     int grid2 = std::min(C, max_blocks);
     if (layout == framework::DataLayout::kNCHW) {
-      if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
-                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
-            dy_d, s_d, nullptr, C, HxW, num, dx_d);
-      }
       if (dscale && dbias) {
         const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
@@ -163,18 +158,24 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
                                                       dev_ctx.stream()>>>(
             dy_d, x_d, N, C, HxW, ds_d, db_d);
       }
-    } else {
       if (dx) {
-        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
+        KeAffineChannelCUDA<T, framework::DataLayout::kNCHW,
                             false><<<grid1, block, 0, dev_ctx.stream()>>>(
             dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
+    } else {
       if (dscale && dbias) {
         const T* x_d = x->data<T>();
         AffineChannelScaleBiasGradientCUDAKernel<
             T, block, framework::DataLayout::kNHWC><<<grid2, block, 0,
                                                       dev_ctx.stream()>>>(
             dy_d, x_d, N, C, HxW, ds_d, db_d);
+      }
+
+      if (dx) {
+        KeAffineChannelCUDA<T, framework::DataLayout::kNHWC,
+                            false><<<grid1, block, 0, dev_ctx.stream()>>>(
+            dy_d, s_d, nullptr, C, HxW, num, dx_d);
       }
     }
   }

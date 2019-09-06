@@ -42,6 +42,7 @@ TEST(communicator, merge_lod_tensors) {
     }
     out_value += static_cast<float>(i);
   }
+  out_value = out_value / 10.0;
   const std::string out_name = "Out";
   std::unique_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
@@ -95,7 +96,7 @@ TEST(communicator, merge_selected_rows) {
   std::vector<float> out_values;
   out_values.reserve(10);
   for (auto i = 0; i < 10; ++i) {
-    out_values.push_back(static_cast<float>(i * (10 - i)));
+    out_values.push_back(static_cast<float>((i * (10 - i)) / 10.0));
   }
   for (auto i = 0; i < out_slr.rows().size(); ++i) {
     ASSERT_EQ(out_slr.rows()[i], i);
