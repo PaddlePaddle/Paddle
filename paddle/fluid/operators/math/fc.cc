@@ -23,8 +23,8 @@ namespace math {
 template <typename T>
 class FCFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const DeviceConext& context, const int M, const int N,
-                  const int K, const T* X, const T* W, T* Y,
+  void operator()(const platform::CPUDeviceContext& context, const int M,
+                  const int N, const int K, const T* X, const T* W, T* Y,
                   const T* B = nullptr, bool relu = false) {
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     blas.MatMul(M, N, K, X, W, Y);
@@ -53,6 +53,9 @@ class FCFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+
+template class FCFunctor<platform::CPUDeviceContext, float>;
+template class FCFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
