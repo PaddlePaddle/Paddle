@@ -575,7 +575,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
       if(var_name == "SparseFeatFactors" && z_mutable_data[i]!= y_mutable_data[i]) {
         VLOG(1) << "SparseFeatFactors Ids after send "<< i <<" recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
-                <<" ;pserver_scope: "<< z_mutable_data[i];
+                <<" ;delta_scope: "<< z_mutable_data[i];
       }
     }
     VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
