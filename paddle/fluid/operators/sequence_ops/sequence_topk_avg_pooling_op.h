@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+=======
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+>>>>>>> 79c79a8cf48bc27998cf05d0194a3ded932cbe5e
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,21 +17,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <limits>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+namespace {
 template <typename T>
-void get_topk_pos(const T* data, int length, int k, int* pos) {
+void get_topk_pos(const T* data, int length, int k, int* pos,
+                  bool debug = false) {
   size_t real_k = k < length ? k : length;
 
   std::vector<T> v(data, data + length);
 
   std::vector<int> topk_pos;
-  T min_val = std::numeric_limits<T>::lowest();
+  T min_val = -10000000.0;
   while (topk_pos.size() < real_k) {
     T max_val = min_val;
     int max_pos = -1;
@@ -53,6 +58,7 @@ void get_topk_pos(const T* data, int length, int k, int* pos) {
     pos[i] = topk_pos[i];
   }
 }
+}  // namespace
 
 namespace paddle {
 namespace operators {
@@ -93,31 +99,62 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
       vec_out_lod.push_back(offset);
     }
 
+    /*
+    std::vector<int> vec_out_shape;
+    vec_out_shape.push_back( offset );
+    out->Resize( {framework::make_ddim(vec_out_shape)} );
+    */
+
     framework::LoD lod_temp;
     lod_temp.push_back(vec_out_lod);
     out->set_lod(lod_temp);
 
-    auto din_data = in->data<T>();
-    auto dout_data = out->mutable_data<T>(context.GetPlace());
+    auto in_data = in->data<T>();
+    auto out_data = out->mutable_data<T>(context.GetPlace());
 
     T* sum_data = new T[max_k];
     for (int i = 0; i < batch_size; ++i) {
       int total_size = in_lod[i + 1] - in_lod[i];
       int row_size = row_lod[i + 1] - row_lod[i];
       int col_size = col_lod[i + 1] - col_lod[i];
-      PADDLE_ENFORCE_EQ(total_size, channel_num * row_size * col_size,
-                        "size wrong in sequence_topk_avg_pooling_op!");
+      PADDLE_ENFORCE_EQ(total_size, channel_num * row_size * col_size, "size wrong in sequence_topk_avg_pooling_op!");
 
       int feature_num = row_size * col_size;
       for (int j = 0; j < channel_num; ++j) {
-        auto input_offset_feature_data = din_data + in_lod[i] + j * feature_num;
+        auto input_offset_feature_data = in_data + in_lod[i] + j * feature_num;
 
         for (int r = 0; r < row_size; ++r) {
           auto row_data = input_offset_feature_data + r * col_size;
+          /*
+                          if( ( in_lod[i] + j * feature_num + r * col_size ) <=
+             4871 && ( in_lod[i] + j * feature_num + r * col_size ) <= 4908 &&
+                               ( in_lod[i] + j * feature_num + ( r + 1 ) *
+             col_size ) >= 4908 )
+                          {
+                              LOG(ERROR) << "in same row " << col_size;
+                              LOG(ERROR) << "edge " << in_lod[i] + j *
+             feature_num + r * col_size  << "\t"
+                                        << in_lod[i] + j * feature_num + ( r + 1
+             ) * col_size;
 
+
+                              LOG(ERROR) << "max k " << max_k;
+                              for( size_t h = 0; h < col_size; ++h )
+                              {
+                                  LOG(ERROR) << "element " << row_data[h];
+                              }
+
+                              LOG(ERROR) << "31 " <<  row_data[31];
+                              LOG(ERROR) << "68 " <<  row_data[68];
+
+                              LOG(ERROR) << "cmp " << ( row_data[31] >
+             row_data[68] ); LOG(ERROR) << "cmp " << ( row_data[31] ==
+             row_data[68] );
+                          }
+                          */
           auto pos_slice_data = pos_data + row_lod[i] * channel_num * max_k +
                                 r * channel_num * max_k + j * max_k;
-          auto out_slice_data = dout_data + row_lod[i] * channel_num * k_num +
+          auto out_slice_data = out_data + row_lod[i] * channel_num * k_num +
                                 r * channel_num * k_num + j * k_num;
 
           get_topk_pos<T>(row_data, col_size, max_k, pos_slice_data);
@@ -133,6 +170,15 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
               sum_data[k] = sum_data[k - 1] + row_data[pos_slice_data[k]];
             }
           }
+          /*
+                          LOG(ERROR) << "topk_avg_debug row: " << row_lod.size()
+             << ", col:" << col_lod.size() << ", k_size:" << k_num << "\n"; for(
+             size_t k = 0; k < k_num; ++k )
+                          {
+                              LOG(ERROR) << "pos in ff: " << in_lod[i] + j *
+             feature_num +  r * col_size + pos_slice_data[k];
+                          }
+          */
           for (size_t k = 0; k < k_num; ++k) {
             out_slice_data[k] = sum_data[topks[k] - 1] / topks[k];
           }
@@ -147,8 +193,8 @@ template <typename DeviceContext, typename T>
 class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* d_in = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* out_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* in_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* pos_input = context.Input<Tensor>("pos");
     auto* row_input = context.Input<LoDTensor>("ROW");
     auto* col_input = context.Input<LoDTensor>("COLUMN");
@@ -161,34 +207,34 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
     auto max_k = topks[k_num - 1];
 
     auto out_lod = forward_input->lod();
-    d_in->set_lod(out_lod);
+    in_grad->set_lod(out_lod);
 
-    d_in->mutable_data<T>(context.GetPlace());
+    in_grad->mutable_data<T>(context.GetPlace());
     auto pos_data = pos_input->data<int>();
-    auto dout_data = d_out->data<T>();
+    auto out_data = out_grad->data<T>();
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
-    zero(dev_ctx, d_in, static_cast<T>(0.0));
+    zero(dev_ctx, in_grad, static_cast<T>(0.0));
 
-    auto din_data = d_in->data<T>();
+    auto in_data = in_grad->data<T>();
 
     auto out_offset = out_lod[0];
     auto row_lod = row_input->lod()[0];
     auto col_lod = col_input->lod()[0];
 
+    // LOG( ERROR ) << "----------------------------------";
     for (int i = 0; i < batch_size; ++i) {
       int row_size = row_lod[i + 1] - row_lod[i];
       int col_size = col_lod[i + 1] - col_lod[i];
       int feature_num = row_size * col_size;
 
       for (int j = 0; j < channel_num; ++j) {
-        auto in_offset_feature_data =
-            din_data + out_offset[i] + j * feature_num;
+        auto in_offset_feature_data = in_data + out_offset[i] + j * feature_num;
 
         for (int r = 0; r < row_size; r++) {
-          auto row_data = dout_data + row_lod[i] * channel_num * k_num +
+          auto row_data = out_data + row_lod[i] * channel_num * k_num +
                           r * channel_num * k_num + j * k_num;
           auto pos_slice_data = pos_data + row_lod[i] * channel_num * max_k +
                                 r * channel_num * max_k + j * max_k;
@@ -200,6 +246,15 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
                 break;
               } else {
                 in_slice_data[pos_slice_data[k]] += row_data[m] / topks[m];
+                /*
+                                            if ( out_offset[i] + j * feature_num
+                   + r * col_size + pos_slice_data[k] == 4909 )
+                                            {
+                                                LOG(ERROR) << "pos in bp " <<
+                   out_offset[i] + j * feature_num + r * col_size +
+                   pos_slice_data[k] << "\t" << row_data[m] / topks[m];
+                                            }
+                                            */
               }
             }
           }

@@ -224,13 +224,7 @@ class UniformInitializer(Initializer):
     		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
-    def __init__(self,
-                 low=-1.0,
-                 high=1.0,
-                 seed=0,
-                 diag_num=0,
-                 diag_step=0,
-                 diag_val=1.0):
+    def __init__(self, low=-1.0, high=1.0, seed=0, diag_num=0, diag_step=0, diag_val=1.0):
         assert low is not None
         assert high is not None
         assert high >= low
@@ -238,8 +232,6 @@ class UniformInitializer(Initializer):
         assert diag_num is not None
         assert diag_step is not None
         assert diag_val is not None
-        if diag_num > 0 or diag_step > 0:
-            assert (diag_num > 0 and diag_step > 0)
         super(UniformInitializer, self).__init__()
         self._low = low
         self._high = high

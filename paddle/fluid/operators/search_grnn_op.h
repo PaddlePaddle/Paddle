@@ -22,25 +22,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
-/*
-class MatchMatrixTensorOP : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override;
-};
-
-class MatchMatrixTensorOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override;
-};
-
-class MatchMatrixTensorOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override;
-};
-*/
 }  // namespace operators
 }  // namespace paddle
