@@ -63,6 +63,8 @@ class SearchPyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
     AddOutput("DropPos", "Out (Tensor, Tensor<int>) Output variable");
+    AddOutput("X_Temp_Out", "Out (Tensor, Tensor<int>) Output variable")
+        .AsIntermediate();
 
     AddComment(R"DOC(
       SearchPyramidHash
@@ -130,6 +132,7 @@ class SearchPyramidHashOP : public framework::OperatorWithKernel {
     } else {
       // compile time
       ctx->SetOutputDim("Out", framework::make_ddim({-1, num_emb}));
+      ctx->SetOutputDim("X_Temp_Out", x_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     }
   }
@@ -160,8 +163,9 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      memcpy(top_pos + j, const_cast<float*>(weights + pos),
-             _rand_len * sizeof(T));
+      // memcpy(top_pos + j, const_cast<float*>(weights + pos),
+      //        _rand_len * sizeof(T));
+      memcpy(top_pos + j, const_cast<float*>(weights + pos), 16 * sizeof(T));
     }
   }
 
@@ -187,9 +191,9 @@ class CPUSearchPyramidHashOPKernel : public framework::OpKernel<T> {
 
     const auto& offset = bottom->lod()[0];
     const auto* bottom_data_ori = bottom->data<int32_t>();
-    Tensor buff;
-    buff.Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    T* bottom_data = buff.mutable_data<T>(ctx.GetPlace());
+    auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
+    buff->Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
+    T* bottom_data = buff->mutable_data<T>(ctx.GetPlace());
     for (size_t i = 0; i < bottom->dims()[0]; i++) {
       bottom_data[i] = bottom_data_ori[i];
     }
