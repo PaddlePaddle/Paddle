@@ -170,7 +170,13 @@ DDim make_ddim(const std::vector<int>& dims);
  */
 DDim make_ddim(std::initializer_list<int64_t> dims);
 
-std::vector<int64_t> vectorize(const DDim& ddim);
+template <typename T = int64_t>
+std::vector<T> vectorize(const DDim& ddim) {
+  std::vector<T> result(DDim::kMaxRank);
+  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
+  result.resize(ddim.size());
+  return result;
+}
 std::vector<int> vectorize2int(const DDim& ddim);
 
 int64_t product(const DDim& ddim);

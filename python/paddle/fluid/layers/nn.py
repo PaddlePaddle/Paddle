@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant
+from .tensor import concat, assign, fill_constant, zeros
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -124,6 +124,8 @@ __all__ = [
     'gather',
     'gather_nd',
     'scatter',
+    'scatter_nd_add',
+    'scatter_nd',
     'sequence_scatter',
     'random_crop',
     'mean_iou',
@@ -1405,7 +1407,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input, label, param_attr=None, length=None):
     """
     Linear Chain CRF.
 
@@ -1415,6 +1417,7 @@ def linear_chain_crf(input, label, param_attr=None):
         input(${emission_type}): ${emission_comment}
         input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
+        Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter.
 
     Returns:
@@ -1425,16 +1428,62 @@ def linear_chain_crf(input, label, param_attr=None):
     Examples:
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
-             crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
+            import paddle.fluid as fluid
+            import numpy as np
 
+            #define net structure, using LodTensor
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=emission,
+                    label=label,
+                    param_attr=fluid.ParamAttr(
+                    name='crfw',
+                    learning_rate=0.01)) 
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)    
+            #define data, using LoDTensor
+            a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
+            b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
+            feed1 = {'input_data':a,'label':b}
+            loss= exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
+            print(loss) 
+
+            #define net structure, using padding
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
+                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
+                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
+                crf_cost2 = fluid.layers.linear_chain_crf(
+                    input=emission2,
+                    label=label2,
+                    length=label_length,
+                    param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.01))
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+
+            #define data, using padding
+            cc=np.random.rand(4,10,10).astype('float32')
+            dd=np.random.rand(4,10,1).astype('int64')
+            ll=np.array([[3,3,4,2]])
+            feed2 = {'input_data2':cc,'label2':dd,'length':ll}
+
+            loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
+            print(loss2) 
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1450,11 +1499,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
+    if length:
+        this_inputs['length'] = [length]
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],
@@ -2359,20 +2413,6 @@ def conv2d(input,
         default_initializer=_get_default_param_initializer())
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
-
-    if use_cudnn:
-        helper.create_variable(
-            name="kCUDNNFwdAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdDataAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdFilterAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
 
     helper.append_op(
         type=l_type,
@@ -8633,6 +8673,127 @@ def scatter(input, index, updates, name=None, overwrite=True):
         attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
+
+
+def scatter_nd_add(ref, index, updates, name=None):
+    """
+    **Scatter_nd_add Layer**
+
+    Output is obtained by applying sparse addition to a single value
+    or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
+    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
+    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates` 
+    is a Tensor with rank :math:`K - 1 + R - Q` and its
+    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
+    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
+    add the corresponding :attr:`updates` slice to the :attr:`ref` slice
+    which is obtained by the last one dimension of :attr:`index` .
+
+    .. code-block:: text
+        
+        Given:
+
+        * Case 1:
+            ref = [0, 1, 2, 3, 4, 5]
+            index = [[1], [2], [3], [1]]
+            updates = [9, 10, 11, 12]
+
+          we get:
+             
+            output = [0, 22, 12, 14, 4, 5]
+
+        * Case 2:
+            ref = [[65, 17], [-14, -25]]
+            index = [[], []]
+            updates = [[[-1, -2], [1, 2]],
+                       [[3, 4], [-3, -4]]]
+            ref.shape = (2, 2)
+            index.shape = (2, 0)
+            updates.shape = (2, 2, 2)
+
+          we get:
+             
+            output = [[67, 19], [-16, -27]]
+
+    Args:
+        ref (Variable): The ref input.
+        index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
+                          Its dtype should be int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter_nd_add op, and it must have the same type
+                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:]
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape and type as ref.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            ref = fluid.layers.data(name='ref', shape=[3, 5, 9, 10], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int32', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+
+            output = fluid.layers.scatter_nd_add(ref, index, updates)
+    """
+    if ref.dtype != updates.dtype:
+        raise ValueError("ref and updates must have same data type.")
+
+    helper = LayerHelper('scatter_nd_add', **locals())
+    dtype = helper.input_dtype()
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type="scatter_nd_add",
+        inputs={"X": ref,
+                "Index": index,
+                "Updates": updates},
+        outputs={"Out": output})
+    return output
+
+
+def scatter_nd(index, updates, shape, name=None):
+    """
+    **Scatter_nd Layer**
+
+    Output is obtained by scattering the :attr:`updates` in a new tensor according 
+    to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the 
+    tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)` 
+    is equal to :code:`scatter_nd_add(fluid.layers.zeros(shape, updates.dtype), index, updates)` . 
+    If :attr:`index` has repeated elements, then the corresponding updates are accumulated. 
+    Because of the numerical approximation issues, the different order of repeated elements 
+    in :attr:`index` may cause different results. The specific calculation method can be 
+    seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
+
+    Args:
+        index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
+                          Its dtype should be int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter_nd op. 
+                            It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
+        shape(tuple|list): Shape of output tensor.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same type as :attr:`updates` .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            shape = [3, 5, 9, 10]
+
+            output = fluid.layers.scatter_nd(index, updates, shape)
+    """
+    return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
 def sequence_scatter(input, index, updates, name=None):
