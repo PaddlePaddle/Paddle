@@ -137,7 +137,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # sparse update using local lookup_table
         for op in self.origin_program.global_block().ops:
             if op.type == "lookup_table":
-                op.attr["remote_prefetch"] = False
+                op._set_attr('remote_prefetch',False)
 
         # step 3. create send var (param after optimize)
         send_vars = []
