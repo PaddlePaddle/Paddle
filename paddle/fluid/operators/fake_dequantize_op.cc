@@ -23,13 +23,26 @@ template <typename T>
 struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, framework::Tensor* out) {
+                  float max_range, framework::Tensor* out) {
+    /*
     auto in_e = framework::EigenVector<T>::Flatten(*in);
     const T* scale_factor = scale->data<T>();
     auto out_e = framework::EigenVector<T>::Flatten(*out);
 
     auto& dev = *dev_ctx.eigen_device();
     out_e.device(dev) = (scale_factor[0] / max_range) * in_e;
+    */
+    const float* scale_factor = scale->data<float>();
+    const T* input_data = in->data<T>();
+    float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
+    auto input_dims = in->dims();
+    int ind = 1;
+    for (size_t i = 0; i < (unsigned)input_dims.size(); i++) {
+      ind *= input_dims[i];
+    }
+    for (size_t i = 0; i < (unsigned)ind; i++) {
+      output_data[i] = (scale_factor[0] / max_range) * input_data[i];
+    }
   }
 };
 
@@ -76,6 +89,7 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
 template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
+template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
 template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, float>;
 template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, double>;
 
@@ -96,6 +110,13 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    auto type = framework::OpKernelType(
+        ctx.Input<framework::LoDTensor>("X")->type(), ctx.device_context());
+    return type;
+  }
 };
 
 class FakeDequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -109,6 +130,8 @@ class FakeDequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output is the dequantized high "
               "precision tensor.");
     AddAttr<float>("max_range", "(float) The max range in quantization stage.");
+    AddAttr<int>("out_type", "output data type, default is float32")
+        .SetDefault(5);
     AddComment(R"DOC(
 FakeDequantizeMaxAbsOp operator.
 
@@ -187,6 +210,7 @@ REGISTER_OPERATOR(fake_dequantize_max_abs, ops::FakeDequantizeMaxAbsOp,
                   ops::FakeDequantizeMaxAbsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fake_dequantize_max_abs,
+                       ops::FakeDequantizeMaxAbsKernel<CPU, int8_t>,
                        ops::FakeDequantizeMaxAbsKernel<CPU, float>,
                        ops::FakeDequantizeMaxAbsKernel<CPU, double>);
 

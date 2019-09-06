@@ -195,6 +195,8 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
                   ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
-                       ops::LookupTableKernel<double>);
+                       ops::LookupTableKernel<double>,
+                       ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>);

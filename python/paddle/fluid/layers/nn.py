@@ -218,6 +218,18 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
+    'search_seq_arithmetic',
+    'sequence_topk_avg_pooling',
+    'sequence_topk_pooling',
+    'search_fc',
+    'search_seq_fc',
+    'search_grnn',
+    'search_embedding',
+    'search_aligned_mat_mul',
+    'search_attention_padding_mask',
+    'search_group_padding',
+    'search_seq_depadding',
+    'search_seq_softmax',
 ]
 
 kIgnoreIndex = -100
@@ -13324,6 +13336,50 @@ def deformable_roi_pooling(input,
     return output
 
 
+def sequence_topk_pooling(input, topk, batch_size, channel_num):
+    """
+    
+    TODO:
+    """
+    helper = LayerHelper('sequence_topk_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_pooling',
+        inputs={'X': input},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={
+            'topk': topk,
+            'batch_size': batch_size,
+            'channel_num': channel_num
+        })
+    return out
+
+
+def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
+    """
+
+    TODO:
+    """
+    helper = LayerHelper('sequence_topk_avg_pooling', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    pos = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_topk_avg_pooling',
+        inputs={'X': input,
+                'ROW': row,
+                'COLUMN': col},
+        outputs={'Out': out,
+                 'pos': pos},
+        attrs={'topks': topks,
+               'channel_num': channel_num})
+    return out
+
+
+'''
 def var_conv_2d(input,
                 row,
                 col,
@@ -13423,6 +13479,70 @@ def var_conv_2d(input,
             'X': input,
             'ROW': row,
             'COLUMN': col,
+            'W': filter_param,
+        },
+        outputs={"Out": conv_res,
+                 "Col": tmp_res},
+        attrs={
+            'InputChannel': input_channel,
+            'OutputChannel': output_channel,
+            'StrideH': stride[0],
+            'StrideW': stride[1],
+            'KernelH': filter_size[0],
+            'KernelW': filter_size[1],
+        })
+
+    return helper.append_activation(conv_res)
+
+'''
+
+
+def var_conv_2d(input,
+                input_channel,
+                output_channel,
+                filter_size,
+                stride=1,
+                param_attr=None,
+                act=None,
+                dtype='float32',
+                name=None):
+    """
+
+    :param input:
+    :param input_channel:
+    :param output_channel:
+    :param filter_size:
+    :param stride:
+    :param param_attr:
+    :param act:
+    :param dtype:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('var_conv_2d', **locals())
+    x_shape = list(input.shape)
+    assert len(x_shape) == 2
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+
+    filter_shape = [
+        int(output_channel),
+        int(input_channel) * filter_size[0] * filter_size[1]
+    ]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype, )
+
+    conv_res = helper.create_variable_for_type_inference(dtype)
+    tmp_res = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+
+    helper.append_op(
+        type='var_conv_2d',
+        inputs={
+            'X': input,
             'W': filter_param,
         },
         outputs={"Out": conv_res,
@@ -13603,6 +13723,338 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         },
         stop_gradient=True)
     return out
+
+
+def search_seq_arithmetic(input_x, input_y, op_type, name=None):
+    """
+    :param input_x:
+    :param input_y:
+    :param op_type:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_seq_arithmetic', **locals())
+    dtype = input_x.dtype
+
+    res = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_seq_arithmetic',
+        inputs={
+            'X': input_x,
+            'Y': input_y,
+        },
+        outputs={"Out": res},
+        attrs={'op_type': op_type})
+
+    return res
+
+
+def search_grnn(input,
+                num_input,
+                num_hidden,
+                param_attr_in,
+                param_attr_hidden,
+                dtype='float32',
+                is_test=False,
+                name=None):
+    """
+    
+    TODO:
+    """
+
+    helper = LayerHelper('search_grnn', **locals())
+
+    input_shape = list(input.shape)
+    assert len(input_shape) == 2 and input_shape[-1] == num_input
+
+    _cap_h = num_hidden
+    _cap_e = input_shape[-1]
+    wi_shape = [3, _cap_h, _cap_e]
+    wh_shape = [3, _cap_h, _cap_h]
+    wi = helper.create_parameter(
+        attr=param_attr_in, shape=wi_shape, dtype=dtype, is_bias=False)
+    wh = helper.create_parameter(
+        attr=param_attr_hidden, shape=wh_shape, dtype=dtype, is_bias=False)
+
+    grnn_res = helper.create_variable_for_type_inference(dtype)
+    grnn_buffer = helper.create_variable_for_type_inference(dtype)
+    grnn_idx_sorted_by_width = helper.create_variable_for_type_inference(dtype)
+    grnn_layout_input = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='search_grnn',
+        inputs={
+            'X': input,
+            'Wi': wi,
+            'Wh': wh,
+        },
+        outputs={
+            "Out": grnn_res,
+            "tmp_buffer": grnn_buffer,
+            'idx_sorted_by_width': grnn_idx_sorted_by_width,
+            'layout_input': grnn_layout_input
+        },
+        attrs={'num_input': num_input,
+               'num_hidden': num_hidden})
+
+    return grnn_res
+
+
+def search_embedding(input,
+                     num_voc,
+                     num_emb,
+                     lr,
+                     param_attr=None,
+                     name=None,
+                     dtype='float32'):
+    """
+
+    :param input:
+    :param num_voc:
+    :param num_emb:
+    :param lr:
+    :param param_attr:
+    :param name:
+    :param dtype:
+    :return:
+    """
+    helper = LayerHelper('search_embedding', **locals())
+
+    w_shape = [num_voc, num_emb]
+    w = helper.create_parameter(
+        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    w.stop_gradient = True
+
+    res = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_embedding',
+        inputs={
+            'X': input,
+            'W': w,
+        },
+        outputs={"Out": res, },
+        attrs={
+            'num_voc': num_voc,
+            'num_emb': num_emb,
+            'lr': lr,
+        })
+
+    return res
+
+
+def search_aligned_mat_mul(input_x,
+                           input_y,
+                           transpose_x,
+                           transpose_y,
+                           alpha,
+                           name=None):
+    """
+    :param input_x:
+    :param input_y:
+    :param transpose_x:
+    :param transpose_y:
+    :param alpha:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_aligned_mat_mul', **locals())
+    dtype = input_x.dtype
+
+    out = helper.create_variable_for_type_inference(dtype)
+    _a_addr = helper.create_variable_for_type_inference(dtype)
+    _b_addr = helper.create_variable_for_type_inference(dtype)
+    _c_addr = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_aligned_mat_mul',
+        inputs={
+            'X': input_x,
+            'Y': input_y,
+        },
+        outputs={
+            "Out": out,
+            '_a_addr': _a_addr,
+            '_b_addr': _b_addr,
+            '_c_addr': _c_addr
+        },
+        attrs={
+            'transpose_X': transpose_x,
+            'transpose_Y': transpose_y,
+            'alpha': alpha
+        })
+
+    return out
+
+
+def search_attention_padding_mask(input_x, input_y, pad_id, mask, name=None):
+    """
+    :param input_x:
+    :param input_y:
+    :param pad_id:
+    :param mask:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_attention_padding_mask', **locals())
+    dtype = input_x.dtype
+
+    out = helper.create_variable_for_type_inference(dtype)
+    pad_begin = helper.create_variable_for_type_inference('int')
+    helper.append_op(
+        type='search_attention_padding_mask',
+        inputs={
+            'X': input_x,
+            'Y': input_y,
+        },
+        outputs={"Out": out,
+                 'pad_begin': pad_begin},
+        attrs={'pad_id': pad_id,
+               'mask': mask})
+
+    return out
+
+
+def search_group_padding(input, pad_id, name=None):
+    """
+    :param input:
+    :param pad_id:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_group_padding', **locals())
+    dtype = input.dtype
+
+    out_emb_padding = helper.create_variable_for_type_inference(dtype)
+    out_new = helper.create_variable_for_type_inference(
+        dtype, stop_gradient=True)
+    out_padding = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_group_padding',
+        inputs={'X': input, },
+        outputs={
+            "Out_emb_padding": out_emb_padding,
+            'Out_new': out_new,
+            'Out_padding': out_padding,
+        },
+        attrs={'pad_id': pad_id})
+
+    return [out_emb_padding, out_new, out_padding]
+
+
+def search_seq_depadding(input_pad, input_src, name=None):
+    """
+    :param input_pad:
+    :param input_src:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_seq_depadding', **locals())
+    dtype = input_pad.dtype
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_seq_depadding',
+        inputs={
+            'Pad': input_pad,
+            'Src': input_src,
+        },
+        outputs={"Out": out}, )
+
+    return out
+
+
+def search_seq_softmax(input_x, alg, name=None):
+    """
+    :param input_x:
+    :param alg:
+    :param name:
+    :return:
+    """
+    helper = LayerHelper('search_seq_softmax', **locals())
+    dtype = input_x.dtype
+
+    out = helper.create_variable_for_type_inference(dtype)
+    out_log = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_seq_softmax',
+        inputs={'X': input_x, },
+        outputs={"Out": out,
+                 'Out_log': out_log},
+        attrs={'alg': alg})
+
+
+def search_fc(input,
+              size,
+              param_attr=None,
+              bias_attr=None,
+              act=None,
+              is_test=False,
+              name=None):
+    """
+
+    TODO:
+    """
+    helper = LayerHelper('search_fc', **locals())
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    assert len(input_shape) == 2
+    w_shape = [size, input_shape[1]]
+    w = helper.create_parameter(
+        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    b_shape = [size]
+    b = helper.create_parameter(
+        attr=bias_attr, shape=b_shape, dtype=dtype, is_bias=False)
+    res = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_fc',
+        inputs={
+            'X': input,
+            'W': w,
+            'b': b,
+        },
+        outputs={"Out": res, },
+        attrs={'out_size': size, })
+
+    return res
+
+
+def search_seq_fc(input,
+                  size,
+                  param_attr=None,
+                  bias_attr=None,
+                  act=None,
+                  is_test=False,
+                  name=None):
+    """
+
+    TODO:
+    """
+    helper = LayerHelper('search_seq_fc', **locals())
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    assert len(input_shape) == 2
+    w_shape = [size, input_shape[1]]
+    w = helper.create_parameter(
+        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    input_dict = {
+        'X': input,
+        'W': w,
+    }
+    has_bias = False
+    if bias_attr is not None:
+        b_shape = [size]
+        b = helper.create_parameter(
+            attr=bias_attr, shape=b_shape, dtype=dtype, is_bias=False)
+        input_dict['b'] = b
+        has_bias = True
+    res = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='search_seq_fc',
+        inputs=input_dict,
+        outputs={"Out": res, },
+        attrs={'out_size': size,
+               'has_bias': has_bias})
+
+    return res
 
 
 @templatedoc()

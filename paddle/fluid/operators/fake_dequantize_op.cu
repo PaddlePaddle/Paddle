@@ -18,8 +18,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(const T* in, const T* scale, T max_range, int num,
-                             T* out) {
+__global__ void KeDequantize(const T* in, const float* scale, float max_range,
+                             int num, float* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
     out[idx] = in[idx] * scale[0] / max_range;
@@ -30,10 +30,10 @@ template <typename T>
 struct DequantizeFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, framework::Tensor* out) {
+                  float max_range, framework::Tensor* out) {
     const T* in_data = in->data<T>();
-    const T* scale_factor = scale->data<T>();
-    T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+    const float* scale_factor = scale->data<float>();
+    float* out_data = out->mutable_data<float>(dev_ctx.GetPlace());
 
     int num = in->numel();
     int block = 512;
@@ -102,6 +102,7 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
 
 template struct DequantizeFunctor<platform::CUDADeviceContext, float>;
 template struct DequantizeFunctor<platform::CUDADeviceContext, double>;
+template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
 template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, float>;
 template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, double>;
 
@@ -111,6 +112,7 @@ template struct ChannelDequantizeFunctor<platform::CUDADeviceContext, double>;
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, int8_t>,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(

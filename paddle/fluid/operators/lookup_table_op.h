@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <typeinfo>
 #include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
@@ -103,6 +104,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           }
         }
       } else if (table_var->IsType<SelectedRows>()) {
+        /*
         const auto &table_t = table_var->Get<SelectedRows>();
         int64_t row_width = table_t.value().dims()[1];
         const auto *table = table_t.value().data<T>();
@@ -120,6 +122,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                        output + i * row_width);
           }
         }
+        */
       }
     }
   }

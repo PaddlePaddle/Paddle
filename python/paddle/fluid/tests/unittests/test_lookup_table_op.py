@@ -83,6 +83,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         pass
 
 
+'''
 class TestLookupTableWIsSelectedRows(OpTest):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
@@ -135,7 +136,6 @@ class TestLookupTableWIsSelectedRows(OpTest):
         for place in places:
             self.check_with_place(place)
 
-
 class TestLookupTableWithTensorIdsWIsSelectedRows(
         TestLookupTableWIsSelectedRows):
     def prepare_ids(self, scope, place):
@@ -148,6 +148,139 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
     def check_result(self, ids_array, result_array):
         for idx, row in np.ndenumerate(ids_array):
             assert (row == result_array[idx]).all()
+'''
+
+
+class TestLookupTableOpInt8(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=-128, high=127, size=(17, 31)).astype("int8")
+        ids = np.random.randint(0, 17, 4).astype("int64")
+        ids_expand = np.expand_dims(ids, axis=1)
+        self.inputs = {'W': table, 'Ids': ids_expand}
+        self.outputs = {'Out': table[ids]}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        #self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        pass
+
+
+class TestLookupTableOpWithTensorIdsInt8(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=-128, high=127, size=(17, 31)).astype("int8")
+        ids = np.random.randint(
+            low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
+        #self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+
+
+class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
+    def test_check_output(self):
+        ids = np.squeeze(self.inputs['Ids'])
+        padding_idx = np.random.choice(ids, 1)[0]
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of
+        # paddings makes no sense and we don't test the gradient here.
+        pass
+
+
+class TestLookupTableOpWithTensorIdsAndPaddingInt8(
+        TestLookupTableOpWithTensorIdsInt8):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of
+        # paddings makes no sense and we don't test the gradient here.
+        pass
+
+
+class TestLookupTableOpUInt8(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=0, high=255, size=(17, 31)).astype("uint8")
+        ids = np.random.randint(0, 17, 4).astype("int64")
+        ids_expand = np.expand_dims(ids, axis=1)
+        self.inputs = {'W': table, 'Ids': ids_expand}
+        self.outputs = {'Out': table[ids]}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        #self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        pass
+
+
+class TestLookupTableOpWithTensorIdsUInt8(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.randint(
+            low=0, high=255, size=(17, 31)).astype("uint8")
+        ids = np.random.randint(
+            low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
+        #self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+
+
+class TestLookupTableOpWithPaddingUInt8(TestLookupTableOpUInt8):
+    def test_check_output(self):
+        ids = np.squeeze(self.inputs['Ids'])
+        padding_idx = np.random.choice(ids, 1)[0]
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.attrs = {'padding_idx': int(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of
+        # paddings makes no sense and we don't test the gradient here.
+        pass
+
+
+class TestLookupTableOpWithTensorIdsAndPaddingUInt8(
+        TestLookupTableOpWithTensorIdsUInt8):
+    def test_check_output(self):
+        ids = self.inputs['Ids']
+        flatten_idx = ids.flatten()
+        padding_idx = np.random.choice(flatten_idx, 1)[0]
+        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of
+        # paddings makes no sense and we don't test the gradient here.
+        pass
 
 
 if __name__ == "__main__":

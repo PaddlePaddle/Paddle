@@ -25,7 +25,7 @@ namespace operators {
 template <typename DeviceContext, typename T>
 struct DequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor* scale, T max_range,
+                  const framework::Tensor* scale, float max_range,
                   framework::Tensor* out);
 };
 
@@ -47,10 +47,9 @@ class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     float max_range = ctx.Attr<float>("max_range");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    out->mutable_data<T>(dev_ctx.GetPlace());
+    out->mutable_data<float>(dev_ctx.GetPlace());
 
-    DequantizeFunctor<DeviceContext, T>()(dev_ctx, in, scale,
-                                          static_cast<T>(max_range), out);
+    DequantizeFunctor<DeviceContext, T>()(dev_ctx, in, scale, max_range, out);
   }
 };
 
