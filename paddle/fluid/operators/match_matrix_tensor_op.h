@@ -24,12 +24,6 @@ class MatchMatrixTensorOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override;
-
- protected:
-//  framework::OpKernelType GetExpectedKernelType(
-//      const framework::ExecutionContext& ctx) const override;
-
- private:
 };
 
 class MatchMatrixTensorOpGrad : public framework::OperatorWithKernel {
@@ -37,11 +31,6 @@ class MatchMatrixTensorOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override;
-
-
- protected:
-//  framework::OpKernelType GetExpectedKernelType(
-//      const framework::ExecutionContext& ctx) const override;
 };
 
 class MatchMatrixTensorOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -50,4 +39,3 @@ class MatchMatrixTensorOpMaker : public framework::OpProtoAndCheckerMaker {
 };
 }  // namespace operators
 }  // namespace paddle
-

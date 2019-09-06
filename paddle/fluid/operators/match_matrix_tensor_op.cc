@@ -367,6 +367,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Output<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
+
     int dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];

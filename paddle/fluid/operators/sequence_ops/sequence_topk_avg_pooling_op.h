@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-=======
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
->>>>>>> 79c79a8cf48bc27998cf05d0194a3ded932cbe5e
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
