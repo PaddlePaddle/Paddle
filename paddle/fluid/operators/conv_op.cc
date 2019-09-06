@@ -592,8 +592,14 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  } else {
-    PADDLE_THROW("Now ConvDoubleGrad only supports cuDNN.");
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
   auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
@@ -658,6 +664,10 @@ REGISTER_OP_CPU_KERNEL(
     conv2d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv2d_grad_grad,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,

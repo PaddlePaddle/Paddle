@@ -61,10 +61,11 @@ class TestConvDoubleGradCheck(unittest.TestCase):
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
 
     def test_grad(self):
+        places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places = [fluid.CUDAPlace(0)]
-            for p in places:
-                self.func(p)
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
