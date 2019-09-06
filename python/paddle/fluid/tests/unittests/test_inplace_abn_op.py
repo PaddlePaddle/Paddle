@@ -73,7 +73,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
                 sigmoid = fluid.layers.sigmoid(conv)
                 out = fluid.layers.reduce_sum(sigmoid)
-                if use_cuda:
+                if use_cuda and not inplace_abn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
@@ -125,6 +125,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
         build_strategy = fluid.BuildStrategy()
+        build_strategy.sync_batch_norm = True
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
         exec_strategy = fluid.ExecutionStrategy()
