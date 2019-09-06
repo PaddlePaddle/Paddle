@@ -23,6 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
 
 
 class Mode:
@@ -254,7 +255,8 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__):
+        if not isinstance(optimizer, SGD.__bases__) \
+                 and not isinstance(optimizer, OptimizerWithMixedPrecison):
             raise ValueError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
