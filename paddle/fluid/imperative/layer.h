@@ -127,7 +127,9 @@ class VarBase {
     if (grad_var_) {
       grad_var_->SetName(GradVarName());
     }
+    return rlt;
   }
+  void ClearGradOps() { grad_ops_.clear(); }
 
   std::string GradVarName() { return framework::GradVarName(name_); }
 
@@ -156,7 +158,8 @@ class VarBase {
   framework::Variable var_;
   std::string name_;
   std::shared_ptr<VarBase> grad_var_;
-  mutable size_t copied_counter = 0;
+
+  mutable size_t copied_counter_ = 0;
 
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
@@ -215,7 +218,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   framework::Attribute GetAttr(const std::string& name) const override {
     auto iter = attrs_.find(name);
-    PADDLE_ENFORCE(iter != attrs_.end(), "Cannot find attribute %s", name);
+    PADDLE_ENFORCE_EQ(iter != attrs_.end(), true, "Cannot find attribute %s",
+                      name);
     return iter->second;
   }
 
@@ -235,22 +239,26 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const std::vector<std::string>& Input(
       const std::string& name) const override {
     auto iter = input_names_.find(name);
-    PADDLE_ENFORCE(iter != input_names_.end(), "Cannot find input %s", name);
+    PADDLE_ENFORCE_EQ(iter != input_names_.end(), true, "Cannot find input %s",
+                      name);
     return iter->second;
   }
 
   const std::vector<std::string>& Output(
       const std::string& name) const override {
     auto iter = output_names_.find(name);
-    PADDLE_ENFORCE(iter != output_names_.end(), "Cannot find output %s", name);
+
+    PADDLE_ENFORCE_EQ(iter != output_names_.end(), true,
+                      "Cannot find output %s", name);
     return iter->second;
   }
 
   framework::proto::VarType::Type GetType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetType",
-                   name);
+
+    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
+                      "Cannot find var %s in GetType", name);
     return iter->second->Type();
   }
 
@@ -266,8 +274,9 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   framework::proto::VarType::Type GetDataType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
-    PADDLE_ENFORCE(iter != var_set_.end(), "Cannot find var %s in GetDataType",
-                   name);
+
+    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
+                      "Cannot find var %s in GetDataType", name);
     return iter->second->DataType();
   }
 
@@ -346,17 +355,15 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   void ClearBackwardTrace();
 
-  const std::vector<OpBase*>& PrecedingOps() const { return preceding_ops_; }
-
-  void InsertPrecedingOps(OpBase* op) { preceding_ops_.emplace_back(op); }
-
-  void SortPrecedingOps() {
-    std::sort(preceding_ops_.begin(), preceding_ops_.end(),
-              [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
+  const std::vector<OpBase*>& GradPendingOps() const {
+    return grad_pending_ops_;
   }
 
-  void SetPrecedingOps(std::vector<OpBase*> vec_temp) {
-    preceding_ops_.swap(vec_temp);
+  void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }
+
+  void SortGradPendingOps() {
+    std::sort(grad_pending_ops_.begin(), grad_pending_ops_.end(),
+              [](OpBase* op1, OpBase* op2) { return op1->id() > op2->id(); });
   }
   NameVarBaseMap* GetMutableOutsMap() { return &outs_; }
   NameVarBaseMap* GetMutableInsMap() { return &ins_; }
@@ -393,8 +400,10 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   // Not need to be std::weak_ptr, because op is binded to a certain Tracer,
   // and would not be used by a Tracer that does not create itself.
-  std::vector<OpBase*> preceding_ops_;
 
+  std::vector<OpBase*> grad_pending_ops_;
+
+  // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
 };

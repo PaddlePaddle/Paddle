@@ -81,6 +81,8 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
   seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
           (seed << 6) + (seed >> 2) + 5;
 
+  VLOG(10) << "seed:" << seed << ", hash_.size:" << hash_.size();
+
   if (seed == 0) return gen_func();
 
   if (hash_.find(seed) == hash_.end()) {

@@ -874,6 +874,7 @@ def range(start, end, step, dtype):
                 'End': end,
                 'Step': step},
         outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
 
 
@@ -1074,7 +1075,7 @@ def ones_like(x, out=None):
         out(Variable): The output tensor.
 
     Returns:
-        x(Variable): The tensor variable storing the output.
+        out(Variable): The tensor variable storing the output.
 
     Examples:
         .. code-block:: python

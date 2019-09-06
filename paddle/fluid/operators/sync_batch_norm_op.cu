@@ -178,7 +178,7 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
 
       int dtype = platform::ToNCCLDataType(x->type());
       // In-place operation
-      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
 
@@ -398,7 +398,7 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     }
     int dtype = platform::ToNCCLDataType(x->type());
     // In-place operation
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
 

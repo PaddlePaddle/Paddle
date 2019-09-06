@@ -712,8 +712,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         parameters = parameter_list
     else:
         params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
-        parameters = [param.name for param in params]
+        parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
     for param in parameters:

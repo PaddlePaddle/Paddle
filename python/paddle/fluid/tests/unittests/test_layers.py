@@ -124,7 +124,10 @@ class TestLayer(LayerTest):
                 shape=[3, 32, 32],
                 dtype='float32',
                 append_batch_size=False)
-            ret = layers.layer_norm(t)
+            ret = layers.layer_norm(
+                t,
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
             static_ret = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret])[0]
         with self.static_graph():
@@ -133,16 +136,34 @@ class TestLayer(LayerTest):
                 shape=[3, 32, 32],
                 dtype='float32',
                 append_batch_size=False)
-            lm = nn.LayerNorm('layer_norm')
+            lm = nn.LayerNorm(
+                'layer_norm',
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
             ret = lm(t)
             static_ret2 = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret])[0]
         with self.dynamic_graph():
-            lm = nn.LayerNorm('layer_norm')
+            lm = nn.LayerNorm(
+                'layer_norm',
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
             dy_ret = lm(base.to_variable(inp))
+        with self.dynamic_graph():
+            lm = nn.LayerNorm(
+                'layer_norm',
+                shift=False,
+                scale=False,
+                param_attr=fluid.initializer.ConstantInitializer(value=1),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
+            lm(base.to_variable(inp))
 
-        self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(dy_ret.numpy(), static_ret2))
+            self.assertFalse(hasattr(lm, "_scale_w"))
+            self.assertFalse(hasattr(lm, "_bias_w"))
+
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(dy_ret.numpy(), static_ret2))
 
     def test_relu(self):
         with self.static_graph():
@@ -313,7 +334,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            out = layers.sequence_conv(seq, 2)
+            out = layers.sequence_conv(seq, 2, act='sigmoid')
             static_rlt = self.get_static_graph_result(
                 feed={
                     "seq_in": fluid.create_lod_tensor(
@@ -331,7 +352,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            seq_conv = nn.SequenceConv('seq_conv', num_filters=2)
+            seq_conv = nn.SequenceConv('seq_conv', num_filters=2, act='sigmoid')
             out = seq_conv(seq)
             static_rlt2 = self.get_static_graph_result(
                 feed={
@@ -343,29 +364,41 @@ class TestLayer(LayerTest):
                 fetch_list=[out],
                 with_lod=True)[0]
         self.assertTrue(
-            np.allclose(np.array(static_rlt), np.array(static_rlt2)))
+            np.array_equal(np.array(static_rlt), np.array(static_rlt2)))
 
     def test_conv2d_transpose(self):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
             out = layers.conv2d_transpose(
-                input=img, num_filters=10, output_size=28)
+                input=img,
+                num_filters=10,
+                output_size=28,
+                act='sigmoid',
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_rlt = self.get_static_graph_result(
                 feed={'pixel': inp_np}, fetch_list=[out])[0]
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose', num_filters=10, output_size=28)
+                'conv2d_transpose',
+                num_filters=10,
+                output_size=28,
+                act='sigmoid',
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             out = conv2d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
                 feed={'pixel': inp_np}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose', num_filters=10, output_size=28)
+                'conv2d_transpose',
+                num_filters=10,
+                output_size=28,
+                act='sigmoid',
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt2))
 
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
@@ -382,11 +415,17 @@ class TestLayer(LayerTest):
                 shape=[1, 3],
                 dtype="float32",
                 append_batch_size=False)
-            out = layers.bilinear_tensor_product(data_x, data_y, 6)
+            out = layers.bilinear_tensor_product(
+                data_x,
+                data_y,
+                6,
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
 
             static_rlt = self.get_static_graph_result(
                 feed={'x': inp_np_x,
                       'y': inp_np_y}, fetch_list=[out])[0]
+
         with self.static_graph():
             data_x = layers.data(
                 name='x',
@@ -398,17 +437,49 @@ class TestLayer(LayerTest):
                 shape=[1, 3],
                 dtype="float32",
                 append_batch_size=False)
-            btp = nn.BilinearTensorProduct('btp', 6)
+            btp = nn.BilinearTensorProduct(
+                'btp',
+                6,
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
             out = btp(data_x, data_y)
             static_rlt2 = self.get_static_graph_result(
                 feed={'x': inp_np_x,
                       'y': inp_np_y}, fetch_list=[out])[0]
         with self.dynamic_graph():
-            btp = nn.BilinearTensorProduct('btp', 6)
+            btp = nn.BilinearTensorProduct(
+                'btp',
+                6,
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
+        with self.dynamic_graph():
+            btp2 = nn.BilinearTensorProduct('btp', 6, act='sigmoid')
+            dy_rlt2 = btp2(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+
+        with self.static_graph():
+            data_x2 = layers.data(
+                name='x',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            data_y2 = layers.data(
+                name='y',
+                shape=[1, 3],
+                dtype="float32",
+                append_batch_size=False)
+            out2 = layers.bilinear_tensor_product(
+                data_x2, data_y2, 6, act='sigmoid')
+
+            static_rlt3 = self.get_static_graph_result(
+                feed={'x': inp_np_x,
+                      'y': inp_np_y}, fetch_list=[out2])[0]
+
+        self.assertTrue(np.array_equal(dy_rlt2.numpy(), static_rlt3))
+        self.assertTrue(np.array_equal(static_rlt2, static_rlt))
+        self.assertTrue(np.array_equal(dy_rlt.numpy(), static_rlt))
 
     def test_prelu(self):
         inp_np = np.ones([5, 200, 100, 100]).astype('float32')
@@ -497,7 +568,8 @@ class TestLayer(LayerTest):
                 words.append(
                     layers.data(
                         name='word_{0}'.format(i), shape=[1], dtype='int64'))
-
+            sample_weights = layers.fill_constant(
+                shape=[5, 1], dtype='float32', value=1)
             embs = []
             for i in range(window_size):
                 if i == label_word:
@@ -519,7 +591,8 @@ class TestLayer(LayerTest):
                                   custom_dist=nid_freq_arr.tolist(),
                                   seed=seed,
                                   param_attr='nce.w',
-                                  bias_attr='nce.b')
+                                  bias_attr='nce.b',
+                                  sample_weight=sample_weights)
             feed_dict = dict()
             for i in range(window_size):
                 feed_dict['word_{0}'.format(i)] = inp_word[i]
@@ -531,7 +604,8 @@ class TestLayer(LayerTest):
                 words.append(
                     layers.data(
                         name='word_{0}'.format(i), shape=[1], dtype='int64'))
-
+            sample_weights = layers.fill_constant(
+                shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
                 'embedding',
                 size=[dict_size, 32],
@@ -554,7 +628,8 @@ class TestLayer(LayerTest):
                          custom_dist=nid_freq_arr.tolist(),
                          seed=seed,
                          param_attr='nce.w',
-                         bias_attr='nce.b')
+                         bias_attr='nce.b',
+                         sample_weight=sample_weights)
 
             nce_loss2 = nce(embs2, words[label_word])
             feed_dict = dict()
@@ -568,7 +643,8 @@ class TestLayer(LayerTest):
             words = []
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
-
+            sample_weights = layers.fill_constant(
+                shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
                 'embedding',
                 size=[dict_size, 32],
@@ -591,7 +667,8 @@ class TestLayer(LayerTest):
                          custom_dist=nid_freq_arr.tolist(),
                          seed=seed,
                          param_attr='nce.w',
-                         bias_attr='nce.b')
+                         bias_attr='nce.b',
+                         sample_weight=sample_weights)
 
             nce_loss3 = nce(embs3, words[label_word])
 
@@ -902,6 +979,20 @@ class TestLayer(LayerTest):
             layers.eye(num_rows=3, batch_shape=2)
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3, batch_shape=[-1])
+
+    def test_hard_swish(self):
+        with self.static_graph():
+            t = layers.data(name='t', shape=[3, 3], dtype='float32')
+            ret = layers.hard_swish(t)
+            static_ret = self.get_static_graph_result(
+                feed={'t': np.ones(
+                    [3, 3], dtype='float32')}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            t = np.ones([3, 3], dtype='float32')
+            dy_ret = layers.hard_swish(base.to_variable(t))
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
 
 class TestBook(LayerTest):
@@ -1722,7 +1813,7 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.softshrink(input, name='softshrink')
+            out = layers.softshrink(input, alpha=0.3)
             return (out)
 
     def make_iou_similarity(self):
@@ -1882,14 +1973,6 @@ class TestBook(LayerTest):
             self.assertTrue(z.lod_level == 1)
             return z
 
-    def test_lod_append(self):
-        with self.static_graph():
-            x = layers.data(
-                name='x', shape=[6, 10], dtype='float32', lod_level=1)
-            y = layers.lod_append(x, [1, 1, 1, 1, 1, 1])
-            self.assertTrue(y.lod_level == 1)
-            return y
-
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
@@ -1984,6 +2067,26 @@ class TestBook(LayerTest):
             out = layers.sequence_slice(
                 input=seqs, offset=offset, length=length)
             return (out)
+
+    def test_filter_by_instag(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            x1 = layers.data(
+                name='Ins', shape=[32, 1], dtype='float32', lod_level=0)
+            x2 = layers.data(
+                name='Ins_tag',
+                shape=[32, 1],
+                dtype='int64',
+                lod_level=0,
+                stop_gradient=True)
+            x3 = layers.create_global_var(
+                shape=[1, 1],
+                value=20,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True,
+                name='Filter_tag')
+            out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -2224,6 +2327,32 @@ class TestBook(LayerTest):
                 nms_threshold=0.3,
                 nms_eta=1.)
             return (nmsed_outs)
+
+    def test_warpctc_with_padding(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            input_length = layers.data(
+                name='logits_length', shape=[11], dtype='int64')
+            label_length = layers.data(
+                name='labels_length', shape=[12], dtype='int64')
+            label = layers.data(name='label', shape=[12, 1], dtype='int32')
+            predict = layers.data(
+                name='predict', shape=[4, 4, 8], dtype='float32')
+            output = layers.warpctc(
+                input=predict,
+                label=label,
+                input_length=input_length,
+                label_length=label_length)
+            return (output)
+
+    def test_edit_distance(self):
+        with self.static_graph():
+            predict = layers.data(
+                name='predict', shape=[-1, 1], dtype='int64', lod_level=1)
+            label = layers.data(
+                name='label', shape=[-1, 1], dtype='int64', lod_level=1)
+            evaluator = fluid.evaluator.EditDistance(predict, label)
+            return evaluator.metrics
 
 
 if __name__ == '__main__':

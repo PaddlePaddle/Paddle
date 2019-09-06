@@ -36,7 +36,7 @@ void ThreadSafeNameSet::Insert(const std::string& name) {
 void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
-  PADDLE_ENFORCE(iter != set_.end(), "%s does not exist", name);
+  PADDLE_ENFORCE_EQ(iter != set_.end(), true, "%s does not exist", name);
   set_.erase(iter);
 }
 
@@ -73,8 +73,8 @@ static framework::VariableNameMap CreateVarNameMap(
        is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
-      PADDLE_ENFORCE(
-          var.dispensable(),
+      PADDLE_ENFORCE_EQ(
+          var.dispensable(), true,
           "Var: %s not dispensable and there are no such var in inputs",
           var.name());
       result[var.name()] = {};
@@ -200,15 +200,16 @@ void VarBase::ClearGradient() {
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
-  PADDLE_ENFORCE(var_.IsInitialized() && var_.IsType<framework::LoDTensor>(),
-                 "Variable must be initialized and type of LoDTensor when "
-                 "getting numpy tensor");
+  PADDLE_ENFORCE_EQ(var_.IsInitialized() && var_.IsType<framework::LoDTensor>(),
+                    true,
+                    "Variable must be initialized and type of LoDTensor when "
+                    "getting numpy tensor");
 
   auto& src_tensor = var_.Get<framework::LoDTensor>();
 
   // TODO(Jiabin): change this after move unique_name generator to CXX
   auto new_var = std::make_shared<VarBase>(
-      false, "Itmp" + std::to_string(copied_counter++));
+      false, "Itmp" + std::to_string(copied_counter_++));
 
   auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
   dst_tensor->set_lod(src_tensor.lod());
@@ -285,7 +286,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 }
 
 void OpBase::ClearBackwardTrace() {
-  preceding_ops_.clear();
+  grad_pending_ops_.clear();
   ins_.clear();
   outs_.clear();
 }

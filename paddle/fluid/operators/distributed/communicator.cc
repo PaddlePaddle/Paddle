@@ -26,18 +26,17 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
 
+DECLARE_int32(communicator_max_merge_var_num);
+DECLARE_int32(communicator_send_queue_size);
+
 DEFINE_bool(communicator_independent_recv_thread, true,
             "use an independent to recv vars from parameter server");
-DEFINE_int32(communicator_send_queue_size, 20,
-             "queue size to recv gradient before send");
 DEFINE_int32(communicator_min_send_grad_num_before_recv, 20,
              "max grad num to send before recv parameters");
 DEFINE_int32(communicator_thread_pool_size, 5, "thread num to do send or recv");
 DEFINE_int32(communicator_send_wait_times, 5,
              "times that send thread will wait if merge num does not reach "
              "max_merge_var_num");
-DEFINE_int32(communicator_max_merge_var_num, 20,
-             "max var num to merge and send");
 DEFINE_bool(communicator_fake_rpc, false,
             "fake mode does not really send any thing");
 DEFINE_bool(communicator_merge_sparse_grad, true,
@@ -77,14 +76,26 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
-  send_scope_.reset(new Scope());
-  for (auto &iter : send_varname_to_ctx_) {
-    send_varname_to_queue_[iter.first] =
-        std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-            FLAGS_communicator_send_queue_size);
+
+  if (send_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be send, will not start send_thread";
+  } else {
+    send_scope_.reset(new Scope());
+    for (auto &iter : send_varname_to_ctx_) {
+      send_varname_to_queue_[iter.first] =
+          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
+              FLAGS_communicator_send_queue_size);
+    }
+    send_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
-  send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
-  recv_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+
+  if (recv_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
+  } else {
+    recv_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  }
 }
 
 Communicator::~Communicator() {
@@ -161,16 +172,26 @@ void Communicator::SendThread() {
       task_f.wait();
     }
     auto after_run_send_graph = GetCurrentUS();
-    auto send_graph_use_time = after_run_send_graph - before_run_send_graph;
-    if (send_graph_use_time > 100) {
-      VLOG(1) << "run send graph use time "
-              << after_run_send_graph - before_run_send_graph;
-    }
-    if (!FLAGS_communicator_independent_recv_thread) {
-      RecvAll();
-    }
+
+    VLOG(3) << "run send graph use time "
+            << after_run_send_graph - before_run_send_graph;
+    RecvNonIndependent();
   }
   VLOG(0) << "communicator stopped, send thread exit";
+}
+
+void Communicator::RecvNonIndependent() {
+  if (FLAGS_communicator_independent_recv_thread) {
+    return;
+  }
+
+  auto grad_num = grad_num_.load();
+  if (grad_num > 0) {
+    RecvAll();
+    grad_num_.store(0);
+  } else {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 }
 
 void Communicator::RecvAll() {

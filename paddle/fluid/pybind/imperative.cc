@@ -158,8 +158,8 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     }
   }
 
-  PADDLE_ENFORCE(PyErr_Occurred() == nullptr,
-                 py::str(py::handle(PyErr_Occurred())));
+  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
+                    py::str(py::handle(PyErr_Occurred())));
   return result;
 }
 

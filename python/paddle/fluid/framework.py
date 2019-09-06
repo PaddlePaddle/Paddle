@@ -544,6 +544,40 @@ class Variable(object):
             self._stop_gradient = stop_gradient
             self.is_data = is_data
 
+    def detach(self):
+        """
+        Returns a new Variable, detached from the current graph.
+        
+        Returns:
+            Variable: The detached Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    y = x.detach()
+
+        """
+        if in_dygraph_mode():
+            new_var = self._cloneVar()
+            self.block.append_op(
+                type="assign",
+                inputs={'X': [self]},
+                outputs={'Out': [new_var]},
+                stop_gradient=True)
+            return new_var
+        else:
+            raise AttributeError("static graph model DO NOT supprt detach")
+
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
@@ -1043,8 +1077,8 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id',
-        'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
+        'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
+        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
         'c_sync_comm_stream'
     }
 
@@ -2736,6 +2770,8 @@ class IrGraph(object):
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
@@ -2856,13 +2892,11 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._use_lamb = False
+
         self._nccl_comm_num = 1
         self._use_hierarchical_allreduce = False
         self._hierarchical_allreduce_inter_nranks = 0
-
-        # @deprecated(the python memory optimize transpiler is deprecated)
-        # whether the program is optimized by memory_optimize_transpiler
-        self.__is_mem_optimized = False
 
         # if this program has been optimized by distributed optimizer
         # fleet_opt will be given a value
@@ -2874,16 +2908,6 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
-
-    @property
-    def _is_mem_optimized(self):
-        # if the program is optimized, operator input/outputs
-        # maybe same, which conflict with save_inference_model.
-        return self.__is_mem_optimized
-
-    @_is_mem_optimized.setter
-    def _is_mem_optimized(self, target):
-        self.__is_mem_optimized = target
 
     @property
     def _op_role(self):
@@ -3231,7 +3255,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, targets):
+    def _prune(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3247,8 +3271,16 @@ class Program(object):
             Program:  A new, pruned program.
 
         """
+        if not isinstance(feeded_var_names, list):
+            feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
             targets = [targets]
+
+        for var in feeded_var_names:
+            if not isinstance(var, six.string_types):
+                raise ValueError("All feeded_var_names of prune() can only be "
+                                 "str.")
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -3275,7 +3307,7 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx)
+        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]

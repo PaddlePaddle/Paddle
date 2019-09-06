@@ -41,19 +41,19 @@ class Engine {
 
   virtual void RemoveOp(OpBase* op) {
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot remove null op");
-    auto iter = grad_ops.find(op);
-    PADDLE_ENFORCE(iter != grad_ops.end(), "Op is not inside tracer");
-    grad_ops.erase(iter);
+    auto iter = grad_ops_.find(op);
+    PADDLE_ENFORCE_EQ(iter != grad_ops_.end(), true, "Op is not inside tracer");
+    grad_ops_.erase(iter);
   }
 
   void InsertOp(OpBase* op, std::shared_ptr<OpBase> op_shared) {
-    grad_ops[op] = std::move(op_shared);
+    grad_ops_[op] = std::move(op_shared);
   }
-  void Clear() { grad_ops.clear(); }
+  void Clear() { grad_ops_.clear(); }
 
  private:
   std::unordered_map<OpBase*, std::shared_ptr<OpBase>>
-      grad_ops;  // opBase for remove - grad_op
+      grad_ops_;  // opBase for remove - grad_op
 };
 
 class BasicEngine : public Engine {

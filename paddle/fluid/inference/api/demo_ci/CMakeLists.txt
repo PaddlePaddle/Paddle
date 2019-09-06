@@ -31,14 +31,10 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
-include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}snappy/include")
-include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}snappystream/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}zlib/include")
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
 
-link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}snappy/lib")
-link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}snappystream/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}zlib/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
@@ -48,13 +44,15 @@ link_directories("${PADDLE_LIB}/paddle/lib")
 
 if (WIN32)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
-  set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
-  set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
-  set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
-  set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
-  if (WITH_STATIC_LIB)
-    safe_set_static_flag()
-    add_definitions(-DSTATIC_LIB)
+  if (MSVC_STATIC_CRT)
+    set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
+    set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    if (WITH_STATIC_LIB)
+      safe_set_static_flag()
+      add_definitions(-DSTATIC_LIB)
+    endif()
   endif()
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -127,12 +125,12 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
-      glog gflags protobuf snappystream snappy z xxhash
+      glog gflags protobuf z xxhash
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf snappy zlibstatic xxhash snappystream ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf zlibstatic xxhash ${EXTERNAL_LIB})
   set(DEPS ${DEPS} libcmt shlwapi.lib)
 endif(NOT WIN32)
 
@@ -144,6 +142,10 @@ if(WITH_GPU)
     endif()
     set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
   else()
+    if (USE_TENSORRT)
+      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
+      set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif()
     set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
     set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
     set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
@@ -153,6 +155,14 @@ endif()
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
 if(WIN32)
+  if(USE_TENSORRT)
+    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_SHARED_LIBRARY_SUFFIX}
+              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
+              ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            )
+  endif()
   if(WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}

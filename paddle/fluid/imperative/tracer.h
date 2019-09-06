@@ -32,7 +32,7 @@ class Tracer {
   DISABLE_COPY_AND_ASSIGN(Tracer);
 
  public:
-  Tracer() : engine(new BasicEngine()) {}
+  Tracer() : engine_(new BasicEngine()) {}
 
   ~Tracer() = default;
 
@@ -46,7 +46,7 @@ class Tracer {
   void TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
                      const framework::OpDesc& fwd_op_desc,
                      const NameVarBaseMap& ins, const NameVarBaseMap& outs);
-  Engine* GetDefaultEngine() const { return engine.get(); }
+  Engine* GetDefaultEngine() const { return engine_.get(); }
 
  private:
   static size_t GenerateUniqueId() {
@@ -55,7 +55,7 @@ class Tracer {
   }
 
  private:
-  std::unique_ptr<Engine> engine;
+  std::unique_ptr<Engine> engine_;
 };
 
 }  // namespace imperative

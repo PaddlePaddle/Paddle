@@ -248,6 +248,8 @@ class ExecutionContext {
     return op_.Attr<T>(name);
   }
 
+  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
+
   bool HasInput(const std::string& name) const;
 
   bool HasOutput(const std::string& name) const;
@@ -339,7 +341,7 @@ class ExecutionContext {
 
 #ifdef PADDLE_WITH_CUDA
   const inline platform::CUDADeviceContext& cuda_device_context() const {
-    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true);
     return *reinterpret_cast<const platform::CUDADeviceContext*>(
         &device_context_);
   }
