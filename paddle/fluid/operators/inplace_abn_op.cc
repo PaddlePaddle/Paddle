@@ -88,10 +88,13 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
     BatchNormOpMaker::Make();
     AddAttr<std::string>(
         "activation",
-        "(enum string, default identity) "
+        "(enum string, default identity, can be identity|elu|leakyrelu) "
         "The activation type used for output candidate {h}_t.");
     AddAttr<float>("alpha",
-                   "(float, default 1.0) Only used in inplace-abn kernel")
+                   "(float, default 1.0) Only used in inplace-abn kernel,"
+                   "the activation type(identity|elu|leakyrelu) would be fused "
+                   "with batch_norm, "
+                   "this is the alpha value for elu|leakyrelu.")
         .SetDefault(0.1f);
   }
 };

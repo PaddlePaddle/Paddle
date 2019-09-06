@@ -52,13 +52,14 @@ class InplaceABNGradKernel
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    bool is_inplace = (x == y);
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     auto& px = const_cast<Tensor&>(*x);
     auto cur_x = EigenVector<T>::Flatten(px);
     auto cur_y = EigenVector<T>::Flatten(*y);
     auto cur_dx = EigenVector<T>::Flatten(*d_x);
     auto cur_dy = EigenVector<T>::Flatten(*d_y);
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy,
