@@ -2413,20 +2413,6 @@ def conv2d(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
-    if use_cudnn:
-        helper.create_variable(
-            name="kCUDNNFwdAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdDataAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdFilterAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-
     helper.append_op(
         type=l_type,
         inputs={
