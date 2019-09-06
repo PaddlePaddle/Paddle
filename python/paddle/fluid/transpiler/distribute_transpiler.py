@@ -163,8 +163,8 @@ class DistributeTranspilerConfig(object):
     print_log = False
     wait_port = True
     # split the send recv var in runtime
-    runtime_split_send_recv = False
-    sync_mode = True
+    _runtime_split_send_recv = False
+    _sync_mode = True
 
     nccl_comm_num = 1
     #The picture here illustrates the principle:
@@ -176,6 +176,37 @@ class DistributeTranspilerConfig(object):
     # if mode is collective
     # supported modes: grad_allreduce, local_sgd
     collective_mode = None
+
+    def __init__(self):
+        pass
+
+    @property
+    def runtime_split_send_recv(self):
+        return self._runtime_split_send_recv
+
+    @runtime_split_send_recv.setter
+    def runtime_split_send_recv(self, value):
+        if value is None:
+            raise ValueError("runtime_split_send_recv can't be None")
+        if value and self._sync_mode:
+            raise ValueError(
+                "if you want to set runtime_split_send_recv to be true, make ensure config.sync_mode is false at first"
+            )
+        self._runtime_split_send_recv = value
+
+    @property
+    def sync_mode(self):
+        return self._sync_mode
+
+    @sync_mode.setter
+    def sync_mode(self, value):
+        if value is None:
+            raise ValueError("sync_mode can't be None")
+        if value and self._runtime_split_send_recv:
+            raise ValueError(
+                "if you want to set sync_mode to be true, make ensure config.runtime_split_send_recv is false at first"
+            )
+        self._sync_mode = value
 
 
 class DistributeTranspiler(object):
