@@ -58,7 +58,6 @@ class InplaceABNGradKernel
     auto cur_y = EigenVector<T>::Flatten(*y);
     auto cur_dx = EigenVector<T>::Flatten(*d_x);
     auto cur_dy = EigenVector<T>::Flatten(*d_y);
-    bool is_inplace = (x->data<T>() == y->data<T>());
 
     InplaceABNActivation<DeviceContext, T> functor;
     if (is_inplace) {
