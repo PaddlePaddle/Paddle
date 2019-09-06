@@ -15,8 +15,6 @@
 from __future__ import print_function
 
 import abc
-import os
-import uuid
 
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
@@ -217,16 +215,6 @@ class Fleet(object):
         self._role_maker = role_maker
         self._role_maker.generate_role()
         self._is_initialized = True
-
-    def generate_random_path(self, dirname):
-        rets = dirname
-        if dirname.startswith(HDFS_PREFIX):
-            while True:
-                rets = os.path.join(
-                    str(os.getenv("TMP", "/tmp")), str(uuid.uuid4()))
-                if not os.path.exists(rets):
-                    break
-        return rets
 
     @abc.abstractmethod
     def init_worker(self):

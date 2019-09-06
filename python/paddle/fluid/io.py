@@ -419,8 +419,7 @@ def _save_distributed_persistables(executor,
         executor.run(prog)
 
     def __save_distributed_lookup_tables(executor, dirname,
-                                         distributed_lookup_table, endpoints,
-                                         hdfs_dirname):
+                                         distributed_lookup_table, endpoints):
         """
         because the distributed lookup table may too huge to merge and save at one place,
         it will be saved at parameter server independent respectively.
@@ -435,9 +434,7 @@ def _save_distributed_persistables(executor,
         lookup_table_filename = os.path.join(dirname, "__lookup_table__")
         attrs = {}
         attrs['epmap'] = endpoints
-        attrs['dir'] = os.path.join(
-            hdfs_dirname,
-            "__lookup_table__") if hdfs_dirname else lookup_table_filename
+        attrs['dir'] = lookup_table_filename
         attrs['lookup_table'] = distributed_lookup_table
         block.append_op(
             type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
@@ -487,14 +484,10 @@ def _save_distributed_persistables(executor,
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
                 executor, dirname, main_program._distributed_lookup_table,
-                main_program._endpoints, hdfs_dirname)
+                main_program._endpoints)
 
 
-def save_persistables(executor,
-                      dirname,
-                      main_program=None,
-                      filename=None,
-                      hdfs_dirname=None):
+def save_persistables(executor, dirname, main_program=None, filename=None):
     """
     This function filters out all variables with `persistable==True` from the
     give `main_program` and then saves these variables to the folder `dirname`
@@ -533,10 +526,7 @@ def save_persistables(executor,
     """
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
-            executor,
-            dirname=dirname,
-            main_program=main_program,
-            hdfs_dirname=hdfs_dirname)
+            executor, dirname=dirname, main_program=main_program)
     else:
         save_vars(
             executor,
@@ -951,8 +941,7 @@ def save_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          export_for_deployment=True,
-                         program_only=False,
-                         hdfs_dirname=None):
+                         program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -1120,8 +1109,7 @@ def save_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    save_persistables(executor, save_dirname, main_program, params_filename,
-                      hdfs_dirname)
+    save_persistables(executor, save_dirname, main_program, params_filename)
     return target_var_name_list
 
 
