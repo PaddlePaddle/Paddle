@@ -572,7 +572,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
-      if(var_name == "SparseFeatFactors" && z_mutable_data[i]!= y_mutable_data[i]) {
+      if(var_name == "SparseFeatFactors" && z_mutable_data[i]- y_mutable_data[i]>1e-6) {
         VLOG(1) << "SparseFeatFactors Ids after send "<< i <<" recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
                 <<" ;delta_scope: "<< z_mutable_data[i];
@@ -609,7 +609,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
-      if(var_name == "SparseFeatFactors" && z_mutable_data[i]!= y_mutable_data[i]) {
+      if(var_name == "SparseFeatFactors" && z_mutable_data[i]- y_mutable_data[i]>1e-6) {
         VLOG(1) << "SparseFeatFactors Ids after recv"<< i <<"recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
                 <<" ;pserver_scope: "<< z_mutable_data[i];
