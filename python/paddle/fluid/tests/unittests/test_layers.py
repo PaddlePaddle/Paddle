@@ -2088,6 +2088,13 @@ class TestBook(LayerTest):
                 name='Filter_tag')
             out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
+    def test_shuffle_batch(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            x = layers.data(
+                name='X', shape=[5, 4], dtype='float32', lod_level=1)
+            out = layers.shuffle_batch(x)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

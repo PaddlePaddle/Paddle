@@ -220,6 +220,7 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
+    'shuffle_batch',
 ]
 
 kIgnoreIndex = -100
@@ -13746,4 +13747,57 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
+    return out
+
+
+@templatedoc()
+def shuffle_batch(x, shuffle_order=[]):
+    """
+    This layer shuffle input tensor.
+
+    The number of elements in input tensor is the product of input dims (except last dim). These elements will be shuffled randomly.
+
+    For Example:
+
+    .. code-block:: text
+
+      Input:
+        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        x.dims = [4, 2]
+
+      Attrs:
+        shuffle_order = [2, 3, 1, 0]
+
+      Output:
+        Out.data =[[7, 8], [5, 6], [1, 2], [3, 4]]
+        Out.dims = [4, 2]
+
+    Args:
+        x (Variable): Input (LoDTensor).
+        shuffle_order (list): Predefined shuffle order. It stores indices for shuffle starting from 0.
+                If not set(Default), shuffle order will be generated randomly. The length of shuffle_order should be
+                the product of input dims (except last dim). This attr is used for op unittest.
+
+    Returns:
+        Variables: The shuffed LoDTensor with the same shape and lod as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[-1， 4])
+            out = fluid.layers.shuffle_batch(x)
+    """
+    helper = LayerHelper('shuffle_batch', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    shuffle_idx = helper.create_variable_for_type_inference(dtype=np.int64)
+    helper.append_op(
+        type='shuffle_batch',
+        inputs={'X': x},
+        outputs={'Out': out,
+                 'ShuffleIdx': shuffle_idx},
+        attrs={'ShuffleOrder': shuffle_order})
+
     return out
