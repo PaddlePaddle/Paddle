@@ -27,14 +27,14 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input (Input) of slice op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output (Out) of slice op should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Input"),
+                            "Input (Input) of slice op should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasOutput("Out"),
+                            "Output (Out) of slice op should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(in_dims.size() < 7,
-                   "The rank of input should be less than 7.");
+    PADDLE_ENFORCE_LT(in_dims.size(), 7,
+                      "The rank of input should be less than 7.");
     auto begin = ctx->Attrs().Get<std::vector<int>>("begin");
     auto end = ctx->Attrs().Get<std::vector<int>>("end");
     auto stride = ctx->Attrs().Get<std::vector<int>>("stride");
@@ -47,7 +47,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     int stride_index, start_index, end_index;
     std::vector<int> out_dims_vector;
     for (size_t i = 0; i < begin.size(); i++) {
-      PADDLE_ENFORCE(stride[i] != 0, "stride must not tp be zero");
+      PADDLE_ENFORCE(stride[i], 0, "stride must not tp be zero");
       start_index = begin[i];
       end_index = end[i];
       stride_index = stride[i];
