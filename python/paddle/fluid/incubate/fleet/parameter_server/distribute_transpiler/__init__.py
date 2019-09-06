@@ -375,7 +375,7 @@ class DistributedTranspiler(Fleet):
         local_vars = list(
             filter(
                 __exclude_vars(exclude_var_names), main_program.list_vars()))
-        save_vars(
+        io.save_vars(
             executor,
             main_program=main_program,
             dirname=dirname,
@@ -410,6 +410,7 @@ class DistributedTranspiler(Fleet):
         are going to be saved. If you would like to save variables in separate
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
+
         """
         if main_program is None:
             main_program = self.main_program

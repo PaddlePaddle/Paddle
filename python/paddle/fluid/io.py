@@ -303,10 +303,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def _save_distributed_persistables(executor,
-                                   dirname,
-                                   main_program,
-                                   hdfs_dirname=None):
+def _save_distributed_persistables(executor, dirname, main_program):
     """
     save_persistables for distributed training.
     the method will do things listed below:
