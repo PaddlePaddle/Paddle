@@ -490,7 +490,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
 
 void Communicator::GeoSgdSend(const std::string& var_name, 
                               const framework::Scope& scope) {
-  VLOG(1) << "geo sgd communicator get loop num "<< var_name;
+  VLOG(4) << "geo sgd communicator get loop num "<< var_name;
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
@@ -568,14 +568,19 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param local delta): "<< *z_mutable_data;
+            <<" ;delta_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
+      if(var_name == "SparseFeatFactors" && z_mutable_data[i]!= y_mutable_data[i]) {
+        VLOG(1) << "SparseFeatFactors Ids after send "<< i <<" recv_scope: "<<x_mutable_data[i]
+                <<" ;old_scope: "<< y_mutable_data[i]
+                <<" ;pserver_scope: "<< z_mutable_data[i];
+      }
     }
     VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param local delta): "<< *z_mutable_data;
+            <<" ;delta_scope: "<< *z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
@@ -600,14 +605,19 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope(param on pserver): "<< *z_mutable_data;
+            <<" ;pserver_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
+      if(var_name == "SparseFeatFactors" && z_mutable_data[i]!= y_mutable_data[i]) {
+        VLOG(1) << "SparseFeatFactors Ids after recv"<< i <<"recv_scope: "<<x_mutable_data[i]
+                <<" ;old_scope: "<< y_mutable_data[i]
+                <<" ;pserver_scope: "<< z_mutable_data[i];
+      }
     }
     VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;pserver_scope(param on pserver): "<< *z_mutable_data;
+            <<" ;pserver_scope: "<< *z_mutable_data;
   }
   // Todo: add Sparse param sub method 
 }
