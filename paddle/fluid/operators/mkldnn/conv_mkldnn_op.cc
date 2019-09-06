@@ -563,9 +563,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::vector<float> scale_bias_data(scale_count);
       ComputeBiasScale(scale_bias_data, scale_count, scale_in_data,
                        scale_weights_data);
+      int mask_bias_reorder = is_multi_channel ? 1 << 0 : 0;
       bias_memory_p = handler.AcquireBiasMemoryFromPrimitive(
           user_bias_memory_p, pipeline, is_test, true, scale_bias_data,
-          mask_reorder);
+          mask_bias_reorder);
       conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
                                           bias_memory_p, dst_memory_p);
     } else {
