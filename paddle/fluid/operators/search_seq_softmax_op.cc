@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <cmath>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operator/search_compute.h"
+#include "paddle/fluid/operators/search_compute.h"
 
 namespace paddle {
 namespace operators {

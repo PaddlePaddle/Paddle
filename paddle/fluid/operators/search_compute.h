@@ -298,7 +298,7 @@ inline void sse_add_scalar(const T* x, T* y, size_t len, const T alpha) {
 }
 
 template <typename T>
-inline void sse_sum(const T* x, T* y, size_t len) {
+inline void sse_sum(const T* x, T&  y, size_t len) {
   unsigned int jjj, lll;
   jjj = lll = 0;
   y = 0.;
@@ -367,7 +367,7 @@ inline void sse_scale(const T* x, T* y, size_t len, const T alpha) {
 }
 
 template <typename T>
-inline void sse_ip(const T* vec1, const T* vec2, size_t len, T* result) {
+inline void sse_ip(const T* vec1, const T* vec2, size_t len, T& result) {
   unsigned int jjj, lll;
   jjj = lll = 0;
   result = 0.;
