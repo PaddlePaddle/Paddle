@@ -1,0 +1,53 @@
+# A image for building paddle binaries and install
+# Use cuda devel base image for both cpu and gpu environment
+# When you modify it, please be aware of cudnn-runtime version
+# and libcudnn.so.x in paddle/scripts/docker/build.sh
+#FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
+FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+# ENV variables
+ARG WITH_GPU
+ARG WITH_AVX
+ARG WITH_DOC
+ 
+ENV WITH_GPU=${WITH_GPU:-ON}
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV WITH_DOC=${WITH_DOC:-OFF}
+ENV HOME /root
+ 
+RUN apt-get update
+RUN apt-get install -y python-dev python-pip wget vim git
+ 
+# install cmake
+WORKDIR /home
+RUN wget https://cmake.org/files/v3.4/cmake-3.4.0-Linux-x86_64.tar.gz
+RUN tar -xvf cmake-3.4.0-Linux-x86_64.tar.gz
+RUN apt install libidn11
+ENV PATH=/home/cmake-3.4.0-Linux-x86_64/bin:$PATH
+WORKDIR /usr/bin
+RUN apt install -y gcc-8 g++-8
+RUN cp gcc gcc.bak
+RUN cp g++ g++.bak
+RUN rm gcc
+RUN rm g++
+RUN ln -s gcc-8 gcc
+RUN ln -s g++-8 g++
+
+# install && config vitualenv and virtualenvwrapper
+WORKDIR /home
+RUN pip install virtualenv virtualenvwrapper
+RUN mkdir $HOME/.virtualenvs
+ENV WORKON_HOME=$HOME/.virtualenvs
+RUN echo "WORKON_HOME=$HOME/.virtualenvs" >> ~/.bashrc
+RUN echo "source /usr/local/bin/virtualenvwrapper.sh" >> ~/.bashrc
+RUN /bin/bash -c "source /usr/local/bin/virtualenvwrapper.sh\
+ && mkvirtualenv paddle-venv\
+ && apt install -y swig patchelf\
+ && pip install numpy protobuf wheel"
+
+RUN apt install -y ccache
+RUN echo export PATH=/usr/lib/ccache:$PATH >> ~/.bashrc
+RUN apt install -y module-init-tools
+
+CMD source ~/.bashrc
