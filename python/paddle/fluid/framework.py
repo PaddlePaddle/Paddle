@@ -3237,7 +3237,7 @@ class Program(object):
             if self._appending_grad_times > 0:
                 loss_op = self._find_loss_op()
                 assert loss_op is not None, "The optimized network should have loss operator."
-                forward_prog = self._prune(loss_op)
+                forward_prog = self._prune([], loss_op)
                 p = forward_prog._inference_optimize(prune_read_op=False)
             else:
                 p = self._inference_optimize(prune_read_op=False)
