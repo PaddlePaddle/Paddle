@@ -399,15 +399,15 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                   "It must use CPUPlace.");
-    const Tensor *X = ctx.Input<Tensor>("Input");
-    const Tensor *dY = ctx.Input<Tensor>("DOutput");
-    const Tensor *ddX = ctx.Input<Tensor>("DDInput");
-    const Tensor *ddW_in = ctx.Input<Tensor>("DDFilter");
+                      "It must use CPUPlace.");
+    const Tensor* X = ctx.Input<Tensor>("Input");
+    const Tensor* dY = ctx.Input<Tensor>("DOutput");
+    const Tensor* ddX = ctx.Input<Tensor>("DDInput");
+    const Tensor* ddW_in = ctx.Input<Tensor>("DDFilter");
 
-    Tensor *ddY = ctx.Output<Tensor>("DDOutput");
-    Tensor *dW = ctx.Output<Tensor>("DFilter");
-    Tensor *dX = ctx.Output<Tensor>("DInput");
+    Tensor* ddY = ctx.Output<Tensor>("DDOutput");
+    Tensor* dW = ctx.Output<Tensor>("DFilter");
+    Tensor* dX = ctx.Output<Tensor>("DInput");
     Tensor W = *ctx.Input<Tensor>("Filter");
 
     if (!ddY && !dW && !dX) return;
@@ -430,14 +430,18 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     }
     framework::DDim col_shape(framework::make_ddim(col_shape_vec));
     // col_matrix_shape [in_channel/group * kh * kw, oh * ow]
-    framework::DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim+1);
+    framework::DDim col_matrix_shape =
+        framework::flatten_to_2d(col_shape, data_dim + 1);
     // input_shape [Cin, H, W]
-    framework::DDim input_shape = framework::slice_ddim(X->dims(), 1, X->dims().size());
+    framework::DDim input_shape =
+        framework::slice_ddim(X->dims(), 1, X->dims().size());
     // filter_matrix_shape [Cout, Cin * kh * kw]
-    framework::DDim filter_matrix_shape = {W.dims()[0], W.numel()/W.dims()[0]};
+    framework::DDim filter_matrix_shape = {W.dims()[0],
+                                           W.numel() / W.dims()[0]};
 
     W.Resize(filter_matrix_shape);
-    framework::DDim output_matrix_shape = {dY->dims()[1], dY->numel() / (dY->dims()[0] * dY->dims()[1])};
+    framework::DDim output_matrix_shape = {
+        dY->dims()[1], dY->numel() / (dY->dims()[0] * dY->dims()[1])};
     int in_step = static_cast<int>(X->dims()[1]) / groups;
     int out_step = static_cast<int>(dY->dims()[1]) / groups;
 
@@ -454,9 +458,11 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     // dx convolution double grad:  gemm + col2im(col2vol)
-    // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout, oH, oW)
+    // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,
+    // oH, oW)
     if (dX && ddW_in) {
-      Tensor ddW = ctx.AllocateTmpTensor<T, DeviceContext>(ddW_in->dims(), dev_ctx);
+      Tensor ddW =
+          ctx.AllocateTmpTensor<T, DeviceContext>(ddW_in->dims(), dev_ctx);
       ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
 
       dX->mutable_data<T>(ctx.GetPlace());
@@ -468,11 +474,10 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       math::Col2VolFunctor<DeviceContext, T> col2vol;
       math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 
-      for(int i = 0; i < batch_size; i++) {
-        Tensor dy_batch = dY->Slice(i, i+1).Resize(output_matrix_shape);
-        Tensor dx_batch = dX->Slice(i, i+1).Resize(input_shape);
+      for (int i = 0; i < batch_size; i++) {
+        Tensor dy_batch = dY->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor dx_batch = dX->Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
-          // gemm
           Tensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);
           Tensor ddw_slice = ddW.Slice(g * out_step, (g + 1) * out_step);
           Tensor dx_slice = dx_batch.Slice(g * in_step, (g + 1) * in_step);
@@ -480,12 +485,14 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
             col_matrix.ShareDataWith(dx_slice);
             col_matrix.Resize(col_matrix_shape);
           }
-          blas.MatMul(ddw_slice, true, dy_slice, false, T(1.0),
-                      &col_matrix, T(0.0));
+          blas.MatMul(ddw_slice, true, dy_slice, false, T(1.0), &col_matrix,
+                      T(0.0));
 
           if (is_expand && data_dim == 2U) {
             col2im(dev_ctx, col, dilations, strides,
-                   std::vector<int>{paddings[0], paddings[1], paddings[0], paddings[1]}, &dx_slice);
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &dx_slice);
           } else if (is_expand && data_dim == 3U) {
             col2vol(dev_ctx, col, dilations, strides, paddings, &dx_slice);
           }
@@ -493,7 +500,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    // dw = ddx * dy  ==> dw(Cout, Cin, kh, kw), ddx(N, Cin, H, W), dy(N, Cout, oH, oW)
+    // dw = ddx * dy  ==> dw(Cout, Cin, kh, kw), ddx(N, Cin, H, W), dy(N, Cout,
+    // oH, oW)
     // dw convolution double grad:  im2col(vol2col) + gemm
     if (dW) {
       dW->mutable_data<T>(ctx.GetPlace());
@@ -503,29 +511,33 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; ++i) {
-        Tensor dy_batch = dY->Slice(i, i+1).Resize(output_matrix_shape);
-        Tensor ddx_batch = ddX->Slice(i, i+1).Resize(input_shape);
+        Tensor dy_batch = dY->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor ddx_batch = ddX->Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; ++g) {
-          // im2col
-          Tensor dy_slice = dy_batch.Slice(g * out_step, (g+1) * out_step);
-          Tensor ddx_slice = ddx_batch.Slice(g * in_step, (g+1) * in_step);
+          Tensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor ddx_slice = ddx_batch.Slice(g * in_step, (g + 1) * in_step);
           if (!is_expand) {
             col.ShareDataWith(ddx_slice);
             col_matrix.ShareDataWith(col);
             col_matrix.Resize(col_matrix_shape);
           } else if (data_dim == 2U) {
-            im2col(dev_ctx, ddx_slice, dilations, strides, std::vector<int>{paddings[0], paddings[1], paddings[0], paddings[1]}, &col);
+            im2col(dev_ctx, ddx_slice, dilations, strides,
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &col);
           } else if (data_dim == 3U) {
             vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
           }
 
-          Tensor dw_slice = dW_.Slice(g * out_step, (g+1) * out_step);
-          blas.MatMul(dy_slice, false, col_matrix, true, T(1.0), &dw_slice, T(1.0));
+          Tensor dw_slice = dW_.Slice(g * out_step, (g + 1) * out_step);
+          blas.MatMul(dy_slice, false, col_matrix, true, T(1.0), &dw_slice,
+                      T(1.0));
         }
       }
     }
 
-    // ddy = w * ddx + x * ddw ==> ddy(N, Cout, oH, oW), x/ddx(N, Cin, H, W), w/ddw(Cout, Cin, kh, kw)
+    // ddy = w * ddx + x * ddw ==> ddy(N, Cout, oH, oW), x/ddx(N, Cin, H, W),
+    // w/ddw(Cout, Cin, kh, kw)
     // ddy convolution double grad: im2col(vol2col) + gemm
     if (ddY) {
       ddY->mutable_data<T>(ctx.GetPlace());
@@ -533,31 +545,33 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; ++i) {
-        Tensor ddx_batch = ddX->Slice(i, i+1).Resize(input_shape);
-        Tensor x_batch = X->Slice(i, i+1).Resize(input_shape);
-        Tensor ddy_batch = ddY->Slice(i, i+1).Resize(output_matrix_shape);
+        Tensor ddx_batch = ddX->Slice(i, i + 1).Resize(input_shape);
+        Tensor x_batch = X->Slice(i, i + 1).Resize(input_shape);
+        Tensor ddy_batch = ddY->Slice(i, i + 1).Resize(output_matrix_shape);
         for (int g = 0; g < groups; ++g) {
-          Tensor x_slice = x_batch.Slice(g * in_step, (g+1) * in_step);
-          Tensor ddx_slice = ddx_batch.Slice(g * in_step, (g+1) * in_step);
+          Tensor x_slice = x_batch.Slice(g * in_step, (g + 1) * in_step);
+          Tensor ddx_slice = ddx_batch.Slice(g * in_step, (g + 1) * in_step);
           if (!is_expand) {
             col.ShareDataWith(ddx_slice);
             col_matrix.ShareDataWith(col);
             col_matrix.Resize(col_matrix_shape);
           } else if (data_dim == 2U) {
-            // im2col
-            im2col(dev_ctx, ddx_slice, dilations, strides, std::vector<int>{paddings[0], paddings[1], paddings[0], paddings[1]}, &col);
+            im2col(dev_ctx, ddx_slice, dilations, strides,
+                   std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                    paddings[1]},
+                   &col);
           } else if (data_dim == 3U) {
-            // vol2col
             vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
           }
 
-          // gemm
-          Tensor ddy_slice = ddy_batch.Slice(g * out_step, (g+1) * out_step);
-          Tensor w_slice = W.Slice(g * out_step, (g+1) * out_step);
-          blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice, T(0.0));
+          Tensor ddy_slice = ddy_batch.Slice(g * out_step, (g + 1) * out_step);
+          Tensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
+          blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice,
+                      T(0.0));
 
           if (ddW_in) {
-            Tensor ddW = ctx.AllocateTmpTensor<T, DeviceContext>(ddW_in->dims(), dev_ctx);
+            Tensor ddW = ctx.AllocateTmpTensor<T, DeviceContext>(ddW_in->dims(),
+                                                                 dev_ctx);
             ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
 
             if (!is_expand) {
@@ -565,24 +579,23 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
               col_matrix.ShareDataWith(col);
               col_matrix.Resize(col_matrix_shape);
             } else if (data_dim == 2U) {
-              // im2col
-              im2col(dev_ctx, x_slice, dilations, strides, std::vector<int>{paddings[0], paddings[1], paddings[0], paddings[1]}, &col);
+              im2col(dev_ctx, x_slice, dilations, strides,
+                     std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                      paddings[1]},
+                     &col);
             } else if (data_dim == 3U) {
-              // vol2col
               vol2col(dev_ctx, x_slice, dilations, strides, paddings, &col);
             }
 
-            // gemm
-            Tensor ddw_slice = ddW.Slice(g*out_step, (g+1)*out_step);
-            blas.MatMul(ddw_slice, false, col_matrix, false, T(1.0), &ddy_slice, T(1.0));
+            Tensor ddw_slice = ddW.Slice(g * out_step, (g + 1) * out_step);
+            blas.MatMul(ddw_slice, false, col_matrix, false, T(1.0), &ddy_slice,
+                        T(1.0));
           }
         }
       }
     }
   }
 };
-
-
 
 template <typename DeviceContext, typename T>
 class DepthwiseConvKernel : public framework::OpKernel<T> {
