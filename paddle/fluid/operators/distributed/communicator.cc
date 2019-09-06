@@ -609,8 +609,8 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
-      if(var_name == "SparseFeatFactors" && fabs(z_mutable_data[i]- y_mutable_data[i])>0.0000001 && i<1000) {
-        VLOG(1) << "SparseFeatFactors Ids after recv"<< i <<"recv_scope: "<<x_mutable_data[i]
+      if(var_name == "SparseFeatFactors" && fabs(z_mutable_data[i]- x_mutable_data[i])>0.0000001 && i<1000) {
+        VLOG(1) << "SparseFeatFactors Ids after recv "<< i <<" recv_scope: "<<x_mutable_data[i]
                 <<" ;old_scope: "<< y_mutable_data[i]
                 <<" ;pserver_scope: "<< z_mutable_data[i];
       }
