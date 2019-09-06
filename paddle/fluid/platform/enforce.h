@@ -289,6 +289,19 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
+#if defined(__CUDA_ARCH__)
+// For cuda, the assertions can affect performance and it is therefore
+// recommended to disable them in production code
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                   \
+  do {                                                                 \
+    if (!(_IS_NOT_ERROR)) {                                            \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
+      asm("trap;");                                                    \
+    }                                                                  \
+  } while (0)
+#else
 #define PADDLE_ENFORCE(COND, ...)                                         \
   do {                                                                    \
     auto __cond__ = (COND);                                               \
@@ -302,6 +315,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
       }                                                                   \
     }                                                                     \
   } while (0)
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \
