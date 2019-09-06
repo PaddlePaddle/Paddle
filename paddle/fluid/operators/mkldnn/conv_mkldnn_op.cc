@@ -29,6 +29,27 @@ using mkldnn::stream;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
 
+constexpr int same_scale_mask = 0;
+constexpr int o_slice_mask = 1 << 0;                         // 1
+constexpr int g_slice_mask = 1 << 1;                         // 2
+constexpr int g_o_slice_mask = g_slice_mask | o_slice_mask;  // 3
+
+static int ComputeWeightsMask(int is_multi_channel, int g) {
+  if (is_multi_channel) {
+    return g > 1 ? g_o_slice_mask : o_slice_mask;
+  } else {
+    return same_scale_mask;
+  }
+}
+
+static int ComputeBiasMask(int is_multi_channel) {
+  if (is_multi_channel) {
+    return o_slice_mask;
+  } else {
+    return same_scale_mask;
+  }
+}
+
 inline void GetWeightsTz(std::vector<int>& weights_tz, int groups) {  // NOLINT
   if (groups > 1) {
     // if (is_conv3d) [o, i, dimension, h, w]->[g, o/g, i, dimension, h, w]
@@ -505,13 +526,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::memory> weights_memory_p;
 
-    // The mask defines the correspondence between
-    // the output tensor dimensions and the scales vector.
-    // Set the i-th bit of mask to 1 to use a dedicated scaling factor
-    // for each slice of the output tensor over the i-th dimension.
-    // Set mask to 0 to use a common scaling factor for the whole output tensor.
-    int mask_reorder =
-        is_multi_channel ? ((g > 1) ? (1 << 1) | (1 << 0) : 1 << 0) : 0;
+    int mask_reorder = ComputeWeightsMask(is_multi_channel, g);
 
     weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test, true, scale_weights_data,
@@ -563,7 +578,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::vector<float> scale_bias_data(scale_count);
       ComputeBiasScale(scale_bias_data, scale_count, scale_in_data,
                        scale_weights_data);
-      int mask_bias_reorder = is_multi_channel ? 1 << 0 : 0;
+      int mask_bias_reorder = ComputeBiasMask(is_multi_channel);
       bias_memory_p = handler.AcquireBiasMemoryFromPrimitive(
           user_bias_memory_p, pipeline, is_test, true, scale_bias_data,
           mask_bias_reorder);
