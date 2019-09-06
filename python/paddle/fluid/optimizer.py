@@ -3109,14 +3109,14 @@ class RecomputeOptimizer(object):
 	memory_with_position = [0]
 	for i in range(-1, len(block.ops)):
 	    for var_name in position_to_var[i]['create']:
-		#print('Create ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
+		print('Create ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
 		memory_timeline += self._get_var_size(block, var_name, self.debug_batchsize)
             memory_with_position.append(memory_timeline)
             for var_name in position_to_var[i]['delete']:
-		#print('Delete ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
+		print('Delete ', var_name, ', Size ', self._get_var_size(block, var_name, 32))
                 memory_timeline -= self._get_var_size(block, var_name, self.debug_batchsize)
 	    #memory_with_position.append(memory_timeline)
-	    #print(i, memory_timeline)
+	    print(i, memory_timeline)
 	
 	return memory_with_position
 
@@ -3168,8 +3168,9 @@ class RecomputeOptimizer(object):
 
 	if self.debug == True:
             # analysis of the memory usage
+            cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
  	    memory_with_position = self.analysis_memory_usage(loss.block)
-	    cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
+	    # cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
             self.draw(memory_with_position, 
 			cloned_memory_with_position, 
 			recompute_segments=None)

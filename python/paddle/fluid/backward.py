@@ -149,7 +149,7 @@ def _pretty_op_desc_(op_desc, prefix):
     return out_s
 
 
-def _add_needed_descs_to_block(descs, block, in_memory_vars):
+def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
     if len(descs) == 0:
         return []
     result_descs = []
@@ -163,11 +163,17 @@ def _add_needed_descs_to_block(descs, block, in_memory_vars):
             desc = desc[0]
         is_needed = False
         for name in desc.output_arg_names():
-            if block.var(name).persistable:
+            #print("add if need: ", name)
+            #if main_block.has_var(name): 
+	    #	print('has var!!!!')
+	    #else:	
+	    #	print('no such var!!!')
+            if main_block.has_var(name) and main_block.var(name).persistable:
                 continue
             if name not in in_memory_vars:
                 is_needed = True
         if is_needed:
+            print(_pretty_op_desc_(desc, 'add_needed'))
             new_op_desc = block.desc.append_op()
             new_op_desc.copy_from(desc)
             new_op_desc._set_attr(op_role_attr_name, backward)
@@ -768,8 +774,7 @@ def _append_backward_ops_with_checkpoints_(
     var_name_dict = {}
 
     print(len(set(vars_should_be_hold + checkpoints_name)))
-
-    vars_in_memory = vars_should_be_hold.extend(checkpoints_name)
+    vars_in_memory = vars_should_be_hold + checkpoints_name
     # var name -> [[op_idx in grad_op_descs]]
     grad_var_position = collections.defaultdict(list)
     for op in reversed(ops[segments[-1][1]:]):
@@ -778,8 +783,10 @@ def _append_backward_ops_with_checkpoints_(
         #grad_op_desc = _merge_gradient_if_needed_(grad_op_desc, grad_op_descs,
         #                                          grad_var_position)
         added_descs = _add_descs_to_block(grad_op_desc, local_block)
-        buffer_descs = _add_descs_to_block(grad_op_desc, local_block)
+        #buffer_descs = _add_needed_descs_to_block(grad_op_desc, buffer_block, 
+	#					 block, vars_in_memory)
         grad_op_descs.extend(added_descs)
+	# grad_op_descs.extend(buffer_descs)
         grad_to_var.update(op_grad_to_var)
 
     for i, desc in enumerate(grad_op_descs):
@@ -801,20 +808,36 @@ def _append_backward_ops_with_checkpoints_(
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
         buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block,
-                                                  vars_in_memory)
+                                                 block, vars_in_memory)
         added_descs = _add_descs_to_block(ff_ops, local_block)
 
         # rename variable names in added_descs
-        for key in var_name_dict:
-            _rename_arg_(added_descs, key, var_name_dict[key])
+
+        #for key in var_name_dict:
+        #    _rename_arg_(added_descs, key, var_name_dict[key])
+
+	for key in var_name_dict:
+	    _rename_arg_(buffer_descs, key, var_name_dict[key])
+	
+	
         # added_descs should be in grad_op_descs because it is backward op desc
-        grad_op_descs.extend(added_descs)
+        # grad_op_descs.extend(added_descs)
+	grad_op_descs.extend(buffer_descs)
 
         # c. add backward ops of current recomputation ops
         print("add backward in recomputation")
-        for op_desc in reversed(buffer_descs):
+        #for op_desc in reversed(buffer_descs):
+	for op_desc in reversed(added_descs):
+            # print(_pretty_op_desc_(op_desc, "add_needed_grad"))
+	
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            for key in var_name_dict:
+                _rename_arg_(grad_op_desc, key, var_name_dict[key])
+
+	    #for x in grad_op_desc:
+            #    print(_pretty_op_desc_(x, "add_descs_tmp"))
             #grad_op_desc = _merge_gradient_if_needed_(
             #    grad_op_desc, grad_op_descs, grad_var_position)
             #added_descs = _add_descs_to_block(grad_op_desc, block)
@@ -824,7 +847,7 @@ def _append_backward_ops_with_checkpoints_(
         #sumop_descs = _addup_repetitive_outputs_(grad_op_descs)
         #added_sumop_descs = _add_descs_to_block(sumop_descs, block)
         #grad_op_desc.extend(added_sumop_descs)
-    print("renamed var num")
+    print("reamed var num")
     print(len(var_name_dict))
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
     for desc in grad_op_descs:
@@ -973,6 +996,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
+        # print(_pretty_op_desc_(op_desc, "before_infer_shape"))
         if op_desc.has_attr("sub_block"):
             sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
@@ -1243,6 +1267,9 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         if res < 0:
             return -res
         return res
+
+    for op in root_block.ops:
+	print(_pretty_op_desc_(op.desc, "final_program"))
 
     if program_stat:
         memory_timeline = []
