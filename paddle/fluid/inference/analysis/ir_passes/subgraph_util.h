@@ -30,13 +30,16 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using framework::ir::Node;
 
 std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes);
+    const std::unordered_set<framework::ir::Node *> &nodes);
 
-std::unordered_set<Node *> GetRelatedIOVarNodes(
-    const std::vector<Node *> &nodes);
+std::unordered_set<framework::ir::Node *> GetRelatedIOVarNodes(
+    const std::vector<framework::ir::Node *> &nodes);
+
+void ClearOpsDesc(framework::BlockDesc* block);
+
+void ClearVarDesc(framework::BlockDesc* block);
 
 void PrependFeedOps(framework::BlockDesc* global_block,
                     const std::vector<std::string>& feed_target_names,

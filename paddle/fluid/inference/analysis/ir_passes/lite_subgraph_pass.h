@@ -36,7 +36,7 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
   void SetUpEngine(framework::ProgramDesc* program,
     std::vector<std::string> *repetitive_params) const;
 
-  void AppendBlocks(framework::ir::Node *merged_node,
+  void OrganizeProgram(framework::ir::Node *merged_node,
     framework::ProgramDesc* global_program,
     framework::ProgramDesc* engine_program,
     std::vector<std::string> *repetitive_params) const;
