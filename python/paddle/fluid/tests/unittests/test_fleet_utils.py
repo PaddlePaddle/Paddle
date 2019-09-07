@@ -15,9 +15,11 @@
 from __future__ import print_function
 import paddle.fluid as fluid
 import unittest
+import os
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.utils.fleet_barrier_util import check_all_trainers_ready
+from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 
 
 class TestFleetUtils(unittest.TestCase):
@@ -29,6 +31,11 @@ class TestFleetUtils(unittest.TestCase):
             server_endpoints=['127.0.0.1'])
         fleet.init(role)
         check_all_trainers_ready("/ready_path/", 0)
+
+    def test_generate_random_path(self):
+        fleet_util_instance = FleetUtil()
+        path = fleet_util_instance.generate_random_path()
+        self.assertTrue(os.path.exists(path))
 
 
 if __name__ == '__main__':
