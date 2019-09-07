@@ -40,7 +40,7 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
                                                 const mkldnn::engine& engine,
                                                 const memory::data_type& dt) {
-  const auto dims = paddle::framework::vectorize2int(input.dims());
+  const auto dims = paddle::framework::vectorize<int>(input.dims());
   const auto format = input.format();
   auto description = memory::desc(dims, dt, format);
   auto mem_prim_desc = memory::primitive_desc(description, engine);
@@ -73,7 +73,7 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
   for (size_t i = 0; i < multi_input.size(); i++) {
     platform::MKLDNNHandler::AppendKeyDims(
-        &key, paddle::framework::vectorize2int(multi_input[i]->dims()));
+        &key, paddle::framework::vectorize<int>(multi_input[i]->dims()));
   }
   platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
   platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
@@ -124,7 +124,7 @@ class ConcatPrimitiveFactory {
  private:
   memory::desc CreateDstMemDescriptor(Tensor* output,
                                       const memory::data_type& dt) {
-    auto dst_dims = paddle::framework::vectorize2int(output->dims());
+    auto dst_dims = paddle::framework::vectorize<int>(output->dims());
     return memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
   }
 

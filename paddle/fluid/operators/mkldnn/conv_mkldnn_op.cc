@@ -183,12 +183,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::ConvMKLDNNHandler::GetHash(
@@ -238,7 +237,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
     if (bias) {
-      bias_tz = paddle::framework::vectorize2int(bias->dims());
+      bias_tz = paddle::framework::vectorize<int>(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
@@ -281,7 +280,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto output_data =
             output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
         auto residual_data_tz =
-            paddle::framework::vectorize2int(residual_param->dims());
+            paddle::framework::vectorize<int>(residual_param->dims());
         auto residual_data_type =
             paddle::framework::ToMKLDNNDataType(residual_param->type());
 
@@ -405,13 +404,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
 
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
@@ -514,7 +512,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                  : mkldnn::prop_kind::forward_training;
 
       if (bias) {
-        bias_tz = paddle::framework::vectorize2int(bias->dims());
+        bias_tz = paddle::framework::vectorize<int>(bias->dims());
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
                                                MKLDNNMemoryFormat::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
@@ -554,7 +552,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             paddle::framework::ToMKLDNNDataType(residual_param->type());
         if (residual_param->format() != handler->GetDstFormat()) {
           auto residual_data_tz =
-              paddle::framework::vectorize2int(residual_param->dims());
+              paddle::framework::vectorize<int>(residual_param->dims());
           auto user_residual_md = platform::MKLDNNMemDesc(
               residual_data_tz, residual_dt, residual_param->format());
           dst_memory_p = platform::SetDstMemory<T_out>(
@@ -705,13 +703,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     T* input_grad_data = nullptr;
     T* filter_grad_data = nullptr;
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz =
-        paddle::framework::vectorize2int(output_grad->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output_grad->dims());
     auto src_format = input->format();
     MKLDNNMemoryFormat weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);

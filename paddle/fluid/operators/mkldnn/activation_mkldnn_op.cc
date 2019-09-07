@@ -97,7 +97,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
       "Input dim must be with 2, 3 or 4");
 
-  std::vector<int> src_tz = framework::vectorize2int(x->dims());
+  auto src_tz = framework::vectorize<int>(x->dims());
 
   auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
@@ -149,7 +149,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
-  std::vector<int> diff_dst_tz = framework::vectorize2int(diff_y->dims());
+  auto diff_dst_tz = framework::vectorize<int>(diff_y->dims());
 
   // diff_dst and src dims should be the same
   auto src_format =

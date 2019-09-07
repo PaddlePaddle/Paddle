@@ -141,9 +141,12 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
   mutable RWLock kids_lock_;
   mutable RWLock vars_lock_;
+#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

@@ -164,6 +164,9 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
+        if not isinstance(files, list):
+            raise TypeError("files should be a list of file need to be read.")
+
         trainer_id = self.worker_index()
         trainers = self.worker_num()
 
@@ -200,7 +203,7 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise ValueError("role_maker must be an instance of RoleMakerBase")
+            raise TypeError("role_maker must be an instance of RoleMakerBase")
 
         if hdfs_client_trainer and not isinstance(hdfs_client_trainer,
                                                   HDFSClient):
@@ -273,7 +276,7 @@ class DistributedOptimizer(object):
 
     def __init__(self, optimizer, strategy=None):
         if not isinstance(optimizer, SGD.__bases__):
-            raise ValueError("optimizer must be an instance of Optimizer")
+            raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy
