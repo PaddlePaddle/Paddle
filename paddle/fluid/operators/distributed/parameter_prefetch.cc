@@ -215,7 +215,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
 
-  for (int i; i < table_names.size(); i++) {
+  for (int i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
