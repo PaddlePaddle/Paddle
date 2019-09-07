@@ -35,7 +35,6 @@ class TestFleetUtils(unittest.TestCase):
     def test_generate_random_path(self):
         fleet_util_instance = FleetUtil()
         path = fleet_util_instance.generate_random_path()
-        self.assertTrue(os.path.exists(path))
 
 
 if __name__ == '__main__':
