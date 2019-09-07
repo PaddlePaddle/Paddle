@@ -45,8 +45,8 @@ class ShellOp : public framework::OperatorBase {
         if (pv->length() == 0) {
           if (cmd_params[i] == LOOKUP_TABLE_TMP_PATH) {
             // if LOOKUP_TABLE_TMP_PATH is empty, it means we don't need to
-            // execute
-            // command 'hadoop fs -put {} {}'
+            // execute the command 'hadoop fs -put {} {}', when the path save op
+            // received is not a hadoop path, it will be used.
             cmd = "";
             break;
           }

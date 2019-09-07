@@ -60,8 +60,11 @@ class TestShellOp(unittest.TestCase):
         self.assertRaises(Exception, self._shell_op_, params_dict, 'ls {}',
                           False)
 
+        # exception 4, command format don't have enouth placeholder {}
+        params_dict['params'] = "./"
+        self.assertRaises(Exception, self._shell_op_, params_dict, 'ls')
+
         # correct use
-        params_dict['params'] = "/"
         self._shell_op_(params_dict, 'ls {}')
 
 

@@ -177,6 +177,14 @@ class DistributedTranspiler(Fleet):
             hdfs_dirname = dirname
             fleet_util_instance = FleetUtil()
             dirname = fleet_util_instance.generate_random_path()
+            if not self._hdfs_client_trainer.is_exist(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                self._hdfs_client_trainer.makedirs(hdfs_dirname[len(
+                    HDFS_PREFIX):])
+            elif self._hdfs_client_trainer.is_file(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                raise ValueError("%s exists, and is not a directory" %
+                                 hdfs_dirname[len(HDFS_PREFIX):])
 
         if main_program is not None:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
@@ -359,6 +367,14 @@ class DistributedTranspiler(Fleet):
             hdfs_dirname = dirname
             fleet_util_instance = Fleet_Util()
             dirname = fleet_util_instance.generate_random_path()
+            if not self._hdfs_client_trainer.is_exist(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                self._hdfs_client_trainer.makedirs(hdfs_dirname[len(
+                    HDFS_PREFIX):])
+            elif self._hdfs_client_trainer.is_file(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                raise ValueError("%s exists, and is not a directory" %
+                                 hdfs_dirname[len(HDFS_PREFIX):])
 
         remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
             ["Optimizer", "RemotePrefetch"], groupby=True)

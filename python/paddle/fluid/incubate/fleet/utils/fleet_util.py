@@ -1321,7 +1321,7 @@ class FleetUtil(object):
             copc, mean_predict_qvalue, int(total_ins_num)
         ]
 
-    def generate_random_path():
+    def generate_random_path(self):
         rets = ""
         while True:
             rets = os.path.join(

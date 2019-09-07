@@ -436,7 +436,7 @@ class HDFSClient(object):
 
         self.make_local_dirs(local_path)
 
-        all_files = client.ls(hdfs_path)
+        all_files = self.ls(hdfs_path)
 
         procs = []
         for i in range(multi_processes):
