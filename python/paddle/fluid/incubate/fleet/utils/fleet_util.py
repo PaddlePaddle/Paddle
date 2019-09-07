@@ -1328,6 +1328,7 @@ class FleetUtil(object):
                 str(os.getenv("TMP", "/tmp")), str(uuid.uuid4()))
             if not os.path.exists(rets):
                 break
+            os.system('mkdir -p {}' % rets)
         return rets
 
     def print_global_metrics(self,

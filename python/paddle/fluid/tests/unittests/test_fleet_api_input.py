@@ -49,6 +49,18 @@ class FleetTest(unittest.TestCase):
         self.assertRaises(Exception, fleet.split_files, "files")
         self.assertRaises(Exception, fleet.init, "pserver")
 
+        role = UserDefinedRoleMaker(0, Role.WORKER, 1, ["127.0.0.1:8080"])
+        self.assertRaises(
+            Exception,
+            fleet.init,
+            role_maker=role,
+            hdfs_client_trainer="trainer")
+        self.assertRaises(
+            Exception,
+            fleet.init,
+            role_maker=role,
+            hdfs_server_config="server_config")
+
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
         loss = fluid.layers.mean(hidden)
