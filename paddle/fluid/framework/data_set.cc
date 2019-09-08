@@ -204,7 +204,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
 template <typename T>
 void DatasetImpl<T>::PreLoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() begin";
-  CHECK(preload_thread_num_ != 0);
+  CHECK(preload_thread_num_ != 0);  // NOLINT
   CHECK(preload_thread_num_ == preload_readers_.size());
   preload_threads_.clear();
   for (int64_t i = 0; i < preload_thread_num_; ++i) {
