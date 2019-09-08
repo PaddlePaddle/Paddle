@@ -84,7 +84,7 @@ class HDFSClient(object):
             ret_code, ret_out, ret_err = proc.returncode, output, errors
 
             _logger.info(
-                'Times: %d, Running command: %s. Return code: %d, Error: %s' %
+                'Times: %d, Running command: %s. Return code: %d, Msg: %s' %
                 (x, whole_commands, proc.returncode, errors))
 
             if ret_code == 0:
@@ -101,7 +101,7 @@ class HDFSClient(object):
                 _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
                 return ""
             else:
-                _logger.error("HDFS cat HDFS path: {} succeed".format(
+                _logger.info("HDFS cat HDFS path: {} succeed".format(
                     hdfs_path))
                 return output.strip()
 
@@ -290,7 +290,7 @@ class HDFSClient(object):
             _logger.error("HDFS mkdir path: {} failed".format(hdfs_path))
             return False
         else:
-            _logger.error("HDFS mkdir path: {} successfully".format(hdfs_path))
+            _logger.info("HDFS mkdir path: {} successfully".format(hdfs_path))
             return True
 
     def ls(self, hdfs_path):
@@ -536,6 +536,23 @@ class HDFSClient(object):
 
         _logger.info("Finish upload datas from {} to {}".format(local_path,
                                                                 hdfs_path))
+
+    def upload_dir(self, dest_dir, local_dir, overwrite=False):
+        local_dir = local_dir.rstrip("/")
+        dest_dir = dest_dir.rstrip("/")
+        local_basename = os.path.basename(local_dir)
+        if self.is_exist(dest_dir + "/" + local_basename) and overwrite:
+            self.delete(dest_dir + "/" + local_basename)
+        if not self.is_exist(dest_dir):
+            self.makedirs(dest_dir)
+        put_command = ["-put", local_dir, dest_dir]
+        returncode, output, errors = self.__run_hdfs_cmd(put_command,
+                                                         retry_times)
+        if returncode != 0:
+            _logger.error("Put local dir: {} to HDFS dir: {} failed".
+                          format(local_dir, dest_dir))
+            return False
+        return True
 
 
 if __name__ == "__main__":

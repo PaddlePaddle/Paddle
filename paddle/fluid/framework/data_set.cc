@@ -50,6 +50,7 @@ DatasetImpl<T>::DatasetImpl() {
   min_merge_size_ = 2;
   parse_ins_id_ = false;
   parse_content_ = false;
+  preload_thread_num_ = 0;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -120,6 +121,7 @@ void DatasetImpl<T>::SetMergeByInsId(
     const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
     int min_merge_size, bool keep_unmerged_ins) {
   merge_by_insid_ = true;
+  parse_ins_id_ = true;
   merge_slots_list_ = merge_slot_list;
   erase_duplicate_feas_ = erase_duplicate_feas;
   min_merge_size_ = min_merge_size;
@@ -202,10 +204,13 @@ void DatasetImpl<T>::LoadIntoMemory() {
 template <typename T>
 void DatasetImpl<T>::PreLoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() begin";
+  CHECK(preload_thread_num_ != 0);
+  CHECK(preload_thread_num_ == preload_readers_.size());
   preload_threads_.clear();
-  for (int64_t i = 0; i < thread_num_; ++i) {
+  for (int64_t i = 0; i < preload_thread_num_; ++i) {
     preload_threads_.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+        &paddle::framework::DataFeed::LoadIntoMemory,
+        preload_readers_[i].get()));
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
 }
@@ -418,6 +423,47 @@ void DatasetImpl<T>::DestroyReaders() {
   VLOG(3) << "readers size: " << readers_.size();
   file_idx_ = 0;
   cur_channel_ = 1 - cur_channel_;
+}
+
+template <typename T>
+void DatasetImpl<T>::SetPreLoadThreadNum(int thread_num) {
+    preload_thread_num_ = thread_num;
+}
+
+template <typename T>
+void DatasetImpl<T>::CreatePreLoadReaders() {
+  VLOG(3) << "Begin CreatePreLoadReaders";
+  if (preload_thread_num_ == 0) {
+    preload_thread_num_ = thread_num_;
+  }
+  CHECK(preload_thread_num_ > 0) << "thread num should > 0";
+  CHECK(input_channel_ != nullptr);
+  preload_readers_.clear();
+  for (int i = 0; i < preload_thread_num_; ++i) {
+    preload_readers_.push_back(
+        DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
+    preload_readers_[i]->Init(data_feed_desc_);
+    preload_readers_[i]->SetThreadId(i);
+    preload_readers_[i]->SetThreadNum(preload_thread_num_);
+    preload_readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
+    preload_readers_[i]->SetFileListIndex(&file_idx_);
+    preload_readers_[i]->SetFileList(filelist_);
+    preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetInputChannel(input_channel_.get());
+    preload_readers_[i]->SetOutputChannel(nullptr);
+    preload_readers_[i]->SetConsumeChannel(nullptr);
+  }
+  VLOG(3) << "End CreatePreLoadReaders";
+}
+
+template <typename T>
+void DatasetImpl<T>::DestroyPreLoadReaders() {
+  VLOG(3) << "Begin DestroyPreLoadReaders";
+  preload_readers_.clear();
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(
+      preload_readers_);
+  file_idx_ = 0;
+  VLOG(3) << "End DestroyPreLoadReaders";
 }
 
 template <typename T>

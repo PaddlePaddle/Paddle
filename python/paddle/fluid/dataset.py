@@ -423,9 +423,12 @@ class InMemoryDataset(DatasetBase):
         self._prepare_to_run()
         self.dataset.load_into_memory()
 
-    def preload_into_memory(self):
+    def preload_into_memory(self, thread_num=None):
         """
         Load data into memory in async mode
+
+        Args:
+            thread_num(int): preload thread num
 
         Examples:
             .. code-block:: python
@@ -438,6 +441,10 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         self._prepare_to_run()
+        if thread_num is None:
+            thread_num = self.thread_num
+        self.dataset.set_preload_thread_num(thread_num)
+        self.dataset.create_preload_readers()
         self.dataset.preload_into_memory()
 
     def wait_preload_done(self):
@@ -455,6 +462,7 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         self.dataset.wait_preload_done()
+        self.dataset.destroy_preload_readers()
 
     def local_shuffle(self):
         """
