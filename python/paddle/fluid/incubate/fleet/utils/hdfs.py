@@ -185,8 +185,8 @@ class HDFSClient(object):
                 hdfs_path))
             return False
         else:
-            _logger.info(
-                "HDFS path: {} successfully is a file".format(hdfs_path))
+            _logger.info("HDFS path: {} successfully is a file".format(
+                hdfs_path))
             return True
 
     def delete(self, hdfs_path):
@@ -196,7 +196,7 @@ class HDFSClient(object):
         whether the remote HDFS path exists
 
         Args:
-            hdfs_path: HDFS path.
+            hdfs_path(str): HDFS path.
 
         Returns:
             True or False
@@ -221,8 +221,8 @@ class HDFSClient(object):
                 hdfs_path))
             return False
         else:
-            _logger.info(
-                "HDFS path: {} delete files successfully".format(hdfs_path))
+            _logger.info("HDFS path: {} delete files successfully".format(
+                hdfs_path))
             return True
 
     def rename(self, hdfs_src_path, hdfs_dst_path, overwrite=False):
@@ -231,7 +231,7 @@ class HDFSClient(object):
 
         Args:
             hdfs_src_path(str): HDFS path
-            hdfs_dst_pathh(str): HDFS path
+            hdfs_dst_path(str): HDFS path
             overwrite(bool|False): If the path already exists and overwrite is
                                    False, will return False.
         Returns:
@@ -265,7 +265,7 @@ class HDFSClient(object):
         create a directiory local, is same to mkdir
 
         Args:
-            local_path: local path that wants to create a directiory.
+            local_path(str): local path that wants to create a directiory.
         """
         try:
             os.makedirs(local_path)
@@ -381,7 +381,18 @@ class HDFSClient(object):
             return ret_lines
 
     @staticmethod
-    def split_flies(files, trainer_id, trainers):
+    def split_files(files, trainer_id, trainers):
+        """
+        split file list
+
+        Args:
+            files(list): file list
+            trainer_id(int): trainer mpi rank id
+            trainers(int): all trainers num
+
+        Returns:
+            fileist(list): file list of current trainer
+        """
         remainder = len(files) % trainers
         blocksize = len(files) / trainers
 
@@ -488,7 +499,7 @@ class HDFSClient(object):
             local_path(str): path on local
             multi_processes(int|5): the upload data process at the same time, default=5
             overwrite(bool|False): will overwrite file on HDFS or not
-            sync(bool|True): upload files sync or not.
+            retry_times(int): upload file max retry time.
 
         Returns:
             None
@@ -509,8 +520,10 @@ class HDFSClient(object):
         def get_local_files(path):
             """
             get local files
+
             Args:
-                path: local path
+                path(str): local path
+
             Returns:
                 list of local files
             """
