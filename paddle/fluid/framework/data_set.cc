@@ -216,8 +216,8 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
     CHECK(thread_num_ == readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < thread_num_; ++i) {
-        preload_threads_.push_back(std::thread(
-            &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+      preload_threads_.push_back(std::thread(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
     }
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
