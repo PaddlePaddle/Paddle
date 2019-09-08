@@ -776,23 +776,31 @@ def _append_backward_ops_with_checkpoints_(
     print(len(set(vars_should_be_hold + checkpoints_name)))
     vars_in_memory = vars_should_be_hold + checkpoints_name
     # var name -> [[op_idx in grad_op_descs]]
-    grad_var_position = collections.defaultdict(list)
-    for op in reversed(ops[segments[-1][1]:]):
-        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-        #grad_op_desc = _merge_gradient_if_needed_(grad_op_desc, grad_op_descs,
-        #                                          grad_var_position)
-        added_descs = _add_descs_to_block(grad_op_desc, local_block)
-        #buffer_descs = _add_needed_descs_to_block(grad_op_desc, buffer_block, 
-	#					 block, vars_in_memory)
-        grad_op_descs.extend(added_descs)
-	# grad_op_descs.extend(buffer_descs)
-        grad_to_var.update(op_grad_to_var)
+    #grad_var_position = collections.defaultdict(list)
+   
+    # add grad desc for ops from last segment to end
+    #for op in reversed(ops[segments[-1][1]:]):
+    #    grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+    #        op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+    #    added_descs = _add_descs_to_block(grad_op_desc, local_block)
+    #    grad_op_descs.extend(added_descs)
+    #    grad_to_var.update(op_grad_to_var)
 
     for i, desc in enumerate(grad_op_descs):
         print(_pretty_op_desc_(desc, str(i)))
-
+	
+    max_calculated_op_position = len(ops)
     for i, segment in enumerate(recompute_segments[::-1]):
+        # add grad op for ops not in any segments
+        gap_ops = ops[segment[1]:max_calculated_op_position]
+        max_calculated_op_position = segment[0]
+	for op in reversed(gap_ops):
+	    grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+	    added_descs = _add_descs_to_block(grad_op_desc, local_block)
+	    grad_op_descs.extend(added_descs)
+	    grad_to_var.update(op_grad_to_var)
+	    
         ff_ops = ops[segment[0]:segment[1]]
         var_suffix = ".subprog_%d" % i
 
