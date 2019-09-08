@@ -208,9 +208,9 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
   CHECK(preload_thread_num_ == preload_readers_.size());
   preload_threads_.clear();
   for (int64_t i = 0; i < preload_thread_num_; ++i) {
-    preload_threads_.push_back(std::thread(
-        &paddle::framework::DataFeed::LoadIntoMemory,
-        preload_readers_[i].get()));
+    preload_threads_.push_back(
+        std::thread(&paddle::framework::DataFeed::LoadIntoMemory,
+                    preload_readers_[i].get()));
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
 }
@@ -427,7 +427,7 @@ void DatasetImpl<T>::DestroyReaders() {
 
 template <typename T>
 void DatasetImpl<T>::SetPreLoadThreadNum(int thread_num) {
-    preload_thread_num_ = thread_num;
+  preload_thread_num_ = thread_num;
 }
 
 template <typename T>
