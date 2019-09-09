@@ -38,7 +38,7 @@ class MKLDNNHandler {
         platform::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
-      key_ = key_common_ + "-t:" + MKLDNNHandler::ThreadIDasStr();
+      key_ = key_common_ + "-t:" + ThreadIDasStr();
     }
   }
 
@@ -191,36 +191,6 @@ class MKLDNNHandler {
       }
     }
     return target_memory_p;
-  }
-
-  static std::string ThreadIDasStr(void) {
-    return std::to_string(
-        std::hash<std::thread::id>()(std::this_thread::get_id()));
-  }
-
-  static std::string GetHash(const mkldnn::memory::dims& operand_dims,
-                             const std::string& suffix) {
-    return dims2str(operand_dims) + suffix;
-  }
-
-  static void AppendKeyDims(std::string* key,
-                            const mkldnn::memory::dims& dims) {
-    for (unsigned int i = 0; i < dims.size(); i++) {
-      AppendKey(key, std::to_string(dims[i]));
-    }
-  }
-
-  static void AppendKey(std::string* key, const std::string& s) {
-    key->append(s);
-  }
-
- protected:
-  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
-    std::string dstr = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      dstr += std::to_string(operand_dims[i]) + "-";
-    }
-    return dstr;
   }
 
  protected:
@@ -404,12 +374,12 @@ class ActivationMKLDNNHandler : public MKLDNNHandler {
                              const float beta, const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(algorithm));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(alpha));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(beta));
-    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    platform::AppendKeyDims(&key, input_dims);
+    platform::AppendKey(&key, std::to_string(algorithm));
+    platform::AppendKey(&key, std::to_string(fmt));
+    platform::AppendKey(&key, std::to_string(alpha));
+    platform::AppendKey(&key, std::to_string(beta));
+    platform::AppendKey(&key, suffix);
     return key;
   }
 
@@ -555,13 +525,13 @@ class LRNMKLDNNHandler : public MKLDNNHandler {
                              const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(n));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(alpha));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(beta));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(k));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
-    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    platform::AppendKeyDims(&key, input_dims);
+    platform::AppendKey(&key, std::to_string(n));
+    platform::AppendKey(&key, std::to_string(alpha));
+    platform::AppendKey(&key, std::to_string(beta));
+    platform::AppendKey(&key, std::to_string(k));
+    platform::AppendKey(&key, std::to_string(fmt));
+    platform::AppendKey(&key, suffix);
     return key;
   }
 
@@ -749,14 +719,14 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       const MKLDNNMemoryFormat& fmt, const std::string& suffix) {
     std::string key;
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-    platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
-    platform::MKLDNNHandler::AppendKey(&key, pooling_type);
-    platform::MKLDNNHandler::AppendKeyDims(&key, ksize);
-    platform::MKLDNNHandler::AppendKeyDims(&key, strides);
-    platform::MKLDNNHandler::AppendKeyDims(&key, paddings);
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
-    platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
-    platform::MKLDNNHandler::AppendKey(&key, suffix);
+    platform::AppendKeyDims(&key, input_dims);
+    platform::AppendKey(&key, pooling_type);
+    platform::AppendKeyDims(&key, ksize);
+    platform::AppendKeyDims(&key, strides);
+    platform::AppendKeyDims(&key, paddings);
+    platform::AppendKey(&key, std::to_string(dt));
+    platform::AppendKey(&key, std::to_string(fmt));
+    platform::AppendKey(&key, suffix);
     return key;
   }
 

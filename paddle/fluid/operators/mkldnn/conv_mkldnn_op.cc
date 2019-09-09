@@ -439,7 +439,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string key_tid = "";
     if (platform::get_cur_mkldnn_session_id() ==
         platform::kMKLDNNSessionID_Default) {
-      key_tid = "-t:" + platform::MKLDNNHandler::ThreadIDasStr();
+      key_tid = "-t:" + platform::ThreadIDasStr();
     }
 
     auto prim_key = key + key_tid + "@conv_p";
