@@ -44,8 +44,8 @@ class FillOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of FillOp should not be null.");
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+                      "Output(Out) of FillOp should not be null.");
     auto& shape = context->Attrs().Get<std::vector<int>>("shape");
     context->SetOutputDim("Out", framework::make_ddim(shape));
   }
