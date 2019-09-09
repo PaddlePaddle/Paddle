@@ -52,7 +52,7 @@ class InplaceABNGradKernel
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    bool is_inplace = (x->data<T>() == y->data<T>());
+    const bool is_inplace = ctx.Attr<bool>("in_place");
 
     d_x->mutable_data<T>(ctx.GetPlace());
     auto cur_y = EigenVector<T>::Flatten(*y);

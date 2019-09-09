@@ -134,21 +134,20 @@ class InplaceABNGradKernel
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    bool is_inplace = (x->data<T>() == y->data<T>());
+    const bool is_inplace = ctx.Attr<bool>("in_place");
 
     d_x->mutable_data<T>(ctx.GetPlace());
+    auto cur_x = EigenVector<T>::Flatten(*x);
     auto cur_y = EigenVector<T>::Flatten(*y);
     auto cur_dx = EigenVector<T>::Flatten(*d_x);
     auto cur_dy = EigenVector<T>::Flatten(*d_y);
 
     InplaceABNActivation<DeviceContext, T> functor;
     if (is_inplace) {
-      functor.InplaceCompute(ctx, activation, place,
-                             EigenVector<T>::Flatten(*y), cur_y, cur_dx,
+      functor.InplaceCompute(ctx, activation, place, cur_y, cur_y, cur_dx,
                              cur_dy);
     }
-    functor.GradCompute(ctx, activation, place, EigenVector<T>::Flatten(*x),
-                        cur_y, cur_dx, cur_dy);
+    functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy);
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
