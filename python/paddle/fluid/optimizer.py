@@ -580,6 +580,8 @@ class Optimizer(object):
         # If the parameter is no trainable, it should not have a gradient.
         no_grad_set.update(param_no_trainable)
 
+        return no_grad_set
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
