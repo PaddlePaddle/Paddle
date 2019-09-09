@@ -14,13 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
+#include <string>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
-void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output);
+void Prune(const proto::ProgramDesc& input,
+           const std::set<std::string>& feed_var_names,
+           proto::ProgramDesc* output);
 
 }  // namespace framework
 }  // namespace paddle

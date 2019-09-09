@@ -46,7 +46,7 @@ class UnStackOp : public framework::OperatorWithKernel {
     if (x_dim[axis] > 0) {
       PADDLE_ENFORCE_EQ(num, x_dim[axis], "Number of Outputs(Y) is wrong");
     }
-    auto vec = framework::vectorize2int(x_dim);
+    auto vec = framework::vectorize<int>(x_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim("Y", std::vector<framework::DDim>(  // NOLINT
                                 x_dim[axis], framework::make_ddim(vec)));
@@ -110,7 +110,7 @@ class UnStackGradOp : public framework::OperatorWithKernel {
         "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize2int(input_dims[0]);
+    auto vec = framework::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
     ctx->SetOutputDim(framework::GradVarName("X"), framework::make_ddim(vec));
   }

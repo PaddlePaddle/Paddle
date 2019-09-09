@@ -29,7 +29,7 @@ namespace ngraphs {
 std::shared_ptr<ngraph::Node> remove_trailing_one(
     const std::shared_ptr<ngraph::Node>& input) {
   auto shape = input->get_shape();
-  if (shape.back() == 1) {
+  if (shape.back() == 1 && shape.size() > 1) {
     shape.pop_back();
     return platform::NgReshaper(input, shape);
   } else {
@@ -73,6 +73,7 @@ std::shared_ptr<ngraph::Node> create_xe(
   shape.back() = 1;
   return platform::NgReshaper(-node_sum, shape);
 }
+
 std::shared_ptr<ngraph::Node> create_mask(
     const std::shared_ptr<ngraph::Node>& label, int ignore_index) {
   auto ignore_node = paddle::platform::CreateConstant(

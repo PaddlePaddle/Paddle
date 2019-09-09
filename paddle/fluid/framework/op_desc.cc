@@ -816,7 +816,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
   var->SetShapes(dim_vec);
 }
 

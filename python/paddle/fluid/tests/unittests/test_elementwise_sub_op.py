@@ -117,5 +117,15 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
         }
 
 
+class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
+            'Y': np.random.rand(2, 3, 1, 5).astype(np.float32)
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
 if __name__ == '__main__':
     unittest.main()

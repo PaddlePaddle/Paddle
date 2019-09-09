@@ -774,13 +774,9 @@ class SquareDoubleGradMaker
   }
 };
 
-class ActivationGradOpInplaceInference : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle

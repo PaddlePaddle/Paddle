@@ -102,7 +102,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
   void set(const Tensor& tensor, const int groups = 1) {
-    auto dims = framework::vectorize2int(tensor.dims());
+    auto dims = framework::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -142,7 +142,7 @@ class FilterDescriptor {
 
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
-    auto dims = framework::vectorize2int(tensor.dims());
+    auto dims = framework::vectorize<int>(tensor.dims());
     if (groups > 1) {
       dims[1] = dims[1] / groups;
     }
