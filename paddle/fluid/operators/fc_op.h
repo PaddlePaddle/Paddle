@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/fc.h"
@@ -48,6 +49,9 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto* bias = ctx.Input<Tensor>("Bias");
     auto* output = ctx.Output<framework::LoDTensor>("Out");
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool with_relu =
+        (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
+
     auto w_dims = w->dims();
 
     std::vector<int64_t> output_dims;
@@ -65,9 +69,7 @@ class FCOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
-       bias ? bias->data<T>() : NULL);
-
-    // TODO(TJ): fuse act
+       bias ? bias->data<T>() : NULL, with_relu);
   }
 };
 

@@ -46,6 +46,12 @@ class FCOp : public framework::OperatorWithKernel {
       }
     }
 
+    auto& activation_type = ctx->Attrs().Get<std::string>("activation_type");
+    if (!activation_type.empty()) {
+      PADDLE_ENFORCE_EQ(activation_type, "relu",
+                        "Activation %s is not supportetd in fc now.",
+                        activation_type.c_str());
+    }
     if (ctx->Attrs().Get<bool>("use_mkldnn")) {
       PADDLE_ENFORCE_EQ(in_dims.size() == 2 || in_dims.size() == 4, true,
                         "Fully Connected input should be 2-D or 4-D tensor.");
@@ -124,13 +130,16 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
     AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
         .AsDispensable();
+    AddOutput("Out",
+              "(Tensor) The output tensor of fully connected operator. ");
     AddAttr<int>("in_num_col_dims",
                  "(int, default 1), The fc op can take tensors with more than "
                  "two dimensions as its inputs.")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddOutput("Out",
-              "(Tensor) The output tensor of fully connected operator. ");
+    AddAttr<std::string>("activation_type",
+                         "Avctivation type used in fully connected operator.")
+        .SetDefault("");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
