@@ -68,7 +68,8 @@ bool HasSubBlock(const proto::OpDesc& op_desc) {
 // the child block to help pruning
 void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
                 int block_id, int parent_block_id,
-                std::set<std::string>* dependent_vars) {
+                std::set<std::string>* dependent_vars,
+                const std::set<std::string> feed_var_names) {
   auto& block = input.blocks(block_id);
   auto& ops = block.ops();
 
@@ -94,7 +95,9 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       // insert its input to the dependency graph
       for (auto& var : op_desc.inputs()) {
         for (auto& argu : var.arguments()) {
-          dependent_vars->insert(argu);
+          if (feed_var_names.count(argu) == 0) {
+            dependent_vars->insert(argu);
+          }
         }
       }
       should_run.push_back(true);
@@ -127,18 +130,22 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
         std::set<std::string> sub_block_dependent_vars;
         for (auto& var : op->inputs()) {
           for (auto& argu : var.arguments()) {
-            sub_block_dependent_vars.insert(argu);
+            if (feed_var_names.count(argu) == 0) {
+              sub_block_dependent_vars.insert(argu);
+            }
           }
         }
         for (auto& var : op->outputs()) {
           for (auto& argu : var.arguments()) {
-            sub_block_dependent_vars.insert(argu);
+            if (feed_var_names.count(argu) == 0) {
+              sub_block_dependent_vars.insert(argu);
+            }
           }
         }
         // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
         // output_block_id is the idx of the current block in the output desc
         prune_impl(input, output, GetSubBlockIndex(*op), output_block_id,
-                   &sub_block_dependent_vars);
+                   &sub_block_dependent_vars, feed_var_names);
       }
     }
   }
@@ -178,10 +185,12 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
+void Prune(const proto::ProgramDesc& input,
+           const std::set<std::string>& feed_var_names,
+           proto::ProgramDesc* output) {
   std::set<std::string> dependent_vars;
   output->clear_blocks();
-  prune_impl(input, output, 0, -1, &dependent_vars);
+  prune_impl(input, output, 0, -1, &dependent_vars, feed_var_names);
 }
 }  // namespace framework
 }  // namespace paddle

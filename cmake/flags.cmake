@@ -155,7 +155,6 @@ set(COMMON_FLAGS
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     ${fsanitize}
 )
 
@@ -204,7 +203,7 @@ foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-if(WIN32)
+if(WIN32 AND MSVC_STATIC_CRT)
 # windows build turn off warnings.
 safe_set_static_flag()
     foreach(flag_var
@@ -215,4 +214,4 @@ safe_set_static_flag()
         string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
         set(flag_var "${flag_var} /w")
     endforeach(flag_var)
-endif(WIN32)
+endif()

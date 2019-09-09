@@ -81,7 +81,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
     std::vector<int> len_dims_vec{out_dim_0, 1};
-    auto time_step_dims_vec = framework::vectorize2int(time_step_dims);
+    auto time_step_dims_vec = framework::vectorize<int>(time_step_dims);
     out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));

@@ -111,7 +111,7 @@ class SqueezeOp : public framework::OperatorBase {
     auto out_dims = SqueezeOpInferShape::GetOutputShape(axes, x_dims, true);
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(out_dims);
+    attrs["shape"] = framework::vectorize<int>(out_dims);
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -177,7 +177,7 @@ class SqueezeGradOp : public framework::OperatorBase {
     auto dout_name = Input(framework::GradVarName("Out"));
     auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["shape"] = framework::vectorize<int>(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
@@ -231,7 +231,7 @@ class Squeeze2Op : public framework::OperatorBase {
     auto out_dims = Squeeze2OpInferShape::GetOutputShape(axes, x_dims, true);
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(out_dims);
+    attrs["shape"] = framework::vectorize<int>(out_dims);
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape2", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -284,14 +284,21 @@ class Squeeze2GradOp : public framework::OperatorBase {
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["shape"] = framework::vectorize<int>(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
+        "reshape2_grad", {{framework::GradVarName("Out"), {dout_name}},
+                          {"Shape", {}},
+                          {"XShape", {xshape_name}}},
+        {{framework::GradVarName("X"), {dx_name}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(SequeezeInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SequeezeGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -306,6 +313,7 @@ REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp, ops::SqueezeGradInferShape);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
-                  ops::Squeeze2OpInferShape, ops::Squeeze2GradOpMaker);
+                  ops::Squeeze2OpInferShape, ops::Squeeze2GradOpMaker,
+                  ops::SequeezeInplaceInferer);
 REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
-                  ops::Squeeze2GradInferShape);
+                  ops::Squeeze2GradInferShape, ops::SequeezeGradInplaceInferer);

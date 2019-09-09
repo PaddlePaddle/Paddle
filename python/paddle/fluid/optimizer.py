@@ -615,9 +615,6 @@ class Optimizer(object):
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
-        if framework.in_dygraph_mode():
-            framework._dygraph_tracer()._clear_ops()
-
         return optimize_ops, params_grads
 
 
