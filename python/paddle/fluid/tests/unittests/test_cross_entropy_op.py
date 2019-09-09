@@ -86,8 +86,10 @@ class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
-            [[-np.log(self.x[i][self.label[i]])]
-             for i in range(self.x.shape[0])],
+            [
+                -np.log(self.x[i][self.label[i]])
+                for i in range(self.x.shape[0])
+            ],
             dtype="float64")
 
 
@@ -190,6 +192,12 @@ class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
         self.label_2d = np.random.randint(
             0, self.class_num, (self.ins_num, 1), dtype="int64")
         self.label = self.label_2d.reshape(self.shape)
+
+    def get_cross_entropy(self):
+        cross_entropy_2d = np.asmatrix(
+            [[-np.log(self.X_2d[i][self.label_2d[i][0]])]
+             for i in range(self.X_2d.shape[0])]).astype(self.dtype)
+        self.cross_entropy = np.array(cross_entropy_2d).reshape(self.shape)
 
 
 class TestCrossEntropyOp5(TestCrossEntropyOp):
@@ -308,6 +316,8 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
             [[-np.log(self.x[i][self.label[i]])]
              if self.label[i] != self.ignore_index else [0]
              for i in range(self.x.shape[0])]).astype(self.dtype)
+        self.cross_entropy = np.array(self.cross_entropy).reshape(
+            [self.batch_size]).astype(self.dtype)
 
 
 # Add Fp16 test

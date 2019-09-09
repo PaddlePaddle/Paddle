@@ -47,10 +47,10 @@ class CrossEntropy2OpTestBase(OpTest):
             np.reshape(logits, [batch_size, feature_size]),
             np.reshape(label, [batch_size, 1]), self.ignore_index)
         self.inputs = {'X': logits, 'Label': label}
-        out_shape = self.shape[0:-1] + [1]
+        out_shape = label_shape
         self.outputs = {
             'Y': np.reshape(outputs, out_shape),
-            'MatchX': np.reshape(match_x, out_shape),
+            'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
             'XShape': np.zeros(
                 shape=logits.shape, dtype=logits.dtype)
         }

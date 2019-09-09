@@ -39,12 +39,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
-    PADDLE_ENFORCE_LE(rank - label_dims.size(), 1,
-                      "The rank of Input(X) over Input(Label) shoule be less "
-                      "than or equal to 1.");
-    PADDLE_ENFORCE_GE(
-        rank, label_dims.size(),
-        "The rank of Input(X) shoule be greater than or equal to Input(Label)");
+
     if (check) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                         framework::slice_ddim(label_dims, 0, rank - 1),
@@ -62,10 +57,21 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
                           "If Attr(soft_label) == true, the last dimension of "
                           "Input(X) and Input(Label) should be equal.");
       }
+    } else {
+      if (rank == label_dims.size()) {
+        PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1UL,
+                          "the last dimension of Input(Label) should be 1.");
+      } else {
+        PADDLE_ENFORCE_EQ(
+            rank, label_dims.size() + 1,
+            "The rank of Input(X) should be equal to Input(Label) plus 1.");
+      }
     }
 
-    auto y_dims = x_dims;
-    y_dims[rank - 1] = 1;
+    auto y_dims = label_dims;
+    if (rank == label_dims.size()) {
+      y_dims[rank - 1] = 1;
+    }
     ctx->SetOutputDim("Y", y_dims);
     ctx->ShareLoD("X", /*->*/ "Y");
   }
@@ -100,8 +106,8 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(dy_dims.size(), rank,
-                      "Input(Y@Grad) and Input(X) should have the same rank.");
+    PADDLE_ENFORCE_EQ(dy_dims.size(), label_dims.size(),
+                      "Input(Y@Grad) and Input(Y) should have the same rank.");
 
     bool check = true;
     if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
@@ -116,8 +122,6 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
                         "shape except the last dimension.");
     }
 
-    PADDLE_ENFORCE_EQ(dy_dims[rank - 1], 1,
-                      "The last dimension of Input(Y@Grad) should be 1.");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD(VarNameWithXLoD(), framework::GradVarName("X"));
   }

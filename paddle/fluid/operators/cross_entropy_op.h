@@ -37,15 +37,18 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     int rank = x->dims().size();
     auto label_dims = labels->dims();
     Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d;
+    Tensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
-      labels_2d.Resize(
-          framework::make_ddim({framework::product(label_dims), 1}));
+      labels_2d.Resize({framework::product(label_dims), 1});
+
+      y_2d.ShareDataWith(*y);
+      y_2d.Resize({framework::product(y->dims()), 1});
+
     } else {
       labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+      y_2d = framework::ReshapeToMatrix(*y, rank - 1);
     }
-    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
     int axis_dim = x->dims()[rank - 1];
     math::CrossEntropyFunctor<DeviceContext, T>()(
