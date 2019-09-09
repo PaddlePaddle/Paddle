@@ -31,8 +31,7 @@ endforeach()
 register_operators(EXCLUDES gen_nccl_id_op DEPS ${DISTRIBUTE_DEPS})
 
 if(WITH_GPU AND NOT WIN32)
-    set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} nccl_common)
-    op_library(gen_nccl_id_op DEPS ${DISTRIBUTE_DEPS} nccl_common)
+    op_library(gen_nccl_id_op DEPS ${DISTRIBUTE_DEPS})
 endif()
 
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${DISTRIBUTE_DEPS} PARENT_SCOPE)

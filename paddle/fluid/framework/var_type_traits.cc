@@ -22,7 +22,6 @@
 #include "paddle/fluid/platform/macros.h"
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 #include <cudnn.h>
