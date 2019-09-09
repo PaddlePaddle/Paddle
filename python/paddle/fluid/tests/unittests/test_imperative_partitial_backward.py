@@ -41,8 +41,8 @@ class TestImperativePartitialBackward(unittest.TestCase):
             optimizer = fluid.optimizer.AdamOptimizer()
             _, params_grads = optimizer.minimize(loss)
 
-            self.assertListEqual(fc1.parameters(),
-                                 [p_g[0] for p_g in params_grads])
+            self.assertListEqual([p.name for p in fc1.parameters()],
+                                 [p_g[0].name for p_g in params_grads])
 
             fc1.clear_gradients()
             fc2.clear_gradients()
