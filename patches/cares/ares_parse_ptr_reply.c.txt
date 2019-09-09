@@ -52,7 +52,8 @@ int ares_parse_ptr_reply(const unsigned char *abuf, int alen, const void *addr,
   int aliascnt = 0;
   int alias_alloc = 8;
   char ** aliases;
-
+  size_t rr_data_len;
+  
   /* Set *host to NULL for all failure cases. */
   *host = NULL;
 
