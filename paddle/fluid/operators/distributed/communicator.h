@@ -182,8 +182,8 @@ struct LookupTableCtx {
             const std::vector<std::string> &epmap,
             const std::vector<int64_t> &sections)
       : id_name_(id_name),w_name_(w_name),
-        epmap_(epmap),
         table_names_(table_names),
+        epmap_(epmap),
         height_sections_(sections){}
 
   std::vector<std::string> id_name_;
