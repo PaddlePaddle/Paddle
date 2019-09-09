@@ -316,10 +316,10 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   if (graph->Has(details::kPinnedVars)) {
     pinned_var_set = &graph->Get<details::PinnedVars>(details::kPinnedVars);
   }
-  auto is_pseudo_persistable_var =
-      [&pinned_var_set](const std::string &var_name) {
-        return pinned_var_set && pinned_var_set->count(var_name);
-      };
+  auto is_pinned_var = [&pinned_var_set](const VarDesc &var_desc) {
+    return var_desc.Persistable() ||
+           (pinned_var_set && pinned_var_set->count(var_desc.Name()));
+  };
 
   VLOG(1) << "Place number: " << vars.size();
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -327,8 +327,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       // Whether this variable can be reused or deleted? If not, we do not
       // compute reference counts and dependencies.
       VarDesc *var_desc = TryGetLatestVarDesc(name_var_pair.second);
-      if (var_desc == nullptr || var_desc->Persistable() ||
-          is_pseudo_persistable_var(var_desc->Name())) {
+      if (var_desc == nullptr || is_pinned_var(*var_desc)) {
         continue;
       }
 
