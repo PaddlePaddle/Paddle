@@ -123,7 +123,6 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     const LoDTensor *ids_t = context.Input<LoDTensor>("Ids");  // int tensor
     LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
     const LoDTensor *table_var = context.Input<LoDTensor>("W");
-    const std::string &combiner_type = context.Attr<std::string>("combiner");
 
     int64_t last_dim =
         FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
@@ -136,47 +135,44 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     // should be [seq_length, 1] -> [batch_size, last_dim]
     output_t->Resize({batch_size, last_dim});
 
-    if (combiner_type == "sum") {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
-      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-      auto output = output_t->mutable_data<T>(context.GetPlace());
-      int64_t table_height = table_var->dims()[0];
-      int64_t table_width = table_var->dims()[1];
-      auto weights = table_var->data<T>();
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+    auto output = output_t->mutable_data<T>(context.GetPlace());
+    int64_t table_height = table_var->dims()[0];
+    int64_t table_width = table_var->dims()[1];
+    auto weights = table_var->data<T>();
 
-      const std::vector<uint64_t> offset = ids_lod[0];
-      auto len = ids_t->numel();
-      int idx_width = len / offset.back();
+    const std::vector<uint64_t> offset = ids_lod[0];
+    auto len = ids_t->numel();
+    int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
-      csr_vals_t.Resize({len});
-      csr_colmuns_t.Resize({len});
-      csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
-      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
-      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
-      prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx, padding_idx);
+    Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+    csr_vals_t.Resize({len});
+    csr_colmuns_t.Resize({len});
+    csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
+    auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
+    auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
+    auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
+    prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
+                        csr_colmuns, csr_row_idx, padding_idx);
 
-      const char transa = 'N';
-      const T alpha = 1.0;
-      const T beta = 0.0;
-      const char matdescra[] = {'G', 'L', 'N', 'C'};
+    const char transa = 'N';
+    const T alpha = 1.0;
+    const T beta = 0.0;
+    const char matdescra[] = {'G', 'L', 'N', 'C'};
 
-      const int m = batch_size * idx_width;
-      const int n = table_width;
-      const int k = table_height;
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
-                 (const int *)csr_colmuns, (const int *)csr_row_idx,
-                 (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
-
+    const int m = batch_size * idx_width;
+    const int n = table_width;
+    const int k = table_height;
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
+               (const int *)csr_colmuns, (const int *)csr_row_idx,
+               (const int *)csr_row_idx + 1, weights, &n, &beta, output, &n);
 #else
-      EmbeddingVSumFunctor<T> functor;
-      functor(context, table_var, ids_t, output_t);
+    EmbeddingVSumFunctor<T> functor;
+    functor(context, table_var, ids_t, output_t);
 #endif
-    }
   }
 };
 
@@ -184,11 +180,10 @@ template <typename T>
 class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *table_var = context.InputVar("W");
-    DDim table_dim;
-
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
+    auto *table_var = context.InputVar("W");
+    DDim table_dim;
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
     } else {
@@ -203,7 +198,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
 
     d_table->Resize(table_dim);
     auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
-
+    memset(d_table_data, 0, d_table->numel() * sizeof(T));
     const auto &ids_lod = ids->lod();
     PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
                       "The LoD level of Input(Ids) must be 1");
@@ -221,7 +216,6 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
     prepare_csr_data<T>(offset, ids->data<int64_t>(), idx_width, csr_vals,
                         csr_colmuns, csr_row_idx, padding_idx);
-
     auto *d_output_data = d_output->data<T>();
     const char transa = 'T';
     const T alpha = 1.0;
@@ -238,6 +232,8 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                (const int *)csr_row_idx + 1, d_output_data, &n, &beta,
                d_table_data, &n);
 #else
+    auto *table_var = context.InputVar("W");
+    DDim table_dim;
     if (table_var->IsType<LoDTensor>()) {
       table_dim = context.Input<LoDTensor>("W")->dims();
     } else if (table_var->IsType<SelectedRows>()) {

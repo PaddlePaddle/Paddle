@@ -46,8 +46,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         }
 
     def test_check_output(self):
-        if ver.mkl() == 'ON' and 'Linux' in platform.platform():
-            self.check_output()
+        self.check_output()
 
     def test_check_grad(self):
         if ver.mkl() == 'ON' and 'Linux' in platform.platform():
