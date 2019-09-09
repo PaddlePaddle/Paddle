@@ -455,6 +455,23 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
+  
+  for (auto *op : program.Block(0).AllOps()) {
+      VLOG(3) << "node name " << op->Type();
+      if (op->Type() == "lookup_table") {
+        auto var_name = op->Input("W");
+        auto var_ids = op->Input("Ids");
+        auto epmap =
+            boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+        auto height_section =
+            boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
+        auto table_names =
+            boost::get<std::vector<std::string>>(op->GetNullableAttr("table_names"));    
+        LookupTableCtx lookup_info = LookupTableCtx(var_ids,var_name,table_names,epmap,height_section);
+        VLOG(1) << "find and init an lookup param: " << lookup_info;
+      }  
+    }
+
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
       VLOG(1) <<"var_name: "<<var_name;
@@ -490,7 +507,7 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
 
 void Communicator::GeoSgdSend(const std::string& var_name, 
                               const framework::Scope& scope) {
-  VLOG(4) << "geo sgd communicator get loop num "<< var_name;
+  VLOG(1) << "geo sgd communicator get loop num "<< var_name;
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
@@ -519,7 +536,42 @@ void Communicator::GeoSgdSend(const std::string& var_name,
         queue->Push(tmp_param_var);
       }
       need_push_.store(0);
+      sparse_table_.clear();
     }
+  }
+  else {
+    std::vector<std::string>sparse_info = split(var_name,"-");
+    std::string sparse_name = sparse_info.front();
+    std::string ids_name = sparse_info.back();
+    VLOG(1) <<"geo_sgd sparse name: "<<sparse_name<<" ids name: "<<ids_name;
+    // recored sparse param
+    if(sparse_var_.find(sparse_name)==sparse_var_.end()) {
+      sparse_var_.insert(sparse_name);
+      VLOG(1)<<"sparse_var_ insert var: "<< sparse_name;
+    }
+
+    // prefetch sparse value if not exist
+    if(sparse_table_.find(sparse_name) == sparse_table_.end()) {
+      auto *var_ids_recv = recv_scope_->FindVar(ids_name);
+      auto var_ids_tensor = var_ids_recv->Get<framework::LoDTensor>();
+      int* mutable_data = var_ids_tensor.mutable_data<int>(var_ids_tensor.place());
+      int element_number = var_ids_tensor.numel();
+      for(int i=0; i<element_number;i++) {
+        VLOG(1) <<"mutable data "<<i<<": "<< mutable_data[i];
+      }
+      //std::unordered_map<int,float> info{};
+      //sparse_table_[sparse_name] = info;
+      //Todo init sparse table
+      //Todo remote prefetch 
+      /*
+      operators::distributed::prefetch(id_name, out_name, table_names, epmap,
+                                       height_sections, context,
+                                       context.scope());
+      */
+      //Todo update recv & old scope
+
+    }
+    
   }
 }
 
@@ -558,7 +610,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   auto *var_y = old_scope_.get()->FindVar(var_name);
   auto *var_z = delta_scope_.get()->FindVar(VarToDeltaVar(var_name));
 
-  if (var_x->IsType<framework::LoDTensor>() && var_y->IsType<framework::LoDTensor>()){
+  if (var_x->IsType<framework::LoDTensor>()){
     auto var_x_tensor = var_x->Get<framework::LoDTensor>();
     auto var_y_tensor = var_y->Get<framework::LoDTensor>();
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
@@ -572,13 +624,6 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
-      /*
-      if(var_name == "SparseFeatFactors" && fabs(x_mutable_data[i]- y_mutable_data[i])>0.000001 && i<1000) {
-        VLOG(1) << "SparseFeatFactors Ids after send "<< i <<" recv_scope: "<<x_mutable_data[i]
-                <<" ;old_scope: "<< y_mutable_data[i]
-                <<" ;delta_scope: "<< z_mutable_data[i];
-      }
-      */
     }
     VLOG(4) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data

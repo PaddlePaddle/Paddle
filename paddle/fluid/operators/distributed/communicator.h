@@ -155,7 +155,82 @@ inline void MergeVars(const std::string& var_name,
   }
 }
 
+inline std::vector<std::string> split(const std::string& str, const std::string& delim) {  
+	std::vector<std::string> res;  
+	if("" == str) return res;   
+	char * strs = new char[str.length() + 1] ;  
+	strcpy(strs, str.c_str());   
+ 
+	char * d = new char[delim.length() + 1];  
+	strcpy(d, delim.c_str());  
+ 
+	char *p = strtok(strs, d);  
+	while(p) {  
+		std::string s = p;  
+		res.push_back(s);  
+		p = strtok(NULL, d);  
+	}  
+	return res;  
+} 
+
+struct LookupTableCtx {
+  LookupTableCtx() = default;
+
+  LookupTableCtx(const std::vector<std::string> &id_name, 
+            const std::vector<std::string> &w_name,
+            const std::vector<std::string> &table_names,
+            const std::vector<std::string> &epmap,
+            const std::vector<int64_t> &sections)
+      : id_name_(id_name),w_name_(w_name),
+        epmap_(epmap),
+        table_names_(table_names),
+        height_sections_(sections){}
+
+  std::vector<std::string> id_name_;
+  std::vector<std::string> w_name_;
+  std::vector<std::string> table_names_;
+  std::vector<std::string> epmap_;
+  std::vector<int64_t> height_sections_;
+};
+
+inline std::ostream &operator<<(std::ostream &os, const LookupTableCtx &lookup_ctx) {
+  os << "{";
+  
+  os << "id_var_names: [";
+  for (auto &name : lookup_ctx.id_name_) {
+    os << name << ", ";
+  }
+  os << "]\n";
+
+  os << "w_var_names: [";
+  for (auto &name : lookup_ctx.w_name_) {
+    os << name << ", ";
+  }
+  os << "]\n";
+
+  os << "table_names: [";
+  for (auto &name : lookup_ctx.table_names_) {
+    os << name << ", ";
+  }
+  os << "]\n";
+
+  os << "epmap: [";
+  for (auto &ep : lookup_ctx.epmap_) {
+    os << ep << ", ";
+  }
+  os << "]\n";
+
+  os << "height_sections: [";
+  for (auto &section : lookup_ctx.height_sections_) {
+    os << section << ", ";
+  }
+  os << "]\n";
+  os << "}";
+  return os;
+}
+
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
+using LookupTableCtxMap = std::unordered_map<std::string, LookupTableCtx>;
 
 class Communicator {
  public:
@@ -255,7 +330,10 @@ class Communicator {
   int is_need_push_ = 0;
   std::atomic_uint need_push_{0};
   std::atomic_uint have_push_{0};
- 
+  LookupTableCtxMap sparse_varnames_ctx_;
+  std::unordered_set<std::string> sparse_var_;
+  std::unordered_map<std::string,std::unordered_map<int,float>> sparse_table_;
+
 };
 
 }  // namespace distributed

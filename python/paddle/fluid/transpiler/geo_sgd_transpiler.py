@@ -134,10 +134,24 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # step 1. split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars()
 
-        # sparse update using local lookup_table
-        for op in self.origin_program.global_block().ops:
+        # send sparse id to communicator
+        for index, op in enumerate(self.origin_program.global_block().ops):
             if op.type == "lookup_table":
                 op._set_attr('remote_prefetch',False)
+                for input_var,sparse_var in zip(op.input("Ids"),op.input("W")):
+                    # input_var = program.global_block().var(input_var)
+                    # sparse_var = program.global_block().var(sparse_var)
+                    send_sparse = "-".join(sparse_var,input_var)
+                    dummy_output = program.global_block().create_var(
+                        name=framework.generate_control_dev_var_name())
+                    program.global_block()._insert_op(
+                        index=index + 1,
+                        type="send",
+                        inputs={"X":send_sparse},
+                        outputs={"Out": dummy_output},
+                        attrs={
+                            "send_varnames": [sparse_var],
+                        })
 
         # step 3. create send var (param after optimize)
         send_vars = []
