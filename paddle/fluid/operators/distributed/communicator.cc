@@ -455,22 +455,6 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
-  
-  for (auto *op : program.Block(0).AllOps()) {
-      VLOG(3) << "node name " << op->Type();
-      if (op->Type() == "lookup_table") {
-        auto var_name = op->Input("W");
-        auto var_ids = op->Input("Ids");
-        auto epmap =
-            boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-        auto height_section =
-            boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
-        auto table_names =
-            boost::get<std::vector<std::string>>(op->GetNullableAttr("table_names"));    
-        LookupTableCtx lookup_info = LookupTableCtx(var_ids,var_name,table_names,epmap,height_section);
-        VLOG(1) << "find and init an lookup param: " << lookup_info;
-      }  
-    }
 
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
@@ -553,6 +537,8 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     // prefetch sparse value if not exist
     if(sparse_table_.find(sparse_name) == sparse_table_.end()) {
       auto *var_ids_recv = recv_scope_->FindVar(ids_name);
+
+      // for test
       auto var_ids_tensor = var_ids_recv->Get<framework::LoDTensor>();
       int* mutable_data = var_ids_tensor.mutable_data<int>(var_ids_tensor.place());
       int element_number = var_ids_tensor.numel();
