@@ -53,18 +53,6 @@ std::vector<std::string> ExtractParameters(
   return parameters;
 }
 
-void ClearOpsDesc(framework::BlockDesc* block) {
-  const std::vector<framework::OpDesc *> ops = block->AllOps();
-  block->RemoveOp(0, ops.size() - 1);
-}
-
-void ClearVarDesc(framework::BlockDesc* block) {
-  const std::vector<framework::VarDesc *>& vars = block->AllVars();
-  for (auto* var: vars) {
-    block->RemoveVar(var->Name());
-  }
-}
-
 std::unordered_set<Node *> GetRelatedIOVarNodes(
     const std::vector<Node *> &nodes) {
   std::unordered_set<Node *> io_nodes;

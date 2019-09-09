@@ -22,6 +22,7 @@ namespace lite {
 
 // Just tell by the op_types.
 struct SimpleOpTeller : public Teller {
+  
   SimpleOpTeller() {
     ops_.insert("leaky_relu");
     ops_.insert("fill_constant");
@@ -32,6 +33,7 @@ struct SimpleOpTeller : public Teller {
     ops_.insert("scale");
     ops_.insert("sum");
   }
+  
 
   bool operator()(const std::string& op_type,
                   const framework::OpDesc& op_desc) override {
@@ -39,7 +41,24 @@ struct SimpleOpTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> ops_;
+  std::unordered_set<std::string> ops_ {
+    "read_from_array",
+    "shrink_rnn_memory",
+    "sequence_expand",
+    "concat",
+    "mul",
+    "elementwise_add",
+    "relu",
+    "sequence_softmax",
+    "elementwise_mul",
+    "sequence_pool",
+    "sum",
+    "sigmoid",
+    "tanh",
+    "write_to_array",
+    "increment",
+    "less_than"
+  };
 };
 
 struct SingleBlockOpTeller : public Teller {
@@ -80,7 +99,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
 }
 
 OpTeller::OpTeller() {
-  tellers_.emplace_back(new SimpleOpTeller);
+  //tellers_.emplace_back(new SimpleOpTeller);
   tellers_.emplace_back(new SingleBlockOpTeller);
 }
 

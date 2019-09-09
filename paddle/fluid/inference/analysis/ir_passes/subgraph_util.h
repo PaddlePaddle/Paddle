@@ -37,10 +37,6 @@ std::vector<std::string> ExtractParameters(
 std::unordered_set<framework::ir::Node *> GetRelatedIOVarNodes(
     const std::vector<framework::ir::Node *> &nodes);
 
-void ClearOpsDesc(framework::BlockDesc* block);
-
-void ClearVarDesc(framework::BlockDesc* block);
-
 void PrependFeedOps(framework::BlockDesc* global_block,
                     const std::vector<std::string>& feed_target_names,
                     std::string feed_holder_name = "feed");
