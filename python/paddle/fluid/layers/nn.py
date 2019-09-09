@@ -168,6 +168,7 @@ __all__ = [
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
+    'strided_slice',
     'shape',
     'rank',
     'size',
@@ -10253,7 +10254,7 @@ def slice(input, axes, starts, ends):
     return out
 
 
-def strided_slice(input, begin, end, strides):
+def strided_slice(input, begin, end, stride):
     """
     Strided Slice OP
     Atrgs:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Input"),
-                            "Input (Input) of slice op should not be null.");
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasOutput("Out"),
-                            "Output (Out) of slice op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Input"),
+                   "Input (Input) of slice op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output (Out) of slice op should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
