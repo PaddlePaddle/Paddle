@@ -50,8 +50,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    auto fw_op_desc = framework::OpDesc();
-    fw_op_desc.SetType(type);
+    auto fw_op_desc = framework::OpDesc(type, {}, {}, op->Attrs());
     TraceBackward(op, fw_op_desc, ins, outs);
   }
 }
@@ -85,7 +84,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     auto& temp_out = grad_op_descs_[i]->DygraphOutput();
     std::shared_ptr<OpBase> grad_op =
         OpBase::Create(trace_id, grad_op_descs_[i]->Type(), temp_in, temp_out,
-                       fwd_op->Attrs(), fwd_op->place());
+                       grad_op_descs_[i]->GetAttrMap(), fwd_op->place());
 
     grad_op_descs_[i]->GetDygraphInput(grad_op->GetMutableInsMap());
     grad_op_descs_[i]->GetDygraphOutput(grad_op->GetMutableOutsMap());
@@ -114,10 +113,10 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     std::vector<OpBase*> vec_preceding_ops(visited_preceding_ops.begin(),
                                            visited_preceding_ops.end());
 
-    grad_op->SetPrecedingOps(vec_preceding_ops);
+    grad_op->SetGradPendingOps(vec_preceding_ops);
 
     // this OpBase* is just used to manage op's life time
-    engine->InsertOp(grad_op.get(), grad_op);
+    engine_->InsertOp(grad_op.get(), grad_op);
   }
 }
 

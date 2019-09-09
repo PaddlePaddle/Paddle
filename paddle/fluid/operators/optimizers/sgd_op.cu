@@ -72,8 +72,12 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
+      // LOG(ERROR) << "grad";
+      // LOG(ERROR) << ctx.op().Input("Grad");
       auto* grad_data = grad->data<T>();
+      // LOG(ERROR) << "param";
       auto* param_data = param->data<T>();
+      // LOG(ERROR) << "fin";
       auto* param_out_data = param_out->data<T>();
 
       int block = 512;

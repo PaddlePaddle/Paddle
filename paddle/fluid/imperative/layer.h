@@ -127,9 +127,7 @@ class VarBase {
     if (grad_var_) {
       grad_var_->SetName(GradVarName());
     }
-    return rlt;
   }
-  void ClearGradOps() { grad_ops_.clear(); }
 
   std::string GradVarName() { return framework::GradVarName(name_); }
 
@@ -357,6 +355,10 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   const std::vector<OpBase*>& GradPendingOps() const {
     return grad_pending_ops_;
+  }
+
+  void SetGradPendingOps(const std::vector<OpBase*>& vec_temp) {
+    grad_pending_ops_.swap(vec_temp);
   }
 
   void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }

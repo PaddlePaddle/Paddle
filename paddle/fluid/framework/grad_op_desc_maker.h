@@ -60,14 +60,16 @@ class GradOpDescMakerBase {
     if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
       std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
       auto iterator = var_base_in_->find(name);
-      PADDLE_ENFORCE(iterator != var_base_in_->end(),
-                     "can not find %s in input", name);
-      vec_temp.reserve(iterator->second.size());
-      for (auto& var_base_temp : iterator->second) {
-        var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
-        vec_temp.push_back(var_base_temp->GradVarBase());
+      // PADDLE_ENFORCE(iterator != var_base_in_->end(),
+      //               "can not find %s in input", name);
+      if (iterator != var_base_in_->end()) {
+        vec_temp.reserve(iterator->second.size());
+        for (auto& var_base_temp : iterator->second) {
+          var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
+          vec_temp.push_back(var_base_temp->GradVarBase());
+        }
+        str_var_base.vec_var_base_.swap(vec_temp);
       }
-      str_var_base.vec_var_base_.swap(vec_temp);
       str_var_base.dygraph_mode_ = true;
     } else {
       std::vector<std::string> vec_str_temp =
@@ -84,14 +86,16 @@ class GradOpDescMakerBase {
     if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
       std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
       auto iterator = var_base_out_->find(name);
-      PADDLE_ENFORCE(iterator != var_base_out_->end(),
-                     "can not find %s in output", name);
-      vec_temp.reserve(iterator->second.size());
-      for (auto& var_base_temp : iterator->second) {
-        var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
-        vec_temp.push_back(var_base_temp->GradVarBase());
+      // PADDLE_ENFORCE(iterator != var_base_out_->end(),
+      //               "can not find %s in output", name);
+      if (iterator != var_base_out_->end()) {
+        vec_temp.reserve(iterator->second.size());
+        for (auto& var_base_temp : iterator->second) {
+          var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
+          vec_temp.push_back(var_base_temp->GradVarBase());
+        }
+        str_var_base.vec_var_base_.swap(vec_temp);
       }
-      str_var_base.vec_var_base_.swap(vec_temp);
       str_var_base.dygraph_mode_ = true;
     } else {
       std::vector<std::string> vec_str_temp = OutputGradV1(name);
@@ -282,6 +286,7 @@ class DefaultGradOpDescMaker final : public SingleGradOpDescMaker {
         grad->SetInput(out_it.first, Output(out_it.first));
         grad->SetInput(GradVarName(out_it.first), OutputGrad(out_it.first));
       }
+      grad->SetAttrMap(this->Attrs());
     } else {
       for (auto& input_param : this->InputNames()) {
         grad->SetInput(input_param, this->Input(input_param));

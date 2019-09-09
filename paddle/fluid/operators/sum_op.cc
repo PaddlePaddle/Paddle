@@ -244,6 +244,7 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
       } else {
         str_var_base_temp.vec_name_ = {x_grads.vec_name_[i]};
       }
+      grad_op->SetOutput("Out", str_var_base_temp);
       grad_op->SetAttr("scale", 1.0f);
 
       grad_ops.push_back(std::unique_ptr<framework::OpDesc>(grad_op));
