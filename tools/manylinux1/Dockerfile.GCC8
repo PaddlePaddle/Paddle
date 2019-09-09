@@ -40,9 +40,6 @@ RUN rm g++
 RUN ln -s gcc-8 gcc
 RUN ln -s g++-8 g++
 
-# disable tzdata interactive
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
@@ -61,7 +58,7 @@ RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
 RUN rm -r /root/python_build
 
 RUN apt-get update && \
-    apt-get install -y --allow-downgrades --allow-change-held-packages \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades --allow-change-held-packages \
     patchelf python3 python3-dev python3-pip \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
