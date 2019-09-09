@@ -141,7 +141,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 for input_var,sparse_var in zip(op.input("Ids"),op.input("W")):
                     # input_var = program.global_block().var(input_var)
                     # sparse_var = program.global_block().var(sparse_var)
-                    send_sparse = "-".join(sparse_var,input_var)
+                    send_sparse = "-".join([sparse_var,input_var])
                     dummy_output = program.global_block().create_var(
                         name=framework.generate_control_dev_var_name())
                     program.global_block()._insert_op(
