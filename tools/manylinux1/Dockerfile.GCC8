@@ -166,7 +166,7 @@ RUN pip3.6 --no-cache-dir install certifi urllib3[secure]
 RUN pip3.7 --no-cache-dir install certifi urllib3[secure]
 RUN pip --no-cache-dir install certifi urllib3[secure]
 
-RUN echo export PATH=/usr/lib/ccache:$PATH >> ~/.bashrc
+RUN echo "export PATH=/usr/lib/ccache:${PATH}" >> ~/.bashrc
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
