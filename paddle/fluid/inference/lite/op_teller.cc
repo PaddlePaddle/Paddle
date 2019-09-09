@@ -22,18 +22,9 @@ namespace lite {
 
 // Just tell by the op_types.
 struct SimpleOpTeller : public Teller {
-  
   SimpleOpTeller() {
     ops_.insert("leaky_relu");
-    ops_.insert("fill_constant");
-    ops_.insert("write_to_array");
-    ops_.insert("increment");
-    ops_.insert("less_than");
-    ops_.insert("read_from_array");
-    ops_.insert("scale");
-    ops_.insert("sum");
   }
-  
 
   bool operator()(const std::string& op_type,
                   const framework::OpDesc& op_desc) override {
@@ -41,24 +32,7 @@ struct SimpleOpTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> ops_ {
-    "read_from_array",
-    "shrink_rnn_memory",
-    "sequence_expand",
-    "concat",
-    "mul",
-    "elementwise_add",
-    "relu",
-    "sequence_softmax",
-    "elementwise_mul",
-    "sequence_pool",
-    "sum",
-    "sigmoid",
-    "tanh",
-    "write_to_array",
-    "increment",
-    "less_than"
-  };
+  std::unordered_set<std::string> ops_ {};
 };
 
 struct SingleBlockOpTeller : public Teller {
@@ -71,12 +45,9 @@ struct SingleBlockOpTeller : public Teller {
     if (ops_.count(op_type)) {
       SimpleOpTeller supported;
       const int id = op_desc.GetBlockAttrId("sub_block");
-      LOG(INFO) << "===== " << op_type << " =====";
-      LOG(INFO) << "id: " << id;
       const framework::BlockDesc& block_desc = op_desc.Block()->Program()->Block(id);
       const std::vector<framework::OpDesc *>& ops_sub_block = block_desc.AllOps();
       for (auto* op: ops_sub_block) {
-        LOG(INFO) << "block " << id << ", op->Type: " << op->Type();
         if (!supported(op->Type(), *op) && !this->operator()(op->Type(), *op)) {
           return false;
         };
@@ -99,7 +70,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
 }
 
 OpTeller::OpTeller() {
-  //tellers_.emplace_back(new SimpleOpTeller);
+  tellers_.emplace_back(new SimpleOpTeller);
   tellers_.emplace_back(new SingleBlockOpTeller);
 }
 

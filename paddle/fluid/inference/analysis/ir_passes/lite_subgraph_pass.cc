@@ -34,8 +34,6 @@
 
 #include "paddle/fluid/inference/lite/engine.h"
 
-#include "google/protobuf/text_format.h"
-
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -79,6 +77,10 @@ void ModifyHostProgram(framework::ProgramDesc* host_program,
   }
 }
 
+// The modification of pass should be a process of framework::desc
+// (initial) -> proto::desc (flush) -> framework::desc (final).
+// Ir::Graph is limited to changing the main block, so the sub block
+// needs to be processed here.
 void ModifyEngineProgram(Node *merged_node,
   framework::ProgramDesc* host_program,
   framework::ProgramDesc* engine_program,
@@ -94,7 +96,6 @@ void ModifyEngineProgram(Node *merged_node,
     sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
   }
   for (auto *op_desc : subgraph_ops) {
-    LOG(INFO) << "ModifyEngineProgram: " << op_desc->Type();
     auto* sub_block_op = engine_global_block->AppendOp();
     sub_block_op->CopyFrom(*op_desc);
   }
@@ -137,22 +138,12 @@ void ModifyEngineProgram(Node *merged_node,
   }
 }
 
-// The modification of pass should be a process of framework::desc
-// (initial) -> proto::desc (flush) -> framework::desc (final).
-// Ir::Graph is limited to changing the main block, so the sub block
-// needs to be processed here.
 void OrganizeProgram(Node *merged_node,
   framework::ProgramDesc* host_program,
   framework::ProgramDesc* engine_program,
   std::vector<std::string> *repetitive_params) {
   std::vector<framework::ir::Node *>& subgraph = *Agent(merged_node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
-
-  LOG(INFO) << "===== SUBGRAPH START =====";
-  for (auto* node: subgraph) {
-    LOG(INFO) << node->Name();
-  }
-  LOG(INFO) << "===== SUBGRAPH END =====";
 
   const framework::BlockDesc &host_global_block = host_program->Block(framework::kRootBlockIndex);
   framework::BlockDesc* host_sub_block = host_program->AppendBlock(host_global_block);
@@ -174,11 +165,6 @@ void OrganizeProgram(Node *merged_node,
 
   host_program->Flush();
   engine_program->Flush();
-
-  std::string str;
-  google::protobuf::TextFormat::PrintToString(*engine_program->Proto(), &str);
-  std::cout << "=====" << std::endl;
-  std::cout << str;
 }
 } // namespace lite
 
@@ -187,6 +173,10 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
   inference::lite::EngineConfig config;
   auto *scope = param_scope();
 
+  // When the pass is started, only the persistent variables of the
+  // main block are read. Fluid seems to allow persistence variables
+  // in the sub block, but they are controlled by context, so the
+  // support is suspended here.
   auto serialize_params = [] (std::string* str, framework::Scope* scope,
        const std::vector<std::string>& params) {
     std::ostringstream os;
@@ -202,7 +192,6 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
 
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
-  lite::StrToBinaryFile("./model.bin", config.model);
   config.prefer_place = paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)});
   config.valid_places = {
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
