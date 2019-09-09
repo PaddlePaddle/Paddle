@@ -417,7 +417,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Get unique name for storing MKLDNN primitives
     std::string key;
     key.reserve(MaxKeyLength);
-    platform::ConvMKLDNNHandler::AppendKey(
+    platform::ConvMKLDNNHandler::CreateKey(
         &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
         input->format(), fuse_activation, fuse_residual_conn,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));

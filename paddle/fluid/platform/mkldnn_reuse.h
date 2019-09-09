@@ -47,35 +47,19 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_src_mem_p");
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_src2_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
-      const mkldnn::memory::desc& md, void* ptr,
-      user_function custom_func = {}) {
-    return this->AcquireMemory(md, ptr, "@user_weights_mem_p", custom_func);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
-  }
-
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_dst_mem_p");
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_diff_dst_mem_p");
-  }
-
   std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_diff_src_mem_p");
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_diff_dst_mem_p");
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
@@ -134,18 +118,6 @@ class MKLDNNHandler {
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
       mem_p->set_data_handle(ptr);
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(
-      const mkldnn::memory::primitive_desc& mpd, const std::string& suffix) {
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mpd);
-      dev_ctx_.SetBlob(local_key, mem_p);
     }
     return mem_p;
   }
@@ -226,44 +198,13 @@ class MKLDNNHandler {
         std::hash<std::thread::id>()(std::this_thread::get_id()));
   }
 
-  static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
+  static std::string GetHash(const mkldnn::memory::dims& operand_dims,
                              const std::string& suffix) {
     return dims2str(operand_dims) + suffix;
   }
 
-  static void AppendKey(
-      std::string* key, const mkldnn::memory::dims& input_dims,
-      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
-      const std::vector<int>& paddings, const std::vector<int>& dilations,
-      const int& groups, const mkldnn::memory::data_type& srcdt,
-      const MKLDNNMemoryFormat& format, const std::string& fuse_activation,
-      const bool& residual, const std::string& suffix) {
-    AppendKeyDims(key, input_dims);
-
-    AppendKeyDims(key, weights_dims);
-
-    AppendKeyVec(key, strides);
-
-    AppendKeyVec(key, paddings);
-
-    AppendKeyVec(key, dilations);
-
-    AppendKey(key, std::to_string(groups));
-    AppendKey(key, std::to_string(srcdt));
-    AppendKey(key, std::to_string(format));
-    AppendKey(key, fuse_activation);
-    AppendKey(key, std::to_string(residual));
-    AppendKey(key, suffix);
-  }
-
   static void AppendKeyDims(std::string* key,
                             const mkldnn::memory::dims& dims) {
-    for (unsigned int i = 0; i < dims.size(); i++) {
-      AppendKey(key, std::to_string(dims[i]));
-    }
-  }
-
-  static void AppendKeyVec(std::string* key, const std::vector<int>& dims) {
     for (unsigned int i = 0; i < dims.size(); i++) {
       AppendKey(key, std::to_string(dims[i]));
     }
@@ -322,6 +263,11 @@ class SumMKLDNNHandler : public MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
     return this->AcquireMemoryFromPrimitive(sum_pd_->dst_primitive_desc(), ptr,
                                             "@dst_mem_p");
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_src2_mem_p");
   }
 
   std::shared_ptr<mkldnn::sum> AcquireSum(
@@ -805,9 +751,9 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
     key.reserve(platform::MKLDNNHandler::MaxKeyLength);
     platform::MKLDNNHandler::AppendKeyDims(&key, input_dims);
     platform::MKLDNNHandler::AppendKey(&key, pooling_type);
-    platform::MKLDNNHandler::AppendKeyVec(&key, ksize);
-    platform::MKLDNNHandler::AppendKeyVec(&key, strides);
-    platform::MKLDNNHandler::AppendKeyVec(&key, paddings);
+    platform::MKLDNNHandler::AppendKeyDims(&key, ksize);
+    platform::MKLDNNHandler::AppendKeyDims(&key, strides);
+    platform::MKLDNNHandler::AppendKeyDims(&key, paddings);
     platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
     platform::MKLDNNHandler::AppendKey(&key, std::to_string(fmt));
     platform::MKLDNNHandler::AppendKey(&key, suffix);
@@ -1160,6 +1106,17 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                                pipeline);
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
+      const mkldnn::memory::desc& md, void* ptr,
+      user_function custom_func = {}) {
+    return this->AcquireMemory(md, ptr, "@user_weights_mem_p", custom_func);
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
       std::vector<mkldnn::primitive>& pipeline,  // NOLINT
@@ -1366,6 +1323,31 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return dims2str(input_dims) + dims2str(weights_dims) + dims2str(strides) +
            dims2str(paddings) + dims2str(dilations) + std::to_string(groups) +
            suffix;
+  }
+
+  static void CreateKey(
+      std::string* key, const mkldnn::memory::dims& input_dims,
+      const mkldnn::memory::dims& weights_dims, const std::vector<int>& strides,
+      const std::vector<int>& paddings, const std::vector<int>& dilations,
+      const int& groups, const mkldnn::memory::data_type& srcdt,
+      const MKLDNNMemoryFormat& format, const std::string& fuse_activation,
+      const bool& residual, const std::string& suffix) {
+    AppendKeyDims(key, input_dims);
+
+    AppendKeyDims(key, weights_dims);
+
+    AppendKeyDims(key, strides);
+
+    AppendKeyDims(key, paddings);
+
+    AppendKeyDims(key, dilations);
+
+    AppendKey(key, std::to_string(groups));
+    AppendKey(key, std::to_string(srcdt));
+    AppendKey(key, std::to_string(format));
+    AppendKey(key, fuse_activation);
+    AppendKey(key, std::to_string(residual));
+    AppendKey(key, suffix);
   }
 
  private:
