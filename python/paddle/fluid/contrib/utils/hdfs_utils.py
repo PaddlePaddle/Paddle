@@ -62,7 +62,7 @@ class HDFSClient(object):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
+        for k, v in configs.items():
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 
