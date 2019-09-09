@@ -27,9 +27,7 @@ SET(CARES_INCLUDE_DIR "${CARES_INSTALL_DIR}/include/" CACHE PATH "cares include 
 
 if(NOT APPLE AND NOT WIN32)
     if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
-        set(PATCH_COMMAND_CARES "cp ${PADDLE_SOURCE_DIR}/patches/cares/ares_parse_ptr_reply.c.txt ${CARES_SOURCES_DIR}/src/extern_cares/ares_parse_ptr_reply.c")
-    else()
-        set(PATCH_COMMAND_CARES "")
+        set(PATCH_COMMAND_CARES cp ${PADDLE_SOURCE_DIR}/patches/cares/ares_parse_ptr_reply.c.txt ${CARES_SOURCES_DIR}/src/extern_cares/ares_parse_ptr_reply.c)
     endif()
 endif()
 
