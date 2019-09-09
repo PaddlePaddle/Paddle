@@ -172,7 +172,7 @@ void *ZeroCopyTensor::FindTensor() const {
 std::vector<int> ZeroCopyTensor::shape() const {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE(tensor_, "not found tensor called %s in the scope", name_);
-  return framework::vectorize2int(tensor->dims());
+  return framework::vectorize<int>(tensor->dims());
 }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

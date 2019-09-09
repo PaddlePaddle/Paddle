@@ -16,7 +16,7 @@ PaddlePaddle (PArallel Distributed Deep LEarning) 是一个简单易用、高效
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
-### PaddlePaddle最新版本: [Fluid 1.5.1](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
+### PaddlePaddle最新版本: [Fluid 1.5.2](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
 ### 安装最新稳定版本:
 ```
 # Linux CPU
@@ -24,9 +24,9 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda8cudnn7
-pip install paddlepaddle-gpu==1.5.1.post87
+pip install paddlepaddle-gpu==1.5.2.post87
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.5.1.post97
+pip install paddlepaddle-gpu==1.5.2.post97
 
 
 # 其他平台上的安装指引请参考 http://paddlepaddle.org/
