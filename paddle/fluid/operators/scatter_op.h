@@ -81,7 +81,22 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->type();
+      bool index_type_match = index_type == framework::proto::VarType::INT32 ||
+                              index_type == framework::proto::VarType::INT64;
+      PADDLE_ENFORCE_EQ(
+          index_type_match, true,
+          "scatter_op index holds the wrong type, it holds %s, but desires to "
+          "be %s or %s",
+          paddle::framework::DataTypeToString(index_type),
+          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
+          paddle::framework::DataTypeToString(
+              framework::proto::VarType::INT64));
+      if (index_type == framework::proto::VarType::INT32) {
+        CPUGather<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      } else {
+        CPUGather<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      }
     }
   }
 };

@@ -58,8 +58,9 @@ class TestBoxPSPreload(unittest.TestCase):
         batch1 = np.ones(
             (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
         filelist = []
+        place_str = "cpu" if is_cpu else "gpu"
         for i in range(2):
-            filelist.append("test_hdfs_" + str(i))
+            filelist.append("test_hdfs_" + place_str + "_" + str(i))
         for f in filelist:
             with open(f, "w") as fout:
                 for ins in batch1:

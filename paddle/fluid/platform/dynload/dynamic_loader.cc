@@ -222,6 +222,22 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+void* GetNVRTCDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so");
+#endif
+}
+
+void* GetCUDADsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so");
+#endif
+}
+
 void* GetWarpCTCDsoHandle() {
   std::string warpctc_dir = "";
   if (!s_py_site_pkg_path.path.empty()) {
