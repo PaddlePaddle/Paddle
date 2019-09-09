@@ -599,9 +599,6 @@ class Variable(object):
         return np.array(new_ivar.value().get_tensor())
 
     def clear_gradient(self):
-        if not self._ivar._grad_ivar_is_initialized():
-            raise RuntimeError("Can't clear uninitialized gradient of Variable "
-                               + self.name)
         self._ivar._clear_gradient()
 
     def __str__(self):

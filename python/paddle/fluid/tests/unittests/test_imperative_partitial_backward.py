@@ -33,10 +33,10 @@ class TestImperativePartitialBackward(unittest.TestCase):
             loss.backward()
 
             for param in fc1.parameters():
-                self.assertTrue(param._ivar._grad_ivar_is_initialized())
+                self.assertIsNotNone(param._ivar._grad_ivar())
 
             for param in fc2.parameters():
-                self.assertFalse(param._ivar._grad_ivar_is_initialized())
+                self.assertIsNone(param._ivar._grad_ivar())
 
             optimizer = fluid.optimizer.AdamOptimizer()
             _, params_grads = optimizer.minimize(loss)

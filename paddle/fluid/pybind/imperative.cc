@@ -274,10 +274,6 @@ void BindImperative(py::module *m_ptr) {
              }
            },
            py::return_value_policy::copy)
-//       .def("_grad_ivar_is_initialized",
-//           [](imperative::VarBase &self) {
-//             return self.grads_ && self.grads_->IsInitialize();
-//           })
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },

@@ -177,7 +177,7 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 }
 
 void VarBase::ClearGradient() {
-  if (grad_var_ && grad_var_->) {
+  if (grad_var_) {
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
