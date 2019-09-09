@@ -1414,10 +1414,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
-        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
-        param_attr(ParamAttr): The attribute of the learnable parameter.
+        param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
 
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
@@ -1483,6 +1482,10 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
+            
+            #you can use find_var to get transition parameter.
+            transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
+            print(transition)
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -2412,20 +2415,6 @@ def conv2d(input,
         default_initializer=_get_default_param_initializer())
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
-
-    if use_cudnn:
-        helper.create_variable(
-            name="kCUDNNFwdAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdDataAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdFilterAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
 
     helper.append_op(
         type=l_type,
