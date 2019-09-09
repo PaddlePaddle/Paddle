@@ -220,20 +220,27 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
 
   auto& fea_value = feature_values_[table_id];
   auto fea_idx = 0u;
-
+  VLOG(3) << "going to fill sparse values";
   std::vector<float> init_value(table.fea_dim());
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
+    VLOG(3) << "sparse key " << i
+            << " name: " << sparse_key_names_[table_id][i];
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
     Variable* var = thread_scope_->FindVar(slot_name);
     if (var == nullptr) {
       continue;
     }
+    VLOG(3) << "found var name " << slot_name;
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
+    if (var_emb == nullptr) {
+      continue;
+    }
+    VLOG(3) << "found var emb name " << emb_slot_name;
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
                                                  platform::CPUPlace());

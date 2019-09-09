@@ -127,11 +127,22 @@ class DistributedAdam(DistributedOptimizerImplBase):
         """
 
         sparse_table_names = self._find_multi_distributed_lookup_table(losses)
-        inputs_dict = self._find_distributed_lookup_table_inputs(
-            losses[0].block.program, sparse_table_names)
+        inputs_dict = dict()
+        outputs_dict = dict()
 
-        outputs_dict = self._find_distributed_lookup_table_outputs(
-            losses[0].block.program, sparse_table_names)
+        prog_id_to_sparse_input = {}
+        prog_id_to_sparse_output = {}
+        for loss in losses:
+            input_dict_local = self._find_distributed_lookup_table_inputs(
+                loss.block.program, sparse_table_names)
+            inputs_dict.update(input_dict_local)
+            output_dict_local = self._find_distributed_lookup_table_outputs(
+                loss.block.program, sparse_table_names)
+            outputs_dict.update(output_dict_local)
+            prog_id_to_sparse_input[str(id(
+                loss.block.program))] = input_dict_local
+            prog_id_to_sparse_output[str(id(
+                loss.block.program))] = output_dict_local
 
         ps_param = pslib.PSParameter()
         server = DownpourServer()
@@ -252,6 +263,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_converter"] = ""
         opt_info["dump_fields"] = strategy.get("dump_fields", [])
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
+        opt_info["prog_id_to_sparse_input"] = prog_id_to_sparse_input
+        opt_info["prog_id_to_sparse_output"] = prog_id_to_sparse_output
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True

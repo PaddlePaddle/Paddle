@@ -329,26 +329,32 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
     if (var == nullptr) {
+      VLOG(3) << "var " << sparse_key_names[i] << " is nullptr";
+      continue;
+    }
+    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
+    if (g_var == nullptr) {
+      VLOG(3) << "gvar " << sparse_grad_names[i] << " is nullptr";
       continue;
     }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     if (tensor == nullptr) {
-      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
-      exit(-1);
+      VLOG(3) << "tensor of var[" << sparse_key_names[i] << "] is nullptr";
+      continue;
     }
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    if (g_tensor == nullptr) {
+      VLOG(3) << "tensor of var[" << sparse_grad_names[i] << "] is nullptr";
+      continue;
+    }
+
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
       slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
-    Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-    if (g_tensor == nullptr) {
-      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
-      exit(-1);
-    }
     float* g = g_tensor->data<float>();
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
