@@ -34,20 +34,17 @@ constexpr int o_slice_mask = 1 << 0;                         // 1
 constexpr int g_slice_mask = 1 << 1;                         // 2
 constexpr int g_o_slice_mask = g_slice_mask | o_slice_mask;  // 3
 
+static int ComputeMask(bool is_multi_channel, int multi_channel_mask) {
+  return is_multi_channel ? multi_channel_mask : same_scale_mask;
+}
+
 static int ComputeWeightsMask(int is_multi_channel, int g) {
-  if (is_multi_channel) {
-    return g > 1 ? g_o_slice_mask : o_slice_mask;
-  } else {
-    return same_scale_mask;
-  }
+  int multi_channel_mask = g > 1 ? g_o_slice_mask : o_slice_mask;
+  return ComputeMask(is_multi_channel, multi_channel_mask);
 }
 
 static int ComputeBiasMask(int is_multi_channel) {
-  if (is_multi_channel) {
-    return o_slice_mask;
-  } else {
-    return same_scale_mask;
-  }
+  return ComputeMask(is_multi_channel, o_slice_mask);
 }
 
 inline void GetWeightsTz(std::vector<int>& weights_tz, int groups) {  // NOLINT
