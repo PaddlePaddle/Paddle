@@ -533,6 +533,10 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       sparse_var_.insert(sparse_name);
       VLOG(1)<<"sparse_var_ insert var: "<< sparse_name;
     }
+    std::vector<std::string>all_vars = recv_scope_->LocalVarNames();
+    for (auto &var : all_vars) {
+      VLOG(1)<<"recv scope have var: "<< var;
+    }
 
     // prefetch sparse value if not exist
     if(sparse_table_.find(sparse_name) == sparse_table_.end()) {
