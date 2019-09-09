@@ -34,12 +34,14 @@ class HuberLossOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
     int rank = x_dims.size();
 
-    PADDLE_ENFORCE_GE(rank, y_dims.size(),
-                      "The rank of Input(X) must be greater than or equal to"
-                      "the rank of Input(Y).");
-    PADDLE_ENFORCE_LE(
-        rank - y_dims.size(), 1,
-        "The rank of Input(X) and Input(Y) should be less than 1.");
+    if (rank == y_dims.size()) {
+      PADDLE_ENFORCE_EQ(y_dims[rank - 1], 1U,
+                        "The last dimension of Input(Y) should be equal to 1.");
+    } else {
+      PADDLE_ENFORCE_EQ(rank, y_dims.size() + 1,
+                        "The rank of Input(X) should be equal to "
+                        "the rank of Input(Y) plus 1.");
+    }
     if (ctx->IsRuntime() ||
         (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
@@ -47,8 +49,8 @@ class HuberLossOp : public framework::OperatorWithKernel {
                         "The Input(X) and Input(Label) should have the same "
                         "shape except the last dimension.");
     }
-    auto out_dims = x_dims;
-    out_dims[rank - 1] = 1;
+
+    auto out_dims = y_dims;
     ctx->SetOutputDim("Residual", out_dims);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", "Out");
