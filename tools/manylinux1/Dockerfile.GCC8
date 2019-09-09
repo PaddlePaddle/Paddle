@@ -40,6 +40,9 @@ RUN rm g++
 RUN ln -s gcc-8 gcc
 RUN ln -s g++-8 g++
 
+RUN mknod -m 444 /dev/random c 1 8
+RUN mknod -m 444 /dev/urandom c 1 9
+
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
