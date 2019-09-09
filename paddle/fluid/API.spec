@@ -1,7 +1,7 @@
 paddle.fluid.Program ('paddle.fluid.framework.Program', ('document', '7364a01d7b9132a435e46162c7fbd6c6'))
 paddle.fluid.Program.__init__ (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.Program.block (ArgSpec(args=['self', 'index'], varargs=None, keywords=None, defaults=None), ('document', '86cd9499e226be661a3d686260ee1150'))
-paddle.fluid.Program.clone (ArgSpec(args=['self', 'for_test'], varargs=None, keywords=None, defaults=(False,)), ('document', 'a65221387f84c74eee5130d7678ca900'))
+paddle.fluid.Program.clone (ArgSpec(args=['self', 'for_test'], varargs=None, keywords=None, defaults=(False,)), ('document', '11777d4121a64566a746e55497a4b78c'))
 paddle.fluid.Program.current_block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'd601c7719e425e3d9cf862ea4ad194ca'))
 paddle.fluid.Program.global_block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'd64ea1dc96e9f674499ea3006d470aa4'))
 paddle.fluid.Program.list_vars (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '32c14b0f12baae4b352200fa09b5e789'))
