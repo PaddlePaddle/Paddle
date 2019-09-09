@@ -34,9 +34,9 @@ __global__ void halfadd(const half* x, const half* y, half* z, int64_t n) {
   int stride = blockDim.x * gridDim.x;
 
   int n2 = n / 2;
-  half2* x2 = reinterpret_cast<half2*>(x);
-  half2* y2 = reinterpret_cast<half2*>(y);
-  half2* z2 = reinterpret_cast<half2*>(z);
+  half2* x2 = (half2*)(x);  // NOLINT
+  half2* y2 = (half2*)(y);  // NOLINT
+  half2* z2 = (half2*)(z);  // NOLINT
 
   for (int i = start; i < n2; i += stride) z2[i] = __hadd2(x2[i], y2[i]);
 

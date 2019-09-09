@@ -39,6 +39,7 @@ else()
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""
         TEST_COMMAND      ""
+        CMAKE_ARGS      -DEIGEN_CUDA_COMPUTE_ARCH=70
     )
 endif()
 
