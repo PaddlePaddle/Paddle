@@ -539,6 +539,9 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       auto *var_ids_recv = recv_scope_->FindVar(ids_name);
 
       // for test
+      if(var_ids_recv == nullptr){
+        LOG(WARNING) << "var_ids_recv is nullptr";
+      }
       auto var_ids_tensor = var_ids_recv->Get<framework::LoDTensor>();
       int* mutable_data = var_ids_tensor.mutable_data<int>(var_ids_tensor.place());
       int element_number = var_ids_tensor.numel();
