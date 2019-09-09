@@ -67,10 +67,11 @@ inline MKLDNNMemoryFormat GetWeightsFormat(MKLDNNMemoryFormat format,
   }
 }
 
-inline void ComputeOutputShiftScale(
-    std::vector<float>& output_shift_scale, int count,  // NOLINT
-    float scale_out_data, float scale_in_data,
+static std::vector<float> ComputeOutputShiftScale(
+    const float scale_out_data, const float scale_in_data,
     const std::vector<float>& scale_weights_data) {
+  int count = scale_weights_data.size();
+  std::vector<float> output_shift_scale(count);
 #pragma omp parallel for
   for (int i = 0; i < count; i++) {
     if (scale_weights_data[i] == 0.0) {
@@ -82,15 +83,18 @@ inline void ComputeOutputShiftScale(
                               static_cast<double>(scale_weights_data[i])));
     }
   }
+  return output_shift_scale;
 }
 
-inline void ComputeBiasScale(std::vector<float>& scale_bias_data,  // NOLINT
-                             int count, float scale_in_data,
-                             const std::vector<float>& scale_weights_data) {
+static std::vector<float> ComputeBiasScale(
+    const float scale_in_data, const std::vector<float>& scale_weights_data) {
+  int count = scale_weights_data.size();
+  std::vector<float> scale_bias_data(count);
 #pragma omp parallel for if (count > 1)
   for (int i = 0; i < count; i++) {
     scale_bias_data[i] = scale_in_data * scale_weights_data[i];
   }
+  return scale_bias_data;
 }
 
 static mkldnn::memory::data_type GetDstType(bool is_int8,
@@ -459,13 +463,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const float* filter_data = filter->data<float>();
     bool is_multi_channel = scale_weights_data.size() > 1;
-    int scale_count =
-        is_multi_channel
-            ? (g > 1 ? (weights_tz)[1] * (weights_tz)[0] : (weights_tz)[0])
-            : 1;
-    std::vector<float> output_shift_scale(scale_count);
-    ComputeOutputShiftScale(output_shift_scale, scale_count, scale_out_data,
-                            scale_in_data, scale_weights_data);
+
+    auto output_shift_scale = ComputeOutputShiftScale(
+        scale_out_data, scale_in_data, scale_weights_data);
 
     float scale_residual =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
@@ -572,9 +572,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           user_bias_md, to_void_cast<float>(bias_data));
       std::shared_ptr<mkldnn::memory> bias_memory_p;
 
-      std::vector<float> scale_bias_data(scale_count);
-      ComputeBiasScale(scale_bias_data, scale_count, scale_in_data,
-                       scale_weights_data);
+      auto scale_bias_data =
+          ComputeBiasScale(scale_in_data, scale_weights_data);
       int mask_bias_reorder = ComputeBiasMask(is_multi_channel);
       bias_memory_p = handler.AcquireBiasMemoryFromPrimitive(
           user_bias_memory_p, pipeline, is_test, true, scale_bias_data,
