@@ -23,12 +23,12 @@ class FCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "X(Input) of Fully Connected should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Out(Output) of Fully Connected should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "W(Input) of Fully Connected should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      "X(Input) of Fully Connected should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Out(Output) of Fully Connected should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      "W(Input) of Fully Connected should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
@@ -47,8 +47,8 @@ class FCOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->Attrs().Get<bool>("use_mkldnn")) {
-      PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
-                     "Fully Connected input should be 2-D or 4-D tensor.");
+      PADDLE_ENFORCE_EQ(in_dims.size() == 2 || in_dims.size() == 4, true,
+                        "Fully Connected input should be 2-D or 4-D tensor.");
     }
     PADDLE_ENFORCE_EQ(w_dims.size(), 2,
                       "Fully Connected input should be 2-D tensor.");
@@ -95,8 +95,8 @@ class FCOpGrad : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                     "Should have bias grad");
+      PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
+                        "Should have bias grad");
       auto bias_dims = ctx->GetInputDim("Bias");
       ctx->SetOutputDim(framework::GradVarName("Bias"), bias_dims);
     }
