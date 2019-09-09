@@ -48,7 +48,7 @@ class ReduceMeanDoubleGradMaker : public framework::GradOpDescMakerBase {
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
     auto out_grads = InputGrad(framework::GradVarName("Out"));
-    if (!out_grads.vec_name_.empty() || !out_grads.vec_var_base_.empty()) {
+    if (!out_grads.empty()) {
       auto* out_grad_op = new framework::OpDesc();
       out_grad_op->SetType("reduce_mean");
       out_grad_op->SetInput("X", x_gg);
