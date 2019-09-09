@@ -13784,9 +13784,8 @@ def shuffle_batch(x, shuffle_order=[]):
     Examples:
 
         .. code-block:: python
-
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[-1， 4])
+            x = fluid.layers.data(name="x", shape=[-1, 4])
             out = fluid.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
