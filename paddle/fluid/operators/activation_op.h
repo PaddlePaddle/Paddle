@@ -1440,13 +1440,11 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
     // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
     // calculate dy first, so ddy can inplace ddx
     if (dOut) {
-      LOG(ERROR) << 1;
       auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
       auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
       dout.device(*d) = dx * ddx * static_cast<T>(-1) / out;
     }
     if (ddOut) {
-      LOG(ERROR) << 1;
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
       ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
     }

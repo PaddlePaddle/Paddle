@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -32,42 +33,30 @@
 namespace paddle {
 namespace operators {
 
-void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
-  if (copy_to_gpu) {
-#ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(cudaMemcpy(dst, src, n, cudaMemcpyHostToDevice));
-#else
-    PADDLE_THROW("Not compiled with cuda");
-#endif
-  } else {
-    std::memcpy(dst, src, n);
-  }
-}
-
 // currently, this test class only support same dims
 template <typename T>
 class TestElementwiseOpGradGrad {
  public:
-  TestElementwiseOpGradGrad(const std::string &op_type_,
-                            const platform::Place &place_,
-                            const framework::DDim &dims_,
-                            const std::vector<std::string> &inputs_,
-                            const std::vector<std::string> &outputs_)
-      : op_type(op_type_),
-        place(place_),
-        dims(dims_),
-        inputs(inputs_),
-        outputs(outputs_) {}
+  TestElementwiseOpGradGrad(const std::string &op_type,
+                            const platform::Place &place,
+                            const framework::DDim &dims,
+                            const std::vector<std::string> &inputs,
+                            const std::vector<std::string> &outputs)
+      : op_type_(op_type),
+        place_(place),
+        dims_(dims),
+        inputs_(inputs),
+        outputs_(outputs) {}
 
   void InitVarInScope(std::string var_name) {
-    in_out_tensors[var_name] =
-        scope.Var(var_name)->GetMutable<framework::LoDTensor>();
-    in_out_tensors[var_name]->Resize(dims);
-    in_out_tensors[var_name]->mutable_data<T>(place);
+    in_out_tensors_[var_name] =
+        scope_.Var(var_name)->template GetMutable<framework::LoDTensor>();
+    in_out_tensors_[var_name]->Resize(dims_);
+    in_out_tensors_[var_name]->template mutable_data<T>(place_);
   }
 
   void InitFeedData(std::string var_name, size_t size) {
-    // random
+    // generate random data
     std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
                                            static_cast<T>(20.0));
     std::mt19937 engine;
@@ -75,25 +64,37 @@ class TestElementwiseOpGradGrad {
     for (size_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
-    feed_datas[var_name] = data;
+    feed_datas_[var_name] = data;
   }
 
   void Setup() {
-    size_t numel = static_cast<size_t>(framework::product(dims));
-    for (auto var_name : inputs) {
-      InitVarInScope(var_name);
-      InitFeedData(var_name, numel);
+    size_t numel = static_cast<size_t>(framework::product(dims_));
+    // init vars in scope and feed inputs
+    for (auto in_name : inputs_) {
+      InitVarInScope(in_name);
+      InitFeedData(in_name, numel);
     }
-    for (auto var_name : outputs) {
-      InitVarInScope(var_name);
+    for (auto out_name : outputs_) {
+      InitVarInScope(out_name);
     }
-    // feeding: copy data to tensor, out tensor need init?
-    bool is_gpu_place = platform::is_gpu_place(place);
+
+    // feeding: copy data to tensor, out tensor don't need init
     auto bytes = sizeof(T) * numel;
-    for (auto &var_name : inputs) {
-      auto tensor_ptr = in_out_tensors[var_name]->data<T>();
-      auto feed_data_ptr = feed_datas[var_name].data();
-      Memcpy(tensor_ptr, feed_data_ptr, bytes, is_gpu_place);
+    for (auto &in_name : inputs_) {
+      auto dst = in_out_tensors_[in_name]->template data<T>();
+      auto src = feed_datas_[in_name].data();
+      auto src_place = platform::CPUPlace();
+      if (platform::is_cpu_place(place_)) {
+        auto dst_place = boost::get<platform::CPUPlace>(place_);
+        memory::Copy(dst_place, dst, src_place, src, bytes);
+      } else if (platform::is_gpu_place(place_)) {
+#ifdef PADDLE_WITH_CUDA
+        auto dst_place = boost::get<platform::CUDAPlace>(place_);
+        memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
+#else
+        PADDLE_THROW("Not compiled with cuda");
+#endif
+      }
     }
 
     // calculate expected outputs
@@ -103,22 +104,25 @@ class TestElementwiseOpGradGrad {
   bool Check() {
     Setup();
     auto op = CreateTestOp();
-    op->Run(this->scope, this->place);
-    platform::DeviceContextPool::Instance().Get(this->place)->Wait();
+    op->Run(scope_, place_);
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     framework::LoDTensor cpu_out;
-    PADDLE_ENFORCE(scope.kids().empty());
+    PADDLE_ENFORCE_EQ(scope_.kids().empty(), true, "scope has child scopes");
+
+    // get outputs from scope and compare them with expected_outs
     bool all_equal = true;
-    for (auto &out_name : outputs) {
-      auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
-      if (platform::is_gpu_place(place)) {
+    for (auto &out_name : outputs_) {
+      auto &out_tensor =
+          scope_.FindVar(out_name)->template Get<framework::LoDTensor>();
+      if (platform::is_gpu_place(place_)) {
         framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
       } else {
         cpu_out = out_tensor;
       }
       auto *out_ptr = cpu_out.data<T>();
-      size_t numel = static_cast<size_t>(framework::product(dims));
+      size_t numel = static_cast<size_t>(framework::product(dims_));
       auto is_equal =
-          std::equal(out_ptr, out_ptr + numel, expected_outs[out_name].data());
+          std::equal(out_ptr, out_ptr + numel, expected_outs_[out_name].data());
       if (!is_equal) {
         all_equal = false;
         break;
@@ -126,20 +130,21 @@ class TestElementwiseOpGradGrad {
     }
     return all_equal;
   }
+
   virtual std::unique_ptr<framework::OperatorBase> CreateTestOp() = 0;
   virtual void ComputeExpectedOuts() = 0;
   virtual ~TestElementwiseOpGradGrad() {}
 
  protected:
-  std::string op_type;
-  platform::Place place;
-  framework::DDim dims;
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
-  std::map<std::string, paddle::framework::LoDTensor *> in_out_tensors;
-  std::map<std::string, std::vector<T>> feed_datas;
-  std::map<std::string, std::vector<T>> expected_outs;
-  framework::Scope scope;
+  std::string op_type_;
+  platform::Place place_;
+  framework::DDim dims_;
+  std::vector<std::string> inputs_;
+  std::vector<std::string> outputs_;
+  std::map<std::string, paddle::framework::LoDTensor *> in_out_tensors_;
+  std::map<std::string, std::vector<T>> feed_datas_;
+  std::map<std::string, std::vector<T>> expected_outs_;
+  framework::Scope scope_;
 };
 
 }  // namespace operators
