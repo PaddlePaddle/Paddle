@@ -70,9 +70,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#endif
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -579,13 +576,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
-      .def("get_communicator",
-           [](Variable &self) -> platform::Communicator * {
-             return self.GetMutable<platform::Communicator>();
-           },
-           py::return_value_policy::reference)
-#endif
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
@@ -795,10 +785,7 @@ All parameter, weight, gradient are variables in Paddle.
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
                 });;
-// clang-format on
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
-  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
-#endif
+  // clang-format on
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
     CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
     has a dev_id to indicate the number of cards represented by the current CUDAPlace.
