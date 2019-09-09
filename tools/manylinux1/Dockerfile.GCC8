@@ -44,8 +44,8 @@ RUN ln -s g++-8 g++
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
     ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
-    wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
-    tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
+    wget -q https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz && \
+    tar -xzf Python-3.6.9.tgz && cd Python-3.6.9 && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null
 
