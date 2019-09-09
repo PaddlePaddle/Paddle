@@ -39,11 +39,8 @@ def strided_slice_native_forward(input, begin, end, stride):
 
 class TestStrideSliceOp(OpTest):
     def setUp(self):
+        self.initTestCase()
         self.op_type = 'strided_slice'
-        self.input = np.random.rand(6)
-        self.begin = [-4]
-        self.end = [-3]
-        self.stride = [1]
         self.output = strided_slice_native_forward(self.input, self.begin,
                                                    self.end, self.stride)
 
@@ -60,6 +57,76 @@ class TestStrideSliceOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(set(['Input']), 'Out')
+
+    def initTestCase(self):
+        self.input = np.random.rand(6)
+        self.begin = [-4]
+        self.end = [-3]
+        self.stride = [1]
+
+
+class TestStrideSliceOp1(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(6)
+        self.begin = [3]
+        self.end = [8]
+        self.stride = [1]
+
+
+class TestStrideSliceOp2(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(6)
+        self.begin = [5]
+        self.end = [0]
+        self.stride = [-1]
+
+
+class TestStrideSliceOp3(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(6)
+        self.begin = [-1]
+        self.end = [-3]
+        self.stride = [-1]
+
+
+class TestStrideSliceOp4(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 4, 6)
+        self.begin = [0, -1, 0]
+        self.end = [2, -3, 5]
+        self.stride = [1, -1, 1]
+
+
+class TestStrideSliceOp5(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3)
+        self.begin = [1, 0, 0]
+        self.end = [2, 1, 3]
+        self.stride = [1, 1, 1]
+
+
+class TestStrideSliceOp6(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3)
+        self.begin = [1, -1, 0]
+        self.end = [2, -3, 3]
+        self.stride = [1, -1, 1]
+
+
+class TestStrideSliceOp7(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3)
+        self.begin = [1, 0, 0]
+        self.end = [2, 2, 3]
+        self.stride = [1, 1, 1]
+
+
+class TestStrideSliceOp7(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(100, 3, 3)
+        self.begin = [1, 0, 0]
+        self.end = [109, 2, 3]
+        self.stride = [1, 1, 1]
 
 
 if __name__ == "__main__":
