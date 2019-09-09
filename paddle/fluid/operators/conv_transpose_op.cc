@@ -361,12 +361,12 @@ class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetType(ForwardOpType() + "_grad");
     op->SetInput("Input", Input("Input"));
     op->SetInput("Filter", Input("Filter"));
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    if (ForwardOp().Inputs().count("Bias") > 0) {
+    if (HaveInput("Bias")) {
       op->SetInput("Bias", Input("Bias"));
       op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
     }

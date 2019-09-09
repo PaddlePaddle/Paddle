@@ -176,12 +176,14 @@ class LayerNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("X", Input("X"));
     op->SetInput("Mean", Output("Mean"));
     op->SetInput("Variance", Output("Variance"));
-    if (ForwardOp().Inputs().count("Scale") > 0) {
+    // if (ForwardOp().Inputs().count("Scale") > 0) {
+    if (HaveInput("Scale")) {
       op->SetInput("Scale", Input("Scale"));
       op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
     }
 
-    if (ForwardOp().Inputs().count("Bias") > 0) {
+    // if (ForwardOp().Inputs().count("Bias") > 0) {
+    if (HaveInput("Bias")) {
       op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
     }
 

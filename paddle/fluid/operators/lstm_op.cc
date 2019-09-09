@@ -277,12 +277,14 @@ class LSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Input", Input("Input"));
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
 
-    if (ForwardOp().Inputs().count("H0") > 0) {
+    // if (ForwardOp().Inputs().count("H0") > 0) {
+    if (HaveInput("H0")) {
       op->SetInput("H0", Input("H0"));
       op->SetOutput(framework::GradVarName("H0"), InputGrad("H0"));
     }
 
-    if (ForwardOp().Inputs().count("C0") > 0) {
+    // if (ForwardOp().Inputs().count("C0") > 0) {
+    if (HaveInput("C0")) {
       op->SetInput("C0", Input("C0"));
       op->SetOutput(framework::GradVarName("C0"), InputGrad("C0"));
     }

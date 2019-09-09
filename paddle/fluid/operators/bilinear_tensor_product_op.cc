@@ -160,7 +160,8 @@ class BilinearTensorProductGradOpDescMaker
     op->SetInput("X", Input("X"));
     op->SetInput("Y", Input("Y"));
     op->SetInput("Weight", Input("Weight"));
-    if (ForwardOp().Inputs().count("Bias") > 0) {
+    // if (ForwardOp().Inputs().count("Bias") > 0) {
+    if (HaveInput("Bias")) {
       op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
     }
 

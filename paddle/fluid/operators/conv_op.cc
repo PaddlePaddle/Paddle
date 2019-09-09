@@ -518,7 +518,8 @@ class Conv3DGradMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
 
-    if (ForwardOp().Inputs().count("ResidualData") != 0) {
+    // if (ForwardOp().Inputs().count("ResidualData") != 0) {
+    if (HaveInput("ResidualData")) {
       op->SetInput("ResidualData", Input("ResidualData"));
     }
 

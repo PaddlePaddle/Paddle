@@ -238,7 +238,17 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  protected:
-  const OpDesc& ForwardOp() const { return fwd_op_; }
+  // const OpDesc& ForwardOp() const { return fwd_op_; }
+
+  bool HaveInput(const std::string& name) const {
+    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
+      // dygraph mode
+      auto it = var_base_in_->find(name);
+      return it != var_base_in_->end();
+    } else {
+      return (fwd_op_.Inputs().count(name) > 0);
+    }
+  }
 
  private:
   const OpDesc& fwd_op_;

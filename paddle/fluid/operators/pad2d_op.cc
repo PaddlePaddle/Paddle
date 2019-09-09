@@ -635,7 +635,8 @@ class Pad2dOpGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* bind = new framework::OpDesc();
     bind->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("Paddings") > 0) {
+    // if (ForwardOp().Inputs().count("Paddings") > 0) {
+    if (HaveInput("Paddings")) {
       bind->SetInput("Paddings", Input("Paddings"));
     }
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));

@@ -113,7 +113,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     std::vector<OpBase*> vec_preceding_ops(visited_preceding_ops.begin(),
                                            visited_preceding_ops.end());
 
-    grad_op->SetGradPendingOps(vec_preceding_ops);
+    grad_op->SetGradPendingOps(&vec_preceding_ops);
 
     // this OpBase* is just used to manage op's life time
     engine_->InsertOp(grad_op.get(), grad_op);

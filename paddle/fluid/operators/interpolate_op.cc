@@ -313,9 +313,10 @@ class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
+    op->SetType(ForwardOpType() + "_grad");
     op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("OutSize") > 0) {
+    // if (ForwardOp().Inputs().count("OutSize") > 0) {
+    if (HaveInput("OutSize")) {
       op->SetInput("OutSize", Input("OutSize"));
     }
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));

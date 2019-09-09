@@ -357,8 +357,8 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return grad_pending_ops_;
   }
 
-  void SetGradPendingOps(const std::vector<OpBase*>& vec_temp) {
-    grad_pending_ops_.swap(vec_temp);
+  void SetGradPendingOps(std::vector<OpBase*>* vec_temp) {
+    grad_pending_ops_.swap(*vec_temp);
   }
 
   void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }

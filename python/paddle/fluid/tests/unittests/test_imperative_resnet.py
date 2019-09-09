@@ -86,7 +86,8 @@ class ConvBNLayer(fluid.Layer):
             padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
-            bias_attr=None)
+            bias_attr=None,
+            use_cudnn=False)
 
         self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
 
@@ -357,6 +358,8 @@ class TestDygraphResnet(unittest.TestCase):
                     static_grad_value[static_grad_name_list[
                         i - grad_start_pos]] = out[i]
 
+        print("static", static_out)
+        print("dygraph", dy_out)
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))

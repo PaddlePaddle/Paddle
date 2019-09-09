@@ -320,7 +320,8 @@ class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Alpha", Output("Alpha"));
     op->SetInput("EmissionExps", Output("EmissionExps"));
     op->SetInput("TransitionExps", Output("TransitionExps"));
-    if (ForwardOp().Inputs().count("length") > 0) {
+    // if (ForwardOp().Inputs().count("length") > 0) {
+    if (HaveInput("length")) {
       op->SetInput("length", Input("length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),

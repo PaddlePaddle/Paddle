@@ -190,7 +190,8 @@ class CropGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetType("crop_grad");
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("Offsets") > 0) {
+    // if (ForwardOp().Inputs().count("Offsets") > 0) {
+    if (HaveInput("Offsets")) {
       op->SetInput("Offsets", Input("Offsets"));
     }
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));

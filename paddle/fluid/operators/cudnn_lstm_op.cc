@@ -209,7 +209,8 @@ class CudnnLSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("InitH", Input("InitH"));
     op->SetInput("InitC", Input("InitC"));
     op->SetInput("W", Input("W"));
-    if (ForwardOp().Inputs().count("Cache") > 0) {
+    // if (ForwardOp().Inputs().count("Cache") > 0) {
+    if (HaveInput("Cache")) {
       op->SetInput("Cache", Input("Cache"));
     }
     op->SetInput("Out", Output("Out"));
