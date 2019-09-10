@@ -134,7 +134,7 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
-    const int grid = std::min(NxC, max_blocks);
+    const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
     repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
         scale->data<T>(), scale_tmp.data<T>(), N, C);
@@ -211,7 +211,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = std::min(NxC, max_blocks);
-    const int grid1 = (n + block - 1) / block;
+    const int grid1 = (C + block - 1) / block;
 
     Tensor scale_tmp =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
@@ -275,9 +275,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
         epsilon, saved_mean_data, saved_var_data));
 
     if (d_scale && d_bias) {
-      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+      add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
           d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
-      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+      add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
           d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
     }
 

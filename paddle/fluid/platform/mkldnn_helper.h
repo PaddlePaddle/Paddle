@@ -179,5 +179,33 @@ inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
   }
 }
 
+inline std::string ThreadIDasStr(void) {
+  return std::to_string(
+      std::hash<std::thread::id>()(std::this_thread::get_id()));
+}
+
+inline std::string dims2str(const mkldnn::memory::dims& operand_dims) {
+  std::string dstr = "";
+  for (size_t i = 0; i < operand_dims.size(); ++i) {
+    dstr += std::to_string(operand_dims[i]) + "-";
+  }
+  return dstr;
+}
+
+inline void AppendKey(std::string* key, const std::string& s) {
+  key->append(s);
+}
+
+inline std::string GetHash(const mkldnn::memory::dims& operand_dims,
+                           const std::string& suffix) {
+  return dims2str(operand_dims) + suffix;
+}
+
+inline void AppendKeyDims(std::string* key, const mkldnn::memory::dims& dims) {
+  for (unsigned int i = 0; i < dims.size(); i++) {
+    AppendKey(key, std::to_string(dims[i]));
+  }
+}
+
 }  // namespace platform
 }  // namespace paddle

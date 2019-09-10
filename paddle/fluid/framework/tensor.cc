@@ -51,6 +51,8 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
+    // Reset holder first before re-allocate to save memory
+    holder_.reset();
     holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }

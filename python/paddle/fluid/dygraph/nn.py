@@ -199,20 +199,6 @@ class Conv2D(layers.Layer):
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
-        if self._use_cudnn:
-            self.create_variable(
-                name="kCUDNNFwdAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdDataAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdFilterAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-
         self._bias_param = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
