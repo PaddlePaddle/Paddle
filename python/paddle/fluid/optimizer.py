@@ -3017,7 +3017,7 @@ class RecomputeOptimizer(object):
             return -res
         return res
 
-    def draw(self, memory_with_position, memory_with_position_no_recompute, recompute_segments):
+    def draw(self, memory_with_position, recompute_segments):
 	print("memory_with_position: ", memory_with_position)
 	print("recompute_segments", recompute_segments)
 
@@ -3028,8 +3028,8 @@ class RecomputeOptimizer(object):
 
         x = [i - 2 for i in range(len(memory_with_position))]
         y = [(i * 1.0) / 1024 / 1024 for i in memory_with_position]
-	x2 = [i - 2 for i in range(len(memory_with_position_no_recompute))]
-	y2 =  [(i * 1.0) / 1024 / 1024 for i in memory_with_position_no_recompute]
+	#x2 = [i - 2 for i in range(len(memory_with_position_no_recompute))]
+	#y2 =  [(i * 1.0) / 1024 / 1024 for i in memory_with_position_no_recompute]
 
 	if recompute_segments is not None:
             for i in recompute_segments:
@@ -3037,7 +3037,7 @@ class RecomputeOptimizer(object):
     	        #plt.text(i[1],0,i[1],rotation=0)
 
 	plt.plot(x, y, label="with_recompute")
-        plt.plot(x2, y2, label="without_recompute") 
+        #plt.plot(x2, y2, label="without_recompute") 
       
 	plt.legend(loc='upper right')
 	plt.xlabel("op_idx")
@@ -3137,22 +3137,19 @@ class RecomputeOptimizer(object):
 
         self._dtype = loss.dtype
         program = loss.block.program
-	if self.debug == True:
-	    cloned_program = program.clone()
-	    if startup_program is None:
-		cloned_startup_program = default_startup_program().clone()
-	    else:
-	        cloned_startup_program = startup_program.clone()
-
-	    with program_guard(cloned_program, cloned_startup_program):
-		print(cloned_program.global_block().var(loss.name))
-		print(loss)
-                cloned_params_grads = append_backward(
-                    cloned_program.global_block().var(loss.name),
-                    parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=None)
-
+	#if self.debug == True:
+	#    cloned_program = program.clone()
+	#    if startup_program is None:
+	#	cloned_startup_program = default_startup_program().clone()
+	#    else:
+	#        cloned_startup_program = startup_program.clone()
+	#
+	#    with program_guard(cloned_program, cloned_startup_program):
+        #        cloned_params_grads = append_backward(
+        #            cloned_program.global_block().var(loss.name),
+        #            parameter_list=None,
+        #            no_grad_set=None,
+        #            checkpoints=None)
         with program_guard(program, startup_program): 
             recompute_segments, params_grads = append_backward(
                 loss,
@@ -3168,11 +3165,9 @@ class RecomputeOptimizer(object):
 
 	if self.debug == True:
             # analysis of the memory usage
-            cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
+            # cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
  	    memory_with_position = self.analysis_memory_usage(loss.block)
-	    # cloned_memory_with_position = self.analysis_memory_usage(cloned_program.global_block())
             self.draw(memory_with_position, 
-			cloned_memory_with_position, 
 			recompute_segments=None)
 
         return optimize_ops, params_grads

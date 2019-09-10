@@ -795,6 +795,9 @@ def _append_backward_ops_with_checkpoints_(
         gap_ops = ops[segment[1]:max_calculated_op_position]
         max_calculated_op_position = segment[0]
 	for op in reversed(gap_ops):
+	    if op.has_attr("sub_block"):
+		raise Exception("Recompute don't support ops with sub_block"
+				"invoke op: %s" % _pretty_op_desc_(op.desc, "with_sub_block"))        
 	    grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
 	    added_descs = _add_descs_to_block(grad_op_desc, local_block)
@@ -805,6 +808,9 @@ def _append_backward_ops_with_checkpoints_(
         var_suffix = ".subprog_%d" % i
 
         for op in ff_ops:
+	    if op.has_attr("sub_block"):
+                raise Exception("Recompute don't support ops with sub_block"
+                                "invoke op: %s" % _pretty_op_desc_(op.desc, "with_sub_block"))
             input_and_output_names = []
             input_and_output_names.extend(op.desc.input_arg_names())
             input_and_output_names.extend(op.desc.output_arg_names())
