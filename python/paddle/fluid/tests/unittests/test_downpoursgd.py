@@ -77,6 +77,7 @@ class TestListenAndServOp(OpTest):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            opt_info["prog_id_to_sparse_input"] = {str(id(main_program)): ""}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
@@ -133,6 +134,7 @@ class TestListenAndServOp(OpTest):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            opt_info["prog_id_to_sparse_input"] = {str(id(main_program)): ""}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
