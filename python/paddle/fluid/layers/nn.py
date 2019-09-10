@@ -3511,16 +3511,10 @@ def batch_norm(input,
 
 
 def instance_norm(input,
-                  is_test=False,
-                  momentum=0.9,
                   epsilon=1e-05,
                   param_attr=None,
                   bias_attr=None,
-                  name=None,
-                  moving_mean_name=None,
-                  moving_variance_name=None,
-                  do_model_average_for_mean_and_var=False,
-                  use_global_stats=False):
+                  name=None):
     """
     **Instance Normalization Layer**
 
@@ -3560,13 +3554,6 @@ def instance_norm(input,
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
-        is_test (bool, Default False): A flag indicating whether it is in
-            test phrase or not.
-        momentum(float, Default 0.9): The value used for the moving_mean and
-            moving_var computation. The updated formula is:
-            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
-            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
-            Default is 0.9.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
@@ -3581,18 +3568,6 @@ def instance_norm(input,
 	     Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, instance_norm will save global mean with a random name, otherwise, instance_norm 
-            will save global mean with the string.
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, instance_norm will save global variance with a random name, otherwise, instance_norm 
-            will save global variance with the string.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
-        use_global_stats(bool, Default False): Whether to use global mean and
-            variance. In inference or test mode, set use_global_stats to true
-            or is_test to true, and the behavior is equivalent.
-            In train mode, when setting use_global_stats True, the global mean
-            and variance are also used during train period.
 
     Returns:
         Variable: A tensor variable which is the result after applying instance normalization on the input.
@@ -3632,31 +3607,7 @@ def instance_norm(input,
         is_bias=True,
         default_initializer=Constant(0.0))
 
-    mean = helper.create_parameter(
-        attr=ParamAttr(
-            name=moving_mean_name,
-            initializer=Constant(0.0),
-            trainable=False,
-            do_model_average=do_model_average_for_mean_and_var),
-        shape=param_shape,
-        dtype=dtype)
-    mean.stop_gradient = True
-
-    variance = helper.create_parameter(
-        attr=ParamAttr(
-            name=moving_variance_name,
-            initializer=Constant(1.0),
-            trainable=False,
-            do_model_average=do_model_average_for_mean_and_var),
-        shape=param_shape,
-        dtype=dtype)
-    variance.stop_gradient = True
-
     # create output
-    # mean and mean_out share the same memory
-    mean_out = mean
-    # variance and variance out share the same memory
-    variance_out = variance
     saved_mean = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
@@ -3670,22 +3621,13 @@ def instance_norm(input,
             "X": input,
             "Scale": scale,
             "Bias": bias,
-            "Mean": mean,
-            "Variance": variance
         },
         outputs={
             "Y": instance_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={
-            "momentum": momentum,
-            "epsilon": epsilon,
-            "is_test": is_test,
-            "use_global_stats": use_global_stats
-        })
+        attrs={"epsilon": epsilon, })
 
     return instance_norm_out
 

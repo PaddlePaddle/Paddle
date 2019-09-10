@@ -29,34 +29,15 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
                     "Input(Scale) of Instance Norm Op should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
                     "Input(Bias) of Instance Norm Op should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
-                    "Input(Mean) of Instance Norm Op should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
-                    "Input(Variance) of Instance Norm Op should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
                     "Output(Y) of Instance Norm Op should not be null.");
-  bool is_test = ctx->Attrs().Get<bool>("is_test");
 
-  if (!is_test) {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MeanOut"), true,
-        "Output(MeanOut) of Instance Norm Op should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VarianceOut"), true,
-        "Output(VarianceOut) of Instance Norm Op should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedMean"), true,
-        "Output(SavedMean) of Instance Norm Op should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedVariance"), true,
-        "Output(SavedVariance) of Instance Norm Op should not be null.");
-  }
-
-  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                    "Mean and MeanOut should share the same memory");
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
-                    "Variance and VarianceOut should share the same memory");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("SavedMean"), true,
+      "Output(SavedMean) of Instance Norm Op should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("SavedVariance"), true,
+      "Output(SavedVariance) of Instance Norm Op should not be null.");
 
   const auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
@@ -82,8 +63,6 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   ctx->SetOutputDim("Y", x_dims);
-  ctx->SetOutputDim("MeanOut", {C});
-  ctx->SetOutputDim("VarianceOut", {C});
   ctx->SetOutputDim("SavedMean", {NxC});
   ctx->SetOutputDim("SavedVariance", {NxC});
   ctx->ShareLoD("X", "Y");
@@ -103,27 +82,17 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
                     "Scale input should be of float type");
   PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Bias")->type(),
                     "Bias input should be of float type");
-  PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Mean")->type(),
-                    "Mean input should be of float type");
-  PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Variance")->type(),
-                    "Variance input should be of float type");
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 void InstanceNormOpMaker::Make() {
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
-  AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
         PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
                           "'epsilon' should be between 0.0 and 0.001.");
       });
-  AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
   AddInput("X", "The input tensor");
   AddInput("Scale",
            "Scale is a 1-dimensional tensor of size C "
@@ -131,19 +100,7 @@ void InstanceNormOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
-  AddInput("Mean",
-           "The global mean (for training) or "
-           "estimated mean (for testing)");
-  AddInput("Variance",
-           "The global variance (for training) "
-           "or estimated Variance (for testing)");
   AddOutput("Y", "result after normalization");
-  AddOutput("MeanOut",
-            "Share memory with Mean. "
-            "Store the global mean when training");
-  AddOutput("VarianceOut",
-            "Share memory with Variance. "
-            "Store the global Variance when training");
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
@@ -152,14 +109,6 @@ void InstanceNormOpMaker::Make() {
             "Variance of the current mini batch, "
             "will apply to output when training")
       .AsIntermediate();
-  AddAttr<bool>("use_global_stats",
-                "(bool, default false) Whether to use global mean and "
-                "variance. In inference or test mode, set use_global_stats "
-                "to true or is_test true. the behavior is equivalent. "
-                "In train mode, when setting use_global_stats True, the "
-                "global mean and variance are also used during train time, "
-                "the BN acts as scaling and shiffting.")
-      .SetDefault(false);
   AddComment(R"DOC(
 Instance Normalization.
 
@@ -177,12 +126,8 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const float epsilon = ctx.Attr<float>("epsilon");
-    const float momentum = ctx.Attr<float>("momentum");
-    const bool is_test = ctx.Attr<bool>("is_test");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
-    bool global_stats = is_test || use_global_stats;
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
 
@@ -193,94 +138,57 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
 
-    // alloc memory
-    y->mutable_data<T>(ctx.GetPlace());
-    mean_out->mutable_data<T>(ctx.GetPlace());
-    variance_out->mutable_data<T>(ctx.GetPlace());
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto *place = dev_ctx.eigen_device();
+
+    Eigen::DSizes<int, 2> bcast(1, sample_size);
+    Eigen::DSizes<int, 2> C_shape(C, 1);
+    Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
+    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+
     saved_mean->mutable_data<T>(ctx.GetPlace());
     saved_variance->mutable_data<T>(ctx.GetPlace());
+    set_constant(dev_ctx, saved_mean, static_cast<T>(0));
+    set_constant(dev_ctx, saved_variance, static_cast<T>(0));
 
-    if (!global_stats) {
-      EigenVectorArrayMap<T> saved_mean_e(
-          saved_mean->mutable_data<T>(ctx.GetPlace()), NxC);
-      EigenVectorArrayMap<T> saved_variance_e(
-          saved_variance->mutable_data<T>(ctx.GetPlace()), NxC);
-      saved_mean_e.setZero();
-      saved_variance_e.setZero();
+    auto saved_mean_a = framework::EigenVector<T>::Flatten(*saved_mean);
+    auto saved_mean_e = saved_mean_a.reshape(NxC_shape);
+    auto saved_variance_a = framework::EigenVector<T>::Flatten(*saved_variance);
+    auto saved_variance_e = saved_variance_a.reshape(NxC_shape);
 
-      ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, NxC);
-      Eigen::Array<T, Eigen::Dynamic, 1> saved_mean_c(C);
-      Eigen::Array<T, Eigen::Dynamic, 1> saved_variance_c(C);
-      saved_mean_c.setZero();
-      saved_variance_c.setZero();
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto x_arr = x_e.reshape(shape);
 
-      for (int nc = 0; nc < NxC; ++nc) {
-        int c = nc % C;
-        saved_mean_e(nc) = x_arr.col(nc).mean();
-        saved_variance_e(nc) =
-            (x_arr.col(nc) - saved_mean_e(nc)).matrix().squaredNorm();
+    Eigen::DSizes<int, 1> rdims(1);
 
-        saved_mean_c(c) += saved_mean_e(nc);
-        saved_variance_c(c) += saved_variance_e(nc);
-      }
-      saved_variance_e /= sample_size;
-      saved_mean_c /= N;
-      saved_variance_c /= ((sample_size - 1) * N);  // unbiased estimate
+    saved_mean_e.device(*place) = x_arr.mean(rdims);
+    auto saved_variance_arr =
+        (x_arr - saved_mean_e.broadcast(bcast)).square().mean(rdims) + epsilon;
 
-      EigenVectorArrayMap<T> running_mean_arr(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> running_var_arr(
-          variance_out->mutable_data<T>(ctx.GetPlace()), C);
+    saved_variance_e.device(*place) = saved_variance_arr.sqrt().inverse();
 
-      running_mean_arr.setZero();
-      running_var_arr.setOnes();
-
-      running_mean_arr =
-          running_mean_arr * momentum + saved_mean_c * (1. - momentum);
-      running_var_arr =
-          running_var_arr * momentum + saved_variance_c * (1. - momentum);
-    }
-
-    Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic> inv_std(N, C);
-    Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic> mean_arr(N, C);
-    if (global_stats) {
-      ConstEigenVectorArrayMap<T> var_arr(
-          ctx.Input<Tensor>("Variance")->data<T>(), C);
-      inv_std = (var_arr + epsilon).sqrt().inverse().eval().replicate(N, 1);
-
-      ConstEigenVectorArrayMap<T> mean_tmp(ctx.Input<Tensor>("Mean")->data<T>(),
-                                           C);
-      mean_arr = mean_tmp.replicate(N, 1);
-    } else {
-      EigenVectorArrayMap<T> saved_inv_std(
-          ctx.Output<Tensor>("SavedVariance")->data<T>(), NxC);
-      saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
-      inv_std = saved_inv_std;
-      ConstEigenVectorArrayMap<T> mean_tmp(
-          ctx.Output<Tensor>("SavedMean")->data<T>(), NxC);
-      mean_arr = mean_tmp;
-    }
-
-    // (x - mean) * inv_std * scale + bias
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
-    ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
+    auto scale_e = framework::EigenVector<T>::Flatten(*scale);
+    auto scale_arr = scale_e.reshape(C_shape);
+    auto bias_e = framework::EigenVector<T>::Flatten(*bias);
+    auto bias_arr = bias_e.reshape(C_shape);
 
-    EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
-                           NxC);
-    ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, NxC);
+    y->mutable_data<T>(ctx.GetPlace());
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto y_arr = y_e.reshape(shape);
 
-    for (int nc = 0; nc < NxC; ++nc) {
-      y_arr.col(nc) =
-          (x_arr.col(nc) - mean_arr(nc)) * inv_std(nc) * scale_arr(nc % C) +
-          bias_arr(nc % C);
-    }
+    // (x - mean) * inv_std * scale + bias
+    Eigen::DSizes<int, 2> bcast_param(N, sample_size);
+    y_arr.device(*place) = (x_arr - saved_mean_e.broadcast(bcast)) *
+                               saved_variance_e.broadcast(bcast) *
+                               scale_arr.broadcast(bcast_param) +
+                           bias_arr.broadcast(bcast_param);
   }
 };
 
@@ -342,113 +250,84 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    const float epsilon = ctx.Attr<float>("epsilon");
 
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
-        "the dimension of input X must greater than or equal to 2");
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
-        "the dimension of input X must smaller than or equal to 5");
 
     const int N = x_dims[0];
     const int C = x_dims[1];
-    const int sample_size = x->numel() / N / C;
     const int NxC = N * C;
+    const int sample_size = x->numel() / N / C;
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
-    const T *mean_data = saved_mean->data<T>();
-    const T *inv_var_data = saved_inv_variance->data<T>();
-    Tensor inv_var_tensor;
-    Tensor mean_tensor;
-    if (use_global_stats) {
-      const auto *running_mean = ctx.Input<Tensor>("Mean");
-      const auto *running_variance = ctx.Input<Tensor>("Variance");
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto *place = dev_ctx.eigen_device();
 
-      mean_tensor.Resize({NxC});
-      T *running_mean_data = mean_tensor.mutable_data<T>(ctx.GetPlace());
-      EigenVectorArrayMap<T> mean_tmp(running_mean_data, NxC);
-      ConstEigenVectorArrayMap<T> mean_arr_tmp(running_mean->data<T>(), C);
+    Eigen::DSizes<int, 1> rdims(0);
+    Eigen::DSizes<int, 1> mean_rdims(1);
+    Eigen::DSizes<int, 2> rshape(NxC, sample_size);
+    Eigen::DSizes<int, 2> bcast(1, sample_size);
+    Eigen::DSizes<int, 2> C_shape(C, 1);
+    Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
+    Eigen::DSizes<int, 2> param_shape(N, C);
+    Eigen::DSizes<int, 2> shape(NxC, sample_size);
 
-      mean_tmp = mean_arr_tmp.eval().replicate(N, 1);
-      mean_data = running_mean_data;
+    auto scale_e = framework::EigenVector<T>::Flatten(*scale);
+    auto mean_e = framework::EigenVector<T>::Flatten(*saved_mean);
+    auto inv_var_e = framework::EigenVector<T>::Flatten(*saved_inv_variance);
+    auto dy_e = framework::EigenVector<T>::Flatten(*d_y);
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
 
-      inv_var_tensor.Resize({NxC});
-      T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
-      EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, NxC);
-      ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
+    auto scale_arr = scale_e.reshape(C_shape);
+    auto mean_arr = mean_e.reshape(NxC_shape);
+    auto inv_var_arr = inv_var_e.reshape(NxC_shape);
+    auto dy_arr = dy_e.reshape(shape);
+    auto x_arr = x_e.reshape(shape);
 
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval().replicate(N, 1);
-      inv_var_data = running_inv_var_data;
-    }
-    ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
-    ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
-    ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
+    auto tmp =
+        (x_arr - mean_arr.broadcast(bcast)) * inv_var_arr.broadcast(bcast);
 
-    T *d_bias_data = nullptr;
-    T *d_scale_data = nullptr;
+    math::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    // math: d_bias = np.sum(d_y, axis=(n,h,w))
+    // math: d_scale = np.sum((X-mean) / inv_std * dy, axis=(n, h,w))
     if (d_scale && d_bias) {
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
-      d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
-      d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
+      set_constant(dev_ctx, d_scale, static_cast<T>(0));
+      set_constant(dev_ctx, d_bias, static_cast<T>(0));
+
+      auto d_scale_e = framework::EigenVector<T>::Flatten(*d_scale);
+      auto d_bias_e = framework::EigenVector<T>::Flatten(*d_bias);
+      auto d_scale_data = d_scale_e.reshape(C_shape);
+      auto d_bias_data = d_bias_e.reshape(C_shape);
+      d_bias_data.device(*place) =
+          dy_arr.sum(mean_rdims).reshape(param_shape).sum(rdims);
+      d_scale_data.device(*place) =
+          (tmp * dy_arr).sum(mean_rdims).reshape(param_shape).sum(rdims);
     }
 
-    // d_bias = np.sum(d_y, axis=(n,h,w))
-    // d_scale = np.sum((X-mean) / inv_std * dy, axis=(n, h,w))
-    // d_x = scale * inv_var * d_y - scale * inv_var * np.sum(d_y, axis=(h,w))
-    //      - scale * (X - mean) * inv_var.pow(3) * np.sum(d_y * (X - mean),
-    //      axis=(h,w))
-    EigenVectorArrayMap<T> d_bias_arr(d_bias_data, C);
-    EigenVectorArrayMap<T> d_scale_arr(d_scale_data, C);
+    auto dy_mean = dy_arr.mean(mean_rdims).reshape(NxC_shape).broadcast(bcast);
 
-    if (d_scale && d_bias) {
-      d_bias_arr.setZero();
-      d_scale_arr.setZero();
-    }
-
-    ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, NxC);
-    ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, NxC);
-    EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), sample_size,
-                             NxC);
-
-    d_x_arr.setZero();
-    if (d_scale && d_bias) {
-      for (int nc = 0; nc < NxC; ++nc) {
-        int c = nc % C;
-        d_bias_arr(c) += d_y_arr.col(nc).sum();
-        d_scale_arr(c) +=
-            ((x_arr.col(nc) - mean_arr(nc)) * inv_var_arr(nc) * d_y_arr.col(nc))
-                .sum();
-      }
-    }
-    if (!use_global_stats) {
-      for (int nc = 0; nc < NxC; ++nc) {
-        int c = nc % C;
-        inv_var_tensor.Resize({sample_size, NxC});
-        T *y_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
-        EigenArrayMap<T> y_tmp(y_data, sample_size, NxC);
-        y_tmp.col(nc) = (x_arr.col(nc) - mean_arr(nc)) * inv_var_arr(nc);
-
-        for (int hw = 0; hw < sample_size; ++hw) {
-          d_x_arr(hw, nc) =
-              scale_arr(c) * inv_var_arr(nc) *
-              (d_y_arr(hw, nc) - d_y_arr.col(nc).mean() -
-               y_tmp(hw, nc) * (d_y_arr.col(nc) * y_tmp.col(nc)).mean());
-        }
-      }
-    } else {
-      for (int nc = 0; nc < NxC; ++nc) {
-        int c = nc % C;
-        d_x_arr.col(nc) = scale_arr(c) * inv_var_arr(nc) * d_y_arr.col(nc);
-      }
-    }
+    Eigen::DSizes<int, 2> bcast_param(N, sample_size);
+    set_constant(dev_ctx, d_x, static_cast<T>(0));
+    // math: d_x = scale * inv_var * d_y - scale * inv_var * np.sum(d_y,
+    // axis=(h,w))
+    //             - scale * (X - mean) * inv_var.pow(3) * np.sum(d_y * (X -
+    //             mean),
+    //             axis=(h,w))
+    auto dx_e = framework::EigenVector<T>::Flatten(*d_x);
+    auto dx_arr = dx_e.reshape(shape);
+    dx_arr.device(*place) = scale_arr.broadcast(bcast_param) *
+                            inv_var_arr.broadcast(bcast) *
+                            (dy_arr - dy_mean -
+                             tmp *
+                                 (dy_arr * tmp)
+                                     .mean(mean_rdims)
+                                     .reshape(NxC_shape)
+                                     .broadcast(bcast));
   }
 };
 
@@ -462,11 +341,6 @@ std::unique_ptr<framework::OpDesc> InstanceNormGradMaker::Apply() const {
   op->SetInput("Bias", Input("Bias"));
   op->SetInput("SavedMean", Output("SavedMean"));
   op->SetInput("SavedVariance", Output("SavedVariance"));
-
-  if (boost::get<bool>(GetAttr("use_global_stats"))) {
-    op->SetInput("Mean", Output("MeanOut"));
-    op->SetInput("Variance", Output("VarianceOut"));
-  }
 
   op->SetAttrMap(Attrs());
   op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
@@ -538,11 +412,6 @@ std::unique_ptr<framework::OpDesc> InstanceNormDoubleGradMaker::Apply() const {
   op->SetInput("DDBias", OutputGrad(framework::GradVarName("Bias")));
   op->SetInput("DY", Input(framework::GradVarName("Y")));
 
-  if (boost::get<bool>(GetAttr("use_global_stats"))) {
-    op->SetInput("Mean", Input("Mean"));
-    op->SetInput("Variance", Input("Variance"));
-  }
-
   op->SetAttrMap(Attrs());
   op->SetOutput("DX", InputGrad("X"));
   op->SetOutput("DScale", InputGrad("Scale"));
@@ -563,8 +432,6 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     const auto *ddX = ctx.Input<Tensor>("DDX");
     const auto *ddScale = ctx.Input<Tensor>("DDScale");
     const auto *ddBias = ctx.Input<Tensor>("DDBias");
-    const float epsilon = ctx.Attr<float>("epsilon");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
     auto *dX = ctx.Output<Tensor>("DX");
     auto *dScale = ctx.Output<Tensor>("DScale");
@@ -580,25 +447,6 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     const T *inv_var_data = Saved_variance->data<T>();
     Tensor mean_tensor;
     Tensor inv_var_tensor;
-    if (use_global_stats) {
-      const auto *running_mean = ctx.Input<Tensor>("Mean");
-      const auto *running_variance = ctx.Input<Tensor>("Variance");
-      mean_tensor.Resize({NxC});
-      T *running_mean_data = mean_tensor.mutable_data<T>(ctx.GetPlace());
-      EigenVectorArrayMap<T> mean_tmp(running_mean_data, NxC);
-      ConstEigenVectorArrayMap<T> mean_arr(running_mean->data<T>(), C);
-
-      mean_tmp = mean_arr.transpose().replicate(N, 1);
-      mean_data = running_mean_data;
-
-      inv_var_tensor.Resize({NxC});
-      T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
-      EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, NxC);
-      ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), NxC);
-
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
-      inv_var_data = running_inv_var_data;
-    }
     ConstEigenArrayMap<T> x_arr(X->data<T>(), sample_size, NxC);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
@@ -615,13 +463,6 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     EigenArrayMap<T> inv_var_tile_data(
         inv_var_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
 
-    // if (use_global_stats) {
-    //  mean_tile_data = mean_arr.transpose().replicate(sample_size, N);
-    //  inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, N);
-    //} else {
-    //  mean_tile_data = mean_arr.transpose().replicate(sample_size, 1);
-    //  inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, 1);
-    //}
     mean_tile_data = mean_arr.transpose().replicate(sample_size, 1);
     inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, 1);
 
@@ -637,17 +478,21 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     ConstEigenArrayMap<T> dy_arr(dY->data<T>(), sample_size, NxC);
     ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, NxC);
 
-    // dx = scale * ((x - mean) * inv_var / HxW * (np.mean(ddx, axis=(h,w)) *
-    //      np.sum(dy, axis=(h,w)) -
-    //      np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
-    //      axis=(h,w)) * inv_var.pow(2) *
-    //      np.sum(ddx * (x - mean), axis=(h,w))) + inv_var.pow(3) / HxW *
-    //      np.sum(ddx * (x - mean)) *
-    //      (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW * np.sum(dy,
-    //      axis=(h,w)) * (x - mean) *
-    //      (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var *
-    //      np.mean(dy, axis=(h,w)) -
-    //      inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean), axis=(h,w))))
+    // math: dx = scale * ((x - mean) * inv_var / HxW * (np.mean(ddx,
+    // axis=(h,w)) *
+    //          np.sum(dy, axis=(h,w)) -
+    //          np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
+    //          axis=(h,w)) * inv_var.pow(2) *
+    //          np.sum(ddx * (x - mean), axis=(h,w))) + inv_var.pow(3) / HxW *
+    //          np.sum(ddx * (x - mean)) *
+    //          (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW *
+    //          np.sum(dy,
+    //          axis=(h,w)) * (x - mean) *
+    //          (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var
+    //          *
+    //          np.mean(dy, axis=(h,w)) -
+    //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
+    //          axis=(h,w))))
 
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
@@ -660,118 +505,33 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
         NxC);
     x_sub_mean_mul_invstd_arr = (x_arr - mean_tile_data) * inv_var_tile_data;
 
-    if (!use_global_stats) {
-      if (dX) {
-        dX->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, dX, static_cast<T>(0));
-        EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()),
-                                sample_size, NxC);
+    if (dX) {
+      dX->mutable_data<T>(ctx.GetPlace());
+      set_constant(dev_ctx, dX, static_cast<T>(0));
+      EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()), sample_size,
+                              NxC);
 
-        if (ddX) {
-          dx_arr +=
-              x_sub_mean_mul_invstd_arr * inv_var_tile_data *
-              inv_var_tile_data / sample_size *
-              (ddx_arr.colwise().sum() * dy_arr.colwise().sum() / sample_size -
-               (dy_arr * ddx_arr).colwise().sum() +
-               3. * (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() *
-                   (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                   sample_size);
+      if (ddX) {
+        dx_arr +=
+            x_sub_mean_mul_invstd_arr * inv_var_tile_data * inv_var_tile_data /
+            sample_size *
+            (ddx_arr.colwise().sum() * dy_arr.colwise().sum() / sample_size -
+             (dy_arr * ddx_arr).colwise().sum() +
+             3. * (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() *
+                 (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                 sample_size);
 
-          dx_arr += (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                    sample_size * inv_var_tile_data * inv_var_tile_data *
-                    (dy_arr.colwise().sum() / sample_size - dy_arr);
+        dx_arr += (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                  sample_size * inv_var_tile_data * inv_var_tile_data *
+                  (dy_arr.colwise().sum() / sample_size - dy_arr);
 
-          dx_arr += (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                    sample_size * inv_var_tile_data * inv_var_tile_data *
-                    (ddx_arr.colwise().sum() / sample_size - ddx_arr);
+        dx_arr += (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                  sample_size * inv_var_tile_data * inv_var_tile_data *
+                  (ddx_arr.colwise().sum() / sample_size - ddx_arr);
 
-          dx_arr = scale_tile_data * dx_arr.eval();
-        }
-        if (ddScale) {
-          ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-
-          Tensor ddscale_tile;
-          ddscale_tile.Resize({sample_size, NxC});
-          ddscale_tile.mutable_data<T>(ctx.GetPlace());
-          EigenArrayMap<T> ddscale_tile_data(
-              ddscale_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-          ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
-
-          dx_arr += (dy_arr * inv_var_tile_data -
-                     dy_arr.colwise().sum() / sample_size * inv_var_tile_data -
-                     x_sub_mean_mul_invstd_arr * inv_var_tile_data *
-                         (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                         sample_size) *
-                    ddscale_tile_data;
-        }
+        dx_arr = scale_tile_data * dx_arr.eval();
       }
-      if (dScale) {
-        // dscale = inv_var * (dy - np.mean(dy, axis=(h,w) - (x-mean) *
-        //          inv_var.pow(2) * np.mean(dy * (x-mean), axis=(h,w)))) * ddx
-        dScale->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, dScale, static_cast<T>(0));
-        EigenVectorArrayMap<T> dscale_arr(
-            dScale->mutable_data<T>(ctx.GetPlace()), C);
-        if (ddX) {
-          Tensor first_grad;
-          first_grad.Resize({sample_size, NxC});
-          first_grad.mutable_data<T>(ctx.GetPlace());
-          set_constant(dev_ctx, &first_grad, static_cast<T>(0));
-          EigenArrayMap<T> first_grad_arr(
-              first_grad.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-
-          first_grad_arr +=
-              inv_var_tile_data *
-              (dy_arr - dy_arr.colwise().sum() / sample_size -
-               x_sub_mean_mul_invstd_arr *
-                   (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                   sample_size);
-          first_grad_arr = first_grad_arr.eval() * ddx_arr;
-          for (int nc = 0; nc < NxC; ++nc) {
-            int c = nc % C;
-            dscale_arr(c) += first_grad_arr.colwise().sum()(nc);
-          }
-        }
-      }
-      if (ddY) {
-        // ddy = (x - mean) * inv_var * ddscale + ddbias +
-        //       scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
-        //       np.mean(ddx * (x - mean), axis=(h,w)))
-        ddY->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, ddY, static_cast<T>(0));
-        EigenArrayMap<T> ddy_arr(ddY->mutable_data<T>(ctx.GetPlace()),
-                                 sample_size, NxC);
-        if (ddX) {
-          ddy_arr +=
-              scale_tile_data * inv_var_tile_data *
-              (ddx_arr - ddx_arr.colwise().sum() / sample_size -
-               x_sub_mean_mul_invstd_arr *
-                   (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
-                   sample_size);
-        }
-        if (ddScale && ddBias) {
-          ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-          Tensor ddscale_tile;
-          ddscale_tile.Resize({sample_size, NxC});
-          ddscale_tile.mutable_data<T>(ctx.GetPlace());
-          EigenArrayMap<T> ddscale_tile_data(
-              ddscale_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-          ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
-
-          ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
-          Tensor ddbias_tile;
-          ddbias_tile.Resize({sample_size, NxC});
-          ddbias_tile.mutable_data<T>(ctx.GetPlace());
-          EigenArrayMap<T> ddbias_tile_data(
-              ddbias_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-          ddbias_tile_data = ddbias_arr.transpose().replicate(sample_size, N);
-
-          ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
-          ddy_arr += ddbias_tile_data;
-        }
-      }
-    } else {
-      if (dX && ddScale) {
+      if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
 
         Tensor ddscale_tile;
@@ -781,63 +541,76 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
             ddscale_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
         ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
 
-        dX->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, dX, static_cast<T>(0));
-        EigenArrayMap<T> dx_arr(dX->mutable_data<T>(ctx.GetPlace()),
-                                sample_size, NxC);
-
-        dx_arr += dy_arr * inv_var_tile_data * ddscale_tile_data;
+        dx_arr += (dy_arr * inv_var_tile_data -
+                   dy_arr.colwise().sum() / sample_size * inv_var_tile_data -
+                   x_sub_mean_mul_invstd_arr * inv_var_tile_data *
+                       (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                       sample_size) *
+                  ddscale_tile_data;
       }
-      if (dScale && ddX) {
-        dScale->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, dScale, static_cast<T>(0));
-        EigenVectorArrayMap<T> dscale_arr(
-            dScale->mutable_data<T>(ctx.GetPlace()), C);
+    }
+    if (dScale) {
+      // math: dscale = inv_var * (dy - np.mean(dy, axis=(h,w) - (x-mean) *
+      //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(h,w)))) * ddx
+      dScale->mutable_data<T>(ctx.GetPlace());
+      set_constant(dev_ctx, dScale, static_cast<T>(0));
+      EigenVectorArrayMap<T> dscale_arr(dScale->mutable_data<T>(ctx.GetPlace()),
+                                        C);
+      if (ddX) {
+        Tensor first_grad;
+        first_grad.Resize({sample_size, NxC});
+        first_grad.mutable_data<T>(ctx.GetPlace());
+        set_constant(dev_ctx, &first_grad, static_cast<T>(0));
+        EigenArrayMap<T> first_grad_arr(
+            first_grad.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
 
-        Tensor dscale_tmp;
-        dscale_tmp.Resize({NxC});
-        dscale_tmp.mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, &dscale_tmp, static_cast<T>(0));
-        EigenVectorArrayMap<T> dscale_tmp_data(
-            dscale_tmp.mutable_data<T>(ctx.GetPlace()), NxC);
-
-        dscale_tmp_data =
-            (ddx_arr * dy_arr * inv_var_tile_data).colwise().sum();
-
+        first_grad_arr +=
+            inv_var_tile_data *
+            (dy_arr - dy_arr.colwise().sum() / sample_size -
+             x_sub_mean_mul_invstd_arr *
+                 (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                 sample_size);
+        first_grad_arr = first_grad_arr.eval() * ddx_arr;
         for (int nc = 0; nc < NxC; ++nc) {
           int c = nc % C;
-          dscale_arr(c) += dscale_tmp_data(nc);
+          dscale_arr(c) += first_grad_arr.colwise().sum()(nc);
         }
       }
-      if (ddY) {
-        ddY->mutable_data<T>(ctx.GetPlace());
-        set_constant(dev_ctx, ddY, static_cast<T>(0));
-        EigenArrayMap<T> ddy_arr(ddY->mutable_data<T>(ctx.GetPlace()),
-                                 sample_size, NxC);
+    }
+    if (ddY) {
+      // math: ddy = (x - mean) * inv_var * ddscale + ddbias +
+      //           scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
+      //           np.mean(ddx * (x - mean), axis=(h,w)))
+      ddY->mutable_data<T>(ctx.GetPlace());
+      set_constant(dev_ctx, ddY, static_cast<T>(0));
+      EigenArrayMap<T> ddy_arr(ddY->mutable_data<T>(ctx.GetPlace()),
+                               sample_size, NxC);
+      if (ddX) {
+        ddy_arr += scale_tile_data * inv_var_tile_data *
+                   (ddx_arr - ddx_arr.colwise().sum() / sample_size -
+                    x_sub_mean_mul_invstd_arr *
+                        (ddx_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                        sample_size);
+      }
+      if (ddScale && ddBias) {
+        ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
+        Tensor ddscale_tile;
+        ddscale_tile.Resize({sample_size, NxC});
+        ddscale_tile.mutable_data<T>(ctx.GetPlace());
+        EigenArrayMap<T> ddscale_tile_data(
+            ddscale_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
+        ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
 
-        if (ddX) {
-          ddy_arr += ddx_arr * scale_tile_data * inv_var_tile_data;
-        }
-        if (ddScale && ddBias) {
-          ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-          Tensor ddscale_tile;
-          ddscale_tile.Resize({sample_size, NxC});
-          ddscale_tile.mutable_data<T>(ctx.GetPlace());
-          EigenArrayMap<T> ddscale_tile_data(
-              ddscale_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-          ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
+        ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
+        Tensor ddbias_tile;
+        ddbias_tile.Resize({sample_size, NxC});
+        ddbias_tile.mutable_data<T>(ctx.GetPlace());
+        EigenArrayMap<T> ddbias_tile_data(
+            ddbias_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
+        ddbias_tile_data = ddbias_arr.transpose().replicate(sample_size, N);
 
-          ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
-          Tensor ddbias_tile;
-          ddbias_tile.Resize({sample_size, NxC});
-          ddbias_tile.mutable_data<T>(ctx.GetPlace());
-          EigenArrayMap<T> ddbias_tile_data(
-              ddbias_tile.mutable_data<T>(ctx.GetPlace()), sample_size, NxC);
-          ddbias_tile_data = ddbias_arr.transpose().replicate(sample_size, N);
-
-          ddy_arr +=
-              x_sub_mean_mul_invstd_arr * ddscale_tile_data * ddbias_tile_data;
-        }
+        ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
+        ddy_arr += ddbias_tile_data;
       }
     }
   }

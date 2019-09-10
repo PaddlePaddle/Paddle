@@ -74,9 +74,6 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "It must be CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const float momentum = ctx.Attr<float>("momentum");
-    const bool is_test = ctx.Attr<bool>("is_test");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
     auto *x = ctx.Input<Tensor>("X");
     auto &x_dims = x->dims();
@@ -146,136 +143,32 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
 
     auto handle = dev_ctx.cudnn_handle();
 
-    Tensor est_mean_tmp =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
-    est_mean_tmp.mutable_data<T>(ctx.GetPlace());
-    Tensor est_var_tmp =
-        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
-    est_var_tmp.mutable_data<T>(ctx.GetPlace());
+    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+        functor;
 
-    if (is_test || use_global_stats) {
-      const auto *est_mean = ctx.Input<Tensor>("Mean");
-      const auto *est_var = ctx.Input<Tensor>("Variance");
+    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
+    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
-      PADDLE_ENFORCE_EQ(est_mean->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_var->dims().size(), 1UL);
-      PADDLE_ENFORCE_EQ(est_mean->dims()[0], C);
-      PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
-
-      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          est_mean->data<T>(), est_mean_tmp.data<T>(), N, C);
-      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          est_var->data<T>(), est_var_tmp.data<T>(), N, C);
-
-      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardInference(
-          handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
-          CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
-          data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
-          in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
-          bias_tmp.template data<BatchNormParamType<T>>(),
-          est_mean_tmp.template data<BatchNormParamType<T>>(),
-          est_var_tmp.template data<BatchNormParamType<T>>(), epsilon));
-    } else {
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      auto *mean_out = ctx.Output<Tensor>("MeanOut");
-      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-      mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-      variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-
-      auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-      auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-      saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-      saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-      functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
-
-      functor(dev_ctx, &est_mean_tmp, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, &est_var_tmp, static_cast<BatchNormParamType<T>>(1));
-
-      double factor = 1. - momentum;
-      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
-          handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
-          CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
-          data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
-          in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
-          bias_tmp.template data<BatchNormParamType<T>>(), factor,
-          est_mean_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          est_var_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                       ctx.GetPlace()),
-          saved_variance->template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace())));
-
-      add_param<T, block, true><<<grid, block, 0, dev_ctx.stream()>>>(
-          est_mean_tmp.data<T>(), mean_out->mutable_data<T>(ctx.GetPlace()), N,
-          C);
-      add_param<T, block, true><<<grid, block, 0, dev_ctx.stream()>>>(
-          est_var_tmp.data<T>(), variance_out->mutable_data<T>(ctx.GetPlace()),
-          N, C);
-    }
+    CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
+        handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
+        CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
+        data_desc_, y->template mutable_data<T>(ctx.GetPlace()), in_param_desc_,
+        scale_tmp.template data<BatchNormParamType<T>>(),
+        bias_tmp.template data<BatchNormParamType<T>>(), 0, nullptr, nullptr,
+        epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
+                     ctx.GetPlace()),
+        saved_variance->template mutable_data<BatchNormParamType<T>>(
+            ctx.GetPlace())));
 
     CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     CUDNN_ENFORCE(
         platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
   }
 };
-
-template <typename T>
-static __global__ void INBwdData(const T *dy,
-                                 const BatchNormParamType<T> *scale,
-                                 const BatchNormParamType<T> *variance,
-                                 const double epsilon, const int NxC,
-                                 const int C, const int HxW, const int num,
-                                 T *dx) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
-    const int nc = i / HxW % NxC;
-    const int c = nc % C;
-    BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
-    dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
-                           scale[c] * inv_var);
-  }
-}
-
-template <typename T, int BlockDim>
-static __global__ void INBwdScaleBias(const T *dy, const T *x,
-                                      const BatchNormParamType<T> *mean,
-                                      const BatchNormParamType<T> *variance,
-                                      const double epsilon, const int N,
-                                      const int C, const int HxW,
-                                      BatchNormParamType<T> *d_scale,
-                                      BatchNormParamType<T> *d_bias) {
-  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage ds_storage;
-  __shared__ typename BlockReduce::TempStorage db_storage;
-
-  const int inner_size = N * HxW;
-  for (int i = blockIdx.x; i < C; i += gridDim.x) {
-    BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
-    BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
-
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int stats_index = j / HxW * C + i;
-      const int index = stats_index * HxW + j % HxW;
-
-      BatchNormParamType<T> var_i = 1.0 / sqrt(variance[i] + epsilon);
-      ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
-                static_cast<BatchNormParamType<T>>(x[index] - mean[i]) *
-                static_cast<BatchNormParamType<T>>(var_i);
-      db_sum += static_cast<BatchNormParamType<T>>(dy[index]);
-    }
-    ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-    db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
-    if (threadIdx.x == 0) {
-      d_scale[i] = ds_sum;
-      d_bias[i] = db_sum;
-    }
-    __syncthreads();
-  }
-}
 
 template <typename T>
 class InstanceNormGradKernel<platform::CUDADeviceContext, T>
@@ -285,19 +178,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
 
     const auto &x_dims = x->dims();
 
-    PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
-        "the dimension of input X must greater than or equal to 2");
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
-        "the dimension of input X must smaller than or equal to 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -342,87 +228,62 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     dims = {1, NxC, H, W, D};
     strides = {NxC * H * W * D, H * W * D, W * D, D, 1};
 
-    if (!use_global_stats) {
-      if ((H * W * D) == 1) {
-        framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
-        math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-            functor;
-        functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-        functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
-        return;
-      }
-
-      cudnnTensorDescriptor_t data_desc_;
-      cudnnTensorDescriptor_t in_param_desc_;
-
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
-      if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
-        LOG(ERROR) << "Provided epsilon is smaller than "
-                   << "CUDNN_BN_MIN_EPSILON. Setting it to "
-                   << "CUDNN_BN_MIN_EPSILON instead.";
-      }
-      epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
-
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
-          data_desc_, CudnnDataType<T>::type,
-          x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-      CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
-          in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
-
-      const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-      const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
-      const void *saved_mean_data =
-          saved_mean->template data<BatchNormParamType<T>>();
-      const void *saved_var_data =
-          saved_var->template data<BatchNormParamType<T>>();
-      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-          dev_ctx.cudnn_handle(), CUDNN_BATCHNORM_SPATIAL,
-          CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-          CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
-          x_tmp.template data<T>(), data_desc_, d_y_tmp.template data<T>(),
-          data_desc_, d_x->template mutable_data<T>(ctx.GetPlace()),
-          in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
-          d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          epsilon, saved_mean_data, saved_var_data));
-
-      if (d_scale && d_bias) {
-        add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
-            d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
-        add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
-            d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
-      }
-
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-      CUDNN_ENFORCE(
-          platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
-    } else {
-      const auto *running_mean = ctx.Input<Tensor>("Mean");
-      const auto *running_variance = ctx.Input<Tensor>("Variance");
-
-      const auto *running_mean_data =
-          running_mean->template data<BatchNormParamType<T>>();
-      const auto *running_var_data =
-          running_variance->template data<BatchNormParamType<T>>();
-      if (d_x) {
-        INBwdData<T><<<grid1, block, 0, dev_ctx.stream()>>>(
-            d_y_tmp.data<T>(), scale->data<BatchNormParamType<T>>(),
-            running_var_data, epsilon, NxC, C, H * W, n, d_x->data<T>());
-      }
-      if (d_scale && d_bias) {
-        INBwdScaleBias<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-            d_y_tmp.data<T>(), x_tmp.data<T>(), running_mean_data,
-            running_var_data, epsilon, N, C, H * W,
-            d_scale->data<BatchNormParamType<T>>(),
-            d_bias->data<BatchNormParamType<T>>());
-      }
+    if ((H * W * D) == 1) {
+      framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
+      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+      return;
     }
+
+    cudnnTensorDescriptor_t data_desc_;
+    cudnnTensorDescriptor_t in_param_desc_;
+
+    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    CUDNN_ENFORCE(
+        platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
+    if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
+      LOG(ERROR) << "Provided epsilon is smaller than "
+                 << "CUDNN_BN_MIN_EPSILON. Setting it to "
+                 << "CUDNN_BN_MIN_EPSILON instead.";
+    }
+    epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
+
+    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+        data_desc_, CudnnDataType<T>::type,
+        x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
+    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
+        in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
+
+    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
+    const void *saved_mean_data =
+        saved_mean->template data<BatchNormParamType<T>>();
+    const void *saved_var_data =
+        saved_var->template data<BatchNormParamType<T>>();
+    CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
+        dev_ctx.cudnn_handle(), CUDNN_BATCHNORM_SPATIAL,
+        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
+        CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
+        x_tmp.template data<T>(), data_desc_, d_y_tmp.template data<T>(),
+        data_desc_, d_x->template mutable_data<T>(ctx.GetPlace()),
+        in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
+        d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
+            ctx.GetPlace()),
+        d_bias_tmp.template mutable_data<BatchNormParamType<T>>(ctx.GetPlace()),
+        epsilon, saved_mean_data, saved_var_data));
+
+    if (d_scale && d_bias) {
+      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+          d_scale_tmp.data<T>(), d_scale->data<T>(), N, C);
+      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+          d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
+    }
+
+    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    CUDNN_ENFORCE(
+        platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
   }
 };
 
@@ -438,96 +299,84 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
                                     const T *variance, const T *ddx,
                                     const T *dy, const T *scale,
                                     const T *ddscale, int C, int sample_size,
-                                    const bool use_global_stats,
                                     const double epsilon, T *dx) {
   int beg_idx = blockIdx.x * sample_size + threadIdx.x;
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
 
-  if (!use_global_stats) {
-    T mean_val = mean[ncid];
-    T var_val = variance[ncid];
+  T mean_val = mean[ncid];
+  T var_val = variance[ncid];
 
-    typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-    __shared__ typename BlockReduce::TempStorage dy_storage;
-    __shared__ typename BlockReduce::TempStorage ddx_storage;
-    __shared__ typename BlockReduce::TempStorage dy_mul_ddx_storage;
-    __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
-    __shared__ typename BlockReduce::TempStorage ddx_mul_x_sub_mean_storage;
-    __shared__ T dy_sum_val;
-    __shared__ T ddx_sum_val;
-    __shared__ T dy_mul_ddx_sum_val;
-    __shared__ T dy_mul_x_sub_mean_sum_val;
-    __shared__ T ddx_mul_x_sub_mean_sum_val;
+  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage dy_storage;
+  __shared__ typename BlockReduce::TempStorage ddx_storage;
+  __shared__ typename BlockReduce::TempStorage dy_mul_ddx_storage;
+  __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
+  __shared__ typename BlockReduce::TempStorage ddx_mul_x_sub_mean_storage;
+  __shared__ T dy_sum_val;
+  __shared__ T ddx_sum_val;
+  __shared__ T dy_mul_ddx_sum_val;
+  __shared__ T dy_mul_x_sub_mean_sum_val;
+  __shared__ T ddx_mul_x_sub_mean_sum_val;
 
-    T dy_sum = 0;
-    T ddx_sum = 0;
-    T dy_mul_ddx_sum = 0;
-    T dy_mul_x_sub_mean_sum = 0;
-    T ddx_mul_x_sub_mean_sum = 0;
+  T dy_sum = 0;
+  T ddx_sum = 0;
+  T dy_mul_ddx_sum = 0;
+  T dy_mul_x_sub_mean_sum = 0;
+  T ddx_mul_x_sub_mean_sum = 0;
+  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    T ddx_i = ddx[i];
+    T dy_i = dy[i];
+    T tmp = x[i] - mean_val;
+
+    dy_sum += dy_i;
+    ddx_sum += ddx_i;
+    dy_mul_ddx_sum += (ddx_i * dy_i);
+
+    dy_mul_x_sub_mean_sum += (dy_i * tmp);
+    ddx_mul_x_sub_mean_sum += (ddx_i * tmp);
+  }
+
+  dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
+  ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
+  dy_mul_ddx_sum =
+      BlockReduce(dy_mul_ddx_storage).Reduce(dy_mul_ddx_sum, cub::Sum());
+  dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
+                              .Reduce(dy_mul_x_sub_mean_sum, cub::Sum());
+  ddx_mul_x_sub_mean_sum = BlockReduce(ddx_mul_x_sub_mean_storage)
+                               .Reduce(ddx_mul_x_sub_mean_sum, cub::Sum());
+
+  if (threadIdx.x == 0) {
+    dy_sum_val = dy_sum;
+    ddx_sum_val = ddx_sum;
+    dy_mul_ddx_sum_val = dy_mul_ddx_sum;
+    dy_mul_x_sub_mean_sum_val = dy_mul_x_sub_mean_sum;
+    ddx_mul_x_sub_mean_sum_val = ddx_mul_x_sub_mean_sum;
+  }
+  __syncthreads();
+
+  if (ddx != nullptr) {
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      T ddx_i = ddx[i];
-      T dy_i = dy[i];
-      T tmp = x[i] - mean_val;
-
-      dy_sum += dy_i;
-      ddx_sum += ddx_i;
-      dy_mul_ddx_sum += (ddx_i * dy_i);
-
-      dy_mul_x_sub_mean_sum += (dy_i * tmp);
-      ddx_mul_x_sub_mean_sum += (ddx_i * tmp);
+      dx[i] +=
+          ((x[i] - mean_val) * var_val * var_val * var_val / sample_size *
+               (ddx_sum_val * dy_sum_val / sample_size - dy_mul_ddx_sum_val +
+                3. * dy_mul_x_sub_mean_sum_val * var_val *
+                    ddx_mul_x_sub_mean_sum_val * var_val / sample_size) +
+           ddx_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
+               var_val * (dy_sum_val / sample_size - dy[i]) +
+           dy_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
+               var_val * (ddx_sum_val / sample_size - ddx[i])) *
+          scale[c];
     }
-
-    dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
-    ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
-    dy_mul_ddx_sum =
-        BlockReduce(dy_mul_ddx_storage).Reduce(dy_mul_ddx_sum, cub::Sum());
-    dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
-                                .Reduce(dy_mul_x_sub_mean_sum, cub::Sum());
-    ddx_mul_x_sub_mean_sum = BlockReduce(ddx_mul_x_sub_mean_storage)
-                                 .Reduce(ddx_mul_x_sub_mean_sum, cub::Sum());
-
-    if (threadIdx.x == 0) {
-      dy_sum_val = dy_sum;
-      ddx_sum_val = ddx_sum;
-      dy_mul_ddx_sum_val = dy_mul_ddx_sum;
-      dy_mul_x_sub_mean_sum_val = dy_mul_x_sub_mean_sum;
-      ddx_mul_x_sub_mean_sum_val = ddx_mul_x_sub_mean_sum;
-    }
-    __syncthreads();
-
-    if (ddx != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dx[i] +=
-            ((x[i] - mean_val) * var_val * var_val * var_val / sample_size *
-                 (ddx_sum_val * dy_sum_val / sample_size - dy_mul_ddx_sum_val +
-                  3. * dy_mul_x_sub_mean_sum_val * var_val *
-                      ddx_mul_x_sub_mean_sum_val * var_val / sample_size) +
-             ddx_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
-                 var_val * (dy_sum_val / sample_size - dy[i]) +
-             dy_mul_x_sub_mean_sum_val * var_val / sample_size * var_val *
-                 var_val * (ddx_sum_val / sample_size - ddx[i])) *
-            scale[c];
-      }
-    }
-    __syncthreads();
-    if (ddscale != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dx[i] += (dy[i] * var_val - dy_sum_val / sample_size * var_val -
-                  (x[i] - mean_val) * var_val * dy_mul_x_sub_mean_sum_val *
-                      var_val / sample_size) *
-                 ddscale[c];
-      }
-    }
-  } else {
-    T var_val = variance[c];
-
-    var_val = real_sqrt(var_val + epsilon);
-    if (ddscale != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dx[i] += dy[i] * var_val * ddscale[i];
-      }
+  }
+  __syncthreads();
+  if (ddscale != nullptr) {
+    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+      dx[i] += (dy[i] * var_val - dy_sum_val / sample_size * var_val -
+                (x[i] - mean_val) * var_val * dy_mul_x_sub_mean_sum_val *
+                    var_val / sample_size) *
+               ddscale[c];
     }
   }
 }
@@ -537,79 +386,56 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
                                      const T *variance, const T *ddscale,
                                      const T *ddbias, const T *ddx, const T *dy,
                                      const T *scale, int C, int sample_size,
-                                     const bool use_global_stats,
                                      const double epsilon, T *ddy) {
   int beg_idx = blockIdx.x * sample_size + threadIdx.x;
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
 
-  if (!use_global_stats) {
-    T mean_val = mean[ncid];
-    T var_val = variance[ncid];
+  T mean_val = mean[ncid];
+  T var_val = variance[ncid];
 
-    typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-    __shared__ typename BlockReduce::TempStorage ddx_storage;
-    __shared__ typename BlockReduce::TempStorage ddx_mul_x_sub_mean_storage;
-    __shared__ T ddx_sum_val;
-    __shared__ T ddx_mul_x_sub_mean_sum_val;
+  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage ddx_storage;
+  __shared__ typename BlockReduce::TempStorage ddx_mul_x_sub_mean_storage;
+  __shared__ T ddx_sum_val;
+  __shared__ T ddx_mul_x_sub_mean_sum_val;
 
-    T ddx_sum = 0;
-    T ddx_mul_x_sub_mean_sum = 0;
+  T ddx_sum = 0;
+  T ddx_mul_x_sub_mean_sum = 0;
+  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    T ddx_i = ddx[i];
+    ddx_sum += ddx_i;
+    ddx_mul_x_sub_mean_sum += (ddx_i * (x[i] - mean_val));
+  }
+  ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
+  ddx_mul_x_sub_mean_sum = BlockReduce(ddx_mul_x_sub_mean_storage)
+                               .Reduce(ddx_mul_x_sub_mean_sum, cub::Sum());
+
+  if (threadIdx.x == 0) {
+    ddx_sum_val = ddx_sum;
+    ddx_mul_x_sub_mean_sum_val = ddx_mul_x_sub_mean_sum;
+  }
+  __syncthreads();
+
+  if (ddx != nullptr) {
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      T ddx_i = ddx[i];
-      ddx_sum += ddx_i;
-      ddx_mul_x_sub_mean_sum += (ddx_i * (x[i] - mean_val));
+      ddy[i] += scale[c] * var_val *
+                (ddx[i] - ddx_sum_val / sample_size -
+                 (x[i] - mean_val) * var_val * ddx_mul_x_sub_mean_sum_val *
+                     var_val / sample_size);
     }
-    ddx_sum = BlockReduce(ddx_storage).Reduce(ddx_sum, cub::Sum());
-    ddx_mul_x_sub_mean_sum = BlockReduce(ddx_mul_x_sub_mean_storage)
-                                 .Reduce(ddx_mul_x_sub_mean_sum, cub::Sum());
-
-    if (threadIdx.x == 0) {
-      ddx_sum_val = ddx_sum;
-      ddx_mul_x_sub_mean_sum_val = ddx_mul_x_sub_mean_sum;
+  }
+  __syncthreads();
+  if (ddscale != nullptr) {
+    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+      ddy[i] += (x[i] - mean_val) * var_val * ddscale[c];
     }
-    __syncthreads();
-
-    if (ddx != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += scale[c] * var_val *
-                  (ddx[i] - ddx_sum_val / sample_size -
-                   (x[i] - mean_val) * var_val * ddx_mul_x_sub_mean_sum_val *
-                       var_val / sample_size);
-      }
-    }
-    __syncthreads();
-    if (ddscale != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += (x[i] - mean_val) * var_val * ddscale[c];
-      }
-    }
-    __syncthreads();
-    if (ddbias != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += ddbias[c];
-      }
-    }
-  } else {
-    T mean_val = mean[c];
-    T var_val = variance[c];
-
-    if (ddx != nullptr) {
-      var_val = real_sqrt(var_val + epsilon);
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += scale[c] * var_val * ddx[i];
-      }
-    }
-    if (ddscale != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += (x[i] - mean_val) * ddscale[c];
-      }
-    }
-    if (ddbias != nullptr) {
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        ddy[i] += ddbias[c];
-      }
+  }
+  __syncthreads();
+  if (ddbias != nullptr) {
+    for (int i = beg_idx; i < end_idx; i += BlockDim) {
+      ddy[i] += ddbias[c];
     }
   }
 }
@@ -618,64 +444,53 @@ template <typename T, int BlockDim>
 __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
                                         const T *variance, const T *ddx,
                                         const T *dy, int C, int sample_size,
-                                        const bool use_global_stats,
                                         const double epsilon, T *dscale) {
   int beg_idx = blockIdx.x * sample_size + threadIdx.x;
   int end_idx = (blockIdx.x + 1) * sample_size;
   int ncid = blockIdx.x;
   int c = ncid % C;
 
-  if (!use_global_stats) {
-    T mean_val = mean[ncid];
-    T var_val = variance[ncid];
+  T mean_val = mean[ncid];
+  T var_val = variance[ncid];
 
-    typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-    __shared__ typename BlockReduce::TempStorage dy_storage;
-    __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
-    __shared__ typename BlockReduce::TempStorage dscale_tmp_storage;
-    __shared__ T dy_sum_val;
-    __shared__ T dy_mul_x_sub_mean_sum_val;
+  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage dy_storage;
+  __shared__ typename BlockReduce::TempStorage dy_mul_x_sub_mean_storage;
+  __shared__ typename BlockReduce::TempStorage dscale_tmp_storage;
+  __shared__ T dy_sum_val;
+  __shared__ T dy_mul_x_sub_mean_sum_val;
 
-    T dy_sum = 0;
-    T dy_mul_x_sub_mean_sum = 0;
+  T dy_sum = 0;
+  T dy_mul_x_sub_mean_sum = 0;
+  for (int i = beg_idx; i < end_idx; i += BlockDim) {
+    T dy_i = dy[i];
+    dy_sum += dy_i;
+    dy_mul_x_sub_mean_sum += (dy_i * (x[i] - mean_val));
+  }
+  dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
+  dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
+                              .Reduce(dy_mul_x_sub_mean_sum, cub::Sum());
+
+  if (threadIdx.x == 0) {
+    dy_sum_val = dy_sum;
+    dy_mul_x_sub_mean_sum_val = dy_mul_x_sub_mean_sum;
+  }
+  __syncthreads();
+
+  if (ddx != nullptr) {
+    T dscale_tmp = 0;
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
-      T dy_i = dy[i];
-      dy_sum += dy_i;
-      dy_mul_x_sub_mean_sum += (dy_i * (x[i] - mean_val));
+      dscale_tmp +=
+          ddx[i] * var_val * (dy[i] - dy_sum_val / sample_size -
+                              dy_mul_x_sub_mean_sum_val * (x[i] - mean_val) *
+                                  var_val * var_val / sample_size);
     }
-    dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
-    dy_mul_x_sub_mean_sum = BlockReduce(dy_mul_x_sub_mean_storage)
-                                .Reduce(dy_mul_x_sub_mean_sum, cub::Sum());
+    dscale_tmp = BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
 
     if (threadIdx.x == 0) {
-      dy_sum_val = dy_sum;
-      dy_mul_x_sub_mean_sum_val = dy_mul_x_sub_mean_sum;
+      dscale[ncid] += dscale_tmp;
     }
     __syncthreads();
-
-    if (ddx != nullptr) {
-      T dscale_tmp = 0;
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dscale_tmp +=
-            ddx[i] * var_val * (dy[i] - dy_sum_val / sample_size -
-                                dy_mul_x_sub_mean_sum_val * (x[i] - mean_val) *
-                                    var_val * var_val / sample_size);
-      }
-      dscale_tmp =
-          BlockReduce(dscale_tmp_storage).Reduce(dscale_tmp, cub::Sum());
-      if (threadIdx.x == 0) {
-        dscale[ncid] += dscale_tmp;
-      }
-      __syncthreads();
-    }
-  } else {
-    if (ddx != nullptr) {
-      T var_val = variance[c];
-      var_val = real_sqrt(var_val + epsilon);
-      for (int i = beg_idx; i < end_idx; i += BlockDim) {
-        dscale[c] += dy[i] * var_val * ddx[i];
-      }
-    }
   }
 }
 
@@ -695,7 +510,6 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const auto *ddScale = ctx.Input<Tensor>("DDScale");
     const auto *ddBias = ctx.Input<Tensor>("DDBias");
     const double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
     auto *dX = ctx.Output<Tensor>("DX");
     auto *dScale = ctx.Output<Tensor>("DScale");
@@ -709,10 +523,8 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const T *ddscale_data = (ddScale == nullptr ? nullptr : ddScale->data<T>());
     const T *ddbias_data = (ddScale == nullptr ? nullptr : ddBias->data<T>());
 
-    const T *mean_data =
-        (use_global_stats ? running_mean->data<T>() : Saved_mean->data<T>());
-    const T *variance_data =
-        (use_global_stats ? running_var->data<T>() : Saved_variance->data<T>());
+    const T *mean_data = Saved_mean->data<T>();
+    const T *variance_data = Saved_variance->data<T>();
 
     auto &x_dims = X->dims();
     int N, C, H, W, D;
@@ -734,15 +546,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
       set_zero(dev_ctx, dX, static_cast<T>(0));
       DoubleGradComputeDX<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, mean_data, variance_data, ddx_data, dy_data, scale_data,
-          ddscale_data, C, sample_size, use_global_stats, epsilon, dx_data);
-    }
-    if (ddY) {
-      T *ddy_data = ddY->mutable_data<T>(ctx.GetPlace());
-      set_zero(dev_ctx, ddY, static_cast<T>(0));
-      DoubleGradComputeDDY<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
-          x_data, mean_data, variance_data, ddscale_data, ddbias_data, ddx_data,
-          dy_data, scale_data, C, sample_size, use_global_stats, epsilon,
-          ddy_data);
+          ddscale_data, C, sample_size, epsilon, dx_data);
     }
     if (dScale) {
       Tensor dscale_tmp =
@@ -754,9 +558,16 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
       set_zero(dev_ctx, dScale, static_cast<T>(0));
       DoubleGradComputeDScale<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, mean_data, variance_data, ddx_data, dy_data, C, sample_size,
-          use_global_stats, epsilon, dscale_tmp_data);
+          epsilon, dscale_tmp_data);
       add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
           dscale_tmp.data<T>(), dScale->data<T>(), N, C);
+    }
+    if (ddY) {
+      T *ddy_data = ddY->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, ddY, static_cast<T>(0));
+      DoubleGradComputeDDY<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+          x_data, mean_data, variance_data, ddscale_data, ddbias_data, ddx_data,
+          dy_data, scale_data, C, sample_size, epsilon, ddy_data);
     }
   }
 };
