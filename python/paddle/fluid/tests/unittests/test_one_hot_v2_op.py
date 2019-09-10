@@ -172,5 +172,24 @@ class TestOneHotOp_exception(OpTest):
             self.assertRaises(core.EnforceNotMet, run)
 
 
+class TestOneHotOpApi(unittest.TestCase):
+    def test_api(self):
+        import paddle.fluid as fluid
+        depth = 10
+        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        one_hot_label = fluid.input.one_hot(input=label, depth=depth)
+
+        place = fluid.CPUPlace()
+        label_data = np.array(
+            [np.random.randint(0, depth - 1) for i in range(6)]).reshape(
+                [6, 1])
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'label': label_data, },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
+
+
 if __name__ == '__main__':
     unittest.main()

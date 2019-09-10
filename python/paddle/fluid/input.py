@@ -59,7 +59,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             inputs = {'X': input, 'depth_tensor': depth}
             attrs = {}
     helper.append_op(
-        type="one_hot",
+        type="one_hot_v2",
         inputs=inputs,
         attrs=attrs,
         outputs={'Out': one_hot_out},
