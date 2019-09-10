@@ -282,7 +282,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
     LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
                  "build_strategy.memory_optimize = True or garbage collection "
-                 "strategy is disabled, which is not recommended.";
+                 "strategy is disabled, which is not recommended";
   }
 
   if (!is_gc_enabled) {
