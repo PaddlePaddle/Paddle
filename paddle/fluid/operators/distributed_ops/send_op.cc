@@ -54,7 +54,12 @@ class SendOp : public framework::OperatorBase {
                                                height_sections, trainer_id);
         send_functor(rpc_ctx, scope, true);
       } else {
-        distributed::Communicator::GetInstance()->Send(ins[0], scope);
+        if(send_varnames.front() == "FLAG_GEO_SGD_SPARSE_PARAMETER") {
+          // for geo sgd, send ids which sparse parameter update needed
+          distributed::Communicator::GetInstance()->GeoSgdSend(ins, send_varnames, scope);
+        } else {
+          distributed::Communicator::GetInstance()->Send(ins[0], scope);
+        }
       }
     } else {
       platform::DeviceContextPool& pool =

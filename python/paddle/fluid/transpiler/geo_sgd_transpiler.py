@@ -130,28 +130,25 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
         self.vars_info = collections.OrderedDict()
         self.split_to_origin_mapping = collections.OrderedDict()
+        self.sparse_var_list = []
         # split and create vars, then put splited vars in dicts for later use.
         # step 1. split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars()
 
+        self.sparse_var = []
+        self.sparse_tables = []
+        self.sparse_tables.append("FLAG_GEO_SGD_SPARSE_PARAMETER")
+
         # send sparse id to communicator
         for index, op in enumerate(self.origin_program.global_block().ops):
             if op.type == "lookup_table":
-                op._set_attr('remote_prefetch',False)
-                for input_var,sparse_var in zip(op.input("Ids"),op.input("W")):
-                    # input_var = program.global_block().var(input_var)
-                    # sparse_var = program.global_block().var(sparse_var)
-                    send_sparse = "-".join([sparse_var,input_var])
-                    dummy_output = program.global_block().create_var(
-                        name=framework.generate_control_dev_var_name())
-                    program.global_block()._insert_op(
-                        index=index + 1,
-                        type="send",
-                        inputs={"X":send_sparse},
-                        outputs={"Out": dummy_output},
-                        attrs={
-                            "send_varnames": [sparse_var],
-                        })
+                op._set_attr('remote_prefetch', False)
+                for input_var_name, sparse_var_name in zip(op.input("Ids"), op.input("W")):
+                    if sparse_var_name in self.sparse_var_list:
+                        input_var = program.global_block().var(input_var_name)
+                        self.sparse_var.append(input_var)
+                        self.sparse_tables.append(sparse_var_name)
+
 
         # step 3. create send var (param after optimize)
         send_vars = []
@@ -175,14 +172,13 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # batch training loop end flag
         dummy_output = program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
-        batch_num = program.global_block().create_var(
-            name="batch_num")
+        
         program.global_block().append_op(
             type="send",
-            inputs={"X": [batch_num]},
+            inputs={"X": self.sparse_var},
             outputs={"Out": dummy_output},
             attrs={
-                "send_varnames": [batch_num.name]}
+                "send_varnames": self.sparse_tables}
         )
 
         self.trainer_startup_program = self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
@@ -487,6 +483,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
             if g.name not in param_grad_set:
                 grad_list.append(g)
                 param_grad_set.add(g.name)
+            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                self.sparse_var_list.append(p.name)
 
         param_list, grad_list = self._update_dist_lookup_table_vars(
                                 param_list, grad_list, self.params_grads)

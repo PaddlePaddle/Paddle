@@ -272,8 +272,8 @@ void Communicator::Send(const std::string &var_name,
   VLOG(3) << "communicator send " << var_name;
   // for geo sgd
   if (is_geo_sgd_){
-    VLOG(3) << "run into geo sgd communicator Send()";
-    GeoSgdSend(var_name,scope);
+    VLOG(3) << "run into geo sgd communicator Start()";
+    GeoSgdStart(var_name,scope);
     return;
   }
   // push var into send queue by var_name
@@ -489,9 +489,8 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
   Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope, trainers, geo_need_push_nums);  
 }
 
-void Communicator::GeoSgdSend(const std::string& var_name, 
+void Communicator::GeoSgdStart(const std::string& var_name, 
                               const framework::Scope& scope) {
-  VLOG(1) << "geo sgd communicator get loop num "<< var_name;
   if(var_name == "param_init"){
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
@@ -499,15 +498,34 @@ void Communicator::GeoSgdSend(const std::string& var_name,
     for(auto &iter:recv_varname_to_ctx_){
       auto local_var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),local_var_name, false);
+      // Todo don't copy, only create var and init shape
       GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),local_var_name, false);
       GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),local_var_name, true);
     }
     return;
   }
-  else if (var_name == "batch_num" ) {
-    need_push_.fetch_add(1, std::memory_order_relaxed);
-    auto need_push = need_push_.load();
-    if (need_push >= geo_need_push_nums_){
+}
+
+void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names, 
+                              const std::vector<std::string>& sparse_var_tables,
+                              const framework::Scope& scope) {
+  VLOG(1) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()<<" using scope: "<<&scope;
+  need_push_.fetch_add(1, std::memory_order_relaxed);
+  // sparse_var_tables first string element is "FLAG_GEO_SGD_SPARSE_PARAMETER", skip it
+  std::vector<std::string> sparse_var_table_temp;
+  for (int i=1;i<sparse_var_tables.size();i++) {
+    sparse_var_table_temp.push_back(sparse_var_tables[i]);
+  }
+  std::vector<std::string>all_vars = scope.LocalVarNames();
+    for (auto &var : all_vars) {
+      VLOG(1)<<"recv scope have var: "<< var;
+    }
+  for( int i=0;i<sparse_var_names.size();i++) {
+    VLOG(1)<< "Sparse var: "<<sparse_var_names[i]<< " relate table: "<<sparse_var_table_temp[i];
+  }
+
+  auto need_push = need_push_.load();
+  if (need_push >= geo_need_push_nums_){
       for (auto &iter:recv_varname_to_ctx_) {
         std::string local_var_name = iter.first;
         VLOG(4) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
@@ -521,50 +539,6 @@ void Communicator::GeoSgdSend(const std::string& var_name,
       }
       need_push_.store(0);
       sparse_table_.clear();
-    }
-  }
-  else {
-    std::vector<std::string>sparse_info = split(var_name,"-");
-    std::string sparse_name = sparse_info.front();
-    std::string ids_name = sparse_info.back();
-    VLOG(1) <<"geo_sgd sparse name: "<<sparse_name<<" ids name: "<<ids_name;
-    // recored sparse param
-    if(sparse_var_.find(sparse_name)==sparse_var_.end()) {
-      sparse_var_.insert(sparse_name);
-      VLOG(1)<<"sparse_var_ insert var: "<< sparse_name;
-    }
-    std::vector<std::string>all_vars = recv_scope_->LocalVarNames();
-    for (auto &var : all_vars) {
-      VLOG(1)<<"recv scope have var: "<< var;
-    }
-
-    // prefetch sparse value if not exist
-    if(sparse_table_.find(sparse_name) == sparse_table_.end()) {
-      auto *var_ids_recv = recv_scope_->FindVar(ids_name);
-
-      // for test
-      if(var_ids_recv == nullptr){
-        LOG(WARNING) << "var_ids_recv is nullptr";
-      }
-      auto var_ids_tensor = var_ids_recv->Get<framework::LoDTensor>();
-      int* mutable_data = var_ids_tensor.mutable_data<int>(var_ids_tensor.place());
-      int element_number = var_ids_tensor.numel();
-      for(int i=0; i<element_number;i++) {
-        VLOG(1) <<"mutable data "<<i<<": "<< mutable_data[i];
-      }
-      //std::unordered_map<int,float> info{};
-      //sparse_table_[sparse_name] = info;
-      //Todo init sparse table
-      //Todo remote prefetch 
-      /*
-      operators::distributed::prefetch(id_name, out_name, table_names, epmap,
-                                       height_sections, context,
-                                       context.scope());
-      */
-      //Todo update recv & old scope
-
-    }
-    
   }
 }
 

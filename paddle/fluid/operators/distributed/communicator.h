@@ -249,6 +249,7 @@ class Communicator {
   }
 
  private:
+  void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
   void GeoSgdSend(const std::string& var_name, const framework::Scope& scope);
   void GeoSgdParamInit(framework::Scope *scope, bool send);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
