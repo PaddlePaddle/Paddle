@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -29,18 +30,21 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
+
+  imperative::StrVarBaseNode empty_str;
+
   if (type == "conv2d") {
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2)
       op->SetInput("Bias", {inputs[2]});
     else
-      op->SetInput("Bias", {});
+      op->SetInput("Bias", empty_str);
     if (inputs.size() > 3) {
       op->SetInput("ResidualData", {inputs[3]});
       op->SetAttr("fuse_residual_connection", true);
     } else {
-      op->SetInput("ResidualData", {});
+      op->SetInput("ResidualData", empty_str);
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});

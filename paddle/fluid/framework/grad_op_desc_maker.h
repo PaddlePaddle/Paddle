@@ -65,6 +65,8 @@ class GradOpDescMakerBase {
       if (iterator != var_base_in_->end()) {
         vec_temp.reserve(iterator->second.size());
         for (auto& var_base_temp : iterator->second) {
+          PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
+                                  "var base grad should not be null");
           var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
           vec_temp.push_back(var_base_temp->GradVarBase());
         }
@@ -91,6 +93,8 @@ class GradOpDescMakerBase {
       if (iterator != var_base_out_->end()) {
         vec_temp.reserve(iterator->second.size());
         for (auto& var_base_temp : iterator->second) {
+          PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
+                                  "var base grad should not be null");
           var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
           vec_temp.push_back(var_base_temp->GradVarBase());
         }

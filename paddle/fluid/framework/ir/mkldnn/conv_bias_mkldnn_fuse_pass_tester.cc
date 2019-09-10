@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -27,6 +28,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
+  imperative::StrVarBaseNode empty_str;
   op->SetType(type);
   if (type == "conv2d") {
     op->SetAttr("use_mkldnn", true);
@@ -36,7 +38,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 2)
       op->SetInput("Bias", {inputs[2]});
     else
-      op->SetInput("Bias", {});
+      op->SetInput("Bias", empty_str);
   } else if (type == "elementwise_add") {
     op->SetAttr("use_mkldnn", true);
     op->SetInput("X", {inputs[0]});
