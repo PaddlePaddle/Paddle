@@ -205,7 +205,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
     // Generate keys for storing/retriving primitives for this operator
     const std::string key =
-        platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Output("Out"));
+        platform::GetHash(softmax_tz, ctx.op().Output("Out"));
 
     SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc, dev_ctx,
                                     mkldnn_engine, key);
@@ -276,7 +276,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // Currently only supports NC data format
     // retrieve eltwise primitive desc from device context
     const std::string key =
-        platform::MKLDNNHandler::GetHash(softmax_tz, ctx.op().Input("Out"));
+        platform::GetHash(softmax_tz, ctx.op().Input("Out"));
     const std::string key_softmax_pd = key + "@softmax_pd";
 
     auto softmax_pd =
