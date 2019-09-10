@@ -97,7 +97,8 @@ class UnStackGradKernel : public framework::OpKernel<T> {
     std::vector<const T *> x_datas(n);
     for (int i = 0; i < n; i++) x_datas[i] = x[i]->data<T>();
 
-    int pre = 1, post = 1;
+    int pre = 1;
+    int post = 1;
     auto &dim = x[0]->dims();
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
