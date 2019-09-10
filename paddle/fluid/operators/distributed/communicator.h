@@ -239,6 +239,8 @@ class Communicator {
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
                         int &trainers, int &geo_need_push_nums);
 
+  void GeoSgdSend(const std::vector<std::string>& sparse_var_names, const std::vector<std::string>& sparse_var_tables,const framework::Scope& scope);
+
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope,
                    int &trainers,int &geo_need_push_nums) {
@@ -250,7 +252,6 @@ class Communicator {
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdSend(const std::vector<std::string>& sparse_var_names, const std::vector<std::string>& sparse_var_tables,const framework::Scope& scope);
   void GeoSgdParamInit(framework::Scope *scope, bool send);
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
