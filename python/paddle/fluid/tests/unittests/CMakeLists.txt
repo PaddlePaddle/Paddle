@@ -317,6 +317,10 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
+if (WITH_TESTING)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
+endif()
+
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_seresnext_base_gpu test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
