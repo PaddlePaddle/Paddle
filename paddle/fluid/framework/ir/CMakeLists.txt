@@ -109,7 +109,7 @@ set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
 
-cc_test(codegen_test SRCS codegen_test.cc DEPS codegen_helper codegen)
+cc_test(codegen_test SRCS codegen_test.cc DEPS codegen_helper codegen device_code lod_tensor)
 cc_test(node_test SRCS node_test.cc DEPS node)
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)

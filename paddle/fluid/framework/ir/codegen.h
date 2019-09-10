@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,14 +22,12 @@ namespace ir {
 
 class CodeGen {
  public:
-  std::string GetKernelCode(std::vector<OperationExpression> expression);
+  explicit CodeGen(CodeTemplate code_template);
+  std::string GetKernelCode(TemplateVariable template_var);
+  // TODO(wangchao66) std::string etKernelCode(const Graph& graph)
 
  private:
-  std::string GetDeclarationCode(
-      std::vector<paddle::framework::ir::OperationExpression> expression);
-  std::string GetOffsetCode();
-  std::string GetComputeCode(
-      std::vector<paddle::framework::ir::OperationExpression> expression);
+  CodeTemplate code_template_;
 };
 }  // namespace ir
 }  // namespace framework
