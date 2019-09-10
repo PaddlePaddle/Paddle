@@ -57,23 +57,28 @@ TEST(Tensor, MutableData) {
     // initialization
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
                                         platform::CPUPlace());
+    auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
                                         platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
-    EXPECT_NE(p1, p2);
+    auto p2_holder1 = src_tensor.Holder();
+    EXPECT_NE(p1_holder.get(), p2_holder1.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
                                         platform::CPUPlace());
-    EXPECT_EQ(p1, p2);
+    auto p2_holder2 = src_tensor.Holder();
+    EXPECT_EQ(p2_holder1.get(), p2_holder2.get());
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
                                         platform::CPUPlace());
+    auto p2_holder3 = src_tensor.Holder();
     EXPECT_EQ(p1, p2);
+    EXPECT_EQ(p2_holder2.get(), p2_holder3.get());
 
     float* p3 = nullptr;
     float* p4 = nullptr;
@@ -82,14 +87,18 @@ TEST(Tensor, MutableData) {
     auto* tmp = src_tensor.mutable_data<uint8_t>(framework::make_ddim({2, 2}),
                                                  platform::CPUPlace());
     p3 = reinterpret_cast<float*>(tmp);
+    auto p3_holder1 = src_tensor.Holder();
     EXPECT_EQ(p1, p3);
+    EXPECT_EQ(p2_holder3.get(), p3_holder1.get());
 
     // set src_tensor a different type but bigger size.
     // memory block is supposed to be changed.
     auto* tmp2 = src_tensor.mutable_data<double>(
         framework::make_ddim({2, 2, 3}), platform::CPUPlace());
+    auto p3_holder2 = src_tensor.Holder();
     p4 = reinterpret_cast<float*>(tmp2);
     EXPECT_NE(p1, p4);
+    EXPECT_NE(p3_holder1.get(), p3_holder2.get());
   }
   // Not sure if it's desired, but currently, Tensor type can be changed.
   {
@@ -113,13 +122,15 @@ TEST(Tensor, MutableData) {
     // initialization
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
                                         platform::CUDAPlace());
+    auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 1024}),
                                         platform::CUDAPlace());
+    auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
-    EXPECT_NE(p1, p2);
+    EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),

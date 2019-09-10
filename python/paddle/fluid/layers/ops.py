@@ -25,7 +25,6 @@ __activations_noattr__ = [
     'tanh',
     'atan',
     'tanh_shrink',
-    'softshrink',
     'sqrt',
     'rsqrt',
     'abs',
@@ -96,6 +95,49 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             kwargs[name] = val
     return _uniform_random_(**kwargs)
 
+
+__all__ += ['softshrink']
+
+_softshrink_ = generate_layer_fn('softshrink')
+
+
+def softshrink(x, alpha=None):
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            if name == 'alpha':
+                kwargs['lambda'] = val
+            else:
+                kwargs[name] = val
+    return _softshrink_(**kwargs)
+
+
+softshrink.__doc__ = """
+:strong:`Softshrink Activation Operator`
+
+..  math::
+    out = \begin{cases}
+            x - \alpha, \text{if } x > \alpha \\
+            x + \alpha, \text{if } x < -\alpha \\
+            0,  \text{otherwise}
+            \end{cases}
+
+
+Args:
+    x: Input of Softshrink operator
+    alpha (FLOAT): non-negative offset
+    
+Returns:
+    Output of Softshrink operator
+
+Examples:
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[784])
+        result = fluid.layers.softshrink(x=data, alpha=0.3)
+"""
 
 __all__ += ['hard_shrink']
 
