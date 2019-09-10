@@ -139,10 +139,10 @@ TEST(test_layer, test_varbase_basic) {
                                   vin_with_grad->MutableGradVar()) != 0));
   ASSERT_TRUE(
       dynamic_cast<framework::Variable*>(vin_with_grad->MutableGradVar()) != 0);
-  vin_with_grad->SetStopGradient(true);
-  ASSERT_TRUE(vin_with_grad->StopGradient());
+  vin_with_grad->SetOverridedStopGradient(true);
+  ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetPersistable(true));
-  ASSERT_TRUE(vin_with_grad->StopGradient());
+  ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetName("new_name"));
   ASSERT_EQ(vin_with_grad->Name(), "new_name");
 }

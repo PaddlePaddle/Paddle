@@ -456,14 +456,13 @@ class Variable(object):
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
-            force_require_grad = kwargs.get("require_grad", False)
+            self.stop_gradient_ = kwargs.get("stop_gradient", True)
             if not self._ivar:
                 self._ivar = core.VarBase(
                     name, type
                     if type else core.VarDesc.VarType.LOD_TENSOR, dtype
                     if dtype else core.VarDesc.VarType.FP32,
                     list(shape) if shape else [], True
-                    if not force_require_grad else False, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -973,6 +972,20 @@ class Variable(object):
             out = reverse_out_var
 
         return out
+
+    # @property
+    # def require_grad(self):
+    #     if in_dygraph_mode():
+    #         return self._ivar.require_grad
+    #     else:
+    #         raise SyntaxError("require_grad is only avaliable in dygraph mode")
+    #
+    # @require_grad.setter
+    # def require_grad(self, s):
+    #     if in_dygraph_mode():
+    #         self._ivar.require_grad = s
+    #     else:
+    #         raise SyntaxError("require_grad is only avaliable in dygraph mode")
 
 
 def get_all_op_protos():
@@ -1776,6 +1789,7 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):

@@ -6988,8 +6988,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         type="one_hot",
         inputs=inputs,
         attrs=attrs,
-        outputs={'Out': one_hot_out},
-        stop_gradient=True)
+        outputs={'Out': one_hot_out})
+    one_hot_out.stop_gradient = True
     return one_hot_out
 
 
@@ -7027,8 +7027,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)},
-            stop_gradient=True)
+            attrs={'step': float(step)})
         counter.stop_gradient = True
 
     return counter

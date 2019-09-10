@@ -183,14 +183,18 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             inputs = []
             for _ in range(10):
-                inputs.append(fluid.dygraph.base.to_variable(x))
+                tmp = fluid.dygraph.base.to_variable(x)
+                tmp.stop_gradient = False
+                inputs.append(tmp)
             ret = fluid.layers.sums(inputs)
             loss = fluid.layers.reduce_sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
             inputs2 = []
             for _ in range(10):
-                inputs2.append(fluid.dygraph.base.to_variable(x))
+                tmp = fluid.dygraph.base.to_variable(x)
+                tmp.stop_gradient = False
+                inputs2.append(tmp)
             ret2 = fluid.layers.sums(inputs2)
             loss2 = fluid.layers.reduce_sum(ret2)
             backward_strategy = fluid.dygraph.BackwardStrategy()
@@ -214,6 +218,7 @@ class TestImperative(unittest.TestCase):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
+            var_inp.stop_gradient = False
             l = MyLayer("my_layer")
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
@@ -223,6 +228,7 @@ class TestImperative(unittest.TestCase):
 
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
+            var_inp2.stop_gradient = False
             l2 = MyLayer("my_layer")
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)

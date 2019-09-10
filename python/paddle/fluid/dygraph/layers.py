@@ -70,8 +70,7 @@ class Layer(core.Layer):
                          shape,
                          dtype,
                          is_bias=False,
-                         default_initializer=None,
-                         require_grad=True):
+                         default_initializer=None):
         """Create parameters for this layers.
 
            Args:
@@ -88,7 +87,7 @@ class Layer(core.Layer):
         elif isinstance(attr, six.string_types):
             attr = ".".join([self._full_name, attr])
         return self._helper.create_parameter(attr, shape, dtype, is_bias,
-                                             default_initializer, require_grad)
+                                             default_initializer)
 
     # TODO: Add more parameter list when we need them
     def create_variable(self,

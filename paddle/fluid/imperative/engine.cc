@@ -72,38 +72,47 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
       var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
   VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
           << " as stop_gradient false";
-  var->GradVarBase()->SetStopGradient(false);
+  var->GradVarBase()->InnerSetOverridedStopGradient(false);
+  var->GradVarBase()->SetGradGenerated(true);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());
   grad_var->Resize(fwd_var.dims());
   grad_var->mutable_data(fwd_var.place(), fwd_var.type());
   operators::math::set_constant(*dev_ctx, grad_var, 1.0);
 }
 
-bool BasicEngine::CheckBackwardInputs(OpBase* op) {
+void BasicEngine::CheckBackwardInputs(OpBase* op) {
   for (auto& pair : op->GetInsMap()) {
     for (auto& var : pair.second) {
-      if (var) {
+      if (var && IsGrad(var.get())) {
         // if grad var has OverridedStopGradient skip this Op
-        if (IsGrad(var.get()) && var->OverridedStopGradient()) {
-          return false;
-        }
-        if (!var->StopGradient() && !var->OverridedStopGradient()) {
-          return true;
-        } else if (var->StopGradient() && !var->OverridedStopGradient()) {
-          PADDLE_THROW(
-              "Grad: %s has never been created, set it as stop_gradient=false "
-              "is"
-              "likely to cause program error",
-              var->Name());
+        if (var->OverridedStopGradient() || !var->GradGenerated()) {
+          VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
+          auto* dev_ctx =
+              platform::DeviceContextPool::Instance().Get(op->place());
+          auto* tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
+          tensor->mutable_data(op->place(), var->DataType());
+          operators::math::set_constant(*dev_ctx, tensor, 0.0);
         } else {
           continue;
         }
       }
     }
   }
-  return false;
 }
 
+void BasicEngine::SetBackwardOutputs(paddle::imperative::OpBase* op) {
+  for (auto& pair : op->GetOutsMap()) {
+    for (auto& var : pair.second) {
+      if (var) {
+        // Set Backward outputs's generate_grad as true
+        var->SetGradGenerated(true);
+        var->InnerSetOverridedStopGradient(false);
+        VLOG(6) << "Set backward output: " << var->Name()
+                << "'s SetGeneratedGrad as True";
+      }
+    }
+  }
+}
 void BasicEngine::PrepareGradAccumulators(OpBase* op) {
   for (const auto& pair : op->GetOutsMap()) {
     for (const auto& var : pair.second) {
@@ -143,21 +152,19 @@ void BasicEngine::PrepareDeps() {
     q.pop();
     VLOG(3) << "Checking grads of op " << cur_op->Type();
 
-    if (!CheckBackwardInputs(cur_op)) {
-      VLOG(3) << "Stop checking preceding ops of " << cur_op->Type()
-              << " because all of its backward inputs is stop_gradient=True";
-      continue;
-    }
+    CheckBackwardInputs(cur_op);
+
+    SetBackwardOutputs(cur_op);
 
     PrepareGradAccumulators(cur_op);
 
-    auto& preceding_ops = cur_op->GradPendingOps();
-    for (auto* preceding_op : preceding_ops) {
-      PADDLE_ENFORCE_NOT_NULL(preceding_op);
-      ++op_deps_[preceding_op];
-      if (visited.count(preceding_op) == 0) {
-        visited.insert(preceding_op);
-        q.push(preceding_op);
+    auto& grad_pending_ops = cur_op->GradPendingOps();
+    for (auto* grad_pending_op : grad_pending_ops) {
+      PADDLE_ENFORCE_NOT_NULL(grad_pending_op);
+      ++op_deps_[grad_pending_op];
+      if (visited.count(grad_pending_op) == 0) {
+        visited.insert(grad_pending_op);
+        q.push(grad_pending_op);
       }
     }
   }
@@ -220,19 +227,19 @@ void BasicEngine::Execute() {
     }
 
     // Step 3: Collect ready ops
-    for (auto* preceding_op : cur_op->GradPendingOps()) {
-      PADDLE_ENFORCE_NOT_NULL(preceding_op);
-      auto iter = op_deps_.find(preceding_op);
+    for (auto* grad_pending_op : cur_op->GradPendingOps()) {
+      PADDLE_ENFORCE_NOT_NULL(grad_pending_op);
+      auto iter = op_deps_.find(grad_pending_op);
       if (iter == op_deps_.end()) {
         continue;
       }
 
-      VLOG(3) << "Found preceding op of " << cur_op->Type();
+      VLOG(3) << "Found grad_pending op of " << cur_op->Type();
       // An Op is ready to go while its deps comes to zero
 
       if (--(iter->second) == 0) {
-        q.push(preceding_op);
-        VLOG(3) << "Push preceding op " << preceding_op->Type()
+        q.push(grad_pending_op);
+        VLOG(3) << "Push grad_pending op " << grad_pending_op->Type()
                 << " into queue";
       }
     }

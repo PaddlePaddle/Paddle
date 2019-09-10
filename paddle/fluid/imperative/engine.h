@@ -54,6 +54,7 @@ class Engine {
   void InsertGradVar(VarBase* grad) { grad_vars_.emplace(grad); }
 
   bool IsGrad(VarBase* var) { return grad_vars_.count(var) > 0; }
+
   void Clear() {
     grad_ops_.clear();
     grad_vars_.clear();
@@ -78,7 +79,9 @@ class BasicEngine : public Engine {
  private:
   void PrepareDeps();
 
-  bool CheckBackwardInputs(OpBase* op);
+  void CheckBackwardInputs(OpBase* op);
+
+  void SetBackwardOutputs(OpBase* op);
 
   void PrepareGradAccumulators(OpBase* op);
 
