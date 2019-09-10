@@ -28,7 +28,9 @@ struct Layers {
  public:
   const ProgramDesc& main_program() { return program_; }
 
-  VarDesc* data(std::string name) { return lod_tensor(name); }
+  VarDesc* data(std::string name, bool is_persistable = false) {
+    return lod_tensor(name, is_persistable);
+  }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
                   bool use_cudnn) {
@@ -76,8 +78,11 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
-  VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("mul", x, y, out);
+  VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+               int x_num_col_dims = 1) {
+    AttributeMap attrs;
+    attrs["x_num_col_dims"] = 1;
+    return binary_op("mul", x, y, out, &attrs);
   }
 
   VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
@@ -116,9 +121,10 @@ struct Layers {
   }
 
  private:
-  VarDesc* lod_tensor(std::string name) {
+  VarDesc* lod_tensor(std::string name, bool is_persistable = false) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetPersistable(is_persistable);
     return var;
   }
 
@@ -136,7 +142,8 @@ struct Layers {
   }
 
   VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y,
-                     VarDesc* out = nullptr) {
+                     VarDesc* out = nullptr,
+                     const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -145,6 +152,11 @@ struct Layers {
     op->SetInput("X", {x->Name()});
     op->SetInput("Y", {y->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
