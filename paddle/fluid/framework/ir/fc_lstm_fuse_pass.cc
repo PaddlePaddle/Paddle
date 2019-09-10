@@ -33,7 +33,8 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   patterns::FC fc_pattern(pattern, name_scope);
 
   // fc_out is a tmp var, will be removed after fuse, so marked as intermediate.
-  auto* fc_out = fc_pattern(x, with_fc_bias)->AsIntermediate();
+  auto* fc_out =
+      fc_pattern(x, with_fc_bias, /* with_relu */ false)->AsIntermediate();
   patterns::LSTM lstm_pattern(pattern, name_scope);
   lstm_pattern(fc_out);
 
@@ -132,7 +133,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     if (with_fc_bias) {
-      GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
