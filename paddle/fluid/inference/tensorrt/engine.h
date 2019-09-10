@@ -41,7 +41,7 @@ class TRTInt8Calibrator;
  * TensorRT Engine.
  *
  * There are two alternative ways to use it, one is  to build from a paddle
- * protobuf model, another way is to manully construct the network.
+ * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
@@ -91,11 +91,11 @@ class TensorRTEngine {
     infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
-  // After finishing adding ops, freeze this network and creates the executation
+  // After finishing adding ops, freeze this network and creates the execution
   // environment.
   void FreezeNetwork();
 
-  // Add an input and set its name, data type and dimention.
+  // Add an input and set its name, data type and dimension.
   nvinfer1::ITensor* DeclareInput(const std::string& name,
                                   nvinfer1::DataType dtype,
                                   const nvinfer1::Dims& dim);
@@ -129,7 +129,7 @@ class TensorRTEngine {
         engine_serialized_data.c_str(), engine_serialized_data.size(),
         &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
     PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "build cuda engine failed when deserialize engine info.!");
+                   "build cuda engine failed when deserializing engine info!");
     infer_context_.reset(infer_engine_->createExecutionContext());
   }
 
@@ -221,7 +221,7 @@ class TensorRTEngine {
   ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
     NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
-// Add an layer__ into engine__ with args ARGS.
+// Add a layer__ into engine__ with args ARGS.
 // For example:
 //
 // Reference

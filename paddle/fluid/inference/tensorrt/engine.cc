@@ -63,7 +63,7 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #else
   if (enable_fp16)
-    LOG(INFO) << "Using FP16 in Paddle-trt must ensure that the version of TRT "
+    LOG(INFO) << "Using FP16 in Paddle-TRT must ensure that the version of TRT "
                  "is at least 5."
                  "So, use FP32 to run.";
 #endif
@@ -98,7 +98,7 @@ void TensorRTEngine::FreezeNetwork() {
       for (auto &t : all_t) {
         if (!quant_dynamic_range_.count(t)) {
           LOG(WARNING)
-              << "We are in trt int8 mode(not calibration), scale not setted"
+              << "We are in trt int8 mode(not calibration), scale not set"
               << " for tensor " << t->getName()
               << ", this might be ok when trt does not need this range";
         }
@@ -141,8 +141,8 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
   PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   PADDLE_ENFORCE(output->isNetworkOutput());
-  // output buffers' size can only be decided latter, set zero here to mark this
-  // and will reset latter.
+  // output buffers' size can only be decided later, set zero here to mark this
+  // and will reset later.
   buffer_sizes_[name] = 0;
 }
 
@@ -159,8 +159,8 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
   output->setName(name.c_str());
   PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
-  // output buffers' size can only be decided latter, set zero here to mark this
-  // and will reset latter.
+  // output buffers' size can only be decided later, set zero here to mark this
+  // and will reset later.
   buffer_sizes_[name] = 0;
 }
 
