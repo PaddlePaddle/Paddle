@@ -41,10 +41,6 @@ void PreparedOp::PrepareData(
           auto kernel_type_for_var = op.GetKernelTypeForVar(
               name_pair.first, *tensor, expected_kernel_key);
           if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-            VLOG(6) << "No Need to Transform since expected_kernel_key is: "
-                    << expected_kernel_key
-                    << " and it's input: " << var_base->Name()
-                    << "'s kernel Type is: " << kernel_type_for_var;
             continue;
           } else {
             VLOG(3) << "Transform Variable " << var_base->Name() << " from "

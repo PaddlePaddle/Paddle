@@ -156,6 +156,7 @@ TEST(test_prepare_op, test_prepare_data) {
   framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
                                           assign_attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
+
   // test if it can be transformed to GPU place
   PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, gpu_place, ins);
   for (const auto& name_pair : ins) {
@@ -166,6 +167,48 @@ TEST(test_prepare_op, test_prepare_data) {
   }
 }
 #endif
+
+TEST(test_prepare_op, test_prepare_data_same_place) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+
+  framework::OpDesc desc;
+  platform::CPUPlace cpu_place;
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims = {2, 5};
+
+  // prepare an cpu only input
+  auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
+  vin_tensor->Resize(framework::make_ddim(dims));
+  auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
+  paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
+                       src_data.data(), sizeof(float) * src_data.size());
+
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+  framework::AttributeMap assign_attr_map;
+  const auto& info = framework::OpInfoMap::Instance().Get("assign");
+  framework::VariableNameMap var_in_map =
+      CreateVarNameMap(info, "assign", ins, true);
+  framework::VariableNameMap var_out_map =
+      CreateVarNameMap(info, "assign", outs, false);
+  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
+                                          assign_attr_map);
+  framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
+
+  // test if it never transfered on GPU place
+  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, cpu_place, ins);
+  for (const auto& name_pair : ins) {
+    for (const auto& vb : name_pair.second) {
+      ASSERT_TRUE(platform::is_same_place(
+          vb->Var().Get<framework::LoDTensor>().place(), cpu_place));
+    }
+  }
+}
 }  // namespace imperative
 }  // namespace paddle
 
