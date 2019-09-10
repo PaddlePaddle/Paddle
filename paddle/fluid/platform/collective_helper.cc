@@ -25,15 +25,6 @@ namespace platform {
 
 class NCCLCommImpl : public NCCLComm {
  public:
-  void set_ring_id(int ring_id) { ring_id_ = ring_id; }
-  int ring_id() const override { return ring_id_; }
-
-  void set_nranks(int nranks) { nranks_ = nranks; }
-  int nranks() const override { return nranks_; }
-
-  void set_rank(int rank) { rank_ = rank; }
-  int rank() const override { return rank_; }
-
   int device_id() const override {
     return boost::get<CUDAPlace>(dev_ctx_->GetPlace()).device;
   }
@@ -47,9 +38,6 @@ class NCCLCommImpl : public NCCLComm {
   }
 
  private:
-  int ring_id_;
-  int nranks_;
-  int rank_;
   std::unique_ptr<CUDADeviceContext> dev_ctx_;
 };
 
@@ -71,9 +59,6 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
   dev_ctx->set_nccl_comm(comm);
 
   NCCLCommImpl* c = new NCCLCommImpl;
-  c->set_ring_id(ring_id);
-  c->set_nranks(nranks);
-  c->set_rank(rank);
   c->set_dev_ctx(std::move(dev_ctx));
 
   comm_map_mutex_.lock();
@@ -114,9 +99,6 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
     dev_ctx->set_nccl_comm(comms[i]);
 
     NCCLCommImpl* c = new NCCLCommImpl;
-    c->set_ring_id(ring_id);
-    c->set_nranks(dev_ids.size());
-    c->set_rank(i);
     c->set_dev_ctx(std::move(dev_ctx));
 
     dev2comm.emplace(dev_ids[i], std::unique_ptr<NCCLComm>(c));

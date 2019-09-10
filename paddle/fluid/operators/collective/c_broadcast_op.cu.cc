@@ -45,12 +45,14 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     int root = ctx.Attr<int>("root");
-    if (root == comm->rank()) {
+    int rank = -1;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::ncclCommUserRank(comm->comm(), &rank));
+    if (root == rank) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
-              << x->numel();
+      VLOG(3) << "rank " << rank << " invoke Bcast. sent " << x->numel();
 
       if (out != x) {
         framework::TensorCopy(
@@ -62,7 +64,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
+      VLOG(3) << "rank " << rank << " invoke Bcast. recieved "
               << framework::product(out->dims());
     }
 
