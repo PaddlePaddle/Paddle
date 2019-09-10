@@ -1,0 +1,46 @@
+
+digraph Q {
+
+  rankdir=LR
+  node[shape=box]
+
+  TransData[label="TransformData"] 
+  toMKLDNN[label="Label Tensor as MKL-DNN"]
+  fromMKLDNN[label="TransDataLayoutFromMKLDNN"]
+  innerMKLDNN[label=<innerTransDataLayoutFromMKLDNN<br/> {<b>MKL-DNN Reorder</b>}>]
+
+
+ node[shape=circle]
+
+ subgraph cluster_in {
+ label=<Possible <b>i</b>  order operator types>
+ style=dotted
+ cpuop[label="Paddle(CPU) op",style=bold]
+ mkldnnop[label="MKL-DNN op",shape=doublecircle]
+ }
+
+ subgraph cluster_out {
+ label=<Possible <b>i+1</b>  order operator types>
+ style=dotted
+ cpuop2[label="Paddle(CPU) op",shape=doublecircle]
+ fetchop[label="Fetch op"]
+ mkldnnop2[label="MKL-DNN op", style=bold]
+ }
+
+
+   cpuop -> TransData[label="Tensor ", style=bold] 
+   mkldnnop -> TransData[label="MKL-DNN Tensor ", color="black:invis:black"]
+   mkldnnop -> innerMKLDNN[label="MKL-DNN Tensor"]
+   toMKLDNN -> mkldnnop2[style=bold, label="MKL-DNN Tensor "] 
+   innerMKLDNN -> cpuop2[label="Tensor ", color="black:invis:black"]
+   innerMKLDNN -> fetchop[label="Tensor "] 
+ subgraph cluster_Trans {
+ label="Transformation of Tensors"
+ style=dotted
+   TransData -> toMKLDNN[style=bold]
+   TransData -> fromMKLDNN[color="black:invis:black"]
+   fromMKLDNN -> innerMKLDNN[color="black:invis:black"]
+    
+ }
+}
+
