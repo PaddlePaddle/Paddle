@@ -173,9 +173,3 @@ class LayerHelper(LayerHelperBase):
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",
                             param_name, self.layer_type, cls.__name__)
-
-
-class CustomLayerHelper(LayerHelper):
-    def __init__(self, layer_type, **kwargs):
-        super(CustomLayerHelper, self).__init__(layer_type=layer_type, **kwargs)
-        OpProtoHolder.instance().update_op_proto()

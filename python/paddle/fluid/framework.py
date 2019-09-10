@@ -3899,3 +3899,4 @@ def load_op_library(lib_filename):
         lib_filename (str): name of dynamic library.
     """
     core.load_op_library(lib_filename)
+    OpProtoHolder.instance().update_op_proto()
