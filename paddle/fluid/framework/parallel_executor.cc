@@ -250,6 +250,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
+    LOG(INFO) << "Inplace strategy is enabled, when "
+                 "build_strategy.enable_inplace = True";
   }
 
   /**
@@ -278,6 +280,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+    LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
+                 "build_strategy.memory_optimize = True or garbage collection "
+                 "strategy is disabled, which is not recommended.";
   }
 
   if (!is_gc_enabled) {
