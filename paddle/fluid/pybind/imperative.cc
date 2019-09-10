@@ -324,6 +324,7 @@ void BindImperative(py::module *m_ptr) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
+               LOG(ERROR) << "1";
                py::gil_scoped_release release;
                self.TraceOp(type, std::move(ins_map), std::move(outs_map),
                             std::move(attrs), place, trace_backward);
@@ -337,6 +338,7 @@ void BindImperative(py::module *m_ptr) {
              auto ins_map = ConvertToNameVarBaseMap(ins);
              auto outs_map = ConvertToNameVarBaseMap(outs);
              {
+               LOG(ERROR) << "22";
                py::gil_scoped_release release;
                self.TraceOp(type, std::move(ins_map), std::move(outs_map),
                             std::move(attrs), place, trace_backward);

@@ -71,12 +71,16 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
         op.Type());
   }
 
+  LOG(ERROR) << "2-1";
   auto& kernels = kernels_iter->second;
 
+  LOG(ERROR) << "2-1-1";
   auto expected_kernel_key =
       op.GetExpectedKernelType(framework::ExecutionContext(
           op, framework::Scope(), *dev_ctx, ctx, nullptr));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  LOG(ERROR) << "2-2";
 
   auto kernel_iter = kernels.find(expected_kernel_key);
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
@@ -84,17 +88,22 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
     PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
                  KernelTypeToString(expected_kernel_key));
   }
+  LOG(ERROR) << "2-3";
   std::vector<framework::KernelConfig>* kernel_configs =
       op.GetKernelConfig(expected_kernel_key);
+  LOG(ERROR) << "2-5";
   return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
 }
 
 void PreparedOp::Run() {
   // TODO(zjl): remove scope in dygraph
+  LOG(ERROR) << "33";
   framework::Scope scope;
   op_.RuntimeInferShape(scope, dev_ctx_->GetPlace(), ctx_);
+  LOG(ERROR) << "55";
   func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
                                     kernel_configs_));
+  LOG(ERROR) << "66";
 }
 
 }  // namespace imperative

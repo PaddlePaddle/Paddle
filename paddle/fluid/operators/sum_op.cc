@@ -90,12 +90,29 @@ class SumOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    LOG(ERROR) << "3-1";
     auto x_vars = ctx.MultiInputVar("X");
     auto x_vars_name = ctx.Inputs("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    LOG(ERROR) << "3-2";
 
+    auto use_mkl_flag = ctx.op().Attrs().at("use_mkldnn");
+
+    // LOG(ERROR) << use_mkl_flag.type();
+    // std::cerr << use_mkl_flag.type();
+    if (use_mkl_flag.type() == typeid(bool)) {
+      LOG(ERROR) << "bool";
+    } else if (use_mkl_flag.type() == typeid(boost::blank)) {
+      LOG(ERROR) << "blank";
+    } else if (use_mkl_flag.type() == typeid(int)) {
+      LOG(ERROR) << "int";
+    } else if (use_mkl_flag.type() == typeid(int64_t)) {
+      LOG(ERROR) << "int64";
+    } else {
+      LOG(ERROR) << "not bool";
+    }
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
@@ -104,6 +121,7 @@ class SumOp : public framework::OperatorWithKernel {
     }
 #endif
 
+    LOG(ERROR) << "3-3";
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
@@ -123,6 +141,7 @@ class SumOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_NE(dtype, -1,
                         "Sum operator should have at least one tensor");
 
+      LOG(ERROR) << "3-5";
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(dtype), ctx.GetPlace(),
           layout, library);
@@ -160,9 +179,9 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
         .AsDuplicable();
     AddOutput("Out", "(Tensor) The output tensor of sum operator.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+    AddAttr<std::string>("use_mkldnn",
+                         "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault("11");
     AddComment(R"DOC(
 Sum operator.
 

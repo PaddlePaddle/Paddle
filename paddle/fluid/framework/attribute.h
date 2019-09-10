@@ -259,12 +259,17 @@ class EnumInContainer {
 // an attribute can have more than one limits
 template <typename T>
 class TypedAttrChecker {
-  typedef std::function<const T&()> DefaultValueChecker;
   typedef std::function<void(const T&)> ValueChecker;
 
  public:
   explicit TypedAttrChecker(const std::string& attr_name)
-      : attr_name_(attr_name) {}
+      : attr_name_(attr_name), default_setter_(nullptr) {}
+
+  ~TypedAttrChecker() {
+    if (default_setter_ != nullptr) {
+      delete default_setter_;
+    }
+  }
 
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
     value_checkers_.push_back(EnumInContainer<T>(range));
@@ -284,9 +289,12 @@ class TypedAttrChecker {
   // we can add more common limits, like LessThan(), Between()...
 
   TypedAttrChecker& SetDefault(const T& default_value) {
+    /*
     PADDLE_ENFORCE(default_value_setter_.empty(),
                    "%s can't have more than one default value!", attr_name_);
     default_value_setter_.push_back(DefaultValueSetter<T>(default_value));
+    */
+    default_setter_ = new DefaultValueSetter<T>(default_value);
     return *this;
   }
 
@@ -300,10 +308,10 @@ class TypedAttrChecker {
     auto it = attr_map->find(attr_name_);
     if (it == attr_map->end()) {
       // user do not set this attr
-      PADDLE_ENFORCE(!default_value_setter_.empty(),
-                     "Attribute '%s' is required!", attr_name_);
+      PADDLE_ENFORCE(default_setter_ != nullptr, "default setter is null");
       // default_value_setter_ has no more than one element
-      attr_map->emplace(attr_name_, default_value_setter_[0]());
+      // attr_map->emplace(attr_name_, default_value_setter_[0]());
+      (*attr_map)[attr_name_] = (*default_setter_)();
     } else {
       if (value_checkers_.size() > 0) {
         ExtractAttribute<T> extract_attr(attr_name_);
@@ -318,7 +326,8 @@ class TypedAttrChecker {
  private:
   std::string attr_name_;
   std::vector<ValueChecker> value_checkers_;
-  std::vector<DefaultValueChecker> default_value_setter_;
+  // std::vector<DefaultValueChecker> default_value_setter_;
+  DefaultValueSetter<T>* default_setter_;
 };
 
 // check whether op's all attributes fit their own limits

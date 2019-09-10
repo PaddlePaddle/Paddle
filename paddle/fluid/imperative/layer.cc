@@ -246,6 +246,7 @@ OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
+  LOG(ERROR) << "33";
   auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();
@@ -254,6 +255,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
+  LOG(ERROR) << "55";
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
@@ -261,14 +263,17 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
     }
   }
 
+  LOG(ERROR) << "66";
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
+  LOG(ERROR) << "77";
   auto prepared_op =
       PreparedOp::Prepare(runtime_ctx, *op_kernel, runtime_place);
 
+  LOG(ERROR) << "88";
   prepared_op.Run();
 
   VLOG(4) << LayerDebugString(Type(), ins, outs);

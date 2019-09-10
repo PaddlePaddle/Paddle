@@ -152,8 +152,10 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
+    LOG(ERROR) << "5-1";
     PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
                    "%s should be in AttributeMap", name);
+    LOG(ERROR) << "5-2";
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }

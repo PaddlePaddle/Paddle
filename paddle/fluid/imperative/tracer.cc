@@ -35,11 +35,14 @@ static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
+  LOG(ERROR) << "in trace";
   platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
   auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  LOG(ERROR) << "22";
   op->Run(ins, outs);
+  LOG(ERROR) << "33";
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
