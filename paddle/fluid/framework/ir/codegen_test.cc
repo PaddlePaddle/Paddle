@@ -46,7 +46,8 @@ TEST(codegen, cuda) {
   std::cout << saxpy_code << std::endl;
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceCode code(place, "fused_kernel35", saxpy_code);
+  paddle::platform::CUDADeviceCode code(place, EmitUniqueName(fused_op),
+                                        saxpy_code);
 
   paddle::framework::Tensor cpu_x;
   paddle::framework::Tensor cpu_y;
