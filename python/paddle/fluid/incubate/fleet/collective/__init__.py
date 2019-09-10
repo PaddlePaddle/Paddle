@@ -347,7 +347,10 @@ class CollectiveOptimizer(DistributedOptimizer):
                                     self._strategy)
 
         optimize_ops, param_grads = self._optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
