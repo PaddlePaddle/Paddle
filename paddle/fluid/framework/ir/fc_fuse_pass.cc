@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init("fc_fuse", graph);
   int found_fc_count = 0;
 
@@ -40,6 +40,11 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                        Graph* g) {
+      if (subgraph.count(x) <= 0) {
+        LOG(WARNING) << "The subgraph is empty.";
+        return;
+      }
+
       VLOG(4) << "handle FC fuse";
       GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
@@ -109,7 +114,6 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
         GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
       }
 
-      PADDLE_ENFORCE(subgraph.count(x));
       IR_NODE_LINK_TO(subgraph.at(x), fc_node);
       IR_NODE_LINK_TO(w, fc_node);
       IR_NODE_LINK_TO(bias, fc_node);
