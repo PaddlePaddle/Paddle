@@ -36,10 +36,10 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                       const std::vector<int>& src_tz, const float scale_data) {
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(src_dt));
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
+  platform::AppendKey(&key, std::to_string(src_dt));
+  platform::AppendKeyDims(&key, src_tz);
+  platform::AppendKey(&key, std::to_string(scale_data));
+  platform::AppendKey(&key, ctx.op().Output("Output"));
   return key;
 }
 
