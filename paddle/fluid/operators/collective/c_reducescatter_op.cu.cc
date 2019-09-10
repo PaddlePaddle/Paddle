@@ -31,9 +31,9 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");
+    int nranks = ctx.Attr<int>("nranks");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    int nranks = comm->nranks();
 
     auto out_dims = in->dims();
     out_dims[0] = out_dims[0] / nranks;

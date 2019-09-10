@@ -49,9 +49,6 @@ namespace platform {
 // singleton with a global user specified group id.
 class NCCLComm {
  public:
-  virtual int ring_id() const = 0;
-  virtual int nranks() const = 0;
-  virtual int rank() const = 0;
   virtual int device_id() const = 0;
   virtual ncclComm_t comm() const = 0;
   virtual cudaStream_t stream() const = 0;
