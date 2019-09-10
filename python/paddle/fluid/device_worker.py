@@ -151,22 +151,24 @@ class DownpourSGD(DeviceWorker):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = \
                         self._fleet_desc.trainer_param.sparse_table[i].table_id
-            if program_id not in opt_info["prog_id_to_sparse_input"]:
-                raise ValueError("Current program id was not met before")
-            w_sparse_keys = opt_info["prog_id_to_sparse_input"][program_id]
-            w_sparse_values = opt_info["prog_id_to_sparse_output"][program_id]
+            if "prog_id_to_sparse_input" in opt_info:
+                if program_id not in opt_info["prog_id_to_sparse_input"]:
+                    raise ValueError("Current program id was not met before")
+                w_sparse_keys = opt_info["prog_id_to_sparse_input"][program_id]
+                w_sparse_values = opt_info["prog_id_to_sparse_output"][
+                    program_id]
 
-            sparse_keys = []
-            sparse_values = []
-            for w in w_sparse_keys:
-                sparse_keys.extend([x.name for x in w_sparse_keys[w]])
-            for w in w_sparse_values:
-                sparse_values.extend([x.name for x in w_sparse_values[w]])
+                sparse_keys = []
+                sparse_values = []
+                for w in w_sparse_keys:
+                    sparse_keys.extend([x.name for x in w_sparse_keys[w]])
+                for w in w_sparse_values:
+                    sparse_values.extend([x.name for x in w_sparse_values[w]])
 
-            sparse_grads = [name + "@GRAD" for name in sparse_values]
-            sparse_table.sparse_key_name.extend(sparse_keys)
-            sparse_table.sparse_value_name.extend(sparse_values)
-            sparse_table.sparse_grad_name.extend(sparse_grads)
+                sparse_grads = [name + "@GRAD" for name in sparse_values]
+                sparse_table.sparse_key_name.extend(sparse_keys)
+                sparse_table.sparse_value_name.extend(sparse_values)
+                sparse_table.sparse_grad_name.extend(sparse_grads)
 
             if opt_info["use_cvm"]:
                 sparse_table.emb_dim = \
