@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def fc_refer(matrix, with_bias, with_relu):
+def fc_refer(matrix, with_bias, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
     w_i, w_o = matrix.weights.shape
 
@@ -38,7 +38,7 @@ def fc_refer(matrix, with_bias, with_relu):
 
 
 class MatrixGenerate:
-    def __init__(self, mb, ic, oc, h, w, bias_dims):
+    def __init__(self, mb, ic, oc, h, w, bias_dims=2):
         self.input = np.random.random((mb, ic, h, w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
         if bias_dims == 2:
