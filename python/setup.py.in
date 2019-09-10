@@ -331,7 +331,7 @@ class InstallHeaders(Command):
         return self.copy_file(header, install_dir)
   
     def run(self):
-        if os.name != 'nt' and sys.platform != 'darwin':
+        if os.name == 'nt' or sys.platform == 'darwin':
             return
         hdrs = self.distribution.headers
         if not hdrs:
