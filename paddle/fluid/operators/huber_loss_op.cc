@@ -42,8 +42,9 @@ class HuberLossOp : public framework::OperatorWithKernel {
                         "The rank of Input(X) should be equal to "
                         "the rank of Input(Y) plus 1.");
     }
-    if (ctx->IsRuntime() ||
-        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
+    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
+                               framework::contain_unknown_dim(y_dims);
+    if (ctx->IsRuntime() || !contain_unknown_dim) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                         framework::slice_ddim(y_dims, 0, rank - 1),
                         "The Input(X) and Input(Label) should have the same "
