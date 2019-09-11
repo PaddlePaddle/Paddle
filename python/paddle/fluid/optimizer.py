@@ -38,9 +38,9 @@ from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
+    'AdamaxOptimizer', 'DpsgdOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
     'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer'
@@ -1599,6 +1599,87 @@ class AdamaxOptimizer(Optimizer):
                     stop_gradient=True)
 
 
+class DpsgdOptimizer(Optimizer):
+    """
+    We implement the Dpsgd optimizer according to CCS16 paper -
+    Deep Learning with Differential Privacy.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          # First create the Executor.
+          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+              optimizer.minimize(loss)
+
+          # Run the startup program once and only once.
+          exe.run(startup_program)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          outs = exe.run(program=train_program,
+                        feed={'X': x},
+                         fetch_list=[loss.name])
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        clip (float): clipping threshold
+        batch_size (float): batch size.
+        sigma (float): for gaussian noise.
+    Notes:
+       Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
+    """
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 clip=0.9,
+                 batch_size=0.999,
+                 sigma=1e-8):
+        assert learning_rate is not None
+        assert clip is not None
+        assert batch_size is not None
+        assert sigma is not None
+        super(DpsgdOptimizer, self).__init__(
+            learning_rate=learning_rate)
+        self.type = "dpsgd"
+        self._clip = clip
+        self._batch_size = batch_size
+        self._sigma = sigma
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        # create the dpsgd optimize op
+        dpsgd_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={
+                "ParamOut": param_and_grad[0]},
+            attrs={
+                "clip": self._clip,
+                "batch_size": self._batch_size,
+                "sigma": self._sigma
+            },
+            stop_gradient=True)
+
+        return dpsgd_op
+
+
 class DecayedAdagradOptimizer(Optimizer):
     """
     **Decayed Adagrad Optimizer**
@@ -2252,6 +2333,7 @@ Momentum = MomentumOptimizer
 Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
+Dpsgd = DpsgdOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
