@@ -13785,4 +13785,4 @@ def mse_loss(input, label):
         mse = fluid.layers.mse_loss(input=y_predict, label=y)
 
     """
-    return reduce_mean(square_error_cost(input, cost))
+    return reduce_mean(square_error_cost(input, label))
