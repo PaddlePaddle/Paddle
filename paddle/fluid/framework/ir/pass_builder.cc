@@ -21,7 +21,7 @@ namespace framework {
 namespace ir {
 
 std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
-  VLOG(3) << "Append " << pass_type;
+  VLOG(1) << "Append " << pass_type;
   auto pass = ir::PassRegistry::Instance().Get(pass_type);
   passes_.emplace_back(pass.release());
   return passes_.back();

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -142,9 +143,8 @@ void GPUGatherNd(const framework::ExecutionContext& context,
   }
 
   auto& dev_ctx = context.cuda_device_context();
-  auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
   int bytes = input_dims_size * sizeof(int);
-  auto p_input_dims = allocator.Allocate(bytes);
+  auto p_input_dims = memory::Alloc(dev_ctx, bytes);
   int* g_input_dims = reinterpret_cast<int*>(p_input_dims->ptr());
   memory::Copy(gplace, g_input_dims, cplace, v_input_dims.data(), bytes,
                ctx.stream());

@@ -35,7 +35,6 @@ namespace ir {
 
 constexpr char kLossVarName[] = "loss_var_name";
 constexpr char kStrategy[] = "strategy";
-constexpr char kNRanks[] = "nranks";
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:

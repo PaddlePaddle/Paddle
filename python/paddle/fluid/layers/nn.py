@@ -5916,7 +5916,6 @@ def warpctc(input,
             label,
             blank=0,
             norm_by_times=False,
-            use_cudnn=False,
             input_length=None,
             label_length=None):
     """
@@ -5948,7 +5947,6 @@ def warpctc(input,
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
-       use_cudnn (bool, default false): Whether to use cudnn.
        input_length(Variable): The length for each input sequence if it is 
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
@@ -6008,7 +6006,6 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
-            'use_cudnn': use_cudnn
         })
     return loss_out
 
