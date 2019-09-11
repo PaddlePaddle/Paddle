@@ -113,13 +113,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-        imgs = fluid.layers.cast(images, "float16")
         if net_type == "vgg":
             print("train vgg net")
-            net = vgg16_bn_drop(imgs)
+            net = vgg16_bn_drop(images)
         elif net_type == "resnet":
             print("train resnet")
-            net = resnet_cifar10(imgs, 32)
+            net = resnet_cifar10(images, 32)
         else:
             raise ValueError("%s network is not supported" % net_type)
 
@@ -139,7 +138,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
             init_loss_scaling=8.0,
             use_dynamic_loss_scaling=True)
 
-        scaled_loss, _, _ = mp_optimizer.minimize(avg_cost)
+        mp_optimizer.minimize(avg_cost)
+        scaled_loss = mp_optimizer.get_loss_scaling()
 
     BATCH_SIZE = 128
     PASS_NUM = 1

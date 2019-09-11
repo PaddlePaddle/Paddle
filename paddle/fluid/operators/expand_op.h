@@ -186,7 +186,6 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                       "reduce dimensions.");
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto x = EigenVector<T>::Flatten(*(context.Input<Tensor>("X")));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims / MAX_RANK_SUPPORTED + 1> reshape_dims;
@@ -200,7 +199,9 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     x_grad.device(
         *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
+        out_grad.reshape(reshape_dims)
+            .sum(reduce_dims)
+            .reshape(x_grad.dimensions());
   }
 };
 
