@@ -63,7 +63,6 @@ class TestFillOp3(OpTest):
 
         # create and run fill_op operator
         val = np.random.random(size=[3, 2])
-        print(val)
         fill_op = Operator(
             "fill",
             value=val.flatten().tolist(),
@@ -76,9 +75,6 @@ class TestFillOp3(OpTest):
         # get result from Out
         result_array = np.array(out)
         full_array = np.array(val, 'float64')
-
-        print(result_array)
-        print(full_array)
 
         self.assertTrue(np.allclose(result_array, full_array, 1e-5, False))
 
