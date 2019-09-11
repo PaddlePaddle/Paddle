@@ -43,7 +43,7 @@ struct BroadcastOpHandle : public OpHandleBase {
         places_(places),
         nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
-      for (auto &p_ctx : nccl_ctxs_->contexts_) {
+      for (auto &p_ctx : nccl_ctxs_->contexts()) {
         this->SetDeviceContext(platform::CUDAPlace(p_ctx.first),
                                p_ctx.second->dev_ctx());
       }
