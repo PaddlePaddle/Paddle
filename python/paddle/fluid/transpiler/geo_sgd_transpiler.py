@@ -355,7 +355,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     dtype=param.dtype,
                     shape=param.shape)
                 per_opt_block.append_op(
-                    type="Sum",
+                    type="sum",
                     inputs={"X":delta_var},
                     outputs={"Out":param}
                 )
