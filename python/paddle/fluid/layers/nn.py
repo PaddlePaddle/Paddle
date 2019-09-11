@@ -10254,7 +10254,7 @@ def slice(input, axes, starts, ends):
     return out
 
 
-def strided_slice(input, starts, ends, strides):
+def strided_slice(input, axes, starts, ends, strides):
     """
     Strided Slice OP
     Atrgs:
@@ -10274,9 +10274,12 @@ def strided_slice(input, starts, ends, strides):
         type='strided_slice',
         inputs={'Input': input},
         outputs={'Out': out},
-        attrs={'starts': starts,
-               'ends': ends,
-               'strides': strides})
+        attrs={
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'strides': strides
+        })
 
     return out
 

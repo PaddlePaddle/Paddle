@@ -1911,12 +1911,14 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_1)
 
     def test_stridedslice(self):
-        begin = [1, 0, 2]
-        end = [3, 3, 4]
-        stride = [1, 1, 1]
+        axes = [0, 1, 2]
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        strides = [1, 1, 1]
         with self.static_graph():
             x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            out = layers.strided_slice(x, begin=begin, end=end, stride=stride)
+            out = layers.strided_slice(
+                x, axes=axes, starts=starts, ends=ends, strides=strides)
             return out
 
     def test_psroi_pool(self):
