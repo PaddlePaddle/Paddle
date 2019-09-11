@@ -539,7 +539,11 @@ class Optimizer(object):
 
         return optimize_ops
 
-    def apply_optimize(self, loss, startup_program, params_grads):
+    def apply_optimize(self,
+                       loss,
+                       startup_program,
+                       params_grads,
+                       grad_clip=None):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -549,10 +553,15 @@ class Optimizer(object):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
+            grad_clip (GradClipBase|None) : Gradient clip strategy
 
         Returns:
             list: A list of operators appended to the current program.
         """
+        if grad_clip is not None and framework.in_dygraph_mode():
+            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+            params_grads = grad_clip(params_grads)
+
         if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
@@ -614,12 +623,11 @@ class Optimizer(object):
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
 
-        if grad_clip is not None and framework.in_dygraph_mode():
-            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
-            params_grads = grad_clip(params_grads)
-
         optimize_ops = self.apply_optimize(
-            loss, startup_program=startup_program, params_grads=params_grads)
+            loss,
+            startup_program=startup_program,
+            params_grads=params_grads,
+            grad_clip=grad_clip)
 
         return optimize_ops, params_grads
 
