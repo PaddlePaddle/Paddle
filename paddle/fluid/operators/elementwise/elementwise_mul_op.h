@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/blas.h"
+
 namespace paddle {
 namespace operators {
 

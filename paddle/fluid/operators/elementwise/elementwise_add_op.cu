@@ -13,7 +13,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/float16.h"
-// #include <cuda_fp16.h>
 
 #define TILE_SIZE 512
 namespace ops = paddle::operators;

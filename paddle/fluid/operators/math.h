@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include "math.h"  // NOLINT
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
+
+#include "math.h"  // NOLINT
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16
@@ -25,6 +26,7 @@
 
 namespace paddle {
 namespace operators {
+
 inline HOSTDEVICE platform::float16 real_exp(platform::float16 x) {
   return static_cast<platform::float16>(::expf(static_cast<float>(x)));
 }

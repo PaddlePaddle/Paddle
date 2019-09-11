@@ -109,6 +109,7 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto* x = dout;  // Fake x, not used
+
     ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
   }
