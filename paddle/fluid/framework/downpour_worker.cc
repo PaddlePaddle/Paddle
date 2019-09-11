@@ -682,7 +682,7 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_dense_status_,
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
 
@@ -694,7 +694,7 @@ void DownpourWorker::TrainFiles() {
       static uint32_t push_dense_wait_times =
           static_cast<uint32_t>(tmp_push_dense_wait_times);
 
-      if (push_dense_status_.size() >= 1) {
+      if (push_dense_status_.size() >= push_dense_wait_times) {
         for (auto& t : push_dense_status_) {
           t.wait();
         }
@@ -711,7 +711,7 @@ void DownpourWorker::TrainFiles() {
       int32_t tmp_push_sparse_wait_times = -1;
       static uint32_t push_sparse_wait_times =
           static_cast<uint32_t>(tmp_push_sparse_wait_times);
-      if (push_sparse_status_.size() >= 1) {
+      if (push_sparse_status_.size() >= push_sparse_wait_times) {
         for (auto& t : push_sparse_status_) {
           t.wait();
         }
