@@ -23,8 +23,8 @@ import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 
 
-class TestMeanSquareError(unittest.TestCase):
-    def test_mean_square_error(self):
+class TestMseLoss(unittest.TestCase):
+    def test_mse_loss(self):
         input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
         label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
 
@@ -36,7 +36,7 @@ class TestMeanSquareError(unittest.TestCase):
 
         layers.assign(input=input_val, output=input_var)
         layers.assign(input=label_val, output=label_var)
-        output = layers.mean_square_error(input=input_var, label=label_var)
+        output = layers.mse_loss(input=input_var, label=label_var)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
