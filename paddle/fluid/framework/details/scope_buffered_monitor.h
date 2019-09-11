@@ -24,19 +24,26 @@ namespace details {
 
 class ScopeBufferedMonitor {
  public:
-  explicit ScopeBufferedMonitor(const std::vector<Scope*>& local_exec_scopes);
+  ScopeBufferedMonitor(const std::vector<platform::Place> &places,
+                       const std::vector<Scope *> &local_exec_scopes);
 
-  void Run(const std::function<void()>& callback, bool has_fetch);
+  void Apply(const std::function<void()> &callback, bool has_fetch);
 
   void ClearHistoryLocalExecScopes();
 
+  void ClearHistoryLocalScopes(size_t history_step);
+
  private:
-  std::vector<Scope*> local_exec_scopes_;
-  std::vector<std::unordered_set<Scope*>> pre_local_exec_scopes_;
-  std::vector<std::unordered_set<Scope*>> post_local_exec_scopes_;
-  std::deque<std::vector<std::unordered_set<Scope*>>>
+  std::vector<platform::Place> places_;
+  std::vector<Scope *> local_exec_scopes_;
+  std::vector<std::unordered_set<Scope *>> pre_local_exec_scopes_;
+  std::vector<std::unordered_set<Scope *>> post_local_exec_scopes_;
+  std::deque<std::vector<std::unordered_set<Scope *>>>
       history_local_exec_scopes_;
 };
+
+size_t GetScopeVarMemorySize(Scope *scope);
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

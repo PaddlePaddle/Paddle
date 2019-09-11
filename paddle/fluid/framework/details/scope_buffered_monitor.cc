@@ -16,20 +16,74 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace framework {
 namespace details {
 
+static void GetTensors(Variable *var,
+                       std::unordered_set<Tensor *> *tensor_set) {
+  if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<LoDTensor>());
+  } else if (var->IsType<SelectedRows>() &&
+             var->Get<SelectedRows>().value().IsInitialized()) {
+    tensor_set->insert(var->GetMutable<SelectedRows>()->mutable_value());
+  } else if (var->IsType<LoDTensorArray>()) {
+    auto *tensor_arr = var->GetMutable<LoDTensorArray>();
+    for (auto &t : *tensor_arr) {
+      if (t.IsInitialized()) {
+        tensor_set->insert(&t);
+      }
+    }
+  }
+}
+
+static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
+  for (auto &var_name : scope->LocalVarNames()) {
+    GetTensors(scope->FindVar(var_name), tensor_set);
+  }
+
+  for (auto *kid : scope->kids()) {
+    GetTensors(kid, tensor_set);
+  }
+}
+
+static size_t GetTensorMemorySize(Scope *scope, bool clear_cpu_tensor) {
+  std::unordered_set<Tensor *> tensor_set;
+  GetTensors(scope, &tensor_set);
+  size_t memory_size = 0;
+  for (auto *tensor : tensor_set) {
+    if (clear_cpu_tensor && platform::is_cpu_place(tensor->place())) {
+      tensor->clear();
+    } else {
+      memory_size += tensor->Holder()->size();
+    }
+  }
+  return memory_size;
+}
+
+size_t GetScopeVarMemorySize(Scope *scope) {
+  std::unordered_set<Tensor *> tensor_set;
+  GetTensors(scope, &tensor_set);
+  size_t memory_size = 0;
+  for (auto *tensor : tensor_set) {
+    memory_size += tensor->Holder()->size();
+  }
+  return memory_size;
+}
+
 ScopeBufferedMonitor::ScopeBufferedMonitor(
+    const std::vector<platform::Place> &places,
     const std::vector<Scope *> &local_exec_scopes)
-    : local_exec_scopes_(local_exec_scopes) {
+    : places_(places), local_exec_scopes_(local_exec_scopes) {
   pre_local_exec_scopes_.resize(local_exec_scopes_.size());
   post_local_exec_scopes_.resize(local_exec_scopes_.size());
 }
 
-void ScopeBufferedMonitor::Run(const std::function<void()> &callback,
-                               bool has_fetch) {
+void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
+                                 bool has_fetch) {
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::pre_local_exec_scopes process."));
@@ -74,19 +128,44 @@ void ScopeBufferedMonitor::Run(const std::function<void()> &callback,
     }
   }
 
-  size_t history_step = history_local_exec_scopes_.size();
-  if (has_fetch && history_step >= 2) {
-    VLOG(10) << "delete pre_incr_local_exec_scopes.";
-    for (size_t i = 0; i < history_step - 1; ++i) {
-      auto &pre_incr_local_exec_scopes = history_local_exec_scopes_.front();
-      for (size_t scope_idx = 0; scope_idx < pre_incr_local_exec_scopes.size();
-           ++scope_idx) {
-        for (auto scope : pre_incr_local_exec_scopes[scope_idx]) {
-          local_exec_scopes_.at(scope_idx)->DeleteScope(scope);
-        }
+  // Delete CPU Memory
+  size_t gpu_memory_size = 0;
+  for (auto &scope_vec : history_local_exec_scopes_) {
+    for (auto &scope_set : scope_vec) {
+      for (auto &scope : scope_set) {
+        gpu_memory_size +=
+            GetTensorMemorySize(scope, /*clear cpu tensor*/ true);
       }
-      history_local_exec_scopes_.pop_front();
     }
+  }
+
+  VLOG(8) << "history local exec scopes contains "
+          << string::HumanReadableSize(gpu_memory_size) << ".";
+
+  size_t history_step = history_local_exec_scopes_.size();
+  if (gpu_memory_size > 1024 * 1024 * 1024) {
+    for (auto &p : places_) {
+      platform::DeviceContextPool::Instance().Get(p)->Wait();
+    }
+    ClearHistoryLocalScopes(history_step);
+  } else {
+    if (has_fetch && history_step >= 2) {
+      ClearHistoryLocalScopes(history_step - 1);
+    }
+  }
+}
+
+void ScopeBufferedMonitor::ClearHistoryLocalScopes(size_t history_step) {
+  VLOG(10) << "delete pre_incr_local_exec_scopes.";
+  for (size_t i = 0; i < history_step; ++i) {
+    auto &pre_incr_local_exec_scopes = history_local_exec_scopes_.front();
+    for (size_t scope_idx = 0; scope_idx < pre_incr_local_exec_scopes.size();
+         ++scope_idx) {
+      for (auto scope : pre_incr_local_exec_scopes[scope_idx]) {
+        local_exec_scopes_.at(scope_idx)->DeleteScope(scope);
+      }
+    }
+    history_local_exec_scopes_.pop_front();
   }
 }
 

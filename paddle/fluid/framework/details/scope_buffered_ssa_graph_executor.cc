@@ -25,44 +25,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static void CollectUniqueAllocations(
-    const Variable &var,
-    std::unordered_set<memory::Allocation *> *allocation_set) {
-  if (var.IsType<LoDTensor>()) {
-    allocation_set->insert(var.Get<LoDTensor>().Holder().get());
-  } else if (var.IsType<SelectedRows>()) {
-    allocation_set->insert(var.Get<SelectedRows>().value().Holder().get());
-  } else if (var.IsType<LoDTensorArray>()) {
-    for (auto &t : var.Get<LoDTensorArray>()) {
-      allocation_set->insert(t.Holder().get());
-    }
-  }
-}
-
-static void CollectUniqueAllocations(
-    const Scope &scope,
-    std::unordered_set<memory::Allocation *> *allocation_set) {
-  for (auto &var_name : scope.LocalVarNames()) {
-    CollectUniqueAllocations(*scope.FindVar(var_name), allocation_set);
-  }
-
-  for (auto *kid : scope.kids()) {
-    CollectUniqueAllocations(*kid, allocation_set);
-  }
-}
-
-static size_t GetScopeVarMemorySize(const Scope &scope) {
-  std::unordered_set<memory::Allocation *> allocation_set;
-  CollectUniqueAllocations(scope, &allocation_set);
-  size_t memory_size = 0;
-  for (auto *allocation : allocation_set) {
-    if (allocation) {
-      memory_size += allocation->size();
-    }
-  }
-  return memory_size;
-}
-
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
     std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
@@ -74,7 +36,7 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       local_exec_scopes_(std::move(local_exec_scopes)),
       var_infos_(std::move(var_infos)),
       places_(std::move(places)),
-      scope_monitor_(local_exec_scopes_) {
+      scope_monitor_(places_, local_exec_scopes_) {
   PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
   PrepareLocalExeScopes();
 }
@@ -89,20 +51,24 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr = nullptr;
 
-  scope_monitor_.Run(
-      [&]() {
-        try {
-          fetch_data = underlying_executor_->Run(fetch_tensors);
-        } catch (...) {
-          eptr = std::current_exception();
-        }
-      },
-      fetch_tensors.size() > 0);
+  auto exe_run_func = [&]() {
+    try {
+      fetch_data = underlying_executor_->Run(fetch_tensors);
+    } catch (...) {
+      eptr = std::current_exception();
+    }
+  };
+
+  if (strategy_.num_iteration_per_drop_scope_ == 1) {
+    exe_run_func();
+  } else {
+    scope_monitor_.Apply(exe_run_func, fetch_tensors.size() > 0);
+  }
 
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(*scope))
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
               << " on scope " << scope << " before deleting";
     }
   }
@@ -115,7 +81,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   if (VLOG_IS_ON(5)) {
     for (auto *scope : local_exec_scopes_) {
       VLOG(5) << "Left "
-              << string::HumanReadableSize(GetScopeVarMemorySize(*scope))
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
               << " on scope " << scope << " after deleting";
     }
   }
