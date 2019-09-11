@@ -354,6 +354,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     type=core.VarDesc.VarType.SELECTED_ROWS,
                     dtype=param.dtype,
                     shape=param.shape)
+                per_opt_block.append_op(
+                    type="Sum",
+                    inputs={"X":delta_var},
+                    outputs={"Out":param}
+                )
             else:
                 delta_var_name = "%s.delta" % (param.name)
                 delta_var = pserver_block.create_var(

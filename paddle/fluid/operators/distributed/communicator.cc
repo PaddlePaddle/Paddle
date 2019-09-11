@@ -531,6 +531,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       auto *var = delta_scope_->FindVar(delta_name);
       auto var_tensor = var->Get<framework::LoDTensor>();
       framework::DDim origin_dim = var_tensor.dims();
+      VLOG(1)<< "origin var dim dim0: "<<origin_dim[0]<<" dim:1 "<<origin_dim[1];
       // step2 erase LodTensor Var
       std::vector<std::string> erase_var{delta_name};
       delta_scope_->EraseVars(erase_var);
@@ -550,6 +551,11 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       VLOG(1) << "sparse_var_ids_table_ insert element: "<< sparse_var_table_temp[i];
       sparse_var_ids_table_[sparse_var_table_temp[i]]=std::unordered_map<int64_t,std::vector<float>>{};
     }
+    //for test
+    std::vector<std::string> send_scope_vars = scope.LocalVarNames();
+    for(auto var_name : send_scope_vars) {
+      VLOG(1)<< "Send Scope has var: "<<var_name;
+    }
 
     // ids
     auto *var = scope.FindVar(sparse_var_names[i]);
@@ -557,12 +563,18 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     int var_element_number = var_tensor.numel();
     int* var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
 
+    //for test
+    std::vector<std::string> old_scope_vars = scope.LocalVarNames();
+    for(auto var_name : old_scope_vars) {
+      VLOG(1)<< "Old Scope has var: "<<var_name;
+    }
+
     // table
     auto *table = old_scope_->FindVar(sparse_var_table_temp[i]);
     auto table_tensor = table->Get<framework::LoDTensor>();
     framework::DDim table_dim = table_tensor.dims();
     int64_t column = table_dim[1];
-    
+    VLOG(1)<< "Table tensor column: "<<column;
     float* table_mutable_data = table_tensor.mutable_data<float>(var_tensor.place());
 
     for (int j=0; j<var_element_number; j++){
