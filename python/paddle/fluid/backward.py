@@ -24,8 +24,10 @@ from .. import compat as cpt
 from . import unique_name
 
 __all__ = [
-    'append_backward', 'gradients',
+    'append_backward',
+    'gradients',
 ]
+
 
 class ProgramStats(object):
     def __init__(self, block, ops):
@@ -100,10 +102,11 @@ class ProgramStats(object):
     def build_stats(self):
         inorder_count = {}
         for i, op in enumerate(self.ops):
-            self.op_deps[i] = {"in_ops":[], "out_ops": []}
+            self.op_deps[i] = {"in_ops": [], "out_ops": []}
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
-                    self.op_deps[i]["in_ops"].extend(self.var_op_deps[name]["var_as_output_ops"])
+                    self.op_deps[i]["in_ops"].extend(self.var_op_deps[name][
+                        "var_as_output_ops"])
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
                     self.var_op_deps[name]["var_as_input_ops"].extend([i])
@@ -142,6 +145,7 @@ class ProgramStats(object):
             return self.var_op_deps[name]["var_as_input_ops"] + \
                 self.var_op_deps[name]["var_as_output_ops"]
 
+
 def _pretty_op_desc_(op_desc, prefix):
     out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
             (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
@@ -165,9 +169,6 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         for name in desc.output_arg_names():
             #print("add if need: ", name)
             #if main_block.has_var(name): 
-	    #	print('has var!!!!')
-	    #else:	
-	    #	print('no such var!!!')
             if main_block.has_var(name) and main_block.var(name).persistable:
                 continue
             if name not in in_memory_vars:
@@ -227,7 +228,12 @@ def _find_loss_op_(loss):
     if loss.op is None:
         raise ValueError("loss.op is None. Should not happend")
 
-def _rename_output_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
+
+def _rename_output_arg_(op_descs,
+                        old_name,
+                        new_name,
+                        begin_idx=None,
+                        end_idx=None):
     """
     Traverse all ops in op_descs[begin_idx : end_idx],
     if any op has inputs/outputs named "old_name", rename it as 'new_name'
@@ -241,6 +247,7 @@ def _rename_output_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=No
         if isinstance(op_desc, tuple):
             op_desc = op_desc[0]
         op_desc._rename_output(old_name, new_name)
+
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
     """
@@ -731,8 +738,7 @@ def _append_backward_ops_with_checkpoints_(
         if start_idx >= len(checkpoints_name) - 1:
             break
         flag, min_idx, max_idx = program_stat.is_subgraph(
-            [checkpoints_name[start_idx]],
-            [checkpoints_name[start_idx + 1]])
+            [checkpoints_name[start_idx]], [checkpoints_name[start_idx + 1]])
         if flag:
             segments.append([min_idx, max_idx + 1])
         start_idx += 1
@@ -777,7 +783,7 @@ def _append_backward_ops_with_checkpoints_(
     vars_in_memory = vars_should_be_hold + checkpoints_name
     # var name -> [[op_idx in grad_op_descs]]
     #grad_var_position = collections.defaultdict(list)
-   
+
     # add grad desc for ops from last segment to end
     #for op in reversed(ops[segments[-1][1]:]):
     #    grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
@@ -788,29 +794,31 @@ def _append_backward_ops_with_checkpoints_(
 
     for i, desc in enumerate(grad_op_descs):
         print(_pretty_op_desc_(desc, str(i)))
-	
+
     max_calculated_op_position = len(ops)
     for i, segment in enumerate(recompute_segments[::-1]):
         # add grad op for ops not in any segments
         gap_ops = ops[segment[1]:max_calculated_op_position]
         max_calculated_op_position = segment[0]
-	for op in reversed(gap_ops):
-	    if op.has_attr("sub_block"):
-		raise Exception("Recompute don't support ops with sub_block"
-				"invoke op: %s" % _pretty_op_desc_(op.desc, "with_sub_block"))        
-	    grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+        for op in reversed(gap_ops):
+            if op.has_attr("sub_block"):
+                raise Exception("Recompute don't support ops with sub_block"
+                                "invoke op: %s" %
+                                _pretty_op_desc_(op.desc, "with_sub_block"))
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
-	    added_descs = _add_descs_to_block(grad_op_desc, local_block)
-	    grad_op_descs.extend(added_descs)
-	    grad_to_var.update(op_grad_to_var)
-	    
+            added_descs = _add_descs_to_block(grad_op_desc, local_block)
+            grad_op_descs.extend(added_descs)
+            grad_to_var.update(op_grad_to_var)
+
         ff_ops = ops[segment[0]:segment[1]]
         var_suffix = ".subprog_%d" % i
 
         for op in ff_ops:
-	    if op.has_attr("sub_block"):
+            if op.has_attr("sub_block"):
                 raise Exception("Recompute don't support ops with sub_block"
-                                "invoke op: %s" % _pretty_op_desc_(op.desc, "with_sub_block"))
+                                "invoke op: %s" %
+                                _pretty_op_desc_(op.desc, "with_sub_block"))
             input_and_output_names = []
             input_and_output_names.extend(op.desc.input_arg_names())
             input_and_output_names.extend(op.desc.output_arg_names())
@@ -821,8 +829,8 @@ def _append_backward_ops_with_checkpoints_(
                     continue
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
-        buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block,
-                                                 block, vars_in_memory)
+        buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
+                                                  vars_in_memory)
         added_descs = _add_descs_to_block(ff_ops, local_block)
 
         # rename variable names in added_descs
@@ -830,27 +838,26 @@ def _append_backward_ops_with_checkpoints_(
         #for key in var_name_dict:
         #    _rename_arg_(added_descs, key, var_name_dict[key])
 
-	for key in var_name_dict:
-	    _rename_arg_(buffer_descs, key, var_name_dict[key])
-	
-	
+        for key in var_name_dict:
+            _rename_arg_(buffer_descs, key, var_name_dict[key])
+
         # added_descs should be in grad_op_descs because it is backward op desc
         # grad_op_descs.extend(added_descs)
-	grad_op_descs.extend(buffer_descs)
+        grad_op_descs.extend(buffer_descs)
 
         # c. add backward ops of current recomputation ops
         print("add backward in recomputation")
         #for op_desc in reversed(buffer_descs):
-	for op_desc in reversed(added_descs):
+        for op_desc in reversed(added_descs):
             # print(_pretty_op_desc_(op_desc, "add_needed_grad"))
-	
+
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
 
             for key in var_name_dict:
                 _rename_arg_(grad_op_desc, key, var_name_dict[key])
 
-	    #for x in grad_op_desc:
+            #for x in grad_op_desc:
             #    print(_pretty_op_desc_(x, "add_descs_tmp"))
             #grad_op_desc = _merge_gradient_if_needed_(
             #    grad_op_desc, grad_op_descs, grad_var_position)
@@ -1072,8 +1079,11 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-def append_backward(loss, parameter_list=None, no_grad_set=None,
-                    callbacks=None, checkpoints=None):
+def append_backward(loss,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    callbacks=None,
+                    checkpoints=None):
     """
     Append backward part to main_program.
 
@@ -1283,139 +1293,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         return res
 
     for op in root_block.ops:
-	print(_pretty_op_desc_(op.desc, "final_program"))
+        print(_pretty_op_desc_(op.desc, "final_program"))
 
     if program_stat:
-        memory_timeline = []
-        op_var_count = collections.defaultdict(int)
-        for op in root_block.ops:
-            for name in op.desc.input_arg_names():
-                op_var_count[name] += 1
-            for name in op.desc.output_arg_names():
-                op_var_count[name] += 1
+        return recompute_segments, params_and_grads
 
-        all_var_size = []
-        for name in op_var_count:
-            all_var_size.append((name, _get_var_size(root_block, name, 32)))
-        sorted_var_size = sorted(all_var_size, key=lambda x: x[1], reverse=True)
-        print("sorted var size")
-        for item in sorted_var_size:
-            print("%s\t%d" % (item[0], item[1]))
-
-        forward_var_count = collections.defaultdict(int)
-        for i, op in enumerate(root_block.ops):
-            input_var_count = []
-            output_var_count = []
-            for name in op.desc.input_arg_names():
-                forward_var_count[name] += 1
-                count = op_var_count[name] - forward_var_count[name]
-                input_var_count.append(count)
-            for name in op.desc.output_arg_names():
-                forward_var_count[name] += 1
-                count = op_var_count[name] - forward_var_count[name]
-                output_var_count.append(count)
-            memory_timeline.append([input_var_count, output_var_count])
-
-        op_memory_size = []
-        first_var = {}
-        op_size = 0
-        parameter_name = {}
-        for var in root_block.program.global_block().all_parameters():
-            parameter_name[var.name] = 1
-            op_size += _get_var_size(root_block.program.global_block(),
-                                     var.name, 32)
-            first_var[var.name] = 1
-        print("model size: %d" % op_size)
-        persistable_size = 0
-        for name in op_var_count:
-            local_var = root_block.var(name)
-            if local_var.persistable:
-                if local_var.name not in parameter_name:
-                    print("persistable var name: " + local_var.name)
-                    persistable_size += _get_var_size(
-                        root_block.program.global_block(), local_var.name, 32)
-        print("persistable var size")
-        print(persistable_size)
-        forward_erase_num = 0
-        backward_erase_num = 0
-        current_seg_idx = 0
-        segment_dict_list = []
-        recompute_segments.append(
-            [recompute_segments[-1][1], len(root_block.ops)])
-        recompute_segments_memory = []
-        for i, op in enumerate(root_block.ops):
-            segment_dict = {"new_var": [], "del_var": []}
-            if i > recompute_segments[current_seg_idx][1]:
-                recompute_segments_memory.append(op_memory_size[-1])
-                current_seg_idx += 1
-            for name in op.desc.input_arg_names():
-                if name not in first_var:
-                    op_size += _get_var_size(root_block, name, 32)
-                    first_var[name] = 1
-                    segment_dict["new_var"].append(
-                        (name, _get_var_size(root_block, name, 32)))
-            for name in op.desc.output_arg_names():
-                if name not in first_var:
-                    op_size += _get_var_size(root_block, name, 32)
-                    first_var[name] = 1
-                    segment_dict["new_var"].append(
-                        (name, _get_var_size(root_block, name, 32)))
-            for j, name in enumerate(op.desc.input_arg_names()):
-                if memory_timeline[i][0][j] <= 0:
-                    op_size -= _get_var_size(root_block, name, 32)
-                    if i <= fwd_op_num:
-                        forward_erase_num += 1
-                    else:
-                        backward_erase_num += 1
-                    segment_dict["del_var"].append(
-                        (name, _get_var_size(root_block, name, 32)))
-            for j, name in enumerate(op.desc.output_arg_names()):
-                if memory_timeline[i][1][j] <= 0:
-                    op_size -= _get_var_size(root_block, name, 32)
-                    if i <= fwd_op_num:
-                        forward_erase_num += 1
-                    else:
-                        backward_erase_num += 1
-                    segment_dict["del_var"].append(
-                        (name, _get_var_size(root_block, name, 32)))
-            segment_dict_list.append(segment_dict)
-            op_memory_size.append(op_size)
-        print("erase details")
-        for i, segment in enumerate(segment_dict_list):
-            if i >= fwd_op_num:
-                print("forward done.")
-            for name in segment["del_var"]:
-                print(name)
-        print("segment memory remained")
-        for i, m_size in enumerate(recompute_segments_memory):
-            print("segment[%d]: %f" % (i, m_size))
-        print("op memory size")
-        print("forward erase num")
-        print(forward_erase_num)
-        print("backward erase num")
-        print(backward_erase_num)
-        for i, op_size in enumerate(op_memory_size):
-            if i == fwd_op_num:
-                print("forward done.")
-            #print(_pretty_op_desc_(root_block.ops[i].desc, "%d" % i))
-            print(op_size)
-        # checkpoint_names
-        # vars should be hold
-        var_op_deps = program_stat.var_op_deps
-        cp_vars_size = 0
-        hold_vars_size = 0
-        other_vars_size = 0
-        for name in checkpoint_names:
-            cp_vars_size += _get_var_size(root_block, name, 32)
-        for name in vars_should_be_hold:
-            hold_vars_size += _get_var_size(root_block, name, 32)
-        for name in var_op_deps:
-            if name not in vars_should_be_hold and name not in checkpoint_names:
-                other_vars_size += _get_var_size(root_block, name, 32)
-        print("checkpoint var size: %d" % cp_vars_size)
-        print("hold var size: %d" % hold_vars_size)
-        print("other var size: %d" % other_vars_size)
-        #exit(0)
     return params_and_grads
 
 
