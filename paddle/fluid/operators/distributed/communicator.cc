@@ -554,7 +554,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     //for test
     std::vector<std::string> send_scope_vars = scope.LocalVarNames();
     for(auto var_name : send_scope_vars) {
-      VLOG(1)<< "Send Scope has var: "<<var_name;
+      VLOG(4)<< "Send Scope has var: "<<var_name;
     }
 
     // ids
@@ -566,7 +566,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     //for test
     std::vector<std::string> old_scope_vars = scope.LocalVarNames();
     for(auto var_name : old_scope_vars) {
-      VLOG(1)<< "Old Scope has var: "<<var_name;
+      VLOG(4)<< "Old Scope has var: "<<var_name;
     }
 
     // table
