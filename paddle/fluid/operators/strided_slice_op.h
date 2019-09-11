@@ -24,7 +24,7 @@ namespace operators {
 
 static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
                                 int* reverse_axis, const framework::DDim dims,
-                                const int size) {
+                                const size_t size) {
   for (size_t axis = 0; axis < size; axis++) {
     int axis_size = dims[axes[axis]];
     int axis_index = axis;

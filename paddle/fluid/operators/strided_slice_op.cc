@@ -51,7 +51,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // the parameter that we get from python front
     int stride_index, start_index, end_index;
     std::vector<int> out_dims_vector(in_dims.size());
-    for (size_t i = 0; i < in_dims.size(); i++) {
+    for (int i = 0; i < in_dims.size(); i++) {
       out_dims_vector[i] = in_dims[i];
     }
     for (size_t i = 0; i < starts.size(); i++) {
