@@ -72,19 +72,17 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
   for (size_t i = 0; i < multi_input.size(); i++) {
-    platform::MKLDNNHandler::AppendKeyDims(
+    platform::AppendKeyDims(
         &key, paddle::framework::vectorize<int>(multi_input[i]->dims()));
   }
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
-  platform::MKLDNNHandler::AppendKey(&key,
-                                     std::to_string(multi_input[0]->format()));
+  platform::AppendKey(&key, std::to_string(concat_axis));
+  platform::AppendKey(&key, ctx.op().Output("Out"));
+  platform::AppendKey(&key, std::to_string(dt));
+  platform::AppendKey(&key, std::to_string(multi_input[0]->format()));
   if (platform::get_cur_mkldnn_session_id() ==
       platform::kMKLDNNSessionID_Default) {
-    platform::MKLDNNHandler::AppendKey(&key, "-t:");
-    platform::MKLDNNHandler::AppendKey(
-        &key, platform::MKLDNNHandler::ThreadIDasStr());
+    platform::AppendKey(&key, "-t:");
+    platform::AppendKey(&key, platform::ThreadIDasStr());
   }
   return key;
 }
