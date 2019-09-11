@@ -76,8 +76,6 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             pre_hidden = fluid.layers.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1])
-            # # TODO(jiabin): SUPER HACK FIX TO ADJUST NEW AUTO PRUNE STRATEGY, CHANGE THIS WHEN WE CHANGE CONCAT OP
-            # pre_hidden.stop_gradient = False
             pre_cell = fluid.layers.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1])
             pre_hidden = fluid.layers.reshape(
