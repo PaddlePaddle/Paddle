@@ -205,7 +205,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
       }
 
       // Insert collective ops if nranks > 1
-      if (!is_forwarding && Get<size_t>(kNRanks) > 1) {
+      if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -273,7 +273,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 1;
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
-      loss_scale = Get<size_t>(kNRanks);
+      loss_scale = Get<size_t>(details::kNRanks);
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCustomized:
       loss_scale = 0;
@@ -1106,7 +1106,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
       .RequirePassAttr(paddle::framework::details::kPlaces)               \
       .RequirePassAttr(paddle::framework::details::kLocalScopes)          \
       .RequirePassAttr(paddle::framework::ir::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::ir::kNRanks)
+      .RequirePassAttr(paddle::framework::details::kNRanks)
 
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::ir::ReduceSSAGraphBuilder);
