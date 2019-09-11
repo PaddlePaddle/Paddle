@@ -559,7 +559,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
 
     // table
     auto *table = old_scope_->FindVar(sparse_var_table_temp[i]);
-    auto table_tensor = var->Get<framework::LoDTensor>();
+    auto table_tensor = table->Get<framework::LoDTensor>();
     framework::DDim table_dim = table_tensor.dims();
     int64_t column = table_dim[1];
     
@@ -591,7 +591,6 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
         VLOG(4) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
         auto &queue = send_varname_to_queue_.at(VarToDeltaVar(local_var_name));
         SendUpdateVars(local_var_name);
-        auto *delta_var = delta_scope_->FindVar(VarToDeltaVar(local_var_name));
         auto tmp_param_var = std::make_shared<Variable>();
         queue->Push(tmp_param_var);
         VLOG(1) << "send " << local_var_name << " queue size " << queue->Size();
