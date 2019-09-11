@@ -101,10 +101,8 @@ class NCCLContext {
   NCCLContext &operator=(const NCCLContext &other) = delete;
 };
 
-struct NCCLContextMap {
-  std::map<int, std::unique_ptr<NCCLContext>> contexts_;
-  std::vector<int> order_;
-
+class NCCLContextMap {
+ public:
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
@@ -154,6 +152,10 @@ struct NCCLContextMap {
     }
   }
 
+  const std::map<int, std::unique_ptr<NCCLContext>> &contexts() const {
+    return contexts_;
+  }
+
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
@@ -174,6 +176,10 @@ struct NCCLContextMap {
       p.second->dev_ctx()->Wait();
     }
   }
+
+ private:
+  std::map<int, std::unique_ptr<NCCLContext>> contexts_;
+  std::vector<int> order_;
 };
 
 inline std::string GetFlatNCCLVarName(size_t pos) {
