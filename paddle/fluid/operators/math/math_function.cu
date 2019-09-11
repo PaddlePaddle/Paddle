@@ -148,6 +148,17 @@ void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
 template struct RowwiseMean<platform::CUDADeviceContext, float>;
 template struct RowwiseMean<platform::CUDADeviceContext, double>;
 
+template <typename T>
+struct ElementWiseAdd<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::Tensor& a, const framework::Tensor& b,
+                  framework::Tensor* z) {}
+};
+
+template struct ElementWiseAdd<platform::CUDADeviceContext, float>;
+template struct ElementWiseAdd<platform::CUDADeviceContext, double>;
+template struct ElementWiseAdd<platform::CUDADeviceContext, float16>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

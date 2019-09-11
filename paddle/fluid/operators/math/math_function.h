@@ -69,6 +69,12 @@ struct RowwiseMean {
                   framework::Tensor* vec);
 };
 
+template <typename DeviceContext, typename T>
+struct ElementWiseAdd {
+  void operator()(const DeviceContext& context, const framework::Tensor& a,
+                  const framework::Tensor& b, framework::Tensor* z);
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

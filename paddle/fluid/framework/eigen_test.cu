@@ -148,5 +148,5 @@ void TestSpeed(const paddle::framework::DDim& dims, int loop = 1000) {
 TEST(DataTypeTransform, GPUTransform) {
   paddle::framework::DDim dims({1024, 1024});
   // TestSpeed<float>(dims, 1000);
-  TestSpeed<paddle::platform::float16>(dims, 10000);
+  // TestSpeed<paddle::platform::float16>(dims, 10000);
 }
