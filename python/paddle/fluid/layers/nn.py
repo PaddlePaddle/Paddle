@@ -1415,10 +1415,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
-        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
-        param_attr(ParamAttr): The attribute of the learnable parameter.
+        param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
 
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
@@ -1484,6 +1483,10 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
+            
+            #you can use find_var to get transition parameter.
+            transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
+            print(transition)
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -5791,7 +5794,6 @@ def warpctc(input,
             label,
             blank=0,
             norm_by_times=False,
-            use_cudnn=False,
             input_length=None,
             label_length=None):
     """
@@ -5823,7 +5825,6 @@ def warpctc(input,
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
-       use_cudnn (bool, default false): Whether to use cudnn.
        input_length(Variable): The length for each input sequence if it is 
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
@@ -5883,7 +5884,6 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
-            'use_cudnn': use_cudnn
         })
     return loss_out
 

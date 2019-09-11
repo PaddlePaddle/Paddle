@@ -56,7 +56,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     if (x_dims != y_dims_untrimed) {
       Tensor _x;
       MKLDNNMemoryFormat format;
-      std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
+      std::vector<int> src_x_tz = framework::vectorize<int>(x_dims);
 
       if ((src_x_tz.size() == 3 &&
            x->format() != (format = MKLDNNMemoryFormat::ncw)) ||
@@ -129,14 +129,14 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(y->format(), MKLDNNMemoryFormat::format_undef,
                         "Wrong format set for Y tensor");
 
-      std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
-      std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
-      std::vector<int> dst_tz = framework::vectorize2int(z_dims);
+      std::vector<int> src_x_tz = framework::vectorize<int>(x_dims);
+      std::vector<int> src_y_tz = framework::vectorize<int>(y_dims_untrimed);
+      std::vector<int> dst_tz = framework::vectorize<int>(z_dims);
 
       std::vector<memory::primitive_desc> srcs_pd;
       std::vector<float> scales = {1.0f, 1.0f};
 
-      const std::string key = platform::MKLDNNHandler::GetHash(
+      const std::string key = platform::GetHash(
           src_x_tz, ctx.op().Output("Out") + std::to_string(x->format()) +
                         std::to_string(y->format()));
 
