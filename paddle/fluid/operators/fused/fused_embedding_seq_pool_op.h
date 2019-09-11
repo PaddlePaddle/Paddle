@@ -36,7 +36,7 @@ using DDim = framework::DDim;
 constexpr int64_t kNoPadding = -1;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
 template <typename T>
 void prepare_csr_data(const std::vector<uint64_t> &offset,
                       const int64_t *ids_data, const size_t idx_width,
@@ -138,7 +138,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
 
     if (combiner_type == "sum") {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
       auto output = output_t->mutable_data<T>(context.GetPlace());
       int64_t table_height = table_var->dims()[0];
@@ -232,7 +232,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       }
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
+    !defined(__OSX__)
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
@@ -261,20 +261,18 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
                           csr_colmuns, csr_row_idx, padding_idx);
 
       auto *d_output_data = d_output->data<T>();
-      const char transa = 'T';
-      const T alpha = 1.0;
-      const T beta = 0.0;
-      const char matdescra[] = {'G', 'L', 'N', 'C'};
-
-      const int m = batch_size * idx_width;
-      const int n = table_dim[1];
-      const int k = table_dim[1];
-
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-      blas.CSRMM(&transa, &m, &n, &k, &alpha, matdescra, (const T *)csr_vals,
-                 (const int *)csr_colmuns, (const int *)csr_row_idx,
-                 (const int *)csr_row_idx + 1, d_output_data, &n, &beta,
-                 d_table_data, &n);
+      int width = static_cast<int>(table_dim[1]);
+      int num_seq = batch_size * idx_width;
+      LOG(INFO) << "num seq = " << num_seq << " width = " << width;
+      for (int i = 0; i < num_seq; ++i) {
+        for (int j = csr_row_idx[i]; j < csr_row_idx[i + 1]; ++j) {
+          unsigned int word_idx = csr_colmuns[j];
+          T val = csr_vals[j];
+          blas.AXPY(width, val, d_output_data + i * width,
+                    d_table_data + word_idx * width);
+        }
+      }
 #else
       LOG(ERROR) << "Dense is not supported in fused_embedding_seq_pool_op now";
 #endif
