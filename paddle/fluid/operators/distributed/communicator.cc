@@ -683,7 +683,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     VLOG(1) << "Sparse var "<<var_name<<" rows: "<<rows<<"cloumns: "<<columns;
     std::vector<int64_t> new_rows;
     new_rows.resize(rows);
-    std::vector<std::vector<float>> new_value;
+    std::vector<float> new_value;
     //Todo: test var find success
     //Todo: using template T instead of float&int 
     for (auto &iter:select_table) {
@@ -695,9 +695,9 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
         VLOG(1) << "Geo-Sgd Send " << var_name<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
             <<" ;delta_scope: "<< value[i];
+        new_value.emplace_back(value[i]);
       }
       new_rows.emplace_back(ids);
-      new_value.emplace_back(value);
     }
     var_select_rows->set_rows(new_rows);
 
