@@ -22,34 +22,41 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static void StridedSliceFunctor(int* begin, int* end, int* stride,
+static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
                                 int* reverse_axis, const framework::DDim dims,
                                 const int size) {
   for (size_t axis = 0; axis < size; axis++) {
-    int axis_size = dims[axis];
+    int axis_size = dims[axes[axis]];
+    int axis_index = axis;
+    if (axis_size < 0) {
+      starts[axis_index] = 0;
+      ends[axis_index] = 1;
+      strides[axis_index] = 1;
+    }
     // stride must not be zero
-    if (begin[axis] < 0) {
-      begin[axis] = begin[axis] + axis_size;
+    if (starts[axis_index] < 0) {
+      starts[axis_index] = starts[axis_index] + axis_size;
     }
 
-    if (end[axis] < 0) {
-      end[axis] = end[axis] + axis_size;
+    if (ends[axis_index] < 0) {
+      ends[axis_index] = ends[axis_index] + axis_size;
     }
-    if (stride[axis] < 0) {
-      reverse_axis[axis] = 1;
-      stride[axis] = -stride[axis];
-      if (begin[axis] > end[axis]) {
+    if (strides[axis_index] < 0) {
+      reverse_axis[axis_index] = 1;
+      strides[axis_index] = -strides[axis_index];
+      if (starts[axis_index] > ends[axis_index]) {
         // swap the reverse
-        begin[axis] = begin[axis] + 1;
-        end[axis] = end[axis] + 1;
+        starts[axis_index] = starts[axis_index] + 1;
+        ends[axis_index] = ends[axis_index] + 1;
       }
-      std::swap(begin[axis], end[axis]);
+      std::swap(starts[axis_index], ends[axis_index]);
     } else {
-      reverse_axis[axis] = 0;
-      stride[axis] = stride[axis];
+      reverse_axis[axis_index] = 0;
+      strides[axis_index] = strides[axis_index];
     }
   }
 }
+
 template <typename DeviceContext, typename T>
 class StridedSliceKernel : public framework::OpKernel<T> {
  public:
@@ -87,23 +94,31 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     auto out_dims = out->dims();
     auto in_dims = in->dims();
 
-    auto begin = context.Attr<std::vector<int>>("begin");
-    auto end = context.Attr<std::vector<int>>("end");
-    auto stride = context.Attr<std::vector<int>>("stride");
+    auto starts = context.Attr<std::vector<int>>("starts");
+    auto ends = context.Attr<std::vector<int>>("ends");
+    auto strides = context.Attr<std::vector<int>>("strides");
+    auto axes = context.Attr<std::vector<int>>("axes");
 
-    auto begin_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-    auto end_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-    auto stride_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     Eigen::array<bool, D> reverse_axis;
 
-    std::vector<int> reverse_vector(begin.size(), 0);
-    StridedSliceFunctor(begin.data(), end.data(), stride.data(),
-                        reverse_vector.data(), in_dims, begin.size());
+    std::vector<int> reverse_vector(starts.size(), 0);
+    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
+                        reverse_vector.data(), in_dims, starts.size());
+
     for (size_t axis = 0; axis < D; axis++) {
-      begin_indices[axis] = begin[axis];
-      end_indices[axis] = end[axis];
-      stride_indices[axis] = stride[axis];
-      reverse_axis[axis] = (reverse_vector[axis] == 1) ? true : false;
+      starts_indices[axis] = 0;
+      ends_indices[axis] = out_dims[axis];
+      strides_indices[axis] = 1;
+    }
+    for (size_t axis = 0; axis < axes.size(); axis++) {
+      int axis_index = axes[axis];
+      starts_indices[axis_index] = starts[axis];
+      ends_indices[axis_index] = ends[axis];
+      strides_indices[axis_index] = strides[axis];
+      reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
 
     framework::Tensor tmp;
@@ -120,7 +135,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *out, out_dims);
     tmp_t.device(place) =
-        in_t.stridedSlice(begin_indices, end_indices, stride_indices);
+        in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
     out_t.device(place) = tmp_t.reverse(reverse_axis);
   }
 };
@@ -169,24 +184,32 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, d_out, static_cast<T>(0));
     auto out_dims = d_out->dims();
     auto in_dims = d_input->dims();
-    auto begin = context.Attr<std::vector<int>>("begin");
-    auto end = context.Attr<std::vector<int>>("end");
-    auto stride = context.Attr<std::vector<int>>("stride");
+    auto starts = context.Attr<std::vector<int>>("starts");
+    auto ends = context.Attr<std::vector<int>>("ends");
+    auto strides = context.Attr<std::vector<int>>("strides");
+    auto axes = context.Attr<std::vector<int>>("axes");
 
-    auto begin_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-    auto end_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-    auto stride_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+    auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
 
     Eigen::array<bool, D> reverse_axis;
-    std::vector<int> reverse_vector(begin.size(), 0);
+    std::vector<int> reverse_vector(starts.size(), 0);
 
-    StridedSliceFunctor(begin.data(), end.data(), stride.data(),
-                        reverse_vector.data(), out_dims, begin.size());
+    StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
+                        reverse_vector.data(), out_dims, starts.size());
+
     for (size_t axis = 0; axis < D; axis++) {
-      begin_indices[axis] = begin[axis];
-      end_indices[axis] = end[axis];
-      stride_indices[axis] = stride[axis];
-      reverse_axis[axis] = (reverse_vector[axis] == 1) ? true : false;
+      starts_indices[axis] = 0;
+      ends_indices[axis] = out_dims[axis];
+      strides_indices[axis] = 1;
+    }
+    for (size_t axis = 0; axis < axes.size(); axis++) {
+      int axis_index = axes[axis];
+      starts_indices[axis_index] = starts[axis];
+      ends_indices[axis_index] = ends[axis];
+      strides_indices[axis_index] = strides[axis];
+      reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
 
     framework::Tensor reverse_input;
@@ -203,7 +226,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
             *d_out, out_dims);
 
     reverse_in_t.device(place) = in_t.reverse(reverse_axis);
-    out_t.stridedSlice(begin_indices, end_indices, stride_indices)
+    out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
         .device(place) = reverse_in_t;
   }
 };

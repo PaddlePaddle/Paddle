@@ -10254,14 +10254,16 @@ def slice(input, axes, starts, ends):
     return out
 
 
-def strided_slice(input, begin, end, stride):
+def strided_slice(input, starts, ends, strides):
     """
     Strided Slice OP
     Atrgs:
        input (Varibale): the input variable.
+       axes(List):axis we need to slice
        begin (List): the begin index 
        end (List): the end index
        stride (List): the stride index
+    Returns
 
     """
     helper = LayerHelper('strided_slice', **locals())
@@ -10272,9 +10274,9 @@ def strided_slice(input, begin, end, stride):
         type='strided_slice',
         inputs={'Input': input},
         outputs={'Out': out},
-        attrs={'begin': begin,
-               'end': end,
-               'stride': stride})
+        attrs={'starts': starts,
+               'ends': ends,
+               'strides': strides})
 
     return out
 

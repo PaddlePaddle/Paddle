@@ -17,22 +17,35 @@ import numpy as np
 import unittest
 
 
-def strided_slice_native_forward(input, begin, end, stride):
+def strided_slice_native_forward(input, axes, starts, ends, strides):
     dim = input.ndim
+    start = []
+    end = []
+    stride = []
+    for i in range(dim):
+        start.append(0)
+        end.append(input.shape[i])
+        stride.append(1)
+
+    for i in range(len(axes)):
+        start[axes[i]] = starts[i]
+        end[axes[i]] = ends[i]
+        stride[axes[i]] = strides[i]
+
     result = {
-        1: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0]],
-        2: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0], \
-                begin[1]:end[1]:stride[1]],
-        3: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0], \
-                begin[1]:end[1]:stride[1], begin[2]:end[2]:stride[2]],
-        4: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0], \
-                begin[1]:end[1]:stride[1], begin[2]:end[2]:stride[2], begin[3]:end[3]:stride[3]],
-        5: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0], \
-                begin[1]:end[1]:stride[1], begin[2]:end[2]:stride[2], begin[3]:end[3]:stride[3], begin[4]:end[4]:stride[4]],
-        6: lambda input, begin, end, stride: input[begin[0]:end[0]:stride[0], \
-                begin[1]:end[1]:stride[1], begin[2]:end[2]:stride[2], begin[3]:end[3]:stride[3], \
-                begin[4]:end[4]:stride[4], begin[5]:end[5]:stride[5]]
-    }[dim](input, begin, end, stride)
+        1: lambda input, start, end, stride: input[start[0]:end[0]:stride[0]],
+        2: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
+                start[1]:end[1]:stride[1]],
+        3: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
+                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2]],
+        4: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
+                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3]],
+        5: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
+                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3], start[4]:end[4]:stride[4]],
+        6: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
+                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3], \
+                start[4]:end[4]:stride[4], start[5]:end[5]:stride[5]]
+    }[dim](input, start, end, stride)
 
     return result
 
@@ -41,15 +54,16 @@ class TestStrideSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'strided_slice'
-        self.output = strided_slice_native_forward(self.input, self.begin,
-                                                   self.end, self.stride)
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides)
 
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.output}
         self.attrs = {
-            'begin': self.begin,
-            'end': self.end,
-            'stride': self.stride
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'strides': self.strides
         }
 
     def test_check_output(self):
@@ -60,73 +74,91 @@ class TestStrideSliceOp(OpTest):
 
     def initTestCase(self):
         self.input = np.random.rand(6)
-        self.begin = [-4]
-        self.end = [-3]
-        self.stride = [1]
+        self.axes = [0]
+        self.starts = [-4]
+        self.ends = [-3]
+        self.strides = [1]
 
 
 class TestStrideSliceOp1(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(6)
-        self.begin = [3]
-        self.end = [8]
-        self.stride = [1]
+        self.axes = [0]
+        self.starts = [3]
+        self.ends = [8]
+        self.strides = [1]
 
 
 class TestStrideSliceOp2(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(6)
-        self.begin = [5]
-        self.end = [0]
-        self.stride = [-1]
+        self.axes = [0]
+        self.starts = [5]
+        self.ends = [0]
+        self.strides = [-1]
 
 
 class TestStrideSliceOp3(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(6)
-        self.begin = [-1]
-        self.end = [-3]
-        self.stride = [-1]
+        self.axes = [0]
+        self.starts = [-1]
+        self.ends = [-3]
+        self.strides = [-1]
 
 
 class TestStrideSliceOp4(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(3, 4, 6)
-        self.begin = [0, -1, 0]
-        self.end = [2, -3, 5]
-        self.stride = [1, -1, 1]
+        self.axes = [0, 1, 2]
+        self.starts = [0, -1, 0]
+        self.ends = [2, -3, 5]
+        self.strides = [1, -1, 1]
 
 
 class TestStrideSliceOp5(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(3, 3, 3)
-        self.begin = [1, 0, 0]
-        self.end = [2, 1, 3]
-        self.stride = [1, 1, 1]
+        self.axes = [0, 1, 2]
+        self.starts = [1, 0, 0]
+        self.ends = [2, 1, 3]
+        self.strides = [1, 1, 1]
 
 
 class TestStrideSliceOp6(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(3, 3, 3)
-        self.begin = [1, -1, 0]
-        self.end = [2, -3, 3]
-        self.stride = [1, -1, 1]
+        self.axes = [0, 1, 2]
+        self.starts = [1, -1, 0]
+        self.ends = [2, -3, 3]
+        self.strides = [1, -1, 1]
 
 
 class TestStrideSliceOp7(TestStrideSliceOp):
     def initTestCase(self):
         self.input = np.random.rand(3, 3, 3)
-        self.begin = [1, 0, 0]
-        self.end = [2, 2, 3]
-        self.stride = [1, 1, 1]
+        self.axes = [0, 1, 2]
+        self.starts = [1, 0, 0]
+        self.ends = [2, 2, 3]
+        self.strides = [1, 1, 1]
 
 
-class TestStrideSliceOp7(TestStrideSliceOp):
+class TestStrideSliceOp8(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(100, 3, 3)
-        self.begin = [1, 0, 0]
-        self.end = [109, 2, 3]
-        self.stride = [1, 1, 1]
+        self.input = np.random.rand(1, 3, 1)
+        self.axes = [1]
+        self.starts = [1]
+        self.ends = [2]
+        self.strides = [1]
+
+
+class TestStrideSliceOp9(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(1, 3, 1)
+        self.axes = [1]
+        self.starts = [-1]
+        self.ends = [-2]
+        self.strides = [-1]
 
 
 if __name__ == "__main__":

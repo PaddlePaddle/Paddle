@@ -35,23 +35,36 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
                       "The rank of input should be less than 7.");
-    auto begin = ctx->Attrs().Get<std::vector<int>>("begin");
-    auto end = ctx->Attrs().Get<std::vector<int>>("end");
-    auto stride = ctx->Attrs().Get<std::vector<int>>("stride");
+    auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
+    auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
+    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
 
-    PADDLE_ENFORCE_EQ(begin.size(), end.size());
-    PADDLE_ENFORCE_EQ(begin.size(), stride.size());
+    PADDLE_ENFORCE_EQ(starts.size(), ends.size(),
+                      "starts and ends dim size must to be same");
+    PADDLE_ENFORCE_EQ(ends.size(), strides.size(),
+                      "ends and strides dim size must to be same");
+    PADDLE_ENFORCE_EQ(ends.size(), axes.size(),
+                      "axes, end and start dim size must to be same");
 
     // we need to analysis strided slice op is valid for
     // the parameter that we get from python front
     int stride_index, start_index, end_index;
-    std::vector<int> out_dims_vector;
-    for (size_t i = 0; i < begin.size(); i++) {
-      PADDLE_ENFORCE(stride[i], 0, "stride must not tp be zero");
-      start_index = begin[i];
-      end_index = end[i];
-      stride_index = stride[i];
-      int axis_size = in_dims[i];
+    std::vector<int> out_dims_vector(in_dims.size());
+    for (size_t i = 0; i < in_dims.size(); i++) {
+      out_dims_vector[i] = in_dims[i];
+    }
+    for (size_t i = 0; i < starts.size(); i++) {
+      PADDLE_ENFORCE(strides[i], 0, "stride must not to be zero");
+      int axes_index = axes[i];
+      start_index = starts[i];
+      end_index = ends[i];
+      stride_index = strides[i];
+      int axis_size = in_dims[axes_index];
+      if (axis_size < 0) {
+        continue;
+      }
+
       if (start_index < 0) {
         start_index = start_index + axis_size;
       }
@@ -75,14 +88,12 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         out_dims_index = 0;
       }
 
-      out_dims_vector.push_back(out_dims_index);
+      out_dims_vector[axes_index] = out_dims_index;
     }
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
 
     ctx->SetOutputDim("Out", out_dims);
-    if (out_dims.size() == in_dims.size()) {
-      ctx->ShareLoD("Input", /*->*/ "Out");
-    }
+    ctx->ShareLoD("Input", /*->*/ "Out");
   }
 
  protected:
@@ -99,12 +110,14 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "Tensor of data to extract slices from.");
     AddOutput("Out", "Sliced data tensor.");
 
-    AddAttr<std::vector<int>>("begin",
-                              "(list<int>) Axes that the tensor slice start.");
-    AddAttr<std::vector<int>>("end",
-                              "(list<int>) Axes that the tensor slice end");
     AddAttr<std::vector<int>>(
-        "stride", "(list<int> Axes stride from the start to the end)");
+        "axes", "(list<int> Axes stride from the start to the end)");
+    AddAttr<std::vector<int>>(
+        "starts", "(list<int>)  start  that the tensor slice start.");
+    AddAttr<std::vector<int>>("ends",
+                              "(list<int>) end that the tensor slice end");
+    AddAttr<std::vector<int>>(
+        "strides", "(list<int> stride stride from the start to the end)");
     AddComment(R"DOC(
 Strided Slice Operator.
 
