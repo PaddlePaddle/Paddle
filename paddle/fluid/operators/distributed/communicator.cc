@@ -578,22 +578,23 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     float* table_mutable_data = table_tensor.mutable_data<float>(var_tensor.place());
 
     for (int j=0; j<var_element_number; j++){
-      VLOG(1)<<"Sparse ids: "<<var_mutable_data[j];
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
         std::vector<float> row_mutable_data{};
         row_mutable_data.resize(column);
-        for (size_t k = 0; k < column; k++){
-          row_mutable_data.emplace_back(table_mutable_data[var_mutable_data[j] * column + k]);
-          VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
-        }
+        memcpy(&row_mutable_data[0],&table_mutable_data[var_mutable_data[j]*column],sizeof(float) *column);
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
-        VLOG(1)<<"Copy complete";
+
+        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column], 
+                  row_mutable_data.front(), "sparse old_scope first value copy to sparse_var_ids_table_ False");
+
+        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column + column -1], 
+                  row_mutable_data.back(), "sparse old_scope last value copy to sparse_var_ids_table_ False");
 
         VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
-                <<" F value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].front()
-                <<" B value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].back();
+                <<" F value: "<<row_mutable_data.front()
+                <<" B value: "<<row_mutable_data.back();
       } 
     }
   }
@@ -683,9 +684,10 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     VLOG(1) << "Sparse var "<<var_name<<" rows: "<<rows<<"cloumns: "<<columns;
     std::vector<int64_t> new_rows;
     new_rows.resize(rows);
-    std::vector<float> new_value;
+    float new_value[rows*columns];
     //Todo: test var find success
     //Todo: using template T instead of float&int 
+    int loc = 0;
     for (auto &iter:select_table) {
       auto ids = iter.first;
       auto value = iter.second;
@@ -695,7 +697,8 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
         VLOG(1) << "Geo-Sgd Send " << var_name<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
             <<" ;delta_scope: "<< value[i];
-        new_value.emplace_back(value[i]);
+        new_value[loc]=value[i];
+        loc++;
       }
       new_rows.emplace_back(ids);
     }
@@ -703,7 +706,8 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
 
     auto *table_value = var_select_rows->mutable_value();
     table_value->Resize({rows, columns});
-    std::memcpy(table_value, &new_value, sizeof(float)*rows*columns);
+    memcpy(table_value, &new_value, sizeof(float)*rows*columns);
+    VLOG(1)<<"Sparse var: "<<var_name<<" copy complete";
     //Todo: test copy corectly
   }
 
