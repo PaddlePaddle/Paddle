@@ -32,7 +32,6 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         self.table = np.random.random((17, self.emb_size)).astype("float32")
         self.ids = np.array([[[4], [3]], [[4], [3]], [[2], [1]],
                              [[16], [1]]]).astype("int64")
-        merged_ids = np.array([4, 2, 16]).astype("int64")
         ids_expand = np.expand_dims(self.ids, axis=1)
         self.lod = [[3, 1]]
         self.attrs = {'is_sparse': True}
@@ -49,16 +48,14 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        if ver.mkl() == "ON" and not fluid.core.is_compiled_with_cuda(
-        ) and 'Linux' in platform.platform():
+        if ver.mkl() == "ON" and 'Linux' in platform.platform():
             self.attrs = {'is_sparse': False}
             self.check_grad(['W'], 'Out', no_grad_set=('Ids'))
 
 
 class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
     def test_check_output(self):
-        if ver.mkl() == "ON" and not fluid.core.is_compiled_with_cuda(
-        ) and 'Linux' in platform.platform():
+        if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
             output = list()
@@ -80,8 +77,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             self.check_output()
 
     def test_check_grad(self):
-        if ver.mkl() == "ON" and not fluid.core.is_compiled_with_cuda(
-        ) and 'Linux' in platform.platform():
+        if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
             self.attrs = {'padding_idx': int(padding_idx), 'is_sparse': False}
