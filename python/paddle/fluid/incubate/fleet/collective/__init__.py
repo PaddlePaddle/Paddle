@@ -152,7 +152,10 @@ class CollectiveOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
         if strategy.forward_recompute:
+            self.forward_recompute = True
             self.recompute_checkpoints = strategy.recompute_checkpoints
+        else:
+            self.forward_recompute = False
         self.print_config = False
 
     def backward(self,

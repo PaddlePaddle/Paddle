@@ -3021,8 +3021,8 @@ class RecomputeOptimizer(object):
         return res
 
     def draw(self, memory_with_position, recompute_segments):
-        print("memory_with_position: ", memory_with_position)
-        print("recompute_segments", recompute_segments)
+        #print("memory_with_position: ", memory_with_position)
+        #print("recompute_segments", recompute_segments)
 
         import matplotlib
         matplotlib.use('agg')
@@ -3053,15 +3053,15 @@ class RecomputeOptimizer(object):
 
         httpd = SocketServer.TCPServer(("", PORT), Handler)
 
-        print("serving at port", PORT)
+        #print("serving at port", PORT)
         httpd.serve_forever()
 
     def analysis_memory_usage(self, block):
         # find all vars()
         all_var_names = [x.name() for x in block.desc.all_vars()]
-        print("all_var_names")
-        for a in all_var_names:
-            print(a)
+        #print("all_var_names")
+        #for a in all_var_names:
+        #    print(a)
 
         vars_create_position = {}
         vars_delete_position = {}
@@ -3070,7 +3070,7 @@ class RecomputeOptimizer(object):
             vars_delete_position[name] = -1
 
         for idx, op in enumerate(block.ops):
-            print(idx, op.type)
+            #print(idx, op.type)
             for name in op.desc.input_arg_names():
                 vars_delete_position[name] = idx
             for name in op.desc.output_arg_names():
@@ -3083,8 +3083,8 @@ class RecomputeOptimizer(object):
                 vars_create_position[name] = -1
                 vars_delete_position[name] = len(block.ops) - 1
 
-        for name in all_var_names:
-            print(name, vars_create_position[name], vars_delete_position[name])
+        #for name in all_var_names:
+        #    print(name, vars_create_position[name], vars_delete_position[name])
 
         position_to_var = {}
         for i in range(-1, len(block.ops)):
@@ -3094,24 +3094,24 @@ class RecomputeOptimizer(object):
             position_to_var[vars_create_position[name]]['create'].append(name)
             position_to_var[vars_delete_position[name]]['delete'].append(name)
 
-        print('position_to_var: ', position_to_var)
+        #print('position_to_var: ', position_to_var)
 
         memory_timeline = 0
         memory_with_position = [0]
         for i in range(-1, len(block.ops)):
             for var_name in position_to_var[i]['create']:
-                print('Create ', var_name, ', Size ',
-                      self._get_var_size(block, var_name, 32))
+                #print('Create ', var_name, ', Size ',
+                #      self._get_var_size(block, var_name, 32))
                 memory_timeline += self._get_var_size(block, var_name,
                                                       self.debug_batchsize)
             memory_with_position.append(memory_timeline)
             for var_name in position_to_var[i]['delete']:
-                print('Delete ', var_name, ', Size ',
-                      self._get_var_size(block, var_name, 32))
+                #print('Delete ', var_name, ', Size ',
+                #      self._get_var_size(block, var_name, 32))
                 memory_timeline -= self._get_var_size(block, var_name,
                                                       self.debug_batchsize)
             #memory_with_position.append(memory_timeline)
-            print(i, memory_timeline)
+            #print(i, memory_timeline)
 
         return memory_with_position
 
