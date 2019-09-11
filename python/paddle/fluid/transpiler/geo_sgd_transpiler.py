@@ -346,7 +346,15 @@ class GeoSgdTranspiler(DistributeTranspiler):
             pserver_block = per_opt_block.program.global_block()
             param = pserver_block.vars[var_name]
             # Todo: sparse param calc delta 
-            if var.type != core.VarDesc.VarType.SELECTED_ROWS:
+            if var.name in self.sparse_var_list:
+                delta_var_name = "%s.delta" % (param.name)
+                delta_var = pserver_block.create_var(
+                    name=delta_var_name,
+                    persistable=False,
+                    type=core.VarDesc.VarType.SELECTED_ROWS,
+                    dtype=param.dtype,
+                    shape=param.shape)
+            else:
                 delta_var_name = "%s.delta" % (param.name)
                 delta_var = pserver_block.create_var(
                     name=delta_var_name,
@@ -524,6 +532,28 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     vtype="Param")
                 self.vars_info[origin_name]["var_names"].append(splited_var.name)
                 self.split_to_origin_mapping[splited_var.name] = origin_name
+                
+        # for origin_name, splited_vars in self.param_var_mapping.items():
+        #     origin_var = self.origin_program.global_block().var(origin_name)
+        #     if origin_name in self.sparse_var_list:
+        #         delta_type = core.VarDesc.VarType.SELECTED_ROWS
+        #     else:
+        #         delta_type = origin_var.type
+
+        #     self.origin_program.global_block().create_var(
+        #         name=".".join([origin_name,"delta"]),
+        #         persistable=False,
+        #         dtype=origin_var.dtype,
+        #         type=delta_type,
+        #         shape=origin_var.shape)
+
+        #     for splited_var in splited_vars:
+        #         self.origin_program.global_block().create_var(
+        #             name=".".join([splited_var.name,"delta"]),
+        #             persistable=False,
+        #             dtype=splited_var.dtype,
+        #             type=delta_type,
+        #             shape=splited_var.shape)
 
         # step 4. Create mapping of endpoint -> split var to create pserver side program
         self.param_opt_ep_mapping = collections.OrderedDict()

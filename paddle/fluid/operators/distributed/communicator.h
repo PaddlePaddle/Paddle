@@ -258,6 +258,23 @@ class Communicator {
                        const std::string var_name, bool send);
   void SendUpdateVars(const std::string& var_name);
   void RecvUpdateVars(const std::string& var_name);
+
+  float* GetFloatVar(const std::string &var_name, const framework::Scope &scope) {
+    auto *var = scope.FindVar(var_name);
+    auto var_tensor = var->Get<framework::LoDTensor>();
+    int element_number = var_tensor.numel();
+    float* mutable_data = var_tensor.mutable_data<float>(var_tensor.place());
+    return mutable_data;
+  }
+
+  int* GetIntVar(const std::string &var_name, const framework::Scope &scope) {
+    auto *var = scope.FindVar(var_name);
+    auto var_tensor = var->Get<framework::LoDTensor>();
+    int element_number = var_tensor.numel();
+    int* mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
+    return mutable_data;
+  }
+
   const std::string VarToDeltaVar(const std::string var_name) {
     std::string delta_name = var_name;
     const std::string send_name = delta_name.append(".delta");
@@ -277,7 +294,7 @@ class Communicator {
   std::atomic_uint have_push_{0};
   
   std::unordered_set<std::string> sparse_var_;
-  std::unordered_map<std::string,std::unordered_map<int,float>> sparse_table_;
+  std::unordered_map<std::string,std::unordered_map<int64_t,std::vector<float>>> sparse_var_ids_table_;
 
 };
 
