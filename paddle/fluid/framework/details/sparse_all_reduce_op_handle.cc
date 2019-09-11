@@ -126,7 +126,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     });
   }
 
-  RunAllReduceFuncs(all_reduce_calls);
+  NCCLAllReduceFunc(all_reduce_calls);
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
