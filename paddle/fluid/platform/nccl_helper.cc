@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 #include <memory>
 #include <utility>
@@ -23,9 +23,9 @@
 namespace paddle {
 namespace platform {
 
-NCCLContext* NCCLCommContext::CreateNCCLContext(ncclUniqueId* nccl_id,
-                                                int nranks, int rank,
-                                                int dev_id, int ring_id) {
+NCCLContext* NCCLCommunicator::CreateNCCLContext(ncclUniqueId* nccl_id,
+                                                 int nranks, int rank,
+                                                 int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id);
   PADDLE_ENFORCE_GT(nranks, 1);
   PADDLE_ENFORCE_GE(rank, 0);
@@ -49,14 +49,14 @@ NCCLContext* NCCLCommContext::CreateNCCLContext(ncclUniqueId* nccl_id,
           << " has been created";
 
   std::call_once(once_flag_, []() {
-    std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
+    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLComms(); });
   });
 
   return comm_map_[ring_id][dev_id].get();
 }
 
-void NCCLCommContext::CreateAllNCCLContexts(const std::vector<int>& dev_ids,
-                                            int ring_id) {
+void NCCLCommunicator::CreateAllNCCLContexts(const std::vector<int>& dev_ids,
+                                             int ring_id) {
   PADDLE_ENFORCE_GT(dev_ids.size(), 0);
 
   const int kDevices = dev_ids.size();
@@ -74,11 +74,11 @@ void NCCLCommContext::CreateAllNCCLContexts(const std::vector<int>& dev_ids,
   }
 
   std::call_once(once_flag_, []() {
-    std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
+    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLComms(); });
   });
 }
 
-void NCCLCommContext::ReleaseNCCLComms() {
+void NCCLCommunicator::ReleaseNCCLComms() {
   // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
   // destroy nccl_comm_t explicitly. Please refer to
   // platform::CUDADeviceContext::~CUDADeviceContext()

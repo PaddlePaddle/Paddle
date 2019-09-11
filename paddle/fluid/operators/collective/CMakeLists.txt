@@ -31,7 +31,7 @@ endforeach()
 register_operators(EXCLUDES c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 
 if(WITH_GPU AND NOT WIN32)
-    set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
+    set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_helper)
     op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 

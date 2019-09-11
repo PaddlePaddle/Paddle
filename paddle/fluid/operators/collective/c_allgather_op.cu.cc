@@ -17,7 +17,6 @@ limitations under the License. */
 #include <memory>
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -36,7 +35,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;

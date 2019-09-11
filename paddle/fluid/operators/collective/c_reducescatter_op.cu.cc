@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -33,7 +32,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     int nranks = ctx.Attr<int>("nranks");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
 
     auto out_dims = in->dims();
     out_dims[0] = out_dims[0] / nranks;

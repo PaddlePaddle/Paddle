@@ -20,10 +20,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 

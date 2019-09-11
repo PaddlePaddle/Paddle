@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -70,7 +69,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     void* recvbuff = out->mutable_data<T>(place);
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

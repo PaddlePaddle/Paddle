@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -53,7 +52,7 @@ class CCommInitOp : public framework::OperatorBase {
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommContext::Instance().CreateNCCLContext(
+    platform::NCCLCommunicator::Instance().CreateNCCLContext(
         nccl_id, nranks, rank_id, boost::get<platform::CUDAPlace>(place).device,
         rid);
 #else
