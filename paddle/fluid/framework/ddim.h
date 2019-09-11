@@ -177,7 +177,6 @@ std::vector<T> vectorize(const DDim& ddim) {
   result.resize(ddim.size());
   return result;
 }
-std::vector<int> vectorize2int(const DDim& ddim);
 
 int64_t product(const DDim& ddim);
 
