@@ -345,33 +345,24 @@ class GeoSgdTranspiler(DistributeTranspiler):
             var_name = var.name
             pserver_block = per_opt_block.program.global_block()
             param = pserver_block.vars[var_name]
-            # Todo: sparse param calc delta 
+            
             if var.name in self.sparse_var_list:
-                delta_var_name = "%s.delta" % (param.name)
-                delta_var = pserver_block.create_var(
-                    name=delta_var_name,
-                    persistable=False,
-                    type=core.VarDesc.VarType.SELECTED_ROWS,
-                    dtype=param.dtype,
-                    shape=param.shape)
-                per_opt_block.append_op(
-                    type="sum",
-                    inputs={"X":delta_var},
-                    outputs={"Out":param}
-                )
-            else:
-                delta_var_name = "%s.delta" % (param.name)
-                delta_var = pserver_block.create_var(
-                    name=delta_var_name,
-                    persistable=False,
-                    type=param.type,
-                    dtype=param.dtype,
-                    shape=param.shape)
-                
-                per_opt_block.append_op(
-                    type="elementwise_add",
-                    inputs={"X":delta_var,"Y":param},
-                    outputs={"Out":param}
+                delta_type = core.VarDesc.VarType.SELECTED_ROWS
+            else: 
+                delta_type = param.type
+
+            delta_var_name = "%s.delta" % (param.name)
+            delta_var = pserver_block.create_var(
+                name=delta_var_name,
+                persistable=False,
+                type=delta_type,
+                dtype=param.dtype,
+                shape=param.shape)
+            
+            per_opt_block.append_op(
+                type="sum",
+                inputs={"X":[delta_var,param]},
+                outputs={"Out":param}
                 )
             param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
 
