@@ -685,7 +685,6 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
-
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean
