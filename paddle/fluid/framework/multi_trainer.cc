@@ -62,7 +62,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
 }
 
-Scope* MultiTrainer::GetWorkerScope(const int thread_id) {
+Scope* MultiTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
 }
 
