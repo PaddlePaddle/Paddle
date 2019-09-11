@@ -100,8 +100,18 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vsSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vsMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vsDiv(args...);
   }
 
   template <typename... ARGS>
@@ -211,8 +221,18 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vdSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vdMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vdDiv(args...);
   }
 
   template <typename... ARGS>
@@ -445,6 +465,20 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 
 template <>
 template <typename T>
+void Blas<platform::CPUDeviceContext>::VSUB(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSUB(n, x, y, z);
+#else
+  // try to find if openblas support vsub
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
                                             T *z) const {
 #ifdef PADDLE_WITH_MKLML
@@ -453,6 +487,22 @@ void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
   // try to find if openblas support vmul
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  // VLOG(5) << "====into PADDLE_WITH_MKLML =>CBlas<T>::VDIV ===";
+  CBlas<T>::VDIV(n, x, y, z);
+#else
+  // try to find if openblas support vdiv
+  // VLOG(5) << "====into divide each===";
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] / y[i];
   }
 #endif
 }
@@ -666,11 +716,7 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                            mat_b.data<T>(), beta, mat_out->data<T>());
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
-                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0,
-                   "dim_a.batch_size should be equal to dim_b.batch_size, or "
-                   "one of dim_a.batch_size and dim_b.batch_size should be 0. "
-                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
-                   dim_a.batch_size_, dim_b.batch_size_);
+                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
         mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),

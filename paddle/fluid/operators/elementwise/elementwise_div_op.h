@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,15 +16,46 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
-};
+template <typename DeviceContext, typename T>
+void default_elementwise_div(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                        DivFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_div_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z) {
+  auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  blas.VDIV(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+}
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_floating_point<T>::value ||
+    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_div_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z) {
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+  eigen_z.device(place) = eigen_x / eigen_y;
+}
 
 template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
@@ -36,11 +64,14 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
-
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          DivFunctor<T>(), z);
+
+    auto dims_equal = x->dims() == y->dims();
+    if (dims_equal) {
+      elementwise_div_same_dims<DeviceContext, T>(ctx, x, y, z);
+    } else {
+      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
+    }
   }
 };
 
@@ -78,7 +109,6 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto* x = dout;  // Fake x, not used
-
     ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
   }

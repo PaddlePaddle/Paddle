@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/float16.h"
 
 #define TILE_SIZE 512
@@ -21,6 +19,35 @@ namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
+
+template <>
+class ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>
+    : public framework::OpKernel<plat::float16> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* z = ctx.Output<Tensor>("Out");
+    if (x->dims() == y->dims()) {
+      z->mutable_data<plat::float16>(ctx.GetPlace());
+      auto* out_data = z->data<plat::float16>();
+      auto size = x->numel();
+      dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
+      dim3 block_size = dim3(TILE_SIZE, 1);
+      const half* x2 = reinterpret_cast<const half*>(x->data<plat::float16>());
+      const half* y2 = reinterpret_cast<const half*>(y->data<plat::float16>());
+      half* z2 = reinterpret_cast<half*>(out_data);
+      SameDimsElemwiseMulCUDAKernel<<<
+          gird_size, block_size, 0,
+          ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+          x2, y2, z2, size);
+    } else {
+      default_elementwise_mul<plat::CUDADeviceContext, plat::float16>(ctx, x, y,
+                                                                      z);
+    }
+  }
+};
 
 template <typename T>
 static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,
