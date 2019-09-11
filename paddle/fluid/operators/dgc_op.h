@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
 namespace paddle {
@@ -112,9 +113,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
         framework::DDim{2 * k}, ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
-    auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
-        ctx.GetPlace(), dev_ctx.stream());
-    auto tmp_ious_data = allocator.Allocate(buf_size);
+    auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     if (!paddle::communication::dgc::k_select(

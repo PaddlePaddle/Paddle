@@ -716,8 +716,8 @@ class LeakyReluDoubleGradMaker
   std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
     auto* op = new ::paddle::framework::OpDesc();
     op->SetType("leaky_relu_grad_grad");
-    // input1: X
-    op->SetInput("X", Input("X"));
+    // input1: Out
+    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());

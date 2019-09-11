@@ -83,12 +83,20 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+          << "fuse_all_reduce_ops doesn't work under "
+             "parallel_graph.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.is_distribution_) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
           << "Currently, fuse_all_optimizer_ops only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+          << "Currently, fuse_all_reduce_ops_ only works under "
+             "Non-distributed mode.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
       VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
@@ -270,12 +278,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #else
                                 const bool use_cuda) const {
 #endif
-  VLOG(3) << "apply all passes";
+  VLOG(1) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(3) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -284,8 +292,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase(ir::kNRanks);
-      pass->Set<size_t>(ir::kNRanks, new size_t(nranks));
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
@@ -293,6 +301,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
     } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -307,11 +317,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                       new bool(use_hierarchical_allreduce_));
 #endif
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
-      pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLocalScopes);
-      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
-                                                    &local_scopes);
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
@@ -342,11 +349,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     }
-    VLOG(3) << "Start Apply Pass " << pass->Type();
+    VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
-    VLOG(3) << "Finish Apply Pass " << pass->Type();
+    VLOG(1) << "Finish Apply Pass " << pass->Type();
   }
-  VLOG(3) << "All Passes Applied";
+  VLOG(1) << "All Passes Applied";
   return graph;
 }
 

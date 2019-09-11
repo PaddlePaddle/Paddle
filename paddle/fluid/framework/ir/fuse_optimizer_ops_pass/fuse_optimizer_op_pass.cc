@@ -106,6 +106,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
         "The number of dense gradients should be little than optimizer ops.");
+
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
       opt_grad_set.insert(p_g.second);
@@ -138,7 +139,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
       auto iter =
           std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
-      PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
+      PADDLE_ENFORCE_EQ(iter != fused_vars.end(), true,
+                        "Not find the fused_grad.");
       fused_vars_name[kGrad] = fused_grad.front();
 
       // Sort the parameters and auxiliary variables according
@@ -246,18 +248,24 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
     ir::Graph *result) const {
+  auto &pinned_var_set =
+      result->GetOrInit<details::PinnedVars>(details::kPinnedVars);
+
   auto vars_info = GetVarInfo(*result);
-  // Set Gradients as Persistable to prevent this var becoming reusable.
+  // The Gradients should not be reused during memory optimization.
   for (auto &grad_var_name : grads) {
     auto iter = vars_info.find(grad_var_name);
-    PADDLE_ENFORCE(iter != vars_info.end());
-    PADDLE_ENFORCE(!iter->second.empty());
+    PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
+                      grad_var_name);
+    PADDLE_ENFORCE_EQ(!iter->second.empty(), true, "%s is not found.",
+                      grad_var_name);
     PADDLE_ENFORCE_NOT_NULL(iter->second.front()->Var());
-    PADDLE_ENFORCE(IsLoDTensorType(iter->second.front()->Var()->GetType()),
-                   "Currently the gradient type only should be LoDTensor when "
-                   "fusing optimizer ops.");
+    PADDLE_ENFORCE_EQ(
+        IsLoDTensorType(iter->second.front()->Var()->GetType()), true,
+        "Currently the gradient type only should be LoDTensor when "
+        "fusing optimizer ops.");
     for (auto var : iter->second) {
-      var->Var()->SetPersistable(true);
+      pinned_var_set.insert(var->Var()->Name());
     }
   }
 
@@ -293,8 +301,9 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
     const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
     const std::string &name) const {
   auto grad_iter = var_nodes.find(name);
-  PADDLE_ENFORCE(grad_iter != var_nodes.end());
-  PADDLE_ENFORCE(grad_iter->second.size() > 0);
+  PADDLE_ENFORCE_EQ(grad_iter != var_nodes.end(), true, "%s is not found.",
+                    name);
+  PADDLE_ENFORCE_GT(grad_iter->second.size(), 0);
   PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
   return grad_iter->second.front()->Var()->GetType();
 }
@@ -321,24 +330,25 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  PADDLE_ENFORCE_NE(aux_vars_set->count(kParam), static_cast<size_t>(0));
-  auto &param_vec = aux_vars_set->at(kParam);
+  PADDLE_ENFORCE_NE(aux_vars_set->count(kGrad), static_cast<size_t>(0));
+  auto &grad_vec = aux_vars_set->at(kGrad);
 
-  std::vector<size_t> param_sort_idx;
-  param_sort_idx.reserve(param_vec.size());
+  std::vector<size_t> grad_sort_idx;
+  grad_sort_idx.reserve(grad_vec.size());
 
   for (auto &p_g : params_grads) {
-    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
-    PADDLE_ENFORCE(iter != param_vec.end());
-    auto idx = std::distance(param_vec.begin(), iter);
-    param_sort_idx.emplace_back(idx);
+    auto iter = std::find(grad_vec.begin(), grad_vec.end(), p_g.second);
+    PADDLE_ENFORCE_EQ(iter != grad_vec.end(), true,
+                      "%s is not found in grad_vec", p_g.second);
+    auto idx = std::distance(grad_vec.begin(), iter);
+    grad_sort_idx.emplace_back(idx);
   }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
     sorted_vars.reserve(aux_vars.second.size());
     for (size_t i = 0; i < aux_vars.second.size(); ++i) {
-      sorted_vars.emplace_back(aux_vars.second.at(param_sort_idx[i]));
+      sorted_vars.emplace_back(aux_vars.second.at(grad_sort_idx[i]));
     }
     std::swap(aux_vars.second, sorted_vars);
 
@@ -354,7 +364,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
   std::vector<ir::Node *> sorted_ops;
   sorted_ops.reserve(ops->size());
   for (size_t i = 0; i < ops->size(); ++i) {
-    sorted_ops.emplace_back(ops->at(param_sort_idx[i]));
+    sorted_ops.emplace_back(ops->at(grad_sort_idx[i]));
   }
   std::swap(*ops, sorted_ops);
 }
