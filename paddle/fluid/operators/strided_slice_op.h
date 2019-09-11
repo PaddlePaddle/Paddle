@@ -102,7 +102,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-    Eigen::array<bool, D> reverse_axis{};
+    auto reverse_axis = Eigen::array<bool, D>();
 
     std::vector<int> reverse_vector(starts.size(), 0);
     StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
@@ -193,7 +193,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
 
-    Eigen::array<bool, D> reverse_axis{};
+    auto reverse_axis = Eigen::array<bool, D>();
     std::vector<int> reverse_vector(starts.size(), 0);
 
     StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
