@@ -13782,7 +13782,7 @@ def mse_loss(input, label):
         import paddle.fluid as fluid
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
-        mse = fluid.layers.mean_square_error(input=y_predict, label=y)
+        mse = fluid.layers.mse_loss(input=y_predict, label=y)
 
     """
     return reduce_mean(square_error_cost(input, cost))
