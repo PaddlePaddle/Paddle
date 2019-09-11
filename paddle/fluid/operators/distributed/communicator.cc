@@ -587,7 +587,8 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
         std::memcpy(&row_mutable_data,&table_mutable_data[var_mutable_data[j]*column],sizeof(float) *column);
         VLOG(1) <<"Memcpy complete";
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
-
+        VLOG(1)<<"Copy complete";
+        
         PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column], 
                   row_mutable_data.front(), "sparse old_scope first value copy to sparse_var_ids_table_ False");
         PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column + column -1], 
