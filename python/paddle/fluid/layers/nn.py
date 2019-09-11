@@ -5496,8 +5496,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
-                             (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),    \
+                "Invalid input shape for matmul.\nx: %s, y: %s. " \
+                "x_width (%s) != y_height (%s)\n" %               \
+                (x_shape, y_shape, x_shape[-1], y_shape[-2])
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):

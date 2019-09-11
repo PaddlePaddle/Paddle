@@ -300,7 +300,14 @@ class MatMulOp : public framework::OperatorWithKernel {
         math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
                                      context->Attrs().Get<bool>("transpose_Y"));
 
+    if (mat_dim_x.width_ == -1) {
+      mat_dim_x.width_ = mat_dim_y.height_;
+    }
+    if (mat_dim_y.height_ == -1) {
+      mat_dim_y.height_ = mat_dim_x.width_;
+    }
     PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
+
     if (context->IsRuntime()) {
       PADDLE_ENFORCE(mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
                      mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
