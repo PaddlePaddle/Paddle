@@ -995,7 +995,9 @@ class Executor(object):
             trainer_instance = self._default_executor.init_for_dataset(
                 program.desc, trainer._desc(), scope, dataset.dataset)
 
-            fetch_monitor = FetchHandlerMonitor(scope, fetch_handler)
+            scope0 = trainer_instance.get_worker_scope(0)
+
+            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()

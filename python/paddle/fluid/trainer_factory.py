@@ -58,13 +58,13 @@ class TrainerFactory(object):
 
 class FetchHandlerMonitor(object):
     def __init__(self, scope, handler):
-        self.fetch_thread = threading.Thread(target=self.handler_decorator(
-            scope, handler))
-        self.fetch_thread.setDaemon(True)
+        self.fetch_thread = threading.Thread(
+            target=self.handler_decorator, args=(scope, handler))
         self.running = False
 
     def start(self):
         self.running = True
+        self.fetch_thread.setDaemon(True)
         self.fetch_thread.start()
 
     def handler_decorator(self, fetch_scope, fetch_handler):
