@@ -578,23 +578,22 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     float* table_mutable_data = table_tensor.mutable_data<float>(var_tensor.place());
 
     for (int j=0; j<var_element_number; j++){
+      VLOG(1)<<"Sparse ids: "<<var_mutable_data[j];
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
         std::vector<float> row_mutable_data{};
         row_mutable_data.resize(column);
-        memcpy(&row_mutable_data[0],&table_mutable_data[var_mutable_data[j]*column],sizeof(float) *column);
+        for (size_t k = 0; k < column; k++){
+          row_mutable_data.emplace_back(table_mutable_data[var_mutable_data[j] * column + k]);
+          VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
+        }
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
-
-        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column], 
-                  row_mutable_data.front(), "sparse old_scope first value copy to sparse_var_ids_table_ False");
-
-        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column + column -1], 
-                  row_mutable_data.back(), "sparse old_scope last value copy to sparse_var_ids_table_ False");
+        VLOG(1)<<"Copy complete";
 
         VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
-                <<" F value: "<<row_mutable_data.front()
-                <<" B value: "<<row_mutable_data.back();
+                <<" F value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].front()
+                <<" B value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].back();
       } 
     }
   }
