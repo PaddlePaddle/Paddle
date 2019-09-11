@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -118,8 +119,10 @@ class Executor {
 
   void EnableMKLDNN(const ProgramDesc& program);
 
-  void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                      Dataset* dataset, const std::string& trainer_desc_str);
+  std::shared_ptr<TrainerBase> InitForDataset(
+      const ProgramDesc& main_program, const std::string& trainer_desc_str,
+      Scope* scope, Dataset* dataset);
+  void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
 
  private:
   const platform::Place place_;

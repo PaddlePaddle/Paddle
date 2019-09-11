@@ -27,6 +27,7 @@ from . import core
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
+from .trainer_factory import FetchHandlerMonitor
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -899,7 +900,9 @@ class Executor(object):
                            debug=False,
                            fetch_list=None,
                            fetch_info=None,
-                           print_period=100):
+                           print_period=100,
+                           fetch_handler=None,
+                           period_secs=1):
         """
         Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
@@ -950,7 +953,7 @@ class Executor(object):
                                      dataset=dataset)
 
         """
-        if dataset == None:
+        if dataset is None:
             raise RuntimeError("dataset is need and should be initialized")
 
         if program._pipeline_opt:
@@ -958,19 +961,43 @@ class Executor(object):
                                                     dataset, thread)
 
         dataset._prepare_to_run()
-        scope, trainer = self._prepare_trainer(
-            program=program,
-            dataset=dataset,
-            scope=scope,
-            thread=thread,
-            debug=debug,
-            fetch_list=fetch_list,
-            fetch_info=fetch_info,
-            print_period=print_period)
-        trainer._gen_trainer_desc()
-        self._dump_debug_info(program=program, trainer=trainer)
-        self._default_executor.run_from_dataset(program.desc, scope,
-                                                dataset.dataset,
-                                                trainer._desc())
-        dataset._finish_to_run()
+
+        if fetch_handler is None:
+            scope, trainer = self._prepare_trainer(
+                program=program,
+                dataset=dataset,
+                scope=scope,
+                thread=thread,
+                debug=debug,
+                fetch_list=fetch_list,
+                fetch_info=fetch_info,
+                print_period=print_period)
+            trainer._gen_trainer_desc()
+
+            self._dump_debug_info(program=program, trainer=trainer)
+
+            self._default_executor.run_from_dataset(program.desc, scope,
+                                                    dataset.dataset,
+                                                    trainer._desc())
+            self._default_executor.finalize()
+            dataset._finish_to_run()
+        else:
+            scope, trainer = self._prepare_trainer(
+                program=program,
+                dataset=dataset,
+                scope=scope,
+                thread=thread,
+                debug=debug)
+
+            trainer._gen_trainer_desc()
+            self._dump_debug_info(program=program, trainer=trainer)
+
+            trainer_instance = self._default_executor.init_for_dataset(
+                program.desc, scope, dataset.dataset, trainer._desc())
+
+            fetch_monitor = FetchHandlerMonitor(scope, fetch_handler)
+            fetch_monitor.start()
+            self._default_executor.run_from_dataset(trainer_instance)
+            fetch_monitor.stop()
+            dataset._finish_to_run()
         return None

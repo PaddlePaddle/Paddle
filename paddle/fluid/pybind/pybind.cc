@@ -987,6 +987,17 @@ All parameter, weight, gradient are variables in Paddle.
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("init_for_dataset",
+           [](Executor &self, const ProgramDesc &prog,
+              const std::string &trainer_desc, Scope *scope,
+              Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             return self.InitForDataset(prog, trainer_desc, scope, dataset);
+           })
+      .def("run_from_dataset",
+           [](Executor &self, std::shared_ptr<TrainerBase> trainer) {
+             pybind11::gil_scoped_release release;
+             self.RunFromDataset(trainer);
+           })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               std::map<std::string, const LoDTensor *> *feed_targets,
