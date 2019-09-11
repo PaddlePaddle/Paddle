@@ -384,7 +384,7 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
 template <typename T, int BlockDim>
 __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
                                      const T *variance, const T *ddscale,
-                                     const T *ddbias, const T *ddx, const T *dy,
+                                     const T *ddbias, const T *ddx,
                                      const T *scale, int C, int sample_size,
                                      const double epsilon, T *ddy) {
   int beg_idx = blockIdx.x * sample_size + threadIdx.x;
@@ -538,6 +538,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = NxC;
+    const int grid1 = (C + block - 1) / block;
 
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
 
@@ -559,7 +560,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
       DoubleGradComputeDScale<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, mean_data, variance_data, ddx_data, dy_data, C, sample_size,
           epsilon, dscale_tmp_data);
-      add_param<T, block, false><<<grid, block, 0, dev_ctx.stream()>>>(
+      add_param<T, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
           dscale_tmp.data<T>(), dScale->data<T>(), N, C);
     }
     if (ddY) {
@@ -567,7 +568,7 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
       set_zero(dev_ctx, ddY, static_cast<T>(0));
       DoubleGradComputeDDY<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, mean_data, variance_data, ddscale_data, ddbias_data, ddx_data,
-          dy_data, scale_data, C, sample_size, epsilon, ddy_data);
+          scale_data, C, sample_size, epsilon, ddy_data);
     }
   }
 };

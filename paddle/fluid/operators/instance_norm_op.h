@@ -80,10 +80,6 @@ class InstanceNormGradMaker : public framework::SingleGradOpDescMaker {
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override;
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
-  }
 };
 
 class InstanceNormDoubleGradMaker : public framework::SingleGradOpDescMaker {

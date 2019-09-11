@@ -333,7 +333,7 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
 std::unique_ptr<framework::OpDesc> InstanceNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
-  op->SetType(GradOpType());
+  op->SetType("instance_norm_grad");
   op->SetInput("X", Input("X"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
@@ -616,6 +616,9 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInference,
+                           {"DY", "DDY"});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -624,7 +627,8 @@ REGISTER_OPERATOR(instance_norm, ops::InstanceNormOp, ops::InstanceNormOpMaker,
                   ops::InstanceNormOpInferVarType, ops::InstanceNormGradMaker);
 REGISTER_OPERATOR(instance_norm_grad, ops::InstanceNormGradOp,
                   ops::InstanceNormDoubleGradMaker);
-REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp);
+REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
+                  ops::InstanceNormDoubleGradOpInplaceInference);
 
 REGISTER_OP_CPU_KERNEL(
     instance_norm,
