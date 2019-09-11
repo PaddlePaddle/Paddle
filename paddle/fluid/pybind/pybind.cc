@@ -760,6 +760,9 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
+  m.def("prune_backward", [](const framework::ProgramDesc &program) {
+    return PruneBackward(program);
+  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",

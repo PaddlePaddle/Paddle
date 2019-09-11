@@ -52,6 +52,25 @@ def lstm_net(use_feed):
     return avg_cost
 
 
+def simple_fc_net_with_accuracy(use_feed):
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+    hidden = img
+    for _ in range(4):
+        hidden = fluid.layers.fc(
+            hidden,
+            size=200,
+            act='relu',
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)))
+    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = fluid.layers.mean(loss)
+    accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
+    return loss
+
+
 class TestProgramPruneBackward(unittest.TestCase):
     def program_compare(self, program_a, program_b):
         assert isinstance(
@@ -105,6 +124,21 @@ class TestProgramPruneBackward(unittest.TestCase):
             img, label = init_data()
             self.check_prune_correctness(
                 method=simple_fc_net,
+                feed_dict={"image": img,
+                           "label": label},
+                optimizer=optimizer)
+
+    def test_simple_fc_net_with_accuracy(self):
+        def optimizer():
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.001,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            return optimizer
+
+        with self.program_scope_guard():
+            img, label = init_data()
+            self.check_prune_correctness(
+                method=simple_fc_net_with_accuracy,
                 feed_dict={"image": img,
                            "label": label},
                 optimizer=optimizer)
