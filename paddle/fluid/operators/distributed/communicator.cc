@@ -583,9 +583,10 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
         std::vector<float> row_mutable_data{};
         row_mutable_data.resize(column);
-        VLOG(1) << "Resize complete";
-        std::memcpy(&row_mutable_data,&table_mutable_data[var_mutable_data[j]*column],sizeof(float) *column);
-        VLOG(1) <<"Memcpy complete";
+        for (size_t k = 0; k < column; k++){
+          row_mutable_data.emplace_back(table_mutable_data[var_mutable_data[j] * column + k]);
+          VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
+        }
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
         VLOG(1)<<"Copy complete";
         
