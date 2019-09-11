@@ -12,28 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
-from op_test import OpTest
+import sys
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
 
 
-class TestSquareErrorCostOp(OpTest):
-    def setUp(self):
-        self.op_type = "square_error_cost"
-        self.inputs = {
-            'X': np.random.uniform(0.1, 0.6, (2, 3)).astype("float32"),
-            'Y': np.random.uniform(0.1, 0.6, (2, 3)).astype("float32")
-        }
+class TestSquareErrorCost(unittest.TestCase):
+    def test_square_error_cost(self):
+        input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
+        label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
 
-        sub_res = self.inputs['X'] - self.inputs['Y']
-        output = sub_res * sub_res
-        self.outputs = {'Out': output}
+        sub = input_val - label_val
+        np_result = sub * sub
 
-    def test_check_output(self):
-        self.check_output()
+        input_var = layers.create_tensor(dtype="float32", name="input")
+        label_var = layers.create_tensor(dtype="float32", name="label")
 
-    def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        layers.assign(input=input_val, output=input_var)
+        layers.assign(input=label_val, output=label_var)
+        output = layers.square_error_cost(input=input_var, label=label_var)
+
+        cpu = core.CPUPlace()
+        exe = Executor(cpu)
+        result = exe.run(fluid.default_main_program(),
+                         feed={"input": input_var,
+                               "label": label_var},
+                         fetch_list=[output])
+
+        self.assertTrue(np.isclose(np_result, result).all())
 
 
 if __name__ == "__main__":
