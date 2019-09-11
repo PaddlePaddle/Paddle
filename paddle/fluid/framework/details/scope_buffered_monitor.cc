@@ -19,9 +19,17 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
+DEFINE_double(local_exe_scope_limit, 1024.0,  // MBytes
+              "The memory limit of local execution scope. "
+              "If you don't need to limit the memory of local execution scope,"
+              " you should set FLAGS_local_exe_scope_limit=-1."
+              "The default value is 1024 MBytes. ");
+
 namespace paddle {
 namespace framework {
 namespace details {
+
+static constexpr double kMB = 1 / (1024 * 1024);
 
 static void GetTensors(Variable *var,
                        std::unordered_set<Tensor *> *tensor_set) {
@@ -80,6 +88,12 @@ ScopeBufferedMonitor::ScopeBufferedMonitor(
     : places_(places), local_exec_scopes_(local_exec_scopes) {
   pre_local_exec_scopes_.resize(local_exec_scopes_.size());
   post_local_exec_scopes_.resize(local_exec_scopes_.size());
+  if (FLAGS_local_exe_scope_limit > 0) {
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_local_exe_scope_limit is " << FLAGS_local_exe_scope_limit
+        << " MBytes now. If you don't need to limit the memory of local "
+           "execution scope, you should set FLAGS_local_exe_scope_limit=-1.";
+  }
 }
 
 void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
@@ -143,15 +157,16 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
           << string::HumanReadableSize(gpu_memory_size) << ".";
 
   size_t history_step = history_local_exec_scopes_.size();
-  if (gpu_memory_size > 1024 * 1024 * 1024) {
+  if (has_fetch && history_step >= 2) {
+    ClearHistoryLocalScopes(history_step - 1);
+  }
+
+  if (FLAGS_local_exe_scope_limit > 0 &&
+      (gpu_memory_size * kMB > FLAGS_local_exe_scope_limit)) {
     for (auto &p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
-    ClearHistoryLocalScopes(history_step);
-  } else {
-    if (has_fetch && history_step >= 2) {
-      ClearHistoryLocalScopes(history_step - 1);
-    }
+    ClearHistoryLocalScopes(history_local_exec_scopes_.size());
   }
 }
 
