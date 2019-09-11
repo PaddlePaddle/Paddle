@@ -1912,6 +1912,14 @@ class TestBook(LayerTest):
             out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
+    def make_mean_square_error(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[1], dtype="float32")
+            y = self._get_data(name="Y", shape=[1], dtype="float32")
+            out = layers.mean_square_error(input=x, label=y)
+            return (out)
+
     def test_dynamic_lstmp(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
