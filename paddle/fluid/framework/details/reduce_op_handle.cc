@@ -291,7 +291,7 @@ void ReduceOpHandle::RunImpl() {
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
               PADDLE_ENFORCE(platform::dynload::ncclReduce(
                   buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
-                  ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+                  ncclSum, root_id, nccl_ctx.comm(), nccl_ctx.stream()));
             });
       }
 

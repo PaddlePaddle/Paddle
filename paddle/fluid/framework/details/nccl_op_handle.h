@@ -107,7 +107,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto comm = nccl_ctx.comm();
 
     VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
              << ", dev_id:" << dev_id << ", dtype:" << datatype
@@ -149,7 +149,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto comm = nccl_ctx.comm();
 
     VLOG(10) << "before all reduce"
              << " run_order:" << run_order_ << ", buffer:" << sendbuff
@@ -176,7 +176,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto comm = nccl_ctx.comm();
 
     VLOG(10) << "before all reduce run_order:" << run_order_
              << "buffer:" << sendbuff << ", numel:" << count
@@ -202,7 +202,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto comm = nccl_ctx.comm();
 
     VLOG(10) << "before InterBroadCast buffer:" << sendbuff
              << ", numel:" << count << ", dev_id:" << dev_id

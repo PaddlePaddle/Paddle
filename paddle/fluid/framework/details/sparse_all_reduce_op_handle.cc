@@ -104,7 +104,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
     auto &nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm_;
+    auto comm = nccl_ctx.comm();
 
     auto &allocator =
         platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
