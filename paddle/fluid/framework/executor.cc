@@ -149,7 +149,7 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
                     trainer_desc_str.c_str());
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
-  std::unique_ptr<TrainerBase> trainer;
+  std::shared_ptr<TrainerBase> trainer;
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
   // initialize trainer
   VLOG(3) << "Going to initialize trainer";
