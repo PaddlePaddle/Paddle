@@ -100,7 +100,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
                                  bool has_fetch) {
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
-          "ScopeBufferedMonitor::pre_local_exec_scopes process."));
+          "ScopeBufferedMonitor::pre_local_exec_scopes_process"));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     pre_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -108,13 +108,13 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
              << "] sub-scope: " << scopes.size();
     pre_local_exec_scopes_.at(scope_id).insert(scopes.begin(), scopes.end());
   }
-  pre_local_exec_scopes_event.release();
+  pre_local_exec_scopes_event.reset();
 
   callback();
 
   std::unique_ptr<platform::RecordEvent> post_local_exec_scopes_event(
       new platform::RecordEvent(
-          "ScopeBufferedMonitor::post_local_exec_scopes process."));
+          "ScopeBufferedMonitor::post_local_exec_scopes_process"));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     post_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -158,7 +158,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
 
   size_t history_step = history_local_exec_scopes_.size();
   if (has_fetch && history_step >= 2) {
-    ClearHistoryLocalScopes(history_step - 1);
+    ClearHistoryLocalExecScopes(history_step - 1);
   }
 
   if (FLAGS_local_exe_scope_limit > 0 &&
@@ -166,11 +166,14 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     for (auto &p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
-    ClearHistoryLocalScopes(history_local_exec_scopes_.size());
+    for (auto &scope : local_exec_scopes_) {
+      scope->DropKids();
+    }
+    ClearHistoryLocalExecScopes();
   }
 }
 
-void ScopeBufferedMonitor::ClearHistoryLocalScopes(size_t history_step) {
+void ScopeBufferedMonitor::ClearHistoryLocalExecScopes(size_t history_step) {
   VLOG(10) << "delete pre_incr_local_exec_scopes.";
   for (size_t i = 0; i < history_step; ++i) {
     auto &pre_incr_local_exec_scopes = history_local_exec_scopes_.front();

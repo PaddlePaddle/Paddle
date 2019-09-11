@@ -31,7 +31,7 @@ class ScopeBufferedMonitor {
 
   void ClearHistoryLocalExecScopes();
 
-  void ClearHistoryLocalScopes(size_t history_step);
+  void ClearHistoryLocalExecScopes(size_t history_step);
 
  private:
   std::vector<platform::Place> places_;
