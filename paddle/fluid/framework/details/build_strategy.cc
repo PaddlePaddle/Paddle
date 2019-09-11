@@ -278,12 +278,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #else
                                 const bool use_cuda) const {
 #endif
-  VLOG(3) << "apply all passes";
+  VLOG(1) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(3) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -349,11 +349,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     }
-    VLOG(3) << "Start Apply Pass " << pass->Type();
+    VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
-    VLOG(3) << "Finish Apply Pass " << pass->Type();
+    VLOG(1) << "Finish Apply Pass " << pass->Type();
   }
-  VLOG(3) << "All Passes Applied";
+  VLOG(1) << "All Passes Applied";
   return graph;
 }
 
