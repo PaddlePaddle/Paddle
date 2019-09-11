@@ -703,7 +703,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
 
     auto *table_value = var_select_rows->mutable_value();
     table_value->Resize({rows, columns});
-    std::memcpy(table_value, &new_value[0], sizeof(float)*rows*columns);
+    std::memcpy(table_value, &new_value, sizeof(float)*rows*columns);
     //Todo: test copy corectly
   }
 
