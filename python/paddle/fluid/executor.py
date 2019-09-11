@@ -976,9 +976,9 @@ class Executor(object):
 
             self._dump_debug_info(program=program, trainer=trainer)
 
-            self._default_executor.run_from_dataset(program.desc, scope,
-                                                    dataset.dataset,
-                                                    trainer._desc())
+            self._default_executor.run_from_dataset(program.desc,
+                                                    trainer._desc(), scope,
+                                                    dataset.dataset)
             self._default_executor.finalize()
             dataset._finish_to_run()
         else:
@@ -993,7 +993,7 @@ class Executor(object):
             self._dump_debug_info(program=program, trainer=trainer)
 
             trainer_instance = self._default_executor.init_for_dataset(
-                program.desc, scope, dataset.dataset, trainer._desc())
+                program.desc, trainer._desc(), scope, dataset.dataset)
 
             fetch_monitor = FetchHandlerMonitor(scope, fetch_handler)
             fetch_monitor.start()

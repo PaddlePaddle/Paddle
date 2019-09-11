@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -981,6 +982,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
       .def(py::init<const ProgramDesc &, size_t>());
+
+  py::class_<framework::TrainerBase>(m, "TrainerBase")
+      .def("get_worker_scopes",
+           [](TrainerBase &self) -> std::vector<Scope *> {
+             return self.GetWorkerScopes();
+           })
+      .def("finalize", &TrainerBase::Finalize);
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())

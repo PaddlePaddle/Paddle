@@ -50,6 +50,7 @@ class TrainerBase {
   virtual void InitOtherEnv(const ProgramDesc& main_program) = 0;
   virtual void Run() = 0;
   virtual void Finalize() = 0;
+  virtual std::vector<Scope*> GetWorkerScopes() = 0;
 
  protected:
   Scope* root_scope_;
@@ -70,6 +71,7 @@ class MultiTrainer : public TrainerBase {
   virtual void InitOtherEnv(const ProgramDesc& main_program) {}
   virtual void Run();
   virtual void Finalize();
+  virtual std::vector<Scope*> GetWorkerScopes();
 
  protected:
   int thread_num_;
@@ -92,6 +94,7 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual void DumpWork();
+  virtual std::vector<Scope*> GetWorkerScopes() { return {}; }
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
