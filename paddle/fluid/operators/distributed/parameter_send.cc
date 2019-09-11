@@ -87,6 +87,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
+    for(int i=0; i<send_slr.rows().size(); i++){
+      VLOG(1)<<"send rows: "<<i<<": "<<send_rows[i];
+    }
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 
@@ -94,7 +97,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     outs_dense_idx.resize(out_num);
 
     auto row_numel = send_slr.value().numel() / send_slr.value().dims()[0];
+    VLOG(1)<<"row_numel: "<<row_numel;
     auto *src = send_slr.value().data<T>();
+    VLOG(1)<<"value 0: "<<src[0];
 
     // create output var in local scope
     std::vector<framework::SelectedRows *> outs;
