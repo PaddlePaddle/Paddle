@@ -143,6 +143,11 @@ class TestGraphWrapper(unittest.TestCase):
         self.build_program()
         self.assertEquals(self.train_graph.flops(), 354624)
 
+    def test_merge(self):
+        self.build_program()
+        self.train_graph.merge(self.eval_graph)
+        self.assertEquals(len(self.train_graph.ops()), 72)
+
 
 if __name__ == '__main__':
     unittest.main()
