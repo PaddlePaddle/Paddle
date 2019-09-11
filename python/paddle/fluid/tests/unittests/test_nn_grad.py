@@ -75,7 +75,7 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 4, 1, bias_attr=False)
+        y = layers.conv3d(x, 4, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
