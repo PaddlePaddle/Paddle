@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

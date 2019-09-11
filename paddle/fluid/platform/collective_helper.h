@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -47,13 +48,6 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
-class NCCLComm {
- public:
-  virtual int device_id() const = 0;
-  virtual ncclComm_t comm() const = 0;
-  virtual cudaStream_t stream() const = 0;
-  virtual ~NCCLComm() = default;
-};
 
 // A singleton NCCL communicator context reserves communication ring ids
 class NCCLCommContext {
@@ -63,13 +57,13 @@ class NCCLCommContext {
     return comm_ctx;
   }
 
-  NCCLComm* CreateNCCLComm(ncclUniqueId* nccl_id, int nranks, int rank,
-                           int dev_id, int ring_id = 0);
+  NCCLContext* CreateNCCLContext(ncclUniqueId* nccl_id, int nranks, int rank,
+                                 int dev_id, int ring_id = 0);
 
-  void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+  void CreateAllNCCLContexts(const std::vector<int>& dev_ids, int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
-  NCCLComm* Get(int ring_id) const {
+  NCCLContext* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
                       "comunicator in ring id %d has not been initialized",
                       ring_id);
@@ -80,7 +74,7 @@ class NCCLCommContext {
   }
 
   // retrieve a communicator by the ring id and the device id
-  NCCLComm* Get(int ring_id, int dev_id) const {
+  NCCLContext* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
                       "comunicator of ring id %d has not been initialized",
                       ring_id);
@@ -92,15 +86,15 @@ class NCCLCommContext {
   }
 
   // retrieve a communicator by the ring id and place
-  NCCLComm* Get(int ring_id, Place place) const {
+  NCCLContext* Get(int ring_id, Place place) const {
     return Get(ring_id, boost::get<CUDAPlace>(place).device);
   }
 
  private:
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
-  // ring id to dev-NCCLComm
-  std::map<int, std::map<int, std::unique_ptr<NCCLComm>>> comm_map_;
+  // ring id to dev-NCCLContext
+  std::map<int, std::map<int, std::unique_ptr<NCCLContext>>> comm_map_;
 
   void ReleaseNCCLComms();
 

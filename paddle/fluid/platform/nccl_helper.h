@@ -16,7 +16,9 @@
 #pragma once
 
 #include <stdio.h>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <typeindex>
@@ -24,6 +26,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -72,45 +75,57 @@ class NCCLGroupGuard {
   }
 };
 
-struct NCCLContext {
-  std::unique_ptr<CUDADeviceContext> ctx_;
-  ncclComm_t comm_;
+class NCCLContext {
+ public:
+  NCCLContext(int dev_id, ncclComm_t comm)
+      : dev_ctx_(new CUDADeviceContext(CUDAPlace(dev_id))) {
+    dev_ctx_->set_nccl_comm(comm);
+  }
+  virtual ~NCCLContext() {}
 
-  explicit NCCLContext(int dev_id)
-      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
+  cudaStream_t stream() const { return dev_ctx_->stream(); }
 
-  cudaStream_t stream() const { return ctx_->stream(); }
-  ncclComm_t comm() const { return comm_; }
+  ncclComm_t comm() const { return dev_ctx_->nccl_comm(); }
 
   int device_id() const {
-    return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
+    return boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace()).device;
   }
+
+  CUDADeviceContext *dev_ctx() const { return dev_ctx_.get(); }
+
+ protected:
+  // CUDADeviceContext maintain the lifetime of the ncclComm_t
+  std::unique_ptr<CUDADeviceContext> dev_ctx_;
+
+  NCCLContext(const NCCLContext &other) = delete;
+  NCCLContext &operator=(const NCCLContext &other) = delete;
 };
 
 struct NCCLContextMap {
-  std::unordered_map<int, NCCLContext> contexts_;
+  std::map<int, std::unique_ptr<NCCLContext>> contexts_;
   std::vector<int> order_;
 
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(!places.empty(), true);
+    PADDLE_ENFORCE_EQ(places.empty(), false);
     order_.reserve(places.size());
+    std::set<int> dev_set;
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
       order_.emplace_back(dev_id);
-      contexts_.emplace(dev_id, NCCLContext(dev_id));
+      dev_set.insert(dev_id);
     }
     PADDLE_ENFORCE_EQ(
-        order_.size(), contexts_.size(),
+        order_.size(), dev_set.size(),
         "NCCL Context Map does not support contain two or more same device");
 
-    std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
-    // if num_trainers == 1, should create a new nccl id for local comms.
+    const int kOrders = order_.size();
+    ncclComm_t comms[kOrders];
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
-          comms.get(), static_cast<int>(order_.size()), order_.data()));
+          comms, static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(nccl_id);
       {
@@ -128,34 +143,35 @@ struct NCCLContextMap {
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
           PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
           PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
-              comms.get() + i, nranks, *nccl_id, rank));
+              comms + i, nranks, *nccl_id, rank));
         }
       }
     }
     int i = 0;
     for (auto &dev_id : order_) {
-      contexts_.at(dev_id).comm_ = comms[i++];
+      contexts_.emplace(dev_id, std::unique_ptr<NCCLContext>(
+                                    new NCCLContext(dev_id, comms[i++])));
     }
   }
 
   NCCLContextMap(const NCCLContextMap &other) = delete;
   NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).dev_ctx(); }
 
   CUDADeviceContext *DevCtx(platform::Place p) const {
     return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
   const NCCLContext &at(platform::Place p) const {
-    return this->at(boost::get<CUDAPlace>(p).device);
+    return at(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
+  const NCCLContext &at(int dev_id) const { return *contexts_.at(dev_id); }
 
   void WaitAll() {
     for (auto &p : contexts_) {
-      p.second.ctx_->Wait();
+      p.second->dev_ctx()->Wait();
     }
   }
 };

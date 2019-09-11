@@ -60,7 +60,7 @@ class CCommInitAllOp : public framework::OperatorBase {
 
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
+    platform::NCCLCommContext::Instance().CreateAllNCCLContexts(devices, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

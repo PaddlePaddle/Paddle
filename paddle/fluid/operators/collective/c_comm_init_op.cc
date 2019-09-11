@@ -53,7 +53,7 @@ class CCommInitOp : public framework::OperatorBase {
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommContext::Instance().CreateNCCLComm(
+    platform::NCCLCommContext::Instance().CreateNCCLContext(
         nccl_id, nranks, rank_id, boost::get<platform::CUDAPlace>(place).device,
         rid);
 #else
