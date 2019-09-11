@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_pool_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -170,10 +170,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = allocator.Allocate(bytes);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
@@ -221,10 +219,8 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       }
 
       auto& dev_ctx = ctx.cuda_device_context();
-      auto& allocator =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
       int bytes = roi_batch_id_list.numel() * sizeof(int);
-      auto roi_ptr = allocator.Allocate(bytes);
+      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
       int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
       const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
       memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
