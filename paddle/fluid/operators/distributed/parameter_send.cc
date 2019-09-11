@@ -50,8 +50,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
-  VLOG(4) << "send_var is: "<<rpc_ctx.var_name;
+  VLOG(1) << "parameter send_var is: "<<rpc_ctx.var_name;
   size_t out_num = rpc_ctx.splited_var_names.size();
+  VLOG(1) << "parameter send_var: "<<rpc_ctx.var_name<<" out_num: "<<out_num;
   if (send_var->IsType<framework::LoDTensor>()) {
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
@@ -80,6 +81,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();
+    for(int i=0; i<rpc_ctx.height_sections.size();i++){
+      VLOG(1)<<"height sections"<<rpc_ctx.height_sections[i];
+    }
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
@@ -95,6 +99,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     // create output var in local scope
     std::vector<framework::SelectedRows *> outs;
     for (auto &name : rpc_ctx.splited_var_names) {
+      VLOG(1)<<"Create var: "<<name;
       auto *out = local_scope->Var(name)->GetMutable<framework::SelectedRows>();
       outs.push_back(out);
     }
@@ -147,7 +152,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   } else {
     PADDLE_THROW("unsupported var type to send!");
   }
-  VLOG(4) << "search var "<< rpc_ctx.var_name <<" in scope "<< &scope<<" done";
+  VLOG(1) << "search var "<< rpc_ctx.var_name <<" in scope "<< &scope<<" done";
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
