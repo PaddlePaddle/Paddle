@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,9 +33,10 @@ TEST(AnalysisPredictor, use_gpu) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
-  config.pass_builder()->TurnOnDebug();
   config.SwitchUseFeedFetchOps(false);
   config.EnableProfile();
+  config.EnableTensorRtEngine(1 << 20, 1, 3,
+                              AnalysisConfig::Precision::kFloat32, false);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
