@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -60,7 +59,7 @@ class CCommInitAllOp : public framework::OperatorBase {
 
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommContext::Instance().CreateAllNCCLContexts(devices, rid);
+    platform::NCCLCommunicator::Instance().CreateAllNCCLContexts(devices, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

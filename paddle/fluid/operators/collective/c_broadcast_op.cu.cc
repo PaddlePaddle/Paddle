@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_broadcast_op.h"
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -34,7 +33,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

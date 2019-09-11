@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -44,7 +43,7 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     int ring_id = Attr<int>("ring_id");
     auto stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+        platform::NCCLCommunicator::Instance().Get(ring_id, place)->stream();
     cudaError_t e_sync = cudaStreamSynchronize(stream);
     if (e_sync != 0) {
       LOG(FATAL) << "Fail to sync nccl stream: " << cudaGetErrorString(e_sync);
