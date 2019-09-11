@@ -87,6 +87,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
+    VLOG(1)<<"send rows size: "<<send_slr.rows().size();
     for(int i=0; i<send_slr.rows().size(); i++){
       VLOG(1)<<"send rows: "<<i<<": "<<send_rows[i];
     }
@@ -95,7 +96,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     outs_rows_idx.resize(out_num);
     outs_dense_idx.resize(out_num);
-
+    VLOG(1)<<"end_slr.value().numel(): "<<end_slr.value().numel();
+    VLOG(1)<<"send_slr.value().dims()[0]: "<<send_slr.value().dims()[0];
+    
     auto row_numel = send_slr.value().numel() / send_slr.value().dims()[0];
     VLOG(1)<<"row_numel: "<<row_numel;
     auto *src = send_slr.value().data<T>();

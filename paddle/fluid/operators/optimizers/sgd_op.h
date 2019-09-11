@@ -25,6 +25,7 @@ template <typename T>
 class SGDOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    return;
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
     const auto *param_var = ctx.InputVar("Param");
