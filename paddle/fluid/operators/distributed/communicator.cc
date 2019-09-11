@@ -589,16 +589,11 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
         }
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
         VLOG(1)<<"Copy complete";
-        
-        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column], 
-                  row_mutable_data.front(), "sparse old_scope first value copy to sparse_var_ids_table_ False");
-        PADDLE_ENFORCE_EQ(table_mutable_data[var_mutable_data[j]*column + column -1], 
-                  row_mutable_data.back(), "sparse old_scope last value copy to sparse_var_ids_table_ False");
 
         VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
-                <<" F value: "<<row_mutable_data.front()
-                <<" B value: "<<row_mutable_data.back();
+                <<" F value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].front()
+                <<" B value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].back();
       } 
     }
   }
@@ -708,7 +703,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
 
     auto *table_value = var_select_rows->mutable_value();
     table_value->Resize({rows, columns});
-    std::memcpy(table_value, &new_value, sizeof(float)*rows*columns);
+    std::memcpy(table_value, &new_value[0], sizeof(float)*rows*columns);
     //Todo: test copy corectly
   }
 
