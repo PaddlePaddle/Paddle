@@ -62,13 +62,8 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
 }
 
-std::vector<Scope*> MultiTrainer::GetWorkerScopes() {
-  std::vector<Scope*> scopes;
-  scopes.resize(thread_num_);
-  for (int i = 0; i < thread_num_; ++i) {
-    scopes[i] = workers_[i]->GetThreadScope();
-  }
-  return scopes;
+Scope* MultiTrainer::GetWorkerScope(const int thread_id) {
+  return workers_[thread_id]->GetThreadScope();
 }
 
 void MultiTrainer::Run() {
