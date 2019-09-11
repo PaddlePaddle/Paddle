@@ -92,7 +92,9 @@ class TestGraphWrapper(unittest.TestCase):
         # activation inplace has been disabled in python side
         # which may produce more variable in program_desc
         # update 90 => 94
-        self.assertEquals(len(self.train_graph.vars()), 94)
+        # delete three useless RAW variables in Conv2D
+        # update 94 => 91
+        self.assertEquals(len(self.train_graph.vars()), 91)
 
     def test_numel_params(self):
         self.build_program()
@@ -140,6 +142,11 @@ class TestGraphWrapper(unittest.TestCase):
     def test_flops(self):
         self.build_program()
         self.assertEquals(self.train_graph.flops(), 354624)
+
+    def test_merge(self):
+        self.build_program()
+        self.train_graph.merge(self.eval_graph)
+        self.assertEquals(len(self.train_graph.ops()), 72)
 
 
 if __name__ == '__main__':

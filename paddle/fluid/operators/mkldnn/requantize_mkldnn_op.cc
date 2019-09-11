@@ -43,15 +43,13 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::data_type dst_dt = src_dt;  // TODO(Xiaoli) support
-                                                // requantize from different
-                                                // data type (e.g., s8 to u8)
-    mkldnn::memory::format src_fmt = memory::format::nhwc;
-    mkldnn::memory::format dst_fmt = memory::format::nhwc;
+    mkldnn::memory::data_type dst_dt = src_dt;
+    MKLDNNMemoryFormat src_fmt = MKLDNNMemoryFormat::nhwc;
+    MKLDNNMemoryFormat dst_fmt = MKLDNNMemoryFormat::nhwc;
 
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());

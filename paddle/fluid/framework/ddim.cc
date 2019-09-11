@@ -48,22 +48,6 @@ bool DDim::operator==(const DDim& d) const {
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
 
-std::vector<int64_t> vectorize(const DDim& ddim) {
-  std::vector<int64_t> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
-}
-
-// NOTE: framework::vectorize converts to type int64_t
-//       which does not fit cudnn inputs.
-std::vector<int> vectorize2int(const DDim& ddim) {
-  std::vector<int> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
-}
-
 struct ProductVisitor {
   template <int D>
   inline int64_t operator()(const Dim<D>& dim) {

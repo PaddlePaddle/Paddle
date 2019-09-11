@@ -154,11 +154,13 @@ class GeneratorLoader(DataLoaderBase):
         if in_dygraph_mode():
             if not iterable:
                 warnings.warn(
-                    "Please NOTE: dygraph can support iterable mode only.")
+                    "Please NOTE: dygraph can support iterable mode only. Change to iterable mode."
+                )
             self._iterable = True
             if not return_list:
                 warnings.warn(
-                    "Please NOTE: dygraph can support return as list only.")
+                    "Please NOTE: dygraph can support return as list only. Change to return as list."
+                )
             self._return_list = True
         else:
             self._iterable = iterable

@@ -458,9 +458,10 @@ class Variable(object):
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
                 self._ivar = core.VarBase(
-                    name, dtype if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [],
-                    _current_expected_place(), stop_gradient, True
+                    name, type
+                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
+                    if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [], stop_gradient, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -543,18 +544,55 @@ class Variable(object):
             self._stop_gradient = stop_gradient
             self.is_data = is_data
 
+    def detach(self):
+        """
+        Returns a new Variable, detached from the current graph.
+        
+        Returns:
+            Variable: The detached Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    y = x.detach()
+
+        """
+        if in_dygraph_mode():
+            new_var = self._cloneVar()
+            self.block.append_op(
+                type="assign",
+                inputs={'X': [self]},
+                outputs={'Out': [new_var]},
+                stop_gradient=True)
+            return new_var
+        else:
+            raise AttributeError("static graph model DO NOT supprt detach")
+
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
     def backward(self, backward_strategy=None):
-        from .dygraph import BackwardStrategy
-        if backward_strategy is None:
-            backward_strategy = BackwardStrategy()
-            backward_strategy.sort_sum_gradient = False
+        if in_dygraph_mode():
+            from .dygraph import BackwardStrategy
+            if backward_strategy is None:
+                backward_strategy = BackwardStrategy()
+                backward_strategy.sort_sum_gradient = False
 
-        self._ivar._run_backward(backward_strategy)
-        _dygraph_tracer()._clear_ops()
+            self._ivar._run_backward(backward_strategy, _dygraph_tracer())
+        else:
+            raise ValueError(
+                "Variable.backward() is only avaliable in DyGraph mode")
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
@@ -582,9 +620,13 @@ class Variable(object):
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s %s' % (
-                self.name, self.dtype, self.shape,
-                str(self._ivar.value().get_tensor()))
+            tensor = self._ivar.value().get_tensor()
+            if tensor._is_initialized():
+                return 'name %s, dtype: %s shape: %s %s' % (
+                    self.name, self.dtype, self.shape, str(tensor))
+            else:
+                return 'name %s, shape: %s, not inited' % (self.name,
+                                                           self.shape)
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -679,7 +721,7 @@ class Variable(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self._ivar.dtype
+            return self._ivar.type
         else:
             return self.desc.type()
 
@@ -1051,9 +1093,7 @@ class Operator(object):
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
-            self.iop = core.OpBase(type)
-            self.previous_ops = []
-
+            self._type = type
             self.attrs = attrs if attrs else {}
         else:
             self.block = block
@@ -1199,7 +1239,7 @@ class Operator(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self.iop.type
+            return self._type
         else:
             return self.desc.type()
 
@@ -1753,10 +1793,12 @@ class Block(object):
                 else:
                     attrs['is_test'] = False
 
+            type = kwargs.get("type", None)
+
             op = Operator(
                 block=self,
                 desc=None,
-                type=kwargs.get("type", None),
+                type=type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs)
@@ -1765,9 +1807,11 @@ class Block(object):
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op,
+
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
@@ -1828,17 +1872,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         if in_dygraph_mode():
+            type = kwargs.get("type", None)
+            attrs = kwargs.get("attrs", {})
             op = Operator(
-                self,
-                None,
-                type=kwargs.get("type", None),
-                inputs=None,
-                outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                self, None, type=type, inputs=None, outputs=None, attrs=attrs)
 
-            _dygraph_tracer().trace_op(op,
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
@@ -2728,6 +2770,8 @@ class IrGraph(object):
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
@@ -3051,14 +3095,14 @@ class Program(object):
 
         * Set for_test to False when we want to clone the program for training.
         * Set for_test to True when we want to clone the program for testing.
-          We will not do any prune on program here, So if you just want an
-          forward program for testing, please use :code:`clone` before using
-          :code:`Opimizer.minimize`
+          We will prune the backward and optimize part of the program when you
+          use :code:`clone` after :code:`Opimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         Notes: 
         1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
-        2. This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. E.g.
+        2. We recommend you to use :code:`clone(for_test=True)` before backward
+           and optimization. E.g.
 
         .. code-block:: python
 
@@ -3190,7 +3234,13 @@ class Program(object):
         The two code snippets above will generate and print same programs.
         """
         if for_test:
-            p = self._inference_optimize(prune_read_op=False)
+            if self._appending_grad_times > 0:
+                loss_op = self._find_loss_op()
+                assert loss_op is not None, "The optimized network should have loss operator."
+                forward_prog = self._prune([], loss_op)
+                p = forward_prog._inference_optimize(prune_read_op=False)
+            else:
+                p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -3211,7 +3261,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, targets):
+    def _prune(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3227,8 +3277,16 @@ class Program(object):
             Program:  A new, pruned program.
 
         """
+        if not isinstance(feeded_var_names, list):
+            feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
             targets = [targets]
+
+        for var in feeded_var_names:
+            if not isinstance(var, six.string_types):
+                raise ValueError("All feeded_var_names of prune() can only be "
+                                 "str.")
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -3255,7 +3313,7 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx)
+        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -3578,6 +3636,16 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
+
+    def _find_loss_op(self):
+        loss_op = None
+        op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        forward_loss = int(core.op_proto_and_checker_maker.OpRole.Forward
+                           ) | int(core.op_proto_and_checker_maker.OpRole.Loss)
+        for op in self.global_block().ops:
+            if int(op.all_attrs()[op_role_key]) == forward_loss:
+                loss_op = op
+        return loss_op
 
 
 class Parameter(Variable):

@@ -18,7 +18,7 @@ learning to many products at Baidu.
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
 
-### Latest PaddlePaddle Release: [Fluid 1.5.1](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
+### Latest PaddlePaddle Release: [Fluid 1.5.2](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
 ### Install Latest Stable Release:
 ```
 # Linux CPU
@@ -26,9 +26,9 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda8cudnn7
-pip install paddlepaddle-gpu==1.5.1.post87
+pip install paddlepaddle-gpu==1.5.2.post87
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.5.1.post97
+pip install paddlepaddle-gpu==1.5.2.post97
 
 
 # For installation on other platform, refer to http://paddlepaddle.org/
@@ -103,7 +103,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/be
 ## Communication
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 432676488 (PaddlePaddle).
+- QQ discussion group: 796771754 (PaddlePaddle).
 - [Forums](http://ai.baidu.com/forum/topic/list/168?pageNo=1): discuss implementations, research, etc.
 
 ## Copyright and License
