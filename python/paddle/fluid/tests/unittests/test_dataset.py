@@ -233,6 +233,14 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
+        dataset.set_merge_by_lineid(slots_vars)
+        dataset.preload_into_memory()
+        dataset.wait_preload_done()
+        dataset.release_memory()
+        dataset.preload_into_memory(1)
+        dataset.wait_preload_done()
+        fleet_ptr = fluid.core.Fleet()
+
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
 
