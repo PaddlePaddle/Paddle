@@ -10254,6 +10254,7 @@ def slice(input, axes, starts, ends):
     return out
 
 
+@templatedoc()
 def strided_slice(input, axes, starts, ends, strides):
     """
     Strided Slice OP
