@@ -13755,19 +13755,21 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
 
 def mse_loss(input, label):
     """
-    ** Mean square error layer**
+    **Mean square error layer**
 
     This layer accepts input predications and target label and returns the mean square error.
 
     The loss can be described as:
 
-    Out = mean((X - Y)^2)
+    .. math::
+        
+        Out = mean((X - Y)^2)
 
     In the above equation:
 
-        * :math: `X`: Input predications, a tensor.
-        * :math: `Y`: Input labels, a tensor.
-        * :math: `Out`: Output value, same shape with :math:`X`.
+        * :math:`X`: Input predications, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
 
     Args:
         input (Variable): Input tensor, has predictions.
@@ -13779,10 +13781,10 @@ def mse_loss(input, label):
     Examples:
         .. code-block:: python
 
-        import paddle.fluid as fluid
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-        y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
-        mse = fluid.layers.mse_loss(input=y_predict, label=y)
+            import paddle.fluid as fluid
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+            mse = fluid.layers.mse_loss(input=y_predict, label=y)
 
     """
     return reduce_mean(square_error_cost(input, label))
