@@ -171,7 +171,7 @@ struct AnalysisConfig {
   */
   bool anakin_engine_enabled() const { return use_anakin_; }
 
-  /** A boolean state indicating whether the Anakin sub-graph engine is used.
+  /** A boolean state indicating whether the Lite sub-graph engine is used.
   */
   bool lite_engine_enabled() const { return use_lite_; }
 
