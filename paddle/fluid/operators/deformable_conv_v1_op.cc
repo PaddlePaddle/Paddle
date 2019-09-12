@@ -103,16 +103,16 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), True,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
                    "Input(Input) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Offset"), True,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Offset"), true,
                    "Input(Offset) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), True,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
                    "Input(Filter) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), True,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
                    "Output(Output) of DeformableConvOp "
                    "should not be null.");
 
@@ -128,7 +128,7 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
     int deformable_groups = ctx->Attrs().Get<int>("deformable_groups");
     int im2col_step = ctx->Attrs().Get<int>("im2col_step");
 
-    PADDLE_ENFORCEi_EQ(in_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(in_dims.size(), 4,
                    "Conv input should be 4-D tensor, get %u", in_dims.size());
     PADDLE_ENFORCE_EQ(
         in_dims.size(), filter_dims.size(),
@@ -225,7 +225,7 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
 
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Output")), True,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Output")), true,
                    "the gradient of output(Out) must not be null");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
