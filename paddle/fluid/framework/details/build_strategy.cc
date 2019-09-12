@@ -119,19 +119,22 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "mode.";
       strategy_.fuse_broadcast_ops_ = false;
     }
-    if (strategy_.async_mode_) {
-      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
-          << "Currently, fuse_all_optimizer_ops doesn't work under "
-             "async mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
-      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
-          << "fuse_all_optimizer_ops only work in Reducer mode.";
-      strategy_.fuse_all_reduce_ops_ = false;
-    }
 
     ConvertDefaultValue(&strategy_.fuse_all_optimizer_ops_);
     ConvertDefaultValue(&strategy_.fuse_all_reduce_ops_);
     ConvertDefaultValue(&strategy_.fuse_broadcast_ops_);
+
+    if (strategy_.fuse_all_optimizer_ops_ == true) {
+      LOG_IF(WARNING, strategy_.async_mode_)
+          << "Currently, fuse_all_optimizer_ops doesn't work under "
+             "async mode.";
+      strategy_.fuse_all_optimizer_ops_ = !strategy_.async_mode_;
+    }
+    if (strategy_.fuse_all_reduce_ops_ == true) {
+      LOG_IF(WARNING, strategy_.async_mode_)
+          << "fuse_all_optimizer_ops only work in Reducer mode.";
+      strategy_.fuse_all_reduce_ops_ = !strategy_.async_mode_;
+    }
   }
 
   void AppendMultiGraphOptPasses() {

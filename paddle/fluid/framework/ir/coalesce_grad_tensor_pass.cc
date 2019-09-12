@@ -81,7 +81,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     ResetAttribute<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads, &result);
 
-    VLOG(6) << "The number of params and grads is:" << params_grads.size();
+    VLOG(10) << "The number of params and grads is:" << params_grads.size();
     if (params_grads.size() == 0) {
       return;
     }
@@ -100,8 +100,8 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
     }
 
-    VLOG(6) << "Dense grads: " << p_g_dense_grad.size()
-            << ", Sparse grads: " << p_g_sparse_grad.size();
+    VLOG(10) << "Dense grads: " << p_g_dense_grad.size()
+             << ", Sparse grads: " << p_g_sparse_grad.size();
     if (p_g_dense_grad.size() == 0) {
       return;
     }
@@ -205,7 +205,7 @@ class CoalesceGradTensorPass : public ir::Pass {
   template <typename AttrType>
   void ResetAttribute(const std::string &attr_name, ir::Graph *graph) const {
     if (graph->Has(attr_name)) {
-      VLOG(6) << attr_name << " is reset.";
+      VLOG(10) << attr_name << " is reset.";
       graph->Erase(attr_name);
     }
     graph->Set(attr_name, new AttrType);
@@ -252,8 +252,8 @@ class CoalesceGradTensorPass : public ir::Pass {
           std::make_pair(params_grads[i].first, params_grads[i].second));
     }
 
-    if (VLOG_IS_ON(6)) {
-      VLOG(6) << "SetGroupAccordingToLayers: ";
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << "SetGroupAccordingToLayers: ";
       PrintGroupInfo(vars_info, group_params_grads);
     }
   }
@@ -262,7 +262,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       details::GroupParamsAndGrads *group_params_grads) const {
     for (size_t i = 0; i < group_params_grads->size(); ++i) {
-      VLOG(6) << "group " << i;
+      VLOG(10) << "group " << i;
       std::stringstream out;
       size_t gps_size = 0;
       for (auto &p_g : group_params_grads->at(i)) {
@@ -277,10 +277,10 @@ class CoalesceGradTensorPass : public ir::Pass {
 
       auto dtype =
           GetDtypeOfVar(vars_info, group_params_grads->at(i).front().first);
-      VLOG(6) << out.str()
-              << ", group size:" << group_params_grads->at(i).size()
-              << ", group memory size:" << static_cast<double>(gps_size) / kMB
-              << "(MB), dtype:" << dtype;
+      VLOG(10) << out.str()
+               << ", group size:" << group_params_grads->at(i).size()
+               << ", group memory size:" << static_cast<double>(gps_size) / kMB
+               << "(MB), dtype:" << dtype;
     }
   }
 
@@ -332,8 +332,8 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     std::swap(*group_params_grads, local_group_params_grads);
 
-    if (VLOG_IS_ON(6)) {
-      VLOG(6) << string::Sprintf(
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << string::Sprintf(
           "SetGroupAccordingToMemorySize(memory_size: %f MB):",
           GetFuseParameterMemorySize());
       PrintGroupInfo(vars_info, group_params_grads);
@@ -366,8 +366,8 @@ class CoalesceGradTensorPass : public ir::Pass {
         local.emplace_back(p_g);
       }
 
-      VLOG(6) << "local_group_params_grads size:"
-              << local_group_params_grads.size();
+      VLOG(10) << "local_group_params_grads size:"
+               << local_group_params_grads.size();
       new_group_params_grads.insert(new_group_params_grads.end(),
                                     local_group_params_grads.begin(),
                                     local_group_params_grads.end());
@@ -375,10 +375,10 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     std::swap(*group_params_grads, new_group_params_grads);
 
-    if (VLOG_IS_ON(6)) {
-      VLOG(6) << string::Sprintf("ReGroupByDtype(memory_size: %f MB, %u):",
-                                 GetFuseParameterMemorySize(),
-                                 GetFuseParameterGroupsSize());
+    if (VLOG_IS_ON(10)) {
+      VLOG(10) << string::Sprintf("ReGroupByDtype(memory_size: %f MB, %u):",
+                                  GetFuseParameterMemorySize(),
+                                  GetFuseParameterGroupsSize());
       PrintGroupInfo(vars_info, group_params_grads);
     }
   }
@@ -445,8 +445,8 @@ class CoalesceGradTensorPass : public ir::Pass {
                 OpProtoAndCheckerMaker::OpRoleVarAttrName()));
         PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
         for (size_t i = 0; i < backward_vars.size(); i += 2) {
-          VLOG(6) << "Trainable parameter: " << backward_vars[i]
-                  << ", gradient: " << backward_vars[i + 1];
+          VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                   << ", gradient: " << backward_vars[i + 1];
 
           params_grads->emplace_back(std::make_pair(
               backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
