@@ -35,10 +35,10 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                       const bool is_negative) {
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(is_negative));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.OutputName("Output"));
+  platform::AppendKeyDims(&key, src_tz);
+  platform::AppendKey(&key, std::to_string(scale_data));
+  platform::AppendKey(&key, std::to_string(is_negative));
+  platform::AppendKey(&key, ctx.OutputName("Output"));
   return key;
 }
 

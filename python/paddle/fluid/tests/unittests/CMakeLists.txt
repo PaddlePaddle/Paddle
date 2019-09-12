@@ -37,6 +37,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_launch)
@@ -315,6 +316,10 @@ endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
+endif()
+
+if (WITH_TESTING)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist

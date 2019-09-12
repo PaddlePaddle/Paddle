@@ -83,12 +83,9 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                  "It must use CPUPlace.");
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  const auto &mkldnn_engine = dev_ctx.GetEngine();
 
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
-
-  const T *x_data = x->data<T>();
 
   const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
@@ -103,23 +100,12 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   bool is_test = ctx.Attr<bool>("is_test");
 
-  std::string key = platform::ActivationMKLDNNHandler::GetHash(
-      src_tz, algorithm, src_format, alpha, beta, ctx.InputName("X"));
+  platform::ActivationMKLDNNHandler<T> handler(
+      src_tz, algorithm, alpha, beta, src_format, is_test, dev_ctx,
+      ctx.GetPlace(), ctx.InputName("X"));
 
-  platform::ActivationMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
-
-  auto md = platform::MKLDNNMemDesc(src_tz, platform::MKLDNNGetDataType<T>(),
-                                    src_format);
-
-  auto activation_pd = handler.AcquireActivationPrimitiveDescriptor(
-      is_test ? mkldnn::prop_kind::forward_inference
-              : mkldnn::prop_kind::forward_training,
-      algorithm, md, alpha, beta);
-
-  auto src_memory_p = handler.AcquireSrcMemory(md, to_void_cast<T>(x_data));
-
-  auto dst_memory_p =
-      handler.AcquireDstMemoryFromPrimitive<T>(y, ctx.GetPlace());
+  auto src_memory_p = handler.AcquireSrcMemory(x);
+  auto dst_memory_p = handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireActivation(dst_memory_p, src_memory_p);
 
   // push primitive to stream and wait until it's executed
@@ -135,16 +121,10 @@ template <typename T>
 void eltwise_grad(const framework::ExecutionContext &ctx,
                   mkldnn::algorithm algorithm) {
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  const auto &mkldnn_engine = dev_ctx.GetEngine();
 
   const auto *x = ctx.Input<Tensor>("X");
-  const T *x_data = x->data<T>();
-
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-  const T *diff_y_data = diff_y->data<T>();
-  T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
 
   const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
@@ -158,32 +138,13 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   auto diff_y_format =
       diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : diff_y->format();
 
-  auto diff_dst_md = platform::MKLDNNMemDesc(
-      diff_dst_tz, platform::MKLDNNGetDataType<T>(), diff_y_format);
+  platform::ActivationMKLDNNHandler<T> handler(
+      diff_dst_tz, algorithm, alpha, beta, src_format, diff_y_format, dev_ctx,
+      ctx.GetPlace(), ctx.InputName("X"));
 
-  std::string key = platform::ActivationMKLDNNHandler::GetHash(
-      diff_dst_tz, algorithm, src_format, alpha, beta, ctx.InputName("X"));
-
-  const std::string key_src_data = key + "@eltwise_fwd_src_data";
-
-  auto src_md = platform::MKLDNNMemDesc(
-      diff_dst_tz, platform::MKLDNNGetDataType<T>(), src_format);
-
-  platform::ActivationMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
-
-  auto src_memory_p = handler.AcquireSrcMemory(src_md, to_void_cast<T>(x_data));
-
-  auto diff_dst_memory_p =
-      handler.AcquireDiffDstMemory(diff_dst_md, to_void_cast<T>(diff_y_data));
-
-  auto activation_backward_pd =
-      handler.AcquireActivationBackwardPrimitiveDescriptor(
-          algorithm, diff_dst_md, src_memory_p->get_primitive_desc().desc(),
-          alpha, beta);
-
-  auto diff_src_memory_p =
-      handler.AcquireDiffSrcMemoryFromPrimitive(diff_x_data);
-
+  auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
+  auto diff_dst_memory_p = handler.AcquireDiffDstMemory(diff_y);
+  auto diff_src_memory_p = handler.AcquireDiffSrcMemory(diff_x);
   auto activation_backward_p = handler.AcquireActivationBackward(
       diff_src_memory_p, diff_dst_memory_p, src_memory_p);
 
