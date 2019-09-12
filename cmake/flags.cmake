@@ -156,7 +156,6 @@ set(COMMON_FLAGS
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
     -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
-    -Wno-error=parentheses # Warning in boost gcc 8.2
     ${fsanitize}
 )
 
@@ -165,6 +164,9 @@ if(NOT APPLE)
         set(COMMON_FLAGS
                 ${COMMON_FLAGS}
                 -Wno-format-truncation # Warning in boost gcc 8.2
+                -Wno-error=cast-function-type # Warning in boost gcc 8.2
+                -Wno-error=parentheses # Warning in boost gcc 8.2
+                -Wno-ignored-qualifiers # Warning in boost gcc 8.2
                 )
     endif()
 endif(NOT APPLE)
