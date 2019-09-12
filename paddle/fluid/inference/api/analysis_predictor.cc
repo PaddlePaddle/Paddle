@@ -52,8 +52,6 @@
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
-DECLARE_bool(profile);
-
 namespace paddle {
 
 using inference::Singleton;
@@ -79,12 +77,14 @@ bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+  if (config_.with_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else {
+    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
+                 "generated.";
   }
 
   // no matter with or without MKLDNN
@@ -472,7 +472,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
   config_.PartiallyRelease();
-  LOG(INFO) << "== optimize end ==";
+  LOG(INFO) << "======= optimize end =======";
 }
 
 template <>
@@ -498,7 +498,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     }
 
     if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
+      flags.push_back("dummy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
@@ -574,6 +574,18 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
     input_names.push_back(item.second);
   }
   return input_names;
+}
+
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetInputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> input_shapes;
+  std::vector<std::string> names = GetInputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    input_shapes[name] = var->GetShape();
+  }
+  return input_shapes;
 }
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
@@ -792,7 +804,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     SaveTrtCalibToDisk();
   }
 #endif
-  if (FLAGS_profile) {
+  if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }

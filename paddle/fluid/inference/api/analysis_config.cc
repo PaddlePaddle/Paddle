@@ -94,9 +94,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
-  // GPU related.
+  // Gpu related.
   CP_MEMBER(use_gpu_);
-  CP_MEMBER(use_cudnn_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
@@ -130,6 +129,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_passes_filter_);
   CP_MEMBER(anakin_ops_filter_);
 
+  // profile related.
+  CP_MEMBER(with_profile_);
+
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
@@ -149,17 +151,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   }
 
 #undef CP_MEMBER
-
-  Update();
-}
-
-void AnalysisConfig::EnableCUDNN() {
-#ifdef PADDLE_WITH_CUDA
-  use_cudnn_ = use_gpu_;
-#else
-  LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
-  use_cudnn_ = false;
-#endif
 
   Update();
 }
@@ -255,6 +246,7 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
+
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
@@ -271,16 +263,6 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       pass_builder()->AppendPass(pass);
     }
-  }
-
-  if (use_gpu() && use_cudnn_) {
-#ifdef PADDLE_WITH_CUDA
-    if (!enable_ir_optim_) {
-      LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
-    } else {
-      pass_builder()->EnableCUDNN();
-    }
-#endif
   }
 
   if (use_ngraph_) {
@@ -381,6 +363,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
 
+  ss << with_profile_;
+
   ss << enable_ir_optim_;
   ss << use_feed_fetch_ops_;
   ss << ir_debug_;
@@ -455,6 +439,12 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
+
+void AnalysisConfig::EnableProfile() {
+  with_profile_ = true;
+  Update();
+}
+
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
     int min_subgraph_size, AnalysisConfig::Precision precision_mode,
