@@ -22,7 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO(paddle-dev): Should use OpKernel.
 class SqueezeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
