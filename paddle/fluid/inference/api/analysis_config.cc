@@ -90,11 +90,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
 
+  CP_MEMBER(opt_cache_dir_);
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
-  // Gpu related.
+  // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cudnn_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
@@ -114,6 +116,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
+  CP_MEMBER(mkldnn_cache_capacity_);
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
@@ -150,6 +153,17 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   Update();
 }
 
+void AnalysisConfig::EnableCUDNN() {
+#ifdef PADDLE_WITH_CUDA
+  use_cudnn_ = use_gpu_;
+#else
+  LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
+  use_cudnn_ = false;
+#endif
+
+  Update();
+}
+
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_ = true;
@@ -159,6 +173,15 @@ void AnalysisConfig::EnableMKLDNN() {
 #endif
 
   Update();
+}
+
+void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
+#ifdef PADDLE_WITH_MKLDNN
+  mkldnn_cache_capacity_ = capacity;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
+  mkldnn_cache_capacity_ = 0;
+#endif
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
@@ -232,7 +255,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
-
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
@@ -249,6 +271,16 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       pass_builder()->AppendPass(pass);
     }
+  }
+
+  if (use_gpu() && use_cudnn_) {
+#ifdef PADDLE_WITH_CUDA
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableCUDNN();
+    }
+#endif
   }
 
   if (use_ngraph_) {
@@ -342,6 +374,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_ngraph_;
 
   ss << use_mkldnn_;
+  ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
@@ -404,11 +437,6 @@ void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
   model_from_memory_ = true;
 
   Update();
-}
-
-void AnalysisConfig::SetEngineOptInfo(
-    std::map<std::string, std::string> engine_opt_info) {
-  engine_opt_info_ = engine_opt_info;
 }
 
 NativeConfig AnalysisConfig::ToNativeConfig() const {

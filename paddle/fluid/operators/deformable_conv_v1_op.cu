@@ -11,13 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Part of the following code in this file refs to
+// https://github.com/msracver/Deformable-ConvNets/blob/master/faster_rcnn/operator_cxx/deformable_convolution.cu
+//
+// Copyright (c) 2017 Microsoft
+// Licensed under The Apache-2.0 License [see LICENSE for details]
+// \file deformable_psroi_pooling.cu
+// \brief
+// \author Yi Li, Guodong Zhang, Jifeng Dai
 
 #pragma once
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/deformable_conv_cu.h"
 #include "paddle/fluid/operators/deformable_conv_filter.cu.h"
+#include "paddle/fluid/operators/deformable_conv_func.h"
 #include "paddle/fluid/operators/deformable_conv_v1_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"

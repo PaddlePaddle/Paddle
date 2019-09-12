@@ -46,7 +46,7 @@ class GarbageCollector {
 
   platform::DeviceContext *dev_ctx_;
   std::unique_ptr<GarbageQueue> garbages_;
-  mutable std::mutex mutex_;
+  mutable std::unique_ptr<std::mutex> mutex_;
   const size_t max_memory_size_;
   size_t cur_memory_size_{0};
 };
@@ -118,7 +118,7 @@ void GarbageCollector::Add(Container &&objs, Callback &&callback) {
 
   GarbageQueue *garbage_queue = nullptr;
   {
-    std::lock_guard<std::mutex> guard(mutex_);
+    std::lock_guard<std::mutex> guard(*mutex_);
     for (auto &obj : objs) {
       if (!obj) continue;
       cur_memory_size_ += obj->size();

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_elementwise_max_op import *
+from test_elementwise_max_op import TestElementwiseMaxOp_scalar, TestElementwiseMaxOp_Vector, TestElementwiseMaxOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

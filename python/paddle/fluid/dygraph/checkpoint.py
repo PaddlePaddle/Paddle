@@ -26,14 +26,11 @@ __all__ = ['save_persistables', 'load_persistables']
 
 def save_persistables(model_dict, dirname='save_dir', optimizers=None):
     """
-    This function filters out all variables in layer.parameters from the
-    give `layer`, and optimizer's learning rate decay and then trys to load these variables from the folder
-    `dirname` or the file `filename`.
+    This function filters out all variables in layer.parameters from the give `layer`, and optimizer's learning rate decay.
+    And then trys to save these variables to the folder `dirname`.
 
     Use the `dirname` to specify the folder where persistable variables were
-    saved. If variables were saved in separate files, set `filename` None;
-    if all variables were saved in a single file, use `filename` to specify
-    the file name.
+    saved.
 
     Args:
         model_dict(dict of Parameters): The parameters will
@@ -82,20 +79,18 @@ def save_persistables(model_dict, dirname='save_dir', optimizers=None):
 
 def load_persistables(dirname='save_dir'):
     """
-    This function trys to load persistable variables from the folder
-    `dirname` or the file `filename`.
+    This function trys to load persistable variables and optimizer's learning rate decay from the folder `dirname`.
+    And return the restored values in a dictionary way, respectively.
 
     Use the `dirname` to specify the folder where persistable variables were
-    saved. If variables were saved in separate files, set `filename` None;
-    if all variables were saved in a single file, use `filename` to specify
-    the file name.
+    saved.
 
     Args:
         dirname(str): The directory path. default is save_dir
 
     Returns:
-        dict: The parameter-dict resumed from file
-        optimizer dict: The optimizer
+        layer_dict: The parameter-dict resumed from file
+        optimizer: The optimizer
 
     Examples:
 
@@ -174,6 +169,9 @@ def _save_var_to_file(stat_dict, optimizers, file_dir, file_name):
 
 
 def _load_var_from_file(file_dir):
+    if not os.path.exists(file_dir):
+        raise IOError("{} not exist".format(file_dir))
+
     def walk_filename(file_dir):
         base_path = os.path.join(file_dir)
         var_name_list = []

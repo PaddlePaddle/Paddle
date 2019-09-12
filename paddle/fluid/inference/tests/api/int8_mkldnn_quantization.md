@@ -91,7 +91,7 @@ Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default
 You can run `test_analyzer_int8_imagenet_classification` with the following arguments to reproduce the accuracy result on GoogleNet.
 
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_imagenet_classification --infer_model=third_party/inference_demo/int8v2/resnet50/model --infer_data=/~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+./paddle/fluid/inference/tests/api/test_analyzer_int8_image_classification --infer_model=third_party/inference_demo/int8v2/resnet50/model --infer_data=/~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
 
 To verify all the 7 models, you need to set the parameter of `--infer_model` to one of the following values in command line:

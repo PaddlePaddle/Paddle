@@ -23,6 +23,7 @@ from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
+import logging
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
@@ -197,20 +198,6 @@ class Conv2D(layers.Layer):
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
-
-        if self._use_cudnn:
-            self.create_variable(
-                name="kCUDNNFwdAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdDataAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdFilterAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
 
         self._bias_param = self.create_parameter(
             attr=self._bias_attr,
@@ -1132,6 +1119,7 @@ class BatchNorm(layers.Layer):
         self._variance.stop_gradient = True
 
         self._in_place = in_place
+        self._data_layout = data_layout
         self._momentum = momentum
         self._epsilon = epsilon
         self._is_test = is_test
@@ -1176,6 +1164,7 @@ class BatchNorm(layers.Layer):
                 "momentum": self._momentum,
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
+                "data_layout": self._data_layout,
                 "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
@@ -1294,8 +1283,7 @@ class LayerNorm(layers.Layer):
 
         h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
+    * :math:`a`: the vector representation of the summed inputs to the neurons in that layer.
 
     * :math:`H`: the number of hidden units in a layers
 
@@ -1374,6 +1362,10 @@ class LayerNorm(layers.Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0))
+        else:
+            if self._param_attr:
+                logging.warn("param_attr are only avaliable with scale is True")
+
         if self._shift:
             assert self._bias_attr is not False
             self._bias_w = self.create_parameter(
@@ -1381,6 +1373,9 @@ class LayerNorm(layers.Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True)
+        else:
+            if self._bias_attr:
+                logging.warn("bias_attr are only avaliable with shift is True")
 
     def forward(self, input):
         inputs = dict()
@@ -1410,7 +1405,7 @@ class LayerNorm(layers.Layer):
                 "begin_norm_axis": self._begin_norm_axis
             })
 
-        return self._helper.append_activation(layer_norm_out)
+        return self._helper.append_activation(layer_norm_out, act=self._act)
 
 
 class GRUUnit(layers.Layer):
@@ -1569,9 +1564,7 @@ class GRUUnit(layers.Layer):
 class NCE(layers.Layer):
     """
     Compute and return the noise-contrastive estimation training loss. See
-    `Noise-contrastive estimation: A new estimation principle for unnormalized
-    statistical models
-     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`.
+    `Noise-contrastive estimation: A new estimation principle for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_ .
     By default this operator uses a uniform distribution for sampling.
 
     Args:
@@ -1592,7 +1585,7 @@ class NCE(layers.Layer):
                        default: 'uniform'.
         custom_dist (float[]|None): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
-                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       custom_dist[i] is the probability of i-th class to be sampled.
                        Default: None.
         seed (int): The seed used in sampler. Default: 0.
         is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
@@ -1648,6 +1641,7 @@ class NCE(layers.Layer):
     def __init__(self,
                  name_scope,
                  num_total_classes,
+                 sample_weight=None,
                  param_attr=None,
                  bias_attr=None,
                  num_neg_samples=None,
@@ -1661,7 +1655,7 @@ class NCE(layers.Layer):
         self._num_total_classes = num_total_classes
 
         self._inputs = dict()
-
+        self._inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
         if sampler == "uniform":
             sampler = 0
         elif sampler == "log_uniform":
@@ -1939,17 +1933,17 @@ class BilinearTensorProduct(layers.Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if self._bias_attr:
-            bias_size = [1, self._size]
-            bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=bias_size,
-                dtype=self._dtype,
-                is_bias=True)
-            self._inputs["Bias"] = bias
+        bias_size = [1, self._size]
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=bias_size,
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
+        if self._bias_param:
+            self._inputs["Bias"] = self._bias_param
         if self._name is not None:
             out = self._helper.create_variable(
                 name=".".join([self.full_name(), self._name]),
@@ -1964,7 +1958,7 @@ class BilinearTensorProduct(layers.Layer):
             outputs={"Out": out})
 
         # add activation
-        return self._helper.append_activation(out)
+        return self._helper.append_activation(out, act=self._act)
 
 
 class Conv2DTranspose(layers.Layer):
@@ -2099,6 +2093,7 @@ class Conv2DTranspose(layers.Layer):
         assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
+        self._act = act
         self._groups = groups
         self._num_filters = num_filters
         self._use_cudnn = use_cudnn
@@ -2162,6 +2157,12 @@ class Conv2DTranspose(layers.Layer):
         self._img_filter = self.create_parameter(
             dtype=input.dtype, shape=filter_shape, attr=self._param_attr)
 
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
+
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
@@ -2179,8 +2180,19 @@ class Conv2DTranspose(layers.Layer):
                 'use_cudnn': self._use_cudnn
             })
 
-        pre_act = self._helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-        out = self._helper.append_activation(pre_act)
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
+
+        out = self._helper.append_activation(pre_act, act=self._act)
         return out
 
 
@@ -2230,12 +2242,19 @@ class SequenceConv(layers.Layer):
         self._padding = padding
         self._bias_attr = bias_attr
         self._param_attr = param_attr
+        self._act = act
 
     def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
         self._filter_param = self.create_parameter(
             attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
+
+        self._bias_param = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(self._dtype)
@@ -2251,8 +2270,20 @@ class SequenceConv(layers.Layer):
                 'contextStart': -int(self._filter_size // 2),
                 'contextLength': self._filter_size
             })
-        pre_act = self._helper.append_bias_op(pre_bias)
-        return self._helper.append_activation(pre_act)
+
+        if self._bias_param is not None:
+            pre_act = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [pre_bias],
+                        'Y': [self._bias_param]},
+                outputs={'Out': [pre_act]},
+                attrs={'axis': 1})
+        else:
+            pre_act = pre_bias
+
+        return self._helper.append_activation(pre_act, act=self._act)
 
 
 class RowConv(layers.Layer):
@@ -2403,9 +2434,9 @@ class GroupNorm(layers.Layer):
 
     def forward(self, input):
         inputs = {'X': input}
-        if self._bias:
+        if self._bias_attr:
             inputs['Bias'] = self._bias
-        if self._scale:
+        if self._param_attr:
             inputs['Scale'] = self._scale
 
         # create output
@@ -2614,6 +2645,7 @@ class TreeConv(layers.Layer):
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
         else:
+
             out = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
 

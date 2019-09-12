@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {
@@ -281,8 +281,10 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
-                                      xx_data, bias->data<T>());
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, total_T, D4, M, x_data, wx_data, xx_data, bias->data<T>());
 
     int xx_offset = D4;
     int gate_offset = D;
@@ -359,16 +361,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    math::FCFunctor<DeviceContext, T> fc;
     if (M > D4) {
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, x_data, wx_data,
-                                        xx_data, bias->data<T>());
+      fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());
       to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
       batched_input->set_lod(xx->lod());
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, xx_data,
-                                        wx_data, batched_input_data,
-                                        bias->data<T>());
+      fc(dev_ctx, x_dims[0], D4, M, xx_data, wx_data, batched_input_data,
+         bias->data<T>());
     }
 
     auto batched_lod = batched_input->lod();
@@ -474,8 +475,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_lstm, ops::FuisonLSTMKernel<float>,
                        ops::FuisonLSTMKernel<double>);

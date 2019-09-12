@@ -54,20 +54,9 @@ template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(caoying) The checks related to LoD information should be
-    // moved into InferShape once after the InferShape is refactored.
-    PADDLE_ENFORCE_EQ(ctx.Input<LoDTensor>("Emission")->NumLevels(), 1UL,
-                      "The Input(Emission) should be a sequence.");
-    PADDLE_ENFORCE_EQ(ctx.Input<LoDTensor>("Label")->NumLevels(), 1UL,
-                      "The Input(Label) should be a sequence.");
-    auto in_lod = ctx.Input<LoDTensor>("Label")->lod();
-    PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
-    const size_t level = 0;
-    const size_t seq_num = in_lod[level].size() - 1;
-
-    const LoDTensor* emission_weights = ctx.Input<LoDTensor>("Emission");
-    const Tensor* transition_weights = ctx.Input<Tensor>("Transition");
-    const LoDTensor* label = ctx.Input<LoDTensor>("Label");
+    const Tensor* emission_weights = ctx.Input<framework::Tensor>("Emission");
+    const Tensor* transition_weights =
+        ctx.Input<framework::Tensor>("Transition");
 
     Tensor* emission_exps = ctx.Output<Tensor>("EmissionExps");
     Tensor* transition_exps = ctx.Output<Tensor>("TransitionExps");
@@ -76,56 +65,103 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     // Because the computation codes only runs on CPU, here the memory for all
     // the outputs is FIXED to be allocated on the CPU memory.
-    emission_exps->mutable_data<T>(platform::CPUPlace());
+    auto* emission_exps_data =
+        emission_exps->mutable_data<T>(platform::CPUPlace());
+    auto* alpha_data = alpha->mutable_data<T>(platform::CPUPlace());
     transition_exps->mutable_data<T>(platform::CPUPlace());
-    alpha->mutable_data<T>(platform::CPUPlace());
-
     // Resize the output tensor to its correct dimension.
+    memset(emission_exps_data, 0, emission_exps->numel() * sizeof(T));
+    memset(alpha_data, 0, alpha->numel() * sizeof(T));
+    auto emission_dims = emission_weights->dims();
+
+    const Tensor* label = ctx.Input<framework::Tensor>("Label");
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    Tensor emission_weights_tmp = ctx.AllocateTmpTensor<T, DeviceContext>(
+        emission_weights->dims(), dev_ctx);
+    emission_weights_tmp.ShareDataWith(*emission_weights);
+    Tensor label_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
+    label_tmp.ShareDataWith(*label);
+    Tensor emission_exps_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
+    emission_exps_tmp.ShareDataWith(*emission_exps);
+    Tensor alpha_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
+    alpha_tmp.ShareDataWith(*alpha);
+    size_t seq_num = 0;
+    size_t batch_size;
+    size_t tag_num;
+    const int64_t* length_data = nullptr;
+    framework::Vector<size_t> in_lod;
+    if (ctx.HasInput("length")) {
+      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
+      length_data = label_length->data<int64_t>();
+      seq_num = label_length->numel();
+      batch_size = emission_dims[0] * emission_dims[1];
+      tag_num = emission_dims[2];
+      emission_weights_tmp.Resize(
+          {emission_dims[0] * emission_dims[1], emission_dims[2]});
+      auto label_dims = label->dims();
+      label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
+      alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
+      emission_exps_tmp.Resize(
+          {emission_dims[0] * emission_dims[1], emission_dims[2]});
+      PADDLE_ENFORCE_EQ(seq_num, emission_dims[0],
+                        "the size of Input(length) must be equal to "
+                        "emission_dims[0].");
+      PADDLE_ENFORCE_EQ(seq_num, label_dims[0],
+                        "the size of Input(length) must be equal to "
+                        "label_dims[0].");
+    } else {
+      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
+      batch_size = emission_dims[0];
+      tag_num = emission_dims[1];
+      in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
+      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
+    }
+
     ll->Resize({static_cast<int>(seq_num), 1});
     ll->mutable_data<T>(platform::CPUPlace());
-
     // Now, all the inputs and outputs should be on the CPU memory.
-    auto emission_dims = emission_weights->dims();
-    const size_t batch_size = emission_dims[0];
-    const size_t tag_num = emission_dims[1];
-
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
-
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    auto x = EigenMatrix<T>::From(*emission_weights);
+    auto x = EigenMatrix<T>::From(emission_weights_tmp);
     auto x_row_max = EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
         x.maximum(Eigen::DSizes<int, 1>(1))
             .reshape(Eigen::DSizes<int, 2>(static_cast<int>(batch_size), 1));
-
-    auto x_exps = EigenMatrix<T>::From(*emission_exps);
+    auto x_exps = EigenMatrix<T>::From(emission_exps_tmp);
     x_exps.device(place) =
         (x - x_row_max.broadcast(Eigen::DSizes<int, 2>(1, tag_num))).exp();
-
     auto w = EigenMatrix<T>::From(*transition_weights);
     auto w_exps = EigenMatrix<T>::From(*transition_exps);
     w_exps.device(place) = w.exp();
-
     T* log_likelihood = ll->data<T>();
     for (size_t i = 0; i < seq_num; ++i) {
-      int start_pos = static_cast<int>(in_lod[level][i]);
-      int end_pos = static_cast<int>(in_lod[level][i + 1]);
+      int start_pos = 0;
+      int end_pos = 0;
+      if (ctx.HasInput("length")) {
+        if (length_data[i] == 0) continue;
+        start_pos = i * emission_dims[1];
+        end_pos = start_pos + static_cast<int>(length_data[i]);
+      } else {
+        start_pos = static_cast<int>(in_lod[i]);
+        end_pos = static_cast<int>(in_lod[i + 1]);
+      }
       if (end_pos == start_pos) {
         // If an empty input sequence is given, pad 0 for its cost.
         log_likelihood[i] = 0.;
         continue;
       }
-
-      const Tensor one_seq = emission_weights->Slice(start_pos, end_pos);
+      const Tensor one_seq = emission_weights_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
-      Tensor one_seq_exps = emission_exps->Slice(start_pos, end_pos);
-      const Tensor one_seq_label = label->Slice(start_pos, end_pos);
-      Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
-
+      Tensor one_seq_exps = emission_exps_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       log_likelihood[i] = ForwardOneSequence(
           one_seq, one_seq_row_max, one_seq_exps, *transition_weights,
           *transition_exps, one_seq_label, &one_seq_alpha);
@@ -197,52 +233,91 @@ template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const size_t level = 0;  // currently, only support sequence.
-    auto lod = ctx.Input<LoDTensor>("Label")->lod();
-    PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
-
-    const Tensor* label = ctx.Input<LoDTensor>("Label");
+    const Tensor* label = ctx.Input<Tensor>("Label");
     const Tensor* emission_exps = ctx.Input<Tensor>("EmissionExps");
     const Tensor* transition_exps = ctx.Input<Tensor>("TransitionExps");
     const Tensor* alpha = ctx.Input<Tensor>("Alpha");
     const T* ll_grad =
         ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
-
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
+    auto* emission_grad_data =
+        emission_grad->mutable_data<T>(platform::CPUPlace());
+    memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
+    Tensor alpha_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
+    alpha_tmp.ShareDataWith(*alpha);
+    Tensor label_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
+    label_tmp.ShareDataWith(*label);
+    Tensor emission_exps_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
+    emission_exps_tmp.ShareDataWith(*emission_exps);
+    Tensor emission_grad_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(emission_grad->dims(), dev_ctx);
+    emission_grad_tmp.ShareDataWith(*emission_grad);
+    // getting seq_num  using padding or not
+    size_t seq_num = 0;
+    framework::Vector<size_t> lod;
+    const int64_t* length_data = nullptr;
+    if (ctx.HasInput("length")) {
+      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
+      length_data = label_length->data<int64_t>();
+      seq_num = label_length->numel();
+      auto emission_dims = emission_grad->dims();
+      auto label_dims = label->dims();
+      emission_grad_tmp.Resize(
+          {emission_dims[0] * emission_dims[1], emission_dims[2]});
+      label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
+      alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
+      emission_exps_tmp.Resize(
+          {emission_dims[0] * emission_dims[1], emission_dims[2]});
+    } else {
+      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
+      lod = ctx.Input<LoDTensor>("Label")->lod()[0];
+      PADDLE_ENFORCE_NE(lod.size(), 0, "Input(Label) must be a sequence.");
+    }
+
     Tensor* transition_grad =
         ctx.Output<Tensor>(framework::GradVarName("Transition"));
 
     // TODO(caoying) Fix this constraint. When the Input(Emission) is from the
     // data reader operator, it can have no gradients.
-    PADDLE_ENFORCE(emission_grad, "Output(Emission@Grad) should not be null.");
-    emission_grad->mutable_data<T>(platform::CPUPlace());
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
       math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
-
     auto emission_dims = emission_exps->dims();
     // Beta is the memo table used in dynamic programming to calculate the
     // backwark vectors. For a backward vector i (the i-th row of beta), it
     // captures the unnormalized probabilities of partial sequences starting
     // at position i.
     Tensor beta;
-    beta.mutable_data<T>(emission_dims, platform::CPUPlace());
-
-    for (size_t i = 0; i < lod[level].size() - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
-      if (end_pos == start_pos) continue;
-
+    auto* beta_data = beta.mutable_data<T>(emission_dims, platform::CPUPlace());
+    memset(beta_data, 0, beta.numel() * sizeof(T));
+    if (ctx.HasInput("length")) {
+      beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
+    }
+    for (size_t i = 0; i < seq_num; ++i) {
+      int start_pos = 0;
+      int end_pos = 0;
+      if (ctx.HasInput("length")) {
+        if (length_data[i] == 0) continue;
+        start_pos = i * emission_dims[1];
+        end_pos = start_pos + static_cast<int>(length_data[i]);
+      } else {
+        start_pos = static_cast<int>(lod[i]);
+        end_pos = static_cast<int>(lod[i + 1]);
+      }
       const Tensor one_seq_emission_exps =
-          emission_exps->Slice(start_pos, end_pos);
-      const Tensor one_seq_label = label->Slice(start_pos, end_pos);
-      const Tensor one_seq_alpha = alpha->Slice(start_pos, end_pos);
+          emission_exps_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
-      Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
-
+      Tensor one_seq_emission_grad =
+          emission_grad_tmp.Slice(start_pos, end_pos);
       BackwardOneSequence(
           ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
           one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
@@ -261,7 +336,6 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     const T* x_exps = emission_exps.data<T>();
     const int64_t* label_value = label.data<int64_t>();
     T* beta_value = beta->data<T>();
-
     auto x_dims = emission_exps.dims();
     const size_t seq_length = x_dims[0];
     const size_t tag_num = x_dims[1];

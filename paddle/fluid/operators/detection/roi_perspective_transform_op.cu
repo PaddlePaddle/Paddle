@@ -274,11 +274,14 @@ __device__ void get_transform_matrix(const int transformed_width,
 }
 
 template <typename T>
-__global__ void RoiTransformKernel(
-    const float* input_data, const float* rois_data, const int* roi2image_data,
-    int num_rois, int in_height, int in_width, int channels,
-    int transformed_height, int transformed_width, float spatial_scale,
-    T* output_data, int* out2in_idx, T* out2in_w, int* mask, T* matrix) {
+__global__ void RoiTransformKernel(const float* input_data,
+                                   const float* rois_data,
+                                   const int* roi2image_data, int num_rois,
+                                   int in_height, int in_width, int channels,
+                                   int transformed_height,
+                                   int transformed_width, float spatial_scale,
+                                   T* output_data, int* out2in_idx, T* out2in_w,
+                                   int* mask, T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
 
@@ -303,9 +306,12 @@ __global__ void RoiTransformKernel(
     }
 
     // Get transform matrix
+    T matrix[9];
     get_transform_matrix<T>(transformed_width, transformed_height, roi_x, roi_y,
                             matrix);
-
+    for (int i = 0; i < 9; i++) {
+      transform_matrix[n * 9 + i] = matrix[i];
+    }
     // Get source coords
     T in_w;
     T in_h;
@@ -389,7 +395,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     int grid = (out_size + block - 1) / block;
 
     // Get transform matrix
-    T* matrix = out_transform_matrix->mutable_data<T>({9}, ctx.GetPlace());
+    T* matrix =
+        out_transform_matrix->mutable_data<T>({rois_num, 9}, ctx.GetPlace());
 
     RoiTransformKernel<T><<<grid, block, 0, stream>>>(
         input_data, rois_data, roi2image_dev.data<int>(), rois_num, in_height,

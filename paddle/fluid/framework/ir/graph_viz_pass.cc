@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/string/printf.h"
@@ -25,8 +26,6 @@ namespace framework {
 namespace ir {
 using inference::analysis::Dot;
 namespace {
-const char kGraphVizPath[] = "graph_viz_path";
-
 std::string FormatName(const Node* node) {
   if (!node->IsOp() || !node->Op() ||
       !node->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
@@ -39,7 +38,7 @@ std::string FormatName(const Node* node) {
 }  // namespace
 
 void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
+  const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE(fout->good());
@@ -132,4 +131,4 @@ GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(
 }  // namespace paddle
 
 REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass)
-    .RequirePassAttr(paddle::framework::ir::kGraphVizPath);
+    .RequirePassAttr(paddle::framework::ir::kGraphvizPath);

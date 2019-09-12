@@ -99,6 +99,18 @@ void BindDataset(py::module* m) {
       .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize,
            py::call_guard<py::gil_scoped_release>())
       .def("set_queue_num", &framework::Dataset::SetChannelNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_parse_ins_id", &framework::Dataset::SetParseInsId,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_parse_content", &framework::Dataset::SetParseContent,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_merge_by_lineid", &framework::Dataset::SetMergeByInsId,
+           py::call_guard<py::gil_scoped_release>())
+      .def("merge_by_lineid", &framework::Dataset::MergeByInsId,
+           py::call_guard<py::gil_scoped_release>())
+      .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_fea_eval", &framework::Dataset::SetFeaEval,
            py::call_guard<py::gil_scoped_release>());
 }
 

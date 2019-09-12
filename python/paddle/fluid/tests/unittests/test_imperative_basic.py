@@ -405,6 +405,13 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad_h2h2, static_grad_h2h))
         self.assertTrue(np.allclose(dy_grad_i2h2, static_grad_i2h))
 
+    def test_layer_attrs(self):
+        layer = fluid.dygraph.Layer("test")
+        layer.test_attr = 1
+        self.assertFalse(hasattr(layer, "whatever"))
+        self.assertTrue(hasattr(layer, "test_attr"))
+        self.assertEqual(layer.test_attr, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

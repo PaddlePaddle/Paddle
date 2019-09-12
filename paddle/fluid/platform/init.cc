@@ -36,14 +36,17 @@ limitations under the License. */
 #include "dgc/dgc.h"
 #endif
 
-DEFINE_int32(paddle_num_threads, 1,
-             "Number of threads for each paddle instance.");
+DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "Multiple of the CUPTI device buffer size. If the timestamps have "
              "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
 namespace framework {
+
+#ifdef _WIN32
+#define strdup _strdup
+#endif
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
@@ -150,7 +153,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-  platform::DeviceTemporaryAllocator::Init();
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -204,9 +206,10 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 }
 
 #ifndef _WIN32
-static void SignalHandle(const char *data, int size) {
+void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
   try {
+    LOG(WARNING) << std::string(data, size);
     std::ofstream dump_info;
     dump_info.open(file_path, std::ios::app);
     dump_info << std::string(data, size);

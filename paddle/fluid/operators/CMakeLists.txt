@@ -48,8 +48,14 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
+SET(OP_ONLY_MKL "")
+if (NOT WITH_MKL)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
+endif()
+
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+	sync_batch_norm_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -82,10 +88,12 @@ endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper)
 if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu)
 endif()
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
@@ -106,6 +114,11 @@ cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
+if (WITH_GPU)
+    nv_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
+else()
+    cc_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc DEPS tensor device_context eigen3)
+endif()
 
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)

@@ -36,10 +36,10 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                       const std::vector<int>& src_tz, const float scale_data) {
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(src_dt));
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
+  platform::AppendKey(&key, std::to_string(src_dt));
+  platform::AppendKeyDims(&key, src_tz);
+  platform::AppendKey(&key, std::to_string(scale_data));
+  platform::AppendKey(&key, ctx.op().Output("Output"));
   return key;
 }
 
@@ -59,11 +59,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::vector<float> reorder_scale = {1.0f / scale_data};
 
     std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::format src_fmt = input->format();
+    MKLDNNMemoryFormat src_fmt = input->format();
     std::string key = CreateKey(ctx, src_dt, src_tz, reorder_scale[0]);
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
@@ -87,7 +87,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
 
       auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
-                                            memory::format::nchw);
+                                            MKLDNNMemoryFormat::nchw);
       auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
       dst_memory = std::make_shared<mkldnn::memory>(
           dst_pd, to_void_cast<float>(output_data));

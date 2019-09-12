@@ -35,10 +35,10 @@ std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
                       const bool is_negative) {
   std::string key;
   key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(is_negative));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
+  platform::AppendKeyDims(&key, src_tz);
+  platform::AppendKey(&key, std::to_string(scale_data));
+  platform::AppendKey(&key, std::to_string(is_negative));
+  platform::AppendKey(&key, ctx.op().Output("Output"));
   return key;
 }
 
@@ -54,8 +54,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     const T* input_data = input->data<T>();
 
@@ -123,8 +123,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-
-// TODO(Xiaoli) Support FP32->S8 quantization.
 
 REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

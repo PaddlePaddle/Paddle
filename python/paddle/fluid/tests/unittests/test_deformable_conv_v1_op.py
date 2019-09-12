@@ -120,14 +120,11 @@ class TestModulatedDeformableConvOp(OpTest):
 
         input = np.random.random(self.input_size).astype(self.dtype)
         offset = 10 * np.random.random(self.offset_size).astype(self.dtype)
-        #print(offset)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
         output = dconv_im2col_gemm(input, offset, filter, self.groups,
                                    conv_param)
         output = output.astype(self.dtype)
-        #print("input", input.shape)
-        #print("offset", offset.shape)
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
@@ -142,31 +139,20 @@ class TestModulatedDeformableConvOp(OpTest):
             'dilations': self.dilations,
         }
         self.outputs = {'Output': output}
-        #print("output", output.shape)
-    def has_cuda(self):
-        return core.is_compiled_with_cuda()
 
     def test_check_output(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, {'Input', 'Offset', 'Filter'},
-                'Output',
-                max_relative_error=0.05)
+        self.check_grad(
+            ['Input', 'Offset', 'Filter'], 'Output', max_relative_error=0.05)
 
     def test_check_grad_no_filter(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input', 'Offset'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Filter']))
+        self.check_grad(
+            ['Input', 'Offset'],
+            'Output',
+            max_relative_error=0.1,
+            no_grad_set=set(['Filter']))
 
     def init_test_case(self):
         self.pad = [1, 1]

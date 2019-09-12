@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -149,12 +150,10 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
       mean_data = est_mean->data<T>();
       var_data = est_var->data<T>();
     } else {
-      auto &allocator =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
       // x, x^2, 1, here 1 is used to calc device num
       // device num also can be got from platform::DeviceContextPool
       const int bytes = (C * 2 + 1) * sizeof(T);
-      alloc_ptr = allocator.Allocate(bytes);
+      alloc_ptr = memory::Alloc(dev_ctx, bytes);
 
       T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
       const int threads = 256;
@@ -178,7 +177,7 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
 
       int dtype = platform::ToNCCLDataType(x->type());
       // In-place operation
-      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
 
@@ -373,10 +372,8 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
 
     const T *saved_mean = ctx.Input<Tensor>("SavedMean")->data<T>();
     const T *saved_inv_var = ctx.Input<Tensor>("SavedVariance")->data<T>();
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     const int bytes = (C * 2 + 1) * sizeof(T);
-    auto alloc_ptr = allocator.Allocate(bytes);
+    auto alloc_ptr = memory::Alloc(dev_ctx, bytes);
     T *stats = reinterpret_cast<T *>(alloc_ptr->ptr());
 
     const int threads = 256;
@@ -398,7 +395,7 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     }
     int dtype = platform::ToNCCLDataType(x->type());
     // In-place operation
-    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
 

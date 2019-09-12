@@ -42,6 +42,8 @@ typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";
 
+constexpr char kNRanks[] = "nranks";
+
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
@@ -62,11 +64,18 @@ typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
-constexpr char kParamsAndGrads[] = "params_grads";
+constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
+constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
+
+typedef std::vector<ProgramDesc> ProgramDescs;
+constexpr char kProgramDescs[] = "program_descs";
+
+typedef std::unordered_set<std::string> PinnedVars;
+constexpr char kPinnedVars[] = "pinned_vars";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
-constexpr char kGroupParamsAndGrads[] = "group_params_grads";
+constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
 
 }  // namespace details
 }  // namespace framework

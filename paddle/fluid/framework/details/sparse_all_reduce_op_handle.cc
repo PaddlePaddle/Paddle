@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -58,8 +59,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   std::vector<LoDTensor *> outs;
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto &local_scope =
-        local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto *local_scope = local_exec_scopes_[i];
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + g_dgc_encoded;
@@ -104,16 +104,15 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
     auto &nccl_ctx = nccl_ctxs->at(dev_id);
+    auto *dev_ctx = nccl_ctxs->DevCtx(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
     int encode_size = 2 * k * sizeof(int);
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    auto tmp_ious_data = allocator.Allocate(buf_size);
+    auto tmp_ious_data = memory::Alloc(*dev_ctx, buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
@@ -127,7 +126,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     });
   }
 
-  RunAllReduceFuncs(all_reduce_calls);
+  NCCLAllReduceFunc(all_reduce_calls);
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
@@ -135,9 +134,8 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto var_name = original_name + g_dgc_k;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  auto var = local_scope->FindVar(var_name);
+  auto *scope = local_exec_scopes_[0];
+  auto var = scope->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(var);
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
@@ -151,8 +149,7 @@ bool SparseAllReduceOpHandle::IsEncoded() {
   auto step_name = g_dgc_rampup_begin_step;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto *local_scope = local_exec_scopes_[0];
   auto count_var = local_scope->FindVar(counter_name);
   auto step_var = local_scope->FindVar(step_name);
   if (count_var == nullptr || step_var == nullptr) {

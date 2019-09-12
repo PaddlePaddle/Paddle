@@ -19,6 +19,18 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
+def skip_ci(func):
+    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
+
+    def __func__(*args, **kwargs):
+        if on_ci:
+            return
+        return func(*args, **kwargs)
+
+    return __func__
+
+
+@skip_ci
 class TestDistMnist2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -46,7 +58,7 @@ class TestDistMnist2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
 if __name__ == "__main__":
