@@ -206,7 +206,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
                           iter->second);
         const auto& tmp = (*(fwd_var_iter->second))->GradVarBase();
 
-        PADDLE_ENFORCE_NOT_NULL(tmp,
+        PADDLE_ENFORCE_NOT_NULL(tmp.get(),
                                 "Grad output: %s of op: %s should not be NULL",
                                 (tmp->Name(), grad_op->Type()));
 

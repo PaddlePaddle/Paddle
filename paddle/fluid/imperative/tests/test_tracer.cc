@@ -80,6 +80,7 @@ TEST(test_tracer, test_track_backward_output) {
       new imperative::VarBase(true, "x_in"));
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(false, "y_in"));
+  x_in->SetOverridedStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
@@ -118,6 +119,7 @@ TEST(test_tracer, test_track_backward_input) {
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
   platform::CPUPlace place;
+  x_in->SetOverridedStopGradient(false);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims1 = {2, 5};
   std::vector<int64_t> dims2 = {5, 2};
