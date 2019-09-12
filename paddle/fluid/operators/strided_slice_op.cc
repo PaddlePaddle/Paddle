@@ -55,7 +55,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       out_dims_vector[i] = in_dims[i];
     }
     for (size_t i = 0; i < starts.size(); i++) {
-      PADDLE_ENFORCE_EQ(strides[i], 0, "stride must not to be zero");
+      PADDLE_ENFORCE_NE(strides[i], 0, "stride must not to be zero");
       int axes_index = axes[i];
       start_index = starts[i];
       end_index = ends[i];
