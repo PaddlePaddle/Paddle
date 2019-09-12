@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -206,7 +207,7 @@ inline std::string CreateKey(ArgTypes&&... args) {
   std::string key;
   key.reserve(256);
   using expand_type = int[];
-  expand_type{0, (AppendKey(&key, args), 0)...};
+  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
   return key;
 }
 
