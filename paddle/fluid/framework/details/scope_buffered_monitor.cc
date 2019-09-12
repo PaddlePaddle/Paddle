@@ -19,10 +19,10 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
-DEFINE_double(local_exe_scope_limit, 1024.0,  // MBytes
+DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "The memory limit of local execution scope. "
               "If you don't need to limit the memory of local execution scope,"
-              " you should set FLAGS_local_exe_scope_limit=-1."
+              " you should set FLAGS_local_exe_sub_scope_limit=-1."
               "The default value is 1024 MBytes. ");
 
 namespace paddle {
@@ -88,11 +88,13 @@ ScopeBufferedMonitor::ScopeBufferedMonitor(
     : places_(places), local_exec_scopes_(local_exec_scopes) {
   pre_local_exec_scopes_.resize(local_exec_scopes_.size());
   post_local_exec_scopes_.resize(local_exec_scopes_.size());
-  if (FLAGS_local_exe_scope_limit > 0) {
+  if (FLAGS_local_exe_sub_scope_limit > 0) {
     LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_local_exe_scope_limit is " << FLAGS_local_exe_scope_limit
+        << "FLAGS_local_exe_sub_scope_limit is "
+        << FLAGS_local_exe_sub_scope_limit
         << " MBytes now. If you don't need to limit the memory of local "
-           "execution scope, you should set FLAGS_local_exe_scope_limit=-1.";
+           "execution scope, you should set "
+           "FLAGS_local_exe_sub_scope_limit=-1.";
   }
 }
 
@@ -161,8 +163,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     ClearHistoryLocalExecScopes(history_step - 1);
   }
 
-  if (FLAGS_local_exe_scope_limit > 0 &&
-      (gpu_memory_size * kMB > FLAGS_local_exe_scope_limit)) {
+  if (FLAGS_local_exe_sub_scope_limit > 0 &&
+      (gpu_memory_size * kMB > FLAGS_local_exe_sub_scope_limit)) {
     for (auto &p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
