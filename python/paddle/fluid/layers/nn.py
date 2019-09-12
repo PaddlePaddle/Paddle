@@ -13747,3 +13747,48 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
                'scale': scale,
                'offset': offset})
     return out
+
+
+def masked_select(input, mask):
+    """
+    **Masked Select Layer**
+
+    This layer selects elements of the input tensor according to the mask tensor.
+    The shapes of the mask tensor don't have to match the shapes of input tensor, but they must be broadcastable, and the result is a new 1-D tensor.
+
+    Args:
+
+        input(Variable): The input tensor variable.
+        mask(Variable): The boolean mask tensor.
+
+    Returns:
+        
+        Out(Variable): masked sleect tensor.
+
+    Examples:
+        
+        ..code-block:: python
+
+            import paddle.fluid as fluid
+            data = numpy.array([-1,1,2,4,-5,-2]).astype("float32")
+            input = numpy.array([[1,2],[3,4],[5,6]]).astype("int32")
+            data_var = fluid.layers.create_tensor(dtype="float32", name="data")
+            input_var = fluid.layers.create_tensor(dtype="int32", name="input")
+            mask_var = data_var > 0
+
+            result = fluid.layers.masked_select(input = input_var, mask = mask_var)
+
+    """
+
+    helper = LayerHelper("masked_select", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=input.type)
+
+    #broadcast
+
+    helper.append_op(
+        type="masked_select",
+        inputs={"input": input,
+                "mask": mask},
+        outputs={"output": out})
+    return out
