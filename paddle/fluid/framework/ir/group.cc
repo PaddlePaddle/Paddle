@@ -43,33 +43,49 @@ void ElementwiseGroupDetector::MarkFusedGroup(const Graph& graph) {
     auto output_nodes = node.outputs;
     auto input_nodes = node.inputs;
 
-    if (node.NodeType() == ir::Node::Type::kOperation &&
-        elementwise_op.find(node.Op()->Type()) != elementwise_op.end()) {
-      for (size_t i = 0; i < input_nodes.size(); i++) {
-        auto pre_op = input_nodes[i]->inputs;
-        for (size_t j = 0; j < pre_op.size(); j++) {
-          if (pre_op[i]->NodeType() == ir::Node::Type::kOperation &&
-              elementwise_op.find(pre_op[i]->Op()->Type()) !=
-                  elementwise_op.end()) {
-            // hit we get group first wo insert the node id to master_id
-            bool exist_group = false;
-            for (size_t k = 0; k < groups.size(); i++) {
-              exist_group = groups[i].ExistInGroup(pre_op[i]);
-              if (exist_group) {
-                groups[i].InsertNode(&node);
-                break;
-              }
-            }
+    auto elementwise_node_boolean = [](Node* node) -> bool {
+      return node->NodeType() == ir::Node::Type::kOperation &&
+             elementwise_op.find(node->Op()->Type()) != elementwise_op.end();
+    };
+    if (elementwise_node_boolean(&node)) {
+      std::vector<Node*> adjacent_op{};
 
-            if (!exist_group) {
-              Group tmp_group;
-              tmp_group.InsertNode(pre_op[i]);
-              tmp_group.InsertNode(&node);
-              tmp_group.InsertRootId(pre_op[i]->id());
-              groups.push_back(tmp_group);
-            }
+      for (size_t i = 0; i < input_nodes.size(); i++) {
+        auto pre_ops = input_nodes[i]->inputs;
+        for (size_t j = 0; j < pre_ops.size(); j++) {
+          if (elementwise_node_boolean(pre_ops[j])) {
+            adjacent_op.push_back(pre_ops[j]);
           }
         }
+      }
+
+      for (size_t i = 0; i < output_nodes.size(); i++) {
+        auto next_ops = output_nodes[i]->inputs;
+        for (size_t j = 0; j < next_ops.size(); j++) {
+          if (elementwise_node_boolean(next_ops[j])) {
+            adjacent_op.push_back(next_ops[j]);
+          }
+        }
+      }
+
+      bool exist_group = false;
+      for (size_t i = 0; i < adjacent_op.size(); i++) {
+        for (size_t j = 0; j < groups.size(); j++) {
+          exist_group = (groups[j].ExistInGroup(adjacent_op[i]) ||
+                         groups[j].ExistInGroup(&node));
+          if (exist_group) {
+            groups[j].InsertNode(&node);
+            break;
+          }
+        }
+      }
+      if (!exist_group) {
+        Group tmp_group;
+        for (size_t j = 0; j < adjacent_op.size(); j++) {
+          tmp_group.InsertNode(adjacent_op[j]);
+        }
+        tmp_group.InsertNode(&node);
+        groups.push_back(tmp_group);
       }
     }
   }

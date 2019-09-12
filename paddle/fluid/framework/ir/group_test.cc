@@ -29,13 +29,13 @@ void BuildNoCircleGraph(Graph* g) {
   OpDesc op1;
   op1.SetType("conv2d");
   OpDesc op2;
-  op2.SetType("elementwise_add");
+  op2.SetType("relu");
   OpDesc op3;
-  op3.SetType("elementwise_mul");
+  op3.SetType("relu");
   OpDesc op4;
-  op4.SetType("relu");
+  op4.SetType("sigmoid");
   OpDesc op5;
-  op5.SetType("conv2d");
+  op5.SetType("elementwise_add");
   VarDesc var1("var1");
   VarDesc var2("var2");
   VarDesc var3("var3");
@@ -85,6 +85,7 @@ TEST(GroupTest, BasicFuse) {
   std::vector<Group> result = detector.GetFusedGroups();
   for (size_t i = 0; i < result.size(); i++) {
     result[i].PrintGroup();
+    std::cout << "--------------" << std::endl;
   }
 }
 
