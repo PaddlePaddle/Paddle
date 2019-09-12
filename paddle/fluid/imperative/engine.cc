@@ -74,9 +74,9 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   PADDLE_ENFORCE_EQ(var->Var().IsType<framework::LoDTensor>(), true,
                     "variable %s must be type LodTensor", var->Name());
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
-  if (var->GradVarBase().IsInitialized()) {
+  if (var->GradVarBase()->MutableVar()->IsInitialized()) {
     PADDLE_ENFORCE_EQ(
-        var->GradVarBase()->MutableVar().IsType<framework::LoDTensor>(), true,
+        var->GradVarBase()->MutableVar()->IsType<framework::LoDTensor>(), true,
         "Grad variable for variable %s must be type LodTensor", var->Name());
   }
   auto* grad_var =

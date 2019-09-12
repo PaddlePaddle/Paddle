@@ -205,10 +205,10 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   auto new_var = std::make_shared<VarBase>(
       false, "Itmp" + std::to_string(copied_counter_++));
 
-  PADDLE_ENFORCE_EQ(new_var->var_.IsInitialized(), true,
-                    "variable %s must be initialized", new_var->Name());
-  PADDLE_ENFORCE_EQ(new_var->var_.IsType<framework::LoDTensor>(), true,
-                    "variable %s must be type LodTensor", new_var->Name());
+  if (new_var->var_.IsInitialized()) {
+    PADDLE_ENFORCE_EQ(new_var->var_.IsType<framework::LoDTensor>(), true,
+                      "variable %s must be type LodTensor", new_var->Name());
+  }
   auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
   dst_tensor->set_lod(src_tensor.lod());
 
