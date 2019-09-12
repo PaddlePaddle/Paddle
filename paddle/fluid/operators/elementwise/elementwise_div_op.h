@@ -12,11 +12,11 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/fluid/operators/elementwise/elementwise.h"
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 

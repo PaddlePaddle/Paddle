@@ -14,7 +14,7 @@ limitations under the License. */
 #include <cuda.h>
 #include <cuda_fp16.h>
 #include <glog/logging.h>
-#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/operators/elementwise/elementwise.h"
 
 namespace paddle {
 namespace operators {

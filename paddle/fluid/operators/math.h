@@ -19,11 +19,6 @@
 
 #include "math.h"  // NOLINT
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
-#define PADDLE_CUDA_FP16
-#include <cuda_fp16.h>
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -46,74 +41,6 @@ inline HOSTDEVICE double real_log(double x) { return ::log(x); }
 inline HOSTDEVICE float real_min(float x, float y) { return ::fminf(x, y); }
 
 inline HOSTDEVICE double real_min(double x, double y) { return ::fmin(x, y); }
-
-#define DEFINE_SIMPLE_BINARY_FUNCTOR(Func, expr)                   \
-  template <typename T>                                            \
-  struct Func##Functor {                                           \
-    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
-      return a expr b;                                             \
-    }                                                              \
-  };
-
-DEFINE_SIMPLE_BINARY_FUNCTOR(Add, +)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Sub, -)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Mul, *)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Div, /)
-#undef DEFINE_SIMPLE_BINARY_FUNCTOR
-
-#if defined(PADDLE_CUDA_FP16)
-inline DEVICE half2 half2_add(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
-  return __hadd2(a, b);
-#else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x + fb.x;
-  fo.y = fa.y + fb.y;
-  return __float22half2_rn(fo);
-#endif
-}
-
-inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
-  return __hsub2(a, b);
-#else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x - fb.x;
-  fo.y = fa.y - fb.y;
-  return __float22half2_rn(fo);
-#endif
-}
-
-inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
-  return __hmul2(a, b);
-#else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x * fb.x;
-  fo.y = fa.y * fb.y;
-  return __float22half2_rn(fo);
-#endif
-}
-
-inline DEVICE half2 half2_div(const half2& a, const half2& b) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
-  return __h2div(a, b);
-#else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x / fb.x;
-  fo.y = fa.y / fb.y;
-  return __float22half2_rn(fo);
-#endif
-}
-#endif  // PADDLE_CUDA_FP16
 
 }  // namespace operators
 }  // namespace paddle
