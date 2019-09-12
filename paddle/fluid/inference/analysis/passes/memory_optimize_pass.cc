@@ -101,6 +101,16 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
       return sizeof(int32_t);
     case framework::proto::VarType_Type_INT64:
       return sizeof(int64_t);
+    case framework::proto::VarType_Type_INT16:
+      return sizeof(int16_t);
+    case framework::proto::VarType_Type_FP16:
+      return sizeof(int16_t);
+    case framework::proto::VarType_Type_FP64:
+      return sizeof(double);
+    case framework::proto::VarType_Type_UINT8:
+      return sizeof(unsigned char);
+    case framework::proto::VarType_Type_INT8:
+      return sizeof(int8_t);
     default:
       PADDLE_THROW("Unknown data type");
   }
