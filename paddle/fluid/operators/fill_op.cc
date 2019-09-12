@@ -59,7 +59,7 @@ class FillOp : public framework::OperatorWithKernel {
   }
 };
 
-class FillConstantOpVarTypeInference : public framework::VarTypeInference {
+class FillOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
@@ -73,7 +73,7 @@ class FillConstantOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fill, ops::FillOp, ops::FillOpMaker,
-                  ops::FillConstantOpVarTypeInference,
+                  ops::FillOpVarTypeInference,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(fill, ops::FillKernel<float>, ops::FillKernel<double>,
                        ops::FillKernel<int64_t>, ops::FillKernel<int>,
