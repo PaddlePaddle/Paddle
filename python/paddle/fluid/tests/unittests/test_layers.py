@@ -223,6 +223,13 @@ class TestLayer(LayerTest):
             conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_filters=3, filter_size=[2, 2], bias_attr=False)
+            dy_ret = conv2d(base.to_variable(images))
+            self.assertTrue(conv2d._bias_param is None)
+
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 

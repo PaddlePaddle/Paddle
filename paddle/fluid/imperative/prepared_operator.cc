@@ -37,6 +37,8 @@ void PreparedOp::PrepareData(
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto tmp_place = tensor->place();
+        // TODO(jiabin): Support transform data layout when we Verify it on more
+        // tests
         if (!(tmp_place == place)) {
           auto kernel_type_for_var = op.GetKernelTypeForVar(
               name_pair.first, *tensor, expected_kernel_key);
