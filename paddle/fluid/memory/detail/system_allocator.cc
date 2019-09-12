@@ -119,18 +119,18 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     return p;
   } else {
     PADDLE_THROW_BAD_ALLOC(
-        "Cannot malloc " + std::to_string(size / 1024.0 / 1024.0) +
-        " MB GPU memory. Please shrink "
+        "Out of memory error on GPU %s. Cannot malloc %lf MB GPU memory. "
+        "(1) Please shrink the batch size of your model or check "
+        "whether there is enough memory for the model. or (2) Please shrink "
         "FLAGS_fraction_of_gpu_memory_to_use or "
         "FLAGS_initial_gpu_memory_in_mb or "
         "FLAGS_reallocate_gpu_memory_in_mb "
-        "environment variable to a lower value. " +
-        "Current FLAGS_fraction_of_gpu_memory_to_use value is " +
-        std::to_string(FLAGS_fraction_of_gpu_memory_to_use) +
-        ". Current FLAGS_initial_gpu_memory_in_mb value is " +
-        std::to_string(FLAGS_initial_gpu_memory_in_mb) +
-        ". Current FLAGS_reallocate_gpu_memory_in_mb value is " +
-        std::to_string(FLAGS_reallocate_gpu_memory_in_mb));
+        "environment variable to a lower value. "
+        "Current FLAGS_fraction_of_gpu_memory_to_use value is %lf. "
+        "Current FLAGS_initial_gpu_memory_in_mb value is %lf. "
+        "Current FLAGS_reallocate_gpu_memory_in_mb value is %lf.",
+        gpu_id_, size / 1024.0 / 1024.0, FLAGS_fraction_of_gpu_memory_to_use,
+        FLAGS_initial_gpu_memory_in_mb, FLAGS_reallocate_gpu_memory_in_mb);
   }
 }
 
