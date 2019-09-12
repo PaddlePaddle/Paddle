@@ -198,6 +198,8 @@ struct Argument {
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode,
+                      AnalysisConfig::Precision);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

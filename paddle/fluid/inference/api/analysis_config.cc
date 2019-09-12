@@ -131,6 +131,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_ops_filter_);
 
   CP_MEMBER(use_lite_);
+  CP_MEMBER(lite_precision_mode_);
   CP_MEMBER(lite_passes_filter_);
   CP_MEMBER(lite_ops_filter_);
 
@@ -467,9 +468,11 @@ void AnalysisConfig::EnableAnakinEngine(
   Update();
 }
 
-void AnalysisConfig::EnableLiteEngine(const std::vector<std::string>& passes_filter,
+void AnalysisConfig::EnableLiteEngine(AnalysisConfig::Precision precision_mode,
+     const std::vector<std::string>& passes_filter,
      const std::vector<std::string>& ops_filter) {
   use_lite_ = true;
+  lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
   Update();

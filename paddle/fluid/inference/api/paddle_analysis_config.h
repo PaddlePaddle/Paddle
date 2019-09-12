@@ -164,7 +164,8 @@ struct AnalysisConfig {
       std::vector<std::string> passes_filter = {},
       std::vector<std::string> ops_filter = {});
 
-  void EnableLiteEngine(const std::vector<std::string>& passes_filter = {},
+  void EnableLiteEngine(AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+     const std::vector<std::string>& passes_filter = {},
      const std::vector<std::string>& ops_filter = {});
 
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
@@ -331,6 +332,7 @@ struct AnalysisConfig {
   bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
+  Precision lite_precision_mode_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

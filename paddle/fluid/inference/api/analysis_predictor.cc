@@ -434,6 +434,7 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
     LOG(INFO) << "Lite subgraph engine is enabled";

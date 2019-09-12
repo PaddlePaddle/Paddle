@@ -205,7 +205,7 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
     }
     *str = os.str();
   };
-
+  bool enable_int8 = Get<bool>("enable_int8");
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
   config.prefer_place = paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)});

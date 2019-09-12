@@ -127,11 +127,13 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new framework::ProgramDesc *(&argument->main_program()));
     }
     if (pass_name == "lite_subgraph_pass") {
+      bool enable_int8 = argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("lite_ops_filter",
                 new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
+      pass->Set("enable_int8", new bool(enable_int8));
     }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
