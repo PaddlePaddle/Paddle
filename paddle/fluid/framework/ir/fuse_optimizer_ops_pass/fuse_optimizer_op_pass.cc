@@ -49,7 +49,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   }
 
   VLOG(6) << "Find " << fuse_op_type << " operators : " << opt_ops_num
-          << ", and " << opt_nodes.size() << " for dense gradients ";
+          << ", and " << opt_nodes.size() << " for dense gradients.";
   if (opt_nodes.size() == 0 || result.Has(details::kFusedOptType)) {
     if (result.Has(details::kFusedOptType)) {
       auto &opt_type =
@@ -68,6 +68,11 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                "operators, which can not be handled well at present.";
     return;
   }
+
+  LOG(WARNING) << "Find " << fuse_op_type << " operators : " << opt_ops_num
+               << ", and " << opt_nodes.size() << " for dense gradients. "
+               << "To make the speed faster, those optimization are fused "
+                  "during training.";
 
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
