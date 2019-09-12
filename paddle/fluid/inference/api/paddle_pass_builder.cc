@@ -101,20 +101,24 @@ const std::vector<std::string> kAnakinSubgraphPasses({
     "fc_gru_fuse_pass",                             //
 });
 
+const std::vector<std::string> kLiteSubgraphPasses({
+    "lite_subgraph_pass",
+});
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",              //
     "conv_affine_channel_fuse_pass",                 //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
-        "conv_bn_fuse_pass",                         //
-        "conv_eltwiseadd_bn_fuse_pass",              //
+       // "conv_bn_fuse_pass",                         //
+       // "conv_eltwiseadd_bn_fuse_pass",              //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
-        "conv_elementwise_add_act_fuse_pass",   //
-        "conv_elementwise_add2_act_fuse_pass",  //
-        "conv_elementwise_add_fuse_pass",       //
+       // "conv_elementwise_add_act_fuse_pass",   //
+       // "conv_elementwise_add2_act_fuse_pass",  //
+       // "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
-        "transpose_flatten_concat_fuse_pass",
+       // "transpose_flatten_concat_fuse_pass",
         "lite_subgraph_pass",
         // following pass should be located in the last, since it will
         // work on all fused ops.
