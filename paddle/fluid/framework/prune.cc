@@ -99,8 +99,8 @@ void AppendOpInputVarNames(const proto::OpDesc& op_desc,
   }
 }
 
-void AppendOpOutputputVarNames(const proto::OpDesc& op_desc,
-                               std::unordered_set<std::string>* vars_set) {
+void AppendOpOutputVarNames(const proto::OpDesc& op_desc,
+                            std::unordered_set<std::string>* vars_set) {
   for (auto& var : op_desc.outputs()) {
     for (auto& arg : var.arguments()) {
       vars_set->emplace(arg);
@@ -267,7 +267,7 @@ void PruneBackwardImpl(proto::ProgramDesc* input, proto::ProgramDesc* output,
         HasDependentOutputVar(op_desc, op_input_vars)) {
       op_desc.set_is_target(true);
       AppendOpInputVarNames(op_desc, &op_input_vars);
-      AppendOpOutputputVarNames(op_desc, &op_output_vars);
+      AppendOpOutputVarNames(op_desc, &op_output_vars);
     }
   }
 
@@ -280,7 +280,7 @@ void PruneBackwardImpl(proto::ProgramDesc* input, proto::ProgramDesc* output,
         HasDependentInputVar(op_desc, gradop_output_vars)) {
       op_desc.set_is_target(false);
       AppendOpInputVarNames(op_desc, &gradop_input_vars);
-      AppendOpOutputputVarNames(op_desc, &gradop_output_vars);
+      AppendOpOutputVarNames(op_desc, &gradop_output_vars);
     }
   }
 
@@ -294,7 +294,7 @@ void PruneBackwardImpl(proto::ProgramDesc* input, proto::ProgramDesc* output,
       } else {
         op_desc.set_is_target(true);
         AppendOpInputVarNames(op_desc, &op_input_vars);
-        AppendOpOutputputVarNames(op_desc, &op_output_vars);
+        AppendOpOutputVarNames(op_desc, &op_output_vars);
       }
     }
   }
