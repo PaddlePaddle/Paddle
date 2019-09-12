@@ -38,14 +38,17 @@ class TestSquareErrorCost(unittest.TestCase):
         layers.assign(input=label_val, output=label_var)
         output = layers.square_error_cost(input=input_var, label=label_var)
 
-        cpu = core.CPUPlace()
-        exe = Executor(cpu)
-        result = exe.run(fluid.default_main_program(),
-                         feed={"input": input_var,
-                               "label": label_var},
-                         fetch_list=[output])
+        for use_cuda in ([False, True]
+                         if core.is_compiled_with_cuda() else [False]):
 
-        self.assertTrue(np.isclose(np_result, result).all())
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = Executor(place)
+            result = exe.run(fluid.default_main_program(),
+                             feed={"input": input_var,
+                                   "label": label_var},
+                             fetch_list=[output])
+
+            self.assertTrue(np.isclose(np_result, result).all())
 
 
 if __name__ == "__main__":
