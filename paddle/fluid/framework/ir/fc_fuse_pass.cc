@@ -80,6 +80,9 @@ void FCFusePass::ApplyImpl(ir::Graph* graph) const {
       if (with_relu) {
         std::string activation_type = "relu";
         desc.SetAttr("activation_type", activation_type);
+      } else {
+        std::string activation_type = "";
+        desc.SetAttr("activation_type", activation_type);
       }
 
       // For anakin subgraph int8
