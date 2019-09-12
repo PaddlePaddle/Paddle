@@ -56,7 +56,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     std::unordered_map<std::string, Node *> all_reduce_ops =
         GetAllReduceOps(result, places, grads);
 
-    VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
+    VLOG(6) << "Find all_reduce_ops: " << all_reduce_ops.size();
     if (all_reduce_ops.size() == 0) {
       return;
     }
@@ -65,10 +65,15 @@ class FuseAllReduceOpPass : public ir::Pass {
                       "The number of all_reduce OpHandle is not equal to the "
                       "number of grads. Maybe some gradients are sparse type, "
                       "it is not supported currently.");
-    VLOG(10) << "Insert fused_all_reduce";
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
+
+    LOG(WARNING) << string::Sprintf(
+        "Find all_reduce operators: %d. To make the speed faster, some "
+        "all_reduce ops are fused during training, after fusion, "
+        "the number of all_reduce ops is %d.",
+        all_reduce_ops.size(), group_params_grads.size());
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();
