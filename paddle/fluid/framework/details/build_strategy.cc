@@ -117,7 +117,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       LOG_IF(WARNING, strategy_.fuse_broadcast_ops_ == true)
           << "Currently, fuse_broadcast_ops only works under Reduce "
              "mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
+      strategy_.fuse_broadcast_ops_ = false;
     }
     if (strategy_.async_mode_) {
       LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
