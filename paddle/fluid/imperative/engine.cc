@@ -41,6 +41,8 @@ void Engine::RunOp(paddle::imperative::OpBase* op,
 
 void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   backward_strategy_ = strategy;
+  PADDLE_ENFORCE_NOT_NULL(var->GradVarBase(), "Grad of %s should not be NULL",
+                          var->Name());
   const std::vector<OpBase*> ops = var->GradVarBase()->GradOps();
   var->ClearGradOps();
 
@@ -67,7 +69,16 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
                     "Grad variable not exist for variable %s", var->Name());
 
+  PADDLE_ENFORCE_EQ(var->Var().IsInitialized(), true,
+                    "variable %s must be initialized", var->Name());
+  PADDLE_ENFORCE_EQ(var->Var().IsType<framework::LoDTensor>(), true,
+                    "variable %s must be type LodTensor", var->Name());
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
+  if (var->GradVarBase().IsInitialized()) {
+    PADDLE_ENFORCE_EQ(
+        var->GradVarBase()->MutableVar().IsType<framework::LoDTensor>(), true,
+        "Grad variable for variable %s must be type LodTensor", var->Name());
+  }
   auto* grad_var =
       var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(fwd_var.place());

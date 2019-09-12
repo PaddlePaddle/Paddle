@@ -108,6 +108,14 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
   if (cur_cnt_ == 0) {
     *dst_var = std::move(*(var->MutableVar()));
   } else {
+    PADDLE_ENFORCE_EQ(var->Var().IsInitialized(), true,
+                      "variable %s must be initialized", var->Name());
+    PADDLE_ENFORCE_EQ(var->Var().IsType<framework::LoDTensor>(), true,
+                      "variable %s must be type LodTensor", var->Name());
+    if (var_->Var().IsInitialized()) {
+      PADDLE_ENFORCE_EQ(var_->Var().IsType<framework::LoDTensor>(), true,
+                        "variable %s must be type LodTensor", var_->Name());
+    }
     TensorAdd(var->Var(), dst_var);
   }
   ++cur_cnt_;
@@ -137,6 +145,17 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 
     *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
     for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
+      PADDLE_ENFORCE_EQ(tmp_grad_vars_[i].first->Var().IsInitialized(), true,
+                        "variable %s must be initialized",
+                        tmp_grad_vars_[i].first->Name());
+      PADDLE_ENFORCE_EQ(
+          tmp_grad_vars_[i].first->Var().IsType<framework::LoDTensor>(), true,
+          "variable %s must be type LodTensor",
+          tmp_grad_vars_[i].first->Name());
+      if (var_->Var().IsInitialized()) {
+        PADDLE_ENFORCE_EQ(var_->Var().IsType<framework::LoDTensor>(), true,
+                          "variable %s must be type LodTensor", var_->Name());
+      }
       TensorAdd(tmp_grad_vars_[i].first->Var(), dst_var);
     }
 

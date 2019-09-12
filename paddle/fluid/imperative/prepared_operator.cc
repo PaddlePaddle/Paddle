@@ -33,6 +33,8 @@ platform::Place PreparedOp::GetExpectedPlace(const platform::Place& place,
   bool found = false;
   for (auto& name_pair : ins) {
     for (auto& var_base : name_pair.second) {
+      PADDLE_ENFORCE_EQ(var_base->Var().IsInitialized(), true,
+                        "variable %s must be initialized", var_base->Name());
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto tmp_place = tensor->place();

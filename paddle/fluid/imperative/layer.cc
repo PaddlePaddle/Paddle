@@ -178,6 +178,11 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 
 void VarBase::ClearGradient() {
   if (grad_var_) {
+    if (grad_var_->var_.IsInitialized()) {
+      PADDLE_ENFORCE_EQ(grad_var_->var_.IsType<framework::LoDTensor>(), true,
+                        "Grad variable for variable %s must be type LodTensor",
+                        name_);
+    }
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
@@ -200,6 +205,10 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   auto new_var = std::make_shared<VarBase>(
       false, "Itmp" + std::to_string(copied_counter_++));
 
+  PADDLE_ENFORCE_EQ(new_var->var_.IsInitialized(), true,
+                    "variable %s must be initialized", new_var->Name());
+  PADDLE_ENFORCE_EQ(new_var->var_.IsType<framework::LoDTensor>(), true,
+                    "variable %s must be type LodTensor", new_var->Name());
   auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
   dst_tensor->set_lod(src_tensor.lod());
 
