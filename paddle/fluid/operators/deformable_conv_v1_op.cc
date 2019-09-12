@@ -103,16 +103,16 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Input"),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), True,
                    "Input(Input) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Offset"),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Offset"), True,
                    "Input(Offset) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Filter"),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), True,
                    "Input(Filter) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasOutput("Output"),
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), True,
                    "Output(Output) of DeformableConvOp "
                    "should not be null.");
 
@@ -225,7 +225,7 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
 
-    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput(framework::GradVarName("Output")),
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Output")), True,
                    "the gradient of output(Out) must not be null");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
