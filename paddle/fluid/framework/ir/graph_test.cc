@@ -206,5 +206,51 @@ TEST(GraphTest, WriteAfterWrite) {
   ASSERT_NE(control_dep2, nullptr);
   ASSERT_EQ(control_dep1, control_dep2);
 }
+
+TEST(GraphTest, TestException) {
+  ProgramDesc prog;
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+
+  bool not_met_exception = false;
+  try {
+    g->Erase("no_attr");
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->CreateVarNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->CreateOpNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->RemoveNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->AddNode(nullptr);
+    g->AddNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+}
 }  // namespace framework
 }  // namespace paddle

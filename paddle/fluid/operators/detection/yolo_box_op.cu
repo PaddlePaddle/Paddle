@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detection/yolo_box_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -84,10 +85,8 @@ class YoloBoxOpCUDAKernel : public framework::OpKernel<T> {
     int input_size = downsample_ratio * h;
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = sizeof(int) * anchors.size();
-    auto anchors_ptr = allocator.Allocate(sizeof(int) * anchors.size());
+    auto anchors_ptr = memory::Alloc(dev_ctx, sizeof(int) * anchors.size());
     int* anchors_data = reinterpret_cast<int*>(anchors_ptr->ptr());
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     const auto cplace = platform::CPUPlace();

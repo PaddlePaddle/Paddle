@@ -29,14 +29,21 @@ namespace ir {
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
-    ir::Graph &result = *graph;
+    if (Get<size_t>(details::kNRanks) <= 1) {
+      VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
+              << ", there doesn't need apply FuseAllReduceOpPass.";
+      return;
+    }
+
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *multi_nccl_ctxs =
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
 #endif
 
+    ir::Graph &result = *graph;
     auto &params_grads =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     size_t num_of_all_reduce = params_grads.size();
@@ -203,4 +210,5 @@ class FuseAllReduceOpPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(fuse_all_reduce_op_pass,
-              paddle::framework::ir::FuseAllReduceOpPass);
+              paddle::framework::ir::FuseAllReduceOpPass)
+    .RequirePassAttr(paddle::framework::details::kNRanks);

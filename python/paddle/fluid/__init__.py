@@ -202,8 +202,6 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation',
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
             'local_exe_scope_limit'
         ]
