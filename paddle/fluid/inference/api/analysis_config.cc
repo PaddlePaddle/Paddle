@@ -467,7 +467,7 @@ void AnalysisConfig::EnableAnakinEngine(
   Update();
 }
 
-void AnalysisConfig::EnableAnakinEngine(const std::vector<std::string>& passes_filter,
+void AnalysisConfig::EnableLiteEngine(const std::vector<std::string>& passes_filter,
      const std::vector<std::string>& ops_filter) {
   use_lite_ = true;
   lite_passes_filter_ = passes_filter;
