@@ -104,17 +104,17 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                   "Input(Input) of DeformableConvOp "
-                   "should not be null");
+                      "Input(Input) of DeformableConvOp "
+                      "should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Offset"), true,
-                   "Input(Offset) of DeformableConvOp "
-                   "should not be null");
+                      "Input(Offset) of DeformableConvOp "
+                      "should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                   "Input(Filter) of DeformableConvOp "
-                   "should not be null");
+                      "Input(Filter) of DeformableConvOp "
+                      "should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                   "Output(Output) of DeformableConvOp "
-                   "should not be null.");
+                      "Output(Output) of DeformableConvOp "
+                      "should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
@@ -129,7 +129,8 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
     int im2col_step = ctx->Attrs().Get<int>("im2col_step");
 
     PADDLE_ENFORCE_EQ(in_dims.size(), 4,
-                   "Conv input should be 4-D tensor, get %u", in_dims.size());
+                      "Conv input should be 4-D tensor, get %u",
+                      in_dims.size());
     PADDLE_ENFORCE_EQ(
         in_dims.size(), filter_dims.size(),
         "Conv input dimension and filter dimension should be the same.");
@@ -226,7 +227,7 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
     auto offset_dims = ctx->GetInputDim("Offset");
 
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Output")), true,
-                   "the gradient of output(Out) must not be null");
+                      "the gradient of output(Out) must not be null");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
     }
