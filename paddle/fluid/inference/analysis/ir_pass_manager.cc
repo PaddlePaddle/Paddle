@@ -129,6 +129,8 @@ void IRPassManager::CreatePasses(Argument *argument,
     if (pass_name == "lite_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+      pass->Set("lite_ops_filter",
+                new std::vector<std::string>(argument->lite_ops_filter()));
     }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",

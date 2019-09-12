@@ -164,9 +164,16 @@ struct AnalysisConfig {
       std::vector<std::string> passes_filter = {},
       std::vector<std::string> ops_filter = {});
 
+  void EnableAnakinEngine(const std::vector<std::string>& passes_filter,
+     const std::vector<std::string>& ops_filter);
+
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
   bool anakin_engine_enabled() const { return use_anakin_; }
+
+  /** A boolean state indicating whether the Lite sub-graph engine is used.
+  */
+  bool lite_engine_enabled() const { return use_lite_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -320,6 +327,10 @@ struct AnalysisConfig {
   bool anakin_auto_config_layout_{false};
   std::vector<std::string> anakin_passes_filter_;
   std::vector<std::string> anakin_ops_filter_;
+
+  bool use_lite_{false};
+  std::vector<std::string> lite_passes_filter_;
+  std::vector<std::string> lite_ops_filter_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

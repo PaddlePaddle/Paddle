@@ -101,6 +101,10 @@ const std::vector<std::string> kAnakinSubgraphPasses({
     "fc_gru_fuse_pass",                             //
 });
 
+const std::vector<std::string> kLiteSubgraphPasses({
+    "lite_subgraph_pass",
+});
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",              //

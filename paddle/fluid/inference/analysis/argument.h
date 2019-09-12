@@ -194,6 +194,11 @@ struct Argument {
   DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
                       std::vector<std::string>);
 
+  DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter,
+                      std::vector<std::string>);
+
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
   DECL_ARGUMENT_FIELD(static_memory_optim, StaticMemoryOptim, bool);
