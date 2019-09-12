@@ -103,16 +103,16 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Input"),
                    "Input(Input) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Offset"),
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Offset"),
                    "Input(Offset) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput("Filter"),
                    "Input(Filter) of DeformableConvOp "
                    "should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasOutput("Output"),
                    "Output(Output) of DeformableConvOp "
                    "should not be null.");
 
@@ -128,7 +128,7 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
     int deformable_groups = ctx->Attrs().Get<int>("deformable_groups");
     int im2col_step = ctx->Attrs().Get<int>("im2col_step");
 
-    PADDLE_ENFORCE(in_dims.size() == 4,
+    PADDLE_ENFORCEi_EQ(in_dims.size(), 4,
                    "Conv input should be 4-D tensor, get %u", in_dims.size());
     PADDLE_ENFORCE_EQ(
         in_dims.size(), filter_dims.size(),
@@ -225,7 +225,7 @@ class DeformableConvV1GradOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     auto offset_dims = ctx->GetInputDim("Offset");
 
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Output")),
+    PADDLE_ENFORCE_NOT_NULL(ctx->HasInput(framework::GradVarName("Output")),
                    "the gradient of output(Out) must not be null");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
