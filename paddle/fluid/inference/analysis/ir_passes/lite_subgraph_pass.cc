@@ -42,14 +42,29 @@ using framework::ir::Node;
 
 namespace lite {
 
+std::string UniqueKey(const std::vector<std::string> &engine_inputs,
+                      const std::vector<std::string> &engine_outputs,
+                      const std::string& id) {
+  std::string engine_hash_key = "";
+  for (auto name : engine_inputs) {
+    engine_hash_key += name;
+  }
+  for (auto name : engine_outputs) {
+    engine_hash_key += name;
+  }
+  engine_hash_key += id;
+  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
+  return engine_key;
+}
+
 std::vector<std::string> IOVarsFilter(const std::vector<Node*>& nodes) {
-  std::vector<std::string> names;
+  std::set<std::string> names;
   for (const auto& node: nodes) {
     if (node->IsVar() && !node->Var()->Persistable()) { 
-      names.push_back(node->Name());
+      names.insert(node->Name());
     }
   }
-  return names;
+  return std::vector<std::string>(names.begin(), names.end());
 }
 
 void StrToBinaryFile(const std::string& path, const std::string& str) {
@@ -169,7 +184,8 @@ void OrganizeProgram(Node *merged_node,
 } // namespace lite
 
 void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
-  const std::vector<std::string>& repetitive_params) const {
+  const std::vector<std::string>& repetitive_params,
+  const std::string& unique_key) const {
   inference::lite::EngineConfig config;
   auto *scope = param_scope();
 
@@ -198,7 +214,7 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
       paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
   };
   inference::Singleton<inference::lite::EngineManager>::Global()
-      .Create("engine_key", config);
+      .Create(unique_key, config);
 }
 
 void LiteSubgraphPass::BuildOperator(
@@ -207,14 +223,19 @@ void LiteSubgraphPass::BuildOperator(
   
   framework::ProgramDesc engine_program;
 
+  const std::string id = std::to_string(Get<int>("predictor_id"));
+  const std::vector<std::string> input_names = lite::IOVarsFilter(merged_node->inputs);
+  const std::vector<std::string> output_names = lite::IOVarsFilter(merged_node->outputs);
+  const std::string unique_key = lite::UniqueKey(input_names, output_names, id);
+
   lite::OrganizeProgram(merged_node, global_program, &engine_program, repetitive_params);
-  SetUpEngine(&engine_program, *repetitive_params);
+  SetUpEngine(&engine_program, *repetitive_params, unique_key);
 
   auto *op_desc = merged_node->Op();
-  op_desc->SetInput("Xs", lite::IOVarsFilter(merged_node->inputs));
-  op_desc->SetOutput("Ys", lite::IOVarsFilter(merged_node->outputs));
+  op_desc->SetInput("Xs", input_names);
+  op_desc->SetOutput("Ys", output_names);
   op_desc->SetType("lite_engine");
-  op_desc->SetAttr("engine_key", std::string("engine_key"));
+  op_desc->SetAttr("engine_key", unique_key);
 }
 
 void LiteSubgraphPass::ApplyImpl(
@@ -223,8 +244,7 @@ void LiteSubgraphPass::ApplyImpl(
   framework::ir::FusePassBase::Init("lite_subgraph_pass", graph);
   framework::ProgramDesc* global_program = Get<framework::ProgramDesc *>("program");
 
-  // auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
-  std::vector<std::string> lite_ops_filter = {};
+  auto &lite_ops_filter = Get<std::vector<std::string>>("lite_ops_filter");
 
   auto teller = [&lite_ops_filter](const Node *node) {
     if (!node->IsOp() || !node->Op())
