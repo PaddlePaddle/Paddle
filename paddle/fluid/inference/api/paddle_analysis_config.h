@@ -164,8 +164,8 @@ struct AnalysisConfig {
       std::vector<std::string> passes_filter = {},
       std::vector<std::string> ops_filter = {});
 
-  void EnableLiteEngine(const std::vector<std::string>& passes_filter,
-     const std::vector<std::string>& ops_filter);
+  void EnableLiteEngine(const std::vector<std::string>& passes_filter = {},
+     const std::vector<std::string>& ops_filter = {});
 
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
