@@ -546,7 +546,7 @@ class OpTest(unittest.TestCase):
                                 atol,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_dygraph=False,
+                                check_dygraph=True,
                                 inplace_atol=None):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
@@ -699,7 +699,7 @@ class OpTest(unittest.TestCase):
                      atol=1e-5,
                      no_check_set=None,
                      equal_nan=False,
-                     check_dygraph=False,
+                     check_dygraph=True,
                      inplace_atol=None):
         places = self._get_places()
         for place in places:
