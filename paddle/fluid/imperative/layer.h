@@ -27,6 +27,10 @@
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
@@ -176,17 +180,21 @@ class Layer {
 };
 
 class DygraphExecutionContext : public framework::ExecutionContext {
+  using Variable = framework::Variable;
+
  public:
   DygraphExecutionContext(const framework::OperatorBase& op,
                           const framework::Scope& scope,
                           const platform::DeviceContext& device_context,
                           const framework::RuntimeContext& ctx,
                           std::vector<framework::KernelConfig>* configs,
-                          const VarBasePtrMap& var_base_map_in,
-                          const VarBasePtrMap& var_base_map_out)
+                          const NameVarBaseMap& var_base_map_in,
+                          const NameVarBaseMap& var_base_map_out,
+                          const framework::AttributeMap* attrs)
       : ExecutionContext(op, scope, device_context, ctx, configs),
         var_base_map_in_(var_base_map_in),
-        var_base_map_out_(var_base_map_out) {}
+        var_base_map_out_(var_base_map_out),
+        attrs_(attrs) {}
 
   std::string InputName(const std::string& name) const {
     auto it = var_base_map_in_.find(name);
@@ -200,7 +208,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
                    name);
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
-    for (size_t i = 0; i < it->second.size(); ++it) {
+    for (size_t i = 0; i < it->second.size(); ++i) {
       vec_res.push_back(it->second[i]->Name());
     }
     return vec_res;
@@ -219,15 +227,89 @@ class DygraphExecutionContext : public framework::ExecutionContext {
                    name);
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
-    for (size_t i = 0; i < it->second.size(); ++it) {
+    for (size_t i = 0; i < it->second.size(); ++i) {
       vec_res.push_back(it->second[i]->Name());
     }
     return vec_res;
   }
 
+  bool HasAttr(const std::string& name) const { return attrs_->count(name); }
+
+  const framework::AttributeMap& Attrs() const { return *attrs_; }
+
+  const framework::Attribute& GetAttr(const std::string& name) const {
+    auto it = attrs_->find(name);
+
+    PADDLE_ENFORCE(it != attrs_->end(), "can not find [%s] in attrs", name);
+    return it->second;
+  }
+
+  bool HasInput(const std::string& name) const {
+    return var_base_map_in_.count(name) > 0;
+  }
+
+  virtual bool HasOutput(const std::string& name) const {
+    return var_base_map_out_.count(name) > 0;
+  }
+
+  size_t InputSize(const std::string& name) const {
+    return InputNames(name).size();
+  }
+
+  size_t OutputSize(const std::string& name) const {
+    return OutputNames(name).size();
+  }
+
+  const Variable* InputVar(const std::string& name) const override {
+    auto it = var_base_map_in_.find(name);
+    if (it == var_base_map_in_.end()) {
+      return nullptr;
+    }
+    return it->second[0]->MutableVar();
+  }
+
+  Variable* OutputVar(const std::string& name) const {
+    auto it = var_base_map_out_.find(name);
+    if (it == var_base_map_out_.end()) {
+      return nullptr;
+    }
+
+    return it->second[0]->MutableVar();
+  }
+
+  const std::vector<Variable*> MultiInputVar(
+      const std::string& name) const override {
+    auto it = var_base_map_in_.find(name);
+    if (it == var_base_map_in_.end()) {
+      return {};
+    }
+    std::vector<Variable*> vec_res;
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      vec_res.push_back(it->second[i]->MutableVar());
+    }
+
+    return vec_res;
+  }
+
+  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+    auto it = var_base_map_out_.find(name);
+    if (it == var_base_map_out_.end()) {
+      return {};
+    }
+    std::vector<Variable*> vec_res;
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      vec_res.push_back(it->second[i]->MutableVar());
+    }
+
+    return vec_res;
+  }
+
  private:
-  const VarBasePtrMap& var_base_map_in_;
-  const VarBasePtrMap& var_base_map_out_;
+  const NameVarBaseMap& var_base_map_in_;
+  const NameVarBaseMap& var_base_map_out_;
+  const framework::AttributeMap* attrs_;
 };
 
 // infer var type context for imperative mode
@@ -393,7 +475,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return op_->Outputs();
   }
 
-  const framework::AttributeMap& Attrs() const { return op_->Attrs(); }
+  const framework::AttributeMap& Attrs() const { return attrs_; }
   const framework::OpInfo& Info() const { return op_->Info(); }
 
   void ClearBackwardTrace();
@@ -448,6 +530,277 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
+
+  framework::AttributeMap attrs_;
+};
+
+class DygraphInferShapeContext : public framework::InferShapeContext {
+  using DDim = framework::DDim;
+
+ public:
+  DygraphInferShapeContext(const NameVarBaseMap* in, const NameVarBaseMap* out,
+                           const framework::AttributeMap* attr)
+      : var_base_map_in_(in), var_base_map_out_(out), attrs_(attr) {}
+
+  bool HasInput(const std::string& name) const override {
+    // has only one input
+    auto it = var_base_map_in_->find(name);
+
+    if (it == var_base_map_in_->end()) {
+      return false;
+    }
+    const auto& in = it->second;
+    if (in.size() == 0) return false;
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
+                      "Input %s should not have more than one inputs", name);
+    return in[0] != nullptr;
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    // has only one output
+    auto it = var_base_map_out_->find(name);
+    if (it == var_base_map_out_->end()) {
+      return false;
+    }
+    const auto& out = it->second;
+    if (out.size() == 0) {
+      return false;
+    }
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
+    return out[0] != nullptr;
+  }
+
+  bool HasInputs(const std::string& name) const override {
+    auto it = var_base_map_in_->find(name);
+    if (it == var_base_map_in_->end() || it->second.empty()) {
+      return false;
+    }
+    for (auto& input : it->second) {
+      if (input == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool HasOutputs(const std::string& name) const override {
+    auto it = var_base_map_out_->find(name);
+    if (it == var_base_map_out_->end() || it->second.empty()) {
+      return false;
+    }
+    for (auto& output : it->second) {
+      if (output == nullptr) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  framework::AttrReader Attrs() const override {
+    return framework::AttrReader(*attrs_);
+  }
+
+  std::vector<std::string> Inputs(const std::string& name) const override {
+    // return op_.Inputs(name);
+    std::vector<std::string> vec_res;
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
+                   name);
+
+    vec_res.reserve(it->second.size());
+    for (auto& var : it->second) {
+      vec_res.push_back(var->Name());
+    }
+
+    return vec_res;
+  }
+
+  std::vector<std::string> Outputs(const std::string& name) const override {
+    std::vector<std::string> vec_res;
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_->end(),
+                   "can not find [%s] in output", name);
+
+    vec_res.reserve(it->second.size());
+    for (auto& var : it->second) {
+      vec_res.push_back(var->Name());
+    }
+
+    return vec_res;
+  }
+
+  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) override {
+    auto in_it = var_base_map_in_->find(in);
+    auto out_it = var_base_map_out_->find(out);
+    PADDLE_ENFORCE(in_it != var_base_map_in_->end() && in_it->second.size() > i,
+                   "Inputs %s should have %llu argument", in, i);
+    PADDLE_ENFORCE(
+        out_it != var_base_map_out_->end() && out_it->second.size() > j,
+        "Outputs %s should have %llu argument", out, j);
+
+    framework::Variable* in_var = in_it->second[i]->MutableVar();
+    framework::Variable* out_var = out_it->second[j]->MutableVar();
+
+    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
+                   "The type of %s and %s is not the same.", in, out);
+
+    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    out_lod_tensor->Resize(in_lod_tensor.dims());
+  }
+
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    // don't nothing
+  }
+
+  void DecreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  }
+
+  bool IsRuntime() const override { return true; }
+
+  // TODO(paddle-dev): Can this be template?
+  std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
+      const std::string& name) override {
+    PADDLE_THROW("GetInputVarPtrs not support in dygraph runtime context");
+  }
+
+  std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string& name) override {
+    PADDLE_THROW("GetOutputVarPtrs not support in dygraph runtime context");
+  }
+
+  DDim GetInputDim(const std::string& name) const override {
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
+                   name);
+    PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
+                      "Input(%s) should hold one element, but now it holds %d",
+                      name, it->second.size());
+    return this->GetDim(it->second[0]->MutableVar());
+  }
+
+  std::vector<DDim> GetInputsDim(const std::string& name) const override {
+    // const std::vector<Variable*>& vars = InputVars(name);
+    std::vector<DDim> vec_res;
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in output",
+                   name);
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      vec_res.emplace_back(GetDim(it->second[i]->MutableVar()));
+    }
+
+    return vec_res;
+  }
+
+  std::vector<framework::proto::VarType::Type> GetInputsVarType(
+      const std::string& name) const override {
+    std::vector<framework::proto::VarType::Type> vec_res;
+    auto it = var_base_map_in_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
+                   name);
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      vec_res.emplace_back(
+          framework::ToVarType(it->second[i]->MutableVar()->Type()));
+    }
+    return vec_res;
+  }
+
+  std::vector<framework::proto::VarType::Type> GetOutputsVarType(
+      const std::string& name) const override {
+    std::vector<framework::proto::VarType::Type> vec_res;
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_->end(),
+                   "can not find [%s] in output", name);
+    vec_res.reserve(it->second.size());
+    for (size_t i = 0; i < it->second.size(); ++i) {
+      vec_res.emplace_back(
+          framework::ToVarType(it->second[i]->MutableVar()->Type()));
+    }
+    return vec_res;
+  }
+
+  void SetOutputDim(const std::string& name, const DDim& dim) override {
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_->end(),
+                   "can not find [%s] in output", name);
+
+    SetDim(it->second[0]->MutableVar(), dim);
+  }
+
+  void SetOutputsDim(const std::string& name,
+                     const std::vector<DDim>& dims) override {
+    // auto& vars = OutputVars(name);
+    // SetDims(vars, dims);
+
+    auto it = var_base_map_out_->find(name);
+    PADDLE_ENFORCE(it != var_base_map_out_->end(),
+                   "can not find [%s] in output", name);
+
+    PADDLE_ENFORCE_EQ(it->second.size(), dims.size(),
+                      "dim size [%d] is not match output var number [%d]",
+                      dims.size(), it->second.size());
+
+    for (size_t i = 0; i < dims.size(); ++i) {
+      SetDim(it->second[i]->MutableVar(), dims[i]);
+    }
+  }
+
+ protected:
+  DDim GetDim(framework::Variable* var) const {
+    PADDLE_ENFORCE_NOT_NULL(var);
+    if (var->IsType<framework::LoDTensor>()) {
+      return var->Get<framework::LoDTensor>().dims();
+    } else if (var->IsType<framework::SelectedRows>()) {
+      return var->Get<framework::SelectedRows>().GetCompleteDims();
+    } else {
+      PADDLE_THROW(
+          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
+          "type_id is xx.");
+    }
+  }
+
+  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
+    PADDLE_THROW("Only compile time support this method");
+  }
+
+  void SetDim(framework::Variable* var, const DDim& dim) {
+    if (var->IsType<framework::LoDTensor>()) {
+      var->GetMutable<framework::LoDTensor>()->Resize(dim);
+    } else if (var->IsType<framework::SelectedRows>()) {
+      var->GetMutable<framework::SelectedRows>()->set_height(dim[0]);
+    } else {
+      PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.");
+    }
+  }
+
+  void SetDims(const std::vector<framework::Variable*>& vars,
+               const std::vector<DDim>& dims) {
+    size_t length = vars.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      if (vars[i] == nullptr) {
+        continue;
+      }
+      SetDim(vars[i], dims[i]);
+    }
+  }
+
+  void SetRepeatedDims(const std::string& name,
+                       const std::vector<DDim>& dims) override {
+    PADDLE_THROW("Only compile time support this method");
+  }
+
+ private:
+  const NameVarBaseMap* var_base_map_in_;
+  const NameVarBaseMap* var_base_map_out_;
+  const framework::AttributeMap* attrs_;
 };
 
 }  // namespace imperative

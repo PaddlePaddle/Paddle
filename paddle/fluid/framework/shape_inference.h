@@ -54,10 +54,8 @@ class InferShapeContext {
                              const std::vector<DDim> &dims);
 
   virtual AttrReader Attrs() const = 0;
-  virtual const std::vector<std::string> &Inputs(
-      const std::string &name) const = 0;
-  virtual const std::vector<std::string> &Outputs(
-      const std::string &name) const = 0;
+  virtual std::vector<std::string> Inputs(const std::string &name) const = 0;
+  virtual std::vector<std::string> Outputs(const std::string &name) const = 0;
 
   virtual void ShareDim(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) = 0;

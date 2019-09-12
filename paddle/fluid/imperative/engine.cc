@@ -186,7 +186,6 @@ void BasicEngine::Execute() {
         }
       }
     }
-
     VLOG(3) << "Start to execute grad op " << cur_op->Type();
     RunOp(cur_op, bwd_ins, tmp_outs, cur_op->place());
     // Step 2: Sum Gradient

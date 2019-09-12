@@ -222,26 +222,32 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const platform::Place& place)
-    : id_(id), place_(place) {
+    : id_(id), place_(place), attrs_(attrs) {
   const auto& info = framework::OpInfoMap::Instance().Get(type);
 
   // Step 1: Run forward
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs);
+    info.Checker()->Check(&attrs_);
   }
 
-  auto input_name_map = CreateVarNameMap(info, type, ins, true);
-  auto output_name_map = CreateVarNameMap(info, type, outs, false);
-  op_ = framework::OpRegistry::CreateOp(type, std::move(input_name_map),
-                                        std::move(output_name_map),
-                                        std::move(attrs));
+  // auto input_name_map = CreateVarNameMap(info, type, ins, true);
+  // auto output_name_map = CreateVarNameMap(info, type, outs, false);
+  op_ = framework::OpRegistry::CreateOp(type, {}, {}, {});
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
 // create OpBase from opdesc
 OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
                const platform::Place& place)
-    : id_(id), op_(framework::OpRegistry::CreateOp(op_desc)), place_(place) {
+    : id_(id),
+      op_(framework::OpRegistry::CreateOp(op_desc.Type(), {}, {}, {})),
+      place_(place),
+      attrs_(op_desc.GetAttrMap()) {
+  const auto& info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs_);
+  }
   VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
 }
 
@@ -263,13 +269,13 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  auto runtime_ctx = PrepareRuntimeContext(ins, outs);
+  // auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
-
+  framework::RuntimeContext runtime_ctx({}, {});
   auto prepared_op =
-      PreparedOp::Prepare(runtime_ctx, *op_kernel, runtime_place);
+      PreparedOp::Prepare(ins, outs, *op_kernel, runtime_place, &attrs_);
 
-  prepared_op.Run();
+  prepared_op.Run(&ins, &outs, &attrs_);
 
   VLOG(4) << LayerDebugString(Type(), ins, outs);
 }

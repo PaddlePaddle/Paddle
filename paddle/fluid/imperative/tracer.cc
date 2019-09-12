@@ -35,15 +35,39 @@ static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
-  platform::RecordEvent event(type);
+  // platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
-  auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  auto op = OpBase::Create(op_id, type, ins, outs, attrs, place);
   op->Run(ins, outs);
 
+  // framework::VariableValueMap invars_map;
+  framework::VariableNameMap in_name_map;
+  framework::VariableNameMap out_name_map;
+
+  for (auto& it : ins) {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(it.second.size());
+    for (auto& var_base_it : it.second) {
+      vec_temp.push_back(var_base_it->Name());
+    }
+    in_name_map.emplace(it.first, std::move(vec_temp));
+  }
+
+  for (auto& it : outs) {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(it.second.size());
+
+    for (auto& var_base_it : it.second) {
+      vec_temp.push_back(var_base_it->Name());
+    }
+
+    out_name_map.emplace(it.first, std::move(vec_temp));
+  }
+
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
-                                        op->OutputNameMap(), op->Attrs()),
+    TraceBackward(op, framework::OpDesc(op->Type(), in_name_map, out_name_map,
+                                        op->Attrs()),
                   ins, outs);
   }
 }

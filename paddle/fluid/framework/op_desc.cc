@@ -47,11 +47,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override;
 
-  const std::vector<std::string> &Inputs(
-      const std::string &name) const override;
+  std::vector<std::string> Inputs(const std::string &name) const override;
 
-  const std::vector<std::string> &Outputs(
-      const std::string &name) const override;
+  std::vector<std::string> Outputs(const std::string &name) const override;
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) override {
@@ -163,7 +161,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   void SetOutputDim(const std::string &name, const DDim &dim) override {
-    auto &arg_names = Outputs(name);
+    auto arg_names = Outputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
                       "Output(%s) should hold one element, but now it holds %d",
                       name, arg_names.size());
@@ -172,7 +170,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string &name,
                      const std::vector<DDim> &dims) override {
-    auto &names = Outputs(name);
+    auto names = Outputs(name);
     SetDims(names, dims);
   }
 
@@ -779,12 +777,12 @@ AttrReader CompileTimeInferShapeContext::Attrs() const {
   return AttrReader(op_.GetAttrMap());
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
+std::vector<std::string> CompileTimeInferShapeContext::Inputs(
     const std::string &name) const {
   return op_.Input(name);
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
+std::vector<std::string> CompileTimeInferShapeContext::Outputs(
     const std::string &name) const {
   return op_.Output(name);
 }

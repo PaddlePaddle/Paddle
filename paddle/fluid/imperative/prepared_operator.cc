@@ -57,9 +57,11 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       dev_ctx_(dev_ctx),
       kernel_configs_(kernel_configs) {}
 
-PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
+PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
+                               const NameVarBaseMap& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place) {
+                               const platform::Place& place,
+                               const framework::AttributeMap* attrs) {
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
   // check if op[type] has kernel registered.
@@ -73,9 +75,13 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
 
   auto& kernels = kernels_iter->second;
 
-  auto expected_kernel_key =
-      op.GetExpectedKernelType(framework::ExecutionContext(
-          op, framework::Scope(), *dev_ctx, ctx, nullptr));
+  // auto expected_kernel_key =
+  //    op.GetExpectedKernelType(framework::ExecutionContext(
+  //        op, framework::Scope(), *dev_ctx, ctx, nullptr));
+  //
+  framework::RuntimeContext ctx({}, {});
+  auto expected_kernel_key = op.GetExpectedKernelType(DygraphExecutionContext(
+      op, framework::Scope(), *dev_ctx, ctx, nullptr, ins, outs, attrs));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -89,12 +95,23 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
   return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
 }
 
-void PreparedOp::Run() {
+void PreparedOp::Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
+                     const framework::AttributeMap* attrs) {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
-  op_.RuntimeInferShape(scope, dev_ctx_->GetPlace(), ctx_);
-  func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
-                                    kernel_configs_));
+  // op_.RuntimeInferShape(scope, dev_ctx_->GetPlace(), ctx_);
+
+  DygraphInferShapeContext infer_shape_ctx(in, out, attrs);
+
+  framework::OperatorWithKernel* op_ker =
+      (framework::OperatorWithKernel*)(&op_);
+
+  op_ker->InferShape(&infer_shape_ctx);
+
+  func_(DygraphExecutionContext(op_, scope, *dev_ctx_, ctx_, kernel_configs_,
+                                *in, *out, attrs));
+  // func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
+  //                                  kernel_configs_));
 }
 
 }  // namespace imperative

@@ -34,19 +34,16 @@ class ConcatOp : public framework::OperatorWithKernel {
                       "Inputs(X) of ConcatOp should not be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
-
     auto ins = ctx->GetInputsDim("X");
     size_t axis =
         ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
                     static_cast<int64_t>(ins[0].size()));
 
     const size_t n = ins.size();
-
     PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
     if (n == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
-
     auto out_dims = ins[0];
     size_t in_zero_dims_size = out_dims.size();
     for (size_t i = 1; i < n; i++) {
@@ -153,6 +150,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
     auto in_x = "X";
     auto out_x_g_n = framework::GradVarName(in_x);
     ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
+    /*
     auto &in_names = ctx->Inputs(in_x);
     auto &out_names = ctx->Outputs(out_x_g_n);
     PADDLE_ENFORCE_EQ(
@@ -164,6 +162,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
         ctx->ShareLoD(in_x, out_x_g_n, i, i);
       }
     }
+    */
   }
 
  protected:

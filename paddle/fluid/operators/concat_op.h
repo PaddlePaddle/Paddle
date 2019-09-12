@@ -79,7 +79,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto out_var_names = ctx.Outputs(framework::GradVarName("X"));
+    auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 

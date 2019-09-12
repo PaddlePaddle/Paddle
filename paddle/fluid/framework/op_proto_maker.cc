@@ -62,7 +62,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();
-
+  /*
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
           {static_cast<int>(OpRole::kForward),
@@ -87,6 +87,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                     "Callstack for Op Creatation.")
       .SetDefault({});
 
+  */
   Validate();
 }
 

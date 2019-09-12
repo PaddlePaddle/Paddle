@@ -255,8 +255,10 @@ class ExecutionContext {
     return op_.Outputs(name);
   }
 
-  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
-  const AttributeMap& Attrs() const { return op_.Attrs(); }
+  virtual bool HasAttr(const std::string& name) const {
+    return op_.HasAttr(name);
+  }
+  virtual const AttributeMap& Attrs() const { return op_.Attrs(); }
 
   const std::string& Type() const { return op_.Type(); }
 
@@ -264,28 +266,30 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return op_.Attr<T>(name);
+    return boost::get<T>(GetAttr(name));
   }
 
-  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
+  virtual const Attribute& GetAttr(const std::string& name) const {
+    return op_.Attrs().at(name);
+  }
 
-  bool HasInput(const std::string& name) const;
+  virtual bool HasInput(const std::string& name) const;
 
-  bool HasOutput(const std::string& name) const;
+  virtual bool HasOutput(const std::string& name) const;
 
-  size_t InputSize(const std::string& name) const {
+  virtual size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }
 
-  size_t OutputSize(const std::string& name) const {
+  virtual size_t OutputSize(const std::string& name) const {
     return op_.Outputs(name).size();
   }
 
-  const Variable* InputVar(const std::string& name) const;
+  virtual const Variable* InputVar(const std::string& name) const;
 
-  Variable* OutputVar(const std::string& name) const;
+  virtual Variable* OutputVar(const std::string& name) const;
 
-  const std::vector<const Variable*> MultiInputVar(
+  virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
@@ -294,7 +298,7 @@ class ExecutionContext {
     return {it->second.begin(), it->second.end()};
   }
 
-  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+  virtual std::vector<Variable*> MultiOutputVar(const std::string& name) const {
     auto names = op_.Outputs(name);
     auto it = ctx_.outputs.find(name);
     if (it == ctx_.outputs.end()) {
@@ -317,15 +321,14 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    auto it = ctx_.inputs.find(name);
-    if (it == ctx_.inputs.end()) {
+    auto vars = MultiInputVar(name);
+    if (vars.size() == 0) {
       return {};
     }
-    const std::vector<Variable*>& vars = it->second;
     std::vector<const T*> res;
     res.reserve(vars.size());
     std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                   [&](Variable* var) -> const T* {
+                   [&](const Variable* var) -> const T* {
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
     return res;
@@ -333,17 +336,19 @@ class ExecutionContext {
 
   template <typename T>
   std::vector<T*> MultiOutput(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
-    if (it == ctx_.outputs.end()) {
+    auto vars = MultiOutputVar(name);
+
+    if (vars.size() == 0) {
       return {};
     }
-    const std::vector<Variable*>& vars = it->second;
+
     std::vector<T*> res;
     res.reserve(vars.size());
     std::transform(vars.begin(), vars.end(), std::back_inserter(res),
                    [&](Variable* var) -> T* {
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
+
     return res;
   }
 
@@ -405,6 +410,8 @@ class ExecutionContext {
         op_.Type().c_str(), kernel_configs_->size(), idx);
     return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
+
+  const RuntimeContext Context() const { return ctx_; }
 
  private:
   const OperatorBase& op_;

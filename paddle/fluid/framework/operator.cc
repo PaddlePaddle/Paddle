@@ -313,8 +313,8 @@ OperatorBase::OperatorBase(const std::string& type,
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
-  GenerateTemporaryNames();
-  CheckAllInputOutputSet();
+  // GenerateTemporaryNames();
+  // CheckAllInputOutputSet();
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
@@ -469,15 +469,18 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) {
+  // auto it = ctx_.inputs.find(name);
+  // if (it == ctx_.inputs.end()) {
+  //  return {};
+  //}
+  auto vars = MultiInputVar(name);
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<const Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                 [&](Variable* var) -> const Tensor* {
+                 [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
@@ -496,11 +499,16 @@ Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) {
+  // auto it = ctx_.outputs.find(name);
+  // if (it == ctx_.outputs.end()) {
+  //  return {};
+  //}
+  // const std::vector<Variable*>& vars = it->second;
+  auto vars = MultiOutputVar(name);
+
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
@@ -592,13 +600,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
+  std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
+  std::vector<std::string> Outputs(const std::string& name) const override {
     return op_.Outputs(name);
   }
 
@@ -1140,11 +1146,12 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  proto::VarType::Type dafault_data_type =
-      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type dafault_data_type = static_cast<proto::VarType::Type>(5);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+  // for (auto& input : this->inputs_) {
+  //  const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
+  for (auto& input : ctx.Context().inputs) {
+    auto& vars = input.second;
     for (size_t i = 0; i < vars.size(); ++i) {
       const Variable* var = vars[i];
       if (var != nullptr) {
@@ -1170,8 +1177,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       }
     }
   }
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "DataType should be indicated by input");
+  // PADDLE_ENFORCE(data_type != dafault_data_type,
+  //               "DataType should be indicated by input");
   return data_type;
 }
 
