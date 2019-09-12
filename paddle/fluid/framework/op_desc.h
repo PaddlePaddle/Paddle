@@ -123,6 +123,8 @@ class OpDesc {
 
   void CheckAttrs();
 
+  void SetDefaultAttrsOnly();
+
   void InferShape(const BlockDesc &block) const;
 
   void InferVarType(BlockDesc *block) const;

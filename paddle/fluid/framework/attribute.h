@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <functional>
 #include <string>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -313,6 +314,14 @@ class TypedAttrChecker {
     }
   }
 
+  void SetDefaultOnly(AttributeMap* attr_map) const {
+    if (!attr_map->count(attr_name_) && !default_value_setter_.empty()) {
+      T val;
+      (default_value_setter_[0])(&val);
+      (*attr_map)[attr_name_] = val;
+    }
+  }
+
  private:
   std::string attr_name_;
   std::vector<ValueChecker> value_checkers_;
@@ -328,6 +337,7 @@ class OpAttrChecker {
   TypedAttrChecker<T>& AddAttrChecker(const std::string& attr_name) {
     attr_checkers_.push_back(TypedAttrChecker<T>(attr_name));
     AttrChecker& checker = attr_checkers_.back();
+    attr_types_.push_back(typeid(T).name());
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
@@ -337,8 +347,45 @@ class OpAttrChecker {
     }
   }
 
+  void SetDefaultAttrsOnly(AttributeMap* attr_map) const {
+    int idx = 0;
+    for (const auto& checker : attr_checkers_) {
+      if (attr_types_[idx] == "i") {
+        checker.target<TypedAttrChecker<int>>()->SetDefaultOnly(attr_map);
+      } else if (attr_types_[idx] == typeid(int64_t).name()) {
+        checker.target<TypedAttrChecker<int64_t>>()->SetDefaultOnly(attr_map);
+      } else if (attr_types_[idx] == "f") {
+        checker.target<TypedAttrChecker<float>>()->SetDefaultOnly(attr_map);
+      } else if (attr_types_[idx] == "b") {
+        checker.target<TypedAttrChecker<bool>>()->SetDefaultOnly(attr_map);
+      } else if (attr_types_[idx] == typeid(std::string).name()) {
+        checker.target<TypedAttrChecker<std::string>>()->SetDefaultOnly(
+            attr_map);
+      } else if (attr_types_[idx] == typeid(std::vector<int>).name()) {
+        checker.target<TypedAttrChecker<std::vector<int>>>()->SetDefaultOnly(
+            attr_map);
+      } else if (attr_types_[idx] == typeid(std::vector<int64_t>).name()) {
+        checker.target<TypedAttrChecker<std::vector<int64_t>>>()
+            ->SetDefaultOnly(attr_map);
+      } else if (attr_types_[idx] == typeid(std::vector<float>).name()) {
+        checker.target<TypedAttrChecker<std::vector<float>>>()->SetDefaultOnly(
+            attr_map);
+      } else if (attr_types_[idx] == typeid(std::vector<bool>).name()) {
+        checker.target<TypedAttrChecker<std::vector<bool>>>()->SetDefaultOnly(
+            attr_map);
+      } else if (attr_types_[idx] == typeid(std::vector<std::string>).name()) {
+        checker.target<TypedAttrChecker<std::vector<std::string>>>()
+            ->SetDefaultOnly(attr_map);
+      } else {
+        LOG(ERROR) << "unsupported attribute type";
+      }
+      idx++;
+    }
+  }
+
  private:
   std::vector<AttrChecker> attr_checkers_;
+  std::vector<std::string> attr_types_;
 };
 
 }  // namespace framework
