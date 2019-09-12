@@ -107,6 +107,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
     "is_test_pass",                                  //
         "simplify_with_basic_ops_pass",              //
         "fc_fuse_pass",                              //
+        "fc_elementwise_layernorm_fuse_pass",        //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
