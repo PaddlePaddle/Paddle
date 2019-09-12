@@ -1544,14 +1544,16 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy = fluid.BuildStrategy()
                         build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
-      .def_property(
-          "fuse_broadcast_ops",
-          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
-            self.fuse_broadcast_ops_ = b;
-          },
-          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+      .def_property("fuse_broadcast_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_broadcast_ops_ == true;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE(!self.IsFinalized(),
+                                     "BuildStrategy is finlaized.");
+                      self.fuse_broadcast_ops_ = b;
+                    },
+                    R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
@@ -1559,7 +1561,7 @@ All parameter, weight, gradient are variables in Paddle.
                       for NCCLReduce operations for a period of time. Default False.)DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
-                      return self.fuse_all_optimizer_ops_;
+                      return self.fuse_all_optimizer_ops_ == true;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE(!self.IsFinalized(),
@@ -1637,7 +1639,9 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def_property(
           "fuse_all_reduce_ops",
-          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](const BuildStrategy &self) {
+            return self.fuse_all_reduce_ops_ == true;
+          },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property("enable_backward_optimizer_op_deps",
                     [](const BuildStrategy &self) {

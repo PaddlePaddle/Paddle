@@ -43,6 +43,12 @@ static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
          !strategy.enable_parallel_graph_;
 }
 
+static inline void ConvertDefaultValue(boost::optional<bool> *default_value) {
+  if (*default_value == boost::none) {
+    *default_value = true;
+  }
+}
+
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
@@ -79,40 +85,53 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void ResolveOptionConfliction() {
     // Specifies the restrictions between different pass.
     if (strategy_.enable_parallel_graph_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_reduce_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.is_distribution_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "Currently, fuse_all_reduce_ops_ only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops only works under AllReduce "
              "mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
+    if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      LOG_IF(WARNING, strategy_.fuse_broadcast_ops_ == true)
+          << "Currently, fuse_broadcast_ops only works under Reduce "
+             "mode.";
+      strategy_.fuse_all_optimizer_ops_ = false;
+    }
     if (strategy_.async_mode_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "async mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
+          << "fuse_all_optimizer_ops only work in Reducer mode.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
+
+    ConvertDefaultValue(&strategy_.fuse_all_optimizer_ops_);
+    ConvertDefaultValue(&strategy_.fuse_all_reduce_ops_);
+    ConvertDefaultValue(&strategy_.fuse_broadcast_ops_);
   }
 
   void AppendMultiGraphOptPasses() {
@@ -151,7 +170,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // NOTE: fuse_all_xx_ops will count the number of xx operator first,
     // if the number is zero, fuse_all_reduce_ops will do nothing.
     // Currently, only one type of optimization algorithm can be fused.
-    if (strategy_.fuse_all_optimizer_ops_) {
+    if (strategy_.fuse_all_optimizer_ops_ == true) {
       AppendPass("fuse_adam_op_pass");
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
@@ -205,6 +224,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       viz_pass->Set<std::string>(ir::kGraphvizPath,
                                  new std::string(graph_path));
     }
+  }
+
+  void AppendPassWithCheck(const boost::optional<bool> &append_pass,
+                           const std::string &pass_name) {
+    AppendPassWithCheck(append_pass == true, pass_name);
   }
 
   void AppendPassWithCheck(bool append_pass, const std::string &pass_name) {

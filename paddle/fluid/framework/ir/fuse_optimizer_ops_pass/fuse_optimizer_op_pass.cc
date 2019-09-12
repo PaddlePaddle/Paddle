@@ -154,7 +154,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                &opt_nodes);
       grad_fused = true;
     } else {
-      VLOG(10) << "The number of new gradients is " << new_grad_idx.size();
+      VLOG(6) << "The number of new gradients is " << new_grad_idx.size();
       if (new_grad_idx.size() == 1) return;
       // NOTE(zcd): If the gradients of backward stage and optimization stage
       // have diff, Only take care of the the gradient of optimization stage.
