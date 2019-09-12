@@ -28,8 +28,9 @@ struct Layers {
  public:
   const ProgramDesc& main_program() { return program_; }
 
-  VarDesc* data(std::string name, bool is_persistable = false) {
-    return lod_tensor(name, is_persistable);
+  VarDesc* data(std::string name, std::vector<int64_t> shape = {},
+                bool is_persistable = false) {
+    return lod_tensor(name, shape, is_persistable);
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
@@ -78,6 +79,22 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* fc(VarDesc* input, VarDesc* w, VarDesc* bias,
+              int in_num_col_dims = 1, std::string activation_type = "") {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("fc");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("W", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("in_num_col_dims", in_num_col_dims);
+    op->SetAttr("activation_type", activation_type);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
                int x_num_col_dims = 1) {
     AttributeMap attrs;
@@ -121,9 +138,11 @@ struct Layers {
   }
 
  private:
-  VarDesc* lod_tensor(std::string name, bool is_persistable = false) {
+  VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
+                      bool is_persistable = false) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetShape(shape);
     var->SetPersistable(is_persistable);
     return var;
   }

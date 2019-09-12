@@ -33,18 +33,18 @@ TEST(FCFusePass, basic) {
   // (mul_out_1, bias_2)        elementwise_add  -> add_out_1
   Layers layers;
   auto* a = layers.data("a");
-  auto* filters_0 = layers.data("conv2d_filters_0", true);
-  auto* bias_0 = layers.data("conv2d_bias_0", true);
+  auto* filters_0 = layers.data("conv2d_filters_0", {}, true);
+  auto* bias_0 = layers.data("conv2d_bias_0", {}, true);
   auto* conv2d_out = layers.conv2d(a, filters_0, bias_0, false);
   auto* relu_out_0 = layers.relu(conv2d_out);
-  auto* weights_0 = layers.data("weights_0", true);
+  auto* weights_0 = layers.data("weights_0", {}, true);
   auto* mul_out_0 = layers.mul(relu_out_0, weights_0);
-  auto* bias_1 = layers.data("bias_1", true);
+  auto* bias_1 = layers.data("bias_1", {}, true);
   auto* add_out_0 = layers.elementwise_add(mul_out_0, bias_1);
   auto* relu_out_1 = layers.relu(add_out_0);
-  auto* weights_1 = layers.data("weights_1", true);
+  auto* weights_1 = layers.data("weights_1", {}, true);
   auto* mul_out_1 = layers.mul(relu_out_1, weights_1);
-  auto* bias_2 = layers.data("bias_2", true);
+  auto* bias_2 = layers.data("bias_2", {}, true);
   auto* add_out_1 = layers.elementwise_add(mul_out_1, bias_2);
   VLOG(4) << add_out_1;
 
