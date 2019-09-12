@@ -10264,7 +10264,12 @@ def strided_slice(input, axes, starts, ends, strides):
        end (List): the end index
        stride (List): the stride index
     Returns
-
+       out(Variable): the result by strided_slice Op
+    
+    Example:
+       import paddle.fluid as fluid
+       data = fluid.layers.fill_constant(shape=[-1, 3, 3], value=0, dtype='int64')
+       y = fluid.layers.strided_slice(data, [0, 1], [1,0], [2, 3], [1, 1])
     """
     helper = LayerHelper('strided_slice', **locals())
     out = helper.create_variable_for_type_inference(

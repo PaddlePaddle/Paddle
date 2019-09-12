@@ -161,5 +161,41 @@ class TestStrideSliceOp9(TestStrideSliceOp):
         self.strides = [-1]
 
 
+class TestStrideSliceOp10(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3)
+        self.axes = [0, 1]
+        self.starts = [1, 0]
+        self.ends = [2, 2]
+        self.strides = [1, 1]
+
+
+class TestStrideSliceOp11(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3, 4)
+        self.axes = [0, 1, 2, 3]
+        self.starts = [1, 0, 0, 0]
+        self.ends = [2, 2, 3, 4]
+        self.strides = [1, 1, 1, 2]
+
+
+class TestStrideSliceOp12(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3, 4, 5)
+        self.axes = [0, 1, 2, 3, 4]
+        self.starts = [1, 0, 0, 0, 0]
+        self.ends = [2, 2, 3, 4, 4]
+        self.strides = [1, 1, 1, 1, 1]
+
+
+class TestStrideSliceOp13(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(3, 3, 3, 6, 7, 8)
+        self.axes = [0, 1, 2, 3, 4, 5]
+        self.starts = [1, 0, 0, 0, 1, 2]
+        self.ends = [2, 2, 3, 1, 2, 8]
+        self.strides = [1, 1, 1, 1, 1, 2]
+
+
 if __name__ == "__main__":
     unittest.main()

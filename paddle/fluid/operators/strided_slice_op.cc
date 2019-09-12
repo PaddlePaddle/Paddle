@@ -78,15 +78,15 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       }
 
       bool zero_dim_condition =
-          ((stride_index < 0 && (start_index < end_index)) ||
-           (stride_index > 0 && (start_index > end_index)));
+          ((stride_index < 0 && (start_index <= end_index)) ||
+           (stride_index > 0 && (start_index >= end_index)));
+      PADDLE_ENFORCE_EQ(zero_dim_condition, false,
+                        "starts and end must meet requirement in diffferent "
+                        "stride conditiont");
       int left = std::max(0, std::min(start_index, end_index));
       int right = std::min(axis_size, std::max(start_index, end_index));
       int step = std::abs(stride_index);
       auto out_dims_index = (std::abs(right - left) + step - 1) / step;
-      if (zero_dim_condition) {
-        out_dims_index = 0;
-      }
 
       out_dims_vector[axes_index] = out_dims_index;
     }
@@ -120,7 +120,11 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
         "strides", "(list<int> stride stride from the start to the end)");
     AddComment(R"DOC(
 Strided Slice Operator.
-
+Instead of calling this op directly most users will want to use the
+NumPy-style slicing syntax.
+For Example:
+data = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='int64')
+y = fluid.layers.strided_slice(data, [0, 1], [1,0], [2, 3], [1, 1])
 )DOC");
   }
 };
