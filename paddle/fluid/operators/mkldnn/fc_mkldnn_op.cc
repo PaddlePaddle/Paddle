@@ -218,7 +218,7 @@ class FCPrimitiveFactory {
     int mask = CreateMask(1, output_shift_scale.size() > 1);
     attributes.set_output_scales(mask, output_shift_scale);
 
-    if (ctx.Attr<bool>("fuse_relu")) {
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
       constexpr float scale = 1.0f;
       constexpr float negative_slope = 0.0f;
       constexpr float placeholder = 1.0f;  // beta
@@ -384,7 +384,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<LoDTensor>("Out");
 
-    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
     auto fc =
