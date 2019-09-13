@@ -55,9 +55,16 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
     OpDesc* desc = fc->Op();
-    auto in_size = fc->inputs[0]->Var()->GetShape().size();
-    if (in_size != 2 && in_size != 4) {
+    auto dims = fc->inputs[0]->Var()->GetShape();
+    auto dim_num = dims.size();
+    bool are_dims_supported = dim_num != 2 && dim_num != 4;
+    constexpr size_t height_axis = 2;
+    constexpr size_t width_axis = 3;
+    bool is_size_supported =
+        dim_num == 4 ? (dims[width_axis] == 1 && dims[height_axis] == 1) : true;
+    if (!are_dims_supported || !is_size_supported) {
       VLOG(3) << "Do not enable FC MKL-DNN for dimensions different than 2 & 4";
+      VLOG(3) << "Or when width and height are different than one";
       return;
     }
     desc->SetAttr("use_mkldnn", true);
