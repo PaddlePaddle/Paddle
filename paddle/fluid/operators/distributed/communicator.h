@@ -253,6 +253,7 @@ class Communicator {
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
 
+  
   void GeoSgdParamInit(framework::Scope *scope) {
     for(auto &iter:var_list_){
       auto var_name = iter.first;
@@ -260,9 +261,20 @@ class Communicator {
     }
   }
 
+  void GeoSgdDeltaParamInit(framework::Scope *scope) {
+    for(auto &iter:var_list_){
+      auto var_name = VarToDeltaVar(iter.first);
+      scope->Var(var_name);
+    }
+  }
+
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
                        const std::string var_name);
+
+  void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
+                                          const framework::Scope &delta_scope,
+                                          const std::string &var_name);
 
   void SendUpdateVars(const std::string& var_name);
   void RecvUpdateVars(const std::string& var_name);

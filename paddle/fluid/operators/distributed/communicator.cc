@@ -436,7 +436,11 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
 
   VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
-  
+
+  delta_scope_.reset(new Scope());
+  VLOG(1) << "Init delta scope";
+  GeoSgdDeltaParamInit(delta_scope_.get());
+
   old_scope_.reset(new Scope()); //parameter local, storage the param after last recv
   VLOG(1) << "Init old scope";
   GeoSgdParamInit(old_scope_.get());
@@ -496,8 +500,9 @@ void Communicator::GeoSgdStart(const std::string& var_name,
     VLOG(1) <<"Parameter init from recv_scope";
     for(auto &iter:recv_varname_to_ctx_){
       auto local_var_name = iter.first;
-      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),local_var_name);
-      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),local_var_name);
+      GeoSgdParamCopy(*recv_scope_, *old_scope_.get(), local_var_name);
+      GeoSgdParamCopy(*recv_scope_, *pserver_scope_.get(), local_var_name);
+      GeoSgdDeltaParamCopy(scope, *delta_scope_.get(), local_var_name);
     }
     return;
   }
@@ -604,7 +609,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   
   if (var_list_[var_name] == false) {
     // dense paramter 
-    auto *var_z = recv_scope_->FindVar(VarToDeltaVar(var_name));
+    auto *var_z = delta_scope_->FindVar(VarToDeltaVar(var_name));
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
@@ -621,7 +626,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   else {
     // sparse parameter
     std::unordered_map<int64_t,std::vector<float>> &select_table = sparse_var_ids_table_[var_name]; // sparse old scope
-    auto *var = recv_scope_->Var(VarToDeltaVar(var_name));
+    auto *var = delta_scope_->FindVar(VarToDeltaVar(var_name));
     auto *var_select_rows = var->GetMutable<framework::SelectedRows>();
     framework::DDim table_dim = var_select_rows->value().dims();
     int64_t rows = select_table.size();
@@ -693,11 +698,20 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
 }
 
 void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
-                       const framework::Scope &scope_y,
-                       const std::string var_name) {
+                                   const framework::Scope &scope_y,
+                                   const std::string var_name) {
     auto *var_x = scope_x.FindVar(var_name);
     auto *var_y = scope_y.FindVar(var_name);
     framework::CopyVariable(*var_x,var_y);
+}
+
+void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
+                                        const framework::Scope &delta_scope, 
+                                        const std::string &var_name) {
+    auto &delta_var_name = VarToDeltaVar(var_name);
+    auto *var_send = send_scope.FindVar(send_scope);
+    auto *var_delta = delta_scope.FindVar(delta_var_name);
+    paddle::framework::CopyVariable(*var_send,var_delta);
 }
 
 }  // namespace distributed
