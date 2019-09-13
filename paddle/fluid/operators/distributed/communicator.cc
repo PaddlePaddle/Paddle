@@ -386,11 +386,13 @@ void Communicator::Stop() {
 // follow functions are created for geo-sgd mode
 Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
                            const RpcCtxMap &recv_varname_to_ctx,
-                           Scope *recv_scope, int& trainers, int &geo_need_push_nums)
+                           Scope *recv_scope, int& trainers, int &geo_need_push_nums,
+                           std::unordered_map<std::string,bool> &var_list)
     : send_varname_to_ctx_(send_varname_to_ctx),
       recv_varname_to_ctx_(recv_varname_to_ctx),
       recv_scope_(recv_scope),
-      trainer_nums_(trainers),geo_need_push_nums_(geo_need_push_nums) {
+      trainer_nums_(trainers),geo_need_push_nums_(geo_need_push_nums),
+      var_list_(var_list) {
   // get all send information from graph, build vars_to_send
   VLOG(0) << "communicator_independent_recv_thread: "
           << FLAGS_communicator_independent_recv_thread;
@@ -434,35 +436,27 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
 
   VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
-
-  delta_scope_.reset(new Scope()); //parameter local: recv(train) - old
-  VLOG(1) << "Init delta scope, for send";
-  GeoSgdParamInit(delta_scope_.get(), true);
   
   old_scope_.reset(new Scope()); //parameter local, storage the param after last recv
   VLOG(1) << "Init old scope";
-  GeoSgdParamInit(old_scope_.get(), false);
+  GeoSgdParamInit(old_scope_.get());
 
   pserver_scope_.reset(new Scope()); //parameter on pserver, global scope
   VLOG(1) << "Init pserver(global) scope";
-  GeoSgdParamInit(pserver_scope_.get(), false);
+  GeoSgdParamInit(pserver_scope_.get());
 }
 
 void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info, 
                         int &trainers, int &geo_need_push_nums){
-  // param_scope is global scope
-  // In geo-sgd model, we using pserver_scope to send&recv
   VLOG(0) << "ProcessGraph Geo_Sgd_Communicator";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
-
+  std::unordered_map<std::string,bool> var_list;
   for (auto &iter : vars_info) {
       std::string var_name = iter.first;
-      VLOG(1) <<"var_name: "<<var_name;
       std::string send_var_name = var_name;
       std::string delta_var_name = send_var_name.append(".delta");
-      VLOG(1) <<"delta_var_name: "<<delta_var_name;
       std::vector<std::string> vars_names = iter.second["var_names"];
       std::vector<std::string> delta_var_names;
       for(auto origin_var_name :vars_names) {
@@ -476,18 +470,22 @@ void Communicator::GeoSgdInit(const paddle::framework::ProgramDesc& program, Sco
           vars_sections_int.push_back(str2i);
       }
       std::vector<std::string> vars_epmap = iter.second["epmap"];
+      bool is_sparse = iter.second["is_sparse"].front() == std::string("True");
+      var_list[var_name] = is_sparse;
       int trainer_id = 0;
       send_varname_to_ctx[delta_var_name] = operators::distributed::RpcContext(
           delta_var_name,delta_var_names,vars_epmap,vars_sections_int,trainer_id);
       recv_varname_to_ctx[var_name] = operators::distributed::RpcContext(
           var_name,vars_names,vars_epmap,{},trainer_id);
-      VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[delta_var_name];
+      VLOG(1) << "find and init an send&recv param: "<< send_varname_to_ctx[delta_var_name]
+              << "is sparse: "<<is_sparse;
   }
+  
   // init communicator here
   if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
     LOG(WARNING) << "no var need to send and recv!!";
   }
-  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope, trainers, geo_need_push_nums);  
+  Communicator::Init(send_varname_to_ctx,recv_varname_to_ctx, param_scope, trainers, geo_need_push_nums, var_list);  
 }
 
 void Communicator::GeoSgdStart(const std::string& var_name, 
@@ -498,10 +496,8 @@ void Communicator::GeoSgdStart(const std::string& var_name,
     VLOG(1) <<"Parameter init from recv_scope";
     for(auto &iter:recv_varname_to_ctx_){
       auto local_var_name = iter.first;
-      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),local_var_name, false);
-      // Todo don't copy, only create var and init shape
-      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),local_var_name, false);
-      GeoSgdParamCopy(*recv_scope_,*delta_scope_.get(),local_var_name, true);
+      GeoSgdParamCopy(*recv_scope_,*old_scope_.get(),local_var_name);
+      GeoSgdParamCopy(*recv_scope_,*pserver_scope_.get(),local_var_name);
     }
     return;
   }
@@ -521,40 +517,16 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
  
   // record ids->tensor
   for (int i=0; i<sparse_var_table_temp.size(); i++) {
-    // record all sparse parameter name
-    if (sparse_var_.find(sparse_var_table_temp[i]) == sparse_var_.end()) {
-      VLOG(1) << "sparse_var_ insert element: "<< sparse_var_table_temp[i];
-      sparse_var_.insert(sparse_var_table_temp[i]);
-      // create SELECTED ROWS var & delete origin LodTensor var
-      // step1 record origin shape
-      std::string delta_name = VarToDeltaVar(sparse_var_table_temp[i]);
-      auto *var = delta_scope_->FindVar(delta_name);
-      auto var_tensor = var->Get<framework::LoDTensor>();
-      framework::DDim origin_dim = var_tensor.dims();
-      VLOG(1)<< "origin var dim dim0: "<<origin_dim[0]<<" dim:1 "<<origin_dim[1];
-      // step2 erase LodTensor Var
-      std::vector<std::string> erase_var{delta_name};
-      delta_scope_->EraseVars(erase_var);
-      // step3 create SELECTEDROWS Var
-      auto *new_var = delta_scope_->Var(delta_name);
-      auto var_selectedrow = new_var->GetMutable<framework::SelectedRows>();
-      std::vector<int64_t> new_rows;
-      new_rows.resize(origin_dim[0]);
-      var_selectedrow->set_rows(new_rows);
-      var_selectedrow->set_height(origin_dim[0]);
-      auto *new_value = var_selectedrow->mutable_value();
-      new_value->Resize({origin_dim[0],origin_dim[1]});
-    }
-
     // record sparse parameter ids & value
     if(sparse_var_ids_table_.find(sparse_var_table_temp[i]) == sparse_var_ids_table_.end()){
       VLOG(1) << "sparse_var_ids_table_ insert element: "<< sparse_var_table_temp[i];
       sparse_var_ids_table_[sparse_var_table_temp[i]]=std::unordered_map<int64_t,std::vector<float>>{};
     }
+
     //for test
     std::vector<std::string> send_scope_vars = scope.LocalVarNames();
     for(auto var_name : send_scope_vars) {
-      VLOG(4)<< "Send Scope has var: "<<var_name;
+      VLOG(1)<< "Send Scope has var: "<<var_name;
     }
 
     // ids
@@ -566,7 +538,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     //for test
     std::vector<std::string> old_scope_vars = scope.LocalVarNames();
     for(auto var_name : old_scope_vars) {
-      VLOG(4)<< "Old Scope has var: "<<var_name;
+      VLOG(1)<< "Old Scope has var: "<<var_name;
     }
 
     // table
@@ -578,21 +550,22 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     float* table_mutable_data = table_tensor.mutable_data<float>(var_tensor.place());
 
     for (int j=0; j<var_element_number; j++){
-      VLOG(1)<<"Sparse ids: "<<var_mutable_data[j];
+      // only push id which has not been recorded.
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
+        VLOG(1)<<"Sparse ids: "<<var_mutable_data[j];
         std::vector<float> row_mutable_data{};
         row_mutable_data.resize(column);
         for (size_t k = 0; k < column; k++){
-          row_mutable_data.emplace_back(table_mutable_data[var_mutable_data[j] * column + k]);
+          row_mutable_data.push_back(table_mutable_data[var_mutable_data[j] * column + k]);
           VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
         }
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
         VLOG(1)<<"Copy complete";
-
         VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
                 <<" F value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].front()
+                <<" f value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]][0]
                 <<" B value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].back();
       } 
     }
@@ -614,32 +587,6 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
   }
 }
 
-void Communicator::GeoSgdParamInit(framework::Scope *scope,bool send){
-  VLOG(3) << "Init scope parameter from send_varname_to_ctx_, Scope ptr: "<< scope;
-  for(auto &iter:recv_varname_to_ctx_){
-    auto var_name = iter.first;
-    if (send) {
-      auto send_var_name = VarToDeltaVar(var_name);
-      scope->Var(send_var_name);
-    } else {
-      scope->Var(var_name);
-    }
-  }
-}
-
-void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
-                                   const framework::Scope &scope_y,
-                                   const std::string var_name, bool send) {
-  // copy var(send_varname_to_ctx_) from x to y
-  VLOG(4) <<"Copy parameter from scope: "<< &scope_x 
-          <<" To scope: "<< &scope_y 
-          <<" Parameter name: "<< var_name; 
-  auto *var_x = scope_x.FindVar(var_name);
-  auto copy_var_name = send? VarToDeltaVar(var_name):var_name;
-  auto *var_y = scope_y.FindVar(copy_var_name);
-  framework::CopyVariable(*var_x,var_y);
-}
-
 void Communicator::SendUpdateVars(const std::string& var_name) {
   // calc var_delata = (var_recv - var_old)/trainer_nums
   // calc var_old += var_delta
@@ -655,27 +602,26 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
   
-  if (sparse_var_.find(var_name) == sparse_var_.end()) {
+  if (var_list_[var_name] == false) {
     // dense paramter 
-    auto *var_z = delta_scope_.get()->FindVar(VarToDeltaVar(var_name));
+    auto *var_z = recv_scope_->FindVar(VarToDeltaVar(var_name));
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
-
-    VLOG(4) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+    VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;delta_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
     }
-    VLOG(4) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
+    VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;delta_scope: "<< *z_mutable_data;
   }
   else {
     // sparse parameter
-    std::unordered_map<int64_t,std::vector<float>> select_table = sparse_var_ids_table_[var_name]; // sparse old scope
-    auto *var = delta_scope_->Var(VarToDeltaVar(var_name));
+    std::unordered_map<int64_t,std::vector<float>> &select_table = sparse_var_ids_table_[var_name]; // sparse old scope
+    auto *var = recv_scope_->Var(VarToDeltaVar(var_name));
     auto *var_select_rows = var->GetMutable<framework::SelectedRows>();
     framework::DDim table_dim = var_select_rows->value().dims();
     int64_t rows = select_table.size();
@@ -703,11 +649,13 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     }
     var_select_rows->set_rows(new_rows);
 
-    auto *table_value = var_select_rows->mutable_value();
-    table_value->Resize({rows, columns});
-    memcpy(table_value, &new_value, sizeof(float)*rows*columns);
+    auto *var_select_value = var_select_rows->mutable_value();
+    var_select_value->Resize({rows, columns});
+    var_select_value->mutable_data<float>(var_select_rows->place());
+    var_select_rows->set_height(table_dim[0]);
+    auto *var_select_data = var_select_value->data<float>();
+    memcpy(var_select_data, &new_value, sizeof(float)*rows*columns);
     VLOG(1)<<"Sparse var: "<<var_name<<" copy complete";
-    //Todo: test copy corectly
   }
 
 }

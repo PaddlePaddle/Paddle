@@ -221,7 +221,7 @@ class Communicator {
                                            recv_varname_to_ctx, recv_scope));
     }
   }
-  static void Init(const paddle::framework::ProgramDesc& program,
+  static void Init(const paddle::framework::ProgramDesc& ç,
                    Scope* param_scope);
   static Communicator* GetInstance();
   static std::shared_ptr<Communicator> GetInstantcePtr();
@@ -231,31 +231,43 @@ class Communicator {
  
  public:
   // for geo-sgd algorithm
-  Communicator(const RpcCtxMap& send_varname_to_ctx,
-               const RpcCtxMap& recv_varname_to_ctx,Scope* recv_scope,
-               int &trainers,int &geo_need_push_nums);
-
   static void GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
                         std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
                         int &trainers, int &geo_need_push_nums);
 
-  void GeoSgdSend(const std::vector<std::string>& sparse_var_names, const std::vector<std::string>& sparse_var_tables,const framework::Scope& scope);
-
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope,
-                   int &trainers,int &geo_need_push_nums) {
+                   int &trainers,int &geo_need_push_nums, std::unordered_map<std::string,bool> &var_list) {
       if(communicator_ == nullptr) {
         communicator_.reset(new Communicator(send_varname_to_ctx, recv_varname_to_ctx, 
-                                             recv_scope, trainers, geo_need_push_nums));
+                                             recv_scope, trainers, geo_need_push_nums,var_list));
       }
   }
 
+  Communicator(const RpcCtxMap& send_varname_to_ctx,
+               const RpcCtxMap& recv_varname_to_ctx,Scope* recv_scope,
+               int &trainers,int &geo_need_push_nums,std::unordered_map<std::string,bool> &var_list);
+
+  void GeoSgdSend(const std::vector<std::string>& sparse_var_names, const std::vector<std::string>& sparse_var_tables,const framework::Scope& scope);
+
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdParamInit(framework::Scope *scope, bool send);
+
+  void GeoSgdParamInit(framework::Scope *scope) {
+    for(auto &iter:var_list_){
+      auto var_name = iter.first;
+      scope->Var(var_name);
+    }
+  }
+
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
-                       const std::string var_name, bool send);
+                       const std::string var_name) {
+    auto *var_x = scope_x.FindVar(var_name);
+    auto *var_y = scope_y.FindVar(var_name);
+    framework::CopyVariable(*var_x,var_y);
+  }
+
   void SendUpdateVars(const std::string& var_name);
   void RecvUpdateVars(const std::string& var_name);
 
@@ -277,8 +289,9 @@ class Communicator {
   std::atomic_uint need_push_{0};
   std::atomic_uint have_push_{0};
   
-  std::unordered_set<std::string> sparse_var_;
+  std::unordered_map<std::string,bool> var_list_; //if var is sparse, using selected rows, bool=true
   std::unordered_map<std::string,std::unordered_map<int64_t,std::vector<float>>> sparse_var_ids_table_;
+  
 
 };
 
