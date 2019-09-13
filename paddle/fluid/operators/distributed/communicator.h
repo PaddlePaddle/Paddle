@@ -221,7 +221,7 @@ class Communicator {
                                            recv_varname_to_ctx, recv_scope));
     }
   }
-  static void Init(const paddle::framework::ProgramDesc& ç,
+  static void Init(const paddle::framework::ProgramDesc& program,
                    Scope* param_scope);
   static Communicator* GetInstance();
   static std::shared_ptr<Communicator> GetInstantcePtr();
@@ -262,11 +262,7 @@ class Communicator {
 
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
-                       const std::string var_name) {
-    auto *var_x = scope_x.FindVar(var_name);
-    auto *var_y = scope_y.FindVar(var_name);
-    framework::CopyVariable(*var_x,var_y);
-  }
+                       const std::string var_name);
 
   void SendUpdateVars(const std::string& var_name);
   void RecvUpdateVars(const std::string& var_name);
