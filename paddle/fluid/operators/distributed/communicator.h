@@ -272,7 +272,7 @@ class Communicator {
                        const framework::Scope &scope_y,
                        const std::string var_name);
 
-  void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
+  void GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
                                           const framework::Scope &delta_scope,
                                           const std::string &var_name);
 

@@ -711,7 +711,7 @@ void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
     auto &delta_var_name = VarToDeltaVar(var_name);
     auto *var_send = send_scope.FindVar(send_scope);
     auto *var_delta = delta_scope.FindVar(delta_var_name);
-    paddle::framework::CopyVariable(*var_send,var_delta);
+    framework::CopyVariable(*var_send,var_delta);
 }
 
 }  // namespace distributed
