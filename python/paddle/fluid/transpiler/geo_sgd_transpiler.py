@@ -281,6 +281,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             vars_section = self._get_splited_var_sections(splited_vars)
             self.vars_info[origin_name]["sections"] = [str(i) for i in vars_section]
             self.vars_info[origin_name]["epmap"] = []
+            self.vars_info[origin_name]["is_sparse"] = []
             # todo: add var shape(may be no need,because recv scope have)
             if origin_name in self.sparse_var_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
