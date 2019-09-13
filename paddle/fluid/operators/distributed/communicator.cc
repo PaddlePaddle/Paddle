@@ -502,6 +502,10 @@ void Communicator::GeoSgdStart(const std::string& var_name,
       for(auto var_name : send_scope_vars) {
       VLOG(1)<< "send Scope has var: "<<var_name;
       }
+    std::vector<std::string> old_scope_vars = old->LocalVarNames();
+    for(auto var_name : old_scope_vars) {
+      VLOG(1)<< "old Scope has var: "<<var_name;
+    }  
     std::vector<std::string> delta_scope_vars = delta_scope_->LocalVarNames();
     for(auto var_name : delta_scope_vars) {
       VLOG(1)<< "delta Scope has var: "<<var_name;
