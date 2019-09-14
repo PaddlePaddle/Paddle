@@ -312,7 +312,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
             delta_var = self.origin_program.global_block().create_var(
                 name=".".join([origin_name, "delta"]),
-                persistable=False,
+                persistable=True,
                 dtype=origin_var.dtype,
                 type=delta_type,
                 shape=origin_var.shape)
