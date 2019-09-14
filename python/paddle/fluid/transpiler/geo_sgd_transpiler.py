@@ -160,7 +160,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                     'shape': out.shape,
                     'dtype': out.dtype,
                     'value': float(0.0),
-                    'force_cpu': False
+                    'force_cpu': True
                 },
                 stop_gradient=True
             )
