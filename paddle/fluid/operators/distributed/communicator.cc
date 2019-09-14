@@ -498,10 +498,6 @@ void Communicator::GeoSgdStart(const std::string& var_name,
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
     VLOG(1) <<"Parameter init from recv_scope";
-    std::vector<std::string> send_scope_vars = scope.LocalVarNames();
-      for(auto var_name : send_scope_vars) {
-      VLOG(1)<< "send Scope has var: "<<var_name;
-      }
 
     //for test
     std::vector<std::string> recv_scope_vars = recv_scope_->LocalVarNames();
@@ -718,7 +714,13 @@ void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
     auto &delta_var_name = VarToDeltaVar(var_name);
     VLOG(1)<< "Copy var name: "<<delta_var_name;
     auto *var_send = send_scope.FindVar(delta_var_name);
+    if(var_send == nullptr) {
+      VLOG(1) << "Send var not find";
+    }
     auto *var_delta = delta_scope.FindVar(delta_var_name);
+    if(var_delta == nullptr) {
+      VLOG(1) << "Delta var not find";
+    }
     framework::CopyVariable(*var_send,var_delta);
 }
 
