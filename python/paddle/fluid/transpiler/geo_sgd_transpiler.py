@@ -89,6 +89,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # program info send to geo-sgd communicator
         self.vars_info = collections.OrderedDict()
         self.split_to_origin_mapping = collections.OrderedDict()
+        self.delta_vars_list = []
         self.sparse_var_list = []
         self.sparse_var_splited_list = []
 
@@ -141,9 +142,16 @@ class GeoSgdTranspiler(DistributeTranspiler):
             attrs={
                 "send_varnames": self.sparse_tables}
         )
-        
+
         # add param_init flag in trainer startup program
         self.trainer_startup_program = self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
+        for delta_var in self.delta_vars_list:
+            self.trainer_startup_program.global_block().create_var(
+                name=delta_var.name,
+                persistable=delta_var.persistable,
+                dtype=delta_var.dtype,
+                type=delta_var.type,
+                shape=delta_var.shape)
         dummy_output = self.trainer_startup_program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
         param_init = self.trainer_startup_program.global_block().create_var(
@@ -155,13 +163,13 @@ class GeoSgdTranspiler(DistributeTranspiler):
             attrs={
                 "send_varnames": [param_init.name]}
         )
-        
+
     def _get_vars_info(self):
         return self.vars_info
-            
+
     def get_trainer_program(self, wait_port=True):
-        if wait_port:
-            wait_server_ready(self.pserver_endpoints)
+        # if wait_port:
+        #     wait_server_ready(self.pserver_endpoints)
         return self.origin_program
 
     def get_pserver_programs(self, endpoint):
@@ -176,7 +184,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
         pserver_program._copy_dist_param_info_from(self.origin_program)
-        
+
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_opt_ep_mapping[endpoint]["params"]:
@@ -192,10 +200,10 @@ class GeoSgdTranspiler(DistributeTranspiler):
             var_name = var.name
             pserver_block = per_opt_block.program.global_block()
             param = pserver_block.vars[var_name]
-            
+
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
-            else: 
+            else:
                 delta_type = param.type
 
             delta_var_name = "%s.delta" % (param.name)
@@ -205,12 +213,12 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 type=delta_type,
                 dtype=param.dtype,
                 shape=param.shape)
-            
+
             per_opt_block.append_op(
                 type="sum",
-                inputs={"X":[delta_var,param]},
-                outputs={"Out":param}
-                )
+                inputs={"X": [delta_var, param]},
+                outputs={"Out": param}
+            )
             param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
 
         attrs = {
@@ -290,12 +298,14 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 delta_type = origin_var.type
                 self.vars_info[origin_name]["is_sparse"].append("False")
 
-            self.origin_program.global_block().create_var(
-                name=".".join([origin_name,"delta"]),
+            delta_var = self.origin_program.global_block().create_var(
+                name=".".join([origin_name, "delta"]),
                 persistable=False,
                 dtype=origin_var.dtype,
                 type=delta_type,
                 shape=origin_var.shape)
+
+            self.delta_vars_list.append(delta_var)
 
             for splited_var in splited_vars:
                 is_slice, block_id, offset = self._get_slice_var_info(splited_var)
@@ -310,9 +320,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 if origin_name in self.sparse_var_list:
                     self.sparse_var_splited_list.append(splited_var.name)
                 self.vars_info[origin_name]["var_names"].append(splited_var.name)
-                if len(splited_vars)!=1:
+                if len(splited_vars) != 1:
                     self.origin_program.global_block().create_var(
-                        name=".".join([splited_var.name,"delta"]),
+                        name=".".join([splited_var.name, "delta"]),
                         persistable=False,
                         dtype=splited_var.dtype,
                         type=delta_type,
