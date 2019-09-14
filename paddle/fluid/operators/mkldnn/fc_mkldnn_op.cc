@@ -221,25 +221,14 @@ class FCPrimitiveFactory {
   boost::optional<inner_product_forward> fc_;
 };
 
-static std::string GetHash(const Tensor* input, const Tensor* weights,
-                           const std::string& suffix) {
-  auto dim2str = [](const DDim& operand_dims) {
-    std::string str = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      str += std::to_string(operand_dims[i]) + "-";
-    }
-    return str;
-  };
-  return std::to_string((unsigned)input->format()) + dim2str(weights->dims()) +
-         suffix;
-}
-
 template <typename T>
 std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
     const MKLDNNDeviceContext& dev_ctx, const ExecutionContext& ctx,
     const Tensor* input, const Tensor* weights,
     const mkldnn::engine& mkldnn_engine) {
-  const std::string key = GetHash(input, weights, ctx.op().Output("Out"));
+  const std::string key = platform::CreateKey(
+      input->format(), framework::vectorize<int>(weights->dims()),
+      ctx.op().Output("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));

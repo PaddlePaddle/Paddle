@@ -184,27 +184,30 @@ inline std::string ThreadIDasStr(void) {
       std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
-inline std::string dims2str(const mkldnn::memory::dims& operand_dims) {
-  std::string dstr = "";
-  for (size_t i = 0; i < operand_dims.size(); ++i) {
-    dstr += std::to_string(operand_dims[i]) + "-";
-  }
-  return dstr;
+template <typename T>
+inline void AppendKey(std::string* key, const T& num) {
+  key->append(std::to_string(num));
 }
 
-inline void AppendKey(std::string* key, const std::string& s) {
-  key->append(s);
+inline void AppendKey(std::string* key, const std::string& str) {
+  key->append(str);
 }
 
-inline std::string GetHash(const mkldnn::memory::dims& operand_dims,
-                           const std::string& suffix) {
-  return dims2str(operand_dims) + suffix;
-}
+inline void AppendKey(std::string* key, const char* str) { key->append(str); }
 
-inline void AppendKeyDims(std::string* key, const mkldnn::memory::dims& dims) {
-  for (unsigned int i = 0; i < dims.size(); i++) {
+inline void AppendKey(std::string* key, const std::vector<int>& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
     AppendKey(key, std::to_string(dims[i]));
   }
+}
+
+template <typename... ArgTypes>
+inline std::string CreateKey(ArgTypes&&... args) {
+  std::string key;
+  key.reserve(256);
+  using expand_type = int[];
+  expand_type{0, (AppendKey(&key, args), 0)...};
+  return key;
 }
 
 }  // namespace platform

@@ -70,7 +70,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
         auto out_format = platform::MKLDNNFormatForSize(
             x_dims.size(), MKLDNNMemoryFormat::nchw);
 
-        const std::string key = platform::ReorderMKLDNNHandler::GetHash(
+        const std::string key = platform::CreateKey(
             src_x_tz, x->format(), out_format, std::to_string(in_type));
 
         platform::ReorderMKLDNNHandler handler(src_x_tz, x->type(), in_type,
@@ -136,7 +136,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       std::vector<memory::primitive_desc> srcs_pd;
       std::vector<float> scales = {1.0f, 1.0f};
 
-      const std::string key = platform::GetHash(
+      const std::string key = platform::CreateKey(
           src_x_tz, ctx.op().Output("Out") + std::to_string(x->format()) +
                         std::to_string(y->format()));
 

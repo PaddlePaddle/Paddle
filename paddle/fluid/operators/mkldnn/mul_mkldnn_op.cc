@@ -332,33 +332,17 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
   }
 };
 
-static std::string GetHash(const Tensor *input_x, const Tensor *input_y,
-                           const std::string &suffix) {
-  auto dim2str = [](const DDim &operand_dims) {
-    std::string str = "";
-    for (int i = 0; i < operand_dims.size(); ++i) {
-      str += std::to_string(operand_dims[i]) + "-";
-    }
-    return str;
-  };
-
-  std::string hash = std::to_string((unsigned)input_x->format()) +
-                     std::to_string((unsigned)input_x->type()) +
-                     dim2str(input_x->dims()) +
-                     std::to_string((unsigned)input_y->format()) +
-                     std::to_string((unsigned)input_y->type()) +
-                     dim2str(input_y->dims()) + suffix;
-
-  return hash;
-}
-
 /* OT: output data type */
 template <typename XT, typename YT, typename OT>
 std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine, bool enable_quant) {
-  const std::string key = GetHash(input_x, input_y, ctx.op().Output("Out"));
+  const std::string key = platform::CreateKey(
+      input_x->format(), input_x->type(),
+      framework::vectorize<int>(input_x->dims()), input_y->format(),
+      input_y->type(), framework::vectorize<int>(input_y->dims()),
+      ctx.op().Output("Out"));
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));

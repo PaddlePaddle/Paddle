@@ -120,22 +120,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     return batch_norm_p;
   }
 
-  static std::string GetHash(const memory::dims &input_dims, float epsilon,
-                             unsigned flag, bool is_test,
-                             MKLDNNMemoryFormat format,
-                             const std::string &suffix = "") {
-    auto dims2str = [](const memory::dims &operand_dims) {
-      std::string dstr = "";
-      for (size_t i = 0; i < operand_dims.size(); ++i) {
-        dstr += std::to_string(operand_dims[i]) + "-";
-      }
-      return dstr;
-    };
-    return dims2str(input_dims) + std::to_string(epsilon) +
-           std::to_string(flag) + std::to_string(is_test) +
-           std::to_string(format) + suffix;
-  }
-
  private:
   std::shared_ptr<batch_norm_fwd::primitive_desc> batch_norm_pd_;
 };
@@ -236,9 +220,9 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     // keys for backward pass
-    const std::string key = BatchNormMKLDNNHandler::GetHash(
-        src_tz, epsilon, flags, global_stats, input_format,
-        ctx.op().Output("SavedMean"));
+    const std::string key =
+        platform::CreateKey(src_tz, epsilon, flags, global_stats, input_format,
+                            ctx.op().Output("SavedMean"));
     BatchNormMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -369,15 +353,14 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     unsigned flags = mkldnn::use_scale_shift;
 
     // keys from forward pass
-    const std::string key = BatchNormMKLDNNHandler::GetHash(
-        src_tz, epsilon, flags, false, input_format,
-        ctx.op().Input("SavedMean"));
+    const std::string key =
+        platform::CreateKey(src_tz, epsilon, flags, false, input_format,
+                            ctx.op().Input("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
     // keys for primitives reuse
     const std::string key_with_hash =
-        key + BatchNormMKLDNNHandler::GetHash(src_tz, epsilon, flags, false,
-                                              input_format);
+        key + platform::CreateKey(src_tz, epsilon, flags, false, input_format);
     const std::string key_batch_norm_bwd_p =
         key_with_hash + "@batch_norm_bwd_p";
     const std::string key_batch_norm_src_mem_p =
