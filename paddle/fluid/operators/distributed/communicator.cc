@@ -522,7 +522,7 @@ void Communicator::GeoSgdStart(const std::string& var_name,
       auto local_var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_, *old_scope_.get(), local_var_name);
       GeoSgdParamCopy(*recv_scope_, *pserver_scope_.get(), local_var_name);
-      GeoSgdDeltaParamCopy(scope, *delta_scope_.get(), local_var_name);
+      GeoSgdDeltaParamCopy(*recv_scope_, *delta_scope_.get(), local_var_name);
     }
     return;
   }
@@ -547,9 +547,6 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       VLOG(1) << "sparse_var_ids_table_ insert element: "<< sparse_var_table_temp[i];
       sparse_var_ids_table_[sparse_var_table_temp[i]]=std::unordered_map<int64_t,std::vector<float>>{};
     }
-
-    
-
     // ids
     auto *var = scope.FindVar(sparse_var_names[i]);
     auto var_tensor = var->Get<framework::LoDTensor>();
