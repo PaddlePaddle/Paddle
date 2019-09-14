@@ -561,7 +561,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       // only push id which has not been recorded.
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
-        VLOG(1)<<"Sparse ids: "<<var_mutable_data[j];
+        VLOG(1)<<"record Sparse ids: "<<var_mutable_data[j];
         std::vector<float> row_mutable_data{};
         row_mutable_data.resize(column);
         for (size_t k = 0; k < column; k++){
@@ -570,11 +570,11 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
         }
         sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
         VLOG(1)<<"Copy complete";
-        VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
+        for (size_t k = 0; k < column; k++){
+          VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
-                <<" F value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].front()
-                <<" f value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]][0]
-                <<" B value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].back();
+                <<" "<<k<<" value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]][k];
+        }
       } 
     }
   }
@@ -642,20 +642,26 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     //Todo: using template T instead of float&int 
     int loc = 0;
     for (auto &iter:select_table) {
-      auto ids = iter.first;
-      auto value = iter.second;
+      auto &ids = iter.first;
+      auto &value = iter.second;
       for(int64_t i=0; i<columns; i++) {
+        VLOG(1) << "Geo-Sgd before Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
+            <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
+            <<" ;delta_scope: "<< value[i];
         value[i] = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
         y_mutable_data[ids*columns + i] += value[i];
-        VLOG(1) << "Geo-Sgd Send " << var_name<< " recv_scope: "<< x_mutable_data[ids*columns + i]
+        VLOG(1) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
             <<" ;delta_scope: "<< value[i];
         new_value[loc]=value[i];
         loc++;
       }
-      new_rows.emplace_back(ids);
+      new_rows.push_back(ids);
     }
     var_select_rows->set_rows(new_rows);
+    for(int i=0; i< new_rows.size(); i++) {
+      VLOG(1)<< "Selected Rows new row:" <<i<<" is "<<new_rows[i];
+    }
 
     auto *var_select_value = var_select_rows->mutable_value();
     var_select_value->Resize({rows, columns});
