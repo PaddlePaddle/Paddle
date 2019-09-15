@@ -32,6 +32,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid import unique_name
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
@@ -284,6 +285,26 @@ class OpTest(unittest.TestCase):
                 for i in range(len(np_value)):
                     inputs[name].append(
                         self._create_var_from_numpy(np_value[i]))
+            '''
+            for var_name in self.inputs:
+                if isinstance(self.inputs[var_name], list):
+                    for name, np_value in self.inputs[var_name]:
+                        if isinstance(np_value, tuple):
+                            v = self._create_var_from_numpy(np_value[0])
+                            v._ivar.value().get_tensor().set_recursive_sequence_lengths(np_value[1])
+                            inputs[var_name].append(v)
+                        else:
+                            v = self._create_var_from_numpy(np_value)
+                            inputs[var_name].append(v)
+                else:
+                    if isinstance(self.inputs[var_name], tuple):
+                        v = self._create_var_from_numpy(self.inputs[var_name][0])
+                        v._ivar.value().get_tensor().set_recursive_sequence_lengths(self.inputs[var_name][1])
+                        inputs[var_name].append(v)
+                    else:
+                        v = self._create_var_from_numpy(self.inputs[var_name])
+                        inputs[var_name].append(v)
+            '''
 
             # prepare output variable
             outputs = defaultdict(list)
@@ -315,7 +336,7 @@ class OpTest(unittest.TestCase):
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
-                attrs=self.attrs)
+                attrs=self.attrs if hasattr(self, "attrs") else None)
 
             return outputs
 

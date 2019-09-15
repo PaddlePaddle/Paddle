@@ -181,6 +181,8 @@ def to_variable(value, block=None, name=None):
             y = fluid.dygraph.to_variable(x)
 
     """
+    if isinstance(value, np.float32) or isinstance(value, np.float64):
+        value = np.array(value)
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
