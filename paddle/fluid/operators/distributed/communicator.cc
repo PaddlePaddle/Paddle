@@ -559,7 +559,6 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     auto table_tensor = table->Get<framework::LoDTensor>();
     framework::DDim table_dim = table_tensor.dims();
     int64_t column = table_dim[1];
-    VLOG(1)<< "Table tensor column: "<<column;
     float* table_mutable_data = table_tensor.mutable_data<float>(var_tensor.place());
 
     for (int j=0; j<var_element_number; j++){
@@ -647,12 +646,12 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
       auto &ids = iter.first;
       auto &value = iter.second;
       for(int64_t i=0; i<columns; i++) {
-        VLOG(1) << "Geo-Sgd before Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
+        VLOG(4) << "Geo-Sgd before Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
             <<" ;delta_scope: "<< value[i];
         value[i] = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
         y_mutable_data[ids*columns + i] += value[i];
-        VLOG(1) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
+        VLOG(4) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
             <<" ;delta_scope: "<< value[i];
         new_value[loc]=value[i];

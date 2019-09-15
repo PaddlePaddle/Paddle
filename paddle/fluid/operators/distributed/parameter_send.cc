@@ -50,9 +50,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
-  VLOG(1) << "parameter send_var is: "<<rpc_ctx.var_name;
   size_t out_num = rpc_ctx.splited_var_names.size();
-  VLOG(1) << "parameter send_var: "<<rpc_ctx.var_name<<" out_num: "<<out_num;
   if (send_var->IsType<framework::LoDTensor>()) {
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
@@ -81,33 +79,21 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();
-    for(int i=0; i<rpc_ctx.height_sections.size();i++){
-      VLOG(1)<<"height sections"<<rpc_ctx.height_sections[i];
-    }
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
-    VLOG(1)<<"send rows size: "<<send_slr.rows().size();
-    for(int i=0; i<send_slr.rows().size(); i++){
-      VLOG(1)<<"send rows: "<<i<<": "<<send_rows[i];
-    }
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 
     outs_rows_idx.resize(out_num);
     outs_dense_idx.resize(out_num);
-    VLOG(1)<<"end_slr.value().numel(): "<<send_slr.value().numel();
-    VLOG(1)<<"send_slr.value().dims()[0]: "<<send_slr.value().dims()[0];
 
     auto row_numel = send_slr.value().numel() / send_slr.value().dims()[0];
-    VLOG(1)<<"row_numel: "<<row_numel;
     auto *src = send_slr.value().data<T>();
-    VLOG(1)<<"value 0: "<<src[0];
 
     // create output var in local scope
     std::vector<framework::SelectedRows *> outs;
     for (auto &name : rpc_ctx.splited_var_names) {
-      VLOG(1)<<"Create var: "<<name;
       auto *out = local_scope->Var(name)->GetMutable<framework::SelectedRows>();
       outs.push_back(out);
     }
