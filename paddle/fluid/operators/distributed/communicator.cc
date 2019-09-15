@@ -562,13 +562,10 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
         VLOG(1)<<"record Sparse ids: "<<var_mutable_data[j];
-        std::vector<float> row_mutable_data{};
-        row_mutable_data.resize(column);
         for (size_t k = 0; k < column; k++){
-          row_mutable_data.push_back(table_mutable_data[var_mutable_data[j] * column + k]);
+          sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].push_back(table_mutable_data[var_mutable_data[j] * column + k]);
           VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
         }
-        sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]] = row_mutable_data;
         VLOG(1)<<"Copy complete";
         for (size_t k = 0; k < column; k++){
           VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
@@ -638,9 +635,11 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     std::vector<int64_t> new_rows;
     new_rows.resize(rows);
     float new_value[rows*columns];
+    int64_t temp_rows[rows];
     //Todo: test var find success
     //Todo: using template T instead of float&int 
     int loc = 0;
+    int row = 0;
     for (auto &iter:select_table) {
       auto &ids = iter.first;
       auto &value = iter.second;
@@ -656,8 +655,10 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
         new_value[loc]=value[i];
         loc++;
       }
-      new_rows.push_back(ids);
+      temp_rows[row] = ids;
+      row++;
     }
+    std::memcpy(&new_rows[0],temp_rows,rows*sizeof(int64_t));
     var_select_rows->set_rows(new_rows);
     for(int i=0; i< new_rows.size(); i++) {
       VLOG(1)<< "Selected Rows new row:" <<i<<" is "<<new_rows[i];
