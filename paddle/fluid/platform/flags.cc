@@ -427,3 +427,17 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "FLAGS_fraction_of_gpu_memory_to_use");
 
 #endif
+
+/**
+ * Scope related FLAG
+ * Name: local_exe_sub_scope_limit
+ * Since Version: 1.6.0
+ * Value Range: double, default=256 (MB)
+ * Example:
+ * Note:
+ */
+DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
+              "The memory up limit of sub-scopes of local execution scope. "
+              "If you don't need to limit the memory, "
+              "you should set FLAGS_local_exe_sub_scope_limit=-1. "
+              "The default value is 256 MBytes.");

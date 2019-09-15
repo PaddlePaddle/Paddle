@@ -19,11 +19,8 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/profiler.h"
-DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
-              "The memory limit of local execution scope. "
-              "If you don't need to limit the memory of local execution scope,"
-              " you should set FLAGS_local_exe_sub_scope_limit=-1."
-              "The default value is 1024 MBytes. ");
+
+DECLARE_double(local_exe_sub_scope_limit);
 
 namespace paddle {
 namespace framework {
