@@ -730,7 +730,10 @@ void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &recv_scope,
                                         const std::string &var_name) {
     auto &delta_var_name = VarToDeltaVar(var_name);
     VLOG(1)<< "Copy var name: "<<delta_var_name;
-    
+    auto *var_send = recv_scope.FindVar(delta_var_name);
+    auto *var_delta = delta_scope.FindVar(delta_var_name);
+    framework::CopyVariable(*var_send,var_delta);
+    /*
     if (var_list_[var_name] == true) {
       auto *var_send = recv_scope.FindVar(delta_var_name);
       if(var_send == nullptr) {
@@ -752,7 +755,8 @@ void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &recv_scope,
       auto *var_send = recv_scope.FindVar(var_name);
       auto *var_delta = delta_scope.FindVar(delta_var_name);
       framework::CopyVariable(*var_send,var_delta);
-    } 
+    }
+    */ 
 }
 
 }  // namespace distributed
