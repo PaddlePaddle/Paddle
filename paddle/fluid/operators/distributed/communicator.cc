@@ -609,6 +609,11 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
   
+  // for test
+  auto *var_pserver = pserver_scope_.get()->FindVar(var_name);
+  auto *var_pserver_tensor = var_pserver->Get<framework::LoDTensor>();
+  float *pserver_mutable_data = var_pserver_tensor.mutable_data<float>(var_y_tensor.place());
+
   if (var_list_[var_name] == false) {
     // dense paramter 
     auto *var_z = delta_scope_->FindVar(VarToDeltaVar(var_name));
@@ -616,14 +621,16 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
     VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope: "<< *z_mutable_data;
+            <<" ;delta_scope: "<< *z_mutable_data
+            <<" ;pserver_scope: "<< *pserver_mutable_data;
     for(int i = 0; i < element_number; i++){
       z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
       y_mutable_data[i] += z_mutable_data[i];
     }
     VLOG(1) << "Geo-Sgd Send " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
-            <<" ;delta_scope: "<< *z_mutable_data;
+            <<" ;delta_scope: "<< *z_mutable_data
+            <<" ;pserver_scope: "<< *pserver_mutable_data;
   }
   else {
     // sparse parameter
@@ -653,7 +660,8 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
         y_mutable_data[ids*columns + i] += value[i];
         VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
             <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
-            <<" ;delta_scope: "<< value[i];
+            <<" ;delta_scope: "<< value[i]
+            <<" ;pserver_scope: "<< pserver_mutable_data[ids*columns +i];
         new_value[loc]=value[i];
         loc++;
       }
