@@ -725,15 +725,14 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
     framework::CopyVariable(*var_x,var_y);
 }
 
-void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
+void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &recv_scope,
                                         const framework::Scope &delta_scope, 
                                         const std::string &var_name) {
     auto &delta_var_name = VarToDeltaVar(var_name);
     VLOG(1)<< "Copy var name: "<<delta_var_name;
     
     if (var_list_[var_name] == true) {
-      
-      auto *var_send = send_scope.FindVar(delta_var_name);
+      auto *var_send = recv_scope.FindVar(delta_var_name);
       if(var_send == nullptr) {
         VLOG(1) << "Send var not find";}
 
@@ -742,15 +741,18 @@ void Communicator::GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
       VLOG(1) << "Delta var not find";}
 
       auto &src_slr = var_send->Get<framework::SelectedRows>();
-      auto *tmp_grad_slr = var_delta->GetMutable<framework::SelectedRows>();
-      tmp_grad_slr->set_rows(src_slr.rows());
-      tmp_grad_slr->set_height(src_slr.height());
+      framework::DDim table_dim = src_slr.value().dims();
+      auto *tmp_slr = var_delta->GetMutable<framework::SelectedRows>();
+      tmp_slr->set_rows(src_slr.rows());
+      tmp_slr->set_height(src_slr.height());
+      auto *dst_t = tmp_slr->mutable_value();
+      dst_t->Resize({table_dim[0],table_dim[1]});
+      dst_t->mutable_data<float>(src_slr.place());
     } else {
-      auto *var_send = send_scope.FindVar(var_name);
+      auto *var_send = recv_scope.FindVar(var_name);
       auto *var_delta = delta_scope.FindVar(delta_var_name);
       framework::CopyVariable(*var_send,var_delta);
-    }
-    
+    } 
 }
 
 }  // namespace distributed
