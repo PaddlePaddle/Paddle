@@ -173,10 +173,6 @@ list(REMOVE_ITEM TEST_OPS test_layers)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
-list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
-list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
-list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
-list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test   

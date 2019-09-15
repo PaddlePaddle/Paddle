@@ -25,6 +25,8 @@ from paddle.fluid import framework
 
 import numpy as np
 
+np.set_seed(123)
+
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
