@@ -146,7 +146,6 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
   } else {
     PADDLE_THROW("unsupported var type to send!");
   }
-  VLOG(1) << "search var "<< rpc_ctx.var_name <<" in scope "<< &scope<<" done";
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
     auto &send_var_name = rpc_ctx.splited_var_names[i];
