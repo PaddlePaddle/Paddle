@@ -500,6 +500,11 @@ void Communicator::GeoSgdStart(const std::string& var_name,
     VLOG(1) <<"Parameter init from recv_scope";
 
     //for test
+    std::vector<std::string> scope_vars = scope.LocalVarNames();
+    for(auto var_name : scope_vars) {
+      VLOG(1)<< "Startup Scope has var: "<<var_name;
+    }
+
     std::vector<std::string> recv_scope_vars = recv_scope_->LocalVarNames();
     for(auto var_name : recv_scope_vars) {
       VLOG(1)<< "Recv Scope has var: "<<var_name;
@@ -564,11 +569,9 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
         VLOG(1)<<"record Sparse ids: "<<var_mutable_data[j];
         for (size_t k = 0; k < column; k++){
           sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].push_back(table_mutable_data[var_mutable_data[j] * column + k]);
-          VLOG(1)<<"row_mutable_data Push back: "<<table_mutable_data[var_mutable_data[j] * column + k];
         }
-        VLOG(1)<<"Copy complete";
         for (size_t k = 0; k < column; k++){
-          VLOG(1) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
+          VLOG(4) << "sparse_var_ids_table_ " <<sparse_var_table_temp[i] 
                 << "insert element: "<< var_mutable_data[j] 
                 <<" "<<k<<" value: "<<sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]][k];
         }
@@ -693,14 +696,14 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
     float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
-    VLOG(4) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+    VLOG(1) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;pserver_scope: "<< *z_mutable_data;
     for(int i = 0; i < element_number; i++){
       x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
       y_mutable_data[i] = z_mutable_data[i];
     }
-    VLOG(4) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
+    VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;pserver_scope: "<< *z_mutable_data;
   }
