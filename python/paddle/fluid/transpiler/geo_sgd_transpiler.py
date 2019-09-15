@@ -148,22 +148,22 @@ class GeoSgdTranspiler(DistributeTranspiler):
         for delta_var in self.delta_vars_list:
             out = self.trainer_startup_program.global_block().create_var(
                 name=delta_var.name,
-                persistable=delta_var.persistable,
+                persistable=True,
                 dtype=delta_var.dtype,
                 type=delta_var.type,
                 shape=delta_var.shape)
-            self.trainer_startup_program.global_block().append_op(
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [out]},
-                attrs={
-                    'shape': out.shape,
-                    'dtype': out.dtype,
-                    'value': float(0.0),
-                    'force_cpu': True
-                },
-                stop_gradient=True
-            )
+            # self.trainer_startup_program.global_block().append_op(
+            #     type='fill_constant',
+            #     inputs={},
+            #     outputs={'Out': [out]},
+            #     attrs={
+            #         'shape': out.shape,
+            #         'dtype': out.dtype,
+            #         'value': float(0.0),
+            #         'force_cpu': True
+            #     },
+            #     stop_gradient=True
+            # )
         dummy_output = self.trainer_startup_program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
         param_init = self.trainer_startup_program.global_block().create_var(
@@ -228,7 +228,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
             per_opt_block.append_op(
                 type="sum",
-                inputs={"X": [delta_var, param]},
+                inputs={"X": [param,delta_var]},
                 outputs={"Out": param}
             )
             param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
