@@ -611,7 +611,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
   
   // for test
   auto *var_pserver = pserver_scope_.get()->FindVar(var_name);
-  auto *var_pserver_tensor = var_pserver->Get<framework::LoDTensor>();
+  auto var_pserver_tensor = var_pserver->Get<framework::LoDTensor>();
   float *pserver_mutable_data = var_pserver_tensor.mutable_data<float>(var_y_tensor.place());
 
   if (var_list_[var_name] == false) {
