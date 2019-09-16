@@ -277,6 +277,7 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
 
             # prepare input variable
+            inputs = defaultdict(list)
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             for input_ in op_proto.inputs:
                 name = input_.name
