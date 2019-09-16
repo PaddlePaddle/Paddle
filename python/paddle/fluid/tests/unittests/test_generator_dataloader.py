@@ -116,6 +116,7 @@ class TestBase(unittest.TestCase):
                 for _ in six.moves.range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
+                        print(d)
                         assert len(d) == len(places), "{} != {}".format(
                             len(d), len(places))
                         for i, item in enumerate(d):
@@ -161,6 +162,7 @@ class TestBase(unittest.TestCase):
                 for use_double_buffer in [False, True]:
                     results = []
                     for use_legacy_py_reader in [False, True]:
+                        print(p, use_double_buffer, use_legacy_py_reader)
                         ret = self.run_main(
                             use_legacy_py_reader=use_legacy_py_reader,
                             with_data_parallel=with_data_parallel,

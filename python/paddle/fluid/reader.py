@@ -55,6 +55,12 @@ class DataLoaderBase(object):
         return self
 
     def next(self):
+        '''
+        Get the next item in the DataLoader object. This method    
+        should not be called by users directly. It is used for
+        implementing iterator protocol of Python 2.x inside
+        PaddlePaddle framework.
+        '''
         return self.__next__()
 
     def __iter__(self):
@@ -75,6 +81,21 @@ class DataLoader(object):
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
         into a queue asynchronously.
+
+        The created DataLoader object provides 3 methods to set the data source
+        :code:`set_sample_generator` , :code:`set_sample_list_generator` and 
+        :code:`set_batch_generator` , which has the same effect as the method
+        :code:`PyReader.decorate_sample_generator` ,
+        :code:`PyReader.decorate_sample_list_generator` and
+        :code:`PyReader.decorate_batch_generator` . 
+
+        If iterable = False, the created DataLoader object provides 
+        :code:`start()` and :code:`reset()` method to control the data reading
+        process, which has the same effect as the non-iterable 
+        :code:`PyReader.start()` and :code:`PyReader.reset()` .    
+
+        If iterable = True, the created DataLoader object is Python generator
+        object, which is iterable using for-range loop.
         
         Args:  
             feed_list (list(Variable)|tuple(Variable)): feed variable list.
