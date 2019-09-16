@@ -22,6 +22,7 @@ import numpy as np
 
 __all__ = ['conv2d']
 
+
 def convert_to_list(value, n, name, dtype=np.int):
     """
     Converts a single numerical type or iterable of numerical
@@ -65,6 +66,7 @@ def convert_to_list(value, n, name, dtype=np.int):
                     "including element " + str(single_value) + " of type" + " "
                     + str(type(single_value)))
         return value_list
+
 
 def conv2d(input,
            filter,
@@ -123,9 +125,11 @@ def conv2d(input,
     num_filters = filter.shape[0]
     num_filter_channels = filter.shape[1]
     l_type = 'conv2d'
+
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
         l_type = 'depthwise_conv2d'
+
     if groups is None:
         assert num_filter_channels == num_channels
     else:
@@ -138,9 +142,12 @@ def conv2d(input,
     stride = convert_to_list(stride, 2, 'stride')
     padding = convert_to_list(padding, 2, 'padding')
     dilation = convert_to_list(dilation, 2, 'dilation')
+
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
+
     pre_bias = helper.create_variable_for_type_inference(dtype=input.dtype)
+
     helper.append_op(
         type=l_type,
         inputs={
@@ -157,5 +164,3 @@ def conv2d(input,
             'use_mkldnn': False
         })
     return pre_bias
-
-
