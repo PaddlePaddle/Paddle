@@ -836,6 +836,67 @@ class Executor(object):
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
         return scope, trainer
 
+    def _run_from_dataset(self,
+                          program=None,
+                          dataset=None,
+                          scope=None,
+                          thread=0,
+                          is_infer=False,
+                          debug=False,
+                          fetch_list=None,
+                          fetch_info=None,
+                          print_period=100,
+                          fetch_handler=None):
+        if dataset is None:
+            raise RuntimeError("dataset is need and should be initialized")
+
+        if program._pipeline_opt:
+            thread = self._adjust_pipeline_resource(program._pipeline_opt,
+                                                    dataset, thread)
+
+        dataset._prepare_to_run()
+
+        if fetch_handler is not None:
+            fetch_instance = fetch_handler
+        elif fetch_handler is None and fetch_list is not None:
+
+            class FH(FetchHandler):
+                def handler(self, fetch_target_vars):
+                    for i in range(len(fetch_target_vars)):
+                        print("{}: \n {}\n".format(fetch_info[i],
+                                                   fetch_target_vars[i]))
+
+            fetch_target_names = [var.name for var in fetch_list]
+            fetch_instance = FH(fetch_target_names,
+                                period_secs=print_period,
+                                return_np=False)
+        else:
+            fetch_instance = FetchHandler([])
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, dataset.dataset)
+
+        scope0 = trainer_instance.get_worker_scope(0)
+
+        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
+        fetch_monitor.start()
+        self._default_executor.run_from_dataset(trainer_instance)
+        fetch_monitor.stop()
+        dataset._finish_to_run()
+        return None
+
     def infer_from_dataset(self,
                            program=None,
                            dataset=None,
@@ -844,7 +905,8 @@ class Executor(object):
                            debug=False,
                            fetch_list=None,
                            fetch_info=None,
-                           print_period=100):
+                           print_period=100,
+                           fetch_handler=None):
         """
         The document of infer_from_dataset is almost the same as
         train_from_dataset, except that in distributed training,
@@ -891,27 +953,10 @@ class Executor(object):
                                        dataset=dataset)        
 
         """
-        if dataset == None:
-            raise RuntimeError("dataset is needed and should be initialized")
 
-        dataset._prepare_to_run()
-        scope, trainer = self._prepare_trainer(
-            program=program,
-            dataset=dataset,
-            scope=scope,
-            thread=thread,
-            debug=debug,
-            fetch_list=fetch_list,
-            fetch_info=fetch_info,
-            print_period=print_period)
-        trainer._set_infer(True)
-        trainer._gen_trainer_desc()
-        self._dump_debug_info(program=program, trainer=trainer)
-        self._default_executor.run_from_dataset(program.desc, scope,
-                                                dataset.dataset,
-                                                trainer._desc())
-        dataset._finish_to_run()
-        return None
+        return self._run_from_dataset(program, dataset, scope, thread, True,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
 
     def train_from_dataset(self,
                            program=None,
@@ -973,50 +1018,6 @@ class Executor(object):
                                      dataset=dataset)
 
         """
-        if dataset is None:
-            raise RuntimeError("dataset is need and should be initialized")
-
-        if program._pipeline_opt:
-            thread = self._adjust_pipeline_resource(program._pipeline_opt,
-                                                    dataset, thread)
-
-        dataset._prepare_to_run()
-
-        if fetch_handler is not None:
-            fetch_instance = fetch_handler
-        elif fetch_handler is None and fetch_list is not None:
-
-            class FH(FetchHandler):
-                def handler(self, fetch_target_vars):
-                    for i in range(len(fetch_target_vars)):
-                        print("{}: \n {}\n".format(fetch_target_names[i],
-                                                   fetch_target_vars[i]))
-
-            fetch_target_names = [var.name for var in fetch_list]
-            fetch_instance = FH(fetch_target_names,
-                                period_secs=print_period,
-                                return_np=False)
-        else:
-            fetch_instance = FetchHandler([])
-
-        scope, trainer = self._prepare_trainer(
-            program=program,
-            dataset=dataset,
-            scope=scope,
-            thread=thread,
-            debug=debug)
-        trainer._gen_trainer_desc()
-
-        self._dump_debug_info(program=program, trainer=trainer)
-
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer._desc(), scope, dataset.dataset)
-
-        scope0 = trainer_instance.get_worker_scope(0)
-
-        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
-        fetch_monitor.start()
-        self._default_executor.run_from_dataset(trainer_instance)
-        fetch_monitor.stop()
-        dataset._finish_to_run()
-        return None
+        return self._run_from_dataset(program, dataset, scope, thread, False,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
