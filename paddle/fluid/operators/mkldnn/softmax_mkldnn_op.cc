@@ -40,7 +40,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        platform::Place cpu_place, const std::string& uniq_name)
       : platform::MKLDNNHandler(dev_ctx, dev_ctx.GetEngine(),
-                                platform::GetHash(dims, uniq_name)),
+                                platform::CreateKey(dims, uniq_name)),
         place_(cpu_place),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
@@ -53,7 +53,7 @@ class SoftmaxMKLDNNHandler : public platform::MKLDNNHandler {
                        const platform::MKLDNNDeviceContext& dev_ctx,
                        platform::Place cpu_place, const std::string& uniq_name)
       : platform::MKLDNNHandler(dev_ctx, dev_ctx.GetEngine(),
-                                platform::GetHash(dims, uniq_name)),
+                                platform::CreateKey(dims, uniq_name)),
         place_(cpu_place),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
@@ -218,6 +218,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
+
     SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc, dev_ctx,
                                     ctx.GetPlace(), ctx.op().Output("Out"));
     // Currently only NC data format is supported
