@@ -188,7 +188,8 @@ struct Layers {
   }
 
   VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y,
-                     VarDesc* out = nullptr) {
+                     VarDesc* out = nullptr,
+                     const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -197,6 +198,11 @@ struct Layers {
     op->SetInput("X", {x->Name()});
     op->SetInput("Y", {y->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
