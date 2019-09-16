@@ -13198,8 +13198,6 @@ def deformable_conv(input,
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
     if modulated:
-        if not isinstance(mask, Variable):
-            raise TypeError("Input Mask of deformable_conv must be Variable")
         helper.append_op(
             type='deformable_conv',
             inputs={
