@@ -49,10 +49,10 @@ class DequantizeMaxAbsOp2 : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of DequantizeMaxAbsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of DequantizeMaxAbsOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of DequantizeMaxAbsOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of DequantizeMaxAbsOp should not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
