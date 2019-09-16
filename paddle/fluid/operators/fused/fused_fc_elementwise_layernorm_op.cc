@@ -112,15 +112,35 @@ class FusedFCElementwiseLayerNormOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "");
-    AddInput("W", "");
-    AddInput("Bias0", "").AsDispensable();
-    AddInput("Y", "");
-    AddInput("Scale", "").AsDispensable();
-    AddInput("Bias1", "").AsDispensable();
-    AddOutput("Out", "");
-    AddOutput("Mean", "").AsDispensable();
-    AddOutput("Variance", "").AsDispensable();
+    AddInput("X", "(Tensor), The input tensor of fully connected operation");
+    AddInput("W",
+             "(Tensor), The weight tensor of fully connected operation. It is "
+             "a 2-D Tensor with shape (I, O)");
+    AddInput("Bias0",
+             "(Tensor, optional), The bias tensor of fully connecred "
+             "operation. It is a 1-D Tensor with shape (O), or a 2-D Tensor "
+             "with shape (1, O).")
+        .AsDispensable();
+    AddInput("Y",
+             "(Tensor), The second input tensor of elementwise_add operation. "
+             "Note that the shape should be the same as fully connect's result "
+             "tensor.");
+    AddInput(
+        "Scale",
+        "(Tensor, optional), It is a 1-D input Tensor of layer_norm operation.")
+        .AsDispensable();
+    AddInput(
+        "Bias1",
+        "(Tensor, optional), It is a 1-D input Tensor of layer_norm operation.")
+        .AsDispensable();
+    AddOutput("Out",
+              "(Tensor), Output after normalization. The shape is the shame as "
+              "layer_norm's input.");
+    AddOutput("Mean", "(Tensor, optional), Mean of the current minibatch")
+        .AsDispensable();
+    AddOutput("Variance",
+              "(Tensor, optional), Variance of the current minibatch")
+        .AsDispensable();
     AddAttr<int>("x_num_col_dims",
                  "(int, default 1), This op can take tensors with more than "
                  "two dimensions as its inputs.")
@@ -133,11 +153,13 @@ class FusedFCElementwiseLayerNormOpMaker
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                         "'epsilon' should be between 0.0 and 0.001.");
+          PADDLE_ENFORCE_GE(epsilon, 0.0f,
+                            "'epsilon' should be between 0.0 and 0.001.");
+          PADDLE_ENFORCE_LE(epsilon, 0.001f,
+                            "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<int>("begin_norm_axis",
-                 "the axis of `begin_norm_axis ... Rank(X) - 1` will be "
+                 "the axis of `begin_norm_axis ... Rank(Y) - 1` will be "
                  "normalized. `begin_norm_axis` splits the tensor(`X`) to a "
                  "matrix [N,H]. [default 1].")
         .SetDefault(1)
