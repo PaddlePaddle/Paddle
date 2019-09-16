@@ -568,7 +568,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       // only push id which has not been recorded.
       if(sparse_var_ids_table_[sparse_var_table_temp[i]].find(var_mutable_data[j]) == 
                                     sparse_var_ids_table_[sparse_var_table_temp[i]].end()) {
-        VLOG(1)<<"record Sparse ids: "<<var_mutable_data[j];
+        VLOG(4)<<"record Sparse ids: "<<var_mutable_data[j];
         for (size_t k = 0; k < column; k++){
           sparse_var_ids_table_[sparse_var_table_temp[i]][var_mutable_data[j]].push_back(table_mutable_data[var_mutable_data[j] * column + k]);
         }
@@ -655,19 +655,17 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     for (auto &iter:select_table) {
       auto &ids = iter.first;
       auto &value = iter.second;
-      for(int64_t i=0; i<columns; i++) {
-        VLOG(4) << "Geo-Sgd before Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
-            <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
-            <<" ;delta_scope: "<< value[i];
+      VLOG(1) <<"Geo-Sgd Send "<<ids;
+      for(int64_t i=0; i<columns; i++) { 
         value[i] = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
         y_mutable_data[ids*columns + i] += value[i];
-        VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + i]
-            <<" ;old_scope: "<< y_mutable_data[ids*columns +i]
-            <<" ;delta_scope: "<< value[i]
-            <<" ;pserver_scope: "<< pserver_mutable_data[ids*columns +i];
         new_value[loc]=value[i];
         loc++;
       }
+      VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
+            <<" ;old_scope: "<< y_mutable_data[ids*columns
+            <<" ;delta_scope: "<< value[0]
+            <<" ;pserver_scope: "<< pserver_mutable_data[ids*columnS];
       temp_rows[row] = ids;
       row++;
     }
