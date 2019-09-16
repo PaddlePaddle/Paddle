@@ -726,7 +726,8 @@ void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
 #endif
 
   CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
-                 static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
+                 static_cast<T>(1), A, K + 4, B, N + 4, static_cast<T>(0), C,
+                 N + 4);
 }
 
 template <typename DeviceContext>

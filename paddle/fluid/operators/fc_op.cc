@@ -31,7 +31,8 @@ class FCOp : public framework::OperatorWithKernel {
                       "W(Input) of Fully Connected should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
-    auto w_dims = ctx->GetInputDim("W");
+    auto w_dims = framework::DDim{ctx->GetInputDim("W")[0] - 4,
+                                  ctx->GetInputDim("W")[0] - 4};
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
