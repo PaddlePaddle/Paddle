@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle.fluid as fluid
+fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu

@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_ngraph);
 
 namespace paddle {
 namespace framework {
@@ -42,6 +43,12 @@ static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
          !strategy.enable_parallel_graph_;
 }
 
+static inline void ConvertDefaultValue(boost::optional<bool> *default_value) {
+  if (*default_value == boost::none) {
+    *default_value = true;
+  }
+}
+
 class ParallelExecutorPassBuilder : public ir::PassBuilder {
  public:
   explicit ParallelExecutorPassBuilder(const BuildStrategy &strategy)
@@ -52,6 +59,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+
+    AppendPassToUseNgraph("ngraph_subgraph_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
@@ -76,31 +85,55 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void ResolveOptionConfliction() {
     // Specifies the restrictions between different pass.
     if (strategy_.enable_parallel_graph_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "parallel_graph.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
+          << "fuse_all_reduce_ops doesn't work under "
+             "parallel_graph.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.is_distribution_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops only works under "
              "Non-distributed mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
+          << "Currently, fuse_all_reduce_ops_ only works under "
+             "Non-distributed mode.";
+      strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_optimizer_ops_ == true)
           << "Currently, fuse_all_optimizer_ops only works under AllReduce "
              "mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
-      VLOG_IF(3, strategy_.fuse_all_reduce_ops_)
+      LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
           << "fuse_all_optimizer_ops only work in Reducer mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
-    if (strategy_.async_mode_) {
-      VLOG_IF(3, strategy_.fuse_all_optimizer_ops_)
+    if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+      LOG_IF(WARNING, strategy_.fuse_broadcast_ops_ == true)
+          << "Currently, fuse_broadcast_ops only works under Reduce "
+             "mode.";
+      strategy_.fuse_broadcast_ops_ = false;
+    }
+
+    ConvertDefaultValue(&strategy_.fuse_all_optimizer_ops_);
+    ConvertDefaultValue(&strategy_.fuse_all_reduce_ops_);
+    ConvertDefaultValue(&strategy_.fuse_broadcast_ops_);
+
+    if (strategy_.fuse_all_optimizer_ops_ == true) {
+      LOG_IF(WARNING, strategy_.async_mode_)
           << "Currently, fuse_all_optimizer_ops doesn't work under "
              "async mode.";
-      strategy_.fuse_all_optimizer_ops_ = false;
+      strategy_.fuse_all_optimizer_ops_ = !strategy_.async_mode_;
+    }
+    if (strategy_.fuse_all_reduce_ops_ == true) {
+      LOG_IF(WARNING, strategy_.async_mode_)
+          << "fuse_all_optimizer_ops only work in Reducer mode.";
+      strategy_.fuse_all_reduce_ops_ = !strategy_.async_mode_;
     }
   }
 
@@ -140,7 +173,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // NOTE: fuse_all_xx_ops will count the number of xx operator first,
     // if the number is zero, fuse_all_reduce_ops will do nothing.
     // Currently, only one type of optimization algorithm can be fused.
-    if (strategy_.fuse_all_optimizer_ops_) {
+    if (strategy_.fuse_all_optimizer_ops_ == true) {
       AppendPass("fuse_adam_op_pass");
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
@@ -196,6 +229,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
   }
 
+  void AppendPassWithCheck(const boost::optional<bool> &append_pass,
+                           const std::string &pass_name) {
+    AppendPassWithCheck(append_pass == true, pass_name);
+  }
+
   void AppendPassWithCheck(bool append_pass, const std::string &pass_name) {
     if (append_pass) {
       AppendPass(pass_name);
@@ -217,6 +255,22 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #else
     PADDLE_ENFORCE(!FLAGS_use_mkldnn,
                    "Please compile with MKLDNN first to use MKLDNN");
+#endif
+  }
+
+  void AppendPassToUseNgraph(const std::string &pass_name) {
+#ifdef PADDLE_WITH_NGRAPH
+    if (FLAGS_use_ngraph) {
+      if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kAllReduce) {
+        LOG(WARNING) << "Currently ngraph_subgraph_pass works under AllReduce,"
+                        "please set FLAGS_use_ngraph=false.";
+      } else {
+        AppendPass(pass_name);
+      }
+    }
+#else
+    PADDLE_ENFORCE_NE(FLAGS_use_ngraph, true,
+                      "Please compile with NGRAPH first to use NGRAPH");
 #endif
   }
 
@@ -251,12 +305,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 #else
                                 const bool use_cuda) const {
 #endif
-  VLOG(3) << "apply all passes";
+  VLOG(1) << "apply all passes";
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);
 
   for (std::shared_ptr<ir::Pass> &pass : pass_builder_->AllPasses()) {
-    VLOG(3) << "BuildStrategy::Apply pass:" << pass->Type();
+    VLOG(1) << "BuildStrategy::Apply pass:" << pass->Type();
     if (IsMultiDevPass(pass->Type())) {
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
@@ -265,8 +319,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-      pass->Erase(ir::kNRanks);
-      pass->Set<size_t>(ir::kNRanks, new size_t(nranks));
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
@@ -274,6 +328,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #endif
     } else if (pass->Type() == "fuse_all_reduce_op_pass") {
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
       pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
       pass->Erase(kLocalScopes);
@@ -288,11 +344,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                       new bool(use_hierarchical_allreduce_));
 #endif
     } else if (pass->Type() == "coalesce_grad_tensor_pass") {
-      pass->Erase(kPlaces);
-      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
-      pass->Erase(kLocalScopes);
-      pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
-                                                    &local_scopes);
+      pass->Erase(kNRanks);
+      pass->Set<size_t>(kNRanks, new size_t(nranks));
     } else if (pass->Type() == "sequential_execution_pass") {
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
@@ -323,11 +376,11 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     }
-    VLOG(3) << "Start Apply Pass " << pass->Type();
+    VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
-    VLOG(3) << "Finish Apply Pass " << pass->Type();
+    VLOG(1) << "Finish Apply Pass " << pass->Type();
   }
-  VLOG(3) << "All Passes Applied";
+  VLOG(1) << "All Passes Applied";
   return graph;
 }
 
@@ -359,4 +412,7 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
+#endif
+#ifdef PADDLE_WITH_NGRAPH
+USE_PASS(ngraph_subgraph_pass);
 #endif

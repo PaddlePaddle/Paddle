@@ -94,8 +94,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
-  // Gpu related.
+  // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cudnn_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
@@ -148,6 +149,17 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   }
 
 #undef CP_MEMBER
+
+  Update();
+}
+
+void AnalysisConfig::EnableCUDNN() {
+#ifdef PADDLE_WITH_CUDA
+  use_cudnn_ = use_gpu_;
+#else
+  LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
+  use_cudnn_ = false;
+#endif
 
   Update();
 }
@@ -243,7 +255,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
-
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
@@ -260,6 +271,16 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       pass_builder()->AppendPass(pass);
     }
+  }
+
+  if (use_gpu() && use_cudnn_) {
+#ifdef PADDLE_WITH_CUDA
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableCUDNN();
+    }
+#endif
   }
 
   if (use_ngraph_) {

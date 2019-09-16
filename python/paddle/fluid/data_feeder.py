@@ -278,8 +278,8 @@ class DataFeeder(object):
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
-                "The number of fields in data (%s) does not match " +
-                "len(feed_list) (%s)") % (len(each_sample), len(converter))
+                "The number of fields in data (%d) does not match " +
+                "len(feed_list) (%d)") % (len(each_sample), len(converter))
             for each_converter, each_slot in six.moves.zip(converter,
                                                            each_sample):
                 each_converter.feed(each_slot)

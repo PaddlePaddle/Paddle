@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
+    auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 

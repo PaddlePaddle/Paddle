@@ -282,6 +282,8 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.queue_num = None
+        self.parse_ins_id = False
+        self.parse_content = False
         self.merge_by_lineid = False
 
     def _prepare_to_run(self):
@@ -297,6 +299,8 @@ class InMemoryDataset(DatasetBase):
         if self.queue_num is None:
             self.queue_num = self.thread_num
         self.dataset.set_queue_num(self.queue_num)
+        self.dataset.set_parse_ins_id(self.parse_ins_id)
+        self.dataset.set_parse_content(self.parse_content)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -317,6 +321,40 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.queue_num = queue_num
+
+    def set_parse_ins_id(self, parse_ins_id):
+        """
+        Set id Dataset need to parse insid
+
+        Args:
+            parse_ins_id(bool): if parse ins_id or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_parse_ins_id(True)
+
+        """
+        self.parse_ins_id = parse_ins_id
+
+    def set_parse_content(self, parse_content):
+        """
+        Set if Dataset need to parse content
+
+        Args:
+            parse_content(bool): if parse content or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_parse_content(True)
+
+        """
+        self.parse_content = parse_content
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size):
         """
@@ -682,3 +720,54 @@ class FileInstantDataset(DatasetBase):
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")
+
+
+class BoxPSDataset(InMemoryDataset):
+    """
+    BoxPSDataset: derived from InMemoryDataset.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+    """
+
+    def __init__(self):
+        """
+        Init
+        """
+        super(BoxPSDataset, self).__init__()
+        self.boxps = core.BoxPS(self.dataset)
+
+    def begin_pass(self):
+        """
+	Notify BoxPS to begin next pass
+	"""
+        self.boxps.begin_pass()
+
+    def end_pass(self):
+        """
+	Notify BoxPS to end current pass
+	"""
+        self.boxps.end_pass()
+
+    def wait_preload_done(self):
+        """
+	Wait async proload done
+	"""
+        self.boxps.wait_feed_pass_done()
+
+    def load_into_memory(self):
+        """
+	Load next pass into memory and notify boxps to fetch its emb from SSD
+	"""
+        self._prepare_to_run()
+        self.boxps.load_into_memory()
+
+    def preload_into_memory(self):
+        """
+	begin async preload next pass while current pass may be training
+	"""
+        self._prepare_to_run()
+        self.boxps.preload_into_memory()
