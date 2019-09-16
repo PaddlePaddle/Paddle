@@ -295,6 +295,7 @@ def _as_lodtensor(data, place):
 
 class FetchHandler(object):
     def __init__(self, fetch_target_names, period_secs=60, return_np=True):
+        super.__init__()
         self.fetch_target_names = fetch_target_names
         self.period_secs = period_secs
         self.return_np = return_np
@@ -981,8 +982,6 @@ class Executor(object):
                                                     dataset, thread)
 
         dataset._prepare_to_run()
-
-        fetch_instance = None
 
         if fetch_handler is not None:
             fetch_instance = fetch_handler

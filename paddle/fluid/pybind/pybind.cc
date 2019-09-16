@@ -983,7 +983,8 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
       .def(py::init<const ProgramDesc &, size_t>());
 
-  py::class_<framework::TrainerBase>(m, "TrainerBase")
+  py::class_<framework::TrainerBase, std::shared_ptr<framework::TrainerBase>>(
+      m, "TrainerBase")
       .def("get_worker_scope",
            [](TrainerBase &self, int thread_id) -> Scope * {
              return self.GetWorkerScope(thread_id);
