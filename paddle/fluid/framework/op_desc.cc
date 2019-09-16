@@ -677,7 +677,7 @@ void OpDesc::CheckAttrs() {
     return;
   }
   VLOG(10) << "begin to check attribute of " << Type();
-  checker->Check(&attrs_);
+  checker->Check(&attrs_, false);
 }
 
 void OpDesc::SetDefaultAttrsOnly() {
@@ -689,7 +689,7 @@ void OpDesc::SetDefaultAttrsOnly() {
     // not by users.
     return;
   }
-  checker->SetDefaultAttrsOnly(&attrs_);
+  checker->Check(&attrs_, true);
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {

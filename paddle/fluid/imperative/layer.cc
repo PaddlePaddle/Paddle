@@ -227,7 +227,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
 
   // Step 1: Run forward
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs);
+    info.Checker()->Check(&attrs, false);
   }
 
   auto input_name_map = CreateVarNameMap(info, type, ins, true);
