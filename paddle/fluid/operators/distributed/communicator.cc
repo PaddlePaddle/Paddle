@@ -663,9 +663,9 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
         loc++;
       }
       VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
-            <<" ;old_scope: "<< y_mutable_data[ids*columns
+            <<" ;old_scope: "<< y_mutable_data[ids*columns]
             <<" ;delta_scope: "<< value[0]
-            <<" ;pserver_scope: "<< pserver_mutable_data[ids*columnS];
+            <<" ;pserver_scope: "<< pserver_mutable_data[ids*columns];
       temp_rows[row] = ids;
       row++;
     }
