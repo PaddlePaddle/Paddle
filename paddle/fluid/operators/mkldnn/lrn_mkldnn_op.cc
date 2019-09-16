@@ -62,7 +62,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto md = paddle::platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), x->format());
 
-    const std::string key = platform::LRNMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         dims, n, alpha, beta, k, x->format(), ctx.op().Output("Out"));
 
     platform::LRNMKLDNNHandler handler(ctx.Attr<bool>("is_test"), dev_ctx,
@@ -121,7 +121,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dims = paddle::framework::vectorize<int>(x->dims());
 
-    const std::string key = platform::LRNMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         dims, n, alpha, beta, k, x->format(), ctx.op().Input("Out"));
 
     platform::LRNMKLDNNHandler handler(false, dev_ctx, mkldnn_engine, key);
