@@ -641,8 +641,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
   VLOG(1)<<"Get tensor of var "<<VarToDeltaVar(var_name);
-  auto column = dims[1] == 0? 1:dims[1];
-  var_z_tensor->mutable_data<float>({dims[0],dims[1]},var_x_tensor.place());
+  var_z_tensor->mutable_data<float>(dims,var_x_tensor.place());
   var_z_tensor->set_lod(var_x_tensor.lod());
   VLOG(1)<<"Set lod of var "<<VarToDeltaVar(var_name);
 
