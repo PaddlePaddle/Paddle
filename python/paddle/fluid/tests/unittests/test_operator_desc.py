@@ -104,6 +104,23 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(sum_op.idx, 0)
         self.assertEqual(sum_out.op, sum_op)
 
+    def test_oprole_cast(self):
+        block = main_program._create_block()
+        try:
+            sum_x1 = block.create_var(
+                dtype="int", shape=[3, 4], lod_level=0, name="sum.x1")
+            sum_x2 = block.create_var(
+                dtype="int", shape=[3, 4], lod_level=0, name="sum.x2")
+            sum_out = block.create_var(
+                dtype="int", shape=[3, 4], lod_level=0, name="sum.out")
+            sum_op = block.append_op(
+                type="sum",
+                inputs={"X": [sum_x1, sum_x2]},
+                outputs={"Out": sum_out})
+            sum_op._set_attr("op_role", 1.0)
+        except:
+            pass
+
 
 if __name__ == '__main__':
     unittest.main()
