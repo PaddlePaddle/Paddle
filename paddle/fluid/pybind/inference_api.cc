@@ -39,6 +39,7 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::AnalysisPredictor;
 
+namespace {
 static void BindPaddleDType(py::module *m);
 static void BindPaddleBuf(py::module *m);
 static void BindPaddleTensor(py::module *m);
