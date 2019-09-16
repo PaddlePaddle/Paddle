@@ -303,6 +303,7 @@ inline void DeformableIm2col(const platform::CUDADeviceContext& ctx,
   int blocks = NumBlock(num_kernels);
   int threads = kNumCUDAThread;
 
+  // get outputs of im2col with offset
   DeformableIm2colCUDAKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
@@ -538,6 +539,7 @@ class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
 
       if (offset_grad) {
         T* offset_grad_ptr = offset_grad->data<T>();
+        // get grad of offset
         DeformableCol2imCoord(
             dev_ctx, col_buffer_ptr, input_ptr + i * im2col_step * input_dim,
             offset_ptr + i * im2col_step * input_offset_dim, input_shape_vec,
@@ -547,6 +549,7 @@ class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
       }
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
+        // get grad of input
         DeformableCol2im(dev_ctx, col_buffer_ptr,
                          offset_ptr + i * im2col_step * input_offset_dim,
                          input_shape_vec, col_buffer_shape_vec,
