@@ -146,24 +146,12 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # add param_init flag in trainer startup program
         self.trainer_startup_program = self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
         for delta_var in self.delta_vars_list:
-            out = self.trainer_startup_program.global_block().create_var(
+            self.trainer_startup_program.global_block().create_var(
                 name=delta_var.name,
                 persistable=delta_var.persistable,
                 dtype=delta_var.dtype,
                 type=delta_var.type,
                 shape=delta_var.shape)
-            self.trainer_startup_program.global_block().append_op(
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [out]},
-                attrs={
-                    'shape': out.shape,
-                    'dtype': out.dtype,
-                    'value': float(0.0),
-                    'force_cpu': True
-                },
-                stop_gradient=True
-            )
         dummy_output = self.trainer_startup_program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
         param_init = self.trainer_startup_program.global_block().create_var(
@@ -312,7 +300,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
             delta_var = self.origin_program.global_block().create_var(
                 name=".".join([origin_name, "delta"]),
-                persistable=True,
+                persistable=False,
                 dtype=origin_var.dtype,
                 type=delta_type,
                 shape=origin_var.shape)

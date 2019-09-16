@@ -174,6 +174,7 @@ inline std::vector<std::string> split(const std::string& str, const std::string&
 } 
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
+using SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>;
 
 class Communicator {
  public:
@@ -202,6 +203,7 @@ class Communicator {
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
+  
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> send_thread_{nullptr};
@@ -252,7 +254,7 @@ class Communicator {
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-
+  void GeoSgdUpdate(size_t &buffer_ids);
   
   void GeoSgdParamInit(framework::Scope *scope) {
     for(auto &iter:var_list_){
@@ -261,22 +263,12 @@ class Communicator {
     }
   }
 
-  void GeoSgdDeltaParamInit(framework::Scope *scope) {
-    for(auto &iter:var_list_){
-      auto var_name = VarToDeltaVar(iter.first);
-      scope->Var(var_name);
-    }
-  }
-
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
                        const std::string var_name);
 
-  void GeoSgdDeltaParamCopy(const framework::Scope &send_scope,
-                                          const framework::Scope &delta_scope,
-                                          const std::string &var_name);
-
-  void SendUpdateVars(const std::string& var_name);
+  void SendUpdateDenseVars(const std::string& var_name);
+  void SendUpdateSparseVars(const std::string& var_name,size_t &buffer_ids);
   void RecvUpdateVars(const std::string& var_name);
 
   const std::string VarToDeltaVar(const std::string var_name) {
@@ -298,9 +290,10 @@ class Communicator {
   std::atomic_uint have_push_{0};
   
   std::unordered_map<std::string,bool> var_list_; //if var is sparse, using selected rows, bool=true
-  std::unordered_map<std::string,std::unordered_map<int64_t,std::vector<float>>> sparse_var_ids_table_;
   
-
+  std::vector<std::shared_ptr<SparseIdsMap>> sparse_ids_buffers_{2};
+  std::atomic_size_t curr_idx_{0};
+  BlockingQueue<int> need_push_num_queue_;
 };
 
 }  // namespace distributed
