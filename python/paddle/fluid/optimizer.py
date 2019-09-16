@@ -2975,7 +2975,7 @@ class PipelineOptimizer(object):
         }
 
 
-class RecomputeOptimizer(object):
+class RecomputeOptimizer(Optimizer):
     """
     Recompute Optimizer Wrapper
     """
@@ -3316,4 +3316,3 @@ class LookaheadOptimizer(object):
             with switch.default():
                 pass
         return mini_out
-
