@@ -567,7 +567,6 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
                           (sparse_var_tables[i],std::unordered_set<int64_t>{}));
     }
     auto *var = scope.FindVar(sparse_var_names[i - 1]);
-    VLOG(1)<< "Scope "<< &scope <<"find var "<<sparse_var_names[i - 1];
     auto var_tensor = var->Get<framework::LoDTensor>();
     int element_number = var_tensor.numel();
     int* var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
@@ -631,22 +630,26 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
-  
+  auto dims = var_x_tensor.dims();
   int element_number = var_x_tensor.numel();
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   VLOG(1)<<"Delta scope create/find var "<<VarToDeltaVar(var_name);
+
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
   VLOG(1)<<"Get tensor of var "<<VarToDeltaVar(var_name);
-  var_z_tensor->mutable_data<float>(var_x_tensor.place());
-  var_z_tensor->set_lod(var_x_tensor.lod());
+
+  var_z_tensor->mutable_data<float>({dims[0],dims[1]},var_x_tensor.place());
+  //var_z_tensor->set_lod(var_x_tensor.lod());
   VLOG(1)<<"Set lod of var "<<VarToDeltaVar(var_name);
+
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   math::SetConstant<paddle::platform::CPUDeviceContext, float>constant_functor;
   constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
   VLOG(1)<<"Set constant zero of var "<<VarToDeltaVar(var_name);;
+
   float* z_mutable_data = var_z_tensor->mutable_data<float>(var_x_tensor.place());
 
   VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
