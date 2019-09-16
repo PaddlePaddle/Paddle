@@ -2978,6 +2978,64 @@ class PipelineOptimizer(object):
 class RecomputeOptimizer(Optimizer):
     """
     Recompute Optimizer Wrapper
+
+    Normally, a training step contains three sub-steps: first, run forward
+    Oprators to calculate the loss; second, run backward Operators to 
+    calculate gradient of the parameters; third, apply optimization method
+    to update the value of the parameters.
+
+    In the forward computation process, all variables that are needed by 
+    backward computation process will be kept in memory. They occupy a great
+    amount of memory when the network becomes very deep.
+
+    Recompute split the network to k segements. In each segment, It will 
+    recompute the forward Opeartors, before runing backward operators. It is
+    very helpful for saving memory.
+ 
+    The Variables that seperate a network to segments are called as checkpoints,
+    and users should set it manually. The usage is very simple:
+
+    Args:
+        optimizer (Optimizer): The optimizer that is applied to parameters.
+        debug (bool): debug tool to calculate memory usage
+        debug_batchsize (int): batch size when using debug tool.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            def gen_data():
+                return {"x": np.random.random(size=(32, 32)).astype('float32'),
+                "y": np.random.randint(2, size=(32, 1)).astype('int64')}
+            def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                print(input_x)
+                fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                sum_cost = fluid.layers.reduce_mean(cost)
+                return sum_cost, fc_1, prediction
+            input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+            input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            cost, fc_1, pred = mlp(input_x, input_y)
+
+            sgd = fluid.optimizer.Adam(learning_rate=0.01)
+            sgd = fluid.optimizer.RecomputeOptimizer(sgd, debug=False, debug_batchsize=1000)
+            sgd._set_checkpoints([fc_1, pred])
+            sgd.minimize(cost)
+
+            print("Finished optimize")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            step = 10
+
+            for i in range(step):
+                cost_val = exe.run(feed=gen_data(),
+                       program=fluid.default_main_program(),
+                       fetch_list=[cost.name])
+                print("step=%d cost=%f" % (i, cost_val[0]))
+
     """
 
     def __init__(self, optimizer, debug=False, debug_batchsize=32):
@@ -3144,7 +3202,7 @@ class RecomputeOptimizer(Optimizer):
         #            no_grad_set=None,
         #            checkpoints=None)
         with program_guard(program, startup_program):
-            recompute_segments, params_grads = append_backward(
+            params_grads = append_backward(
                 loss,
                 parameter_list,
                 no_grad_set,
