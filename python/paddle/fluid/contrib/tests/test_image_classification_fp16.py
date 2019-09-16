@@ -138,7 +138,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
             init_loss_scaling=8.0,
             use_dynamic_loss_scaling=True)
 
-        scaled_loss, _, _ = mp_optimizer.minimize(avg_cost)
+        mp_optimizer.minimize(avg_cost)
+        scaled_loss = mp_optimizer.get_loss_scaling()
 
     BATCH_SIZE = 128
     PASS_NUM = 1

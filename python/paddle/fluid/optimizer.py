@@ -464,6 +464,8 @@ class Optimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
+        no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
             if parameter_list is not None:
@@ -563,6 +565,23 @@ class Optimizer(object):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
+    def _get_no_grad_set(self, loss, no_grad_set=None):
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif isinstance(no_grad_set, set) or isinstance(
+                no_grad_set, list) or isinstance(no_grad_set, tuple):
+            no_grad_set = set(no_grad_set)
+        else:
+            assert "no_grad_set should be a set, but the passed type is {}".format(
+                type(no_grad_set))
+        parameters = loss.block.program.global_block().all_parameters()
+        param_no_trainable = set(
+            [param.name for param in parameters if param.trainable is False])
+        # If the parameter is no trainable, it should not have a gradient.
+        no_grad_set.update(param_no_trainable)
+
+        return no_grad_set
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
@@ -589,19 +608,6 @@ class Optimizer(object):
             and list of (param, grad) Variables pair for optimization.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif isinstance(no_grad_set, set) or isinstance(
-                no_grad_set, list) or isinstance(no_grad_set, tuple):
-            no_grad_set = set(no_grad_set)
-        else:
-            assert "no_grad_set should be a set, but the passed type is {}".format(
-                type(no_grad_set))
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = set(
-            [param.name for param in parameters if param.trainable is False])
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
         params_grads = self.backward(
             loss,
             startup_program=startup_program,

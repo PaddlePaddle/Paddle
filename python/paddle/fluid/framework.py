@@ -3095,14 +3095,14 @@ class Program(object):
 
         * Set for_test to False when we want to clone the program for training.
         * Set for_test to True when we want to clone the program for testing.
-          We will not do any prune on program here, So if you just want an
-          forward program for testing, please use :code:`clone` before using
-          :code:`Opimizer.minimize`
+          We will prune the backward and optimize part of the program when you
+          use :code:`clone` after :code:`Opimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         Notes: 
         1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
-        2. This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. E.g.
+        2. We recommend you to use :code:`clone(for_test=True)` before backward
+           and optimization. E.g.
 
         .. code-block:: python
 
@@ -3234,7 +3234,13 @@ class Program(object):
         The two code snippets above will generate and print same programs.
         """
         if for_test:
-            p = self._inference_optimize(prune_read_op=False)
+            if self._appending_grad_times > 0:
+                loss_op = self._find_loss_op()
+                assert loss_op is not None, "The optimized network should have loss operator."
+                forward_prog = self._prune([], loss_op)
+                p = forward_prog._inference_optimize(prune_read_op=False)
+            else:
+                p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -3630,6 +3636,16 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
+
+    def _find_loss_op(self):
+        loss_op = None
+        op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        forward_loss = int(core.op_proto_and_checker_maker.OpRole.Forward
+                           ) | int(core.op_proto_and_checker_maker.OpRole.Loss)
+        for op in self.global_block().ops:
+            if int(op.all_attrs()[op_role_key]) == forward_loss:
+                loss_op = op
+        return loss_op
 
 
 class Parameter(Variable):

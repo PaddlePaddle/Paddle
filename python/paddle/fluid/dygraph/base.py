@@ -164,7 +164,7 @@ def to_variable(value, block=None, name=None):
     Args:
         value(ndarray): the numpy value need to be convert
         block(fluid.Block|None): which block this variable will be in
-        name(str|None): Name of Varaible
+        name(str|None): Name of Variable
 
     return:
         Variable: The variable created from given numpy
