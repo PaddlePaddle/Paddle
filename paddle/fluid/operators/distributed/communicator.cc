@@ -563,7 +563,8 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     // sparse_var_tables first(i=0) element is "FLAG_GEO_SGD_SPARSE_PARAMETER", skip it
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()){
       // create empty set for new sparse var
-      ids_table->at(sparse_var_tables[i]) = std::unordered_set<int64_t>{};
+      ids_table->insert(std::pair<std::string,std::unordered_set<int64_t>>
+                          (sparse_var_tables[i],std::unordered_set<int64_t>{}));
     }
     auto *var = scope.FindVar(sparse_var_names[i - 1]);
     VLOG(1)<< "Scope "<< &scope <<"find var "<<sparse_var_names[i - 1];
@@ -591,7 +592,8 @@ void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
       auto &ids_vec = iter.second;
 
       if(ids_map.find(var_name) == ids_map.end()) {
-        ids_map[var_name] = std::unordered_set<int64_t>{};
+        ids_map.insert(std::pair<std::string,std::unordered_set<int64_t>>
+                      (var_name,std::unordered_set<int64_t>{}));
       }
 
       for (auto ids:ids_vec) {
