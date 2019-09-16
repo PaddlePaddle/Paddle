@@ -653,18 +653,6 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
-
     @property
     def stop_gradient(self):
         if in_dygraph_mode():
