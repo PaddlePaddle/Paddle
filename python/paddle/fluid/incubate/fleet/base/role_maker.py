@@ -378,7 +378,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._current_id = current_id
             else:
                 self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-                self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
+                self._training_role = os.getenv("PADDLE_TRAINING_ROLE", 
+                                                "TRAINER")
                 assert (self._training_role == "TRAINER")
                 self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
                 self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
