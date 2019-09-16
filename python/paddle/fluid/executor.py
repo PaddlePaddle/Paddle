@@ -293,6 +293,27 @@ def _as_lodtensor(data, place):
     return tensor
 
 
+class FetchHandler(object):
+    def __init__(self, fetch_target_names, period_secs=60, return_np=True):
+        self.fetch_target_names = fetch_target_names
+        self.period_secs = period_secs
+        self.return_np = return_np
+
+    def handler(self, fetch_target_vars):
+        return
+
+    @staticmethod
+    def help():
+        print("""
+class FetchHandlerExamlpe(FetchHandler):
+    def handler(self, fetch_target_vars):
+        b_auc = fetch_target_vars[0]
+        g_auc = fetch_target_vars[1]
+                        
+        print("b_auc: {}, g_auc: {} at time: {}".format(b_auc, g_auc, time.ctime()))
+""")
+
+
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
@@ -901,8 +922,7 @@ class Executor(object):
                            fetch_list=None,
                            fetch_info=None,
                            print_period=100,
-                           fetch_handler=None,
-                           period_secs=1):
+                           fetch_handler=None):
         """
         Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
@@ -962,44 +982,43 @@ class Executor(object):
 
         dataset._prepare_to_run()
 
-        if fetch_handler is None:
-            scope, trainer = self._prepare_trainer(
-                program=program,
-                dataset=dataset,
-                scope=scope,
-                thread=thread,
-                debug=debug,
-                fetch_list=fetch_list,
-                fetch_info=fetch_info,
-                print_period=print_period)
-            trainer._gen_trainer_desc()
+        fetch_instance = None
 
-            self._dump_debug_info(program=program, trainer=trainer)
+        if fetch_handler is not None:
+            fetch_instance = fetch_handler
+        elif fetch_handler is None and fetch_list is not None:
 
-            self._default_executor.run_from_dataset(program.desc,
-                                                    trainer._desc(), scope,
-                                                    dataset.dataset)
-            self._default_executor.finalize()
-            dataset._finish_to_run()
+            class FH(FetchHandler):
+                def handler(self, fetch_target_vars):
+                    for i in range(len(fetch_target_vars)):
+                        print("{}: \n {}\n".format(fetch_target_names[i],
+                                                   fetch_target_vars[i]))
+
+            fetch_target_names = [var.name for var in fetch_list]
+            fetch_instance = FH(fetch_target_names,
+                                period_secs=print_period,
+                                return_np=False)
         else:
-            scope, trainer = self._prepare_trainer(
-                program=program,
-                dataset=dataset,
-                scope=scope,
-                thread=thread,
-                debug=debug)
+            fetch_instance = FetchHandler([])
 
-            trainer._gen_trainer_desc()
-            self._dump_debug_info(program=program, trainer=trainer)
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=dataset,
+            scope=scope,
+            thread=thread,
+            debug=debug)
+        trainer._gen_trainer_desc()
 
-            trainer_instance = self._default_executor.init_for_dataset(
-                program.desc, trainer._desc(), scope, dataset.dataset)
+        self._dump_debug_info(program=program, trainer=trainer)
 
-            scope0 = trainer_instance.get_worker_scope(0)
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, dataset.dataset)
 
-            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
-            fetch_monitor.start()
-            self._default_executor.run_from_dataset(trainer_instance)
-            fetch_monitor.stop()
-            dataset._finish_to_run()
+        scope0 = trainer_instance.get_worker_scope(0)
+
+        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
+        fetch_monitor.start()
+        self._default_executor.run_from_dataset(trainer_instance)
+        fetch_monitor.stop()
+        dataset._finish_to_run()
         return None

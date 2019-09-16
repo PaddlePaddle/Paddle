@@ -14,14 +14,13 @@
 
 import threading
 import time
-import inspect
 
 import numpy as np
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
 
-__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
+__all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
@@ -58,8 +57,10 @@ class TrainerFactory(object):
 
 class FetchHandlerMonitor(object):
     def __init__(self, scope, handler):
+        self.fetch_instance = handler
         self.fetch_thread = threading.Thread(
-            target=self.handler_decorator, args=(scope, handler))
+            target=self.handler_decorator,
+            args=(scope, self.fetch_instance.handler))
         self.running = False
 
     def start(self):
@@ -68,10 +69,8 @@ class FetchHandlerMonitor(object):
         self.fetch_thread.start()
 
     def handler_decorator(self, fetch_scope, fetch_handler):
-        args = inspect.getargspec(fetch_handler)
-
-        fetch_target_names = args[3][args[0].index("fetch_target_names")]
-        period_secs = args[3][args[0].index("period_secs")]
+        fetch_target_names = self.fetch_instance.fetch_target_names
+        period_secs = self.fetch_instance.period_secs
 
         elapsed_secs = 0
         while True:
@@ -83,25 +82,29 @@ class FetchHandlerMonitor(object):
                     for varname in fetch_target_names
                 ]
 
-                fetch_nps = []
+                fetch_tensors = [var.get_tensor() for var in fetch_vars]
 
-                for var in fetch_vars:
-                    tensor = var.get_tensor()
-                    lod = tensor.lod()
+                if fetch_handler.return_np:
+                    fetch_nps = []
 
-                    if len(lod) > 0:
-                        raise RuntimeError(
-                            "Some of your fetched tensors hold LoD information. \
-                    They can not be completely cast to Python ndarray. We can not \
-                    return LoDTensor itself directly, please choose another targets"
-                        )
+                    for tensor in fetch_tensors:
+                        lod = tensor.lod()
 
-                    if tensor._is_initialized():
-                        fetch_nps.append(np.array(tensor))
-                    else:
-                        fetch_nps.append(None)
+                        if len(lod) > 0:
+                            raise RuntimeError(
+                                "Some of your fetched tensors hold LoD information. \
+                        They can not be completely cast to Python ndarray. We can not \
+                        return LoDTensor itself directly, please choose another targets"
+                            )
 
-                fetch_handler(fetch_nps, period_secs)
+                        if tensor._is_initialized():
+                            fetch_nps.append(np.array(tensor))
+                        else:
+                            fetch_nps.append(None)
+
+                    fetch_handler(fetch_nps)
+                else:
+                    fetch_handler(fetch_tensors)
             else:
                 time.sleep(1)
                 elapsed_secs += 1
