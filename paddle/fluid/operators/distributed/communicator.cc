@@ -465,7 +465,7 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
 
   VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
-  need_push_queue_ = std::make_shared<BlockingQueue<SparseIdsMap>>(geo_need_push_nums);
+  need_push_queue_ = std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(geo_need_push_nums);
 
   delta_scope_.reset(new Scope());
 
