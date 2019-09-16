@@ -205,7 +205,7 @@ class AllReduceDepsPass : public ir::Pass {
                   << ", " << backward_vars[i];
         }
         order++;
-      } catch (boost::bad_get e) {
+      } catch (boost::bad_get& e) {
       }
     }
     return vars;

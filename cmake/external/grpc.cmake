@@ -30,7 +30,11 @@ ProcessorCount(NUM_OF_PROCESSOR)
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+    SET(BUILD_CMD make CFLAGS=-Wno-error=sizeof-pointer-memaccess CXXFLAGS=-Wno-error=ignored-qualifiers HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  else()
+    SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  endif()
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
