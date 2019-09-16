@@ -62,7 +62,7 @@ class ProgramStats(object):
             for name in self.ops[i].desc.output_arg_names():
                 if name in self.var_op_deps:
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
-                        if idx > end_op_idx:
+                        if idx >= end_op_idx:
                             var_name.append(name)
         return var_name
 
