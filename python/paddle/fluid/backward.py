@@ -1277,9 +1277,6 @@ def append_backward(loss,
     #for op in root_block.ops:
     #    print(_pretty_op_desc_(op.desc, "final_program"))
 
-    if program_stat:
-        return recompute_segments, params_and_grads
-
     return params_and_grads
 
 
