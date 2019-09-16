@@ -277,60 +277,134 @@ class OpTest(unittest.TestCase):
             block = fluid.default_main_program().global_block()
 
             # prepare input variable
-            inputs = defaultdict(list)
-            for name, np_value in six.iteritems(self.inputs):
-                if not isinstance(np_value, list):
-                    np_value = [np_value]
-
-                for i in range(len(np_value)):
-                    inputs[name].append(
-                        self._create_var_from_numpy(np_value[i]))
-            '''
-            for var_name in self.inputs:
-                if isinstance(self.inputs[var_name], list):
-                    for name, np_value in self.inputs[var_name]:
-                        if isinstance(np_value, tuple):
-                            v = self._create_var_from_numpy(np_value[0])
-                            v._ivar.value().get_tensor().set_recursive_sequence_lengths(np_value[1])
-                            inputs[var_name].append(v)
-                        else:
-                            v = self._create_var_from_numpy(np_value)
-                            inputs[var_name].append(v)
-                else:
-                    if isinstance(self.inputs[var_name], tuple):
-                        v = self._create_var_from_numpy(self.inputs[var_name][0])
-                        v._ivar.value().get_tensor().set_recursive_sequence_lengths(self.inputs[var_name][1])
-                        inputs[var_name].append(v)
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+            for input_ in op_proto.inputs:
+                name = input_.name
+                if name not in self.inputs:
+                    if input_.dispensable:
+                        continue
                     else:
-                        v = self._create_var_from_numpy(self.inputs[var_name])
-                        inputs[var_name].append(v)
-            '''
+                        assert input_.intermediate, "{} not found".format(name)
+                        v = block.create_var(
+                            dtype='float32',
+                            type=core.VarDesc.VarType.LOD_TENSOR)
+                        inputs[name] = v
+                    continue
+                if input_.duplicable:
+                    assert isinstance(
+                        self.inputs[name],
+                        list), "Duplicable {} should be set as list".format(
+                            name)
+                    var_list = []
+                    slot_name = name
+                    for (name, np_value) in self.inputs[name]:
+                        if isinstance(np_value, tuple):
+                            v = self._create_var_from_numpy(self.inputs[name][
+                                0])
+                            v._ivar.value().get_tensor(
+                            ).set_recursive_sequence_lengths(self.inputs[name][
+                                1])
+                        else:
+                            v = self._create_var_from_numpy(self.inputs[name])
+                        var_list.append(v)
+                    inputs[slot_name] = var_list
+                else:
+                    np_value = self.inputs[name]
+                    if isinstance(self.inputs[name], list):
+                        slot_name = name
+                        for name, np_value in self.inputs[name]:
+                            if isinstance(np_value, tuple):
+                                v = self._create_var_from_numpy(np_value[0])
+                                v._ivar.value().get_tensor(
+                                ).set_recursive_sequence_lengths(np_value[1])
+                            else:
+                                v = self._create_var_from_numpy(np_value)
+                            inputs[slot_name].append(v)
+                    else:
+                        if isinstance(self.inputs[name], tuple):
+                            v = self._create_var_from_numpy(self.inputs[name][
+                                0])
+                            v._ivar.value().get_tensor(
+                            ).set_recursive_sequence_lengths(self.inputs[name][
+                                1])
+                        else:
+                            v = self._create_var_from_numpy(self.inputs[name])
+                        inputs[name].append(v)
 
             # prepare output variable
             outputs = defaultdict(list)
-            for name, np_value in six.iteritems(self.outputs):
-                if not isinstance(np_value, list):
-                    np_value = [np_value]
-
-                for i in range(len(np_value)):
-                    value = np_value[i]
-                    if isinstance(value, tuple):
-                        v = block.create_var(
-                            name="%s_out%d" % (name, i),
-                            dtype=value[0].dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False)
-                        v._ivar.value().get_tensor(
-                        ).set_recursive_sequence_lengths(value[1])
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+            for output in op_proto.outputs:
+                name = output.name
+                if name not in self.outputs:
+                    if output.dispensable:
+                        continue
                     else:
+                        assert output.intermediate, "{} not found".format(name)
                         v = block.create_var(
-                            name="%s_out%d" % (name, i),
-                            dtype=value.dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False)
-                    outputs[name].append(v)
+                            dtype='float32',
+                            type=core.VarDesc.VarType.LOD_TENSOR)
+                        outputs[name] = v
+                if output.duplicable:
+                    assert isinstance(
+                        self.outputs[name],
+                        list), "Duplicable {} should be set as list".format(
+                            name)
+                    var_list = []
+                    slot_name = name
+                    for (name, np_value) in self.outputs[name]:
+                        if isinstance(np_value, tuple):
+                            v = block.create_var(
+                                name=name,
+                                dtype=np_value[0].dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                        else:
+                            v = block.create_var(
+                                name=name,
+                                dtype=np_value.dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                        var_list.append(v)
+                    outputs[slot_name] = var_list
+                else:
+                    np_value = self.outputs[name]
+                    if isinstance(self.outputs[name], list):
+                        slot_name = name
+                        for name, np_value in self.outputs[name]:
+                            if isinstance(np_value, tuple):
+                                v = block.create_var(
+                                    name=name,
+                                    dtype=np_value[0].dtype,
+                                    type=core.VarDesc.VarType.LOD_TENSOR,
+                                    persistable=False,
+                                    stop_gradient=False)
+                            else:
+                                v = block.create_var(
+                                    name=name,
+                                    dtype=np_value.dtype,
+                                    type=core.VarDesc.VarType.LOD_TENSOR,
+                                    persistable=False,
+                                    stop_gradient=False)
+                            outputs[slot_name].append(v)
+                    else:
+                        if isinstance(self.outputs[name], tuple):
+                            v = block.create_var(
+                                name=unique_name.generate("%s_out" % (name)),
+                                dtype=self.outputs[name][0].dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                        else:
+                            v = block.create_var(
+                                name=unique_name.generate("%s_out" % (name)),
+                                dtype=self.outputs[name].dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                        outputs[name].append(v)
 
             block.append_op(
                 type=self.op_type,
@@ -580,6 +654,18 @@ class OpTest(unittest.TestCase):
             if no_check_set is not None and out_name in no_check_set:
                 continue
 
+            def find_imperative_actual(target_name, dygraph_outs, place):
+                with fluid.dygraph.base.guard(place=place):
+                    for name in dygraph_outs:
+                        if name == target_name:
+                            return dygraph_outs[name][0]
+                        var_list = dygraph_outs[name]
+                        for i, var in enumerate(var_list):
+                            if var.name == target_name:
+                                return dygraph_outs[name][i]
+                    self.assertTrue(False, "Found failed {} {}".format(
+                        dygraph_outs.keys(), target_name))
+
             def find_actual(target_name, fetch_list):
                 found = [
                     i for i, var in enumerate(fetch_list)
@@ -598,7 +684,9 @@ class OpTest(unittest.TestCase):
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
                     if check_dygraph:
-                        imperative_actual = dygraph_outs[sub_out_name][0]
+                        #imperative_actual = dygraph_outs[sub_out_name][0]
+                        imperative_actual = find_imperative_actual(
+                            sub_out_name, dygraph_outs, place)
                         imperative_actual_t = np.array(
                             imperative_actual._ivar.value().get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
@@ -625,15 +713,18 @@ class OpTest(unittest.TestCase):
                             actual.recursive_sequence_lengths(), expect[1],
                             "Output (" + sub_out_name +
                             ") has different lod at " + str(place))
-                    if check_dygraph:
-                        self.assertListEqual(
-                            imperative_actual._ivar.value().get_tensor()
-                            .recursive_sequence_lengths(), expect[1],
-                            "Output (" + out_name + ") has different lod at " +
-                            str(place) + " in dygraph mode")
+                        if check_dygraph:
+                            self.assertListEqual(
+                                imperative_actual._ivar.value().get_tensor()
+                                .recursive_sequence_lengths(), expect[1],
+                                "Output (" + out_name +
+                                ") has different lod at " + str(place) +
+                                " in dygraph mode")
             else:
                 if check_dygraph:
-                    imperative_actual = dygraph_outs[out_name][0]
+                    #imperative_actual = dygraph_outs[out_name][0]
+                    imperative_actual = find_imperative_actual(
+                        out_name, dygraph_outs, place)
                     imperative_actual_t = np.array(
                         imperative_actual._ivar.value().get_tensor())
                 idx = find_actual(out_name, fetch_list)
