@@ -534,7 +534,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
                               const framework::Scope& scope) {
   VLOG(1) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()<<" using scope: "<<&scope;
   need_push_.fetch_add(1, std::memory_order_relaxed);
-  for(i =0;i<sparse_var_names.size();i++) {
+  for(int i =0;i<sparse_var_names.size();i++) {
     VLOG(1)<<"Sparse var names : "<<sparse_var_names[i]
            <<" Sparse var tables : "<<sparse_var_tables[i+1];
   }
