@@ -631,6 +631,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
   auto dims = var_x_tensor.dims();
+  VLOG(1)<<"Var "<<var_name<<" Dim[0]: "<<dims[0]<<" Dim[1] "<<dims[1];
   int element_number = var_x_tensor.numel();
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
@@ -640,7 +641,8 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
   VLOG(1)<<"Get tensor of var "<<VarToDeltaVar(var_name);
-  int64_t n = var_x_tensor.lod().size() == 0UL? 1
+  VLOG(1)<<"var_x_tensor.lod().back().size() - 1 : " << var_x_tensor.lod().back().size() - 1;
+  int64_t n = var_x_tensor.lod().size() == 0? 1
                     : static_cast<int64_t>(var_x_tensor.lod().back().size() - 1);
   var_z_tensor->mutable_data<float>({n,dims[1]},var_x_tensor.place());
   //var_z_tensor->set_lod(var_x_tensor.lod());
