@@ -534,7 +534,10 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
                               const framework::Scope& scope) {
   VLOG(1) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()<<" using scope: "<<&scope;
   need_push_.fetch_add(1, std::memory_order_relaxed);
-
+  for(i =0;i<sparse_var_names.size();i++) {
+    VLOG(1)<<"Sparse var names : "<<sparse_var_names[i]
+           <<" Sparse var tables : "<<sparse_var_tables[i+1];
+  }
   // sparse_var_tables first element is "FLAG_GEO_SGD_SPARSE_PARAMETER", skip it
   std::vector<std::string> sparse_var_table_temp;
   for (int i=1;i<sparse_var_tables.size();i++) {
@@ -640,7 +643,7 @@ void Communicator::SendUpdateVars(const std::string& var_name) {
     framework::DDim table_dim = var_select_rows->value().dims();
     int64_t rows = select_table.size();
     int64_t columns = table_dim[1];
-    VLOG(1) << "Sparse var "<<var_name<<" rows: "<<rows<<"cloumns: "<<columns;
+    VLOG(1) << "Sparse var "<<var_name<<" rows: "<<rows<<" cloumns: "<<columns;
     std::vector<int64_t> new_rows;
     new_rows.resize(rows);
     float new_value[rows*columns];
