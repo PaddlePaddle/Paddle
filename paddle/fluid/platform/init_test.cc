@@ -38,3 +38,10 @@ TEST(InitDevices, CUDA) {
   ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
 #endif
 }
+
+#ifndef _WIN32
+TEST(SignalHandle, SignalHandle) {
+  std::string msg = "Signal raises";
+  paddle::framework::SignalHandle(msg.c_str(), msg.size());
+}
+#endif

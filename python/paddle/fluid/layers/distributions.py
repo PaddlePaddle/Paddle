@@ -22,7 +22,7 @@ import math
 import numpy as np
 import warnings
 
-__all__ = ['Uniform', 'Normal']
+__all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
 class Distribution(object):
@@ -396,3 +396,208 @@ class Normal(Distribution):
         t1 = (self.loc - other.loc) / other.scale
         t1 = (t1 * t1)
         return 0.5 * (var_ratio + t1 - 1. - nn.log(var_ratio))
+
+
+class Categorical(Distribution):
+    """
+    Categorical distribution is a discrete probability distribution that 
+    describes the possible results of a random variable that can take on 
+    one of K possible categories, with the probability of each category 
+    separately specified.
+
+    Args:
+        logits(list|numpy.ndarray|Variable): The logits input of categorical distribution.
+
+    Examples:
+        .. code-block:: python
+
+          import numpy as np
+          from paddle.fluid import layers
+          from paddle.fluid.layers import Categorical
+
+          a_logits_npdata = np.array([-0.602,-0.602], dtype="float32")
+          a_logits_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(a_logits_npdata, a_logits_tensor)
+
+          b_logits_npdata = np.array([-0.102,-0.112], dtype="float32")
+          b_logits_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(b_logits_npdata, b_logits_tensor)
+          
+          a = Categorical(a_logits_tensor)
+          b = Categorical(b_logits_tensor)
+
+          a.entropy()
+          # [0.6931472] with shape: [1]
+
+          b.entropy()
+          # [0.6931347] with shape: [1]
+
+          a.kl_divergence(b)
+          # [1.2516975e-05] with shape: [1]
+
+    """
+
+    def __init__(self, logits):
+        """
+        Args:
+            logits: A float32 tensor
+        """
+        if self._validate_args(logits):
+            self.logits = logits
+        else:
+            self.logits = self._to_variable(logits)[0]
+
+    def kl_divergence(self, other):
+        """The KL-divergence between two Categorical distributions.
+
+        Args:
+            other (Categorical): instance of Categorical.
+
+        Returns:
+            Variable: kl-divergence between two Categorical distributions.
+
+        """
+        assert isinstance(other, Categorical)
+
+        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        other_logits = other.logits - nn.reduce_max(
+            other.logits, dim=-1, keep_dim=True)
+        e_logits = ops.exp(logits)
+        other_e_logits = ops.exp(other_logits)
+        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
+        prob = e_logits / z
+        kl = nn.reduce_sum(
+            prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
+            dim=-1,
+            keep_dim=True)
+
+        return kl
+
+    def entropy(self):
+        """Shannon entropy in nats.
+
+        Returns:
+          Variable: Shannon entropy of Categorical distribution.
+
+        """
+        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        e_logits = ops.exp(logits)
+        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        prob = e_logits / z
+        entropy = -1.0 * nn.reduce_sum(
+            prob * (logits - nn.log(z)), dim=-1, keep_dim=True)
+
+        return entropy
+
+
+class MultivariateNormalDiag(Distribution):
+    """
+    A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
+    and a covariance matrix.
+
+    Args:
+        loc(list|numpy.ndarray|Variable): The mean of multivariateNormal distribution.
+        scale(list|numpy.ndarray|Variable): The positive definite diagonal covariance matrix of
+        multivariateNormal distribution.
+
+    Examples:
+        .. code-block:: python
+    
+            import numpy as np
+            from paddle.fluid import layers
+            from paddle.fluid.layers import MultivariateNormalDiag
+
+            a_loc_npdata = np.array([0.3,0.5],dtype="float32")
+            a_loc_tensor = layers.create_tensor(dtype="float32")
+            layers.assign(a_loc_npdata, a_loc_tensor)
+
+
+            a_scale_npdata = np.array([[0.4,0],[0,0.5]],dtype="float32")
+            a_scale_tensor = layers.create_tensor(dtype="float32")
+            layers.assign(a_scale_npdata, a_scale_tensor)
+
+            b_loc_npdata = np.array([0.2,0.4],dtype="float32")
+            b_loc_tensor = layers.create_tensor(dtype="float32")
+            layers.assign(b_loc_npdata, b_loc_tensor)
+
+            b_scale_npdata = np.array([[0.3,0],[0,0.4]],dtype="float32")
+            b_scale_tensor = layers.create_tensor(dtype="float32")
+            layers.assign(b_scale_npdata, b_scale_tensor)
+
+            a = MultivariateNormalDiag(a_loc_tensor, a_scale_tensor)
+            b = MultivariateNormalDiag(b_loc_tensor, b_scale_tensor)
+            
+            a.entropy()
+            # [2.033158] with shape: [1]
+            b.entropy()
+            # [1.7777451] with shaoe: [1]
+
+            a.kl_divergence(b)
+            # [0.06542051] with shape: [1]
+       
+    """
+
+    def __init__(self, loc, scale):
+        if self._validate_args(loc, scale):
+            self.loc = loc
+            self.scale = scale
+        else:
+            self.loc, self.scale = self._to_variable(loc, scale)
+
+    def _det(self, value):
+
+        batch_shape = list(value.shape)
+        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_diag = tensor.diag(
+            tensor.ones(
+                shape=[batch_shape[0]], dtype=self.loc.dtype))
+        det_diag = nn.reduce_prod(value + one_all - one_diag)
+
+        return det_diag
+
+    def _inv(self, value):
+
+        batch_shape = list(value.shape)
+        one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
+        one_diag = tensor.diag(
+            tensor.ones(
+                shape=[batch_shape[0]], dtype=self.loc.dtype))
+        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
+
+        return inv_diag
+
+    def entropy(self):
+        """Shannon entropy in nats.
+
+        Returns:
+          Variable: Shannon entropy of Multivariate Normal distribution.
+
+        """
+        entropy = 0.5 * (
+            self.scale.shape[0] *
+            (1.0 + math.log(2 * math.pi)) + nn.log(self._det(self.scale)))
+
+        return entropy
+
+    def kl_divergence(self, other):
+        """The KL-divergence between two Multivariate Normal distributions.
+
+        Args:
+            other (MultivariateNormalDiag): instance of Multivariate Normal.
+
+        Returns:
+            Variable: kl-divergence between two Multivariate Normal distributions.
+
+        """
+        assert isinstance(other, MultivariateNormalDiag)
+
+        tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
+        loc_matmul_cov = nn.matmul((other.loc - self.loc),
+                                   self._inv(other.scale))
+        tri_matmul = nn.matmul(loc_matmul_cov, (other.loc - self.loc))
+        k = list(self.scale.shape)[0]
+        ln_cov = nn.log(self._det(other.scale)) - nn.log(self._det(self.scale))
+        kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
+
+        return kl

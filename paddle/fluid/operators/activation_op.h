@@ -463,8 +463,8 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>().eval();
-    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>().eval();
+    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>();
+    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>();
     out.device(d) = x * (temp1 + temp2);
   }
 };
@@ -480,8 +480,8 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>().eval();
-    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>().eval();
+    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>();
+    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>();
     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
   }
 
@@ -500,8 +500,8 @@ struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     auto lambdaT = static_cast<T>(lambda);
-    auto temp1 = (x > lambdaT).template cast<T>().eval();
-    auto temp2 = (x < -lambdaT).template cast<T>().eval();
+    auto temp1 = (x > lambdaT).template cast<T>();
+    auto temp2 = (x < -lambdaT).template cast<T>();
     out.device(d) = temp1 * (x - lambdaT) + temp2 * (x + lambdaT);
   }
 };
@@ -516,8 +516,8 @@ struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto lambdaT = static_cast<T>(lambda);
-    auto temp1 = (x > lambdaT).template cast<T>().eval();
-    auto temp2 = (x < -lambdaT).template cast<T>().eval();
+    auto temp1 = (x > lambdaT).template cast<T>();
+    auto temp2 = (x < -lambdaT).template cast<T>();
     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
   }
 
@@ -1043,7 +1043,7 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     auto tmp = static_cast<T>(threshold);
-    auto temp = ((out > -tmp) * (out < tmp)).template cast<T>().eval();
+    auto temp = ((out > -tmp) * (out < tmp)).template cast<T>();
     dx.device(d) = dout * (static_cast<T>(1) - (-out).exp()) * temp;
   }
 
@@ -1072,13 +1072,13 @@ struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 = static_cast<T>(alpha) *
-                 (x < static_cast<T>(0)).template cast<T>().eval();
-    auto temp2 = (x >= static_cast<T>(0)).template cast<T>().eval();
+    auto temp1 =
+        static_cast<T>(alpha) * (out < static_cast<T>(0)).template cast<T>();
+    auto temp2 = (out >= static_cast<T>(0)).template cast<T>();
     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>
@@ -1413,19 +1413,19 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
                   const framework::Tensor* Out, const framework::Tensor* ddX,
                   framework::Tensor* ddOut, framework::Tensor* dOut,
                   framework::Tensor* dX) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
     if (ddOut) {
+      auto* d = dev.eigen_device();
+      auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+      auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      ddout.device(*d) = ddx *
-                         ((x >= static_cast<T>(0)).template cast<T>().eval() +
-                          static_cast<T>(alpha) *
-                              (x < static_cast<T>(0)).template cast<T>().eval())
-                             .template cast<T>();
+      ddout.device(*d) =
+          ddx *
+          ((out >= static_cast<T>(0)).template cast<T>() +
+           static_cast<T>(alpha) * (out < static_cast<T>(0)).template cast<T>())
+              .template cast<T>();
     }
   }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 template <typename T>

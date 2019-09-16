@@ -208,6 +208,12 @@ class UniformInitializer(Initializer):
         low (float): lower boundary of the uniform distribution
         high (float): upper boundary of the uniform distribution
         seed (int): random seed
+        diag_num (int): the number of diagonal elements to initialize.
+            If set to 0, diagonal initialization will be not performed.
+        diag_step (int): Step size between two diagonal elements,
+            which is generally the width of the square matrix.
+        diag_val (float): the value of the diagonal element to be initialized,
+            default 1.0. It takes effect only if the diag_num is greater than 0.
 
     Examples:
         .. code-block:: python
@@ -218,15 +224,29 @@ class UniformInitializer(Initializer):
     		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
-    def __init__(self, low=-1.0, high=1.0, seed=0):
+    def __init__(self,
+                 low=-1.0,
+                 high=1.0,
+                 seed=0,
+                 diag_num=0,
+                 diag_step=0,
+                 diag_val=1.0):
         assert low is not None
         assert high is not None
         assert high >= low
         assert seed is not None
+        assert diag_num is not None
+        assert diag_step is not None
+        assert diag_val is not None
+        if diag_num > 0 or diag_step > 0:
+            assert (diag_num > 0 and diag_step > 0)
         super(UniformInitializer, self).__init__()
         self._low = low
         self._high = high
         self._seed = seed
+        self._diag_num = diag_num
+        self._diag_step = diag_step
+        self._diag_val = diag_val
 
     def __call__(self, var, block):
         """Add uniform distribution initialization ops for a variable
@@ -267,7 +287,10 @@ class UniformInitializer(Initializer):
                 "dtype": out_dtype,
                 "min": self._low,
                 "max": self._high,
-                "seed": self._seed
+                "seed": self._seed,
+                "diag_num": self._diag_num,
+                "diag_step": self._diag_step,
+                "diag_val": self._diag_val
             },
             stop_gradient=True)
 

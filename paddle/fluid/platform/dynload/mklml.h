@@ -92,6 +92,11 @@ extern void* mklml_dso_handle;
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
 
+#if !defined(_WIN32)
+DYNAMIC_LOAD_MKLML_WRAP(mkl_scsrmm);
+DYNAMIC_LOAD_MKLML_WRAP(mkl_dcsrmm);
+#endif
+
 #undef DYNAMIC_LOAD_MKLML_WRAP
 
 }  // namespace dynload

@@ -250,6 +250,9 @@ if(WITH_MKLDNN)
   # download dataset if necessary
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
+  # download small demo set of pascalvoc for testing local userdata preprocessing
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
+
   # build test binary to be used in subsequent tests
   inference_analysis_api_int8_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
 

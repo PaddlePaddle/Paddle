@@ -716,8 +716,8 @@ class LeakyReluDoubleGradMaker
   std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
     auto* op = new ::paddle::framework::OpDesc();
     op->SetType("leaky_relu_grad_grad");
-    // input1: X
-    op->SetInput("X", Input("X"));
+    // input1: Out
+    op->SetInput("Out", Input("Out"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(Attrs());
@@ -774,13 +774,9 @@ class SquareDoubleGradMaker
   }
 };
 
-class ActivationGradOpInplaceInference : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle

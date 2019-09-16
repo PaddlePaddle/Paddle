@@ -33,9 +33,9 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
-
     auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
@@ -46,7 +46,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
     if (root == comm->rank()) {
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
@@ -59,9 +59,9 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
             static_cast<framework::Tensor*>(out));
       }
     } else {
-      PADDLE_ENFORCE(platform::dynload::ncclBcast(out->mutable_data<T>(place),
-                                                  numel, dtype, root,
-                                                  comm->comm(), stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
+                                       dtype, root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
               << framework::product(out->dims());
     }

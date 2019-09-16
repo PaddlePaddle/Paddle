@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import platform
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
@@ -45,6 +46,13 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        if fluid.core.is_compiled_with_mkldnn(
+        ) and not fluid.core.is_compiled_with_cuda(
+        ) and 'Linux' in platform.platform():
+            self.attrs = {'is_sparse': False}
+            self.check_grad(['W'], 'Out', no_grad_set=('Ids'))
 
 
 if __name__ == "__main__":

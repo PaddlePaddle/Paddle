@@ -435,29 +435,45 @@ class UserDefinedRoleMaker(RoleMakerBase):
         """
         super(UserDefinedRoleMaker, self).__init__()
 
-        if not isinstance(current_id, int):
-            raise TypeError("current_id must be as int")
+        if not isinstance(server_endpoints, list):
+            raise TypeError("server_endpoints must be as string list")
+        elif len(server_endpoints) <= 0:
+            raise ValueError(
+                "the length of server_endpoints list must be greater than 0")
+        elif len(server_endpoints) != len(set(server_endpoints)):
+            raise ValueError("server_endpoints can't have duplicate elements")
         else:
-            if current_id < 0:
-                raise ValueError("current_id must be gather or equal 0")
-            self._current_id = current_id
+            for server_endpoint in server_endpoints:
+                if not isinstance(server_endpoint, str):
+                    raise TypeError(
+                        "every element in server_endpoints list must be as string"
+                    )
+            self._server_endpoints = server_endpoints
 
         if role != Role.WORKER and role != Role.SERVER:
             raise TypeError("role must be as Role")
         else:
             self._role = role
 
+        if not isinstance(current_id, int):
+            raise TypeError("current_id must be as int")
+        else:
+            if current_id < 0:
+                raise ValueError(
+                    "current_id must be greater than or equal to 0")
+            elif self._role == Role.SERVER and current_id >= len(
+                    server_endpoints):
+                raise ValueError(
+                    "if role is Role.SERVER, current_id must be less than or equal to len(server_endpoints) - 1"
+                )
+            self._current_id = current_id
+
         if not isinstance(worker_num, int):
             raise TypeError("worker_num must be as int")
         else:
-            if worker_num < 0:
-                raise ValueError("worker_num must be gather or equal 0")
+            if worker_num <= 0:
+                raise ValueError("worker_num must be greater than 0")
             self._worker_num = worker_num
-
-        if not isinstance(server_endpoints, list):
-            raise TypeError("server_endpoints must be as string list")
-        else:
-            self._server_endpoints = server_endpoints
 
     def generate_role(self):
         self._role_is_generated = True
@@ -489,17 +505,33 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
         """
         super(UserDefinedCollectiveRoleMaker, self).__init__()
 
+        if not isinstance(worker_endpoints, list):
+            raise TypeError("worker_endpoints must be as string list")
+        elif len(worker_endpoints) <= 0:
+            raise ValueError(
+                "the length of worker_endpoints list must be greater than 0")
+        elif len(worker_endpoints) != len(set(worker_endpoints)):
+            raise ValueError("worker_endpoints can't have duplicate elements")
+        else:
+            for worker_endpoint in worker_endpoints:
+                if not isinstance(worker_endpoint, str):
+                    raise TypeError(
+                        "every element in worker_endpoints list must be as string"
+                    )
+            self._worker_endpoints = worker_endpoints
+
         if not isinstance(current_id, int):
             raise TypeError("current_id must be as int")
         else:
             if current_id < 0:
-                raise ValueError("current_id must be greater or equal 0")
+                raise ValueError(
+                    "current_id must be greater than or equal to 0")
+            elif current_id >= len(worker_endpoints):
+                raise ValueError(
+                    "current_id must be less than or equal to len(worker_endpoints) - 1"
+                )
             self._current_id = current_id
 
-        if not isinstance(worker_endpoints, list):
-            raise TypeError("worker_endpoints must be as string list")
-        else:
-            self._worker_endpoints = worker_endpoints
         self._worker_num = len(self._worker_endpoints)
 
     def generate_role(self):

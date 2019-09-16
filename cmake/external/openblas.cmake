@@ -58,7 +58,41 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
-    ELSE()
+    ELSE(NOT WIN32)
+        SET(CBLAS_FOUND false)
+        SET(CBLAS_LIBRARIES
+            "${CBLAS_INSTALL_DIR}/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            CACHE FILEPATH "openblas library." FORCE)
+        INCLUDE_DIRECTORIES(${CBLAS_INC_DIR}/openblas) # For openbals code to include its own headers.
+        INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install)
+        ExternalProject_Add(
+            extern_openblas
+            ${EXTERNAL_PROJECT_LOG_ARGS}
+            GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
+            GIT_TAG            "v0.3.7"
+            PREFIX              ${CBLAS_SOURCES_DIR}
+            INSTALL_DIR         ${CBLAS_INSTALL_DIR}
+            BUILD_IN_SOURCE     0
+            UPDATE_COMMAND      ""
+            CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                                    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                                    -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
+                                    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                                    -DBUILD_SHARED_LIBS=ON
+                                    -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
+                                    ${EXTERNAL_OPTIONAL_ARGS}
+                CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
+                                    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                                    -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+            )
+        add_custom_command(TARGET extern_openblas POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX}  ${CBLAS_INSTALL_DIR}/lib )
+        ADD_LIBRARY(openblas STATIC IMPORTED GLOBAL)
+        SET_PROPERTY(TARGET openblas PROPERTY IMPORTED_LOCATION ${CBLAS_LIBRARIES})
+        ADD_DEPENDENCIES(openblas extern_openblas)
     ENDIF(NOT WIN32)
     SET(CBLAS_PROVIDER openblas)
 ENDIF(NOT ${CBLAS_FOUND})

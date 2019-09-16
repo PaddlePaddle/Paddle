@@ -39,11 +39,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_NGRAPH
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 #endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -409,8 +409,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // FIXME(zjl): recurrent_op is rather complex, we would
-  // disable gc forcely in recurrent_op
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
