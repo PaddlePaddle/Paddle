@@ -13775,7 +13775,6 @@ def masked_select(input, mask):
             data_var = fluid.layers.create_tensor(dtype="float32", name="data")
             input_var = fluid.layers.create_tensor(dtype="int32", name="input")
             mask_var = data_var > 0
-
             result = fluid.layers.masked_select(input = input_var, mask = mask_var)
 
     """
