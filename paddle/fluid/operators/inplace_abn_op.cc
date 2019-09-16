@@ -146,8 +146,7 @@ class InplaceABNGradKernel
       functor.InplaceCompute(ctx, activation, place, cur_x, cur_x, cur_dx,
                              cur_dy);
     }
-    //    functor.GradCompute(ctx, activation, place, cur_x, cur_x, cur_dx,
-    //    cur_dy);
+    functor.GradCompute(ctx, activation, place, cur_x, cur_x, cur_dx, cur_dy);
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
