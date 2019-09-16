@@ -31,12 +31,12 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N, id);
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
@@ -66,12 +66,12 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N, id);
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
