@@ -136,8 +136,11 @@ void Communicator::SendThread() {
           ids_send_queue_.push_back(need_push_queue_->Pop());
         }
       }
-      std::vector<std::shared_ptr<SparseIdsMap>> new_ids_send_queue{};
-      new_ids_send_queue.swap(ids_send_queue_);
+      std::vector<SparseIdsMap> new_ids_send_queue{};
+      for(auto ids_map:ids_send_queue_) {
+        new_ids_send_queue.push_back(*ids_map);
+      }
+      ids_send_queue_.clear();
       GeoSgdUpdate(new_ids_send_queue);
       for (auto &iter : send_varname_to_queue_) {
         auto &var_name = iter.first;
@@ -576,10 +579,10 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
   need_push_queue_->Push(ids_table);
 }
 
-void Communicator::GeoSgdUpdate(std::vector<std::shared_ptr<SparseIdsMap>> &ids_send_queue) {
+void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
   SparseIdsMap ids_map;
   for(auto table : ids_send_queue) {
-    for (auto &iter : *table) {
+    for (auto &iter : table) {
       auto &var_name = iter.first;
       auto &ids_vec = iter.second;
 

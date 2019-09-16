@@ -254,7 +254,7 @@ class Communicator {
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdUpdate(std::vector<std::shared_ptr<SparseIdsMap>> &ids_send_queue);
+  void GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue);
   
   void GeoSgdParamInit(framework::Scope *scope) {
     for(auto &iter:var_list_){
