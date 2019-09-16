@@ -68,7 +68,18 @@ class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
                  "im2col maximum number of image per computation")
         .SetDefault(64);
     AddComment(R"DOC(
-**Deformable Convolution Operator**
+**Deformable Convolution v1 Operator**
+
+Deformable Convolution is a new method based Convolution which feature has offset 
+in spatial location.
+
+1. Get offset of each pixel in feature map with convolution layers which number 
+   of channels should be double of weight size.
+
+2. Add offset to pixel to get new location and the new value which are computed 
+   directly through bilinear interpolation with four nearest pixel.
+
+3. Get the product of pixel and weight as result
 
 Compute 2-D deformable convolution on 4-D input.
 

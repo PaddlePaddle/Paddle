@@ -277,6 +277,7 @@ inline void DeformableIm2colCPU(const platform::CPUDeviceContext& ctx,
   int channel_per_deformable_group = im_shape[0] / deformable_groups;
   int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
+  // get outputs of im2col with offset
   DeformableIm2colCPUKernel(
       num_kernels, data_im, data_offset, im_shape[1], im_shape[2],
       filter_shape[2], filter_shape[3], paddings[0], paddings[1], strides[0],
@@ -501,6 +502,7 @@ class DeformableConvV1GradCPUKernel : public framework::OpKernel<T> {
 
       if (offset_grad) {
         T* offset_grad_ptr = offset_grad->data<T>();
+        // get grad of offset
         DeformableCol2imCoordCPU(
             dev_ctx, col_buffer_ptr, input_ptr + i * im2col_step * input_dim,
             offset_ptr + i * im2col_step * input_offset_dim, input_shape_vec,
@@ -510,6 +512,7 @@ class DeformableConvV1GradCPUKernel : public framework::OpKernel<T> {
       }
       if (input_grad) {
         T* input_grad_ptr = input_grad->data<T>();
+        // get grad of input
         DeformableCol2imCPU(dev_ctx, col_buffer_ptr,
                             offset_ptr + i * im2col_step * input_offset_dim,
                             input_shape_vec, col_buffer_shape_vec,
@@ -545,6 +548,7 @@ class DeformableConvV1GradCPUKernel : public framework::OpKernel<T> {
           blas.MatMul(out_grad_3d_slice, false, col_buffer_3d_slice, true,
                       T(1.0), &dweight_3d_slice, T(0.0));
         }
+        // update grad of weights
         FilterGradAddupCPUKernel(dweight_3d.numel(), groups, K, M,
                                  dweight_3d.data<T>(), filter_grad->data<T>());
       }
