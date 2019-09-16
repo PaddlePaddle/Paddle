@@ -433,7 +433,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Output<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -527,10 +526,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
-          EigenArrayMap<T> x_data(y->data<T>(), sample_size, N * C);
-          ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
+          auto px = const_cast<Tensor &>(*x);
+          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
+                                  sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
-            x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
+            x_data.col(nc) = (x_data.col(nc) - bias_arr(nc % C)) /
                                  scale_inv_var_nhw(nc % C) +
                              mean_arr(nc % C);
           }
@@ -569,9 +569,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
-          EigenArrayMap<T> x_data(y->data<T>(), C, N * sample_size);
-          ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
-          x_data = (y_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
+          auto px = const_cast<Tensor &>(*x);
+          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
+                                  N * sample_size);
+          x_data = (x_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
@@ -618,7 +619,6 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
-  op->SetOutput("Y", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
