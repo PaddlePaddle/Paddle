@@ -102,7 +102,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // const framework::BlockDesc& main_block = program_desc->Block(0);
   framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
-  // An fake block desc.
+  // A fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
@@ -118,19 +118,26 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // Then, we will use the input_names_with_id and output_names_with_id to
-  // generate the eigine key.
+  // generate the engine key.
   // So, We use set instead of unordered_set here to ensure that the engine key
   // is unique.
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
   std::vector<std::string> params;
+  // if we delete fluid copy of params shared by more than 1 ops, there will be
+  // problem, so we filter them out.
+  std::vector<std::string> params_not_shared;
 
-  // The node->inputs containes input tensors and parameters.
+  // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
       params.push_back(x->Name());
+    }
+    if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0 &&
+        x->outputs.size() < 1) {
+      params_not_shared.push_back(x->Name());
     }
   }
 
@@ -241,7 +248,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     return;
   }
 
-  std::copy(params.begin(), params.end(),
+  std::copy(params_not_shared.begin(), params_not_shared.end(),
             std::back_inserter(*repetitive_params));
 
   tensorrt::TensorRTEngine *trt_engine =
