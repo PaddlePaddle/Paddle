@@ -36,10 +36,16 @@ using framework::Tensor;
 template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true);
   // check index of shape 1-D
-  PADDLE_ENFORCE(index.dims().size() == 1 ||
-                 (index.dims().size() == 2 && index.dims()[1] == 1));
+  if (index.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
+                      "index.dims()[1] should be 1 when index.dims().size() == "
+                      "2 in gather_op.");
+  } else {
+    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
+                      "index.dims().size() should be 1 or 2 in gather_op.");
+  }
   int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();

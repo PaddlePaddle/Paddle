@@ -128,5 +128,17 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
         }
 
 
+class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float32)
+        y = x + sgn * \
+            np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
+
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -54,6 +54,15 @@ class MomentumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
                    "Output(VelocityOut) of Momentum should not be null.");
 
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning_rate should be a scalar");
+
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -64,8 +73,6 @@ class MomentumOp : public framework::OperatorWithKernel {
           param_dim, ctx->GetInputDim("Velocity"),
           "Param and Velocity of MomentumOp should have the same dimension.");
     }
-    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
-                      "Learning_rate should be a scalar");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);

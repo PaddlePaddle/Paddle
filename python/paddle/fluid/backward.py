@@ -577,7 +577,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
                                            Default: None
         no_grad_set(set|None): Variables in the Block 0 whose gradients
                                should be ignored. All variables with
-                               `step_gradient=True` from all blocks will
+                               `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                Default: None
         callbacks(list[callable object]|None): The callbacks are used for
