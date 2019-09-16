@@ -55,7 +55,7 @@ class TestPyReader(unittest.TestCase):
                 for _ in range(self.epoch_num):
                     for data in reader():
                         if return_list:
-                            executor.run(feed={"image": data[0]})
+                            executor.run(feed={"image": data[0][0]})
                         else:
                             executor.run(feed=data)
 
