@@ -134,6 +134,7 @@ void Communicator::SendThread() {
         } else {
           wait_times = 0;
           ids_send_queue_.push_back(need_push_queue_->Pop());
+          VLOG(1) <<"ids_send_queue pushed";
         }
       }
       std::vector<SparseIdsMap> new_ids_send_queue{};
@@ -565,6 +566,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       ids_table->at(sparse_var_tables[i]) = std::unordered_set<int64_t>{};
     }
     auto *var = scope.FindVar(sparse_var_names[i - 1]);
+    VLOG(1)<< "Scope "<< &scope <<"find var "<<sparse_var_names[i - 1];
     auto var_tensor = var->Get<framework::LoDTensor>();
     int element_number = var_tensor.numel();
     int* var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
@@ -573,10 +575,12 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       if(ids_table->at(sparse_var_tables[i]).find(var_mutable_data[j]) == 
                                     ids_table->at(sparse_var_tables[i]).end()) {
         ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
+        VLOG(1)<<"Sparse var "<<sparse_var_tables[i] <<" insert" <<var_mutable_data[j];
       }
     }
   }
   need_push_queue_->Push(ids_table);
+  VLOG(1)<<"GeoSgd send complete";
 }
 
 void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
