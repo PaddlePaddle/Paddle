@@ -300,7 +300,7 @@ void DatasetImpl<T>::GlobalShuffle() {
   data.shrink_to_fit();
 
   input_channel_->Close();
-  input_channel_->SetBlockSize(fleet_send_batch_size_);
+  input_channel_->SetBlockSize(1024);
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
           << input_channel_->Size();
 
@@ -345,7 +345,7 @@ void DatasetImpl<T>::GlobalShuffle() {
       ars.shrink_to_fit();
       data.clear();
       data.shrink_to_fit();
-      sleep(this->fleet_send_sleep_seconds_);
+      //sleep(this->fleet_send_sleep_seconds_);
     }
   };
 
