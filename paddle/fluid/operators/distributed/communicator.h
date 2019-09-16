@@ -254,7 +254,7 @@ class Communicator {
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  void GeoSgdUpdate(size_t &buffer_ids);
+  void GeoSgdUpdate(std::vector<std::shared_ptr<SparseIdsMap>> &ids_send_queue);
   
   void GeoSgdParamInit(framework::Scope *scope) {
     for(auto &iter:var_list_){
@@ -268,7 +268,7 @@ class Communicator {
                        const std::string var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
-  void SendUpdateSparseVars(const std::string& var_name,size_t &buffer_ids);
+  void SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table);
   void RecvUpdateVars(const std::string& var_name);
 
   const std::string VarToDeltaVar(const std::string var_name) {
@@ -291,9 +291,8 @@ class Communicator {
   
   std::unordered_map<std::string,bool> var_list_; //if var is sparse, using selected rows, bool=true
   
-  std::vector<std::shared_ptr<SparseIdsMap>> sparse_ids_buffers_{2};
-  std::atomic_size_t curr_idx_{0};
-  BlockingQueue<int> need_push_num_queue_;
+  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>> need_push_queue_;
+  std::vector<std::shared_ptr<SparseIdsMap>> ids_send_queue_;
 };
 
 }  // namespace distributed
