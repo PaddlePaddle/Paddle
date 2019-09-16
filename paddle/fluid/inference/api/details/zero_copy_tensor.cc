@@ -89,9 +89,6 @@ PaddleDType ZeroCopyTensor::type() const {
     return PaddleDType::INT32;
   } else if (type == framework::proto::VarType::UINT8) {
     return PaddleDType::UINT8;
-  } else {
-    LOG(ERROR) << "Unknown type. Currently support types: float32, int64, "
-                  "int32, uint8. Using float32 instead.";
   }
   return PaddleDType::FLOAT32;
 }

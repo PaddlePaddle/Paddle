@@ -27,20 +27,6 @@ using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
-namespace {
-std::string gethash(const mkldnn::memory::dims &operand_dims,
-                    const mkldnn::algorithm algorithm) {
-  auto dim2str = [](const mkldnn::memory::dims &operand_dims) {
-    std::string dstr = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      dstr += std::to_string(operand_dims[i]) + "-";
-    }
-    return dstr;
-  };
-  return dim2str(operand_dims) + std::to_string(algorithm);
-}
-}  // namespace
-
 template <typename Functor>
 class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
