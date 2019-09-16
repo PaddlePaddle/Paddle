@@ -258,8 +258,8 @@ class OpTest(unittest.TestCase):
         return self._get_io_vars(block, self.outputs)
 
     def calc_output(self, place):
-        res = self._calc_output(place)
-        return res[0]
+        outs, _ = self._calc_output(place)
+        return outs
 
     def _create_var_from_numpy(self, value):
         if isinstance(value, tuple):
@@ -351,7 +351,7 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      loss=None,
                      enable_inplace=None,
-                     for_inplace_grad_test=None):
+                     for_inplace_test=None):
         program = Program()
         block = program.global_block()
         op = self._append_ops(block)
@@ -360,7 +360,7 @@ class OpTest(unittest.TestCase):
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
 
-        if for_inplace_grad_test is not None:
+        if for_inplace_test:
             # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
             # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
@@ -406,7 +406,10 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
-        return outs, fetch_list, feed_map, original_program, op.desc
+        if for_inplace_test:
+            return outs, fetch_list, feed_map, original_program, op.desc
+        else:
+            return outs, fetch_list
 
     def check_inplace_output_with_place(self,
                                         place,
@@ -416,9 +419,15 @@ class OpTest(unittest.TestCase):
         if not fluid.core.has_infer_inplace(self.op_type):
             return
         expect_res = self._calc_output(
-            place, no_check_set=no_check_set, enable_inplace=False)
+            place,
+            no_check_set=no_check_set,
+            enable_inplace=False,
+            for_inplace_test=True)
         actual_res = self._calc_output(
-            place, no_check_set=no_check_set, enable_inplace=True)
+            place,
+            no_check_set=no_check_set,
+            enable_inplace=True,
+            for_inplace_test=True)
 
         # compare expect_outs and actual_outs
         self._compare_expect_and_actual_outputs(
@@ -592,9 +601,7 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
-        res = self._calc_output(place, no_check_set=no_check_set)
-        outs = res[0]
-        fetch_list = res[1]
+        outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
