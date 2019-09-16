@@ -345,7 +345,7 @@ void DatasetImpl<T>::GlobalShuffle() {
       ars.shrink_to_fit();
       data.clear();
       data.shrink_to_fit();
-      //sleep(this->fleet_send_sleep_seconds_);
+      // sleep(this->fleet_send_sleep_seconds_);
     }
   };
 
