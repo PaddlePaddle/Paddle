@@ -846,7 +846,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
 }
 
 PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
-                                 bool with_bias) {
+                                 bool with_bias, bool with_relu) {
   // Create shared nodes.
   x->assert_is_op_input("mul", "X");
   auto *mul = pattern->NewNode(mul_repr())->assert_is_op("mul");
@@ -859,11 +859,10 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   auto *mul_out_var =
       pattern->NewNode(mul_out_repr())->assert_is_op_output("mul");
 
+  // Add links.
+  mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
   if (!with_bias) {  // not with bias
-    // Add links.
-    mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
     return mul_out_var;
-
   } else {  // with bias
     mul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
     // Create operators.
@@ -872,15 +871,29 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
     // Create variables.
     auto *bias = pattern->NewNode(bias_repr())
                      ->assert_is_op_input("elementwise_add")
+                     ->assert_is_persistable_var()
                      ->AsInput();
 
-    auto *fc_out = pattern->NewNode(Out_repr())
-                       ->AsOutput()
-                       ->assert_is_op_output("elementwise_add");
+    auto *elementwise_add_out_var =
+        pattern->NewNode(elementwise_add_out_repr())
+            ->AsOutput()
+            ->assert_is_op_output("elementwise_add");
 
-    mul->LinksFrom({mul_w_var, x}).LinksTo({mul_out_var});
-    elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
-    return fc_out;
+    elementwise_add->LinksFrom({mul_out_var, bias})
+        .LinksTo({elementwise_add_out_var});
+    if (!with_relu) {
+      return elementwise_add_out_var;
+    } else {
+      elementwise_add_out_var->AsIntermediate()->assert_is_op_input("relu");
+      // Create operators.
+      auto *relu = pattern->NewNode(relu_repr())->assert_is_op("relu");
+      auto *relu_out_var = pattern->NewNode(relu_out_repr())
+                               ->AsOutput()
+                               ->assert_is_op_output("relu");
+
+      relu->LinksFrom({elementwise_add_out_var}).LinksTo({relu_out_var});
+      return relu_out_var;
+    }
   }
 }
 
