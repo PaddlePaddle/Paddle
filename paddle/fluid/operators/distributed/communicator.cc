@@ -641,11 +641,9 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
   VLOG(1)<<"Get tensor of var "<<VarToDeltaVar(var_name);
-  VLOG(1)<<"var_x_tensor.lod().back().size() - 1 : " << var_x_tensor.lod().back().size() - 1;
-  int64_t n = var_x_tensor.lod().size() == 0? 1
-                    : static_cast<int64_t>(var_x_tensor.lod().back().size() - 1);
-  var_z_tensor->mutable_data<float>({n,dims[1]},var_x_tensor.place());
-  //var_z_tensor->set_lod(var_x_tensor.lod());
+
+  var_z_tensor->mutable_data<float>({dims[0],dims[1]},var_x_tensor.place());
+  var_z_tensor->set_lod(var_x_tensor.lod());
   VLOG(1)<<"Set lod of var "<<VarToDeltaVar(var_name);
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
