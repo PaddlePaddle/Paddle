@@ -34,7 +34,7 @@ struct Layers {
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
-                  bool use_cudnn) {
+                  bool use_cudnn = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
@@ -89,9 +89,7 @@ struct Layers {
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("in_num_col_dims", in_num_col_dims);
-    if (activation_type == "relu") {
-      op->SetAttr("activation_type", activation_type);
-    }
+    op->SetAttr("activation_type", activation_type);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
