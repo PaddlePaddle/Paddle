@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_elementwise_pow_op import *
+from test_elementwise_pow_op import TestElementwisePowOp_scalar, TestElementwisePowOp_tensor, TestElementwisePowOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

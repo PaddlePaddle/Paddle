@@ -328,7 +328,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   void MultiClassOutput(const platform::DeviceContext& ctx,
                         const Tensor& scores, const Tensor& bboxes,
                         const std::map<int, std::vector<int>>& selected_indices,
-                        const int scores_size, Tensor* outs) const {
+                        const int scores_size, Tensor* outs,
+                        int* oindices = nullptr, const int offset = 0) const {
     int64_t class_num = scores.dims()[1];
     int64_t predict_dim = scores.dims()[1];
     int64_t box_size = bboxes.dims()[1];
@@ -358,9 +359,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         if (scores_size == 3) {
           bdata = bboxes_data + idx * box_size;
           odata[count * out_dim + 1] = sdata[idx];  // score
+          if (oindices != nullptr) {
+            oindices[count] = offset + idx;
+          }
         } else {
           bdata = bbox.data<T>() + idx * box_size;
           odata[count * out_dim + 1] = *(scores_data + idx * class_num + label);
+          if (oindices != nullptr) {
+            oindices[count] = offset + idx * class_num + label;
+          }
         }
         // xmin, ymin, xmax, ymax or multi-points coordinates
         std::memcpy(odata + count * out_dim + 2, bdata, box_size * sizeof(T));
@@ -373,7 +380,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Input<LoDTensor>("BBoxes");
     auto* scores = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
-
+    bool return_index = ctx.HasOutput("Index") ? true : false;
+    auto index = ctx.Output<LoDTensor>("Index");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -406,35 +414,55 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
-      od[0] = -1;
-      batch_starts = {0, 1};
+      if (return_index) {
+        outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
+        index->mutable_data<int>({0, 1}, ctx.GetPlace());
+      } else {
+        T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
+        od[0] = -1;
+        batch_starts = {0, 1};
+      }
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
+      int offset = 0;
+      int* oindices = nullptr;
       for (int i = 0; i < n; ++i) {
         if (score_size == 3) {
           scores_slice = scores->Slice(i, i + 1);
           boxes_slice = boxes->Slice(i, i + 1);
           scores_slice.Resize({score_dims[1], score_dims[2]});
           boxes_slice.Resize({score_dims[2], box_dim});
+          if (return_index) {
+            offset = i * score_dims[2];
+          }
         } else {
           auto boxes_lod = boxes->lod().back();
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
+          if (return_index) {
+            offset = boxes_lod[i] * score_dims[1];
+          }
         }
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
+          if (return_index) {
+            int* output_idx =
+                index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
+            oindices = output_idx + s;
+          }
           MultiClassOutput(dev_ctx, scores_slice, boxes_slice, all_indices[i],
-                           score_dims.size(), &out);
+                           score_dims.size(), &out, oindices, offset);
         }
       }
     }
 
     framework::LoD lod;
     lod.emplace_back(batch_starts);
-
+    if (return_index) {
+      index->set_lod(lod);
+    }
     outs->set_lod(lod);
   }
 };
@@ -519,10 +547,42 @@ This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
-means there is no detected bbox for this image. If there is no detected boxes
-for all images, all the elements in LoD are set to {1}, and the Out only 
-contains one value which is -1.
+means there is no detected bbox for this image.
 )DOC");
+  }
+};
+
+class MultiClassNMS2Op : public MultiClassNMSOp {
+ public:
+  MultiClassNMS2Op(const std::string& type,
+                   const framework::VariableNameMap& inputs,
+                   const framework::VariableNameMap& outputs,
+                   const framework::AttributeMap& attrs)
+      : MultiClassNMSOp(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    MultiClassNMSOp::InferShape(ctx);
+
+    auto box_dims = ctx->GetInputDim("BBoxes");
+    auto score_dims = ctx->GetInputDim("Scores");
+    auto score_size = score_dims.size();
+    if (score_size == 3) {
+      ctx->SetOutputDim("Index", {box_dims[1], 1});
+    } else {
+      ctx->SetOutputDim("Index", {-1, 1});
+    }
+  }
+};
+
+class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
+ public:
+  void Make() override {
+    MultiClassNMSOpMaker::Make();
+    AddOutput("Index",
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "index of selected bbox. The index is the absolute index cross "
+              "batches.")
+        .AsIntermediate();
   }
 };
 
@@ -534,4 +594,9 @@ REGISTER_OPERATOR(multiclass_nms, ops::MultiClassNMSOp,
                   ops::MultiClassNMSOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);
+REGISTER_OPERATOR(multiclass_nms2, ops::MultiClassNMS2Op,
+                  ops::MultiClassNMS2OpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);

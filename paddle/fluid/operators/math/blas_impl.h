@@ -666,7 +666,11 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                            mat_b.data<T>(), beta, mat_out->data<T>());
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
-                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0,
+                   "dim_a.batch_size should be equal to dim_b.batch_size, or "
+                   "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+                   dim_a.batch_size_, dim_b.batch_size_);
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
         mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),

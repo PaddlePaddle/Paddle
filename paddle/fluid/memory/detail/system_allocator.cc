@@ -118,12 +118,13 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
+    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
     PADDLE_THROW_BAD_ALLOC(
         "Cannot malloc " + std::to_string(size / 1024.0 / 1024.0) +
         " MB GPU memory. Please shrink "
         "FLAGS_fraction_of_gpu_memory_to_use or "
         "FLAGS_initial_gpu_memory_in_mb or "
-        "FLAGS_reallocate_gpu_memory_in_mb"
+        "FLAGS_reallocate_gpu_memory_in_mb "
         "environment variable to a lower value. " +
         "Current FLAGS_fraction_of_gpu_memory_to_use value is " +
         std::to_string(FLAGS_fraction_of_gpu_memory_to_use) +

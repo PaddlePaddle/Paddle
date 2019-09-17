@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {

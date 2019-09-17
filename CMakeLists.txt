@@ -92,7 +92,7 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
 endif()

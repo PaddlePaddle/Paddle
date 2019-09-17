@@ -21,30 +21,33 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNFormat = mkldnn::memory::format;
 using MKLDNNDataType = mkldnn::memory::data_type;
 
-inline MKLDNNFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
-      return MKLDNNFormat::nhwc;
+      return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
-      return MKLDNNFormat::nchw;
+      return MKLDNNMemoryFormat::nchw;
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
                    DataLayoutToString(layout));
   }
 }
 
-inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
+inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
   switch (format) {
-    case MKLDNNFormat::nhwc:
+    case MKLDNNMemoryFormat::nhwc:
       return DataLayout::kNHWC;
-    case MKLDNNFormat::nchw:
+    case MKLDNNMemoryFormat::nchw:
       return DataLayout::kNCHW;
     default:
       PADDLE_THROW("Fail to convert MKLDNN format to paddle layout");
