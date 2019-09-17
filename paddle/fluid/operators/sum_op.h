@@ -85,7 +85,7 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     out_dim[0] = row_num;
     out->mutable_value()->Resize(out_dim);
     out->mutable_value()->mutable_data<T>(context.GetPlace());
-    paddle::operators::math::SelectedRowsSumTo<DeviceContext, T> add_functor;
+    math::SelectedRowsSumTo<DeviceContext, T> add_functor;
     add_functor(context.template device_context<DeviceContext>(), inputs,
                 input1_offsize, out);
   } else {
