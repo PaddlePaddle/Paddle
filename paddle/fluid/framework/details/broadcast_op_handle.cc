@@ -126,6 +126,9 @@ void BroadcastOpHandle::BroadcastOneVar(
             &VariableVisitor::GetMutableTensor(out_var));
       }
     });
+    for (auto &p : places_) {
+      nccl_ctxs_->DevCtx(p)->Wait();
+    }
 #else
     PADDLE_THROW("CUDA is not enabled.");
 #endif

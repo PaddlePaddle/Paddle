@@ -91,7 +91,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     size_t seq_num = 0;
     size_t batch_size;
     size_t tag_num;
-    const int64_t* length_data;
+    const int64_t* length_data = nullptr;
     framework::Vector<size_t> in_lod;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
@@ -260,7 +260,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // getting seq_num  using padding or not
     size_t seq_num = 0;
     framework::Vector<size_t> lod;
-    const int64_t* length_data;
+    const int64_t* length_data = nullptr;
     if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       length_data = label_length->data<int64_t>();
