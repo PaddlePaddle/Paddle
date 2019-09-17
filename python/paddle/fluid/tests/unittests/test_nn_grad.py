@@ -43,30 +43,6 @@ class TestMulGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestConvDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 14, 16]
-        eps = 0.005
-        dtype = np.float64
-        x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 4, 1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = fluid.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
-
-    def test_grad(self):
-        if core.is_compiled_with_cuda():
-            places = [fluid.CUDAPlace(0)]
-            for p in places:
-                self.func(p)
-
-
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
