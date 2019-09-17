@@ -161,7 +161,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 "NCHW"
             ]  #NHWC can be too slow under cpu mode
             for layout in layouts:
-                for activation in ['relu', 'relu']:
+                for activation in ['elu', 'relu']:
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation,
                                      use_cuda)
