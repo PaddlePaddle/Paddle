@@ -575,7 +575,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       if(ids_table->at(sparse_var_tables[i]).find(var_mutable_data[j]) == 
                                     ids_table->at(sparse_var_tables[i]).end()) {
         ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
-        VLOG(1)<<"Sparse var "<<sparse_var_tables[i] <<" insert" <<var_mutable_data[j];
+        VLOG(4)<<"Sparse var "<<sparse_var_tables[i] <<" insert " <<var_mutable_data[j];
       }
     }
   }
