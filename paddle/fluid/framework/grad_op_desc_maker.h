@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
@@ -54,114 +55,10 @@ class GradOpDescMakerBase {
   virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
  protected:
-  imperative::StrVarBaseNode InputGrad(const std::string& name,
-                                       bool drop_empty_grad = true) const {
-    imperative::StrVarBaseNode str_var_base;
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
-      auto iterator = var_base_in_->find(name);
-      // PADDLE_ENFORCE(iterator != var_base_in_->end(),
-      //               "can not find %s in input", name);
-      if (iterator != var_base_in_->end()) {
-        vec_temp.reserve(iterator->second.size());
-        for (auto& var_base_temp : iterator->second) {
-          PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
-                                  "var base grad should not be null");
-          var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
-          vec_temp.push_back(var_base_temp->GradVarBase());
-        }
-        str_var_base.vec_var_base_.swap(vec_temp);
-      }
-      str_var_base.dygraph_mode_ = true;
-    } else {
-      std::vector<std::string> vec_str_temp =
-          InputGradV1(name, drop_empty_grad);
-      str_var_base.vec_name_.swap(vec_str_temp);
-      str_var_base.dygraph_mode_ = false;
-    }
-
-    return str_var_base;
-  }
-
-  imperative::StrVarBaseNode OutputGrad(const std::string& name) const {
-    imperative::StrVarBaseNode str_var_base;
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
-      auto iterator = var_base_out_->find(name);
-      // PADDLE_ENFORCE(iterator != var_base_out_->end(),
-      //               "can not find %s in output", name);
-      if (iterator != var_base_out_->end()) {
-        vec_temp.reserve(iterator->second.size());
-        for (auto& var_base_temp : iterator->second) {
-          PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
-                                  "var base grad should not be null");
-          var_base_temp->GradVarBase()->SetIsGradFromGradMaker(true);
-          vec_temp.push_back(var_base_temp->GradVarBase());
-        }
-        str_var_base.vec_var_base_.swap(vec_temp);
-      }
-      str_var_base.dygraph_mode_ = true;
-    } else {
-      std::vector<std::string> vec_str_temp = OutputGradV1(name);
-      str_var_base.vec_name_.swap(vec_str_temp);
-      str_var_base.dygraph_mode_ = false;
-    }
-
-    return str_var_base;
-  }
-
-  imperative::StrVarBaseNode Input(const std::string& name) const {
-    imperative::StrVarBaseNode str_var_base;
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
-      auto iterator = var_base_in_->find(name);
-      // PADDLE_ENFORCE( iterator != var_base_in_->end(), "can not find %s in
-      // input", name );
-      if (iterator != var_base_in_->end()) {
-        vec_temp.reserve(iterator->second.size());
-        for (auto& var_base_temp : iterator->second) {
-          vec_temp.push_back(var_base_temp);
-        }
-        str_var_base.vec_var_base_.swap(vec_temp);
-      }
-      str_var_base.dygraph_mode_ = true;
-    } else {
-      std::vector<std::string> vec_str_temp = InputV1(name);
-      str_var_base.vec_name_.swap(vec_str_temp);
-      str_var_base.dygraph_mode_ = false;
-    }
-
-    return str_var_base;
-  }
-
-  imperative::StrVarBaseNode Output(const std::string& name) const {
-    imperative::StrVarBaseNode str_var_base;
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      std::vector<std::shared_ptr<imperative::VarBase>> vec_temp;
-      auto iterator = var_base_out_->find(name);
-      // PADDLE_ENFORCE( iterator != var_base_out_->end(), "can not find %s in
-      // output", name );
-      if (iterator != var_base_out_->end()) {
-        vec_temp.reserve(iterator->second.size());
-        for (auto& var_base_temp : iterator->second) {
-          vec_temp.push_back(var_base_temp);
-        }
-        str_var_base.vec_var_base_.swap(vec_temp);
-      }
-      str_var_base.dygraph_mode_ = true;
-    } else {
-      std::vector<std::string> vec_str_temp = OutputV1(name);
-      str_var_base.vec_name_.swap(vec_str_temp);
-      str_var_base.dygraph_mode_ = false;
-    }
-
-    return str_var_base;
-  }
-
-  std::vector<std::string> InputGradV1(const std::string& name,
-                                       bool drop_empty_grad = true) const {
+  std::vector<std::string> InputGrad(const std::string& name,
+                                     bool drop_empty_grad = true) const {
     std::vector<std::string> ret_val;
-    auto var_names = this->InputV1(name);
+    auto var_names = this->Input(name);
     ret_val.reserve(var_names.size());
     std::transform(var_names.begin(), var_names.end(),
                    std::back_inserter(ret_val),
@@ -194,9 +91,9 @@ class GradOpDescMakerBase {
     return dropped_ret_val;
   }
 
-  std::vector<std::string> OutputGradV1(const std::string& name) const {
+  std::vector<std::string> OutputGrad(const std::string& name) const {
     std::vector<std::string> ret_val;
-    auto onames = this->OutputV1(name);
+    auto onames = this->Output(name);
     ret_val.reserve(onames.size());
     std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
@@ -215,11 +112,11 @@ class GradOpDescMakerBase {
     return this->fwd_op_.OutputNames();
   }
 
-  std::vector<std::string> InputV1(const std::string& name) const {
+  std::vector<std::string> Input(const std::string& name) const {
     return fwd_op_.Input(name);
   }
 
-  std::vector<std::string> OutputV1(const std::string& name) const {
+  std::vector<std::string> Output(const std::string& name) const {
     return fwd_op_.Output(name);
   }
 
@@ -265,11 +162,24 @@ class GradOpDescMakerBase {
   std::vector<BlockDesc*> grad_block_;
 };
 
-class SingleGradOpDescMaker : public GradOpDescMakerBase {
+template <typename T>
+class SingleGradOpDescMaker {
+ public:
+  std::vector<std::unique_ptr<T>> operator()() const {
+    PADDLE_ENFORCE(false, "should not call this function");
+    return {};
+  }
+
+ protected:
+  virtual std::unique_ptr<T> Apply() const = 0;
+};
+
+template <>
+class SingleGradOpDescMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
     return retv;
@@ -279,52 +189,72 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
   virtual std::unique_ptr<OpDesc> Apply() const = 0;
 };
 
-template <bool DropEmptyIG = true>
-class DefaultGradOpDescMaker final : public SingleGradOpDescMaker {
+template <>
+class SingleGradOpDescMaker<imperative::OpBase>
+    : public imperative::GradOpBaseMakerBase {
  public:
-  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+ public:
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const {
+    std::vector<std::unique_ptr<imperative::OpBase>> retv;
+    retv.emplace_back(this->Apply());
+
+    return retv;
+  }
 
  protected:
-  std::unique_ptr<OpDesc> Apply() const final {
-    auto* grad = new OpDesc();
+  virtual std::unique_ptr<imperative::OpBase> Apply() const = 0;
+};
+
+template <typename T, bool DropEmptyIG = true>
+class DefaultGradOpDescMaker final : public SingleGradOpDescMaker<T> {
+ public:
+  using SingleGradOpDescMaker<T>::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const final {
+    auto* grad = new T();
     grad->SetType(this->ForwardOpType() + "_grad");
 
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      for (auto& in_it : *var_base_in_) {
-        grad->SetInput(in_it.first, Input(in_it.first));
-        grad->SetOutput(GradVarName(in_it.first),
-                        InputGrad(in_it.first, DropEmptyIG));
-      }
-
-      for (auto& out_it : *var_base_out_) {
-        grad->SetInput(out_it.first, Output(out_it.first));
-        grad->SetInput(GradVarName(out_it.first), OutputGrad(out_it.first));
-      }
-      grad->SetAttrMap(this->Attrs());
-    } else {
-      for (auto& input_param : this->InputNames()) {
-        grad->SetInput(input_param, this->Input(input_param));
-        grad->SetOutput(GradVarName(input_param),
-                        this->InputGrad(input_param, DropEmptyIG));
-      }
-
-      for (auto& output_param : this->OutputNames()) {
-        grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(GradVarName(output_param),
-                       this->OutputGrad(output_param));
-      }
-
-      grad->SetAttrMap(this->Attrs());
+    for (auto& input_param : this->InputNames()) {
+      grad->SetInput(input_param, this->Input(input_param));
+      grad->SetOutput(GradVarName(input_param),
+                      this->InputGrad(input_param, DropEmptyIG));
     }
 
-    return std::unique_ptr<OpDesc>(grad);
+    for (auto& output_param : this->OutputNames()) {
+      grad->SetInput(output_param, this->Output(output_param));
+      grad->SetInput(GradVarName(output_param), this->OutputGrad(output_param));
+    }
+
+    grad->SetAttrMap(this->Attrs());
+
+    return std::unique_ptr<T>(grad);
   }
 };
 
-class EmptyGradOpMaker final : public GradOpDescMakerBase {
+template <typename T>
+class EmptyGradOpMaker {
+ public:
+  std::vector<std::unique_ptr<T>> operator()() const final { return {}; }
+};
+
+template <>
+class EmptyGradOpMaker<OpDesc> final : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
   std::vector<std::unique_ptr<OpDesc>> operator()() const final { return {}; }
+};
+
+template <>
+class EmptyGradOpMaker<imperative::OpBase> final
+    : public imperative::GradOpBaseMakerBase {
+ public:
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const final {
+    return {};
+  }
 };
 
 }  // namespace framework

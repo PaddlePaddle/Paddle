@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <chrono>  // NOLINT
+#include <memory>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -49,18 +50,19 @@ class SplitOpKernel : public framework::OpKernel<T> {
   }
 };
 
-class SplitGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitGradMaker : public framework::SingleGradOpDescMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpDescMaker<T>::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto op = new T();
     op->SetType("concat");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetOutput("Out", InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetOutput("Out", this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
   }
 };
 

@@ -393,6 +393,21 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   OpBase(size_t id, const framework::OpDesc& op_desc,
          const platform::Place& place);
 
+ public:
+  OpBase() {}
+
+  void SetType(const std::string& type) { type_ = type; }
+  void SetInput(const std::string& name,
+                std::vector<std::shared_ptr<VarBase>> vec_var_base) {
+    ins_.emplace(name, vec_var_base);
+  }
+  void SetOutput(const std::string& name,
+                 std::vector<std::shared_ptr<VarBase>> vec_var_base) {
+    outs_.emplace(name, vec_var_base);
+  }
+  void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
+
+ private:
   size_t id_;
 
   std::unique_ptr<framework::OperatorBase> op_;
@@ -408,6 +423,8 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
+  std::string type_;
+  framework::AttributeMap attrs_;
 };
 
 }  // namespace imperative

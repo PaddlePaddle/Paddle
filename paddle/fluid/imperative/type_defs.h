@@ -30,6 +30,8 @@ using NameVarBaseMap =
     std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
 
 struct StrVarBaseNode {
+  StrVarBaseNode() : dygraph_mode_(false) {}
+
   std::vector<std::string> vec_name_;
   std::vector<std::shared_ptr<VarBase>> vec_var_base_;
   bool dygraph_mode_;
