@@ -12,7 +12,6 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/operators/elementwise/elementwise.h"
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
