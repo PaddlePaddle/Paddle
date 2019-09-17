@@ -10806,7 +10806,7 @@ def strided_slice(input, axes, starts, ends, strides):
     strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
     The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
     example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
-    [start1, start2, ..., startN], [end1, end2, ..., endN], [step1, step2, ..., stepN])
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [step1, step2, ..., stepN]),
     the axes which controls the dimension you want to slice makes it more flexible.
 
     .. code-block:: text
@@ -10852,7 +10852,7 @@ def strided_slice(input, axes, starts, ends, strides):
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides)
+            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
     """
     helper = LayerHelper('strided_slice', **locals())
     out = helper.create_variable_for_type_inference(
