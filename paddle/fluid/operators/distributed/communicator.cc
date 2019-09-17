@@ -134,7 +134,7 @@ void Communicator::SendThread() {
         } else {
           wait_times = 0;
           ids_send_queue_.push_back(need_push_queue_->Pop());
-          VLOG(1) <<"ids_send_queue pushed";
+          VLOG(4) <<"ids_send_queue pushed";
         }
       }
       VLOG(1)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
@@ -727,7 +727,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
     auto* z_mutable_data = new_value.data<float>();
-
+    VLOG(1) <<"Geo-Sgd Recv Sparse var "<< var_name <<" row size "<<new_rows.size();
     for (size_t i = 0; i< new_rows.size(); i++) {
       for (int64_t j = 0; j< row_numel; j++) {
         x_mutable_data[new_rows[i]*row_numel + j] += (z_mutable_data[i * row_numel + j] - 
