@@ -234,13 +234,14 @@ static __global__ void KeBNBackwardData(const T *dy,
   }
 }
 
-template <typename T, framework::DataLayout layout>
-static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
-                                       const BatchNormParamType<T> *bias,
-                                       const BatchNormParamType<T> *mean,
-                                       const BatchNormParamType<T> *variance,
-                                       const double epsilon, int C, int M,
-                                       int num, const T *y) {
+template <typename X, typename Scale, typename Bias, typename Mean,
+          typename Variance, typename Y>
+static __global__ void KeBNRestoreData(const framework::DataLayout layout, X *x,
+                                       const Scale *scale, const Bias *bias,
+                                       const Mean *mean,
+                                       const Variance *variance, double epsilon,
+                                       int C, int M, const int num,
+                                       const Y *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
@@ -248,6 +249,34 @@ static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
     x[i] = (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
   }
 }
+
+template <typename T>
+class InplaceHelper {
+ public:
+  template <typename X, typename Scale, typename Bias, typename Mean,
+            typename Variance, typename Y>
+  void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
+                  const Bias *bias, const Mean *mean, const Variance *variance,
+                  double epsilon, int C, int M, const int num, const Y *y,
+                  int grid2, int block, cudaStream_t &stream) {
+    KeBNRestoreData<<<grid2, block, 0, stream>>>(
+        layout, x, scale, bias, mean, variance, epsilon, C, M, num, x);
+  }
+};
+
+template <>
+class InplaceHelper<paddle::platform::float16> {
+ public:
+  template <typename X, typename Scale, typename Bias, typename Mean,
+            typename Variance, typename Y>
+  void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
+                  const Bias *bias, const Mean *mean, const Variance *variance,
+                  double epsilon, int C, int M, const int num, const Y *y,
+                  int grid2, int block, cudaStream_t &stream) {
+    PADDLE_THROW("Batch_norm not support in-place for %s for CUDA.",
+                 DataLayoutToString(layout));
+  }
+};
 
 template <typename T>
 class BatchNormGradKernel<platform::CUDADeviceContext, T>
@@ -306,6 +335,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     int grid1 = (num + block - 1) / block;
     int grid2 = std::min(C, max_blocks);
     auto stream = dev_ctx.stream();
+    InplaceHelper<T> inplace_functor;
 
     if (!use_global_stats) {
       if ((N * H * W * D) == 1) {
@@ -356,19 +386,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           saved_var->template data<BatchNormParamType<T>>();
 
       if (is_inplace) {
-        if (data_layout == framework::DataLayout::kNCHW) {
-          KeBNRestoreData<
-              T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-              const_cast<T *>(x->template data<T>()), scale->data<T>(),
-              bias->template data<BatchNormParamType<T>>(), saved_mean_data,
-              saved_var_data, epsilon, C, H * W * D, x->numel(), x->data<T>());
-        } else {
-          KeBNRestoreData<
-              T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-              const_cast<T *>(x->template data<T>()), scale->data<T>(),
-              bias->template data<BatchNormParamType<T>>(), saved_mean_data,
-              saved_var_data, epsilon, C, H * W * D, x->numel(), x->data<T>());
-        }
+        inplace_functor(data_layout, const_cast<T *>(x->template data<T>()),
+                        scale->data<T>(), bias->data<T>(), saved_mean_data,
+                        saved_var_data, epsilon, C, H * W * D, num,
+                        x->data<T>(), grid2, block, stream);
       }
 
       CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
@@ -397,21 +418,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           running_var->template data<BatchNormParamType<T>>();
 
       if (is_inplace) {
-        if (data_layout == framework::DataLayout::kNCHW) {
-          KeBNRestoreData<
-              T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-              const_cast<T *>(x->template data<T>()), scale->data<T>(),
-              bias->template data<BatchNormParamType<T>>(), running_mean_data,
-              running_var_data, epsilon, C, H * W * D, x->numel(),
-              x->data<T>());
-        } else {
-          KeBNRestoreData<
-              T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-              const_cast<T *>(x->template data<T>()), scale->data<T>(),
-              bias->template data<BatchNormParamType<T>>(), running_mean_data,
-              running_var_data, epsilon, C, H * W * D, x->numel(),
-              x->data<T>());
-        }
+        inplace_functor(data_layout, const_cast<T *>(x->template data<T>()),
+                        scale->data<T>(), bias->data<T>(), running_mean_data,
+                        running_var_data, epsilon, C, H * W * D, num,
+                        x->data<T>(), grid2, block, stream);
       }
 
       if (data_layout == framework::DataLayout::kNCHW) {
