@@ -76,12 +76,14 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto weight_data = weight->data<float>();
     auto weight_dims = weight->dims();
     int weight_num = product(weight_dims);
-    float* weight_data_tmp = new float[weight_num];
     int w_h = weight_dims[0];
     int w_w = weight_dims[1];
-    auto* input = scope->FindVar("Input")->GetMutable<LoDTensor>();
-    auto input_dims = input->dims();
-    if (w_h % 128 == 0 && w_w % 128 == 0 && input_dims[0] % 128 == 0) {
+    // auto* input =
+    // scope->FindVar(subgraph.at(x)->Name())->GetMutable<LoDTensor>();
+    // auto input_dims = input->dims();
+    if (w_h % 128 == 0 && w_w % 128 == 0) {
+      // if (w_h % 128 == 0 && w_w % 128 == 0 && input_dims[0] % 128 == 0) {
+      float* weight_data_tmp = new float[weight_num];
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif

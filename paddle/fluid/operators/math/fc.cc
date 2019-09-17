@@ -39,7 +39,7 @@ class FCFunctor<platform::CPUDeviceContext, T> {
     for (int i = 0; i < M; i++) {
       memcpy(X1_data + i * (K + 4), X + i * K, K * sizeof(X[0]));
     }
-    if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0) {
+    if (N % 128 == 0 && K % 128 == 0) {
       blas.MatMul(M, N, K, X1_data, W, Y1_data);
     } else {
       blas.MatMul(M, N, K, X, W, Y);
@@ -61,23 +61,17 @@ class FCFunctor<platform::CPUDeviceContext, T> {
           jit::KernelFuncs<jit::VAddTuple<T>, platform::CPUPlace>::Cache().At(
               N);
 
-      if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-        for (int i = 0; i < M; i++) {
-          T* src = Y1_data + i * (N + 4);
-          T* dst = Y + i * N;
-          compute(B, src, dst, N);
-        }
-      } else {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-        for (int i = 0; i < M; i++) {
-          T* dst = Y + i * N;
-          compute(B, dst, dst, N);
-        }
+      for (int i = 0; i < M; i++) {
+        T* dst = Y + i * N;
+        T* src = nullptr;
+        if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0)
+          src = Y1_data + i * (N + 4);
+        else
+          src = dst;
+        compute(B, src, dst, N);
       }
     }
   }

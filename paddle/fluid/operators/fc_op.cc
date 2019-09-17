@@ -33,10 +33,8 @@ class FCOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
 
     auto w_dims = ctx->GetInputDim("W");
-    if ((ctx->GetInputDim("W")[0] - 4) % 128 == 0 &&
-        (ctx->GetInputDim("W")[1] - 4) % 128 == 0)
-      w_dims = framework::DDim{ctx->GetInputDim("W")[0] - 4,
-                               ctx->GetInputDim("W")[0] - 4};
+    if ((w_dims[0] - 4) % 128 == 0 && (w_dims[1] - 4) % 128 == 0)
+      w_dims = framework::DDim{w_dims[0] - 4, w_dims[1] - 4};
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
