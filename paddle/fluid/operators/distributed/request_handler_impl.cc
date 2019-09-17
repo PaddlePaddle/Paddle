@@ -116,6 +116,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
+      VLOG(1)<<"AsyncSparseParamUpdateRecorder "<<varname <<AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname);
       if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
         std::vector<int64_t> updated_rows;
