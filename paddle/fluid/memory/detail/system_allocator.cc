@@ -118,6 +118,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
+    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
     PADDLE_THROW_BAD_ALLOC(
         "Cannot malloc " + std::to_string(size / 1024.0 / 1024.0) +
         " MB GPU memory. Please shrink "

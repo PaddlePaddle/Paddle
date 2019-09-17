@@ -93,13 +93,18 @@ class ClipGradOpDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(ClipInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ClipGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
-                  ops::ClipGradOpDescMaker);
-REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad);
+                  ops::ClipGradOpDescMaker, ops::ClipInplaceInferer);
+REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

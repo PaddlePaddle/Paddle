@@ -190,7 +190,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         src_tz, weights_tz, fuse_activation, strides, paddings, dilations,
         groups, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
@@ -415,10 +415,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(input->type());
 
     // Get unique name for storing MKLDNN primitives
-    std::string key;
-    key.reserve(MaxKeyLength);
-    platform::ConvMKLDNNHandler::AppendKey(
-        &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
+    const std::string key = platform::CreateKey(
+        src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
         input->format(), fuse_activation, fuse_residual_conn,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
@@ -439,7 +437,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string key_tid = "";
     if (platform::get_cur_mkldnn_session_id() ==
         platform::kMKLDNNSessionID_Default) {
-      key_tid = "-t:" + platform::MKLDNNHandler::ThreadIDasStr();
+      key_tid = "-t:" + platform::ThreadIDasStr();
     }
 
     auto prim_key = key + key_tid + "@conv_p";
@@ -715,7 +713,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         src_tz, weights_tz, "", strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 

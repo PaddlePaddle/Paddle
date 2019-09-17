@@ -980,8 +980,8 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         assert_api_not_changed ${PYTHON_ABI:-""}
-        assert_api_spec_approvals
         example
+        assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}
