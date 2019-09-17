@@ -6,8 +6,20 @@ cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(naive_best_fit_allocator SRCS naive_best_fit_allocator.cc DEPS allocator buddy_allocator profiler)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allocator buffered_allocator cpu_allocator best_fit_allocator)
 
+if (WITH_MKLDNN)
+  set(MKLDNN_CTX_DEPS mkldnn)
+else ()
+  set(MKLDNN_CTX_DEPS)
+endif()
+
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
+  nv_library(cuda_device_context_allocation SRCS cuda_device_context_allocation.cc
+      DEPS allocator enforce place ${MKLDNN_CTX_DEPS})
+  nv_library(cuda_device_context_allocator SRCS cuda_device_context_allocator.cc 
+      DEPS allocator enforce place cuda_device_context_allocation ${MKLDNN_CTX_DEPS})
+  nv_library(cuda_device_context_allocator_pool SRCS cuda_device_context_allocator_pool.cc
+      DEPS allocator enforce place cuda_device_context_allocation cuda_device_context_allocator ${MKLDNN_CTX_DEPS})
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
@@ -46,6 +58,10 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator locked_allocator cpu_allocator)
 if (WITH_TESTING)
+  if (WITH_GPU)
+    target_link_libraries(retry_allocator_test cuda_allocator)
+  endif()
+
   set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()
 

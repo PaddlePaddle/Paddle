@@ -119,20 +119,6 @@ def fetch_all():
                 "fetch")()
 
 
-def fetch_all_recordio(path):
-    for module_name in [
-            x for x in dir(paddle.dataset) if not x.startswith("__")
-    ]:
-        if "convert" in dir(
-                importlib.import_module("paddle.dataset.%s" % module_name)) and \
-                not module_name == "common":
-            ds_path = os.path.join(path, module_name)
-            must_mkdirs(ds_path)
-            getattr(
-                importlib.import_module("paddle.dataset.%s" % module_name),
-                "convert")(ds_path)
-
-
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
     """
     you can call the function as:

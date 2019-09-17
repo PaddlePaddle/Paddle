@@ -79,11 +79,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         cudnn_conv_desc, groups));
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()));
+        layout, framework::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize2int(output->dims()));
+        layout, framework::vectorize<int>(output->dims()));
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize2int(filter->dims()));
+        layout, framework::vectorize<int>(filter->dims()));
     // Now only support NCHW
     std::vector<int> bias_dim = {1, static_cast<int>(output->dims()[1]), 1, 1};
     cudnnTensorDescriptor_t cudnn_bias_desc =
