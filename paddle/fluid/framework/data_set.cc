@@ -519,8 +519,8 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   // int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
   int64_t index = 0;
   {
-      std::unique_lock<std::mutex> lk(global_index_mutex_);
-      index = global_index_++;
+    std::unique_lock<std::mutex> lk(global_index_mutex_);
+    index = global_index_++;
   }
   index = index % channel_num_;
   VLOG(3) << "ramdom index=" << index;

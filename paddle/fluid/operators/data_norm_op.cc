@@ -223,13 +223,6 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Means"), "");
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
-    // check output
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSize")), "");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSum")), "");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
-                   "");
-
     const auto x_dims = ctx->GetInputDim("X");
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
@@ -237,10 +230,18 @@ class DataNormGradOp : public framework::OperatorWithKernel {
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
-    ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
-    ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
+    if (ctx->HasOutput(framework::GradVarName("BatchSize"))) {
+      ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
+    }
+    if (ctx->HasOutput(framework::GradVarName("BatchSum"))) {
+      ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
+    }
+    if (ctx->HasOutput(framework::GradVarName("BatchSquareSum"))) {
+      ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
+    }
   }
 
  protected:
@@ -304,7 +305,10 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                                           : x_dims[x_dims.size() - 1]);
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    Tensor *d_x = nullptr;
+    if (ctx.HasOutput(framework::GradVarName("X"))) {
+      d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    }
     auto *d_batch_size =
         ctx.Output<Tensor>(framework::GradVarName("BatchSize"));
     auto *d_batch_sum = ctx.Output<Tensor>(framework::GradVarName("BatchSum"));
@@ -331,10 +335,12 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
-        d_x_arr.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+        if (d_x) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
+          d_x_arr.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+          }
         }
 
         // calculate data sum and squre sum
