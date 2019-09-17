@@ -37,6 +37,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_launch)
@@ -305,11 +306,9 @@ if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR APPLE)
-    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
-    set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
-    set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
-endif()
+set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
+set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
+set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
@@ -317,6 +316,10 @@ endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
+endif()
+
+if (WITH_TESTING)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist

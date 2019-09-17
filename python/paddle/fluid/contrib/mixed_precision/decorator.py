@@ -172,21 +172,34 @@ class OptimizerWithMixedPrecison(object):
 
         return optimize_ops
 
-    def minimize(self, loss):
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
         """
         Perform optimization by minimizing the given loss.
 
         Args:
             loss (Variable): The loss Variable.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
 
         Returns:
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
-        scaled_params_grads, scaled_loss = self.backward(loss)
+        scaled_params_grads, scaled_loss = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
         optimize_ops = self.apply_gradients(scaled_params_grads)
 
-        return scaled_loss, optimize_ops, scaled_params_grads
+        return optimize_ops, scaled_params_grads
 
 
 def decorate(optimizer,
@@ -228,7 +241,8 @@ def decorate(optimizer,
             mp_optimizer = fluid.contrib.mixed_precision.decorate(
 	              optimizer=optimizer, init_loss_scaling=8.0)
 	
-            scaled_loss, _, _ = mp_optimizer.minimize(loss)
+            ops, param_grads = mp_optimizer.minimize(loss)
+            scaled_loss = mp_optimizer.get_loss_scaling()
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()

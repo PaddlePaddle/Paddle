@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(use_ngraph);
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -233,6 +235,13 @@ class ParallelExecutorPrivate {
 };
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
+  if (FLAGS_use_ngraph) {
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_use_ngraph=True, memory optimization strategy is "
+           "disabled in ParallelExecutor";
+    return graph;
+  }
+
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -250,6 +259,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
+    LOG(INFO) << "Inplace strategy is enabled, when "
+                 "build_strategy.enable_inplace = True";
   }
 
   /**
@@ -278,6 +289,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+    LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
+                 "build_strategy.memory_optimize = True or garbage collection "
+                 "strategy is disabled, which is not recommended";
   }
 
   if (!is_gc_enabled) {
