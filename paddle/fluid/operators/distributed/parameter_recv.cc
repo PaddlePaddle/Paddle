@@ -91,7 +91,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         output_offset += in_stride[0];
       } else if (recv_var->IsType<framework::SelectedRows>()) {
         auto &recv_slr = recv_var->Get<framework::SelectedRows>();
-        auto &recv_dims = recv_tensor->value()->dims();
+        auto &recv_dims = recv_tensor->dims();
         int64_t width = recv_dims[1];
         recv_numel += recv_slr.height() * width;
         PADDLE_ENFORCE_EQ(recv_slr.value().dims()[1], width);
@@ -108,7 +108,6 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
           VLOG(3) << "recv_slr size: " << recv_slr.rows().size() << " "
                   << sstream.str();
         }
-
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
