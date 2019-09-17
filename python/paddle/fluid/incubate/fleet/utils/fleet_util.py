@@ -313,12 +313,13 @@ class FleetUtil(object):
                       hadoop_fs_name,
                       monitor_data={}):
         xbox_dict = collections.OrderedDict()
-        xbox_dict["id"] = str(int(time.time()))
+        xbox_dict["id"] = str(xbox_base_key)
         xbox_dict["key"] = str(xbox_base_key)
         if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
             model_path = model_path[model_path.find(":") + 1:]
         xbox_dict["input"] = hadoop_fs_name + model_path.rstrip("/") + "/000"
         xbox_dict["record_count"] = "111111"
+        xbox_dict["partition_type"] = "2"
         xbox_dict["job_name"] = "default_job_name"
         xbox_dict["ins_tag"] = "feasign"
         xbox_dict["ins_path"] = data_path

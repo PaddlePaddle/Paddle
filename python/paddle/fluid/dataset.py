@@ -70,7 +70,7 @@ class DatasetBase(object):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         self.proto_desc.pipe_command = "cat"
         self.dataset = core.Dataset("MultiSlotDataset")
-        self.thread_num = 0
+        self.thread_num = 1
         self.filelist = []
 
     def set_pipe_command(self, pipe_command):
@@ -291,9 +291,7 @@ class InMemoryDataset(DatasetBase):
         Set data_feed_desc before load or shuffle,
         user no need to call this function.
         """
-        if self.thread_num > len(self.filelist):
-            self.thread_num = len(self.filelist)
-        if self.thread_num == 0:
+        if self.thread_num <= 0:
             self.thread_num = 1
         self.dataset.set_thread_num(self.thread_num)
         if self.queue_num is None:
@@ -480,7 +478,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.local_shuffle()
 
-    def global_shuffle(self, fleet=None):
+    def global_shuffle(self, fleet=None, thread_num=12):
         """
         Global shuffle.
         Global shuffle can be used only in distributed mode. i.e. multiple
@@ -507,13 +505,13 @@ class InMemoryDataset(DatasetBase):
             fleet._role_maker._barrier_worker()
             trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
-            self.fleet_send_batch_size = 800 * trainer_num
+            self.fleet_send_batch_size = 1024
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         if fleet is not None:
             fleet._role_maker._barrier_worker()
-        self.dataset.global_shuffle()
+        self.dataset.global_shuffle(thread_num)
         if fleet is not None:
             fleet._role_maker._barrier_worker()
         if self.merge_by_lineid:

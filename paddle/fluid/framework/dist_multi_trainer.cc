@@ -151,6 +151,16 @@ void DistMultiTrainer::Finalize() {
 #define MergeCallback(cpp_type, proto_type)                   \
   do {                                                        \
     if (root_tensor->type() == proto_type) {                  \
+      if (thread_tensor->type() != proto_type) {              \
+        VLOG(0) << "thread id=" << j                          \
+                << ", need_merge_var_names_["                 \
+                << i  <<"] " << need_merge_var_names_[i]      \
+                << ", root tensor type="                      \
+                << root_tensor->type()                        \
+                << ", thread tensor type="                    \
+                << thread_tensor->type();                     \
+         exit(-1);                                            \
+      }                                                       \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor); \
     }                                                         \
   } while (0)

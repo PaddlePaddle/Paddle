@@ -51,6 +51,7 @@ DatasetImpl<T>::DatasetImpl() {
   parse_ins_id_ = false;
   parse_content_ = false;
   preload_thread_num_ = 0;
+  global_index_ = 0;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -291,7 +292,7 @@ void DatasetImpl<T>::LocalShuffle() {
 }
 
 template <typename T>
-void DatasetImpl<T>::GlobalShuffle() {
+void DatasetImpl<T>::GlobalShuffle(int thread_num) {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
@@ -362,9 +363,12 @@ void DatasetImpl<T>::GlobalShuffle() {
     }
   };
 
-  VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
-  for (int i = 0; i < thread_num_; ++i) {
+  if (thread_num == -1) {
+    thread_num = thread_num_;
+  }
+  VLOG(3) << "start global shuffle threads, num = " << thread_num;
+  for (int i = 0; i < thread_num; ++i) {
     global_shuffle_threads.push_back(std::thread(global_shuffle_func));
   }
   for (std::thread& t : global_shuffle_threads) {
@@ -509,7 +513,16 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   CHECK(ar.Cursor() == ar.Finish());
 
   auto fleet_ptr = FleetWrapper::GetInstance();
-  int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  // not use random because it doesn't perform well here.
+  // to make sure each channel get data equally, we just put data to
+  // channel one by one.
+  // int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  int64_t index = 0;
+  {
+      std::unique_lock<std::mutex> lk(global_index_mutex_);
+      index = global_index_++;
+  }
+  index = index % channel_num_;
   VLOG(3) << "ramdom index=" << index;
   multi_output_channel_[index]->Write(std::move(data));
 

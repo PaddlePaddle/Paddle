@@ -99,7 +99,7 @@ class Dataset {
   // local shuffle data
   virtual void LocalShuffle() = 0;
   // global shuffle data
-  virtual void GlobalShuffle() = 0;
+  virtual void GlobalShuffle(int thread_num = -1) = 0;
   // for slots shuffle
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
@@ -169,7 +169,7 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle();
+  virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result) {}
@@ -217,6 +217,8 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
   int preload_thread_num_;
+  std::mutex global_index_mutex_;
+  int64_t global_index_ = 0;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
