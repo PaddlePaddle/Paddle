@@ -46,7 +46,7 @@ struct LeakyReluGradGradEachElementFunctor {
       : ddx_(ddx), out_(out), alpha_(alpha), ddout_(ddout) {}
 
   HOSTDEVICE void operator()(int idx) {
-    if (out_[idx] >= 0) {
+    if (out_[idx] > 0) {
       ddout_[idx] = ddx_[idx];
     } else {
       ddout_[idx] = ddx_[idx] * alpha_;
