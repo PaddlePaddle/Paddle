@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
 #include <chrono>  // NOLINT
 #include <ctime>
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-DEFINE_int32(trainer_update_interval_secs, 900,
-             " the longest time interval between the trainer update variables");
+DEFINE_int32(worker_update_interval_secs, 900,
+             " the longest time interval between the worker update variables");
 
 inline int GetCurrentUS() {
   // current date/time based on current system
@@ -30,10 +30,10 @@ inline int GetCurrentUS() {
   return now;
 }
 
-void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
-                                     TrainerStatus status) {
+void HeartBeatMonitor::Update(const int worker_id, std::string varname,
+                              WorkerStatus status) {
   if (status == UNINITED) {
-    PADDLE_THROW("UNINITED can not be used in Update, something may error");
+    PADDLE_THROW("UNINITED can not be used in Update, something maybe error");
   }
 
   if (!is_chief_) {
@@ -42,54 +42,53 @@ void TrainerHeartBeatMonitor::Update(const int trainer_id, std::string varname,
 
   if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
     auto timestamp = GetCurrentUS();
-    Trainer& trainer = trainer_status_map_.at(trainer_id);
+    UnderMonitoredWorker& worker = worker_status_map_.at(worker_id);
 
-    if (trainer.status != COMPLETED) {
-      trainer.status = status;
+    if (worker.status != COMPLETED) {
+      worker.status = status;
     }
-    trainer.timestamp = timestamp;
+    worker.timestamp = timestamp;
     return;
   }
 }
 
-void TrainerHeartBeatMonitor::LostTrainerMonitor() {
-  VLOG(1) << "trainer heartbeat monitor start at No.0 parameter server";
+void HeartBeatMonitor::LostWorkerMonitor() {
+  VLOG(1) << "worker heartbeat monitor start at No.0 parameter server";
   while (running_) {
-    for (int id = 0; id < trainers_; ++id) {
-      auto& trainer = trainer_status_map_.at(id);
+    for (int id = 0; id < workers_; ++id) {
+      auto& worker = worker_status_map_.at(id);
 
-      if (trainer.status == UNINITED) {
-        VLOG(4) << "trainer " << trainer.id << " is under UNINITED";
+      if (worker.status == UNINITED) {
+        VLOG(4) << "worker " << worker.id << " is under UNINITED";
         continue;
       }
-      if (trainer.status == COMPLETED) {
-        VLOG(4) << "trainer " << trainer.id << " is under COMPLETED";
+      if (worker.status == COMPLETED) {
+        VLOG(4) << "worker " << worker.id << " is under COMPLETED";
         continue;
       }
 
       auto timestamp = GetCurrentUS();
 
-      VLOG(4) << "trainer " << trainer.id << " status is " << trainer.status
-              << " timestamp is " << trainer.timestamp << " the interval is "
-              << timestamp - trainer.timestamp;
+      VLOG(4) << "worker " << worker.id << " status is " << worker.status
+              << " timestamp is " << worker.timestamp << " the interval is "
+              << timestamp - worker.timestamp;
 
-      if (timestamp - trainer.timestamp >= FLAGS_trainer_update_interval_secs) {
+      if (timestamp - worker.timestamp >= FLAGS_worker_update_interval_secs) {
         PADDLE_THROW(
-            "the latest update of trainer %d is %d secs ago, we doubt the "
-            "the trainer is not alive and this may have a bad effect on the "
+            "the latest update of worker %d is %d secs ago, we doubt the "
+            "the worker is not alive and this may have a bad effect on the "
             "fitting result, please check",
-            trainer.id, FLAGS_trainer_update_interval_secs);
+            worker.id, FLAGS_worker_update_interval_secs);
       }
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
   }
-  VLOG(1) << "trainer heartbeat monitor stopped, thread exit";
+  VLOG(1) << "worker heartbeat monitor stopped, thread exit";
 }
 
-std::once_flag TrainerHeartBeatMonitor::init_flag_;
-std::unique_ptr<TrainerHeartBeatMonitor> TrainerHeartBeatMonitor::monitor_(
-    nullptr);
+std::once_flag HeartBeatMonitor::init_flag_;
+std::unique_ptr<HeartBeatMonitor> HeartBeatMonitor::monitor_(nullptr);
 
 }  // namespace distributed
 }  // namespace operators

@@ -22,14 +22,14 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-TEST(TrainerHeartBeatMonitor, All) {
+TEST(HeartBeatMonitor, All) {
   int trainers = 10;
   int pserver_id = 0;
   std::string var = "nce_w@GRAD.block0";
   std::string var2 = "nce_w@GRAD.block2";
 
-  TrainerHeartBeatMonitor::Init(trainers, pserver_id == 0, var);
-  auto* monitor = TrainerHeartBeatMonitor::GetInstance();
+  HeartBeatMonitor::Init(trainers, pserver_id == 0, var);
+  auto* monitor = HeartBeatMonitor::GetInstance();
 
   std::vector<int> ids{1, 3, 5, 7};
 

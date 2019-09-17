@@ -35,60 +35,60 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-enum TrainerStatus { UNINITED = 0, RUNNING, COMPLETED };
+enum WorkerStatus { UNINITED = 0, RUNNING, COMPLETED };
 
-struct Trainer {
+struct UnderMonitoredWorker {
   int id;
-  TrainerStatus status;
+  WorkerStatus status;
   int timestamp;
 
-  Trainer() {}
+  UnderMonitoredWorker() {}
 
-  explicit Trainer(int trainer_id) {
-    this->id = trainer_id;
+  explicit UnderMonitoredWorker(int worker_id) {
+    this->id = worker_id;
     this->status = UNINITED;
     this->timestamp = 0;
   }
 };
 
-class TrainerHeartBeatMonitor {
+class HeartBeatMonitor {
  public:
-  explicit TrainerHeartBeatMonitor(int trainers, bool is_chief,
-                                   std::string varname)
-      : trainers_(trainers),
+  explicit HeartBeatMonitor(int workers, bool is_chief,
+                            std::string be_monitored_var)
+      : workers_(workers),
         is_chief_(is_chief),
-        varname_(varname),
+        be_monitored_var_(be_monitored_var),
         running_(true) {
-    PADDLE_ENFORCE_GT(trainers, 0, "trainers must have one or more");
+    PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
 
-    for (auto trainer_id = 0; trainer_id < trainers; trainer_id++) {
-      Trainer trainer(trainer_id);
-      trainer_status_map_[trainer_id] = std::move(trainer);
+    for (auto worker_id = 0; worker_id < workers; worker_id++) {
+      UnderMonitoredWorker worker(worker_id);
+      trainer_status_map_[worker_id] = std::move(worker);
     }
 
     // we define the No.0 pserver is the first parameter server
     // only No.0 will check the heartbeat of all trainers
     if (is_chief) {
       monitor_thread_.reset(new std::thread(
-          std::bind(&TrainerHeartBeatMonitor::LostTrainerMonitor, this)));
+          std::bind(&HeartBeatMonitor::LostWorkerMonitor, this)));
     }
   }
 
-  ~TrainerHeartBeatMonitor() {
+  ~HeartBeatMonitor() {
     running_ = false;
     if (monitor_thread_) monitor_thread_->join();
   }
 
-  static void Init(int trainers, bool is_chief, std::string varname) {
-    std::call_once(init_flag_, &TrainerHeartBeatMonitor::InitImpl, trainers,
-                   is_chief, varname);
+  static void Init(int workers, bool is_chief, std::string be_monitored_var) {
+    std::call_once(init_flag_, &HeartBeatMonitor::InitImpl, workers, is_chief,
+                   be_monitored_var);
   }
 
-  static TrainerHeartBeatMonitor* GetInstance() {
+  static HeartBeatMonitor* GetInstance() {
     if (monitor_ == nullptr) {
       PADDLE_THROW(
-          "TrainerHeartBeatMonitor is not inited, call "
-          "TrainerHeartBeatMonitor::Init first");
+          "HeartBeatMonitor is not inited, call "
+          "HeartBeatMonitor::Init first");
     }
     return monitor_.get();
   }
@@ -96,7 +96,7 @@ class TrainerHeartBeatMonitor {
   void Stop() {
     running_ = false;
     if (!monitor_) {
-      VLOG(0) << "TrainerHeartBeatMonitor is not inited, do nothing";
+      VLOG(0) << "HeartBeatMonitor is not inited, do nothing";
     } else {
       if (monitor_thread_) {
         monitor_thread_->join();
@@ -105,25 +105,27 @@ class TrainerHeartBeatMonitor {
     }
   }
 
-  void Update(const int trainer_id, std::string varname, TrainerStatus status);
+  void Update(const int worker_id, std::string be_monitored_var,
+              WorkerStatus status);
 
-  void LostTrainerMonitor();
+  void LostWorkerMonitor();
 
  private:
   // Init is called by GetInstance.
-  static void InitImpl(int trainers, bool is_chief, std::string varname) {
+  static void InitImpl(int workers, bool is_chief,
+                       std::string be_monitored_var) {
     if (monitor_ == nullptr) {
-      monitor_.reset(new TrainerHeartBeatMonitor(trainers, is_chief, varname));
+      monitor_.reset(new HeartBeatMonitor(workers, is_chief, be_monitored_var));
     }
   }
 
   static std::once_flag init_flag_;
-  static std::unique_ptr<TrainerHeartBeatMonitor> monitor_;
+  static std::unique_ptr<HeartBeatMonitor> monitor_;
 
-  int trainers_;
+  int workers_;
   bool is_chief_;
-  std::string varname_;
-  std::unordered_map<int, Trainer> trainer_status_map_;
+  std::string be_monitored_var_;
+  std::unordered_map<int, UnderMonitoredWorker> worker_status_map_;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::mutex mutex_;
   bool running_ = false;

@@ -184,7 +184,7 @@ def __bootstrap__():
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
 
-        read_env_flags.append('trainer_update_interval_secs')
+        read_env_flags.append('worker_update_interval_secs')
 
         # env for communicator
         read_env_flags.append('communicator_independent_recv_thread')

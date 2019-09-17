@@ -478,8 +478,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     } else {
       std::vector<std::string> pieces;
       split(grad_to_block_id_str[0], ':', &pieces);
-      distributed::TrainerHeartBeatMonitor::Init(fan_in, pserver_id == 0,
-                                                 pieces[0]);
+      distributed::HeartBeatMonitor::Init(fan_in, pserver_id == 0, pieces[0]);
     }
     RunAsyncLoop(&executor, program, &recv_scope);
   }
