@@ -12655,14 +12655,12 @@ def huber_loss(input, label, delta):
 
     Args:
         input (Variable): This input is a probability computed by the previous operator.
-                          The first dimension is batch size, and the last dimension is 1.
-        label (Variable): The groud truth whose first dimension is batch size
-                          and last dimension is 1.
-        delta (float): The parameter of huber loss, which controls
-                       the range of outliers
+                          Its first dimension is batch_size, e.g. [batch_size] or [batch_size, 1].
+        label (Variable): The tensor of groud truth with same dimensions as input.
+        delta (float): The parameter of huber loss, which controls the range of outliers.
 
     Returns:
-        huber\_loss (Variable): The huber loss with shape [batch_size, 1].
+        huber\_loss (Variable): The huber loss with same shape as label.
 
     Examples:
         .. code-block:: python
