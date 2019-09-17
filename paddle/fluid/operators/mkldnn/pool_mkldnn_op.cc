@@ -79,9 +79,9 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(input->type());
     auto fmt = input->format();
 
-    const std::string key = platform::PoolingMKLDNNHandler::GetHash(
-        src_tz, pooling_type, ksize, strides, paddings, dt, fmt,
-        ctx.op().Output("Out"));
+    const std::string key =
+        platform::CreateKey(src_tz, pooling_type, ksize, strides, paddings, dt,
+                            fmt, ctx.op().Output("Out"));
 
     platform::PoolingMKLDNNHandler handler(pooling_type, dt,
                                            ctx.Attr<bool>("is_test"), dev_ctx,
@@ -171,7 +171,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get an unique name from "argument" name of "Out" variable
     // This name will be used as key when referring info from device context
-    const std::string key = platform::PoolingMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         diff_src_tz, pooling_type, ksize, strides, paddings,
         memory::data_type::f32, in_x->format(), ctx.op().Input("Out"));
 

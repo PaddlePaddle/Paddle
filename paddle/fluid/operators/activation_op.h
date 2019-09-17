@@ -1589,6 +1589,97 @@ class SqrtDoubleGradKernel
   }
 };
 
+template <typename DeviceContext, typename Functor>
+class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+
+  void Compute(const framework::ExecutionContext& context) const override {
+    const framework::Tensor* X = nullptr;
+    framework::Tensor* Out = nullptr;
+    ExtractActivationTensor(context, &X, &Out);
+    Out->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+    Functor functor;
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = context.Attr<float>(attr.first);
+    }
+    // get FactorTensor
+    auto* factor_tensor = context.HasInput("FactorTensor")
+                              ? context.Input<framework::Tensor>("FactorTensor")
+                              : nullptr;
+    if (factor_tensor) {
+      auto* factor_data = factor_tensor->data<float>();
+      framework::Tensor cpu_factor_tensor;
+      if (platform::is_gpu_place(factor_tensor->place())) {
+        TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                       &cpu_factor_tensor);
+        factor_data = cpu_factor_tensor.data<float>();
+      }
+      auto factor =
+          std::vector<float>(factor_data, factor_data + factor_tensor->numel());
+      PADDLE_ENFORCE_EQ(factor.size(), 1,
+                        "The shape of factor(tensor) MUST BE [1].");
+      for (auto& attr : attrs) {
+        *attr.second = factor[0];
+      }
+    }
+    functor(*place, x, out);
+  }
+};
+
+template <typename DeviceContext, typename Functor>
+class PowGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& context) const override {
+    const framework::Tensor *X, *Out, *dOut;
+    framework::Tensor* dX = nullptr;
+    X = Out = dOut = nullptr;
+    ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
+                                                    &dX);
+    dX->mutable_data<T>(context.GetPlace());
+    auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
+    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+    Functor functor;
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = context.Attr<float>(attr.first);
+    }
+    // get FactorTensor
+    auto* factor_tensor =
+        context.HasInput("FactorTensor")
+            ? context.Input<framework::LoDTensor>("FactorTensor")
+            : nullptr;
+    if (factor_tensor) {
+      auto* factor_data = factor_tensor->data<float>();
+      framework::Tensor cpu_factor_tensor;
+      if (platform::is_gpu_place(factor_tensor->place())) {
+        TensorCopySync(*factor_tensor, platform::CPUPlace(),
+                       &cpu_factor_tensor);
+        factor_data = cpu_factor_tensor.data<float>();
+      }
+      auto factor =
+          std::vector<float>(factor_data, factor_data + factor_tensor->numel());
+      PADDLE_ENFORCE_EQ(factor.size(), 1,
+                        "The shape of factor(tensor) MUST BE [1].");
+      for (auto& attr : attrs) {
+        *attr.second = factor[0];
+      }
+    }
+    functor(*place, x, out, dout, dx);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -1613,7 +1704,6 @@ class SqrtDoubleGradKernel
   __macro(log, Log, LogFunctor, LogGradFunctor);                              \
   __macro(brelu, BRelu, BReluFunctor, BReluGradFunctor);                      \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);         \
-  __macro(pow, Pow, PowFunctor, PowGradFunctor);                              \
   __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                      \
   __macro(softplus, Softplus, SoftplusFunctor, SoftplusGradFunctor);          \
   __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);          \
