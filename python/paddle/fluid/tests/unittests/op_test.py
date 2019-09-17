@@ -300,13 +300,11 @@ class OpTest(unittest.TestCase):
                     slot_name = name
                     for (name, np_value) in self.inputs[name]:
                         if isinstance(np_value, tuple):
-                            v = self._create_var_from_numpy(self.inputs[name][
-                                0])
+                            v = self._create_var_from_numpy(np_value[0])
                             v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(self.inputs[name][
-                                1])
+                            ).set_recursive_sequence_lengths(np_value[1])
                         else:
-                            v = self._create_var_from_numpy(self.inputs[name])
+                            v = self._create_var_from_numpy(np_value)
                         var_list.append(v)
                     inputs[slot_name] = var_list
                 else:
