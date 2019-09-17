@@ -81,7 +81,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
           ((stride_index < 0 && (start_index <= end_index)) ||
            (stride_index > 0 && (start_index >= end_index)));
       PADDLE_ENFORCE_EQ(zero_dim_condition, false,
-                        "starts and end must meet requirement in diffferent "
+                        "starts and end must meet requirement in different "
                         "stride conditiont");
       int left = std::max(0, std::min(start_index, end_index));
       int right = std::min(axis_size, std::max(start_index, end_index));

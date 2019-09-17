@@ -10805,9 +10805,8 @@ def strided_slice(input, axes, starts, ends, strides):
     Basically, a very succinct way of writing for loops to get certain elements of the array.
     strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
     The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
-    example from above just becomes
-    fluid.strided_slice(input,[0, 1, ..., N] [start1, start2, ..., startN],
-    [end1, end2, ..., endN], [step1, step2, ..., stepN])
+    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [step1, step2, ..., stepN])
     the axes which controls the dimension you want to slice makes it more flexible.
 
     .. code-block:: text
@@ -10840,7 +10839,7 @@ def strided_slice(input, axes, starts, ends, strides):
     Returns
        out(Variable): the result by strided_slice Op
     
-    Example:
+    Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
