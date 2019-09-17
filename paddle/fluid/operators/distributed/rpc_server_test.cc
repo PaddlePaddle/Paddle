@@ -25,10 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
-#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 #include <algorithm>
 

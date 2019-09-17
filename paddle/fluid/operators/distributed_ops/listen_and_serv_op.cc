@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
 #include "paddle/fluid/platform/profiler.h"

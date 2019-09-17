@@ -27,7 +27,7 @@
 #include "paddle/fluid/string/printf.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
-#include "paddle/fluid/operators/distributed/trainer_heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 namespace paddle {
 namespace operators {
