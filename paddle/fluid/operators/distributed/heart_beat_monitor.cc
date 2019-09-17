@@ -30,7 +30,7 @@ inline int GetCurrentUS() {
   return now;
 }
 
-void HeartBeatMonitor::Update(const int worker_id, std::string varname,
+void HeartBeatMonitor::Update(const int worker_id, std::string be_monitored_var,
                               WorkerStatus status) {
   if (status == UNINITED) {
     PADDLE_THROW("UNINITED can not be used in Update, something maybe error");
@@ -40,7 +40,8 @@ void HeartBeatMonitor::Update(const int worker_id, std::string varname,
     return;
   }
 
-  if ((varname == varname_ && status == RUNNING) || status == COMPLETED) {
+  if ((be_monitored_var == be_monitored_var_ && status == RUNNING) ||
+      status == COMPLETED) {
     auto timestamp = GetCurrentUS();
     UnderMonitoredWorker& worker = worker_status_map_.at(worker_id);
 

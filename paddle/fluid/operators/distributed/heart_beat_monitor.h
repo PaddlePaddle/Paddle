@@ -63,7 +63,7 @@ class HeartBeatMonitor {
 
     for (auto worker_id = 0; worker_id < workers; worker_id++) {
       UnderMonitoredWorker worker(worker_id);
-      trainer_status_map_[worker_id] = std::move(worker);
+      worker_status_map_[worker_id] = std::move(worker);
     }
 
     // we define the No.0 pserver is the first parameter server
