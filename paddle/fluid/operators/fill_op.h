@@ -43,21 +43,24 @@ template <typename T>
 class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
-    out->Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
+    auto &out =
+        detail::Ref(ctx.Output<framework::LoDTensor>("Out"),
+                    "Cannot get output lod tensor Out, variable name = %s",
+                    ctx.op().Output("Out"));
+    out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     platform::CPUPlace cpu;
     auto force_cpu = ctx.Attr<bool>("force_cpu");
-    out->mutable_data(force_cpu ? cpu : ctx.GetPlace(), dtype);
+    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), dtype);
 
     framework::LoDTensor tensor;
 
     if (force_cpu || platform::is_cpu_place(ctx.GetPlace())) {
-      tensor.ShareDataWith(*out);
+      tensor.ShareDataWith(out);
     } else {
       // Always make tensor in CPU memory.
-      tensor.Resize(out->dims());
+      tensor.Resize(out.dims());
       tensor.mutable_data(cpu, dtype);
     }
 
@@ -68,7 +71,7 @@ class FillKernel : public framework::OpKernel<T> {
       // Copy tensor to out
       framework::TensorCopy(
           tensor, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), out);
+          ctx.template device_context<platform::DeviceContext>(), &out);
     }
   }
 };
