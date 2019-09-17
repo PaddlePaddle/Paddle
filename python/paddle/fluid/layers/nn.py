@@ -12061,7 +12061,7 @@ def prroi_pool(input,
         name (str, default None): The name of this operation.
 
     Returns:
-        Variable: The tensor variable storing the prroi_pool result.
+        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
 
     Examples:
         .. code-block:: python
