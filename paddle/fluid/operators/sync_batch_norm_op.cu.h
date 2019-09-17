@@ -329,6 +329,7 @@ void SyncBatchNormGradFunctor(
     framework::Tensor *d_scale, framework::Tensor *d_bias,
     const framework::Tensor *mean, const framework::Tensor *variance,
     const double epsilon) {
+  bool is_inplace = (x->data<T>() == y->data<T>());
   const auto &x_dims = x->dims();
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
