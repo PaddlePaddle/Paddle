@@ -10258,6 +10258,14 @@ def slice(input, axes, starts, ends):
 def strided_slice(input, axes, starts, ends, strides):
     """
     Strided Slice OP
+
+    The conceptualization that really helped me understand this was that this function emulates the indexing behavior of numpy arrays.
+    If you're familiar with numpy arrays, you'll know that you can make slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. Basically, a very succinct way of writing for loops to get certain elements of the array.
+trided_slice just allows you to do this fancy indexing without the syntactic sugar. The numpy example from above just becomes
+#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]
+fluid.strided_slice(input, [start1, start2, ..., startN],
+    [end1, end2, ..., endN], [step1, step2, ..., stepN])
+
     Atrgs:
        input (Varibale): the input variable.
        axes(List):axis we need to slice
@@ -10269,7 +10277,7 @@ def strided_slice(input, axes, starts, ends, strides):
     
     Example:
        import paddle.fluid as fluid
-       data = fluid.layers.fill_constant(shape=[-1, 3, 3], value=0, dtype='int64')
+       data = fluid.layers.fill_constant(shape=[3, 3, 3], value=0, dtype='int64')
        y = fluid.layers.strided_slice(data, [0, 1], [1,0], [2, 3], [1, 1])
     """
     helper = LayerHelper('strided_slice', **locals())
