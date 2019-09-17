@@ -24,6 +24,12 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+/**
+ * CUDADeviceContextAllocator will allocate a CUDADeviceContextAllocation
+ * after waiting for a self-created event on the default stream. It does so to
+ * let the non-default stream be able to allocate GPU memory which will be
+ * released by stream callback
+ */
 class CUDADeviceContextAllocator : public Allocator {
  public:
   explicit CUDADeviceContextAllocator(platform::CUDAPlace place,
