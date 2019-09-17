@@ -10290,7 +10290,7 @@ def expand(x, expand_times, name=None):
 
     Args:
         x (Variable): A tensor with rank in [1, 6].
-        expand_times (list|tuple): Expand times number for each dimension.
+        expand_times (list|tuple|Variable): Expand times number for each dimension.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
@@ -10298,46 +10298,72 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-          
+
             import paddle.fluid as fluid
-            x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
+
+            # example 1:
+            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
+            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
+
+            # example 2:
+            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
+            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
+            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
     """
+
+    if not isinstance(expand_times, (list, tuple, Variable)):
+        raise ValueError(
+            "Input expand_times must be an Variable, python list or tuple.")
+
     helper = LayerHelper('expand', input=x, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    # check expand_times have tensor
+    inputs = {"X": x}
+    attrs = {}
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_attr_expand_times(list_expand_times):
+        attrs_expand_times = []
+        for idx, times in enumerate(list_expand_times):
+            if isinstance(times, Variable):
+                attrs_expand_times.append(-1)
+            else:
+                attrs_expand_times.append(times)
+                assert times > 0, (
+                    "Each element given in expand_times must not be negtive.")
+        return attrs_expand_times
+
+    def get_new_expand_times_tensor(list_expand_times):
+        new_expand_times_tensor = []
+        for ele in list_expand_times:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                new_expand_times_tensor.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                new_expand_times_tensor.append(temp_out)
+        return new_expand_times_tensor
 
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'expand_times': expand_times}
     else:
+        if isinstance(expand_times, Variable):
+            expand_times.stop_gradient = True
+            inputs['ExpandTimes'] = expand_times
+        elif isinstance(expand_times, (list, tuple)):
+            attrs['expand_times'] = get_attr_expand_times(expand_times)
+            if contain_var(expand_times):
+                inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+                    expand_times)
 
-        def contain_tensor(expand_times):
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        if contain_tensor(expand_times):
-            new_expand_times = []
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    ele.stop_gradient = True
-                    new_expand_times.append(ele)
-                else:
-                    assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(
-                        "int32")
-                    fill_constant(
-                        [1], 'int32', ele, force_cpu=True, out=temp_out)
-                    new_expand_times.append(temp_out)
-            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
-            attrs = {}
-        else:
-            inputs = {'X': x}
-            attrs = {'expand_times': expand_times}
-
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
