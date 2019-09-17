@@ -327,7 +327,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*)> AttrChecker;
+  typedef std::function<void(AttributeMap*, bool)> AttrChecker;
 
  public:
   template <typename T>
