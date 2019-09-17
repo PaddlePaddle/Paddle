@@ -75,7 +75,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   {
     size_t output_offset = 0;
     size_t row_offset = 0;
-    framework::Tensor *recv_tensor;
+    framework::LoDTensor *recv_tensor;
     if(recv_var->IsType<framework::LoDTensor>()) {
       recv_tensor = recv_var->GetMutable<framework::LoDTensor>();
     } else {
