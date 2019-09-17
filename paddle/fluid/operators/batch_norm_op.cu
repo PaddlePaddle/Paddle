@@ -292,10 +292,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
+    const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    const bool is_inplace = ctx.Attr<bool>("in_place");
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     const auto &x_dims = x->dims();
 
