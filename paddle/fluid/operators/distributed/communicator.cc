@@ -555,7 +555,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
                               const std::vector<std::string>& sparse_var_tables,
                               const framework::Scope& scope){
   // trainer thread send sparse ids after batch training
-  VLOG(1) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()
+  VLOG(4) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()
           <<" using scope: "<<&scope;
   // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
@@ -580,7 +580,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     }
   }
   need_push_queue_->Push(ids_table);
-  VLOG(1)<<"GeoSgd send complete";
+  VLOG(4)<<"GeoSgd send complete";
 }
 
 void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
@@ -599,7 +599,7 @@ void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
       for (auto ids:ids_vec) {
         if(ids_map[var_name].find(ids) == ids_map[var_name].end()) {
           ids_map[var_name].insert(ids);
-          VLOG(1)<<"Sparse ids map insert "<<var_name <<" insert" <<ids;
+          VLOG(4)<<"Sparse ids map insert "<<var_name <<" insert " <<ids;
         }
       }
     }
