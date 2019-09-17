@@ -7025,9 +7025,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Gives a new shape to the input Tensor without changing its data.
 
     The target shape can be given by :attr:`shape` or :attr:`actual_shape`.
-    :attr:`shape` is a list of integer while :attr:`actual_shape` is a tensor
+    :attr:`shape` is a list of integer or tensor variable while :attr:`actual_shape` is a tensor
     variable. :attr:`actual_shape` has a higher priority than :attr:`shape`
-    if it is provided, while :attr:`shape` still should be set correctly to
+    if it is provided and it only contains integer, while :attr:`shape` still should be set correctly to
     gurantee shape inference in compile-time.
 
     Some tricks exist when specifying the target shape.
@@ -7059,15 +7059,22 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     besides -1, 0 means the actual dimension value is going to be copied from
     the corresponding dimension of x.
 
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the future and only use :attr:`shape` instead.
+
     Args:
         x(variable): The input tensor.
-        shape(list): The new shape. At most one dimension of the new shape can
-                     be -1.
+        shape(list|tuple|Variable): The new shape. At most one dimension of the new shape can
+                     be -1. If :attr:`shape` is a list or tuple, it can contain Variable or not and
+                     the shape of Variable must be [1].
+
         actual_shape(variable): An optional input. If provided, reshape
                                 according to this given shape rather than
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
-                                than :attr:`shape`.
+                                than :attr:`shape(list|tuple)` but not :attr:`shape(Variable)`. \
+                                This argument :attr:`actual_shape` will be removed in a future version. \
+                                Instructions for updating: :attr:`actual_shape` is deprecated,
+                                only use :attr:`shape` instead.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
         inplace(bool): If ``inplace`` is `True`, the input and output of ``layers.reshape``
@@ -7089,64 +7096,89 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(
-                name='data', shape=[2, 4, 6], dtype='float32')
-            reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], inplace=True)
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            data_1 = fluid.layers.data(
+                name='data_1', shape=[2, 4, 6], dtype='float32')
+            reshaped_1 = fluid.layers.reshape(
+                x=data_1, shape=[-1, 0, 3, 2], inplace=True)
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
+            dim = fluid.layers.fill_constant([1], "int32", 5)
+            reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
     """
 
-    if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python list or tuple.")
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "Input shape must be an Variable or python list or tuple.")
 
-    inputs = {"X": x}
-    if isinstance(actual_shape, Variable):
-        inputs["Shape"] = actual_shape
-    elif actual_shape is not None:
-        raise TypeError("actual_shape should either be Variable or None")
-
-    # Validate the shape
-    unk_dim_idx = -1
-    contain_var = False
-    for dim_idx, dim_size in enumerate(shape):
-        if isinstance(dim_size, Variable):
-            contain_var = True
-            continue
-
-        if dim_size == -1:
-            assert unk_dim_idx == -1, (
-                "Only one dimension in shape can be unknown.")
-            unk_dim_idx = dim_idx
-        elif dim_size == 0:
-            assert dim_idx < len(x.shape), (
-                "The indice of 0s in shape can not exceed Rank(X).")
-        else:
-            assert dim_size > 0, (
-                "Each dimension size given in shape must not be negtive "
-                "except one unknown dimension.")
+    if not isinstance(actual_shape, Variable) and (actual_shape is not None):
+        raise TypeError("actual_shape should either be Variable or None.")
 
     helper = LayerHelper("reshape2", **locals())
+    inputs = {"X": x}
+    attrs = {}
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one dimension in shape can be unknown.")
+                    unk_dim_idx = dim_idx
+                elif dim_size == 0:
+                    assert dim_idx < len(x.shape), (
+                        "The indice of 0s in shape can not exceed Rank(X).")
+                else:
+                    assert dim_size > 0, (
+                        "Each dimension size given in shape must not be negtive "
+                        "except one unknown dimension.")
+        return attrs_shape
+
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'shape': shape}
     else:
-        if contain_var:
-            new_shape_tensor = []
-            for dim in shape:
-                if isinstance(dim, Variable):
-                    dim.stop_gradient = True
-                    new_shape_tensor.append(dim)
-                else:
-                    assert (isinstance(dim, int))
-                    temp_out = helper.create_variable_for_type_inference(
-                        'int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
-                    new_shape_tensor.append(temp_out)
-            inputs['ShapeTensor'] = new_shape_tensor
-            attrs = {}
+        if isinstance(shape, Variable):
+            shape.stop_gradient = True
+            inputs["Shape"] = shape
+        elif isinstance(shape, (list, tuple)):
+            assert len(shape) > 0, (
+                "The size of argument(shape) can't be zero.")
+            attrs["shape"] = get_attr_shape(shape)
+            if contain_var(shape):
+                inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+            elif isinstance(actual_shape, Variable):
+                actual_shape.stop_gradient = True
+                inputs["Shape"] = actual_shape
 
-        else:
-            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -9590,7 +9622,7 @@ def pow(x, factor=1.0, name=None):
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
-        factor(${factor_type}|1.0): ${factor_comment}
+        factor(float|Variable|1.0): The exponential factor of Pow.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -9602,16 +9634,28 @@ def pow(x, factor=1.0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.pow(x, factor=2.0)
+
+            # example 1: argument factor is float
+            y_1 = fluid.layers.pow(x, factor=2.0)
+
+            # example 2: argument factor is Variable
+            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            y_2 = fluid.layers.pow(x, factor=factor_tensor)
     """
     helper = LayerHelper('pow', **locals())
+    inputs = {'X': x}
+    attrs = {}
+    if isinstance(factor, Variable):
+        factor.stop_gradient = True
+        inputs['FactorTensor'] = factor
+    else:
+        attrs['factor'] = factor
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='pow',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'factor': factor})
+        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -10290,7 +10334,7 @@ def expand(x, expand_times, name=None):
 
     Args:
         x (Variable): A tensor with rank in [1, 6].
-        expand_times (list|tuple): Expand times number for each dimension.
+        expand_times (list|tuple|Variable): Expand times number for each dimension.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
@@ -10298,46 +10342,72 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-          
+
             import paddle.fluid as fluid
-            x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
+
+            # example 1:
+            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
+            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
+
+            # example 2:
+            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
+            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
+            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
     """
+
+    if not isinstance(expand_times, (list, tuple, Variable)):
+        raise ValueError(
+            "Input expand_times must be an Variable, python list or tuple.")
+
     helper = LayerHelper('expand', input=x, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    # check expand_times have tensor
+    inputs = {"X": x}
+    attrs = {}
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_attr_expand_times(list_expand_times):
+        attrs_expand_times = []
+        for idx, times in enumerate(list_expand_times):
+            if isinstance(times, Variable):
+                attrs_expand_times.append(-1)
+            else:
+                attrs_expand_times.append(times)
+                assert times > 0, (
+                    "Each element given in expand_times must not be negtive.")
+        return attrs_expand_times
+
+    def get_new_expand_times_tensor(list_expand_times):
+        new_expand_times_tensor = []
+        for ele in list_expand_times:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                new_expand_times_tensor.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                new_expand_times_tensor.append(temp_out)
+        return new_expand_times_tensor
 
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'expand_times': expand_times}
     else:
+        if isinstance(expand_times, Variable):
+            expand_times.stop_gradient = True
+            inputs['ExpandTimes'] = expand_times
+        elif isinstance(expand_times, (list, tuple)):
+            attrs['expand_times'] = get_attr_expand_times(expand_times)
+            if contain_var(expand_times):
+                inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+                    expand_times)
 
-        def contain_tensor(expand_times):
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        if contain_tensor(expand_times):
-            new_expand_times = []
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    ele.stop_gradient = True
-                    new_expand_times.append(ele)
-                else:
-                    assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(
-                        "int32")
-                    fill_constant(
-                        [1], 'int32', ele, force_cpu=True, out=temp_out)
-                    new_expand_times.append(temp_out)
-            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
-            attrs = {}
-        else:
-            inputs = {'X': x}
-            attrs = {'expand_times': expand_times}
-
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
@@ -10609,8 +10679,8 @@ def slice(input, axes, starts, ends):
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
-        starts (List): ${starts_comment}
-        ends (List): ${ends_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
 
     Returns:
         out (Variable): ${out_comment}
@@ -10619,27 +10689,105 @@ def slice(input, axes, starts, ends):
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
-            starts = [1, 0, 2]
-            ends = [3, 3, 4]
-            axes = [0, 1, 2]
 
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            sliced_1 = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
     """
 
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple.")
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple.")
+
     helper = LayerHelper('slice', **locals())
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if in_dygraph_mode():
+        inputs = {'Input': input}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'infer_flags': infer_flags
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+            infer_flags = list(-1 for i in range(len(axes)))
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if not contain_var(starts):
+                attrs['starts'] = starts
+            else:
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+            infer_flags = list(-1 for i in range(len(axes)))
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if not contain_var(ends):
+                attrs['ends'] = ends
+            else:
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+        # infer_flags
+        attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
     helper.append_op(
-        type='slice',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={'axes': axes,
-               'starts': starts,
-               'ends': ends})
+        type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
 
     return out
 
