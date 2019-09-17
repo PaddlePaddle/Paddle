@@ -45,11 +45,10 @@ typename std::enable_if<
 elementwise_add_same_dims(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, framework::Tensor *z) {
-  auto eigen_x = framework::EigenVector<platform::float16>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<platform::float16>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<platform::float16>::Flatten(*z);
-  auto &place =
-      *ctx.template device_context<platform::CPUDeviceContext>().eigen_device();
+  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
   eigen_z.device(place) = eigen_x + eigen_y;
 }
 
@@ -62,6 +61,7 @@ typename std::enable_if<
 elementwise_add_same_dims(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, framework::Tensor *z);
+
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<T, platform::float16>::value &&

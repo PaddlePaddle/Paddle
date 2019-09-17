@@ -30,9 +30,9 @@ elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
   auto size = x->numel();
   dim3 block_size = dim3(TILE_SIZE, 1);
   dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-  SameDimsElemwiseSubCUDAKernel<T><<<
-      gird_size, block_size, 0,
-      ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+  SameDimsElemwiseSubCUDAKernel<
+      T><<<gird_size, block_size, 0,
+           ctx.template device_context<DeviceContext>().stream()>>>(
       x->data<T>(), y->data<T>(), z->data<T>(), size);
 }
 
@@ -46,13 +46,12 @@ elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
   auto size = x->numel();
   dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
   dim3 block_size = dim3(TILE_SIZE, 1);
-  const half* x2 = reinterpret_cast<const half*>(x->data<platform::float16>());
-  const half* y2 = reinterpret_cast<const half*>(y->data<platform::float16>());
-  half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-  SameDimsElemwiseSubCUDAKernel<<<
-      gird_size, block_size, 0,
-      ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-      x2, y2, z2, size);
+  const half* x2 = reinterpret_cast<const half*>(x->data<T>());
+  const half* y2 = reinterpret_cast<const half*>(y->data<T>());
+  half* z2 = reinterpret_cast<half*>(z->data<T>());
+  SameDimsElemwiseSubCUDAKernel<<<gird_size, block_size, 0,
+                                  ctx.template device_context<DeviceContext>()
+                                      .stream()>>>(x2, y2, z2, size);
 }
 
 template <typename T>
