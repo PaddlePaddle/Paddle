@@ -274,80 +274,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
       VLOG(4) << "grad_to_prepared_ctx: "<< it->first 
               << " is "<< blkid;
     }
-  }bool RequestGetHandler::Handle(const std::string& varname,
-                               framework::Scope* scope,
-                               framework::Variable* invar,
-                               framework::Variable** outvar,
-                               const int trainer_id,
-                               const std::string& out_var_name,
-                               const std::string& table_name) {
-  VLOG(3) << "RequestGetHandler:" << varname
-          << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
-          << " table_name: " << table_name;
-
-  if (sync_mode_) {
-    if (varname == FETCH_BARRIER_MESSAGE) {
-      VLOG(3) << "sync: recv fetch barrier message";
-      rpc_server_->IncreaseBatchBarrier(kRequestGet);
-    } else {
-      rpc_server_->WaitCond(kRequestGet);
-      *outvar = scope_->FindVar(varname);
-    }
-  } else {
-    if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
-      if (enable_dc_asgd_) {
-        // NOTE: the format is determined by distribute_transpiler.py
-        std::string param_bak_name =
-            string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
-        VLOG(3) << "getting " << param_bak_name << " trainer_id " << trainer_id;
-        auto var = scope_->FindVar(varname);
-        auto t_orig = var->Get<framework::LoDTensor>();
-        auto param_bak = scope_->Var(param_bak_name);
-        auto t = param_bak->GetMutable<framework::LoDTensor>();
-        t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
-        VLOG(3) << "copying " << varname << " to " << param_bak_name;
-        framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
-      }
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
-          !table_name.empty()) {
-        std::vector<int64_t> updated_rows;
-        AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
-            varname, trainer_id, &updated_rows);
-        if (VLOG_IS_ON(3)) {
-          std::ostringstream sstream;
-          sstream << "[";
-          for (auto& row_id : updated_rows) {
-            sstream << row_id << ", ";
-          }
-          sstream << "]";
-          VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
-                  << sstream.str();
-        }
-        auto& origin_tensor =
-            scope_->FindVar(varname)->Get<framework::LoDTensor>();
-        auto* origin_tensor_data = origin_tensor.data<float>();
-        auto& dims = origin_tensor.dims();
-        *outvar = scope->Var();
-        auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
-        out_slr->set_rows(updated_rows);
-        out_slr->set_height(dims[0]);
-        auto out_dims = framework::make_ddim(
-            {static_cast<int64_t>(updated_rows.size()), dims[1]});
-        auto* data = out_slr->mutable_value()->mutable_data<float>(
-            out_dims, origin_tensor.place());
-        auto width = dims[1];
-        for (auto i = 0; i < updated_rows.size(); ++i) {
-          PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
-          memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
-                 sizeof(float) * width);
-        }
-      } else {
-        *outvar = scope_->FindVar(varname);
-      }
-    }
   }
-  return true;
-}
 
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -506,7 +433,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     PADDLE_ENFORCE_EQ(pieces.size(), 2);
     VLOG(3) << "after split, sparse_grad_name = " << pieces[0]
             << ", param_name = " << pieces[1];
-    VLOG(1)<<"sparse_grad_name_to_param_name "<<pieces[0] <<" = "<<pieces[1];
+    VLOG(1) <<"sparse_grad_name_to_param_name "<<pieces[0] <<" = "<< pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
   }
 
@@ -541,7 +468,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
   } else {
-    
     distributed::AsyncSparseParamUpdateRecorder::Init(
         fan_in, sparse_grad_name_to_param_name);
     RunAsyncLoop(&executor, program, &recv_scope);
