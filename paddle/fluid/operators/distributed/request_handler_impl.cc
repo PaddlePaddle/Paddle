@@ -118,8 +118,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
       }
       VLOG(1)<<"Table name empty? "<<table_name.empty();
       VLOG(1)<<"AsyncSparseParamUpdateRecorder "<<varname<<" exist " <<AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname);
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
-          !table_name.empty()) {
+      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname)) {
         std::vector<int64_t> updated_rows;
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
             varname, trainer_id, &updated_rows);
