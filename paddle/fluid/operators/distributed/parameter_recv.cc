@@ -111,7 +111,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
-          memcpy(recv_tensor->value()->data<T>() + row_id * width,
+          memcpy(recv_tensor->data<T>() + row_id * width,
                  recv_slr.value().data<T>() + i * width, sizeof(T) * width);
         }
         row_offset += recv_slr.height();
