@@ -120,6 +120,7 @@ class PipelineTrainer : public TrainerBase {
   void InitOtherEnv(const ProgramDesc& main_program) override {}
   void Run() override;
   void Finalize() override;
+  virtual Scope* GetWorkerScope(int thread_id);
 
  protected:
   int section_num_;
