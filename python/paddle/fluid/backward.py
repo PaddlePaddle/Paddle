@@ -705,19 +705,34 @@ def _append_backward_ops_with_checkpoints_(
     program_stat = ProgramStats(block, ops)
     program_stat.build_stats()
     segments = []
-    start_idx = 0
-    while True:
-        if start_idx >= len(checkpoints_name) - 1:
-            break
-        flag, min_idx, max_idx = program_stat.is_subgraph(
-            [checkpoints_name[start_idx]], [checkpoints_name[start_idx + 1]])
-        if flag:
-            segments.append([min_idx, max_idx + 1])
-        start_idx += 1
+
+    if len(checkpoints) == 1:
+        # only one checkpoint
+        max_op_idx = -1
+        var_group = [checkpoints_name[0]]
+        for name in var_group:
+            if name not in program_stat.var_op_deps:
+                break
+            op_idx = program_stat.var_op_deps[name]["var_as_output_ops"]
+            for idx in op_idx:
+                max_op_idx = max(max_op_idx, idx)
+        if max_op_idx > 0:
+            segments.append([0, max_op_idx + 1])
+    else:
+        start_idx = 0
+        while True:
+            if start_idx >= len(checkpoints_name) - 1:
+                break
+            flag, min_idx, max_idx = program_stat.is_subgraph(
+                [checkpoints_name[start_idx]],
+                [checkpoints_name[start_idx + 1]])
+            if flag:
+                segments.append([min_idx, max_idx + 1])
+            start_idx += 1
 
     checkpoints_name = list(set(checkpoints_name))
 
-    if segments[0][0] != 0:
+    if segments != [] and segments[0][0] != 0:
         recompute_segments = [[0, segments[0][0]]] + segments
     else:
         recompute_segments = segments
@@ -728,11 +743,8 @@ def _append_backward_ops_with_checkpoints_(
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     vars_should_be_hold.extend(program_stat.get_input_nodes())
     vars_should_be_hold = list(set(vars_should_be_hold))
-    for segment in recompute_segments:
-        segment_vars = program_stat.var_num(segment[0], segment[1])
-    # find variables that can not be deleted
-    segment = recompute_segments[-1]
 
+    # find variables that can not be deleted
     grad_should_be_hold = [x + "@GRAD" for x in vars_should_be_hold]
     vars_should_be_hold.extend(grad_should_be_hold)
 
@@ -742,6 +754,19 @@ def _append_backward_ops_with_checkpoints_(
     vars_in_memory = vars_should_be_hold + checkpoints_name
 
     max_calculated_op_position = len(ops)
+    if recompute_segments == []:
+        gap_ops = ops[0:max_calculated_op_position]
+        for op in reversed(gap_ops):
+            if op.has_attr("sub_block"):
+                raise Exception("Recompute don't support ops with sub_block"
+                                "invoke op: %s" %
+                                _pretty_op_desc_(op.desc, "with_sub_block"))
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+            added_descs = _add_descs_to_block(grad_op_desc, local_block)
+            grad_op_descs.extend(added_descs)
+            grad_to_var.update(op_grad_to_var)
+
     for i, segment in enumerate(recompute_segments[::-1]):
         # add grad op for ops not in any segments
         gap_ops = ops[segment[1]:max_calculated_op_position]
@@ -797,10 +822,11 @@ def _append_backward_ops_with_checkpoints_(
 
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
+
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
-
+    added_descs = _add_descs_to_block(grad_op_descs, target_block)
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
 
 
