@@ -571,5 +571,87 @@ class TestLookaheadOptimizer(unittest.TestCase):
         self.assertEqual([op.type for op in opts], ["scale", "sgd"])
 
 
+class TestRecomputeOptimizer(unittest.TestCase):
+    def net(self):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1")
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": mul_out,
+                    "Y": b1},
+            outputs={"Out": b1_out})
+
+        block.append_op(
+            type="mean", inputs={"X": b1_out}, outputs={"Out": mean_out})
+
+        return mul_out, b1_out, mean_out
+
+    def test_no_checkpoint(self):
+        mul_out, b1_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 3)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 9)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd"
+        ])
+
+    def test_one_checkpoint(self):
+        mul_out, b1_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 3)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 10)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "mul", "elementwise_add_grad", "mul_grad", "sgd", "sgd"
+        ])
+
+    def test_multi_checkpoint(self):
+        mul_out, b1_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 3)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([mul_out, b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 9)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd"
+        ])
+
+
 if __name__ == '__main__':
     unittest.main()
