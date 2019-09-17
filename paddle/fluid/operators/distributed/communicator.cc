@@ -688,27 +688,26 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   std::vector<int64_t> new_rows;
   new_rows.resize(ids_num);
   auto capacity = ids_num*columns;
-  float *new_value = new float[capacity]();
-  int64_t *temp_rows = new int64_t[ids_num](); 
+  std::vector<float> new_value(capacity);
+  std::vector<int64_t> temp_rows(ids_num); 
 
-  long loc = 0;
-  long row = 0;
+  size_t row = 0;
   for (auto &ids:ids_table) {
-    VLOG(1) <<"Geo-Sgd Send: "<<ids <<" row: "<< row<< " Total row: "<<ids_num;
+    VLOG(4) <<"Geo-Sgd Send: "<<ids <<" row: "<< row<< " Total row: "<<ids_num;
     for(int64_t i = 0; i<columns; i++) { 
-      new_value[loc] = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
-      y_mutable_data[ids*columns + i] += new_value[loc];
-      loc++;
+      float value = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
+      y_mutable_data[ids*columns + i] += value;
+      new_value.push_back(value);
     }
-    VLOG(1) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + columns -1]
+    VLOG(4) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + columns -1]
           <<" ;old_scope: "<< y_mutable_data[ids*columns + columns - 1]
-          <<" ;delta_scope: "<< new_value[loc-1];
-    temp_rows[row] = ids;
+          <<" ;delta_scope: "<< new_value.back();
+    temp_rows.push_back(ids);
     row++;
   }
 
   // copy rows
-  std::memcpy(&new_rows[0],temp_rows,ids_num*sizeof(int64_t));
+  std::memcpy(&new_rows[0],&temp_rows,ids_num*sizeof(int64_t));
   var_z_select_rows->set_rows(new_rows);
 
   // copy value 
@@ -716,7 +715,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   var_z_value->Resize({ids_num, columns});
   var_z_value->mutable_data<float>(var_x_tensor.place());
   auto *var_select_data = var_z_value->data<float>();
-  memcpy(var_select_data, new_value, sizeof(float)*ids_num*columns);
+  memcpy(var_select_data, &new_value, sizeof(float)*ids_num*columns);
 }
 
 void Communicator::RecvUpdateVars(const std::string& var_name) {
