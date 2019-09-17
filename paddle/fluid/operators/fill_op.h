@@ -19,6 +19,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
