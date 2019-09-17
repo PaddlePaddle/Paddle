@@ -929,7 +929,7 @@ class Executor(object):
                                        will be printed during training, default is None
             fetch_info(String List): print information for each variable, default is None
             print_period(int): the number of mini-batches for each print, default is 100
-            fetch_handler(FetchHandler): the instance of FetchHandler，a user define fetch output.
+            fetch_handler(FetchHandler): a user define class for fetch output.
 
         Returns:
             None
@@ -995,7 +995,7 @@ class Executor(object):
                                        will be printed during training
             fetch_info(String List): print information for each variable
             print_period(int): the number of mini-batches for each print
-            fetch_handler(FetchHandler): the instance of FetchHandler，a user define fetch output.
+            fetch_handler(FetchHandler): a user define class for fetch output.
 
         Returns:
             None
