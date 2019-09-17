@@ -79,7 +79,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     if(recv_var->IsType<framework::LoDTensor>()) {
       recv_tensor = recv_var->GetMutable<framework::LoDTensor>();
     } else {
-      recv_tensor = recv_var->GetMutable<framework::SelectedRows>;
+      recv_tensor = recv_var->GetMutable<framework::SelectedRows>();
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     int64_t recv_numel = 0;
