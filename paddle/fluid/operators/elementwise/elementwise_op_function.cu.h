@@ -11,7 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda.h>
 #include <cuda_fp16.h>
 #include <glog/logging.h>
 #include "paddle/fluid/operators/elementwise/elementwise.h"

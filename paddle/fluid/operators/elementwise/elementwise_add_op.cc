@@ -20,6 +20,44 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct SameDimsElemwiseAdd<platform::CPUDeviceContext, T> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
+
+template <>
+struct SameDimsElemwiseAdd<platform::CPUDeviceContext, int> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<int>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<int>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<int>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x + eigen_y;
+  }
+};
+
+template <>
+struct SameDimsElemwiseAdd<platform::CPUDeviceContext, int64_t> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<int64_t>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<int64_t>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<int64_t>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x + eigen_y;
+  }
+};
+
 class ElementwiseAddDoubleGradDescMaker
     : public framework::SingleGradOpDescMaker {
  public:

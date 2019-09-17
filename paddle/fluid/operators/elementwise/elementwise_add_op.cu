@@ -20,39 +20,40 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto size = x->numel();
-  dim3 block_size = dim3(TILE_SIZE, 1);
-  dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-  SameDimsElemwiseAddCUDAKernel<
-      T><<<gird_size, block_size, 0,
-           ctx.template device_context<DeviceContext>().stream()>>>(
-      x->data<T>(), y->data<T>(), z->data<T>(), size);
-}
+template <typename T>
+struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z) {
+    auto size = x->numel();
+    dim3 block_size = dim3(TILE_SIZE, 1);
+    dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
+    SameDimsElemwiseAddCUDAKernel<T><<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x->data<T>(), y->data<T>(), z->data<T>(), size);
+  }
+};
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto size = x->numel();
-  dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-  dim3 block_size = dim3(TILE_SIZE, 1);
-  const half* x2 = reinterpret_cast<const half*>(x->data<T>());
-  const half* y2 = reinterpret_cast<const half*>(y->data<T>());
-  half* z2 = reinterpret_cast<half*>(z->data<T>());
-  SameDimsElemwiseAddCUDAKernel<<<gird_size, block_size, 0,
-                                  ctx.template device_context<DeviceContext>()
-                                      .stream()>>>(x2, y2, z2, size);
-}
+template <>
+struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z) {
+    auto size = x->numel();
+    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
+    dim3 block_size = dim3(TILE_SIZE, 1);
+    const half* x2 =
+        reinterpret_cast<const half*>(x->data<platform::float16>());
+    const half* y2 =
+        reinterpret_cast<const half*>(y->data<platform::float16>());
+    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
+    SameDimsElemwiseAddCUDAKernel<<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x2, y2, z2, size);
+  }
+};
 
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(const T* dout,
