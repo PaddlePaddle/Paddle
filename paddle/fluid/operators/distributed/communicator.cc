@@ -678,7 +678,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   auto dims = var_x_tensor.dims();
   auto rows = dims[0];
   auto columns = dims[1];
-
+  VLOG(1)<<"Sparse var dims[0]: "<< rows<<" dims[1]: "<<columns;
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
