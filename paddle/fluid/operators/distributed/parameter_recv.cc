@@ -72,11 +72,10 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   }
 
   // concat recved tensor into one var
-  {
+  if (recv_var->IsType<framework::LoDTensor>()) {
     size_t output_offset = 0;
     size_t row_offset = 0;
-    framework::LoDTensor *recv_tensor= recv_var->GetMutable<framework::LoDTensor>();
-    auto *recv_slr_tensor = recv_var->GetMutable<framework::SelectedRows>();
+    framework::Tensor *recv_tensor =recv_var->GetMutable<framework::LoDTensor>();
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     int64_t recv_numel = 0;
     for (auto &recv_var_name : rpc_ctx.splited_var_names) {
@@ -92,7 +91,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         output_offset += in_stride[0];
       } else if (recv_var->IsType<framework::SelectedRows>()) {
         auto &recv_slr = recv_var->Get<framework::SelectedRows>();
-        auto &recv_dims = recv_slr_tensor->dims();
+        auto &recv_dims = recv_tensor->value()->dims();
         int64_t width = recv_dims[1];
         recv_numel += recv_slr.height() * width;
         PADDLE_ENFORCE_EQ(recv_slr.value().dims()[1], width);
@@ -113,7 +112,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
-          memcpy(recv_slr_tensor->data<T>() + row_id * width,
+          memcpy(recv_tensor->value()->data<T>() + row_id * width,
                  recv_slr.value().data<T>() + i * width, sizeof(T) * width);
         }
         row_offset += recv_slr.height();
@@ -126,6 +125,45 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       LOG(FATAL) << "recv_numel: " << recv_numel << " acture numel: " << numel;
     }
     PADDLE_ENFORCE_EQ(recv_numel, numel);
+  } else if (recv_var->IsType<framework::SelectedRows>()) {
+    auto cpu_place = platform::CPUPlace();
+    auto *slr = recv_var->GetMutable<framework::SelectedRows>();
+    slr->mutable_rows()->clear();
+    slr->mutable_value()->mutable_data<float>({{}},cpu_place);
+    int64_t width = 0;
+    int64_t height = 0;
+
+    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+      auto *var = local_scope->FindVar(recv_var_name);
+      auto *var_slr = var->GetMutable<framework::SelectedRows>();
+      auto *var_slr_row = var_slr->mutable_rows();
+      width = var_slr->mutable_value()->dims()[1];
+      height += var_slr->height();
+      slr->mutable_rows()->insert(slr->mutable_rows()->end(),
+                                  var_slr_row->begin(), var_slr_row->end());
+    }
+
+    slr->set_height(height);
+    slr->mutable_value()->mutable_data<float>(
+        framework::make_ddim(
+          {static_cast<int64_t>(slr->mutable_rows()->size()), width})
+        ,cpu_place);
+    auto *slr_data = slr->mutable_value()->data<float>();
+
+    size_t row_offset = 0;
+    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+      auto *var = local_scope->FindVar(recv_var_name);
+      auto *var_slr = var->GetMutable<framework::SelectedRows>();
+      auto *var_slr_row = var_slr->mutable_rows();
+      auto var_slr_row_size = var_slr_row->size();
+      auto *var_slr_data = var_slr->mutable_value()->data<float>();
+
+      for (auto i = 0; i < var_slr_row_size; ++i) {
+          memcpy(slr_data + row_offset * width , var_slr_data, sizeof(float) * width * var_slr_row_size);
+        }
+      row_offset += var_slr_row_size;
+    }
+
   }
 
   VLOG(1) << "ParameterRecv out " << rpc_ctx.var_name;
