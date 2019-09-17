@@ -53,6 +53,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
   VLOG(1)<<"Origin var "<<rpc_ctx.var_name<<" is sparse var? "<< recv_var->IsType<framework::SelectedRows>();
+
   // recv all vars to local scope
   if (recv_var->IsType<framework::LoDTensor>() || recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
@@ -60,9 +61,18 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       local_scope->Var(recv_var_name);
       VLOG(1) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-      rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+      if(recv_var->IsType<framework::LoDTensor>()){
+        // sparse param in recv_scope is LoDTensor
+        rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name));
+      } else {
+        // sparse param in pserver_scope is SelectedRows
+        rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                             *local_scope.get(), recv_var_name,
+                                             recv_var_name, recv_var_name));
+      }
+      
     }
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
@@ -108,6 +118,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
           VLOG(3) << "recv_slr size: " << recv_slr.rows().size() << " "
                   << sstream.str();
         }
+
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
