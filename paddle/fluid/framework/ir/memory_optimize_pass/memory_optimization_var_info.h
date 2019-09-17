@@ -68,6 +68,20 @@ class MemOptVarInfo {
 
  private:
   std::string name_;
+
+  /**
+   * ref_cnt_ is the total number of last-lived ops of variable. It would not
+   * be changed during iterations.
+   *
+   * runtime_ref_cnt_ is the runtime reference count of variable, which would
+   * decrease 1 when each EagerDeletionOpHandle runs. As a result, it should
+   * be reset to ref_cnt_ after each iteration ends. Since operators are
+   * scheduled in many threads inside ParallelExecutor, runtime_ref_cnt_
+   * must be an atomic integer to guarantee the thread safety and visibility.
+   *
+   * Speciallly, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
+   * after iteration ends.
+   */
   size_t ref_cnt_;
   std::atomic<size_t> runtime_ref_cnt_;
   bool skip_memory_reuse_{false};
