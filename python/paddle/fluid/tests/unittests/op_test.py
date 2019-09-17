@@ -344,6 +344,7 @@ class OpTest(unittest.TestCase):
                             dtype='float32',
                             type=core.VarDesc.VarType.LOD_TENSOR)
                         outputs[name] = v
+                    continue
                 if output.duplicable:
                     assert isinstance(
                         self.outputs[name],
