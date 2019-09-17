@@ -50,6 +50,19 @@ namespace paddle {
 namespace operators {
 inline std::vector<int> get_expand_times(
     const framework::ExecutionContext& ctx) {
+  if (ctx.HasInput("ExpandTimes")) {
+    auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
+    auto* expand_data = expand_tensor->data<int>();
+    framework::Tensor cpu_expand_tensor;
+    if (platform::is_gpu_place(expand_tensor->place())) {
+      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      expand_data = cpu_expand_tensor.data<int>();
+    }
+    auto vec_epxand_times =
+        std::vector<int>(expand_data, expand_data + expand_tensor->numel());
+    return vec_epxand_times;
+  }
+
   auto list_expand_times_tensor =
       ctx.MultiInput<framework::Tensor>("expand_times_tensor");
   if (list_expand_times_tensor.size() > 0) {
@@ -100,6 +113,9 @@ class ExpandKernel : public framework::OpKernel<T> {
 
     auto in_dims = in0->dims();
     auto expand_times = get_expand_times(context);
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()), expand_times.size(),
+                      "The number of Attr(expand_times)'s value must be equal "
+                      "to the rank of Input(X).");
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
