@@ -137,6 +137,7 @@ void Communicator::SendThread() {
           VLOG(1) <<"ids_send_queue pushed";
         }
       }
+      VLOG(1)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
       std::vector<SparseIdsMap> new_ids_send_queue{};
       for(auto ids_map:ids_send_queue_) {
         new_ids_send_queue.push_back(*ids_map);
@@ -527,25 +528,16 @@ void Communicator::GeoSgdStart(const std::string& var_name,
     // when execute trainer startup program, recv init parameter from pserver
     // old_scope param will copy it for storage
     VLOG(1) <<"Parameter init from recv_scope";
-
-    std::vector<std::string> recv_scope_vars = recv_scope_->LocalVarNames();
-    for(auto var_name : recv_scope_vars) {
-      VLOG(1)<< "Recv Scope has var: "<<var_name;
-    }
-
-    std::vector<std::string> old_scope_vars = old_scope_->LocalVarNames();
-    for(auto var_name : old_scope_vars) {
-      VLOG(1)<< "old Scope has var: "<<var_name;
-    }  
-
-    std::vector<std::string> delta_scope_vars = delta_scope_->LocalVarNames();
-    for(auto var_name : delta_scope_vars) {
-      VLOG(1)<< "delta Scope has var: "<<var_name;
-    }
     for(auto &iter:recv_varname_to_ctx_){
       auto local_var_name = iter.first;
       GeoSgdParamCopy(*recv_scope_, *old_scope_.get(), local_var_name);
-      GeoSgdParamCopy(*recv_scope_, *pserver_scope_.get(), local_var_name);
+      if(var_list_[local_var_name] == true) {
+        //sparse param
+        GeoSgdSparseParamInit(*recv_scope_,*pserver_scope_.get(),local_var_name);
+      } else {
+        GeoSgdParamCopy(*recv_scope_, *pserver_scope_.get(), local_var_name);
+      }
+      
     }
     return;
   }
@@ -589,13 +581,10 @@ void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
     for (auto &iter : table) {
       auto &var_name = iter.first;
       auto &ids_vec = iter.second;
-
       if(ids_map.find(var_name) == ids_map.end()) {
         ids_map.insert(std::pair<std::string,std::unordered_set<int64_t>>
                       (var_name,std::unordered_set<int64_t>{}));
-
       }
-
       for (auto ids:ids_vec) {
         if(ids_map[var_name].find(ids) == ids_map[var_name].end()) {
           ids_map[var_name].insert(ids);
@@ -653,9 +642,6 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 
   float* z_mutable_data = var_z_tensor->mutable_data<float>(var_x_tensor.place());
 
-  VLOG(1) << "Geo-Sgd Send " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
-          <<" ;old_scope: "<< *y_mutable_data
-          <<" ;delta_scope: "<< *z_mutable_data;
   for(int i = 0; i < element_number; i++){
     z_mutable_data[i] = (x_mutable_data[i] - y_mutable_data[i])/(float)(trainer_nums_);
     y_mutable_data[i] += z_mutable_data[i];
@@ -699,9 +685,9 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
       y_mutable_data[ids*columns + i] += value;
       new_value.push_back(value);
     }
-    VLOG(4) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + columns -1]
-          <<" ;old_scope: "<< y_mutable_data[ids*columns + columns - 1]
-          <<" ;delta_scope: "<< new_value.back();
+    VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
+          <<" ;old_scope: "<< y_mutable_data[ids*columns]
+          <<" ;delta_scope: "<< new_value[new_value.size() - columns +1];
     temp_rows.push_back(ids);
     row++;
   }
@@ -724,33 +710,51 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
   VLOG(1) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
   // Todo: add check
   auto *var_x = recv_scope_->FindVar(var_name);
-  auto *var_y = old_scope_.get()->FindVar(var_name);
-  auto *var_z = pserver_scope_.get()->FindVar(var_name);
+  auto *var_y = old_scope_->FindVar(var_name);
 
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
-  auto var_z_tensor = var_z->Get<framework::LoDTensor>();
-
+  
   int element_number = var_x_tensor.numel();
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
-  float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
 
-  VLOG(1)<< "Var "<< var_name<<" has "<<element_number<<" element"; 
+  if (var_list_[var_name] == true) {
+    // sparse param
+    auto *var_z = pserver_scope_.get()->FindVar(var_name);
+    auto var_z_slr = var_z->GetMutable<framework::SelectedRows>();
+    auto &new_rows = var_z_slr->rows();
+    auto &new_value = var_z_slr->value();
+    int64_t row_numel = new_value.numel() / new_rows.size();
+    auto* z_mutable_data = new_value.data<float>();
 
-  VLOG(1) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
-          <<" ;old_scope: "<< *y_mutable_data
-          <<" ;pserver_scope: "<< *z_mutable_data;
-  for(int i = 0; i < element_number; i++){
-    x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
-    y_mutable_data[i] = z_mutable_data[i];
+    for (size_t i = 0; i< new_rows.size(); i++) {
+      for (int64_t j = 0; j< row_numel; j++) {
+        x_mutable_data[new_rows[i]*row_numel + j] += (z_mutable_data[i * row_numel + j] - 
+                              y_mutable_data[new_rows[i]*row_numel + j]);
+        y_mutable_data[new_rows[i]*row_numel + j] = z_mutable_data[i * row_numel + j];
+      }
+      VLOG(1) << "Geo-Sgd Recv " << new_rows[i]<< " after update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
+            <<" ;old_scope: "<< y_mutable_data[new_rows[i]*row_numel]
+            <<" ;pserver_scope: "<< z_mutable_data[i * row_numel];
+    }
+  } else {
+    // dense param
+    auto *var_z = pserver_scope_.get()->FindVar(var_name);
+    auto var_z_tensor = var_z->Get<framework::LoDTensor>();
+    float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
+
+    VLOG(4) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+            <<" ;old_scope: "<< *y_mutable_data
+            <<" ;pserver_scope: "<< *z_mutable_data;
+    for(int i = 0; i < element_number; i++){
+      x_mutable_data[i] += (z_mutable_data[i] - y_mutable_data[i]);
+      y_mutable_data[i] = z_mutable_data[i];
+    }
+    VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
+            <<" ;old_scope: "<< *y_mutable_data
+            <<" ;pserver_scope: "<< *z_mutable_data;
   }
-  VLOG(1) << "Geo-Sgd Recv " << var_name<< " after update Vars recv_scope: "<< *x_mutable_data
-          <<" ;old_scope: "<< *y_mutable_data
-          <<" ;pserver_scope: "<< *z_mutable_data;
-  
-  
-  // Todo: add Sparse param sub method 
 }
 
 void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
@@ -759,6 +763,29 @@ void Communicator::GeoSgdParamCopy(const framework::Scope &scope_x,
     auto *var_x = scope_x.FindVar(var_name);
     auto *var_y = scope_y.FindVar(var_name);
     framework::CopyVariable(*var_x,var_y);
+}
+
+void Communicator::GeoSgdSparseParamInit(const framework::Scope &scope_x,
+                                         const framework::Scope &scope_y,
+                                         const std::string var_name) {
+    // create selectedrows var from lodtensor var info                            
+    auto *var_x = scope_x.FindVar(var_name);
+    auto *var_y = scope_y.FindVar(var_name);
+    
+    auto var_x_tensor = var_x->Get<framework::LoDTensor>();
+    auto *var_y_select_rows = var_y->GetMutable<framework::SelectedRows>();
+
+    auto dims = var_x_tensor.dims();
+    auto rows = dims[0];
+    auto columns = dims[1];
+    VLOG(1)<<"Sparse var dims[0]: "<< rows<<" dims[1]: "<<columns;
+
+    var_y_select_rows->set_height(rows);
+    std::vector<int64_t> new_rows{};
+    var_y_select_rows->set_rows(new_rows);
+    auto *var_y_value = var_y_select_rows->mutable_value();
+    var_y_value->Resize({rows, columns});
+    var_y_value->mutable_data<float>(var_x_tensor.place());
 }
 
 }  // namespace distributed

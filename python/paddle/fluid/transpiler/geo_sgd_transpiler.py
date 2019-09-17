@@ -192,6 +192,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
         optimize_block = []
         param_to_block_id = []
+        sparse_grad_to_param = []
+
         # append op to the current block
         pre_block_idx = pserver_program.num_blocks - 1
         for var in self.param_opt_ep_mapping[endpoint]["params"]:
@@ -201,12 +203,12 @@ class GeoSgdTranspiler(DistributeTranspiler):
             pserver_block = per_opt_block.program.global_block()
             param = pserver_block.vars[var_name]
 
+            delta_var_name = "%s.delta" % (param.name)
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
+                sparse_grad_to_param.append( ".".join([delta_var_name,param.name]))
             else:
                 delta_type = param.type
-
-            delta_var_name = "%s.delta" % (param.name)
             delta_var = pserver_block.create_var(
                 name=delta_var_name,
                 persistable=False,
@@ -227,6 +229,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": param_to_block_id,
+            "sparse_grad_to_param": sparse_grad_to_param
         }
 
         # step5 append the listen_and_serv op

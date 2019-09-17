@@ -263,13 +263,17 @@ class Communicator {
     }
   }
 
+  void SendUpdateDenseVars(const std::string& var_name);
+  void SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table);
+  void RecvUpdateVars(const std::string& var_name);
+
   void GeoSgdParamCopy(const framework::Scope &scope_x,
                        const framework::Scope &scope_y,
                        const std::string var_name);
 
-  void SendUpdateDenseVars(const std::string& var_name);
-  void SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table);
-  void RecvUpdateVars(const std::string& var_name);
+  void GeoSgdSparseParamInit(const framework::Scope &scope_x,
+                             const framework::Scope &scope_y,
+                             const std::string var_name);
 
   const std::string VarToDeltaVar(const std::string var_name) {
     std::string delta_name = var_name;
