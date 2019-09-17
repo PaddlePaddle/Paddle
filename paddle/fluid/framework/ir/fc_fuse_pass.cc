@@ -79,24 +79,27 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     float* weight_data_tmp = new float[weight_num];
     int w_h = weight_dims[0];
     int w_w = weight_dims[1];
+    auto* input = scope->FindVar("Input")->GetMutable<LoDTensor>();
+    auto input_dims = input->dims();
+    if (w_h % 128 == 0 && w_w % 128 == 0 && input_dims[0] % 128 == 0) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < w_h; i++) {
-      memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
-             w_w * sizeof(float));
-    }
-    weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
-    auto weight_data_new = weight->mutable_data<float>(platform::CPUPlace());
+      for (int i = 0; i < w_h; i++) {
+        memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+               w_w * sizeof(float));
+      }
+      weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+      auto weight_data_new = weight->mutable_data<float>(platform::CPUPlace());
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < w_h; i++) {
-      memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
-             w_w * sizeof(float));
+      for (int i = 0; i < w_h; i++) {
+        memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+               w_w * sizeof(float));
+      }
+      delete[] weight_data_tmp;
     }
-    delete[] weight_data_tmp;
-
     // Create an FC Node.
     OpDesc desc;
     desc.SetType("fc");
