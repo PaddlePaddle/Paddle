@@ -35,7 +35,11 @@ class MemOptVarInfo {
     return ref_cnt_ == 1 || (runtime_ref_cnt_.fetch_sub(1) == 1);
   }
 
-  void ResetRuntimeRefCnt() { runtime_ref_cnt_ = ref_cnt_; }
+  void ResetRuntimeRefCnt() {
+    if (ref_cnt_ != 1) {
+      runtime_ref_cnt_ = ref_cnt_;
+    }
+  }
 
   void SetRefCnt(size_t ref_cnt) {
     PADDLE_ENFORCE_GE(ref_cnt, 1,
@@ -44,9 +48,21 @@ class MemOptVarInfo {
     runtime_ref_cnt_ = ref_cnt;
   }
 
-  bool IsSkipped() const { return skipped_; }
+  // Skip all memory optimization, including memory reuse and garbage collection
+  void SetSkipAllMemoryOptimization(bool is_skipped) {
+    skip_all_memory_optimization_ = is_skipped;
+  }
 
-  void SetSkip(bool skipped) { skipped_ = skipped; }
+  bool IsSkippedAllMemoryOptimization() const {
+    return skip_all_memory_optimization_;
+  }
+
+  // Skip all memory reuse, including inplace and cross op memory reuse
+  void SetSkipMemoryReuse(bool is_skipped) { skip_memory_reuse_ = is_skipped; }
+
+  bool IsSkippedMemoryReuse() const {
+    return skip_memory_reuse_ || skip_all_memory_optimization_;
+  }
 
   const std::string &Name() const { return name_; }
 
@@ -54,7 +70,8 @@ class MemOptVarInfo {
   std::string name_;
   size_t ref_cnt_;
   std::atomic<size_t> runtime_ref_cnt_;
-  bool skipped_{false};
+  bool skip_memory_reuse_{false};
+  bool skip_all_memory_optimization_{false};
 };
 
 using MemOptVarInfoMapList = std::vector<
@@ -72,8 +89,9 @@ class SkipMemOptVarsGuard {
     for (auto &var : vars) {
       for (auto &map : *list_) {
         auto iter = map.find(var);
-        if (iter != map.end() && !iter->second->IsSkipped()) {
-          iter->second->SetSkip(true);
+        if (iter != map.end() &&
+            !iter->second->IsSkippedAllMemoryOptimization()) {
+          iter->second->SetSkipAllMemoryOptimization(true);
           skip_vars_.emplace_back(iter->second.get());
         }
       }
@@ -82,7 +100,7 @@ class SkipMemOptVarsGuard {
 
   ~SkipMemOptVarsGuard() {
     for (auto *var : skip_vars_) {
-      var->SetSkip(false);
+      var->SetSkipAllMemoryOptimization(false);
     }
 
     if (list_ && need_reset_ref_cnt_) {
