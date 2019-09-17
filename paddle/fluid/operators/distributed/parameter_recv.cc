@@ -155,7 +155,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     }
     slr->set_rows(new_rows);
     slr->set_height(height);
-    VLOG(1)<<"Recv var Row size "<<slr->mutable_rows()->size()<<" height "<<height;
+    VLOG(1)<<"Recv var Row size "<<slr->mutable_rows()->size()<<" height "<<height<<" width "<<width;
     slr->mutable_value()->mutable_data<float>(
         framework::make_ddim(
           {static_cast<int64_t>(slr->mutable_rows()->size()), width})
@@ -169,10 +169,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       auto *var_slr_row = var_slr->mutable_rows();
       auto var_slr_row_size = var_slr_row->size();
       auto *var_slr_data = var_slr->mutable_value()->data<float>();
-
-      for (auto i = 0; i < var_slr_row_size; ++i) {
-          memcpy(slr_data + row_offset * width , var_slr_data, sizeof(float) * width * var_slr_row_size);
-        }
+      memcpy(slr_data + row_offset * width , var_slr_data, sizeof(float) * width * var_slr_row_size);
       row_offset += var_slr_row_size;
     }
 
