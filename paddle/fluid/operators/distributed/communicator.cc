@@ -627,18 +627,13 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
-  VLOG(1)<<"Delta scope create/find var "<<VarToDeltaVar(var_name);
-
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
-  VLOG(1)<<"Get tensor of var "<<VarToDeltaVar(var_name);
   var_z_tensor->mutable_data<float>(dims,var_x_tensor.place());
   var_z_tensor->set_lod(var_x_tensor.lod());
-  VLOG(1)<<"Set lod of var "<<VarToDeltaVar(var_name);
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   math::SetConstant<paddle::platform::CPUDeviceContext, float>constant_functor;
   constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
-  VLOG(1)<<"Set constant zero of var "<<VarToDeltaVar(var_name);;
 
   float* z_mutable_data = var_z_tensor->mutable_data<float>(var_x_tensor.place());
 
