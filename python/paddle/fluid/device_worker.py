@@ -151,7 +151,8 @@ class DownpourSGD(DeviceWorker):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = \
                         self._fleet_desc.trainer_param.sparse_table[i].table_id
-            if "prog_id_to_sparse_input" in opt_info:
+            if "prog_id_to_sparse_input" in opt_info and \
+               "prog_id_to_sparse_output" in opt_info:
                 if program_id not in opt_info["prog_id_to_sparse_input"]:
                     raise ValueError("Current program id was not met before")
                 w_sparse_keys = opt_info["prog_id_to_sparse_input"][program_id]
