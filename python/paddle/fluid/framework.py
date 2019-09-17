@@ -425,7 +425,7 @@ class Variable(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -617,6 +617,17 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                new_variable.to_string(True)
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
@@ -641,18 +652,6 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
-
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
 
     @property
     def stop_gradient(self):
@@ -1067,7 +1066,7 @@ class Operator(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
