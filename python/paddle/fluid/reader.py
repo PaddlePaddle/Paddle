@@ -84,24 +84,23 @@ class DataLoader(object):
 
         The created DataLoader object provides 3 methods to set the data source
         :code:`set_sample_generator` , :code:`set_sample_list_generator` and 
-        :code:`set_batch_generator` , which has the same effect as the method
+        :code:`set_batch_generator` , which have the same effect as the method
         :code:`PyReader.decorate_sample_generator` ,
         :code:`PyReader.decorate_sample_list_generator` and
         :code:`PyReader.decorate_batch_generator` . 
 
         If iterable = False, the created DataLoader object provides 
         :code:`start()` and :code:`reset()` method to control the data reading
-        process, which has the same effect as the non-iterable 
+        process, which have the same effect as the non-iterable 
         :code:`PyReader.start()` and :code:`PyReader.reset()` .    
 
-        If iterable = True, the created DataLoader object is Python generator
+        If iterable = True, the created DataLoader object is a Python generator
         object, which is iterable using for-range loop.
         
         Args:  
             feed_list (list(Variable)|tuple(Variable)): feed variable list.
                 The variables should be created by :code:`fluid.layers.data()`.
-                it can be None under iterable mode.
-            capacity (int): capacity of the queue maintained in PyReader object.
+            capacity (int): capacity of the queue maintained in DataLoader object.
                 The unit is batch number.
             use_double_buffer (bool): whether to use double_buffer_reader to 
                 speed up data feeding. 
@@ -427,8 +426,8 @@ class PyReader(DataLoaderBase):
     Args:  
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.layers.data()`.
-            it can be None under iterable mode.
         capacity (int): capacity of the queue maintained in PyReader object. 
+            The unit is batch number.
         use_double_buffer (bool): whether to use double_buffer_reader to 
             speed up data feeding. 
         iterable (bool): whether the created reader object is iterable.   
