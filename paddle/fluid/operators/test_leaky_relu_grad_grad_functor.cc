@@ -22,5 +22,10 @@ TEST(leaky_relu_grad_grad, test_cpu) {
       TestLeakyReluGradGradMain<float>({32, 64}, platform::CPUPlace(), 0.02));
 }
 
+TEST(leaky_relu_grad_grad, test_cpu_zero_alpha) {
+  ASSERT_TRUE(
+      TestLeakyReluGradGradMain<float>({32, 64}, platform::CPUPlace(), 0.0));
+}
+
 }  // namespace operators
 }  // namespace paddle
