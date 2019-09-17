@@ -425,7 +425,7 @@ class Variable(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -618,6 +618,17 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                new_variable.to_string(True)
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
@@ -642,18 +653,6 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
-
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
 
     @property
     def stop_gradient(self):
@@ -1082,7 +1081,7 @@ class Operator(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
@@ -3251,9 +3250,13 @@ class Program(object):
         """
         if for_test:
             if self._appending_grad_times > 0:
-                loss_op = self._find_loss_op()
-                assert loss_op is not None, "The optimized network should have loss operator."
-                forward_prog = self._prune([], loss_op)
+                forward_prog = Program()
+                forward_prog.desc = core.prune_backward(self.desc)
+                forward_prog.blocks = [
+                    Block(forward_prog, i)
+                    for i in six.moves.range(forward_prog.desc.num_blocks())
+                ]
+                forward_prog._sync_with_cpp()
                 p = forward_prog._inference_optimize(prune_read_op=False)
             else:
                 p = self._inference_optimize(prune_read_op=False)
@@ -3652,16 +3655,6 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
-
-    def _find_loss_op(self):
-        loss_op = None
-        op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        forward_loss = int(core.op_proto_and_checker_maker.OpRole.Forward
-                           ) | int(core.op_proto_and_checker_maker.OpRole.Loss)
-        for op in self.global_block().ops:
-            if int(op.all_attrs()[op_role_key]) == forward_loss:
-                loss_op = op
-        return loss_op
 
 
 class Parameter(Variable):
