@@ -42,7 +42,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
-  VLOG(3) << "ParameterRecv in " << rpc_ctx.var_name;
+  VLOG(1) << "ParameterRecv in " << rpc_ctx.var_name;
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -59,7 +59,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       local_scope->Var(recv_var_name);
-      VLOG(3) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+      VLOG(1) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name));
