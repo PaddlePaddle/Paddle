@@ -75,12 +75,8 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   {
     size_t output_offset = 0;
     size_t row_offset = 0;
-    framework::LoDTensor *recv_tensor;
-    if(recv_var->IsType<framework::LoDTensor>()) {
-      recv_tensor = recv_var->GetMutable<framework::LoDTensor>();
-    } else {
-      recv_tensor = recv_var->GetMutable<framework::SelectedRows>();
-    }
+    framework::LoDTensor *recv_tensor= recv_var->GetMutable<framework::LoDTensor>();
+    auto *recv_slr_tensor = recv_var->GetMutable<framework::SelectedRows>();
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     int64_t recv_numel = 0;
     for (auto &recv_var_name : rpc_ctx.splited_var_names) {
@@ -96,7 +92,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         output_offset += in_stride[0];
       } else if (recv_var->IsType<framework::SelectedRows>()) {
         auto &recv_slr = recv_var->Get<framework::SelectedRows>();
-        auto &recv_dims = recv_tensor->dims();
+        auto &recv_dims = recv_slr_tensor->dims();
         int64_t width = recv_dims[1];
         recv_numel += recv_slr.height() * width;
         PADDLE_ENFORCE_EQ(recv_slr.value().dims()[1], width);
@@ -117,7 +113,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         for (auto i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
-          memcpy(recv_tensor->data<T>() + row_id * width,
+          memcpy(recv_slr_tensor->data<T>() + row_id * width,
                  recv_slr.value().data<T>() + i * width, sizeof(T) * width);
         }
         row_offset += recv_slr.height();
