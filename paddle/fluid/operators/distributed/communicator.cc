@@ -575,7 +575,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
       if(ids_table->at(sparse_var_tables[i]).find(var_mutable_data[j]) == 
                                     ids_table->at(sparse_var_tables[i]).end()) {
         ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
-        VLOG(4)<<"Sparse var "<<sparse_var_tables[i] <<" insert" <<var_mutable_data[j];
+        VLOG(1)<<"Sparse var "<<sparse_var_tables[i] <<" insert" <<var_mutable_data[j];
       }
     }
   }
@@ -599,6 +599,7 @@ void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
       for (auto ids:ids_vec) {
         if(ids_map[var_name].find(ids) == ids_map[var_name].end()) {
           ids_map[var_name].insert(ids);
+          VLOG(1)<<"Sparse ids map insert "<<var_name <<" insert" <<ids;
         }
       }
     }
@@ -626,7 +627,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
   // calc var_old += var_delta
   VLOG(1) << "Geo-Sgd Communicator Send update Dense Vars: "<< var_name;
   auto *var_x = recv_scope_->FindVar(var_name);
-  auto *var_y = old_scope_.get()->FindVar(var_name);
+  auto *var_y = old_scope_->FindVar(var_name);
 
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
@@ -668,7 +669,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table) {
   VLOG(1) << "Geo-Sgd Communicator Send update Sparse Vars: "<< var_name;
   auto ids_num = (long)ids_table.size();
-
+  VLOG(1) << "Ids nums is : "<<ids_num;
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
@@ -686,22 +687,22 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   var_z_select_rows->set_height(rows);
   std::vector<int64_t> new_rows;
   new_rows.resize(ids_num);
-
-  float new_value[ids_num*columns];
+  auto capacity = ids_num*columns;
+  float new_value[capacity];
   int64_t temp_rows[ids_num];
 
   long loc = 0;
   long row = 0;
   for (auto &ids:ids_table) {
-    VLOG(1) <<"Geo-Sgd Send "<<ids;
+    VLOG(1) <<"Geo-Sgd Send: "<<ids <<" row: "<< row<< " Total row: "<<ids_num;
     for(int64_t i = 0; i<columns; i++) { 
       new_value[loc] = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
       y_mutable_data[ids*columns + i] += new_value[loc];
       loc++;
     }
-    VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + columns -1]
+    VLOG(1) << "Geo-Sgd after Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns + columns -1]
           <<" ;old_scope: "<< y_mutable_data[ids*columns + columns - 1]
-          <<" ;delta_scope: "<< new_value[loc];
+          <<" ;delta_scope: "<< new_value[loc-1];
     temp_rows[row] = ids;
     row++;
   }
