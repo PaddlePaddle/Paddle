@@ -206,7 +206,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             delta_var_name = "%s.delta" % (param.name)
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
-                sparse_grad_to_param.append( ".".join([delta_var_name,param.name]))
+                sparse_grad_to_param.append( ":".join([delta_var_name,param.name]))
             else:
                 delta_type = param.type
             delta_var = pserver_block.create_var(
