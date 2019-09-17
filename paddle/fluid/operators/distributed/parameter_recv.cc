@@ -52,9 +52,9 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
-  VLOG(4) << "recv_var is: " << rpc_ctx.var_name;
+
   // recv all vars to local scope
-  if (recv_var->IsType<framework::LoDTensor>()) {
+  if (recv_var->IsType<framework::LoDTensor>() || recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
@@ -75,8 +75,12 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   {
     size_t output_offset = 0;
     size_t row_offset = 0;
-    framework::Tensor *recv_tensor =
-        recv_var->GetMutable<framework::LoDTensor>();
+    framework::Tensor *recv_tensor;
+    if(recv_var->IsType<framework::LoDTensor>()) {
+      recv_tensor = recv_var->GetMutable<framework::LoDTensor>();
+    } else {
+      recv_tensor = recv_var->GetMutable<framework::SelectedRows>;
+    }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     int64_t recv_numel = 0;
     for (auto &recv_var_name : rpc_ctx.splited_var_names) {
@@ -128,7 +132,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     PADDLE_ENFORCE_EQ(recv_numel, numel);
   }
 
-  VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
+  VLOG(1) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 
 template struct ParameterRecv<float>;
