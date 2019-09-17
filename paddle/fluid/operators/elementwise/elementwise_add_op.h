@@ -11,9 +11,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 namespace paddle {
@@ -41,17 +41,36 @@ elementwise_add_same_dims(const framework::ExecutionContext &ctx,
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
-    !std::is_floating_point<T>::value ||
-    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+    !std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_same_dims(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, framework::Tensor *z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
+  auto eigen_x = framework::EigenVector<platform::float16>::Flatten(*x);
+  auto eigen_y = framework::EigenVector<platform::float16>::Flatten(*y);
+  auto eigen_z = framework::EigenVector<platform::float16>::Flatten(*z);
+  auto &place =
+      *ctx.template device_context<platform::CPUDeviceContext>().eigen_device();
   eigen_z.device(place) = eigen_x + eigen_y;
 }
+
+// cuda declaration. definitions are in elementwise_add_op.cu
+#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_same<T, platform::float16>::value &&
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_add_same_dims(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, framework::Tensor *z);
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<T, platform::float16>::value &&
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_add_same_dims(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, framework::Tensor *z);
+#endif  // PADDLE_CUDA
 
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {

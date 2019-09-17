@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/operators/elementwise/elementwise.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -40,8 +41,8 @@ elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
-    !std::is_floating_point<T>::value ||
-    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+    !std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
                           const framework::Tensor* x,
                           const framework::Tensor* y, framework::Tensor* z) {
@@ -52,6 +53,24 @@ elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   eigen_z.device(place) = eigen_x - eigen_y;
 }
+
+#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    !std::is_same<T, platform::float16>::value &&
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z);
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<T, platform::float16>::value &&
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
+                          const framework::Tensor* x,
+                          const framework::Tensor* y, framework::Tensor* z);
+#endif  // PADDLE_CUDA
 
 template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
