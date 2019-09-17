@@ -1004,7 +1004,7 @@ paddle.fluid.optimizer.PipelineOptimizer.minimize (ArgSpec(args=['self', 'loss',
 paddle.fluid.optimizer.LookaheadOptimizer ('paddle.fluid.optimizer.LookaheadOptimizer', ('document', 'c291cadfa7452c7bf58b9e2f900a3511'))
 paddle.fluid.optimizer.LookaheadOptimizer.__init__ (ArgSpec(args=['self', 'inner_optimizer', 'alpha', 'k'], varargs=None, keywords=None, defaults=(0.5, 5)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.LookaheadOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.optimizer.RecomputeOptimizer ('paddle.fluid.optimizer.RecomputeOptimizer', ('document', '0b8bfa60ec0ac81ea3e864c664b31bf0'))
+paddle.fluid.optimizer.RecomputeOptimizer ('paddle.fluid.optimizer.RecomputeOptimizer', ('document', '80bc1e1debd24e9a067611172d73fcf3'))
 paddle.fluid.optimizer.RecomputeOptimizer.__init__ (ArgSpec(args=['self', 'optimizer'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RecomputeOptimizer.apply_gradients (ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '80ea99c9af7ef5fac7e57fb302103610'))
 paddle.fluid.optimizer.RecomputeOptimizer.apply_optimize (ArgSpec(args=['self', 'loss', 'startup_program', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '5c46d1926a40f1f873ffe9f37ac89dae'))
