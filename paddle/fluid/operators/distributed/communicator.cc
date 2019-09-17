@@ -666,11 +666,8 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
   var_z_select_rows->set_height(rows);
-  std::vector<int64_t> new_rows;
-  new_rows.resize(ids_num);
-  auto capacity = ids_num*columns;
-  std::vector<float> new_value(capacity);
-  std::vector<int64_t> temp_rows(ids_num); 
+  std::vector<float> new_value;
+  std::vector<int64_t> new_rows; 
 
   size_t row = 0;
   for (auto &ids:ids_table) {
@@ -683,12 +680,11 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
     VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
           <<" ;old_scope: "<< y_mutable_data[ids*columns]
           <<" ;delta_scope: "<< new_value[new_value.size() - columns +1];
-    temp_rows.push_back(ids);
+    new_rows.push_back(ids);
     row++;
   }
 
-  // copy rows
-  std::memcpy(&new_rows[0],&temp_rows[0],ids_num*sizeof(int64_t));
+  // set rows
   var_z_select_rows->set_rows(new_rows);
 
   // copy value 

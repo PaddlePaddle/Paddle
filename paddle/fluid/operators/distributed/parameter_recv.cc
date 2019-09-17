@@ -52,7 +52,6 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
-  VLOG(1)<<"Origin var "<<rpc_ctx.var_name<<" is sparse var? "<< recv_var->IsType<framework::SelectedRows>();
 
   // recv all vars to local scope
   if (recv_var->IsType<framework::LoDTensor>() || recv_var->IsType<framework::SelectedRows>()) {
@@ -62,12 +61,11 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       local_scope->Var(recv_var_name);
       VLOG(1) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       if(recv_var->IsType<framework::LoDTensor>()){
-        // sparse param in recv_scope is LoDTensor
         rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name));
       } else {
-        // sparse param in pserver_scope is SelectedRows
+        //sparse
         rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name, recv_var_name));
@@ -142,19 +140,22 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     slr->mutable_value()->mutable_data<float>({{}},cpu_place);
     int64_t width = 0;
     int64_t height = 0;
+    std::vector<int64_t> new_rows{};
 
     for (auto &recv_var_name : rpc_ctx.splited_var_names) {
       auto *var = local_scope->FindVar(recv_var_name);
-      VLOG(1)<<"Recv_var_name "<<recv_var_name<<" is sparse var? "<< var->IsType<framework::SelectedRows>();
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
       auto *var_slr_row = var_slr->mutable_rows();
       width = var_slr->mutable_value()->dims()[1];
       height += var_slr->height();
-      slr->mutable_rows()->insert(slr->mutable_rows()->end(),
-                                  var_slr_row->begin(), var_slr_row->end());
+      VLOG(1)<<"Recv split_var "<<recv_var_name <<" Row size "<<var_slr_row->size();
+      for(size_t i =0; i<var_slr_row->size(); i++){
+        new_rows.push_back(var_slr_row->at(i));
+      }
     }
-
+    slr->set_rows(new_rows);
     slr->set_height(height);
+    VLOG(1)<<"Recv var Row size "<<slr->mutable_rows()->size()<<" height "<<height;
     slr->mutable_value()->mutable_data<float>(
         framework::make_ddim(
           {static_cast<int64_t>(slr->mutable_rows()->size()), width})
