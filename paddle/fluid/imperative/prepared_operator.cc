@@ -28,23 +28,35 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   }
 }
 
-platform::Place PreparedOp::GetExpectedPlace(const platform::Place& place,
-                                             const NameVarBaseMap& ins) {
-  bool found = false;
-  for (auto& name_pair : ins) {
-    for (auto& var_base : name_pair.second) {
+void PreparedOp::PrepareData(
+    const platform::Place& place, const NameVarBaseMap& ins,
+    const framework::OperatorWithKernel& op,
+    const framework::OpKernelType& expected_kernel_key) {
+  for (const auto& name_pair : ins) {
+    for (const auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
         auto tmp_place = tensor->place();
 
-        PADDLE_ENFORCE_EQ(!found || tmp_place == place, true,
-                          "Input variable should keep in the same place: %s, "
-                          "but get place: %s of input %s instead",
-                          place, tmp_place, name_pair.first);
+        // TODO(jiabin): Support transform data layout when we Verify it on more
+        // tests
+        if (!(tmp_place == place)) {
+          auto kernel_type_for_var = op.GetKernelTypeForVar(
+              name_pair.first, *tensor, expected_kernel_key);
+          if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+            continue;
+          } else {
+            VLOG(3) << "Transform Variable " << var_base->Name() << " from "
+                    << kernel_type_for_var << " to " << expected_kernel_key;
+            framework::Tensor out;
+            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
+                          &out);
+            SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
+          }
+        }
       }
     }
   }
-  return place;
 }
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
@@ -60,8 +72,10 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 
 PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place) {
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+                               platform::Place place,
+                               const NameVarBaseMap& ins) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
@@ -87,6 +101,13 @@ PreparedOp PreparedOp::Prepare(const framework::RuntimeContext& ctx,
   }
   std::vector<framework::KernelConfig>* kernel_configs =
       op.GetKernelConfig(expected_kernel_key);
+
+  if (!(expected_kernel_key.place_ == place)) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
+    place = dev_ctx->GetPlace();
+  }
+
+  PrepareData(place, ins, op, expected_kernel_key);
   return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
 }
 
@@ -94,6 +115,7 @@ void PreparedOp::Run() {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
   op_.RuntimeInferShape(scope, dev_ctx_->GetPlace(), ctx_);
+  VLOG(6) << "Finish Runtime infer shape";
   func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
                                     kernel_configs_));
 }

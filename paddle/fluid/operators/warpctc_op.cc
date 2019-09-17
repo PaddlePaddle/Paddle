@@ -59,20 +59,6 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
-#if CUDA_VERSION >= 9000
-      LOG(WARNING)
-          << "The cudnnCTCLoss of CUDNN7 have some diff between "
-             "CUDA9/CUDA10 and CUDA8. You can close use_cudnn option to "
-             "use "
-             "baidu-research/warp-ctc(https://github.com/baidu-research/"
-             "warp-ctc)";
-#endif
-
-      library_ = framework::LibraryType::kCUDNN;
-    }
-#endif
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
                                    ctx.device_context(), layout_, library_);
@@ -128,10 +114,6 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: false), whether to "
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
-        .SetDefault(false);
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default: false), whether to "
-                  "use cudnn kernel.")
         .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source

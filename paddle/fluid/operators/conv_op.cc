@@ -566,6 +566,40 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+/*
+ * Inputs:  I, W, dO, ddI, ddW
+ * Outputs: ddO, dW, dI
+ */
+class Conv3DDoubleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    // I, W, dO, ddI, ddW
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Filter", Input("Filter"));
+    op->SetInput("DOutput", Input(framework::GradVarName("Output")));
+    op->SetInput("DDInput", OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("DDFilter", OutputGrad(framework::GradVarName("Filter")));
+
+    auto ddx = OutputGrad(framework::GradVarName("Input"));
+    auto ddw = OutputGrad(framework::GradVarName("Filter"));
+    std::vector<std::string> empty_str = {};
+
+    op->SetOutput(
+        "DDOutput",
+        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
+
+    op->SetAttrMap(Attrs());
+
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto x_dims = ctx->GetInputDim("Input");
   auto w_dims = ctx->GetInputDim("Filter");
@@ -593,8 +627,14 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  } else {
-    PADDLE_THROW("Now ConvDoubleGrad only supports cuDNN.");
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
   auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
@@ -638,7 +678,8 @@ REGISTER_OPERATOR(depthwise_conv2d_grad, ops::ConvOpGrad);
 
 REGISTER_OPERATOR(conv3d, ops::ConvOp, ops::Conv3DOpMaker,
                   ops::ConvOpInferVarType, ops::Conv3DGradMaker);
-REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad);
+REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad, ops::Conv3DDoubleGradMaker);
+REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
 
 // depthwise conv kernel
 // TODO(xingzhaolong): neon kernel for mobile
@@ -659,6 +700,10 @@ REGISTER_OP_CPU_KERNEL(
     conv2d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv2d_grad_grad,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
@@ -667,3 +712,7 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    conv3d_grad_grad,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);

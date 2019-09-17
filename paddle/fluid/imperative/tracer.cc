@@ -52,11 +52,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     auto fw_op_desc = framework::OpDesc(type, {}, {}, op->Attrs());
     TraceBackward(op, fw_op_desc, ins, outs);
+
+    VLOG(6) << "Finish tracking Backward of op: " << type;
   }
+  VLOG(6) << "Finish tracing fwd op: " << type;
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
-                                 const NameVarBaseMap outs,
+                                 const NameVarBaseMap& outs,
                                  bool trace_backward) {
   // TODO(jiabin): Implement auto prune here
   return trace_backward;

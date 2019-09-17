@@ -14,23 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/fc.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-class FCOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override;
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-};
 
 class FCOpGrad : public framework::OperatorWithKernel {
  public:
@@ -41,11 +33,6 @@ class FCOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
-};
-
-class FCOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override;
 };
 
 inline void FCOutputSize(const framework::DDim& in_dims,
@@ -63,6 +50,39 @@ inline void FCOutputSize(const framework::DDim& in_dims,
   }
   out_dims.push_back(w_dims[1]);
 }
+
+template <typename DeviceContext, typename T>
+class FCOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<framework::LoDTensor>("Input");
+    auto* w = ctx.Input<Tensor>("W");
+    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool with_relu =
+        (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
+
+    auto w_dims = w->dims();
+
+    std::vector<int64_t> output_dims;
+    FCOutputSize(input->dims(), w_dims, output_dims, in_num_col_dims);
+    output->Resize(framework::make_ddim(output_dims));
+    output->set_lod(input->lod());
+
+    auto out_dims = output->dims();
+    int M = framework::product(out_dims) / w_dims[1];
+
+    const T* input_data = input->data<T>();
+    const T* w_data = w->data<T>();
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
+       bias ? bias->data<T>() : NULL, with_relu);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

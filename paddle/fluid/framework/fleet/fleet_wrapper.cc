@@ -188,6 +188,7 @@ void FleetWrapper::PullSparseVarsSync(
     auto status = t.get();
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
       exit(-1);
     }
   }
@@ -479,6 +480,7 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
@@ -508,6 +510,7 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
@@ -524,6 +527,7 @@ double FleetWrapper::GetCacheThreshold() {
   ret.wait();
   if (cache_threshold < 0) {
     LOG(ERROR) << "get cache threshold failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
   return cache_threshold;
@@ -542,6 +546,7 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "cache shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
@@ -557,6 +562,7 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
   return feasign_cnt;
@@ -626,6 +632,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   auto status = push_status.get();
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else

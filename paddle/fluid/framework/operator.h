@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -360,9 +361,7 @@ class ExecutionContext {
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = platform::DeviceTemporaryAllocator::Instance()
-                                  .Get<DevContext>(dev_ctx)
-                                  .Allocate(product(dim) * sizeof(T));
+    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
@@ -466,7 +465,8 @@ class OperatorWithKernel : public OperatorBase {
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
 
- protected:
+  // change this to public so that in dygraph mode we can call it to check if we
+  // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
