@@ -51,12 +51,11 @@ def dmc_bilinear(data_im, height, width, h, w):
     return val
 
 
-def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
+def dconv_im2col_gemm(input, offset, filter, group, conv_param):
     in_n, in_c, in_h, in_w = input.shape
     out_c, f_c, f_h, f_w = filter.shape
 
     assert offset.shape == (in_n, 2 * f_h * f_w, in_h, in_w)
-    assert mask.shape == (in_n, f_h * f_w, in_h, in_w)
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
 
@@ -78,8 +77,6 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                                     offset[n, ::2, h, w].reshape(f_h, f_w)
                             offset_w_table = \
                                     offset[n, 1::2, h, w].reshape(f_h, f_w)
-                            mask_table = \
-                                mask[n, :, h, w].reshape(f_h, f_w)
                             offset_h = offset_h_table[kh, kw]
                             offset_w = offset_w_table[kh, kw]
                             val = 0
@@ -91,7 +88,8 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                                 im_h < in_h and im_w < in_h:
                                 val = dmc_bilinear(input[n, c], in_h, in_w,
                                                    im_h, im_w)
-                            val_out = val * mask_table[kh, kw]
+                            val_out = val
+
                             col_buffer[n, c * f_h * f_w + kh * f_w + kw, h *
                                        in_w + w] = val_out
 
@@ -108,7 +106,7 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
 
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
-        self.op_type = "deformable_conv"
+        self.op_type = "deformable_conv_v1"
         self.dtype = np.float32
         self.init_group()
         self.init_dilation()
@@ -122,17 +120,14 @@ class TestModulatedDeformableConvOp(OpTest):
 
         input = np.random.random(self.input_size).astype(self.dtype)
         offset = 10 * np.random.random(self.offset_size).astype(self.dtype)
-        mask = 10 * np.random.random(self.mask_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        output = dconv_im2col_gemm(input, offset, mask, filter, self.groups,
+        output = dconv_im2col_gemm(input, offset, filter, self.groups,
                                    conv_param)
         output = output.astype(self.dtype)
-
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
-            'Mask': OpTest.np_dtype_to_fluid_dtype(mask),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
         }
         self.attrs = {
@@ -146,34 +141,18 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output(atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
-            {'Input', 'Offset', 'Mask', 'Filter'},
-            'Output',
-            max_relative_error=0.05)
+            ['Input', 'Offset', 'Filter'], 'Output', max_relative_error=0.05)
 
     def test_check_grad_no_filter(self):
         self.check_grad(
-            ['Input', 'Offset', 'Mask'],
+            ['Input', 'Offset'],
             'Output',
             max_relative_error=0.1,
             no_grad_set=set(['Filter']))
-
-    def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter', 'Offset', 'Mask'],
-            'Output',
-            max_relative_error=0.1,
-            no_grad_set=set(['Input']))
-
-    def test_check_grad_no_offset_no_mask(self):
-        self.check_grad(
-            ['Input', 'Filter'],
-            'Output',
-            max_relative_error=0.1,
-            no_grad_set=set(['Offset', 'Mask']))
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -187,13 +166,8 @@ class TestModulatedDeformableConvOp(OpTest):
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
             2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
         self.offset_size = [
             self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
-        ]
-        self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
         ]
 
     def init_dilation(self):
@@ -215,13 +189,8 @@ class TestWithStride(TestModulatedDeformableConvOp):
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
             2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
         self.offset_size = [
             self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
-        ]
-        self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
         ]
 
 
@@ -237,13 +206,8 @@ class TestWithDilation(TestModulatedDeformableConvOp):
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
             2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
         self.offset_size = [
             self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
-        ]
-        self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
         ]
 
     def init_dilation(self):
@@ -262,13 +226,8 @@ class TestWith1x1(TestModulatedDeformableConvOp):
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
             2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
         self.offset_size = [
             self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
-        ]
-        self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
         ]
 
 
