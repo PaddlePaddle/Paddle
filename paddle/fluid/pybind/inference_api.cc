@@ -337,6 +337,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
       .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops", &AnalysisConfig::SwitchUseFeedFetchOps,
            py::arg("x") = true)
