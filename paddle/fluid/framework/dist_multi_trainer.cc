@@ -156,7 +156,7 @@ void DistMultiTrainer::Finalize() {
                 << i << "] " << need_merge_var_names_[i]             \
                 << ", root tensor type=" << root_tensor->type()      \
                 << ", thread tensor type=" << thread_tensor->type(); \
-         exit(-1);                                                   \
+        exit(-1);                                                    \
       }                                                              \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);        \
     }                                                                \
