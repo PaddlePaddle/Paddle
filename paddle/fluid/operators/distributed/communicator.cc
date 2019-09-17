@@ -707,7 +707,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   }
 
   // copy rows
-  std::memcpy(&new_rows[0],&temp_rows,ids_num*sizeof(int64_t));
+  std::memcpy(&new_rows[0],&temp_rows[0],ids_num*sizeof(int64_t));
   var_z_select_rows->set_rows(new_rows);
 
   // copy value 
@@ -715,7 +715,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   var_z_value->Resize({ids_num, columns});
   var_z_value->mutable_data<float>(var_x_tensor.place());
   auto *var_select_data = var_z_value->data<float>();
-  memcpy(var_select_data, &new_value, sizeof(float)*ids_num*columns);
+  memcpy(var_select_data, &new_value[0], sizeof(float)*ids_num*columns);
 }
 
 void Communicator::RecvUpdateVars(const std::string& var_name) {
