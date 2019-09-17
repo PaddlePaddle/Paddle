@@ -10259,13 +10259,39 @@ def strided_slice(input, axes, starts, ends, strides):
     """
     Strided Slice OP
 
-    The conceptualization that really helped me understand this was that this function emulates the indexing behavior of numpy arrays.
-    If you're familiar with numpy arrays, you'll know that you can make slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. Basically, a very succinct way of writing for loops to get certain elements of the array.
-trided_slice just allows you to do this fancy indexing without the syntactic sugar. The numpy example from above just becomes
-#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]
-fluid.strided_slice(input, [start1, start2, ..., startN],
+    The conceptualization that really helped me understand this was 
+    that this function emulates the indexing behavior of numpy arrays.
+    If you're familiar with numpy arrays, you'll know that you can make 
+    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
+    Basically, a very succinct way of writing for loops to get certain elements of the array.
+    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
+    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
+    example from above just becomes
+    fluid.strided_slice(input,[0, 1, ..., N] [start1, start2, ..., startN],
     [end1, end2, ..., endN], [step1, step2, ..., stepN])
+    the axes which controls the dimension you want to slice makes it more flexible.
 
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides = [1, 1]
+            Then:
+                result = [ [5, 6, 7] ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, -1]
+                ends = [-1, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [4, 3, 2] ]
     Atrgs:
        input (Varibale): the input variable.
        axes(List):axis we need to slice
@@ -10276,9 +10302,19 @@ fluid.strided_slice(input, [start1, start2, ..., startN],
        out(Variable): the result by strided_slice Op
     
     Example:
-       import paddle.fluid as fluid
-       data = fluid.layers.fill_constant(shape=[3, 3, 3], value=0, dtype='int64')
-       y = fluid.layers.strided_slice(data, [0, 1], [1,0], [2, 3], [1, 1])
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+ 
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+            strides= [1, 1, 1]
+
+            input = fluid.layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides)
     """
     helper = LayerHelper('strided_slice', **locals())
     out = helper.create_variable_for_type_inference(
