@@ -277,7 +277,7 @@ inline void DeformableIm2colCPU(const platform::CPUDeviceContext& ctx,
   int channel_per_deformable_group = im_shape[0] / deformable_groups;
   int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  // get outputs of im2col with offset
+  // get outputs of im2col with offset by bilinear interpolation
   DeformableIm2colCPUKernel(
       num_kernels, data_im, data_offset, im_shape[1], im_shape[2],
       filter_shape[2], filter_shape[3], paddings[0], paddings[1], strides[0],
@@ -361,6 +361,7 @@ class DeformableConvV1CPUKernel : public framework::OpKernel<T> {
                           deformable_groups, col_buffer_ptr);
       Tensor output_3d = output_4d.Slice(i, i + 1).Resize(
           framework::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+      // get the product of pixel and weight
       for (int g = 0; g < groups; ++g) {
         Tensor weight_3d_slice =
             weight_3d.Slice(g, g + 1).Resize(framework::slice_ddim(

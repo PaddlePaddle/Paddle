@@ -303,7 +303,7 @@ inline void DeformableIm2col(const platform::CUDADeviceContext& ctx,
   int blocks = NumBlock(num_kernels);
   int threads = kNumCUDAThread;
 
-  // get outputs of im2col with offset
+  // get outputs of im2col with offset by bilinear interpolation
   DeformableIm2colCUDAKernel<T><<<
       blocks, threads, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
@@ -396,6 +396,7 @@ class DeformableConvV1CUDAKernel : public framework::OpKernel<T> {
 
       Tensor output_3d = output_4d.Slice(i, i + 1).Resize(
           framework::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+      // get the product of pixel and weight
       for (int g = 0; g < groups; ++g) {
         Tensor weight_3d_slice =
             weight_3d.Slice(g, g + 1).Resize(framework::slice_ddim(
