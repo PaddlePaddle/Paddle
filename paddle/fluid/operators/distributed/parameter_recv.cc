@@ -52,7 +52,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
-
+  VLOG(1)<<"Origin var "<<rpc_ctx.var_name<<" is sparse var? "<< recv_var->IsType<framework::SelectedRows>();
   // recv all vars to local scope
   if (recv_var->IsType<framework::LoDTensor>() || recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
@@ -134,6 +134,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
 
     for (auto &recv_var_name : rpc_ctx.splited_var_names) {
       auto *var = local_scope->FindVar(recv_var_name);
+      VLOG(1)<<"Recv_var_name "<<recv_var_name<<" is sparse var? "<< var->IsType<framework::SelectedRows>();
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
       auto *var_slr_row = var_slr->mutable_rows();
       width = var_slr->mutable_value()->dims()[1];
