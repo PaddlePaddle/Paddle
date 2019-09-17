@@ -46,12 +46,13 @@ class InplaceABNGradKernel
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* x = ctx.Input<Tensor>("X");
+    const auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
-    const bool is_inplace = ctx.Attr<bool>("in_place");
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     d_x->mutable_data<T>(ctx.GetPlace());
     auto& px = const_cast<Tensor&>(*x);

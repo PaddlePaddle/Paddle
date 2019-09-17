@@ -75,6 +75,26 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class BatchNormInplaceInferer final : public framework::InplaceOpInference {
+ public:
+  using framework::InplaceOpInference::InplaceOpInference;
+
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const final {
+    return {{"X", "Y"}};
+  }
+};
+
+class BatchNormGradInplaceInferer final : public framework::InplaceOpInference {
+ public:
+  using framework::InplaceOpInference::InplaceOpInference;
+
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const final {
+    return {{"X", "Y"}};
+  }
+};
+
 class BatchNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:

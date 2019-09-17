@@ -182,11 +182,6 @@ void BatchNormOpMaker::Make() {
                 "global mean and variance are also used during train time, "
                 "the BN acts as scaling and shiffting.")
       .SetDefault(false);
-  AddAttr<bool>("in_place",
-                "(bool, default false) Enable in-place feature which re-use "
-                "the input/output variable"
-                "to save the memory usage.")
-      .SetDefault(false);
 
   AddComment(R"DOC(
 Batch Normalization.
@@ -433,6 +428,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -441,10 +437,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    const bool is_inplace = ctx.Attr<bool>("in_place");
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+    bool is_inplace = (x->data<T>() == y->data<T>());
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -529,8 +525,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
+          ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
-            x_data.col(nc) = (x_data.col(nc) - bias_arr(nc % C)) /
+            x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
                                  scale_inv_var_nhw(nc % C) +
                              mean_arr(nc % C);
           }
@@ -572,7 +569,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           auto px = const_cast<Tensor &>(*x);
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
-          x_data = (x_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
+          ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
+          x_data = (y_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
@@ -619,6 +617,7 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
+  op->SetInput("Y", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
