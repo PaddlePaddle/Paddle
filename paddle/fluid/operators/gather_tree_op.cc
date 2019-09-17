@@ -30,9 +30,10 @@ class GatherTreeOp : public framework::OperatorWithKernel {
                    "Output(Out) of GatherTreeOp should not be null.");
 
     auto ids_dims = ctx->GetInputDim("Ids");
-    auto parents_dims = ctx->GetInputDim("Ids");
+    auto parents_dims = ctx->GetInputDim("Parents");
     PADDLE_ENFORCE(ids_dims == parents_dims,
-                   "The shape of Parents must be same with the shape of Ids.");
+                   "The shape of Input(Parents) must be same with the shape of "
+                   "Input(Ids).");
     ctx->SetOutputDim("Out", ids_dims);
   }
 

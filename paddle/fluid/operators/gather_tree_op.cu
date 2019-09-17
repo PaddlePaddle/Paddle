@@ -25,11 +25,11 @@ namespace operators {
 
 template <typename T>
 __global__ void GatherTree(const T *ids_data, const T *parents_data,
-                           T *out_data, const T max_length, const T batch_size,
-                           const T beam_size) {
-  CUDA_1D_KERNEL_LOOP(i, batch_size * beam_width) {
-    int batch = i / beam_width;
-    int beam = i % beam_width;
+                           T *out_data, const int64_t max_length,
+                           const int64_t batch_size, const int64_t beam_size) {
+  CUDA_1D_KERNEL_LOOP(i, batch_size * beam_size) {
+    int batch = i / beam_size;
+    int beam = i % beam_size;
     auto idx =
         (max_length - 1) * batch_size * beam_size + batch * beam_size + beam;
     out_data[idx] = ids_data[idx];
@@ -55,15 +55,16 @@ class GatherTreeOpCUDAKernel : public framework::OpKernel<T> {
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
 
     auto &ids_dims = ids->dims();
-    auto max_length = ids_dims[0];
-    auto batch_size = ids_dims[1];
-    auto beam_size = ids_dims[2];
+    int64_t max_length = ids_dims[0];
+    int64_t batch_size = ids_dims[1];
+    int64_t beam_size = ids_dims[2];
 
     auto &dev_ctx = ctx.cuda_device_context();
 
     const int block = 512;
     int max_threads =
-        std::min(dev_ctx.GetMaxPhysicalThreadCount(), batch_size * beam_size);
+        std::min(static_cast<int64_t>(dev_ctx.GetMaxPhysicalThreadCount()),
+                 batch_size * beam_size);
     const int grid = std::max(max_threads / block, 1);
     GatherTree<<<grid, block>>>(ids_data, parents_data, out_data, max_length,
                                 batch_size, beam_size);
