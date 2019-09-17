@@ -688,8 +688,8 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   std::vector<int64_t> new_rows;
   new_rows.resize(ids_num);
   auto capacity = ids_num*columns;
-  float new_value[capacity];
-  int64_t temp_rows[ids_num];
+  float *new_value = new float[capacity]();
+  int64_t *temp_rows = new int64_t[ids_num](); 
 
   long loc = 0;
   long row = 0;
@@ -716,7 +716,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   var_z_value->Resize({ids_num, columns});
   var_z_value->mutable_data<float>(var_x_tensor.place());
   auto *var_select_data = var_z_value->data<float>();
-  memcpy(var_select_data, &new_value, sizeof(float)*rows*columns);
+  memcpy(var_select_data, new_value, sizeof(float)*rows*columns);
 }
 
 void Communicator::RecvUpdateVars(const std::string& var_name) {
