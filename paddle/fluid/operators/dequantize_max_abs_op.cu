@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,4 +52,4 @@ template struct DequantizeFunctor<platform::CUDADeviceContext, int8_t>;
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_max_abs,
-                        ops::DequantizeMaxAbsKernel2<CUDA, int8_t>);
+                        ops::DequantizeMaxAbsKernel<CUDA, int8_t>);

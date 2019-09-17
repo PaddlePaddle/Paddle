@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,31 +24,30 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
                   float max_range, framework::Tensor* out) {
+    VLOG(3) << "dequantize_max_abs cpu compute";
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
-    auto input_dims = in->dims();
-    int ind = 1;
-    for (size_t i = 0; i < (unsigned)input_dims.size(); i++) {
-      ind *= input_dims[i];
-    }
+    int ind = in->numel();
+    float tmp = scale_factor[0] / max_range;
     for (size_t i = 0; i < (unsigned)ind; i++) {
-      output_data[i] = (scale_factor[0] / max_range) * input_data[i];
+      output_data[i] = tmp * input_data[i];
     }
   }
 };
 
 template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
 
-class DequantizeMaxAbsOp2 : public framework::OperatorWithKernel {
+class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
-  DequantizeMaxAbsOp2(const std::string& type,
-                      const framework::VariableNameMap& inputs,
-                      const framework::VariableNameMap& outputs,
-                      const framework::AttributeMap& attrs)
+  DequantizeMaxAbsOp(const std::string& type,
+                     const framework::VariableNameMap& inputs,
+                     const framework::VariableNameMap& outputs,
+                     const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    VLOG(3) << "dequantize_max_abs infer shape";
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       "Input(X) of DequantizeMaxAbsOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
@@ -66,7 +65,7 @@ class DequantizeMaxAbsOp2 : public framework::OperatorWithKernel {
   }
 };
 
-class DequantizeMaxAbsOpMaker2 : public framework::OpProtoAndCheckerMaker {
+class DequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -82,7 +81,7 @@ DequantizeMaxAbsOp operator.
 
 This calculation is an opposite operation of QuantizeMaxAbsOp:
 
-$$Out = \frac{scale*X}{ max_range }$$
+$$Out = \frac{scale*X}{ max\_range }$$
 
 )DOC");
   }
@@ -94,8 +93,8 @@ $$Out = \frac{scale*X}{ max_range }$$
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(dequantize_max_abs, ops::DequantizeMaxAbsOp2,
-                  ops::DequantizeMaxAbsOpMaker2,
+REGISTER_OPERATOR(dequantize_max_abs, ops::DequantizeMaxAbsOp,
+                  ops::DequantizeMaxAbsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(dequantize_max_abs,
-                       ops::DequantizeMaxAbsKernel2<CPU, int8_t>);
+                       ops::DequantizeMaxAbsKernel<CPU, int8_t>);
