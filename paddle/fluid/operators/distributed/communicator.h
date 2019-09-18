@@ -159,6 +159,62 @@ inline void MergeVars(const std::string& var_name,
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
+class TaiyiCommunicator {
+ public:
+  TaiyiCommunicator() {}
+  virtual ~TaiyiCommunicator() {}
+
+  virtual void Start();
+  virtual void Stop();
+  virtual bool IsRunning() { return running_; }
+
+  virtual void Send();
+  virtual void Recv();
+
+  virtual void InitImpl() {}
+
+  template <typename T>
+  static T* GetInstance() {
+    return communicator_.get();
+  }
+
+  template <typename T>
+  static std::shared_ptr<T> GetInstantcePtr() {
+    return communicator_;
+  }
+
+  template <typename T>
+  static T* InitInstance() {
+    std::call_once(init_flag_, &TaiyiCommunicator::Init<T>);
+    return communicator_.get();
+  }
+
+  // Init is called by GetInstance.
+  template <typename T>
+  static void Init() {
+    if (communicator_.get() == nullptr) {
+      communicator_.reset(new T());
+      communicator_->InitImpl();
+    }
+  }
+
+ private:
+  bool running_ = false;
+
+  static std::once_flag init_flag_;
+  static std::unique_ptr<TaiyiCommunicator> communicator_;
+};
+
+class AsyncCommunicator : TaiyiCommunicator {
+  AsyncCommunicator() {}
+
+  void Start() void Stop()
+
+      void Send() void Recv() void InitImpl() {}
+
+  void SendThread() void RecvThread()
+};
+
 class Communicator {
  public:
   Communicator(const RpcCtxMap& send_varname_to_ctx,
