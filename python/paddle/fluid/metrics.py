@@ -39,6 +39,7 @@ __all__ = [
     'EditDistance',
     'DetectionMAP',
     'Auc',
+    'RMSE'
 ]
 
 
@@ -48,7 +49,7 @@ def _is_numpy_(var):
 
 def _is_number_(var):
     return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
-        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1,))
 
 
 def _is_number_or_matrix_(var):
@@ -276,6 +277,59 @@ class Precision(MetricBase):
         return float(self.tp) / ap if ap != 0 else .0
 
 
+class RMSE(MetricBase):
+    """
+    The root-mean-square deviation (RMSD) or root-mean-square error (RMSE) (or sometimes root-mean-squared error) is a
+    frequently used measure of the differences between values (sample or population values) predicted by a
+    model or an estimator and the values observed.
+
+    https://en.wikipedia.org/wiki/Root-mean-square_deviation
+    Args:
+       name: the metrics name
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            metric = fluid.metrics.RMSE()
+
+            # generate the preds and labels
+
+            preds = [[0.1], [0.7], [0.8], [0.9], [0.2],
+                     [0.2], [0.3], [0.5], [0.8], [0.6]]
+
+            labels = [[0.1], [1.2], [1.0], [1], [0.2],
+                      [0], [0], [0], [0.5], [0.9]]
+
+            preds = np.array(preds)
+            labels = np.array(labels)
+
+            metric.update(preds=preds, labels=labels)
+            numpy_rmse = metric.eval()
+            expct_rmes = np.sqrt(np.mean(np.square(preds - labels)))
+            print("expct RMSE: %.2f and got %.2f" % ( expct_rmes, numpy_rmse))
+
+    """
+
+    def __init__(self, name=None):
+        super(RMSE, self).__init__(name)
+        self.total = 0.0
+        self.sample_num = 0
+
+    def update(self, preds, labels):
+        if not _is_numpy_(preds):
+            raise ValueError("The 'preds' must be a numpy ndarray.")
+        if not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray.")
+        self.sample_num += labels.shape[0]
+        self.total += np.sum(np.square(preds - labels))
+
+    def eval(self):
+        return np.sqrt(self.total / self.sample_num)
+
+
 class Recall(MetricBase):
     """
     Recall (also known as sensitivity) is the fraction of
@@ -485,7 +539,7 @@ class ChunkEvaluator(MetricBase):
         recall = float(self.num_correct_chunks
                        ) / self.num_label_chunks if self.num_label_chunks else 0
         f1_score = float(2 * precision * recall) / (
-            precision + recall) if self.num_correct_chunks else 0
+                precision + recall) if self.num_correct_chunks else 0
         return precision, recall, f1_score
 
 
