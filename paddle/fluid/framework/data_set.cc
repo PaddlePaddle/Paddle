@@ -359,7 +359,10 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
       ars.shrink_to_fit();
       data.clear();
       data.shrink_to_fit();
-      sleep(this->fleet_send_sleep_seconds_);
+      // currently we find bottleneck is server not able to handle large data
+      // in time, so we remove this sleep and set fleet_send_batch_size to
+      // 1024, and set server thread to 24
+      // sleep(this->fleet_send_sleep_seconds_);
     }
   };
 
