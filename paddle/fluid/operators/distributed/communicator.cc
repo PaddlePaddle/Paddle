@@ -56,10 +56,11 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
-                                 Scope *recv_scope)
-    : send_varname_to_ctx_(send_varname_to_ctx),
-      recv_varname_to_ctx_(recv_varname_to_ctx),
-      recv_scope_(recv_scope) {
+                                 Scope *recv_scope) {
+  send_varname_to_ctx_ = std::move(send_varname_to_ctx);
+  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
+  recv_scope_ = std::move(recv_scope);
+
   // get all send information from graph, build vars_to_send
   VLOG(0) << "communicator_independent_recv_thread: "
           << FLAGS_communicator_independent_recv_thread;
