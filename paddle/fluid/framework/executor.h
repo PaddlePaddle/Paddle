@@ -44,7 +44,8 @@ struct ExecutorPrepareContext {
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
-  std::unordered_map<OperatorBase*, std::vector<std::string>> unused_vars_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
   bool force_disable_gc_{false};
 };
 
