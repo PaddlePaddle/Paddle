@@ -69,7 +69,7 @@ class FCPrimitiveFactory {
  private:
   void UpdateDataPointers(const ExecutionContext& ctx, Tensor* out,
                           const Tensor* in) {
-    input_->set_data_handle(const_cast<T_in*>(in->data<T_in>()));
+    input_->set_data_handle(to_void_cast(in->data<T_in>()));
     output_->set_data_handle(out->mutable_data<T_out>(ctx.GetPlace()));
     if (out->format() == MKLDNNMemoryFormat::format_undef) {
       auto output_format = platform::GetMKLDNNFormat(*output_);

@@ -44,8 +44,9 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
                                     bool is_unsigned,
                                     std::string scale_attr_name) const {
   auto inputs = op->Op()->InputNames();
-  PADDLE_ENFORCE_NE(std::find(inputs.begin(), inputs.end(), input_name),
-                    inputs.end(), "%s isn't the input of the %s operator",
+  bool name_found =
+      std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
+  PADDLE_ENFORCE_EQ(name_found, true, "%s isn't the input of the %s operator",
                     input_name, op->Op()->Type());
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
@@ -127,8 +128,9 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
                                        double scale_to_one, bool is_unsigned,
                                        std::string scale_attr_name) const {
   auto outputs = op->Op()->OutputNames();
-  PADDLE_ENFORCE_NE(std::find(outputs.begin(), outputs.end(), output_name),
-                    outputs.end(), "%s isn't the output of the %s operator",
+  bool name_found =
+      std::find(outputs.begin(), outputs.end(), output_name) != outputs.end();
+  PADDLE_ENFORCE_EQ(name_found, true, "%s isn't the output of the %s operator",
                     output_name, op->Op()->Type());
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
