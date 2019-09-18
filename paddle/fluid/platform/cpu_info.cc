@@ -32,16 +32,9 @@ limitations under the License. */
 #include <algorithm>
 #include "gflags/gflags.h"
 
-DEFINE_double(fraction_of_cpu_memory_to_use, 1,
-              "Default use 100% of CPU memory for PaddlePaddle,"
-              "reserve the rest for page tables, etc");
-DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
-              "Initial CPU memory for PaddlePaddle, in MD unit.");
-
-DEFINE_double(
-    fraction_of_cuda_pinned_memory_to_use, 0.5,
-    "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
-    "reserve the rest for page tables, etc");
+DECLARE_double(fraction_of_cpu_memory_to_use);
+DECLARE_uint64(initial_cpu_memory_in_mb);
+DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 
 // If use_pinned_memory is true, CPUAllocator calls mlock, which
 // returns pinned and locked memory as staging areas for data exchange

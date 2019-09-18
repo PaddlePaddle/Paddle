@@ -34,7 +34,7 @@ URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT', 'convert'
+    'PTRATIO', 'B', 'LSTAT'
 ]
 
 UCI_TRAIN_DATA = None
@@ -147,11 +147,3 @@ def predict_reader():
 
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "uci_housing_train")
-    paddle.dataset.common.convert(path, test(), 1000, "uci_houseing_test")

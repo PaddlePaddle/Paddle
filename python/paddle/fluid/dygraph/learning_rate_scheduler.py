@@ -91,6 +91,9 @@ class PiecewiseDecay(LearningRateDecay):
         step: The step_size using when calculate the new step_num (Defalult is 1)
         dtype: The dtype used to create the learning rate variable
 
+    Returns:
+        The decayed learning rate.
+
     Examples:
         .. code-block:: python
 
@@ -138,6 +141,9 @@ class NaturalExpDecay(LearningRateDecay):
         begin: A Python 'int32' number, the begin step (Default is 0)
         step: A Python 'int32' number, the step size (Default is 1)
         dtype: A Python 'str', the dtype used to create learning rate variable (Default is 'float32')
+
+    Returns:
+        The decayed learning rate.
 
     Examples:
         .. code-block:: python
@@ -204,6 +210,9 @@ class ExponentialDecay(LearningRateDecay):
         step(int): The step size (default is 1)
         dtype(str): The dtype used to create learning rate (default is 'float32')
 
+    Returns:
+        The decayed learning rate.
+
     Examples:
         .. code-block:: python
 
@@ -266,6 +275,9 @@ class InverseTimeDecay(LearningRateDecay):
         begin(int): The begin step (default is 0)
         step(int): The step size (default is 1)
         dtype(str): The dtype used to create learning rate (default is 'float32')
+
+    Returns:
+        The decayed learning rate.
 
     Examples:
         .. code-block:: python
@@ -330,6 +342,9 @@ class PolynomialDecay(LearningRateDecay):
         begin(int): The begin step (default is 0)
         step(int): The step size (default is 1)
         dtype(str): The dtype used to create learning rate (default is 'float32')
+
+    Returns:
+        The decayed learning rate.
 
     Examples:
         .. code-block:: python
@@ -402,6 +417,9 @@ class CosineDecay(LearningRateDecay):
         step(int): The step size (default is 1).
         dtype(str): The dtype used to create learning rate (default is 'float32').
 
+    Returns:
+        The decayed learning rate.
+
     Examples:
 	.. code-block:: python
 
@@ -459,6 +477,9 @@ class NoamDecay(LearningRateDecay):
         begin(int): The begin step (default is 0)
         step(int): The step size (default is 1)
         dtype(str): The dtype used to create learning rate (default is 'float32')
+
+    Returns:
+        The decayed learning rate.
 
     Examples:
         .. code-block:: python

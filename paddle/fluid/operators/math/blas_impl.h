@@ -128,6 +128,12 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
+#if !defined(_WIN32)
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_scsrmm(args...);
+  }
+#endif
 };
 
 template <>
@@ -233,6 +239,12 @@ struct CBlas<double> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmdErf(args...);
   }
+#if !defined(_WIN32)
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_dcsrmm(args...);
+  }
+#endif
 };
 
 #else
@@ -654,7 +666,11 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                            mat_b.data<T>(), beta, mat_out->data<T>());
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
-                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0,
+                   "dim_a.batch_size should be equal to dim_b.batch_size, or "
+                   "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+                   dim_a.batch_size_, dim_b.batch_size_);
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
         mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
@@ -747,6 +763,19 @@ void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
   }
 #endif
 }
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::CSRMM(
+    const char *transa, const int *m, const int *n, const int *k,
+    const T *alpha, const char *matdescra, const T *val, const int *indx,
+    const int *pntrb, const int *pntre, const T *b, const int *ldb,
+    const T *beta, T *c, const int *ldc) const {
+  CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
+                  ldb, beta, c, ldc);
+}
+#endif
 
 }  // namespace math
 }  // namespace operators

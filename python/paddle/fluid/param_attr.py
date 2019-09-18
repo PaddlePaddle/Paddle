@@ -42,8 +42,8 @@ class ParamAttr(object):
         trainable(bool): Whether this parameter is trainable. Default True.
         gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
             gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average.
-            Default False.
+        do_model_average(bool): Whether this parameter should do model average 
+            when model average is enabled. Default True.
 
     Examples:
         .. code-block:: python
@@ -65,14 +65,14 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  gradient_clip=None,
-                 do_model_average=False):
+                 do_model_average=True):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
         self.gradient_clip = gradient_clip
-        self.model_average = do_model_average
+        self.do_model_average = do_model_average
 
     def _set_default_initializer(self, initializer):
         """
@@ -170,7 +170,7 @@ class ParamAttr(object):
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'gradient_clip_attr': self.gradient_clip,
-            'model_average': self.model_average
+            'do_model_average': self.do_model_average
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer

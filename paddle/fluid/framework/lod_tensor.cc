@@ -26,9 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
 namespace paddle {
 namespace framework {
 
@@ -275,36 +272,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {
-  std::stringstream buffer;
-  size_t sz = tensor.size();
-  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
-  for (auto &each : tensor) {
-    SerializeToStream(buffer, each, dev_ctx);
-  }
-  writer->Write(buffer.str());
-}
-
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  if (!scanner->HasNext()) {
-    return false;
-  }
-  std::istringstream sin(scanner->Next());
-  uint32_t sz;
-  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-  auto &result = *result_ptr;
-  result.resize(sz);
-  for (uint32_t i = 0; i < sz; ++i) {
-    DeserializeFromStream(sin, &result[i], dev_ctx);
-  }
-
-  return true;
-}
-
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -359,17 +326,28 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  auto new_type = lod_tensors[0]->type();
+  proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout = lod_tensors[0]->layout();
+  for (auto *t : lod_tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = t->type();
+      new_layout = t->layout();
+      break;
+    }
+  }
+
   LoD new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type, t->type());
-    PADDLE_ENFORCE_EQ(new_layout, t->layout());
-
-    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
-                      framework::product(t->dims()) / t->dims()[0]);
-    new_dim[0] += t->dims()[0];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(new_type, t->type());
+      PADDLE_ENFORCE_EQ(new_layout, t->layout());
+      PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                        framework::product(t->dims()) / t->dims()[0]);
+      new_dim[0] += t->dims()[0];
+    }
 
     auto &lod = t->lod();
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
@@ -389,6 +367,9 @@ void LoDTensor::MergeLoDTensor(
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
+    if (end == begin) {
+      continue;
+    }
     auto dst = Slice(begin, end);
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;

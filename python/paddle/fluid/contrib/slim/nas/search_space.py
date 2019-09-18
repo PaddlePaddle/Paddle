@@ -41,3 +41,12 @@ class SearchSpace(object):
             (tuple): startup_program, train_program, evaluation_program, train_metrics, test_metrics
         """
         raise NotImplementedError('Abstract method.')
+
+    def get_model_latency(self, program):
+        """Get model latency according to program.
+        Args:
+            program(Program): The program to get latency.
+        Return:
+            (float): model latency.
+        """
+        raise NotImplementedError('Abstract method.')

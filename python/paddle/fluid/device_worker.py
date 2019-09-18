@@ -146,27 +146,32 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
-        sparse_table = downpour.sparse_table.add()
-        sparse_table.table_id = \
-                    self._fleet_desc.trainer_param.sparse_table[0].table_id
-        sparse_table.sparse_key_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_key)
-        sparse_table.sparse_value_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_value)
-        sparse_table.sparse_grad_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_gradient)
-        if opt_info["use_cvm"]:
-            sparse_table.emb_dim = \
-                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                0].accessor.fea_dim
-            sparse_table.fea_dim = sparse_table.emb_dim
-        else:
-            sparse_table.emb_dim = \
-                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                0].accessor.fea_dim - 2
-            sparse_table.fea_dim = sparse_table.emb_dim + 2
-        # TODO(guru4elephant): hard code here, need to improve
-        sparse_table.label_var_name = "click"
+        sparse_len = len(self._fleet_desc.trainer_param.sparse_table)
+        for i in range(sparse_len):
+            sparse_table = downpour.sparse_table.add()
+            sparse_table.table_id = \
+                        self._fleet_desc.trainer_param.sparse_table[i].table_id
+            sparse_table.sparse_key_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_key)
+            sparse_table.sparse_value_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_gradient)
+            if opt_info["use_cvm"]:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                    i].accessor.fea_dim
+                sparse_table.fea_dim = sparse_table.emb_dim
+            else:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                    i].accessor.fea_dim - 2
+                sparse_table.fea_dim = sparse_table.emb_dim + 2
+            # TODO(guru4elephant): hard code here, need to improve
+            sparse_table.label_var_name = "click"
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                downpour.stat_var_names.extend([i])
 
         for i in self._fleet_desc.trainer_param.dense_table:
             if i.table_id in dense_table_set:
