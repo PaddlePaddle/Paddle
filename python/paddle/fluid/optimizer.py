@@ -2980,7 +2980,7 @@ class RecomputeOptimizer(Optimizer):
     Recompute Optimizer Wrapper
 
     Normally, a training step contains three sub-steps: first, run forward
-    Oprators to calculate the loss; second, run backward Operators to 
+    Operators to calculate the loss; second, run backward Operators to 
     calculate gradient of the parameters; third, apply optimization method
     to update the value of the parameters.
 
@@ -2988,8 +2988,8 @@ class RecomputeOptimizer(Optimizer):
     backward computation process will be kept in memory. They occupy a great
     amount of memory when the network becomes very deep.
 
-    Recompute split the network to k segements. In each segment, It will 
-    recompute the forward Opeartors, before runing backward operators. It is
+    Recompute split the network to k segments. In each segment, It will 
+    recompute the forward Operators, before running backward operators. It is
     very helpful for saving memory.
  
     The Variables that seperate a network to segments are called as checkpoints,
@@ -2997,8 +2997,6 @@ class RecomputeOptimizer(Optimizer):
 
     Args:
         optimizer (Optimizer): The optimizer that is applied to parameters.
-        debug (bool): debug tool to calculate memory usage
-        debug_batchsize (int): batch size when using debug tool.
 
     Examples:
         .. code-block:: python
@@ -3045,33 +3043,76 @@ class RecomputeOptimizer(Optimizer):
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
 
-    def minimize(self,
+    def load(self, stat_dict):
+        """
+        load function is not supported by Recompute Optimizer for now
+        """
+        raise NotImplementedError(
+            "load function is not supported by Recompute Optimizer for now")
+
+    def apply_gradients(self, params_grads):
+        """
+        call apply_gradients function of self._optimizer
+        """
+        return self._optimizer.apply_gradients(params_grads=params_grads)
+
+    def backward(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 grad_clip=None):
-        if self._checkpoints == None:
-            raise ValueError("You should call _set_checkpoints first")
-
+                 callbacks=None,
+                 checkpoints=None):
+        """
+        call append_backward with checkpoints 
+        """
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
 
         self._dtype = loss.dtype
         program = loss.block.program
-
         with program_guard(program, startup_program):
             params_grads = append_backward(
                 loss,
                 parameter_list,
                 no_grad_set,
                 checkpoints=self._checkpoints)
+        return params_grads
 
-            if grad_clip:
-                # TODO(guru4elephant): should add grad_clip for static graph
-                pass
-        optimize_ops = self._optimizer.apply_optimize(
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        call the apply_optimize function of self._optimizer
+        """
+        return self._optimizer.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+
+        assert (isinstance(loss, Variable)), "The loss should be an Variable."
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set,
+            checkpoints=self._checkpoints)
+
+        if grad_clip:
+            # TODO(guru4elephant): should add grad_clip for static graph
+            pass
+
+        optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
