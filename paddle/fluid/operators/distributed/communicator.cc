@@ -121,7 +121,7 @@ void Communicator::SendThread() {
     VLOG(3) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
     if (is_geo_sgd_) {
-      while( ids_send_queue_.size() < geo_need_push_nums_){
+      if( ids_send_queue_.size() < geo_need_push_nums_){
         size_t wait_times = 0;
         if (need_push_queue_->Size() == 0) {
           VLOG(3) << "wait_times -> " << wait_times;
@@ -136,34 +136,35 @@ void Communicator::SendThread() {
           ids_send_queue_.push_back(need_push_queue_->Pop());
           VLOG(4) <<"ids_send_queue pushed";
         }
-      }
-      VLOG(1)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
-      std::vector<SparseIdsMap> new_ids_send_queue{};
-      for(auto ids_map:ids_send_queue_) {
-        new_ids_send_queue.push_back(*ids_map);
-      }
-      ids_send_queue_.clear();
-      GeoSgdUpdate(new_ids_send_queue);
-      for (auto &iter : send_varname_to_queue_) {
-        auto &var_name = iter.first;
-        auto &var_queue = iter.second;
-        if (var_queue->Size() > 0) {
-          auto send_task = [this, &var_name, &var_queue] {
-            auto before_send = GetCurrentUS();
-            auto send_functor = distributed::ParameterSend<float>();
-            var_queue->Pop();    
-            auto &ctx = send_varname_to_ctx_.at(var_name);
-            // delta parameter is in delta scope
-            if (!FLAGS_communicator_fake_rpc) {
-              send_functor(ctx, *delta_scope_.get(), true);
+      } else {
+        VLOG(1)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
+        std::vector<SparseIdsMap> new_ids_send_queue{};
+        for(auto ids_map:ids_send_queue_) {
+          new_ids_send_queue.push_back(*ids_map);
+        }
+        ids_send_queue_.clear();
+        GeoSgdUpdate(new_ids_send_queue);
+        for (auto &iter : send_varname_to_queue_) {
+          auto &var_name = iter.first;
+          auto &var_queue = iter.second;
+          if (var_queue->Size() > 0) {
+            auto send_task = [this, &var_name, &var_queue] {
+              auto before_send = GetCurrentUS();
+              auto send_functor = distributed::ParameterSend<float>();
+              var_queue->Pop();    
+              auto &ctx = send_varname_to_ctx_.at(var_name);
+              // delta parameter is in delta scope
+              if (!FLAGS_communicator_fake_rpc) {
+                send_functor(ctx, *delta_scope_.get(), true);
+              }
+              auto after_send = GetCurrentUS();
+              VLOG(1) << "send " << var_name << " use time "
+                << after_send - before_send;
+            };
+            task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
             }
-            auto after_send = GetCurrentUS();
-            VLOG(1) << "send " << var_name << " use time "
-              << after_send - before_send;
-          };
-          task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
-          }
-        }    
+          } 
+        }  
     } else {
       for (auto &iter : send_varname_to_queue_) {
         auto &var_name = iter.first;
