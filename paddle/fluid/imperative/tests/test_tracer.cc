@@ -22,6 +22,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -142,6 +143,48 @@ TEST(test_tracer, test_track_backward_input) {
   mul_attr_map["use_mkldnn"] = false;
   ASSERT_ANY_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true));
 }
+#if defined(PADDLE_WITH_CUDA)
+TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
+  // Doing an mul
+  imperative::Tracer tracer;
+  std::shared_ptr<imperative::VarBase> x_in(
+      new imperative::VarBase(true, "x_in"));
+  std::shared_ptr<imperative::VarBase> y_in(
+      new imperative::VarBase(true, "y_in"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(true, "vout"));
+  platform::CPUPlace place;
+  platform::CUDAPlace gpu_place(0);
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims1 = {2, 5};
+  std::vector<int64_t> dims2 = {5, 2};
+
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  x_in_tensor->Resize(framework::make_ddim(dims1));
+  auto* mutable_x = x_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+  y_in_tensor->Resize(framework::make_ddim(dims2));
+  auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
+  paddle::memory::Copy(gpu_place, mutable_y, place, src_data.data(),
+                       sizeof(float) * src_data.size(), 0);
+  var_pair x_pair = var_pair("X", vb_vector(1, x_in));
+  var_pair y_pair = var_pair("Y", vb_vector(1, y_in));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+  framework::AttributeMap mul_attr_map;
+  mul_attr_map["use_mkldnn"] = false;
+  tracer.TraceOp("mul", ins, outs, mul_attr_map, gpu_place, true);
+  framework::LoDTensor rlt;
+  framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
+                            &rlt);
+  for (size_t i = 0; i < rlt.numel(); i++) {
+    ASSERT_EQ(rlt.data<float>()[i], 20.0);
+  }
+}
+#endif
 }  // namespace imperative
 }  // namespace paddle
 

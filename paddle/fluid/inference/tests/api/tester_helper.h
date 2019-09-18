@@ -128,6 +128,14 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         }
         break;
       }
+      case PaddleDType::UINT8: {
+        uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
+        uint8_t *pdata_ref = static_cast<uint8_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
     }
   }
 }
@@ -166,6 +174,15 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::INT32: {
         int32_t *pdata = static_cast<int32_t *>(out.data.data());
         int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
+        EXPECT_EQ(size, ref_size);
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::UINT8: {
+        uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
+        uint8_t *pdata_ref = ref_out.data<uint8_t>(&place, &ref_size);
         EXPECT_EQ(size, ref_size);
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
@@ -286,6 +303,8 @@ void ConvertPaddleTensorToZeroCopyTensor(
       ZeroCopyTensorAssignData<float>(tensor.get(), input.data);
     } else if (input.dtype == PaddleDType::INT32) {
       ZeroCopyTensorAssignData<int32_t>(tensor.get(), input.data);
+    } else if (input.dtype == PaddleDType::UINT8) {
+      ZeroCopyTensorAssignData<uint8_t>(tensor.get(), input.data);
     } else {
       LOG(ERROR) << "unsupported feed type " << input.dtype;
     }

@@ -32,11 +32,6 @@ function(inference_qat_int8_test target model_dir data_dir test_script use_mkldn
                  --acc_diff_threshold 0.1)
 endfunction()
 
-# NOTE: TODOOOOOOOOOOO
-# temporarily disable test_distillation_strategy since it always failed on a specified machine with 4 GPUs
-# Need to figure out the root cause and then add it back
-list(REMOVE_ITEM TEST_OPS test_distillation_strategy)
-
 if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
 endif()
