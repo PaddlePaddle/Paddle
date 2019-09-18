@@ -54,9 +54,9 @@ inline double GetCurrentUS() {
 
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
-AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                            const RpcCtxMap &recv_varname_to_ctx,
-                            Scope *recv_scope)
+void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                                 const RpcCtxMap &recv_varname_to_ctx,
+                                 Scope *recv_scope)
     : send_varname_to_ctx_(send_varname_to_ctx),
       recv_varname_to_ctx_(recv_varname_to_ctx),
       recv_scope_(recv_scope) {
@@ -239,8 +239,8 @@ void AsyncCommunicator::RecvThread() {
   VLOG(0) << "communicator stopped, recv thread exit";
 }
 
-void Communicator::Send(const std::string &var_name,
-                        const framework::Scope &scope) {
+void AsyncCommunicator::Send(const std::string &var_name,
+                             const framework::Scope &scope) {
   VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
@@ -308,10 +308,10 @@ void AsyncCommunicator::Start() {
     running_ = true;
     // start send and recv thread
     send_thread_.reset(
-        new std::thread(std::bind(&Communicator::SendThread, this)));
+        new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
     if (FLAGS_communicator_independent_recv_thread) {
       recv_thread_.reset(
-          new std::thread(std::bind(&Communicator::RecvThread, this)));
+          new std::thread(std::bind(&AsyncCommunicator::RecvThread, this)));
     }
   }
 }
