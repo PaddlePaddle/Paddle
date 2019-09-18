@@ -25,14 +25,11 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    VLOG(5) << "====into gpu forward simple! ===";
-    auto size = x->numel();
-    dim3 block_size = dim3(TILE_SIZE, 1);
-    dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-    SameDimsElemwiseAddCUDAKernel<T><<<
-        gird_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x->data<T>(), y->data<T>(), z->data<T>(), size);
+    getAddFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
+                                                              x->numel());
+    for_range(functor);
   }
 };
 
