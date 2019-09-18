@@ -223,6 +223,11 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Means"), "");
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
+    // check output
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSize")), "");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSum")), "");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
+
     const auto x_dims = ctx->GetInputDim("X");
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
@@ -233,15 +238,9 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     }
-    if (ctx->HasOutput(framework::GradVarName("BatchSize"))) {
-      ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
-    }
-    if (ctx->HasOutput(framework::GradVarName("BatchSum"))) {
-      ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
-    }
-    if (ctx->HasOutput(framework::GradVarName("BatchSquareSum"))) {
-      ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
-    }
+    ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
+    ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
+    ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
   }
 
  protected:
