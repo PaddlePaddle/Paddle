@@ -178,28 +178,26 @@ class Communicator {
   virtual void InitImpl(const paddle::framework::ProgramDesc& program,
                         Scope* recv_scope);
 
-  template <typename T>
-  static T* GetInstance() {
-    return communicator_.get();
-  }
+  static Communicator* GetInstance() { return communicator_.get(); }
 
   static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
   }
 
   template <typename T>
-  static T* InitInstance(const RpcCtxMap& send_varname_to_ctx,
-                         const RpcCtxMap& recv_varname_to_ctx,
-                         Scope* recv_scope) {
-    std::call_once(init_flag_, &Communicator::Init<T>, send_varname_to_ctx,
-                   recv_varname_to_ctx, recv_scope);
+  static Communicator* InitInstance(const RpcCtxMap& send_varname_to_ctx,
+                                    const RpcCtxMap& recv_varname_to_ctx,
+                                    Scope* recv_scope) {
+    std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>,
+                   send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
     return communicator_.get();
   }
 
   // Init is called by InitInstance.
   template <typename T>
-  static void Init(const RpcCtxMap& send_varname_to_ctx,
-                   const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
+  static void InitWithRpcCtx(const RpcCtxMap& send_varname_to_ctx,
+                             const RpcCtxMap& recv_varname_to_ctx,
+                             Scope* recv_scope) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T());
       communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
@@ -208,44 +206,46 @@ class Communicator {
   }
 
   template <typename T>
-  static T* InitInstance(const paddle::framework::ProgramDesc& program,
-                         Scope* recv_scope) {
-    std::call_once(init_flag_, &Communicator::Init<T>, program, recv_scope);
+  static Communicator* InitInstance(
+      const paddle::framework::ProgramDesc& program, Scope* recv_scope) {
+    std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
+                   recv_scope);
     return communicator_.get();
   }
 
   template <typename T>
-  static void Init(const paddle::framework::ProgramDesc& program,
-                   Scope* recv_scope) {
+  static void InitWithProgram(const paddle::framework::ProgramDesc& program,
+                              Scope* recv_scope) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T());
       communicator_->InitImpl(program, recv_scope);
     }
   }
 
- private:
+ protected:
   bool running_ = false;
-
-  static std::once_flag init_flag_;
   static std::shared_ptr<Communicator> communicator_;
+  static std::once_flag init_flag_;
 };
 
-class AsyncCommunicator : Communicator {
+class AsyncCommunicator : public Communicator {
+ public:
   AsyncCommunicator() {}
+  virtual ~AsyncCommunicator();
+  void Start() override;
+  void Stop() override;
 
-  void Start();
-  void Stop();
-
-  void Send(const std::string& var_name, const framework::Scope& scope);
-  void Recv();
+  void Send(const std::string& var_name,
+            const framework::Scope& scope) override;
+  void Recv() override;
   void RecvAll();
 
-  virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                        const RpcCtxMap& recv_varname_to_ctx,
-                        Scope* recv_scope);
+  void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                const RpcCtxMap& recv_varname_to_ctx,
+                Scope* recv_scope) override;
 
-  virtual void InitImpl(const paddle::framework::ProgramDesc& program,
-                        Scope* recv_scope);
+  void InitImpl(const paddle::framework::ProgramDesc& program,
+                Scope* recv_scope) override;
 
   void SendThread();
   void RecvThread();
