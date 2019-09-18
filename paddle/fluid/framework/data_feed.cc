@@ -33,10 +33,52 @@ limitations under the License. */
 #include "io/shell.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
+
+void RecordCandidateList::ReSize(size_t length) {
+  _mutex.lock();
+  _capacity = length;
+  CHECK(_capacity > 0);  // NOLINT
+  _candidate_list.clear();
+  _candidate_list.resize(_capacity);
+  _full = false;
+  _cur_size = 0;
+  _total_size = 0;
+  _mutex.unlock();
+}
+
+void RecordCandidateList::ReInit() {
+  _mutex.lock();
+  _full = false;
+  _cur_size = 0;
+  _total_size = 0;
+  _mutex.unlock();
+}
+
+void RecordCandidateList::AddAndGet(const Record& record,
+                                    RecordCandidate* result) {
+  _mutex.lock();
+  size_t index = 0;
+  ++_total_size;
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  if (!_full) {
+    _candidate_list[_cur_size++] = record;
+    _full = (_cur_size == _capacity);
+  } else {
+    CHECK(_cur_size == _capacity);
+    index = fleet_ptr->LocalRandomEngine()() % _total_size;
+    if (index < _capacity) {
+      _candidate_list[index] = record;
+    }
+  }
+  index = fleet_ptr->LocalRandomEngine()() % _cur_size;
+  *result = _candidate_list[index];
+  _mutex.unlock();
+}
 
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
@@ -101,11 +143,24 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
   }
 }
 
+void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
+  if (platform::is_cpu_place(this->place_)) {
+    memcpy(dst, src, size);
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
+#else
+    PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
+#endif
+  }
+}
+
 template <typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE(queue_size > 0, "Illegal queue size: %d.", queue_size);
   queue_size_ = queue_size;
   queue_ = paddle::framework::MakeChannel<T>();
+  queue_->SetCapacity(queue_size);
 }
 
 template <typename T>
@@ -169,6 +224,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_content_ = false;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -253,6 +309,11 @@ void InMemoryDataFeed<T>::SetThreadNum(int thread_num) {
 }
 
 template <typename T>
+void InMemoryDataFeed<T>::SetParseContent(bool parse_content) {
+  parse_content_ = parse_content;
+}
+
+template <typename T>
 void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
   parse_ins_id_ = parse_ins_id;
 }
@@ -301,7 +362,8 @@ void MultiSlotDataFeed::Init(
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
-  SetQueueSize(data_feed_desc.batch_size());
+  // temporarily set queue size = batch size * 100
+  SetQueueSize(data_feed_desc.batch_size() * 100);
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
@@ -610,15 +672,16 @@ void MultiSlotDataFeed::PutToFeedVec(
 
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
-      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec[i].GetUint64Data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, &feasign[0],
+                       total_instance * sizeof(int64_t));
     }
 
     LoD data_lod{offset};
@@ -708,6 +771,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->ins_id_ = std::string(str + pos, len);
       pos += len + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
+    }
+    if (parse_content_) {
+      int num = strtol(&str[pos], &endptr, 10);
+      CHECK(num == 1);  // NOLINT
+      pos = endptr - str + 1;
+      size_t len = 0;
+      while (str[pos + len] != ' ') {
+        ++len;
+      }
+      instance->content_ = std::string(str + pos, len);
+      pos += len + 1;
+      VLOG(3) << "content " << instance->content_;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -833,8 +908,14 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   std::vector<std::vector<size_t>> offset(use_slots_.size(),
                                           std::vector<size_t>{0});
   std::vector<bool> visit(use_slots_.size(), false);
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(ins_vec.size());
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
+    ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;
@@ -872,15 +953,15 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float
       float* feasign = batch_float_feasigns[i].data();
-      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, feasign, total_instance * sizeof(float));
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       uint64_t* feasign = batch_uint64_feasigns[i].data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
     auto& slot_offset = offset[i];
     LoD data_lod{slot_offset};
@@ -906,15 +987,16 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
 
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec_[i].GetFloatData();
-      float* tensor_ptr = feed_vec_[i]->mutable_data<float>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(float));
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, &feasign[0], total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
       const auto& feasign = ins_vec_[i].GetUint64Data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
-          {total_instance, 1}, platform::CPUPlace());
-      memcpy(tensor_ptr, &feasign[0], total_instance * sizeof(int64_t));
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, &feasign[0],
+                       total_instance * sizeof(int64_t));
     }
 
     LoD data_lod{offset};

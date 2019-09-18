@@ -10,6 +10,7 @@ strategies:
         class: 'LightNASStrategy'
         controller: 'sa_controller'
         target_flops: 629145600
+        target_latency: 1
         end_epoch: 2
         retrain_epoch: 1
         metric_name: 'acc_top1'

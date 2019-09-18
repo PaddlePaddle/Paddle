@@ -20,9 +20,6 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
 namespace paddle {
 namespace framework {
 
@@ -279,53 +276,6 @@ TEST(LoD, ConvertToOffsetBasedLoD) {
   expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
   EXPECT_EQ(offset_lod, expected);
-}
-
-template <typename T>
-static void TestRecordIO() {
-  LoDTensor tensor;
-  T* tmp = tensor.mutable_data<T>(make_ddim({4, 5}), platform::CPUPlace());
-  for (int i = 0; i < 20; ++i) {
-    tmp[i] = static_cast<T>(i);
-  }
-
-  std::stringstream* stream = new std::stringstream();
-  auto& ctx =
-      *platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-  {
-    recordio::Writer writer(stream, recordio::Compressor::kSnappy);
-    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
-    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
-    writer.Flush();
-  }
-
-  auto assert_tensor_ok = [](const LoDTensor& tensor) {
-    for (int i = 0; i < 20; ++i) {
-      ASSERT_EQ(tensor.data<T>()[i], static_cast<T>(i));
-    }
-  };
-
-  {
-    std::unique_ptr<std::istream> stream_ptr(stream);
-    recordio::Scanner scanner(std::move(stream_ptr));
-    std::vector<framework::LoDTensor> tensors;
-    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
-    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
-    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
-    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
-  }
-}
-
-TEST(LoDTensor, RecordIO) {
-  TestRecordIO<int>();
-  TestRecordIO<int16_t>();
-  TestRecordIO<uint8_t>();
-  TestRecordIO<float>();
-  TestRecordIO<double>();
 }
 
 }  // namespace framework

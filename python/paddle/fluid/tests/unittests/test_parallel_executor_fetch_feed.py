@@ -93,10 +93,6 @@ class TestFetchAndFeed(unittest.TestCase):
                      10).astype(np.int64)
                 yield img, l
 
-        # TODO(zcd): I found that onece the memory optimizer is open,
-        # parallel_exe doesn't fetch some variable, such as conv2d_0.b_0@GRAD,
-        # conv2d_1.b_0@GRAD. Those variables should not be pruned.
-        # fluid.memory_optimize(main)
         fetch_list = []
         all_vars = compiled_program._program.global_block().vars
 

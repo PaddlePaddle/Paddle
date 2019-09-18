@@ -210,11 +210,6 @@ class DistributedTranspiler(Fleet):
         self._transpile_config = config
         self._transpiler = OriginTranspiler(config)
 
-        print("server endpoints")
-        print(fleet.server_endpoints(to_string=True))
-        print("worker index: %d" % fleet.worker_index())
-        print("worker num: %d" % fleet.worker_num())
-
         if self.is_worker():
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
@@ -222,12 +217,11 @@ class DistributedTranspiler(Fleet):
                 trainers=fleet.worker_num(),
                 sync_mode=config.sync_mode)
 
-            wait_port = True
             if isinstance(self._role_maker, MPISymetricRoleMaker):
-                wait_port = False
+                config.wait_port = False
 
             self.main_program = self._transpiler.get_trainer_program(
-                wait_port=wait_port)
+                wait_port=config.wait_port)
             self.startup_program = default_startup_program()
         else:
             self._transpiler.transpile(

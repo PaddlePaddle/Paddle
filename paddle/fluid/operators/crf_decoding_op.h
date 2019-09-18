@@ -35,31 +35,59 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* label = ctx.Input<LoDTensor>("Label");
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
 
-    PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
-                      "The Input(Emission) should be a sequence.");
-    auto lod = emission_weights->lod();
-    PADDLE_ENFORCE(lod.size(), "Input(Emission) must be a sequence.");
-    const size_t level = 0;
-    const size_t seq_num = lod[level].size() - 1;
-
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
     math::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
-    for (size_t i = 0; i < seq_num; ++i) {
-      if (lod[level][i] == lod[level][i + 1]) continue;
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
-      Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
-      Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
-             &decoded_path_one_seq);
-    }
 
+    bool has_length = ctx.HasInput("Length");
+    if (has_length) {
+      auto* length = ctx.Input<Tensor>("Length");
+      const size_t seq_num = length->numel();
+      const int64_t* length_data = length->data<int64_t>();
+      auto in_dims = emission_weights->dims();
+
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      framework::Tensor emission_weights_tmp =
+          ctx.AllocateTmpTensor<T, DeviceContext>(emission_weights->dims(),
+                                                  dev_ctx);
+      emission_weights_tmp.ShareDataWith(*emission_weights);
+      emission_weights_tmp.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+
+      decoded_path->Resize({in_dims[0] * in_dims[1], 1});
+      for (size_t i = 0; i < seq_num; ++i) {
+        if (length_data[i] == 0) continue;
+        int start_pos = i * in_dims[1];
+        int end_pos = start_pos + static_cast<int>(length_data[i]);
+        Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
+        Decode(emission_weights_tmp.Slice(start_pos, end_pos),
+               *transition_weights, &decoded_path_one_seq);
+      }
+      decoded_path->Resize({in_dims[0], in_dims[1]});
+    } else {
+      PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
+                        "The Input(Emission) should be a sequence.");
+      auto lod = emission_weights->lod();
+      PADDLE_ENFORCE_GT(lod.size(), 0, "Input(Emission) must be a sequence.");
+      const size_t level = 0;
+      const size_t seq_num = lod[level].size() - 1;
+
+      for (size_t i = 0; i < seq_num; ++i) {
+        if (lod[level][i] == lod[level][i + 1]) continue;
+        int start_pos = static_cast<int>(lod[level][i]);
+        int end_pos = static_cast<int>(lod[level][i + 1]);
+        Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
+        Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
+               &decoded_path_one_seq);
+      }
+    }
     if (label) {
-      PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
-                        "The Input(Label) should be a sequence.");
+      if (!has_length) {
+        PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
+                          "The Input(Label) should be a sequence.");
+      }
       const int64_t* label_value = label->data<int64_t>();
-      size_t batch_size = emission_weights->dims()[0];
-      for (size_t i = 0; i < batch_size; ++i) {
+      size_t numel = label->numel();
+      for (size_t i = 0; i < numel; ++i) {
         path[i] = label_value[i] == path[i] ? 1 : 0;
       }
     }

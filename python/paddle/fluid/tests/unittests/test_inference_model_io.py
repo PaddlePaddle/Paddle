@@ -109,9 +109,6 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe = executor.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
-        memory_optimize(program, print_log=True)
-        self.assertEqual(program._is_mem_optimized, True)
-        # will print warning message
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
 
 
@@ -140,8 +137,7 @@ class TestInstance(unittest.TestCase):
         cp_prog = CompiledProgram(program).with_data_parallel(
             loss_name=avg_cost.name)
 
-        self.assertRaises(TypeError, save_inference_model,
-                          [MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog])
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
 

@@ -297,13 +297,18 @@ namespace allocation {
 
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  return new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  platform::MemEvenRecorder::Instance().PushMemRecord(
+      static_cast<void *>(tmp_alloc), place_, size);
+  return tmp_alloc;
 }
 
 void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
   boost::apply_visitor(
       legacy::FreeVisitor(allocation->ptr(), allocation->size()),
       allocation->place());
+  platform::MemEvenRecorder::Instance().PopMemRecord(
+      static_cast<void *>(allocation), place_);
   delete allocation;
 }
 

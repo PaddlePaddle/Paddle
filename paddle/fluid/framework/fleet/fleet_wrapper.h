@@ -136,6 +136,7 @@ class FleetWrapper {
   void LoadFromPaddleModel(Scope& scope, const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path, std::string model_proto_file,
+                           std::vector<std::string> table_var_list,
                            bool load_combine);
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
@@ -148,7 +149,13 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
 
+  double GetCacheThreshold();
+  void CacheShuffle(int table_id, const std::string& path, const int mode,
+                    const double cache_threshold);
+  int32_t SaveCache(int table_id, const std::string& path, const int mode);
+
   void ClearModel();
+
   void ShrinkSparseTable(int table_id);
   void ShrinkDenseTable(int table_id, Scope* scope,
                         std::vector<std::string> var_list, float decay,

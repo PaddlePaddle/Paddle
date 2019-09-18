@@ -225,7 +225,7 @@ class OpConverter {
     return 0;                                                                  \
   }
 
-#define USE_TRT_CONVERTER(op_type__)                                    \
-  extern int TouchConverterRegister_##op_type__();                      \
-  static int use_op_converter_trt_##op_type__ __attribute__((unused)) = \
+#define USE_TRT_CONVERTER(op_type__)                   \
+  extern int TouchConverterRegister_##op_type__();     \
+  static int use_op_converter_trt_##op_type__ UNUSED = \
       TouchConverterRegister_##op_type__();

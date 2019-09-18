@@ -38,18 +38,14 @@ __global__ void SumArrayCUDAKernel(T **in, T *out, int64_t N, size_t in_size,
                                    bool read_dst) {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   while (id < N) {
-    T total(0);
+    T total(read_dst ? out[id] : static_cast<T>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
         total += tmp[id];
       }
     }
-    if (read_dst) {
-      out[id] += total;
-    } else {
-      out[id] = total;
-    }
+    out[id] = total;
     id += blockDim.x * gridDim.x;
   }
 }

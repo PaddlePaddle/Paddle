@@ -53,6 +53,19 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
+    unsigned int diag_num =
+        static_cast<unsigned int>(ctx.Attr<int>("diag_num"));
+    unsigned int diag_step =
+        static_cast<unsigned int>(ctx.Attr<int>("diag_step"));
+    auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
+    if (diag_num > 0) {
+      PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
+                        "The index of diagonal elements is out of bounds");
+      for (int64_t i = 0; i < diag_num; ++i) {
+        int64_t pos = i * diag_step + i;
+        data[pos] = diag_val;
+      }
+    }
   }
 };
 
@@ -61,13 +74,17 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UniformRandomOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of UniformRandomOp should not be null.");
 
-    PADDLE_ENFORCE(
-        ctx->Attrs().Get<float>("min") < ctx->Attrs().Get<float>("max"),
-        "uniform_random's min must less then max");
+    PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
+                      ctx->Attrs().Get<float>("max"),
+                      "uniform_random's min must less then max");
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
+                      "diag_num must greater than or equal 0");
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
+                      "diag_step must greater than or equal 0");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
@@ -105,6 +122,14 @@ uniform distribution. The random result is in set [min, max].
                  "Note that if seed is not 0, this operator will always "
                  "generate the same random numbers every time. [default 0].")
         .SetDefault(0);
+    AddAttr<int>("diag_num",
+                 "The number of diag elements. Note that if "
+                 "diag_num is 0, it means without diag init.[default 0].")
+        .SetDefault(0);
+    AddAttr<int>("diag_step", "The step between two diag element.[default 0].")
+        .SetDefault(0);
+    AddAttr<float>("diag_val", "The value of diag element. [default 1.0].")
+        .SetDefault(1.0f);
     AddAttr<int>("dtype", "Output tensor data type. [default 5(FP32)].")
         .SetDefault(framework::proto::VarType::FP32);
   }

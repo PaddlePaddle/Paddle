@@ -66,7 +66,7 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
            ((attr.w / YMM_FLOAT_BLOCK + 4 /* for rest */) *
                 4 /* load, mul and save */ +
             256) *
-               8;
+               16;
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const seq_pool_attr_t& attr) const override {

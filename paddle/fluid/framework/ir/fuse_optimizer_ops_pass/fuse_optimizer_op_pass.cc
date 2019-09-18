@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include <algorithm>
+#include <set>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -59,6 +60,15 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     }
     return;
   }
+
+  // There should not have no-ctr-var between the op_nodes that link the op_node
+  // of op_nodes.
+  if (HasVarDepsBetweenOps(topo_nodes, opt_nodes)) {
+    VLOG(6) << "There are interdependent variables among these optimization "
+               "operators, which can not be handled well at present.";
+    return;
+  }
+
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
   if (!result.Has(details::kProgramDescs)) {
@@ -158,12 +168,52 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                     &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
-  FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
+  auto *fused_opt_node =
+      FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
 
+  InsertInputAndOutputForFusedOpNode(opt_nodes, graph, fused_opt_node);
   // Step 6: Remove optimizer Ops
   for (auto &opt_op : opt_nodes) {
     graph->RemoveNode(opt_op);
   }
+}
+
+bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
+    const std::vector<Node *> &topo_nodes,
+    const std::vector<Node *> &opt_nodes) const {
+  std::unordered_map<Node *, std::unordered_set<Node *>> preceding_ops;
+  std::unordered_map<Node *, std::unordered_set<Node *>> pending_ops;
+  for (auto &op : topo_nodes) {
+    preceding_ops[op];
+    pending_ops[op];
+    for (auto &var : op->outputs) {
+      if (var->IsCtrlVar()) continue;
+      for (auto &pending_op : var->outputs) {
+        preceding_ops[pending_op].insert(op);
+        pending_ops[op].insert(pending_op);
+      }
+    }
+  }
+
+  std::unordered_set<Node *> opt_node_set(opt_nodes.begin(), opt_nodes.end());
+  auto has_var_deps = [](const std::unordered_set<Node *> &op_set1,
+                         const std::unordered_set<Node *> &op_set2) -> bool {
+    std::set<Node *> intersect_ops;
+    set_intersection(op_set1.begin(), op_set1.end(), op_set2.begin(),
+                     op_set2.end(),
+                     inserter(intersect_ops, intersect_ops.begin()));
+    return !intersect_ops.empty();
+  };
+
+  for (auto opt_node : opt_node_set) {
+    if (has_var_deps(preceding_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+    if (has_var_deps(pending_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FuseOptimizerOpPass::GradientsFilter(
@@ -338,26 +388,84 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
   op_desc->SetAttr("check_name", check_name);
 }
 
-void FuseOptimizerOpPass::InserInputAndOutputForOptOps(
-    const std::vector<ir::Node *> &opt_nodes, ir::Node *opt_node) const {
+void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
+    const std::vector<ir::Node *> &op_nodes, ir::Graph *graph,
+    ir::Node *fused_opt_node) const {
   std::unordered_set<ir::Node *> inputs;
   std::unordered_set<ir::Node *> outputs;
-  for (auto opt_op : opt_nodes) {
-    // set inputs
+  for (auto opt_op : op_nodes) {
     inputs.insert(opt_op->inputs.begin(), opt_op->inputs.end());
     for (auto &input : opt_op->inputs) {
-      replace(input->outputs.begin(), input->outputs.end(), opt_op, opt_node);
+      replace(input->outputs.begin(), input->outputs.end(), opt_op,
+              fused_opt_node);
     }
-    // set outputs
     outputs.insert(opt_op->outputs.begin(), opt_op->outputs.end());
     for (auto &output : opt_op->outputs) {
-      replace(output->inputs.begin(), output->inputs.end(), opt_op, opt_node);
+      replace(output->inputs.begin(), output->inputs.end(), opt_op,
+              fused_opt_node);
     }
   }
-  opt_node->inputs.insert(opt_node->inputs.begin(), inputs.begin(),
-                          inputs.end());
-  opt_node->outputs.insert(opt_node->outputs.begin(), outputs.begin(),
-                           outputs.end());
+
+  // Remove the dependence vars between op_nodes.
+  std::unordered_set<ir::Node *> out_dep_vars;
+  std::unordered_set<ir::Node *> not_useful_vars;
+
+  auto deal_with_ctrl_vars = [&out_dep_vars, &not_useful_vars,
+                              &fused_opt_node](ir::Node *ctr_var_node) {
+    PADDLE_ENFORCE_EQ(ctr_var_node->inputs.size(), 1);
+    if (ctr_var_node->inputs.front() == fused_opt_node) {
+      PADDLE_ENFORCE_GT(ctr_var_node->outputs.size(), 0);
+      auto output_ops = ctr_var_node->outputs;
+      output_ops.erase(std::remove_if(output_ops.begin(), output_ops.end(),
+                                      [&fused_opt_node](const ir::Node *node) {
+                                        return node == fused_opt_node;
+                                      }),
+                       output_ops.end());
+      if (!output_ops.empty()) {
+        out_dep_vars.insert(ctr_var_node);
+      }
+      not_useful_vars.insert(ctr_var_node);
+    }
+  };
+
+  for (auto *in_node : inputs) {
+    if (in_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(in_node);
+    }
+  }
+
+  for (auto *out_node : outputs) {
+    if (out_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(out_node);
+    }
+  }
+
+  for (auto &node : not_useful_vars) {
+    if (inputs.count(node)) {
+      inputs.erase(node);
+    }
+    if (outputs.count(node)) {
+      outputs.erase(node);
+    }
+  }
+
+  for (auto &dep_var : out_dep_vars) {
+    if (not_useful_vars.count(dep_var)) {
+      not_useful_vars.erase(dep_var);
+    }
+    dep_var->inputs.clear();
+    dep_var->inputs.emplace_back(fused_opt_node);
+  }
+
+  outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
+  fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
+                                inputs.end());
+  fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),
+                                 outputs.begin(), outputs.end());
+
+  for (auto &ctrl_var_node : not_useful_vars) {
+    graph->RemoveNode(ctrl_var_node);
+  }
 }
 }  // namespace ir
 }  // namespace framework

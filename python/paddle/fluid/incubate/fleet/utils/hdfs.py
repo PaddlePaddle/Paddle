@@ -92,6 +92,22 @@ class HDFSClient(object):
 
         return ret_code, ret_out, ret_err
 
+    def cat(self, hdfs_path=None):
+        if self.is_file(hdfs_path):
+            exist_cmd = ['-cat', hdfs_path]
+            returncode, output, errors = self.__run_hdfs_cmd(
+                exist_cmd, retry_times=1)
+            if returncode != 0:
+                _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
+                return ""
+            else:
+                _logger.error("HDFS cat HDFS path: {} succeed".format(
+                    hdfs_path))
+                return output.strip()
+
+        else:
+            return ""
+
     def is_exist(self, hdfs_path=None):
         """
         whether the remote HDFS path exists
@@ -138,6 +154,32 @@ class HDFSClient(object):
             return False
         else:
             _logger.info("HDFS path: {} successfully is a directory".format(
+                hdfs_path))
+            return True
+
+    def is_file(self, hdfs_path=None):
+        """
+        whether the remote HDFS path is file
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
+        """
+
+        if not self.is_exist(hdfs_path):
+            return False
+
+        dir_cmd = ['-test', '-d', hdfs_path]
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
+
+        if returncode == 0:
+            _logger.error("HDFS path: {} failed is not a file".format(
+                hdfs_path))
+            return False
+        else:
+            _logger.info("HDFS path: {} successfully is a file".format(
                 hdfs_path))
             return True
 

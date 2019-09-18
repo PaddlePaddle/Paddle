@@ -58,7 +58,7 @@ class MemOptVarInfo {
 };
 
 using MemOptVarInfoMapList = std::vector<
-    std::unordered_map<std::string, std::unique_ptr<MemOptVarInfo>>>;
+    std::unordered_map<std::string, std::shared_ptr<MemOptVarInfo>>>;
 
 class SkipMemOptVarsGuard {
  public:

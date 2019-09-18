@@ -396,7 +396,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
+
 REGISTER_OP_CPU_KERNEL(fusion_gru, ops::FusionGRUKernel<float>,
                        ops::FusionGRUKernel<double>);

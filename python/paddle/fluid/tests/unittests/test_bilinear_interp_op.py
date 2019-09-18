@@ -205,6 +205,17 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
         self.align_mode = 1
 
 
+class TestBilinearInterpSame(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 128, 64]
+        self.out_h = 128
+        self.out_w = 64
+        self.scale = 0.
+        self.align_corners = True
+        self.align_mode = 1
+
+
 class TestBilinearInterpActualShape(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'

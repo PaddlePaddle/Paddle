@@ -80,8 +80,9 @@ def create_master_params_grads(params_grads, main_prog, startup_prog,
         A list of master parameters and gradients. 
     """
     master_params_grads = []
-    with main_prog._backward_role_guard():
-        for p, g in params_grads:
+    for p, g in params_grads:
+        # create master parameters
+        with main_prog._optimized_guard([p, g]):
             # create master parameters
             master_param = copy_to_master_param(p, main_prog.global_block())
             startup_master_param = startup_prog.global_block()._clone_variable(

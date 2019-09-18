@@ -350,7 +350,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 for i, ip in enumerate(self.pserver_ips.split(",")):
                     eplist.append(':'.join([ip, ports[i]]))
                 self.endpoints = ",".join(eplist)
-                self._trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+                self._trainers_num = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
                 # ip of current node, either a worker or a pserver
                 current_ip = os.getenv("POD_IP", "")
                 if current_ip == "":
@@ -380,9 +380,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 assert (self._training_role == "TRAINER")
                 self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
                 self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-                if self._worker_endpoints:
-                    self._worker_endpoints = self._worker_endpoints.split(",")
-                    self._num_trainers = len(self._worker_endpoints)
+                assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+                self._worker_endpoints = self._worker_endpoints.split(",")
+                self._trainers_num = len(self._worker_endpoints)
+
             self._role_is_generated = True
 
     def get_pserver_endpoints(self):
@@ -418,7 +419,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def worker_num(self):
         if not self._role_is_generated:
             self.generate_role()
-        return self._trainers
+        return self._trainers_num
 
 
 class UserDefinedRoleMaker(RoleMakerBase):

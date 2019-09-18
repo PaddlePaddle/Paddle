@@ -32,8 +32,10 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(
-        "Place %s is not supported, Please re-compile with WITH_GPU "
-        "option",
+        "Place %s is not supported, Please check that your paddle compiles "
+        "with WITH_GPU "
+        "option or check that your train process hold the correct gpu_id if "
+        "you use Executor",
         place);
   }
   return it->second.get().get();

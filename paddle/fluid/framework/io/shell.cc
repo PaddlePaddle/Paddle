@@ -194,7 +194,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                            << ", err_no[" << *err_no << "]";
             }
             if (wstatus == -1 && errno == ECHILD) {
-              LOG(WARNING) << "errno is ECHILD";
+              // temporarily remove this warning
+              // LOG(WARNING) << "errno is ECHILD";
             }
           }};
 #endif
@@ -285,7 +286,8 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
             << "status[" << wstatus << "], cmd[" << cmd << "]";
 
         if (wstatus == -1 && errno == ECHILD) {
-          LOG(WARNING) << "errno is ECHILD";
+          // temporarily remove this warning
+          // LOG(WARNING) << "errno is ECHILD";
         }
       }};
 

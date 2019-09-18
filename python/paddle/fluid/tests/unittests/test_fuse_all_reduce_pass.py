@@ -49,7 +49,6 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             use_cuda=use_cuda,
             fuse_all_reduce_ops=False,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
-            memory_opt=False,
             optimizer=optimizer)
         fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
             model,
@@ -58,7 +57,6 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             use_cuda=use_cuda,
             fuse_all_reduce_ops=True,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
-            memory_opt=False,
             optimizer=optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):

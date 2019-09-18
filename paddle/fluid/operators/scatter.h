@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -140,6 +140,50 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
     const IndexT& index_ = p_index[i];
     elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, result_p_output, src,
                                      output, i, index_, slice_size,
+                                     slice_bytes);
+  }
+}
+
+template <typename T, typename IndexT = int>
+void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
+                  const Tensor& index, Tensor* output) {
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.device_context().GetPlace()),
+                    true, "It should be running on the CPU");
+
+  // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+
+  auto output_dims = output->dims();
+  auto output_dims_size = output_dims.size();
+
+  const T* p_update = update.data<T>();
+  const IndexT* p_index = index.data<IndexT>();
+  T* result_p_output = output->data<T>();
+  const T* p_output = output->data<T>();
+
+  // final dim
+  int64_t end_size = index_dims[index_dims_size - 1];
+  // remain dim
+  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = framework::product(remain_ddim);
+  // slice size
+  int64_t slice_size = 1;
+  for (int64_t i = end_size; i < output_dims_size; ++i) {
+    slice_size *= output_dims[i];
+  }
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int64_t i = 0; i < remain_numel; ++i) {
+    IndexT index_ = 0;
+    IndexT temp = 1;
+    for (int64_t j = end_size - 1; j >= 0; --j) {
+      IndexT index_value = p_index[i * end_size + j];
+      index_ += (index_value * temp);
+      temp *= output_dims[j];
+    }
+    elementwise_inner_add<T, IndexT>(ctx, p_update, p_output, result_p_output,
+                                     update, output, i, index_, slice_size,
                                      slice_bytes);
   }
 }

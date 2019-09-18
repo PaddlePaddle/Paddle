@@ -75,7 +75,6 @@ from . import clip
 from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
-from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
 from . import compiler
@@ -115,7 +114,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'dygraph_grad_clip',
         'profiler',
         'unique_name',
-        'recordio_writer',
         'Scope',
         'install_check',
     ]

@@ -450,6 +450,30 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
+class TestHardSwish(TestActivation):
+    def setUp(self):
+        self.op_type = 'hard_swish'
+        self.init_dtype()
+
+        x = np.random.uniform(-6, 6, [4, 4]).astype(self.dtype)
+        threshold = 6.0
+        scale = 6.0
+        offset = 3.0
+        #the same with TestAbs
+        x[np.abs(x + offset) < 0.005] = 0.02
+        x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
+        out = x * np.minimum(np.maximum(x + offset, 0), threshold) / scale
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
 class TestSoftRelu(TestActivation):
     def setUp(self):
         self.op_type = "soft_relu"
@@ -773,6 +797,7 @@ create_test_act_fp16_class(TestSoftsign)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
+create_test_act_fp16_class(TestHardSwish)
 
 if __name__ == "__main__":
     unittest.main()

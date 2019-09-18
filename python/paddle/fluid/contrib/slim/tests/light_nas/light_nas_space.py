@@ -17,6 +17,7 @@ from light_nasnet import LightNASNet
 import paddle.fluid as fluid
 import paddle
 import json
+import random
 
 total_images = 1281167
 lr = 0.1
@@ -84,6 +85,16 @@ class LightNASSpace(SearchSpace):
             4, 3, 3, 2, 2, 2, 4, 3, 3, 2, 2, 2, 4, 3, 3, 2, 2, 2, 4, 3, 3, 2, 2,
             2, 4, 3, 3, 2, 2, 2
         ]
+
+    def get_model_latency(self, program):
+        """Get model latency according to program.
+        Returns a random number since it's only for testing.
+        Args:
+            program(Program): The program to get latency.
+        Return:
+            (float): model latency.
+        """
+        return random.randint(1, 2)
 
     def create_net(self, tokens=None):
         """Create a network for training by tokens.

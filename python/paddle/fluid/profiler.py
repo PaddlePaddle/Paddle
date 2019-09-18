@@ -43,7 +43,7 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     `output_file` with Key-Value pair format or Comma separated values format.
     The user can set the output mode by `output_mode` argument and set the
     counters/options for profiling by `config` argument. The default config
-    is ['gpustarttimestamp', 'gpustarttimestamp', 'gridsize3d',
+    is ['gpustarttimestamp', 'gpuendtimestamp', 'gridsize3d',
     'threadblocksize', 'streamid', 'enableonstart 0', 'conckerneltrace'].
     Then users can use NVIDIA Visual Profiler
     (https://developer.nvidia.com/nvidia-visual-profiler) tools to load this

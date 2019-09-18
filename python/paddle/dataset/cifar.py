@@ -37,7 +37,7 @@ import tarfile
 import six
 from six.moves import cPickle as pickle
 
-__all__ = ['train100', 'test100', 'train10', 'test10', 'convert']
+__all__ = ['train100', 'test100', 'train10', 'test10']
 
 URL_PREFIX = 'https://www.cs.toronto.edu/~kriz/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -144,13 +144,3 @@ def test10(cycle=False):
 def fetch():
     paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
     paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train100(), 1000, "cifar_train100")
-    paddle.dataset.common.convert(path, test100(), 1000, "cifar_test100")
-    paddle.dataset.common.convert(path, train10(), 1000, "cifar_train10")
-    paddle.dataset.common.convert(path, test10(), 1000, "cifar_test10")
