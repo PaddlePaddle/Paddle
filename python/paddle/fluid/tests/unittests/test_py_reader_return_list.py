@@ -60,14 +60,7 @@ class TestPyReader(unittest.TestCase):
                             executor.run(feed=data)
 
             with fluid.dygraph.guard():
-                batch_py_reader = fluid.io.PyReader(
-                    feed_list=[
-                        np.empty(
-                            [self.batch_size, 784, 784], dtype='float32')
-                    ],
-                    capacity=2,
-                    use_double_buffer=True,
-                    return_list=return_list)
+                batch_py_reader = fluid.io.PyReader(capacity=2)
                 user_defined_reader = reader_creator_random_image(784, 784)
                 batch_py_reader.decorate_sample_generator(
                     user_defined_reader,
