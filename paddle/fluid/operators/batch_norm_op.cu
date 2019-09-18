@@ -272,7 +272,7 @@ class InplaceHelper<paddle::platform::float16> {
   void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
                   const Bias *bias, const Mean *mean, const Variance *variance,
                   double epsilon, int C, int M, const int num, const Y *y,
-                  int grid2, int block, cudaStream_t &stream) {
+                  int grid2, int block, const cudaStream_t &stream) {
     PADDLE_THROW("Batch_norm not support in-place for %s for CUDA.",
                  DataLayoutToString(layout));
   }
