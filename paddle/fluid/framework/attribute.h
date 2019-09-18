@@ -296,15 +296,11 @@ class TypedAttrChecker {
   }
 
   void operator()(AttributeMap* attr_map, bool set_default_only) const {
-    if (set_default_only) {
-      T val;
-      (default_value_setter_[0])(&val);
-      (*attr_map)[attr_name_] = val;
-    } else {
+    if (!set_default_only) {
       if (!attr_map->count(attr_name_)) {
         // user do not set this attr
-        PADDLE_ENFORCE_EQ(!default_value_setter_.empty(), true,
-                          "Attribute '%s' is required!", attr_name_);
+        PADDLE_ENFORCE(!default_value_setter_.empty(),
+                       "Attribute '%s' is required!", attr_name_);
         // default_value_setter_ has no more than one element
         T val;
         (default_value_setter_[0])(&val);
@@ -316,6 +312,10 @@ class TypedAttrChecker {
       for (const auto& checker : value_checkers_) {
         checker(*attr_value);
       }
+    } else {
+      T val;
+      (default_value_setter_[0])(&val);
+      (*attr_map)[attr_name_] = val;
     }
   }
 
