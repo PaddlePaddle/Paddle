@@ -364,9 +364,6 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, transpose_pattern);
     auto* transpose_op_desc = transpose_op->Op();
 
-    if (!transpose_op_desc->HasAttr("use_quantizer")) {
-      return;
-    }
     // skip if should not be quantized
     if (!transpose_op_desc->HasAttr("use_quantizer") ||
         !boost::get<bool>(transpose_op_desc->GetAttr("use_quantizer"))) {

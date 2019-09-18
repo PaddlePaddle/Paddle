@@ -30,7 +30,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    mkldnn::memory::data_type in_type = platform::MKLDNNGetDataType<T>();
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -47,12 +46,12 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<int> nchw_tz = paddle::framework::vectorize2int(input->dims());
 
-    const std::string key = platform::TransposeMKLDNNHandler::GetHash(
+    const std::string key = platform::TransposeMKLDNNHandler<T>::GetHash(
         nchw_tz, axis,
         ctx.op().Output("Out") + std::to_string(input->format()));
 
-    platform::TransposeMKLDNNHandler handler(
-        nchw_tz, axis, input->type(), in_type, dev_ctx, mkldnn_engine, key);
+    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, axis, dev_ctx,
+                                                mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         input->format(), platform::to_void_cast<T>(input_data));
@@ -80,7 +79,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     if (!x_grad) return;
-    mkldnn::memory::data_type in_type = platform::MKLDNNGetDataType<T>();
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -102,12 +100,11 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> nchw_tz =
         paddle::framework::vectorize2int(out_grad->dims());
 
-    const std::string key = platform::TransposeMKLDNNHandler::GetHash(
+    const std::string key = platform::TransposeMKLDNNHandler<T>::GetHash(
         nchw_tz, axis, ctx.op().Output(framework::GradVarName("X")));
 
-    platform::TransposeMKLDNNHandler handler(nchw_tz, reversed_axis,
-                                             x_grad->type(), in_type, dev_ctx,
-                                             mkldnn_engine, key);
+    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, dev_ctx,
+                                                mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         out_grad->format(), platform::to_void_cast<T>(out_grad_data));
