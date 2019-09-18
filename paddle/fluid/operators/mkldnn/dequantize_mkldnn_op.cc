@@ -31,18 +31,6 @@ using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const mkldnn::memory::data_type& src_dt,
-                      const std::vector<int>& src_tz, const float scale_data) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(src_dt));
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
-  return key;
-}
-
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
  public:
@@ -59,12 +47,13 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::vector<float> reorder_scale = {1.0f / scale_data};
 
     std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
     MKLDNNMemoryFormat src_fmt = input->format();
-    std::string key = CreateKey(ctx, src_dt, src_tz, reorder_scale[0]);
+    std::string key = platform::CreateKey(src_dt, src_tz, reorder_scale[0],
+                                          ctx.op().Output("Output"));
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
     const std::string key_dst_mem = key + "@dst_mem";

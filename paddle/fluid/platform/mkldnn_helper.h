@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -177,6 +178,37 @@ inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
   } else {
     return MKLDNNMemoryFormat::any;
   }
+}
+
+inline std::string ThreadIDasStr(void) {
+  return std::to_string(
+      std::hash<std::thread::id>()(std::this_thread::get_id()));
+}
+
+template <typename T>
+inline void AppendKey(std::string* key, const T& num) {
+  key->append(std::to_string(num));
+}
+
+inline void AppendKey(std::string* key, const std::string& str) {
+  key->append(str);
+}
+
+inline void AppendKey(std::string* key, const char* str) { key->append(str); }
+
+inline void AppendKey(std::string* key, const std::vector<int>& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
+    AppendKey(key, std::to_string(dims[i]));
+  }
+}
+
+template <typename... ArgTypes>
+inline std::string CreateKey(ArgTypes&&... args) {
+  std::string key;
+  key.reserve(256);
+  using expand_type = int[];
+  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  return key;
 }
 
 }  // namespace platform

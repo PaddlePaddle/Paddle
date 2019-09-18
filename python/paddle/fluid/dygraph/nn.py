@@ -199,20 +199,6 @@ class Conv2D(layers.Layer):
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
-        if self._use_cudnn:
-            self.create_variable(
-                name="kCUDNNFwdAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdDataAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            self.create_variable(
-                name="kCUDNNBwdFilterAlgoCache",
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-
         self._bias_param = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
@@ -1297,8 +1283,7 @@ class LayerNorm(layers.Layer):
 
         h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
+    * :math:`a`: the vector representation of the summed inputs to the neurons in that layer.
 
     * :math:`H`: the number of hidden units in a layers
 
@@ -1579,9 +1564,7 @@ class GRUUnit(layers.Layer):
 class NCE(layers.Layer):
     """
     Compute and return the noise-contrastive estimation training loss. See
-    `Noise-contrastive estimation: A new estimation principle for unnormalized
-    statistical models
-     <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`.
+    `Noise-contrastive estimation: A new estimation principle for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_ .
     By default this operator uses a uniform distribution for sampling.
 
     Args:
@@ -1602,7 +1585,7 @@ class NCE(layers.Layer):
                        default: 'uniform'.
         custom_dist (float[]|None): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
-                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       custom_dist[i] is the probability of i-th class to be sampled.
                        Default: None.
         seed (int): The seed used in sampler. Default: 0.
         is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.

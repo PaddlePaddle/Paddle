@@ -38,8 +38,9 @@ class GatherNdOp : public framework::OperatorWithKernel {
     auto index_dims = ctx->GetInputDim("Index");
     auto index_dims_size = index_dims.size();
 
-    PADDLE_ENFORCE_LE(index_dims[index_dims_size - 1], x_dims_size,
-                      "Input(Index).shape[-1] <= Input(X).rank");
+    PADDLE_ENFORCE_LE(
+        index_dims[index_dims_size - 1], x_dims_size,
+        "Input(Index).shape[-1] should be no greater than Input(X).rank");
     PADDLE_ENFORCE_GE(index_dims_size, 2UL,
                       "The rank of Input(Index) should be greater than 1");
 

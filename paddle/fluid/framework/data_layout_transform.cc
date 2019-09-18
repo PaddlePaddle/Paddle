@@ -147,8 +147,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
-  std::vector<int> out_tz = in_tz;
+  auto in_tz = paddle::framework::vectorize<int>(in.dims());
+  auto out_tz = in_tz;
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
@@ -163,8 +163,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key = platform::ReorderMKLDNNHandler::GetHash(
-        in_tz, in_format, out_format, std::to_string(in_type));
+    const std::string key = platform::CreateKey(in_tz, in_format, out_format,
+                                                std::to_string(in_type));
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);

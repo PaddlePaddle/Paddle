@@ -66,8 +66,8 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3);
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5);
 
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
@@ -152,8 +152,8 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3);
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5);
 
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];
@@ -249,8 +249,8 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3);
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5);
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
     int im_width = im.dims()[2];
@@ -331,8 +331,8 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3);
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5);
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];
     int im_width = im->dims()[2];

@@ -109,7 +109,7 @@ class FCPrimitiveFactory {
 
   static mkldnn::memory::desc CreateMemDescriptor(const Tensor* tensor,
                                                   MKLDNNMemoryFormat format) {
-    auto dims = framework::vectorize2int(tensor->dims());
+    auto dims = framework::vectorize<int>(tensor->dims());
     return CreateMemDescriptor(dims, format);
   }
 
@@ -124,7 +124,7 @@ class FCPrimitiveFactory {
   }
 
   mkldnn::memory TransposeWeights(const Tensor* weights) {
-    auto dims = framework::vectorize2int(weights->dims());
+    auto dims = framework::vectorize<int>(weights->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor(dims, MKLDNNMemoryFormat::io);
     auto dst_desc = CreateMemDescriptor(dims, MKLDNNMemoryFormat::oi);
@@ -182,8 +182,8 @@ class FCPrimitiveFactory {
 
   mkldnn::memory CreateFourDimWeightsMemory(const Tensor* input,
                                             const Tensor* weights) {
-    auto input_dims = framework::vectorize2int(input->dims());
-    auto weight_dims = framework::vectorize2int(weights->dims());
+    auto input_dims = framework::vectorize<int>(input->dims());
+    auto weight_dims = framework::vectorize<int>(weights->dims());
     auto dims = {weight_dims[1], input_dims[1], input_dims[2], input_dims[3]};
 
     auto dst_format = MatchWeightFormat(input->format());
@@ -221,25 +221,14 @@ class FCPrimitiveFactory {
   boost::optional<inner_product_forward> fc_;
 };
 
-static std::string GetHash(const Tensor* input, const Tensor* weights,
-                           const std::string& suffix) {
-  auto dim2str = [](const DDim& operand_dims) {
-    std::string str = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      str += std::to_string(operand_dims[i]) + "-";
-    }
-    return str;
-  };
-  return std::to_string((unsigned)input->format()) + dim2str(weights->dims()) +
-         suffix;
-}
-
 template <typename T>
 std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
     const MKLDNNDeviceContext& dev_ctx, const ExecutionContext& ctx,
     const Tensor* input, const Tensor* weights,
     const mkldnn::engine& mkldnn_engine) {
-  const std::string key = GetHash(input, weights, ctx.op().Output("Out"));
+  const std::string key = platform::CreateKey(
+      input->format(), framework::vectorize<int>(weights->dims()),
+      ctx.op().Output("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));

@@ -183,15 +183,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         src_tz, weights_tz, fuse_activation, strides, paddings, dilations,
         groups, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
@@ -238,7 +237,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
     if (bias) {
-      bias_tz = paddle::framework::vectorize2int(bias->dims());
+      bias_tz = paddle::framework::vectorize<int>(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
@@ -281,7 +280,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto output_data =
             output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
         auto residual_data_tz =
-            paddle::framework::vectorize2int(residual_param->dims());
+            paddle::framework::vectorize<int>(residual_param->dims());
         auto residual_data_type =
             paddle::framework::ToMKLDNNDataType(residual_param->type());
 
@@ -405,22 +404,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
 
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
 
     // Get unique name for storing MKLDNN primitives
-    std::string key;
-    key.reserve(MaxKeyLength);
-    platform::ConvMKLDNNHandler::AppendKey(
-        &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
+    const std::string key = platform::CreateKey(
+        src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
         input->format(), fuse_activation, fuse_residual_conn,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
@@ -441,7 +437,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string key_tid = "";
     if (platform::get_cur_mkldnn_session_id() ==
         platform::kMKLDNNSessionID_Default) {
-      key_tid = "-t:" + platform::MKLDNNHandler::ThreadIDasStr();
+      key_tid = "-t:" + platform::ThreadIDasStr();
     }
 
     auto prim_key = key + key_tid + "@conv_p";
@@ -514,7 +510,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                  : mkldnn::prop_kind::forward_training;
 
       if (bias) {
-        bias_tz = paddle::framework::vectorize2int(bias->dims());
+        bias_tz = paddle::framework::vectorize<int>(bias->dims());
         auto bias_md = platform::MKLDNNMemDesc(bias_tz, memory::data_type::s32,
                                                MKLDNNMemoryFormat::x);
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
@@ -554,7 +550,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             paddle::framework::ToMKLDNNDataType(residual_param->type());
         if (residual_param->format() != handler->GetDstFormat()) {
           auto residual_data_tz =
-              paddle::framework::vectorize2int(residual_param->dims());
+              paddle::framework::vectorize<int>(residual_param->dims());
           auto user_residual_md = platform::MKLDNNMemDesc(
               residual_data_tz, residual_dt, residual_param->format());
           dst_memory_p = platform::SetDstMemory<T_out>(
@@ -705,13 +701,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     T* input_grad_data = nullptr;
     T* filter_grad_data = nullptr;
 
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> weights_tz =
-        paddle::framework::vectorize2int(filter->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
     int g = std::max(groups, 1);
     GetWeightsTz(weights_tz, g, is_conv3d);
-    std::vector<int> dst_tz =
-        paddle::framework::vectorize2int(output_grad->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output_grad->dims());
     auto src_format = input->format();
     MKLDNNMemoryFormat weights_format =
         GetWeightsFormat(filter->format(), g, is_conv3d);
@@ -719,7 +713,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
+    const std::string key = platform::CreateKey(
         src_tz, weights_tz, "", strides, paddings, dilations, groups,
         ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
