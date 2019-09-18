@@ -652,6 +652,30 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "elementwise_add_grad", "mul_grad", "sgd", "sgd"
         ])
 
+    def test_apply_gradients(self):
+        mul_out, b1_out, mean_out = self.net()
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        # apply backward
+        params_grads = recompute_optimizer.backward(
+            mean_out,
+            startup_program=None,
+            parameter_list=None,
+            no_grad_set=None,
+            checkpoints=[b1_out])
+
+        # apply gradient
+        program = mean_out.block.program
+        with framework.program_guard(program, None):
+            optimize_ops = recompute_optimizer.apply_gradients(params_grads)
+
+        self.assertEqual(len(mean_out.block.ops), 10)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "mul", "elementwise_add_grad", "mul_grad", "sgd", "sgd"
+        ])
+
 
 if __name__ == '__main__':
     unittest.main()

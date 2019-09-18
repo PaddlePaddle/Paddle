@@ -124,25 +124,6 @@ class ProgramStats(object):
             for op_idx in self.op_deps[i]["in_ops"]:
                 self.op_deps[op_idx]["out_ops"].extend([i])
 
-    def find_op_by_input_name(self, name):
-        if name not in self.var_op_deps:
-            return []
-        else:
-            return self.var_op_deps[name]["var_as_input_ops"]
-
-    def find_op_by_output_name(self, name):
-        if name not in self.var_op_deps:
-            return []
-        else:
-            return self.var_op_deps[name]["var_as_output_ops"]
-
-    def find_op_by_name(self, name):
-        if name not in self.var_op_deps:
-            return []
-        else:
-            return self.var_op_deps[name]["var_as_input_ops"] + \
-                self.var_op_deps[name]["var_as_output_ops"]
-
 
 def _pretty_op_desc_(op_desc, prefix):
     out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
@@ -207,26 +188,6 @@ def _find_loss_op_(loss):
         raise ValueError("loss.op is None. Should not happend")
 
 
-def _rename_output_arg_(op_descs,
-                        old_name,
-                        new_name,
-                        begin_idx=None,
-                        end_idx=None):
-    """
-    Traverse all ops in op_descs[begin_idx : end_idx],
-    if any op has inputs/outputs named "old_name", rename it as 'new_name'
-    """
-    if begin_idx is None:
-        begin_idx = 0
-    if end_idx is None:
-        end_idx = len(op_descs)
-    for i in range(begin_idx, end_idx):
-        op_desc = op_descs[i]
-        if isinstance(op_desc, tuple):
-            op_desc = op_desc[0]
-        op_desc._rename_output(old_name, new_name)
-
-
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
     """
     Traverse all ops in op_descs[begin_idx : end_idx],
@@ -242,30 +203,6 @@ def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
             op_desc = op_desc[0]
         op_desc._rename_input(old_name, new_name)
         op_desc._rename_output(old_name, new_name)
-
-
-def _create_op_desc_with_op_(op):
-    op_desc = core.OpDesc()
-    op_desc.set_type(op.type)
-    for i, name in enumerate(op.input_names):
-        op_desc.set_input(
-            name,
-            list(
-                map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
-                    op.input_arg_names)))
-    for i, name in enumerate(op.output_names):
-        op_desc.set_output(
-            name,
-            list(
-                map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
-                    op.output_arg_names)))
-
-    for name in op.attr_names:
-        if isinstance(name, framework.Block):
-            op_desc.set_block_attr(name, op.attr(name).desc)
-        else:
-            op_desc._set_attr(name, op.attr(name))
-    return op_desc
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
@@ -622,48 +559,6 @@ def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
     proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
     return proto.__str__()
-
-
-def _get_op_idx_with_checkpoints_output(checkpoints_name, block, ops):
-    idx_list = []
-    for i, op in enumerate(ops):
-        is_checkpoint_op = True
-        for name in op.desc.output_arg_names():
-            if block.has_var(name) and block.var(name).persistable:
-                continue
-            if name not in checkpoints_name:
-                is_checkpoint_op = False
-        if is_checkpoint_op:
-            idx_list.append(i)
-    return sorted(list(set(idx_list)))
-
-
-def _get_op_idx_with_checkpoints_input(checkpoints_name, block, ops):
-    idx_list = []
-    for i, op in enumerate(ops):
-        is_checkpoint_op = True
-        for name in op.desc.input_arg_names():
-            if block.has_var(name) and block.var(name).persistable:
-                continue
-            if name not in checkpoints_name:
-                is_checkpoint_op = False
-        if is_checkpoint_op:
-            idx_list.append(i)
-    return sorted(list(set(idx_list)))
-
-
-def _get_op_idx_with_input_name(checkpoint_name, ops):
-    for i, op in enumerate(ops):
-        if checkpoint_name in op.desc.input_arg_names():
-            return i
-    return -1
-
-
-def _get_op_idx_with_output_name(checkpoint_name, ops):
-    for i, op in enumerate(ops):
-        if checkpoint_name in op.desc.output_arg_names():
-            return i
-    return -1
 
 
 def _append_backward_ops_with_checkpoints_(
