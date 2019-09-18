@@ -205,13 +205,20 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
     }
     *str = os.str();
   };
+  bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
+  lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kHost);
+  paddle::lite_api::PrecisionType precision_type = enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
-  config.prefer_place = paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)});
+  config.prefer_place = paddle::lite::Place({target_type, precision_type});
   config.valid_places = {
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kHost), PRECISION(kInt8)}),
+#ifdef PADDLE_WITH_CUDA
       paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kCUDA), PRECISION(kInt8)}),
+#endif
   };
   inference::Singleton<inference::lite::EngineManager>::Global()
       .Create(unique_key, config);

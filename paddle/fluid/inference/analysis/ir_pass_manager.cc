@@ -134,6 +134,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
       pass->Set("enable_int8", new bool(enable_int8));
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
     }
     if (pass_name == "anakin_subgraph_pass") {
       pass->Set("program",
