@@ -50,9 +50,9 @@ import paddle.fluid as fluid
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 log_handler = logging.StreamHandler()
-format1 = logging.Formatter(
+log_format = logging.Formatter(
     '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s: %(message)s')
-log_handler.setFormatter(format1)
+log_handler.setFormatter(log_format)
 logger.addHandler(log_handler)
 
 
