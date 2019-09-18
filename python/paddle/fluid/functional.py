@@ -86,6 +86,7 @@ def conv2d(input,
         l_type = 'depthwise_conv2d'
 
     if groups is None:
+        groups = 1
         assert num_filter_channels == num_channels
     else:
         if num_channels % groups != 0:

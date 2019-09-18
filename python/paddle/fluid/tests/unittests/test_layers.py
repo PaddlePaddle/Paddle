@@ -226,6 +226,34 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
+    def test_functional_conv2d(self):
+        with self.static_graph():
+            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
+            filters = layers.data(
+                name='filter',
+                shape=[3, 3, 3, 3],
+                dtype='float32',
+                append_batch_size=False)
+            ret = fluid.functional.conv2d(input=images, filter=filters)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'pixel': np.ones(
+                        [2, 3, 5, 5], dtype='float32'),
+                    'filter': np.ones(
+                        [3, 3, 3, 3], dtype='float32')
+                },
+                fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            filters = np.ones([3, 3, 3, 3], dtype='float32')
+            images = base.to_variable(images)
+            filters = base.to_variable(filters)
+            dy_ret = fluid.functional.conv2d(
+                input=images, filter=filters, groups=1)
+
+        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
     def test_gru_unit(self):
         lod = [[2, 4, 3]]
         D = 5
