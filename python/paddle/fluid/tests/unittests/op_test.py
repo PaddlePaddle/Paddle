@@ -141,6 +141,7 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
+        cls._grad_depth = 2
 
         np.random.seed(123)
         random.seed(124)
@@ -338,7 +339,8 @@ class OpTest(unittest.TestCase):
             # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
-            for name, var in block.vars.items():
+            for out_name in op.output_arg_names:
+                var = block.var(out_name)
                 if 0 in var.shape:
                     var.persistable = True
         original_program = program
@@ -477,19 +479,19 @@ class OpTest(unittest.TestCase):
                                         inplace_atol=None):
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
+        self._checked_grad_inplace_ops = []
 
         # op has neither inplace nor grad_op
         if not (has_infer_inplace or has_grad_op_maker):
             return
         else:
-            expect_res = self._calc_output(
-                place,
-                no_check_set=no_check_set,
-                enable_inplace=False,
-                for_inplace_test=True)
-
             # op has inplace, check forward inplace
             if has_infer_inplace:
+                expect_res = self._calc_output(
+                    place,
+                    no_check_set=no_check_set,
+                    enable_inplace=False,
+                    for_inplace_test=True)
                 actual_res = self._calc_output(
                     place,
                     no_check_set=no_check_set,
@@ -503,8 +505,11 @@ class OpTest(unittest.TestCase):
                     actual_res[0],
                     inplace_atol=inplace_atol)
 
-            elif has_grad_op_maker:
-                # we should check grad, even if forward can not inplace
+            # op has grad_op_maker, check grad inplace
+            if has_grad_op_maker:
+                fwd_res = self._calc_output(
+                    place, no_check_set=no_check_set, for_inplace_test=True)
+
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
                 # skip use_mkldnn currently
                 flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
@@ -524,18 +529,13 @@ class OpTest(unittest.TestCase):
                     )
                     return
 
-                fwd_outs = expect_res[0]
-                fwd_fetch_list = expect_res[1]
-                fwd_feed_map = expect_res[2]
-                fwd_program = expect_res[3]
-                fwd_op_desc = expect_res[4]
                 self.check_inplace_grad_output_using_fwd_inputs_outputs(
                     place,
-                    fwd_feed_map,
-                    fwd_fetch_list,
-                    fwd_outs,
-                    fwd_program,
-                    fwd_op_desc,
+                    fwd_res[2],
+                    fwd_res[1],
+                    fwd_res[0],
+                    fwd_res[3],
+                    fwd_res[4],
                     no_check_set=no_check_set,
                     inplace_atol=inplace_atol,
                     depth=0)
@@ -553,8 +553,10 @@ class OpTest(unittest.TestCase):
         # depth=0 means grad
         # depth=1 means double_grad
         # depth=2 means triple_grad, which is not supported yet
-        if depth >= 2:
+        if depth >= self._grad_depth:
             return
+        self._checked_grad_inplace_ops.append(fwd_op_desc.type())
+
         # get grad_op 
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(fwd_op_desc,
                                                                   set(), [])
@@ -579,21 +581,24 @@ class OpTest(unittest.TestCase):
 
                 def _calc_grad_output(enable_inplace=None):
                     exe = Executor(place)
-                    build_strategy = fluid.BuildStrategy()
-                    build_strategy.enable_inplace = enable_inplace
-                    compiled_program = fluid.CompiledProgram(
-                        grad_program).with_data_parallel(
-                            loss_name="",
-                            build_strategy=build_strategy,
-                            places=place)
-                    outs = exe.run(compiled_program,
+                    program = grad_program
+                    if enable_inplace is not None:
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.enable_inplace = enable_inplace
+                        compiled_program = fluid.CompiledProgram(
+                            grad_program).with_data_parallel(
+                                loss_name="",
+                                build_strategy=build_strategy,
+                                places=place)
+                        program = compiled_program
+                    outs = exe.run(program,
                                    feed=grad_feed_map,
                                    fetch_list=grad_fetch_list,
                                    return_numpy=False)
                     return outs
 
-                expect_outs = _calc_grad_output(enable_inplace=False)
                 if has_infer_inplace:
+                    expect_outs = _calc_grad_output(enable_inplace=False)
                     actual_outs = _calc_grad_output(enable_inplace=True)
                     # compare expect_outs and actual_outs
                     self._compare_expect_and_actual_outputs(
@@ -602,14 +607,17 @@ class OpTest(unittest.TestCase):
                         expect_outs,
                         actual_outs,
                         inplace_atol=inplace_atol)
-                elif has_grad_op_maker:
+
+                if has_grad_op_maker and grad_op_desc.type(
+                ) not in self._checked_grad_inplace_ops:
                     # we should check grad, even if forward can not inplace
                     # check grad of grad, recursively
+                    fwd_outs = _calc_grad_output()
                     self.check_inplace_grad_output_using_fwd_inputs_outputs(
                         place,
                         grad_feed_map,
                         grad_fetch_list,
-                        expect_outs,
+                        fwd_outs,
                         grad_program,
                         grad_op_desc,
                         no_check_set=no_check_set,
