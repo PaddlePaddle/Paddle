@@ -83,13 +83,13 @@ class FCOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
-      customized_type_value =
-          (input_data_type == VarType::INT8 || input_data_type == VarType::UINT8)
-              ? kFCMKLDNNINT8
-              : kFCMKLDNNFP32;
+      customized_type_value = (input_data_type == VarType::INT8 ||
+                               input_data_type == VarType::UINT8)
+                                  ? kFCMKLDNNINT8
+                                  : kFCMKLDNNFP32;
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                 library, customized_type_value);
+                                   library, customized_type_value);
   }
 };
 
@@ -125,14 +125,14 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Only used on CPU.")
         .SetDefault(false);
     AddAttr<float>("Scale_in",
-                  "(float, default 1.0f), The quantize scale of input data")
+                   "(float, default 1.0f), The quantize scale of input data")
         .SetDefault(1.0f);
     AddAttr<std::vector<float>>("Scale_weights",
                                 "(std::vector<float>, default {1.0f}), The "
                                 "quantize scale of weights data")
         .SetDefault({1.0f});
     AddAttr<float>("Scale_out",
-                  "(float, default 1.0f), The quantize scale of output data")
+                   "(float, default 1.0f), The quantize scale of output data")
         .SetDefault(1.0f);
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
