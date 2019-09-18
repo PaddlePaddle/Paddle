@@ -24,9 +24,17 @@ import copy
 import errno
 
 import logging
-from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient"]
+
+def get_logger(name, level, fmt):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.FileHandler('hdfs.log', mode='w')
+    formatter = logging.Formatter(fmt=fmt)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
