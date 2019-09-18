@@ -201,6 +201,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 
+  // we record all inputs' shapes in attr to check if they are consistent
+  // with the real inputs' shapes retrieved from scope when trt runs.
+  for (auto *x : node->inputs) {
+    if (x->IsVar() && x->Var()) {
+      framework::VarDesc *var = x->Var();
+      SetAttr(op_desc->Proto(), var->Name() + "_shape", var->GetShape());
+    }
+  }
+
   auto use_static_engine = Get<bool>("use_static_engine");
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
