@@ -159,42 +159,67 @@ inline void MergeVars(const std::string& var_name,
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
-class TaiyiCommunicator {
+class Communicator {
  public:
-  TaiyiCommunicator() {}
-  virtual ~TaiyiCommunicator() {}
+  Communicator() {}
+  virtual ~Communicator() {}
 
   virtual void Start();
   virtual void Stop();
   virtual bool IsRunning() { return running_; }
 
-  virtual void Send();
+  virtual void Send(const std::string& var_name, const framework::Scope& scope);
   virtual void Recv();
 
-  virtual void InitImpl() {}
+  virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                        const RpcCtxMap& recv_varname_to_ctx,
+                        Scope* recv_scope);
+
+  virtual void InitImpl(const paddle::framework::ProgramDesc& program,
+                        Scope* recv_scope);
 
   template <typename T>
   static T* GetInstance() {
     return communicator_.get();
   }
 
-  template <typename T>
-  static std::shared_ptr<T> GetInstantcePtr() {
+  static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
   }
 
   template <typename T>
-  static T* InitInstance() {
-    std::call_once(init_flag_, &TaiyiCommunicator::Init<T>);
+  static T* InitInstance(const RpcCtxMap& send_varname_to_ctx,
+                         const RpcCtxMap& recv_varname_to_ctx,
+                         Scope* recv_scope) {
+    std::call_once(init_flag_, &Communicator::Init<T>, send_varname_to_ctx,
+                   recv_varname_to_ctx, recv_scope);
     return communicator_.get();
   }
 
-  // Init is called by GetInstance.
+  // Init is called by InitInstance.
   template <typename T>
-  static void Init() {
+  static void Init(const RpcCtxMap& send_varname_to_ctx,
+                   const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T());
-      communicator_->InitImpl();
+      communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
+                              recv_scope);
+    }
+  }
+
+  template <typename T>
+  static T* InitInstance(const paddle::framework::ProgramDesc& program,
+                         Scope* recv_scope) {
+    std::call_once(init_flag_, &Communicator::Init<T>, program, recv_scope);
+    return communicator_.get();
+  }
+
+  template <typename T>
+  static void Init(const paddle::framework::ProgramDesc& program,
+                   Scope* recv_scope) {
+    if (communicator_.get() == nullptr) {
+      communicator_.reset(new T());
+      communicator_->InitImpl(program, recv_scope);
     }
   }
 
@@ -202,42 +227,30 @@ class TaiyiCommunicator {
   bool running_ = false;
 
   static std::once_flag init_flag_;
-  static std::unique_ptr<TaiyiCommunicator> communicator_;
+  static std::unique_ptr<Communicator> communicator_;
 };
 
-class AsyncCommunicator : TaiyiCommunicator {
+class AsyncCommunicator : Communicator {
   AsyncCommunicator() {}
-
-  void Start() void Stop()
-
-      void Send() void Recv() void InitImpl() {}
-
-  void SendThread() void RecvThread()
-};
-
-class Communicator {
- public:
-  Communicator(const RpcCtxMap& send_varname_to_ctx,
-               const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
-
-  ~Communicator();
 
   void Start();
   void Stop();
 
-  bool IsRunning() { return running_; }
-
-  // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
-
- private:
-  // recv all parameter
+  void Recv();
   void RecvAll();
-  void RecvNonIndependent();
+
+  virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                        const RpcCtxMap& recv_varname_to_ctx,
+                        Scope* recv_scope);
+
+  virtual void InitImpl(const paddle::framework::ProgramDesc& program,
+                        Scope* recv_scope);
+
   void SendThread();
   void RecvThread();
 
-  bool running_ = false;
+ private:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
@@ -250,26 +263,6 @@ class Communicator {
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
-
-  // the following code is for initialize the commnunicator
- public:
-  static void Init(const RpcCtxMap& send_varname_to_ctx,
-                   const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
-    if (communicator_ == nullptr) {
-      communicator_.reset(new Communicator(send_varname_to_ctx,
-                                           recv_varname_to_ctx, recv_scope));
-    }
-  }
-
-  static void Init(const paddle::framework::ProgramDesc& program,
-                   Scope* param_scope);
-
-  static Communicator* GetInstance();
-
-  static std::shared_ptr<Communicator> GetInstantcePtr();
-
- private:
-  static std::shared_ptr<Communicator> communicator_;
 };
 
 }  // namespace distributed
