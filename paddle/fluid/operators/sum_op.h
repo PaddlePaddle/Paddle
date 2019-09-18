@@ -85,9 +85,12 @@ void SelectedRowsCompute(const framework::ExecutionContext &context) {
     out_dim[0] = row_num;
     out->mutable_value()->Resize(out_dim);
     out->mutable_value()->mutable_data<T>(context.GetPlace());
-    math::SelectedRowsSumTo<DeviceContext, T> add_functor;
-    add_functor(context.template device_context<DeviceContext>(), inputs,
-                input1_offsize, out);
+    paddle::platform::CPUPlace cpu_place;
+    paddle::platform::CPUDeviceContext ctx(cpu_place);
+    math::SelectedRowsSumTo<paddle::platform::CPUDeviceContext, T> add_functor;
+    // add_functor(context.template device_context<DeviceContext>(), inputs,
+    //         input1_offsize, out);
+    add_functor(ctx, inputs, input1_offsize, out);
   } else {
     // no data, just set a empty out tensor.
     out->mutable_value()->mutable_data<T>(framework::make_ddim({0}),

@@ -189,6 +189,8 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
 
 template struct SelectedRowsSumTo<platform::CPUDeviceContext, float>;
 template struct SelectedRowsSumTo<platform::CPUDeviceContext, double>;
+template struct SelectedRowsSumTo<platform::CPUDeviceContext, int>;
+template struct SelectedRowsSumTo<platform::CPUDeviceContext, int64_t>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
