@@ -180,8 +180,8 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;
       auto *nccl_ctxs =
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
-      auto &nccl_ctx = nccl_ctxs->at(dev_id);
-      auto stream = nccl_ctx.stream();
+      auto nccl_ctx = nccl_ctxs->at(dev_id);
+      auto stream = nccl_ctx->stream();
       cudaError_t e_sync = cudaStreamSynchronize(stream);
       if (e_sync != 0) {
         LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);

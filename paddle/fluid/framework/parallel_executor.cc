@@ -483,8 +483,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           pool.Get(member_->places_[dev_id]));
-      auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
-      dev_ctx->set_nccl_comm(nccl_ctx.comm());
+      auto nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
+      dev_ctx->set_nccl_comm(nccl_ctx->comm());
     }
 #endif
   }
@@ -672,9 +672,9 @@ void ParallelExecutor::BCastParamsToDevices(
         auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
-          auto &nccl_ctx = nccl_ctxs->at(member_->places_[i]);
+          auto nccl_ctx = nccl_ctxs->at(member_->places_[i]);
           platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                       nccl_ctx.comm(), nccl_ctx.stream());
+                                       nccl_ctx->comm(), nccl_ctx->stream());
         }
         nccl_ctxs->WaitAll();
       }

@@ -59,7 +59,7 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
 // NCCL actions when use it.
 class NCCLGroupGuard {
  public:
-  static std::mutex &NCCLMutex() {
+  static std::mutex& NCCLMutex() {
     static std::mutex mtx;
     return mtx;
   }
@@ -75,6 +75,9 @@ class NCCLGroupGuard {
   }
 };
 
+// The communication unit holding a connected ncclComm_t and an independent
+// cudaStream_t. The lifetime of the ncclComm_t is maintained by this unit,
+// so we should not destroy the ncclComm_t explicitly.
 class NCCLContext {
  public:
   NCCLContext(int dev_id, ncclComm_t comm)
@@ -91,84 +94,81 @@ class NCCLContext {
     return boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace()).device;
   }
 
-  CUDADeviceContext *dev_ctx() const { return dev_ctx_.get(); }
+  CUDADeviceContext* dev_ctx() const { return dev_ctx_.get(); }
 
  protected:
-  // CUDADeviceContext maintain the lifetime of the ncclComm_t
+  // CUDADeviceContext is the real container of the ncclComm_t, and it destroys
+  // ncclComm_t in its destructor
+  // TODO(liuyi05): try to move the destruction of the ncclComm_t out and keep
+  // it
+  // in the same class with its construction
   std::unique_ptr<CUDADeviceContext> dev_ctx_;
 
   DISABLE_COPY_AND_ASSIGN(NCCLContext);
 };
 
+// A container preserving the mapping from device id to NCCLContext which has
+// a corresponding level to "ring" in NCCL communication. Users retrieve the
+// NCCLContext instance from it by the device id of a given CUDAPlace.
+//
+// The status of this container may be diverse in different training modes:
+//
+// 1. Multiprocess (with one thread each) mode:
+//    The minimal training unit is a process in this mode, and each process,
+//    taking up one device, has a rank id in a communication ring. The
+//    NCCLContextMap holds the ring information and contains only one
+//    NCCLContext.
+//
+// 2. One process with multithread mode:
+//    In this mode, the minimal training unit is a thread, and all threads are
+//    working in one process. Within a process, we can initialize all
+//    NCCLContext instances once in a ring and put them all to a single
+//    NCCLContextMap.
+//
+// 3. Multiprocess with multithread mode:
+//    This mode is in the case of training with multimachine. The ring consists
+//    of all threads across processes over machines. The NCCLContext is created
+//    by each thread, taking up one device, and all NCCLContext instances in
+//    one process preserved in a single NCCLContextMap.
+//
+// As one training procedure may use several rings to communicate, there could
+// be several NCCLContextMaps.
+//
+// TODO(liuyi05): Do not expose this class. Do retrieve NCCLContext from
+// a global singleton
 class NCCLContextMap {
  public:
-  explicit NCCLContextMap(const std::vector<platform::Place> &places,
-                          ncclUniqueId *nccl_id = nullptr,
-                          size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(places.empty(), false);
-    order_.reserve(places.size());
-    std::set<int> dev_set;
-    for (auto &p : places) {
-      int dev_id = boost::get<CUDAPlace>(p).device;
-      order_.emplace_back(dev_id);
-      dev_set.insert(dev_id);
-    }
-    PADDLE_ENFORCE_EQ(
-        order_.size(), dev_set.size(),
-        "NCCL Context Map does not support contain two or more same device");
+  explicit NCCLContextMap(const std::vector<platform::Place>& places,
+                          ncclUniqueId* nccl_id = nullptr,
+                          size_t num_trainers = 1, size_t trainer_id = 0);
 
-    const int kOrders = order_.size();
-    ncclComm_t comms[kOrders];
-    if (num_trainers == 1 && nccl_id == nullptr) {
-      std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
-          comms, static_cast<int>(order_.size()), order_.data()));
-    } else {
-      PADDLE_ENFORCE_NOT_NULL(nccl_id);
-      {
-        int nranks = num_trainers * order_.size();
-        NCCLGroupGuard gurad;
-        for (size_t i = 0; i < order_.size(); ++i) {
-          int gpu_id = order_[i];
-          int rank;
-          if (order_.size() > 1) {
-            rank = trainer_id * order_.size() + i;
-          } else {
-            rank = trainer_id;
-          }
-          VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
-                  << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
-              comms + i, nranks, *nccl_id, rank));
-        }
-      }
-    }
-    int i = 0;
-    for (auto &dev_id : order_) {
-      contexts_.emplace(dev_id, std::unique_ptr<NCCLContext>(
-                                    new NCCLContext(dev_id, comms[i++])));
-    }
-  }
-
-  const std::map<int, std::unique_ptr<NCCLContext>> &contexts() const {
+  const std::map<int, std::unique_ptr<NCCLContext>>& contexts() const {
     return contexts_;
   }
 
-  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).dev_ctx(); }
+  CUDADeviceContext* DevCtx(int dev_id) const { return at(dev_id)->dev_ctx(); }
 
-  CUDADeviceContext *DevCtx(platform::Place p) const {
+  CUDADeviceContext* DevCtx(platform::Place p) const {
     return DevCtx(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext &at(platform::Place p) const {
+  NCCLContext* at(platform::Place p) const {
     return at(boost::get<CUDAPlace>(p).device);
   }
 
-  const NCCLContext &at(int dev_id) const { return *contexts_.at(dev_id); }
+  NCCLContext* at(int dev_id) const { return contexts_.at(dev_id).get(); }
+
+  size_t size() const { return contexts_.size(); }
+
+  size_t count(int dev_id) const { return contexts_.count(dev_id); }
+
+  NCCLContext* GetSingle() const {
+    PADDLE_ENFORCE_EQ(contexts_.size(), 1);
+    return contexts_.begin()->second.get();
+  }
 
   void WaitAll() {
-    for (auto &p : contexts_) {
+    for (auto& p : contexts_) {
       p.second->dev_ctx()->Wait();
     }
   }
@@ -176,6 +176,10 @@ class NCCLContextMap {
  private:
   std::map<int, std::unique_ptr<NCCLContext>> contexts_;
   std::vector<int> order_;
+
+  ncclUniqueId* nccl_id_;
+  int ntrainers_;
+  int trainer_id_;
 
   DISABLE_COPY_AND_ASSIGN(NCCLContextMap);
 };
@@ -196,9 +200,16 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
                          static_cast<int>(pos));
 }
 
-// In order to apply hierarchical communication with NCCL, we need
-// a communication ring contains NCCL communicators associated to a global
-// ncclUniqueId. E.g. for a hierarchical case,
+// A singleton of NCCL communicator context. It creates NCCLContext in
+// communication rings and maintains lifetime of all NCCL resources.
+// Each ring has an unique ID, which could be used to retrieve
+// the NCCLContextMap. So if both ring id and device id are given, the
+// NCCLContext instance could be determined.
+//
+// For compatibility, we preserve the range [0, 1000) of ids for default
+// rings and users could use ids beyond 1000.
+//
+// E.g. for a hierarchical communication case,
 //
 //    11 - 12   21 - 22
 //     |    |    |    |
@@ -208,27 +219,28 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
 //     |    |    |    |
 //    33 - 34   43 - 44
 //
-// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
-// (31,32,33,34), (41,42,43,44) as bottoms respectively.
+// we create (14,23,32,41) as the top ring, and (11,12,13,14), (21,22,23,24),
+// (31,32,33,34), (41,42,43,44) as bottoms rings respectively.
 //
 // We could also use a single communication ring for the flatten case
-//
-// The NCCLComm instance is created and reversed in the NCCLCommContext
-// singleton with a global user specified group id.
-
-// A singleton NCCL communicator context reserves communication ring ids
-
 class NCCLCommunicator {
  public:
-  static NCCLCommunicator &Instance() {
+  static NCCLCommunicator& Instance() {
     static NCCLCommunicator instance;
     return instance;
   }
 
-  NCCLCommunicator() {}
-  virtual ~NCCLCommunicator() {}
+  NCCLCommunicator() = default;
+  ~NCCLCommunicator() = default;
 
-  NCCLContextMap *DefaultFlatCtx() const {
+  NCCLContextMap* GetContextMap(int ring_id) const {
+    return ring2map_.at(ring_id).get();
+  }
+
+  NCCLContextMap* GetDefaultContextMap() const { return GetContextMap(0); }
+
+  // done
+  NCCLContextMap* DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {
       return nullptr;
     }
@@ -236,15 +248,18 @@ class NCCLCommunicator {
     return flat_ctxs_[0].get();
   }
 
-  std::vector<std::unique_ptr<NCCLContextMap>> *GetFlatCtxs() {
+  // check usage
+  std::vector<std::unique_ptr<NCCLContextMap>>* GetFlatCtxs() {
     return &flat_ctxs_;
   }
 
-  NCCLContextMap *GetFlatCtx(size_t run_order) const {
+  // check usage
+  NCCLContextMap* GetFlatCtx(size_t run_order) const {
     return flat_ctxs_[run_order % flat_ctxs_.size()].get();
   }
 
-  NCCLContextMap *GetRunEnvNCCLCtx(size_t run_order,
+  // check usage
+  NCCLContextMap* GetRunEnvNCCLCtx(size_t run_order,
                                    bool use_hierarchical_allreduce) const {
     if (!use_hierarchical_allreduce) {
       return GetFlatCtx(run_order);
@@ -253,15 +268,16 @@ class NCCLCommunicator {
     return GetHierarchicalInterCtx(run_order);
   }
 
+  // TODO(liuyi05)
   /*
    *When nccl inits nccl comm using ncclCommInitAll, it meets error when
    *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
    *create a new nccl comm for sync_batch_norm_op. And these codes should be
    *polished with a unified nccl management.
   */
-  NCCLContextMap *GetSyncBatchNormCtx(
-      framework::Scope *scope, const std::vector<platform::Place> &places) {
-    auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+  NCCLContextMap* GetSyncBatchNormCtx(
+      framework::Scope* scope, const std::vector<platform::Place>& places) {
+    auto* nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
     if (nccl_id_var != nullptr) {
       return DefaultFlatCtx();
     }
@@ -272,8 +288,9 @@ class NCCLCommunicator {
     return sync_batch_norm_ctx_.get();
   }
 
-  void InitFlatCtxs(const std::vector<platform::Place> &places,
-                    const std::vector<ncclUniqueId *> &nccl_ids,
+  // call InitNCCLContexts
+  void InitFlatCtxs(const std::vector<platform::Place>& places,
+                    const std::vector<ncclUniqueId*>& nccl_ids,
                     size_t trainers_num, size_t trainer_id) {
     if (nccl_ids.size() == 0) {
       auto ptr = new platform::NCCLContextMap(places);
@@ -290,9 +307,23 @@ class NCCLCommunicator {
     }
   }
 
-  void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
-                            const std::vector<ncclUniqueId *> &inter_nccl_ids,
-                            const std::vector<ncclUniqueId *> &exter_nccl_ids,
+  void InitNCCLContexts(const std::vector<Place>& places,
+                        ncclUniqueId* nccl_id = nullptr, int ntrainers = 1,
+                        int trainer_id = 0, int ring_id = 0);
+
+  void InitAllNCCLContexts(const std::vector<Place>& places, int ring_id = 0) {
+    InitNCCLContexts(places, nullptr, 1, 0, ring_id);
+  }
+
+  void InitNCCLContext(ncclUniqueId* nccl_id, int nranks, int rank, Place place,
+                       int ring_id = 0) {
+    InitNCCLContexts({place}, nccl_id, nranks, rank, ring_id);
+  }
+
+  // check necessary
+  void InitHierarchicalCtxs(const std::vector<platform::Place>& places,
+                            const std::vector<ncclUniqueId*>& inter_nccl_ids,
+                            const std::vector<ncclUniqueId*>& exter_nccl_ids,
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
@@ -330,68 +361,65 @@ class NCCLCommunicator {
     }
   }
 
+  // check
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
-  NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
+  NCCLContextMap* GetHierarchicalInterCtx(size_t run_order) const {
     PADDLE_ENFORCE(h_inter_ctxs_.size() > 0,
                    "must init hierarchical ctxs first!");
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
 
-  NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
+  NCCLContextMap* GetHierarchicalExterCtx(size_t run_order) const {
     PADDLE_ENFORCE(h_exter_ctxs_.size() > 0,
                    "must init hierarchical ctxs first!");
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();
   }
 
-  std::vector<std::unique_ptr<NCCLContextMap>> *GetHierarchicalInterCtxs() {
+  std::vector<std::unique_ptr<NCCLContextMap>>* GetHierarchicalInterCtxs() {
     return &h_inter_ctxs_;
   }
 
-  std::vector<std::unique_ptr<NCCLContextMap>> *GetHierarchicalExterCtxs() {
+  std::vector<std::unique_ptr<NCCLContextMap>>* GetHierarchicalExterCtxs() {
     return &h_exter_ctxs_;
   }
 
-  NCCLContext *CreateNCCLContext(ncclUniqueId *nccl_id, int nranks, int rank,
-                                 int dev_id, int ring_id = 0);
-
-  void CreateAllNCCLContexts(const std::vector<int> &dev_ids, int ring_id = 0);
-
-  // retrieve a communicator by the ring id in multiprocessing mode
-  NCCLContext *Get(int ring_id) const {
-    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
+  // retrieve a communicator by the ring id
+  NCCLContext* Get(int ring_id) const {
+    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0,
                       "comunicator in ring id %d has not been initialized",
                       ring_id);
-    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
-                      "you should specify a device id to retrieve from "
-                      "multiple communicators");
-    return comm_map_.at(ring_id).begin()->second.get();
+    return ring2map_.at(ring_id)->GetSingle();
   }
 
   // retrieve a communicator by the ring id and the device id
-  NCCLContext *Get(int ring_id, int dev_id) const {
-    PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
+  NCCLContext* Get(int ring_id, int dev_id) const {
+    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0,
                       "comunicator of ring id %d has not been initialized",
                       ring_id);
     PADDLE_ENFORCE_GT(
-        comm_map_.at(ring_id).count(dev_id), 0,
+        ring2map_.at(ring_id)->count(dev_id), 0,
         "comunicator at device id %d has not been initialized in ring %d",
         dev_id, ring_id);
-    return comm_map_.at(ring_id).at(dev_id).get();
+    return ring2map_.at(ring_id)->at(dev_id);
   }
 
   // retrieve a communicator by the ring id and place
-  NCCLContext *Get(int ring_id, Place place) const {
+  NCCLContext* Get(int ring_id, Place place) const {
     return Get(ring_id, boost::get<CUDAPlace>(place).device);
   }
 
  protected:
-  std::once_flag once_flag_;
-  std::mutex comm_map_mutex_;
-  // ring id to dev-NCCLContext
-  std::map<int, std::map<int, std::unique_ptr<NCCLContext>>> comm_map_;
+  // we preserve the first 100 ring ids for system use
+  enum SystemRingID { DEFAULT = 0, SYNC_BN = 1 };
 
-  void ReleaseNCCLComms();
+  std::once_flag once_flag_;
+  std::mutex ring2map_mutex_;
+  // std::map<int, std::map<int, std::unique_ptr<NCCLContext>>> ring2map_;
+  // ring id to NCCLContextMap
+  std::map<int, std::unique_ptr<NCCLContextMap>> ring2map_;
+
+  void ReleaseNCCLResource();
 
   // Support multi nccl comm on default nccl ring while NCCLContextMap can't.
   std::vector<std::unique_ptr<NCCLContextMap>> flat_ctxs_;
@@ -403,6 +431,8 @@ class NCCLCommunicator {
 
   // just used for sync_batch_norm op.
   std::unique_ptr<NCCLContextMap> sync_batch_norm_ctx_;
+
+  DISABLE_COPY_AND_ASSIGN(NCCLCommunicator);
 };
 
 }  // namespace platform

@@ -105,9 +105,9 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE(run_order_ >= 0, "run_order must > 0");
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm();
+    auto nccl_ctx = flat_nccl_ctxs->at(dev_id);
+    auto stream = nccl_ctx->stream();
+    auto comm = nccl_ctx->comm();
 
     VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
              << ", dev_id:" << dev_id << ", dtype:" << datatype
@@ -147,9 +147,9 @@ class NCCLOpHandleBase : public OpHandleBase {
                    size_t count, ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    auto& nccl_ctx = nccl_ctxs->at(dev_id);
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm();
+    auto nccl_ctx = nccl_ctxs->at(dev_id);
+    auto stream = nccl_ctx->stream();
+    auto comm = nccl_ctx->comm();
 
     VLOG(10) << "before all reduce"
              << " run_order:" << run_order_ << ", buffer:" << sendbuff
@@ -174,9 +174,9 @@ class NCCLOpHandleBase : public OpHandleBase {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE(nccl_ctxs_, "can't get exter %d nccl_ctxs", run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    auto& nccl_ctx = nccl_ctxs->at(dev_id);
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm();
+    auto nccl_ctx = nccl_ctxs->at(dev_id);
+    auto stream = nccl_ctx->stream();
+    auto comm = nccl_ctx->comm();
 
     VLOG(10) << "before all reduce run_order:" << run_order_
              << "buffer:" << sendbuff << ", numel:" << count
@@ -200,9 +200,9 @@ class NCCLOpHandleBase : public OpHandleBase {
                       ncclDataType_t datatype, ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
-    auto& nccl_ctx = nccl_ctxs->at(dev_id);
-    auto stream = nccl_ctx.stream();
-    auto comm = nccl_ctx.comm();
+    auto nccl_ctx = nccl_ctxs->at(dev_id);
+    auto stream = nccl_ctx->stream();
+    auto comm = nccl_ctx->comm();
 
     VLOG(10) << "before InterBroadCast buffer:" << sendbuff
              << ", numel:" << count << ", dev_id:" << dev_id

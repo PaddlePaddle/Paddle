@@ -57,9 +57,14 @@ class CCommInitAllOp : public framework::OperatorBase {
       devices = platform::GetSelectedDevices();
     }
 
+    std::vector<platform::Place> places;
+    for (int dev : devices) {
+      places.emplace_back(platform::CUDAPlace(dev));
+    }
+
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommunicator::Instance().CreateAllNCCLContexts(devices, rid);
+    platform::NCCLCommunicator::Instance().InitAllNCCLContexts(places, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

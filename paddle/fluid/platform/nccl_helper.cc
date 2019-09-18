@@ -23,69 +23,83 @@
 namespace paddle {
 namespace platform {
 
-NCCLContext* NCCLCommunicator::CreateNCCLContext(ncclUniqueId* nccl_id,
-                                                 int nranks, int rank,
-                                                 int dev_id, int ring_id) {
-  PADDLE_ENFORCE_NOT_NULL(nccl_id);
-  PADDLE_ENFORCE_GT(nranks, 1);
-  PADDLE_ENFORCE_GE(rank, 0);
-  PADDLE_ENFORCE_LT(rank, nranks);
-  PADDLE_ENFORCE_GE(dev_id, 0);
-
-  ncclComm_t comm = nullptr;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(dev_id));
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
-
-  comm_map_mutex_.lock();
-  if (comm_map_.count(ring_id) == 0) {
-    comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLContext>>());
-    comm_map_[ring_id].emplace(
-        dev_id, std::unique_ptr<NCCLContext>(new NCCLContext(dev_id, comm)));
+NCCLContextMap::NCCLContextMap(const std::vector<platform::Place>& places,
+                               ncclUniqueId* nccl_id, size_t num_trainers,
+                               size_t trainer_id) {
+  PADDLE_ENFORCE_EQ(places.empty(), false);
+  order_.reserve(places.size());
+  std::set<int> dev_set;
+  for (auto& p : places) {
+    int dev_id = boost::get<CUDAPlace>(p).device;
+    order_.emplace_back(dev_id);
+    dev_set.insert(dev_id);
   }
-  comm_map_mutex_.unlock();
+  PADDLE_ENFORCE_EQ(
+      order_.size(), dev_set.size(),
+      "NCCL Context Map does not support contain two or more same device");
 
-  VLOG(1) << "nccl communicator of rank " << rank << " in ring " << ring_id
-          << " has been created";
-
-  std::call_once(once_flag_, []() {
-    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLComms(); });
-  });
-
-  return comm_map_[ring_id][dev_id].get();
+  const int kOrders = order_.size();
+  ncclComm_t comms[kOrders];
+  if (num_trainers == 1 && nccl_id == nullptr) {
+    std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
+        comms, static_cast<int>(order_.size()), order_.data()));
+  } else {
+    PADDLE_ENFORCE_NOT_NULL(nccl_id);
+    {
+      int nranks = num_trainers * order_.size();
+      NCCLGroupGuard gurad;
+      for (size_t i = 0; i < order_.size(); ++i) {
+        int gpu_id = order_[i];
+        int rank;
+        if (order_.size() > 1) {
+          rank = trainer_id * order_.size() + i;
+        } else {
+          rank = trainer_id;
+        }
+        VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
+                << ", gpu_id:" << gpu_id;
+        PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            dynload::ncclCommInitRank(comms + i, nranks, *nccl_id, rank));
+      }
+    }
+  }
+  int i = 0;
+  for (auto& dev_id : order_) {
+    auto ptr = new NCCLContext(dev_id, comms[i++]);
+    contexts_.emplace(dev_id, std::unique_ptr<NCCLContext>(ptr));
+  }
 }
 
-void NCCLCommunicator::CreateAllNCCLContexts(const std::vector<int>& dev_ids,
-                                             int ring_id) {
-  PADDLE_ENFORCE_GT(dev_ids.size(), 0);
+void NCCLCommunicator::InitNCCLContexts(const std::vector<Place>& places,
+                                        ncclUniqueId* nccl_id, int ntrainers,
+                                        int trainer_id, int ring_id) {
+  PADDLE_ENFORCE_GE(ntrainers, 1);
+  PADDLE_ENFORCE_GE(trainer_id, 0);
+  PADDLE_ENFORCE_LT(trainer_id, ntrainers);
 
-  const int kDevices = dev_ids.size();
-  ncclComm_t comms[kDevices];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
-      comms, dev_ids.size(), dev_ids.data()));
+  // TODO(liuyi05): support update NCCLContextMap, e.g. multithreads
+  PADDLE_ENFORCE_EQ(ring2map_.count(ring_id), 0,
+                    "Cannot call this function twice with the same ring_id by "
+                    "now, we will fix it soon");
 
-  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0);
-  comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLContext>>());
+  auto ptr = new NCCLContextMap(places, nccl_id, ntrainers, trainer_id);
+  ring2map_.emplace(ring_id, std::unique_ptr<NCCLContextMap>(ptr));
 
-  auto& dev2comm = comm_map_[ring_id];
-  for (size_t i = 0; i < dev_ids.size(); ++i) {
-    dev2comm.emplace(dev_ids[i], std::unique_ptr<NCCLContext>(
-                                     new NCCLContext(dev_ids[i], comms[i])));
-  }
+  VLOG(1) << "nccl communicator of ring_id" << ring_id << " has been created";
 
   std::call_once(once_flag_, []() {
-    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLComms(); });
+    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLResource(); });
   });
 }
 
-void NCCLCommunicator::ReleaseNCCLComms() {
+void NCCLCommunicator::ReleaseNCCLResource() {
   // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
   // destroy nccl_comm_t explicitly. Please refer to
   // platform::CUDADeviceContext::~CUDADeviceContext()
-  for (auto& p : comm_map_) {
-    for (auto& q : p.second) {
-      q.second.reset();
-    }
+  for (auto& p : ring2map_) {
+    p.second.reset();
   }
 }
 

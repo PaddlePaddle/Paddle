@@ -278,7 +278,7 @@ void ReduceOpHandle::RunImpl() {
         auto &lod_tensor = *lod_tensors[i];
 
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
+        auto nccl_ctx = nccl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
         void *recvbuffer = nullptr;
@@ -291,10 +291,10 @@ void ReduceOpHandle::RunImpl() {
         int type = platform::ToNCCLDataType(lod_tensor.type());
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
-            [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
+            [buffer, recvbuffer, type, numel, root_id, nccl_ctx] {
               PADDLE_ENFORCE(platform::dynload::ncclReduce(
                   buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
-                  ncclSum, root_id, nccl_ctx.comm(), nccl_ctx.stream()));
+                  ncclSum, root_id, nccl_ctx->comm(), nccl_ctx->stream()));
             });
       }
 

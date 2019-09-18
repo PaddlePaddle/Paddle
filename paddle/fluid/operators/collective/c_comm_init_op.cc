@@ -52,9 +52,8 @@ class CCommInitOp : public framework::OperatorBase {
     int rank_id = Attr<int>("rank");
     int rid = Attr<int>("ring_id");
 
-    platform::NCCLCommunicator::Instance().CreateNCCLContext(
-        nccl_id, nranks, rank_id, boost::get<platform::CUDAPlace>(place).device,
-        rid);
+    platform::NCCLCommunicator::Instance().InitNCCLContext(nccl_id, nranks,
+                                                           rank_id, place, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

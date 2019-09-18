@@ -68,7 +68,7 @@ void SyncFunctor::Synchronize() {
   for (const std::string& name : *sync_param_) {
     platform::NCCLGroupGuard guard;
     for (int i = 0; i < rank_num_; ++i) {
-      const platform::NCCLContext& nccl_ctx = nccl_ctx_map_->at(i);
+      platform::NCCLContext* nccl_ctx = nccl_ctx_map_->at(i);
       LoDTensor* tensor =
           pipeline_scopes_[i]->Var(name)->GetMutable<LoDTensor>();
       // TODO(hutuxian): do not depend on data type explicitly
@@ -83,7 +83,7 @@ void SyncFunctor::Synchronize() {
       scale_op->Run(*(pipeline_scopes_[i]),
                     nccl_ctx_map_->DevCtx(i)->GetPlace());
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-          data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
+          data, data, numel, ncclFloat, ncclSum, nccl_ctx->comm(),
           dynamic_cast<platform::CUDADeviceContext*>(
               platform::DeviceContextPool::Instance().Get(
                   platform::CUDAPlace(i)))

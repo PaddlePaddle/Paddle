@@ -88,7 +88,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       int dst_id =
           boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
 
-      auto &nccl_ctx = nccl_ctxs_->at(dst_id);
+      auto nccl_ctx = nccl_ctxs_->at(dst_id);
 
       void *send_recv_buffer = nullptr;
       if (root_id == dst_id) {
@@ -101,10 +101,10 @@ void BroadcastOpHandle::BroadcastOneVar(
       }
 
       broadcast_calls.emplace_back(
-          [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
+          [send_recv_buffer, numel, type, root_id, nccl_ctx] {
             PADDLE_ENFORCE(platform::dynload::ncclBcast(
                 send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
-                root_id, nccl_ctx.comm(), nccl_ctx.stream()));
+                root_id, nccl_ctx->comm(), nccl_ctx->stream()));
           });
     }
 
