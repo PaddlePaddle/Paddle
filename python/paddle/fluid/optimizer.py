@@ -2985,14 +2985,14 @@ class RecomputeOptimizer(Optimizer):
     to update the value of the parameters.
 
     In the forward computation process, all variables that are needed by 
-    backward computation process will be kept in memory. They occupy a great
+    backward computation process will be kept in memory, which occupy a great
     amount of memory when the network becomes very deep.
 
     Recompute split the network to k segments. In each segment, It will 
     recompute the forward Operators, before running backward operators. It is
     very helpful for saving memory.
  
-    The Variables that seperate a network to segments are called as checkpoints,
+    The Variables that separate a network to segments are called as checkpoints,
     and users should set it manually. The usage is very simple:
 
     Args:
