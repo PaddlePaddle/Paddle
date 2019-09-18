@@ -171,6 +171,7 @@ __all__ = [
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
+    'strided_slice',
     'shape',
     'rank',
     'size',
@@ -10788,6 +10789,85 @@ def slice(input, axes, starts, ends):
         dtype=helper.input_dtype('input'))
     helper.append_op(
         type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+
+    return out
+
+
+@templatedoc()
+def strided_slice(input, axes, starts, ends, strides):
+    """
+    Strided Slice OP
+
+    The conceptualization that really helped me understand this was 
+    that this function emulates the indexing behavior of numpy arrays.
+    If you're familiar with numpy arrays, you'll know that you can make 
+    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
+    Basically, a very succinct way of writing for loops to get certain elements of the array.
+    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
+    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
+    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
+    the axes which controls the dimension you want to slice makes it more flexible.
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides = [1, 1]
+            Then:
+                result = [ [5, 6, 7] ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, -1]
+                ends = [-1, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [4, 3, 2] ]
+    Atrgs:
+       input (Varibale): the input variable.
+       axes(List):axis we need to slice
+       starts (List): the start index in axis
+       ends (List): the end index in axis
+       strides (List): the stride length when we do slice operation
+    Returns
+       out(Variable): the result by strided_slice Op
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+ 
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+            strides= [1, 1, 1]
+
+            input = fluid.layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+    """
+    helper = LayerHelper('strided_slice', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+
+    helper.append_op(
+        type='strided_slice',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'strides': strides
+        })
 
     return out
 
