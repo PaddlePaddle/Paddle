@@ -26,8 +26,8 @@ namespace ir {
 
 static std::vector<std::string> replaced_element_in_order = {"@", "$"};
 
-static std::vector<std::string> kernel_template = {
-    "$kernel_name", "$kernel_parameter", "$kernel_compute"};
+static std::vector<std::string> kernel_template = {"$name", "$parameter",
+                                                   "$compute"};
 
 static std::unordered_map<std::string, std::string> support_table = {
     {"elementwise_add", "var@ + var$"},
@@ -63,10 +63,10 @@ class OperationExpression {
 
 class TemplateVariable {
  public:
-  void add(std::string identifier, std::string expression) {
+  void Add(std::string identifier, std::string expression) {
     strings_[identifier] = expression;
   }
-  void remove(std::string identifier, std::string expression) {
+  void Remove(std::string identifier, std::string expression) {
     for (auto it = strings_.begin(); it != strings_.end();) {
       if (it->first == identifier) {
         it = strings_.erase(it);
@@ -88,7 +88,7 @@ class CodeTemplate {
     template_str_ = template_str;
   }
 
-  std::string format(TemplateVariable template_var) {
+  std::string Format(TemplateVariable template_var) {
     std::string ret = template_str_;
     std::unordered_map<std::string, std::string> identifier_str =
         template_var.Get();
@@ -118,7 +118,7 @@ class CodeTemplate {
       auto pos = i;
       char c = ret[pos];
       if (c == '\n') {
-        int next_pos = pos + 1;
+        size_t next_pos = pos + 1;
         while (next_pos < ret.size() && ret[next_pos] == space_char) {
           next_pos++;
         }
@@ -205,13 +205,32 @@ static std::string EmitComputeCode(
   return ret.str();
 }
 
-static const char kernel[] = R"(
+static const char kernel_function[] = R"(
+__device__ float real_exp(float x) { return ::expf(x); }
 
-extern "C" __global__ void $kernel_name($kernel_parameter){
+__device__ double real_exp(double x) { return ::exp(x); }
+
+__device__ float real_log(float x) { return ::logf(x); }
+
+__device__ double real_log(double x) { return ::log(x); }
+
+__device__ float real_min(float x, float y) { return ::fminf(x, y); }
+
+__device__ double real_min(double x, double y) { return ::fmin(x, y); }
+
+__device__ float real_max(float x, float y) { return ::fmaxf(x, y); }
+
+__device__ double real_max(double x, double y) { return ::fmax(x, y); }
+
+)";
+
+static const char kernel_elementwise_template[] = R"(
+
+extern "C" __global__ void $name($parameter){
   for(int idx = blockIdx.x * blockDim.x + threadIdx.x;
       idx < N;
       idx += gridDim.x * blockDim.x) {
-      $kernel_compute
+      $compute
 }
 }
 )";

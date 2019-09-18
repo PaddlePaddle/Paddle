@@ -20,11 +20,11 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class CodeGen {
+class CodeGenerator {
  public:
-  explicit CodeGen(CodeTemplate code_template);
-  std::string GetKernelCode(TemplateVariable template_var);
-  // TODO(wangchao66) std::string etKernelCode(const Graph& graph)
+  explicit CodeGenerator(CodeTemplate code_template);
+  std::string GenerateCode(TemplateVariable template_var);
+  // TODO(wangchao66) std::string GenerateCode(const Graph& graph)
 
  private:
   CodeTemplate code_template_;

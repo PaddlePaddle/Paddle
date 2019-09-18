@@ -19,13 +19,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-CodeGen::CodeGen(CodeTemplate code_template) { code_template_ = code_template; }
+CodeGenerator::CodeGenerator(CodeTemplate code_template) {
+  code_template_ = code_template;
+}
 
 // in order to get the right result of expression, we need to calculate, we
 // store the expression as
 // suffix Expressions using vector
-std::string CodeGen::GetKernelCode(TemplateVariable template_var) {
-  auto cuda_kernel = code_template_.format(template_var);
+std::string CodeGenerator::GenerateCode(TemplateVariable template_var) {
+  auto cuda_kernel = kernel_function + code_template_.Format(template_var);
   return cuda_kernel;
 }
 }  // namespace ir
