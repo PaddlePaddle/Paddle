@@ -50,43 +50,6 @@ class MKLDNNHandlerT {
   }
 
   template <typename... Args>
-  void AcquireForwardPrimitiveDescriptor(Args&&... args) {
-    // Forward PD has to be passed to Grad op that
-    // may be executed by diffrent thread, hence
-    // for that one we use key that does not contain TID
-    const std::string key_pd = key_common_ + "@forward_pd";
-    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
-        dev_ctx_.GetBlob(key_pd));
-    if (fwd_pd_ == nullptr) {
-      static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
-          acquire_barrier);
-      fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
-          dev_ctx_.GetBlob(key_pd));
-      if (fwd_pd_ == nullptr) {
-        auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
-        fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(fwd_desc,
-                                                                      engine_);
-        dev_ctx_.SetBlob(key_pd, fwd_pd_);
-      }
-    }
-  }
-
-  template <typename... Args>
-  void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
-    PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
-    const std::string key_pd = key_ + "@backward_pd";
-    bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
-        dev_ctx_.GetBlob(key_pd));
-    if (bwd_pd_ == nullptr) {
-      auto bwd_desc = typename TBackward::desc(std::forward<Args>(args)...);
-      bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-          bwd_desc, engine_, *fwd_pd_);
-      dev_ctx_.SetBlob(key_pd, bwd_pd_);
-    }
-  }
-
-  template <typename... Args>
   std::shared_ptr<TForward> AcquireForwardPrimitive(Args&&... args) {
     const std::string key_p = key_ + "@forward_p";
     auto forward_p =
@@ -151,6 +114,44 @@ class MKLDNNHandlerT {
                                             ptr, "@diff_src_mem_p");
   }
 
+ protected:
+  template <typename... Args>
+  void AcquireForwardPrimitiveDescriptor(Args&&... args) {
+    // Forward PD has to be passed to Grad op that
+    // may be executed by diffrent thread, hence
+    // for that one we use key that does not contain TID
+    const std::string key_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    if (fwd_pd_ == nullptr) {
+      static std::mutex acquire_barrier;
+      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
+          acquire_barrier);
+      fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+          dev_ctx_.GetBlob(key_pd));
+      if (fwd_pd_ == nullptr) {
+        auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+        fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(fwd_desc,
+                                                                      engine_);
+        dev_ctx_.SetBlob(key_pd, fwd_pd_);
+      }
+    }
+  }
+
+  template <typename... Args>
+  void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
+    PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
+    const std::string key_pd = key_ + "@backward_pd";
+    bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    if (bwd_pd_ == nullptr) {
+      auto bwd_desc = typename TBackward::desc(std::forward<Args>(args)...);
+      bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
+          bwd_desc, engine_, *fwd_pd_);
+      dev_ctx_.SetBlob(key_pd, bwd_pd_);
+    }
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::primitive_desc mdp, void* ptr,
       const std::string& suffix) {
@@ -166,7 +167,6 @@ class MKLDNNHandlerT {
     return mem_p;
   }
 
- protected:
   const MKLDNNDeviceContext& dev_ctx_;
   mkldnn::engine engine_;
   platform::Place place_;
