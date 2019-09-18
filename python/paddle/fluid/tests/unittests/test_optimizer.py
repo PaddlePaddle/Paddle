@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
+import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
 
 
@@ -675,6 +676,19 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "mul", "elementwise_add", "mean", "fill_constant", "mean_grad",
             "mul", "elementwise_add_grad", "mul_grad", "sgd", "sgd"
         ])
+
+    def test_load(self):
+        mul_out, b1_out, mean_out = self.net()
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        try:
+            stat_dict = {}
+            recompute_optimizer.load(stat_dict)
+        except NotImplementedError as e:
+            self.assertEqual(
+                "load function is not supported by Recompute Optimizer for now",
+                cpt.get_exception_message(e))
 
 
 if __name__ == '__main__':

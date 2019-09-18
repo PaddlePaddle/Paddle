@@ -65,15 +65,6 @@ class ProgramStats(object):
                             var_name.append(name)
         return var_name
 
-    def var_num(self, op_begin_idx, op_end_idx):
-        var_dict = {}
-        for op in self.ops[op_begin_idx:op_end_idx]:
-            for name in op.desc.input_arg_names():
-                var_dict[name] = 1
-            for name in op.desc.output_arg_names():
-                var_dict[name] = 1
-        return var_dict
-
     def is_subgraph(self, var_group1, var_group2):
         # should traverse from var_group1 to var_group2
         # max op idx in var_group2
