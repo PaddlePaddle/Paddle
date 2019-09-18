@@ -24,35 +24,35 @@ namespace inference {
 TEST(TensorRT, cascade_rcnn) {
   std::string model_dir = FLAGS_infer_model + "/cascade_rcnn";
   AnalysisConfig config;
+  int batch_size = 1;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.SwitchUseFeedFetchOps(false);
-  config.EnableTensorRtEngine(0, batch_size, 5,
+  config.EnableTensorRtEngine(1 << 30, batch_size, 40,
                               AnalysisConfig::Precision::kFloat32, false);
 
   auto predictor = CreatePaddlePredictor(config);
 
-  int batch_size = 1;
   int channels = 3;
   int height = 640;
   int width = 640;
   int input_num = batch_size * channels * height * width;
   float *input = new float[input_num];
-  memset(input, 1, input_num * sizeof(float));
+  memset(input, 1.0, input_num * sizeof(float));
 
-  float *im_shape = new float[2];
-  im_shape[0] = 3;
-  im_shape[1] = 640;
-  im_shape[2] = 640;
+  float *im_shape = new float[3];
+  im_shape[0] = 3.0;
+  im_shape[1] = 640.0;
+  im_shape[2] = 640.0;
 
   auto input_names = predictor->GetInputNames();
 
   auto input_t = predictor->GetInputTensor(input_names[0]);
-  input_t->Reshape({batch_size, length});
+  input_t->Reshape({batch_size, channels, height, width});
   input_t->copy_from_cpu(input);
 
   auto input_t1 = predictor->GetInputTensor(input_names[1]);
-  input_t1->Reshape({batch_size, 2});
+  input_t1->Reshape({batch_size, 3});
   input_t1->copy_from_cpu(im_shape);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());

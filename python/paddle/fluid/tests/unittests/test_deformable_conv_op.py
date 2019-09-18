@@ -145,48 +145,35 @@ class TestModulatedDeformableConvOp(OpTest):
         }
         self.outputs = {'Output': output}
 
-    def has_cuda(self):
-        return core.is_compiled_with_cuda()
-
     def test_check_output(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+        self.check_output(atol=1e-5)
 
     def test_check_grad(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, {'Input', 'Offset', 'Mask', 'Filter'},
-                'Output',
-                max_relative_error=0.05)
+        self.check_grad(
+            {'Input', 'Offset', 'Mask', 'Filter'},
+            'Output',
+            max_relative_error=0.05)
 
     def test_check_grad_no_filter(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input', 'Offset', 'Mask'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Filter']))
+        self.check_grad(
+            ['Input', 'Offset', 'Mask'],
+            'Output',
+            max_relative_error=0.1,
+            no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter', 'Offset', 'Mask'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Input']))
+        self.check_grad(
+            ['Filter', 'Offset', 'Mask'],
+            'Output',
+            max_relative_error=0.1,
+            no_grad_set=set(['Input']))
 
     def test_check_grad_no_offset_no_mask(self):
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input', 'Filter'],
-                'Output',
-                max_relative_error=0.1,
-                no_grad_set=set(['Offset', 'Mask']))
+        self.check_grad(
+            ['Input', 'Filter'],
+            'Output',
+            max_relative_error=0.1,
+            no_grad_set=set(['Offset', 'Mask']))
 
     def init_test_case(self):
         self.pad = [1, 1]

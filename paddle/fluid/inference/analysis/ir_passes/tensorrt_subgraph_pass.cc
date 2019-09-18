@@ -136,7 +136,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       params.push_back(x->Name());
     }
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0 &&
-        x->outputs.size() < 1) {
+        x->outputs.size() <= 1) {
       params_not_shared.push_back(x->Name());
     }
   }
