@@ -122,22 +122,12 @@ void Communicator::SendThread() {
     auto before_run_send_graph = GetCurrentUS();
     if (is_geo_sgd_) {
       if( ids_send_queue_.size() < geo_need_push_nums_){
-        size_t wait_times = 0;
-        if (need_push_queue_->Size() == 0) {
-          VLOG(3) << "wait_times -> " << wait_times;
-          if (wait_times >= FLAGS_communicator_send_wait_times) {
-            break;
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-          wait_times++;
-          continue;
-        } else {
-          wait_times = 0;
+        VLOG(3)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
+        if (need_push_queue_->Size() > 0) {
           ids_send_queue_.push_back(need_push_queue_->Pop());
           VLOG(4) <<"ids_send_queue pushed";
         }
       } else {
-        VLOG(1)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
         std::vector<SparseIdsMap> new_ids_send_queue{};
         for(auto ids_map:ids_send_queue_) {
           new_ids_send_queue.push_back(*ids_map);
