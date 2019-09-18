@@ -20,6 +20,12 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+/**
+ * CUDADeviceContextAllocation is a wrapper of the underbeneath allocation.
+ * CUDADeviceContextAllocation adds a CUDA stream callback for the underbeneath
+ * allocation so that CUDADeviceContextAllocation can be used in a CUDA stream
+ * which deletes allocation in the callback.
+ */
 class CUDADeviceContextAllocation : public Allocation {
  public:
   explicit CUDADeviceContextAllocation(AllocationPtr allocation);
