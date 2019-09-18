@@ -24,6 +24,7 @@ from . import core
 from .dygraph.base import _not_support
 
 __all__ = [
+    'set_gradient_clip',
     'ErrorClipByValue',
     'GradientClipByValue',
     'GradientClipByNorm',
@@ -349,6 +350,24 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 When it's None, all parameters in the program will be included.
         program(Program): The program where parameters are.
                 Will be the default main program when assigned with None.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+
+            image = fluid.layers.data(name='image', shape=[28], dtype='float32')     
+            fc = fluid.layers.fc(image, size=10)
+            loss = fluid.layers.reduce_mean(fc)
+            
+            fluid.clip.set_gradient_clip(
+                fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+
+            sgd = fluid.optimizer.SGD(learning_rate=1e-3) 
+            sgd.minimize(loss)
     """
     if not isinstance(clip, BaseGradientClipAttr):
         raise TypeError(
