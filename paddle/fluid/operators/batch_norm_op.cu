@@ -258,7 +258,7 @@ class InplaceHelper {
   void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
                   const Bias *bias, const Mean *mean, const Variance *variance,
                   double epsilon, int C, int M, const int num, const Y *y,
-                  int grid2, int block, cudaStream_t &stream) {
+                  int grid2, int block, const cudaStream_t &stream) {
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, x);
   }
