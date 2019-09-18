@@ -62,6 +62,10 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("W", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("Scale_in", 1.0f);
+    op->SetAttr("Scale_out", 1.0f);
+    op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
@@ -71,13 +75,13 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 
 namespace {
 static const std::initializer_list<std::string> variable_names{
-    "a", "w1", "c",  "d", "w2", "e",  "f", "g",
-    "h", "w3", "b1", "i", "j",  "w4", "b2"};
+    "a",  "w1", "c", "d", "w2", "e",  "f",  "g", "h",
+    "w3", "b1", "i", "j", "w4", "b2", "w5", "b3"};
 // (a,w1)->Conv1->c and c->Pool1->d
 //
 // (d,w2)->Conv2->e and e->Pool2->f
 //
-// d->Dropout1->g and g->Fc1->h and (h,w3,b1,i)->Conv3->j
+// d->Dropout1->g and (g, w5, b3)->Fc1->h and (h,w3,b1,i)->Conv3->j
 //
 // (d,w4, b2)->Conv4->i
 ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
@@ -98,7 +102,8 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
   SetOp(&prog, "pool2d", "Pool2", {"e"}, {"f"}, use_mkldnn, use_quantizer);
 
   SetOp(&prog, "dropout", "Dropout1", {"d"}, {"g"}, use_mkldnn);
-  SetOp(&prog, "fc", "Fc1", {"g"}, {"h"}, use_mkldnn);
+  SetOp(&prog, "fc", "Fc1", {"g", "w5", "b3"}, {"h"}, use_mkldnn,
+        use_quantizer);
   SetOp(&prog, "conv2d", "Conv3", {"h", "w3", "b1", "i"}, {"j"}, use_mkldnn,
         use_quantizer);
 
@@ -194,13 +199,13 @@ TEST(CpuQuantizePass, quantize) {
   // (d->QUANT3->IN3,w2)->Conv2->OUT3->DEQUANT3->e and
   // e->QUANT4->IN4->Pool2->OUT4->DEQUANT4->f
   //
-  // d->Dropout1->g and g->Fc1->h and
+  // d->Dropout1->g and (g->QUANT8->IN8,w5,b3)->Fc1->OUT7->DEQUANT7->h and
   // (h->QUANT5->IN5,w3,b1,i->QUANT6->IN6)->Conv3->OUT5->DEQUANT5->j
   //
   // (d->QUANT7->IN7,w4, b2)->Conv4->DEQUANT6->OUT6->i
-  // Insert nodes: 7 Quant + 7 IN + 6 OUT + 6 DEQUANT
-  int added_nodes = 7 + 7 + 6 + 6;
-  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 7, 6, added_nodes,
+  // Insert nodes: 8 Quant + 8 IN + 7 OUT + 7 DEQUANT
+  int added_nodes = 8 + 8 + 7 + 7;
+  MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 8, 7, added_nodes,
            2.0f * 127);
 }
 

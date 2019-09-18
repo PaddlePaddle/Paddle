@@ -911,12 +911,10 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_persistable_var()
                             ->assert_is_op_input("fc", "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
                           ->assert_is_op_input("fc", "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
