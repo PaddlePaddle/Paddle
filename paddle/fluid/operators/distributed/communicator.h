@@ -164,19 +164,20 @@ class Communicator {
   Communicator() {}
   virtual ~Communicator() {}
 
-  virtual void Start();
-  virtual void Stop();
+  virtual void Start() = 0;
+  virtual void Stop() = 0;
   virtual bool IsRunning() { return running_; }
 
-  virtual void Send(const std::string& var_name, const framework::Scope& scope);
-  virtual void Recv();
+  virtual void Send(const std::string& var_name,
+                    const framework::Scope& scope) = 0;
+  virtual void Recv() = 0;
 
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
-                        Scope* recv_scope);
+                        Scope* recv_scope) = 0;
 
   virtual void InitImpl(const paddle::framework::ProgramDesc& program,
-                        Scope* recv_scope);
+                        Scope* recv_scope) = 0;
 
   static Communicator* GetInstance() { return communicator_.get(); }
 
@@ -231,7 +232,7 @@ class Communicator {
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() {}
-  virtual ~AsyncCommunicator();
+  ~AsyncCommunicator();
   void Start() override;
   void Stop() override;
 
