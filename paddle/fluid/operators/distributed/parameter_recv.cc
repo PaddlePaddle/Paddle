@@ -142,8 +142,9 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     int64_t width = 0;
     int64_t height = 0;
     std::vector<int64_t> new_rows{};
+
     // trans sparse ids from local to global
-    std::vector<int64_t> abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
+    std::vector<int64_t> abs_sections = operators::ToAbsoluteSection(rpc_ctx.height_sections);
     VLOG(1)<<"Abs_sections complete";
     for(int i=0;i<abs_sections.size();i++){
       VLOG(1)<<"Abs section :"<<i<<" is "<<abs_sections[i];
