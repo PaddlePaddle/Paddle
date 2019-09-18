@@ -52,6 +52,7 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
+std::once_flag RPCClient::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
