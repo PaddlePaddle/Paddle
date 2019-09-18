@@ -143,9 +143,13 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     int64_t height = 0;
     std::vector<int64_t> new_rows{};
     // trans sparse ids from local to global
-    auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
+    std::vector<int64_t> abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
+    VLOG(1)<<"Abs_sections complete";
+    for(int i=0;i<abs_sections.size();i++){
+      VLOG(1)<<"Abs section :"<<i<<" is "<<abs_sections[i];
+    }
 
-    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+    for (int i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
@@ -160,7 +164,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     }
     slr->set_rows(new_rows);
     slr->set_height(height);
-    VLOG(1)<<"Recv var Row size "<<slr->mutable_rows()->size()<<" height "<<height<<" width "<<width;
+    VLOG(1)<<"Recv var Row size "<<slr->mutable_rows()->size()<<" height "<<height;
     slr->mutable_value()->mutable_data<float>(
         framework::make_ddim(
           {static_cast<int64_t>(slr->mutable_rows()->size()), width})
@@ -174,6 +178,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       auto *var_slr_row = var_slr->mutable_rows();
       auto var_slr_row_size = var_slr_row->size();
       auto *var_slr_data = var_slr->mutable_value()->data<float>();
+
       memcpy(slr_data + row_offset * width , var_slr_data, sizeof(float) * width * var_slr_row_size);
       row_offset += var_slr_row_size;
     }
