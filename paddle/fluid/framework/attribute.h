@@ -299,8 +299,8 @@ class TypedAttrChecker {
     if (!set_default_only) {
       if (!attr_map->count(attr_name_)) {
         // user do not set this attr
-        PADDLE_ENFORCE_EQ(default_value_setter_.empty(), 0,
-                          "Attribute '%s' is required!", attr_name_);
+        PADDLE_ENFORCE(!default_value_setter_.empty(),
+                       "Attribute '%s' is required!", attr_name_);
         // default_value_setter_ has no more than one element
         T val;
         (default_value_setter_[0])(&val);
