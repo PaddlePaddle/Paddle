@@ -148,10 +148,8 @@ class Fleet(object):
     def split_files(self, files):
         """
         split files before distributed training,
-        example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
-                   0 gets [a, b, c] and trainer 1 gets [d, e].
-        example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
-                   [a], trainer 1 gets [b],  trainer 2 gets []
+        for example, files is [a, b, c ,d, e]  and trainer_num = 2,
+        then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
 
         Args:
             files(list): file list need to be read.
@@ -161,6 +159,9 @@ class Fleet(object):
         """
         trainer_id = self.worker_index()
         trainers = self.worker_num()
+
+        if len(files) < trainers:
+            raise ValueError("file number must gather or equal trainer number")
 
         remainder = len(files) % trainers
         blocksize = len(files) / trainers

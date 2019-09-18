@@ -40,9 +40,7 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
-                    "Please check Tensor::dims, or Tensor::Resize has been "
-                    "called first. The Tensor's shape is [",
-                    dims(), "] now");
+                    "Please check Tensor::Resize has been called first.");
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size, size);
@@ -59,8 +57,8 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
 }
 
 void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
-  PADDLE_ENFORCE_NOT_NULL(
-      this->holder_, "Cannot invoke mutable data if current hold nothing.");
+  PADDLE_ENFORCE(this->holder_ != nullptr,
+                 "Cannot invoke mutable data if current hold nothing.");
   return mutable_data(place, type_, requested_size);
 }
 

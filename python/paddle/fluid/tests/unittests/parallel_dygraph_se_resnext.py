@@ -57,15 +57,10 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._batch_norm = BatchNorm(
             self.full_name(), num_filters, act=act, momentum=0.1)
-        self._layer_norm = fluid.dygraph.nn.LayerNorm(
-            self.full_name(), begin_norm_axis=1)
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        # FIXME(zcd): when compare the result of multi-card and single-card,
-        # we should replace batch_norm with layer_norm.
-        y = self._layer_norm(y)
-        # y = self._batch_norm(y)
+        y = self._batch_norm(y)
 
         return y
 
@@ -283,9 +278,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        # FIXME(zcd): the dropout should be removed when compare the
-        # result of multi-card and single-card.
-        # y = fluid.layers.dropout(y, dropout_prob=0.2, seed=1)
+        y = fluid.layers.dropout(y, dropout_prob=0.2, seed=1)
         cost = self.fc(y)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
@@ -297,7 +290,7 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         model = SeResNeXt("se-resnext")
         train_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False),
-            batch_size=4,
+            batch_size=2,
             drop_last=True)
 
         opt = fluid.optimizer.SGD(learning_rate=1e-3)

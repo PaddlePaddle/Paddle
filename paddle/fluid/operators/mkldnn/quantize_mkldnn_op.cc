@@ -124,5 +124,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+// TODO(Xiaoli) Support FP32->S8 quantization.
+
 REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

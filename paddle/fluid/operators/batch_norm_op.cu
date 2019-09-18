@@ -23,7 +23,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+// CUDNN_BATCHNORM_SPATIAL_PERSISTENT in batchnorm. This mode can be faster in
+// some tasks because an optimized path may be selected for CUDNN_DATA_FLOAT
+// and CUDNN_DATA_HALF data types, compute capability 6.0 or higher. The
+// reason we set it to false by default is that this mode may use scaled
+// atomic integer reduction that may cause a numerical overflow for certain
+// input data range.
+DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
+            "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
+            "batch_norm, default is False.");
 
 namespace paddle {
 namespace operators {
@@ -152,8 +160,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
       if ((N * H * W * D) == 1) {
-        // Only 1 element in normalization dimension,
-        // skip the batch norm calculation, let y = x.
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
         framework::TensorCopy(*x, ctx.GetPlace(), y);
       } else {
         double this_factor = 1. - momentum;

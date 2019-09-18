@@ -109,16 +109,10 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
 void MemoryOptimizePass::CollectVarMemorySize(
     space_table_t* space_table) const {
   const int fake_batch_size = 1;
-
   auto valid_var = [&](framework::ir::Node* node) -> bool {
-    std::set<std::string> invalid_op = {"while",
-                                        "conditional_block",
+    std::set<std::string> invalid_op = {"while", "conditional_block",
                                         "tensorrt_engine",
-                                        "conditional_block_infer",
-                                        "merge_lod_tensor_infer",
-                                        "merge_lod_tensor",
-                                        "equal",
-                                        "lod_reset"};
+                                        "conditional_block_infer"};
     for (auto* tmp : node->inputs) {
       CHECK(tmp->IsOp());
       std::string op_type = tmp->Op()->Type();

@@ -12,12 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdlib.h>
 #include <unistd.h>
-#include <memory>
 #include <string>
 #include <thread>  // NOLINT
-#include <unordered_map>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -125,8 +122,6 @@ void StartServer(const std::string& rpc_name) {
 }
 
 TEST(PREFETCH, CPU) {
-  setenv("http_proxy", "", 1);
-  setenv("https_proxy", "", 1);
   g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
   distributed::RPCClient* client =
@@ -167,8 +162,6 @@ TEST(PREFETCH, CPU) {
 }
 
 TEST(COMPLETE, CPU) {
-  setenv("http_proxy", "", 1);
-  setenv("https_proxy", "", 1);
   g_req_handler.reset(new distributed::RequestSendHandler(true));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
   distributed::RPCClient* client =

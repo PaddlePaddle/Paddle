@@ -62,10 +62,4 @@ TEST(GPUAllocator, Alloc) {
   TestAllocator(&a, 2048);
   TestAllocator(&a, 0);
 }
-
-TEST(CUDAPinnedAllocator, Alloc) {
-  paddle::memory::detail::CUDAPinnedAllocator a;
-  TestAllocator(&a, 2048);
-  TestAllocator(&a, 0);
-}
 #endif

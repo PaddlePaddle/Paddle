@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_assign_op import TestAssignOp
+from test_assign_op import *
 
 if __name__ == '__main__':
     unittest.main()

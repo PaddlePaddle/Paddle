@@ -40,15 +40,13 @@ class FetchBarrierOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    std::vector<distributed::VarHandlePtr> rets;
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+
     for (auto& ep : eps) {
       VLOG(3) << "fetch barrier, ep: " << ep;
-      rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
+      rpc_client->AsyncSendFetchBarrier(ep);
     }
-
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
-    }
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 

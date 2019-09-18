@@ -43,6 +43,7 @@ class BuildIrMemOptBase(unittest.TestCase):
     def check_network_convergence(self,
                                   network,
                                   use_cuda=True,
+                                  memory_opt=True,
                                   use_ir_memory_optimize=True,
                                   enable_inplace=True,
                                   iter=5):
@@ -67,8 +68,13 @@ class BuildIrMemOptBase(unittest.TestCase):
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
         optimizer.minimize(cost)
         build_strategy = fluid.BuildStrategy()
-        build_strategy.enable_inplace = enable_inplace
-        build_strategy.memory_optimize = use_ir_memory_optimize
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        if memory_opt:
+            fluid.memory_optimize(fluid.default_main_program())
+        else:
+            build_strategy.enable_inplace = use_ir_memory_optimize
+            build_strategy.memory_optimize = enable_inplace
 
         # execution
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -128,7 +134,7 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                     self.network)
 
                 cur_first_loss, cur_last_loss = self.check_network_convergence(
-                    self.network)
+                    self.network, memory_opt=False)
 
                 self.assertAlmostEquals(
                     np.mean(baseline_last_loss),

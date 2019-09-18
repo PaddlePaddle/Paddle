@@ -175,7 +175,6 @@ class Communicator {
  private:
   // recv all parameter
   void RecvAll();
-  void RecvNonIndependent();
   void SendThread();
   void RecvThread();
 

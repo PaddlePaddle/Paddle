@@ -31,7 +31,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Sgd Ops
-  virtual ir::Node *FuseOptimizerOps(
+  virtual void FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
@@ -56,7 +56,9 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     // NOTE: multi_devices_pass requires that every op should have a role.
     Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    return graph->CreateOpNode(&Sgd_desc);
+    auto sgd_node = graph->CreateOpNode(&Sgd_desc);
+
+    InserInputAndOutputForOptOps(sgd_ops, sgd_node);
   }
 };
 }  // namespace ir

@@ -260,18 +260,28 @@ class Flatten2GradOp : public framework::OperatorBase {
     attrs["shape"] = framework::vectorize2int(x_dims);
     attrs["inplace"] = false;
 
-    auto reshape_grad_op = framework::OpRegistry::CreateOp(
-        "reshape2_grad",
-        {{"Out@GRAD", {dout_name}}, {"Shape", {}}, {"XShape", {xshape_name}}},
-        {{"X@GRAD", {dx_name}}}, attrs);
-    reshape_grad_op->Run(scope, place);
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
+        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
+    reshape_op->Run(scope, place);
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInToOut, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+class FlattenOpInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
+  }
+};
+
+class FlattenGradInplaceinToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

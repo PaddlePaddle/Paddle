@@ -212,8 +212,6 @@ class Layer(core.Layer):
             return self._parameters[name]
         elif name in self._sub_layers:
             return self._sub_layers[name]
-        else:
-            return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
         if isinstance(value, framework.Parameter):

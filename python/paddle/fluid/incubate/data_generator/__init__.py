@@ -15,7 +15,7 @@
 import os
 import sys
 
-__all__ = ['MultiSlotDataGenerator', 'MultiSlotStringDataGenerator']
+__all__ = ['MultiSlotDataGenerator']
 
 
 class DataGenerator(object):

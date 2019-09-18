@@ -136,7 +136,8 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_squared_mat_sub, ops::FusionSquaredMatSubOp,
-                  ops::FusionSquaredMatSubOpMaker);
+                  ops::FusionSquaredMatSubOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 
 REGISTER_OP_CPU_KERNEL(fusion_squared_mat_sub,
                        ops::FusionSquaredMatSubKernel<float>,

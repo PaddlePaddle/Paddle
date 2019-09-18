@@ -44,16 +44,13 @@ class SendBarrierOp : public framework::OperatorBase {
 
     VLOG(3) << "SendBarrierOp sync";
 
-    std::vector<distributed::VarHandlePtr> rets;
-
+    // need to wait before sending send_barrier message
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     for (auto& ep : eps) {
       VLOG(3) << "send barrier, ep: " << ep;
-      rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
+      rpc_client->AsyncSendBatchBarrier(ep);
     }
-
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
-    }
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 

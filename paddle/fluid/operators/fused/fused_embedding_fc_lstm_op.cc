@@ -589,7 +589,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_embedding_fc_lstm, ops::FusedEmbeddingFCLSTMOp,
-                  ops::FusedEmbeddingFCLSTMOpMaker);
+                  ops::FusedEmbeddingFCLSTMOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 
 REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
                        ops::FusedEmbeddingFCLSTMKernel<float>,

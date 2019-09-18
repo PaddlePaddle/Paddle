@@ -1,8 +1,7 @@
 {
 	global:
 		*paddle*;
-		*Pass*;
-		*profile*;
+                *Pass*;
 	local:
 		*;
 };

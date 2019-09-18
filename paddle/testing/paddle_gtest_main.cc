@@ -61,27 +61,23 @@ int main(int argc, char** argv) {
   undefok.push_back("initial_cpu_memory_in_mb");
 #endif
 
-  char* env_str = nullptr;
   if (envs.size() > 0) {
     std::string env_string = "--tryfromenv=";
     for (auto t : envs) {
       env_string += t + ",";
     }
     env_string = env_string.substr(0, env_string.length() - 1);
-    env_str = strdup(env_string.c_str());
-    new_argv.push_back(env_str);
+    new_argv.push_back(strdup(env_string.c_str()));
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
-  char* undefok_str = nullptr;
   if (undefok.size() > 0) {
     std::string undefok_string = "--undefok=";
     for (auto t : undefok) {
       undefok_string += t + ",";
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
-    undefok_str = strdup(undefok_string.c_str());
-    new_argv.push_back(undefok_str);
+    new_argv.push_back(strdup(undefok_string.c_str()));
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
@@ -89,11 +85,5 @@ int main(int argc, char** argv) {
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   paddle::framework::InitDevices(true);
-
-  int ret = RUN_ALL_TESTS();
-
-  if (env_str) free(env_str);
-  if (undefok_str) free(undefok_str);
-
-  return ret;
+  return RUN_ALL_TESTS();
 }

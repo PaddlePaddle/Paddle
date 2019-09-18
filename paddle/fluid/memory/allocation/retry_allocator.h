@@ -14,14 +14,12 @@
 
 #pragma once
 
-#include <atomic>              // NOLINT
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -50,7 +48,9 @@ class RetryAllocator : public Allocator {
   std::mutex mutex_;
   std::condition_variable cv_;
 
-  std::atomic<size_t> waited_allocate_size_{0};
+  // For debug, We can add an atomic integer to record how many memory sizes are
+  // waited to allocate
+  // std::atomic<size_t> waited_allocate_size_{0};
 };
 
 }  // namespace allocation

@@ -71,7 +71,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "conv_affine_channel_fuse_pass",                 //
+  "infer_clean_graph_pass",                        //
+      "conv_affine_channel_fuse_pass",             //
       "conv_eltwiseadd_affine_channel_fuse_pass",  //
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
@@ -90,6 +91,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
 
 // The following passes works for Anakin sub-graph engine.
 const std::vector<std::string> kAnakinSubgraphPasses({
+    "infer_clean_graph_pass",                       //
     "quant_conv2d_dequant_fuse_pass",               //
     "simplify_anakin_priorbox_detection_out_pass",  //
     "fillconstant_elementwisemul_fuse",             //
@@ -103,9 +105,8 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    //   "identity_scale_op_clean_pass",              //
-    "is_test_pass",                                  //
-        "simplify_with_basic_ops_pass",              //
+    "infer_clean_graph_pass",  //
+        //   "identity_scale_op_clean_pass",              //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
@@ -125,13 +126,6 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   use_gpu_ = true;
 }
 
-void GpuPassStrategy::EnableCUDNN() {
-  if (!use_cudnn_) {
-    passes_.insert(passes_.begin(), "cudnn_placement_pass");
-  }
-  use_cudnn_ = true;
-}
-
 void GpuPassStrategy::EnableMKLDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
@@ -147,11 +141,10 @@ void GpuPassStrategy::EnableNgraph() {
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
-  passes_.assign({"simplify_with_basic_ops_pass",   //
+  passes_.assign({"infer_clean_graph_pass",         //
                   "attention_lstm_fuse_pass",       //
                   "seqconv_eltadd_relu_fuse_pass",  //
                   // "seqpool_concat_fuse_pass",    //
-                  "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
                   "fc_lstm_fuse_pass",             //
                   "mul_lstm_fuse_pass",            //
@@ -171,8 +164,6 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   use_gpu_ = false;
 }
 
-void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
-
 void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
@@ -188,9 +179,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",        //
-             "conv_leaky_relu_mkldnn_fuse_pass",  //
-             "conv_relu6_mkldnn_fuse_pass",       //
+             "conv_relu_mkldnn_fuse_pass",   //
+             "conv_brelu_mkldnn_fuse_pass",  //
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass"
          })) {

@@ -63,7 +63,6 @@ void SetConfig<AnalysisConfig>(AnalysisConfig* config, std::string model_dir,
       config->pass_builder()->DeletePass("fc_fuse_pass");
       config->pass_builder()->TurnOnDebug();
     } else {
-      config->EnableCUDNN();
       config->SwitchIrOptim();
     }
   }

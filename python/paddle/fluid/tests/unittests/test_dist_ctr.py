@@ -18,18 +18,6 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
-@skip_ci
 class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -39,7 +27,6 @@ class TestDistCTR2x2(TestDistBase):
         self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
 
 
-@skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -50,7 +37,7 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
         self.check_with_place(
             "dist_ctr.py",
             delta=1e-7,
-            check_error_log=True,
+            check_error_log=False,
             need_envs=need_envs)
 
 

@@ -30,10 +30,11 @@ using platform::to_void_cast;
 
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
-                      "Wrong format set for Input tensor");
+    const bool is_layout_correct = input->layout() == DataLayout::kMKLDNN;
+    const bool is_format_defined =
+        input->format() != memory::format::format_undef;
+    PADDLE_ENFORCE(is_layout_correct && is_format_defined,
+                   "Wrong layout/format set for Input tensor");
   }
 }
 
@@ -47,9 +48,9 @@ static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
   return mem_prim_desc;
 }
 
-static MKLDNNMemoryFormat GetDstMemFormat(
+static mkldnn::memory::format GetDstMemFormat(
     const concat::primitive_desc& concat_pd) {
-  return (MKLDNNMemoryFormat)concat_pd.dst_primitive_desc().desc().data.format;
+  return (memory::format)concat_pd.dst_primitive_desc().desc().data.format;
 }
 
 static platform::CPUPlace GetCpuPlace(
@@ -125,7 +126,7 @@ class ConcatPrimitiveFactory {
   memory::desc CreateDstMemDescriptor(Tensor* output,
                                       const memory::data_type& dt) {
     auto dst_dims = paddle::framework::vectorize2int(output->dims());
-    return memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
+    return memory::desc(dst_dims, dt, memory::format::any);
   }
 
   mkldnn::memory CreateDstMemory(const concat::primitive_desc& concat_pd,
@@ -158,8 +159,8 @@ class ConcatPrimitiveFactory {
   std::vector<memory::primitive_desc> srcs_pd;
   std::vector<memory> srcs;
   std::vector<primitive::at> inputs;
-  boost::optional<memory> dst_mem;
-};
+  boost::optional<memory> dst_mem;  // TODO(mgallus): change to std::optional
+};                                  // upon introduction of C++17 to paddle
 
 template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {

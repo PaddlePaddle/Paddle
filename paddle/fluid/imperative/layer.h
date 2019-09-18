@@ -98,7 +98,6 @@ class PreparedOp {
     }
     std::vector<framework::KernelConfig>* kernel_configs =
         op.GetKernelConfig(expected_kernel_key);
-
     return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
   }
 

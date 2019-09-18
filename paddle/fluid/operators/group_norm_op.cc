@@ -170,10 +170,21 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
-DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
-                           {framework::GradVarName("Y"),
-                            framework::GradVarName("X")});
+class GroupNormInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Y"}};
+  }
+};
+
+class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
+  }
+};
 
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {

@@ -47,6 +47,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_elewise_add_act_ops=False,
+            memory_opt=False,
             use_ir_memory_optimize=False,
             enable_inplace=False,
             optimizer=_optimizer)
@@ -56,6 +57,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_elewise_add_act_ops=True,
+            memory_opt=False,
             use_ir_memory_optimize=False,
             enable_inplace=False,
             optimizer=_optimizer)

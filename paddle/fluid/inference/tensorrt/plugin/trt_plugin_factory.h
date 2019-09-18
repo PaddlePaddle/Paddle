@@ -68,7 +68,7 @@ class TrtPluginRegistrar {
 
 #define REGISTER_TRT_PLUGIN_UNIQ(ctr, name, deserialize_func)      \
   static paddle::inference::tensorrt::plugin::TrtPluginRegistrar   \
-      trt_plugin_registrar##ctr UNUSED =                           \
+      trt_plugin_registrar##ctr __attribute__((unused)) =          \
           paddle::inference::tensorrt::plugin::TrtPluginRegistrar( \
               name, deserialize_func)
 

@@ -15,7 +15,6 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 
 namespace paddle {
@@ -145,7 +144,7 @@ TEST(float16, lod_tensor_cpu) {
 
 TEST(float16, floating) {
   // compile time assert.
-  PADDLE_ENFORCE_EQ(std::is_floating_point<float16>::value, true);
+  PADDLE_ASSERT(std::is_floating_point<float16>::value);
 }
 
 TEST(float16, print) {

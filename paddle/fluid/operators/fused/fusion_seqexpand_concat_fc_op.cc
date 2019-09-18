@@ -197,7 +197,8 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_seqexpand_concat_fc, ops::FusionSeqExpandConcatFCOp,
-                  ops::FusionSeqExpandConcatFCOpMaker);
+                  ops::FusionSeqExpandConcatFCOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqexpand_concat_fc,
                        ops::FusionSeqExpandConcatFCOpKernel<float>,

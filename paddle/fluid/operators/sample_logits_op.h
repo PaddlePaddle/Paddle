@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -34,8 +33,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT_MSG(std::is_floating_point<T>::value,
-                      "TolerableValue should be float in sample_logits_op.");
+    PADDLE_ASSERT(std::is_floating_point<T>::value);
     const T kApproInf = 1e20;
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;

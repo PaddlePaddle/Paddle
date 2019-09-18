@@ -128,18 +128,9 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
                        size, stream_);
         } else {
-          platform::CUDAPinnedPlace cuda_pinned_place;
-          framework::LoDTensor cuda_pinned_tensor;
-          cuda_pinned_tensor.Resize(cpu[i].dims());
-          auto cuda_pinned_ptr =
-              cuda_pinned_tensor.mutable_data(cuda_pinned_place, cpu[i].type());
-          memory::Copy(cuda_pinned_place, cuda_pinned_ptr,
-                       boost::get<platform::CPUPlace>(cpu_place), cpu_ptr,
-                       size);
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
-                       cuda_pinned_place, cuda_pinned_ptr, size, stream_);
-          PADDLE_ENFORCE(cudaStreamSynchronize(stream_),
-                         "cuda stream sync error.");
+                       boost::get<platform::CPUPlace>(cpu_place), cpu_ptr, size,
+                       stream_);
         }
         gpu[i].set_lod(cpu[i].lod());
       }

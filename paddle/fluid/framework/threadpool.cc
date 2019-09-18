@@ -13,8 +13,6 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/threadpool.h"
-#include <memory>
-#include <utility>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -22,7 +20,8 @@
 DEFINE_int32(io_threadpool_size, 100,
              "number of threads used for doing IO, default 100");
 
-DECLARE_int32(dist_threadpool_size);
+DEFINE_int32(dist_threadpool_size, 0,
+             "number of threads used for distributed executed.");
 
 namespace paddle {
 namespace framework {

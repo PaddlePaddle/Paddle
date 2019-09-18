@@ -162,7 +162,7 @@ class TestMKLDNNPostTrainingQuantStrategy(unittest.TestCase):
                  fetch_targets] = fluid.io.load_inference_model(
                      model_path, exe, 'model', 'params')
 
-            use_mkldnn = fluid.core.get_flags_use_mkldnn()
+            use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
             if (use_mkldnn):
                 graph = IrGraph(
                     core.Graph(inference_program.desc), for_test=True)

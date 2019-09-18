@@ -39,10 +39,7 @@ void BuildConcatNode(
     }
   }
   auto op_attrs = framework::AttrReader(op->Attrs());
-  int axis = op_attrs.Get<int>("axis");
-  if (axis < 0) {
-    axis = axis + args[0]->get_shape().size();
-  }
+  const size_t axis = op_attrs.Get<int>("axis");
   auto out = std::make_shared<ngraph::op::Concat>(args, axis);
   platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }

@@ -248,8 +248,6 @@ class ExecutionContext {
     return op_.Attr<T>(name);
   }
 
-  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
-
   bool HasInput(const std::string& name) const;
 
   bool HasOutput(const std::string& name) const;

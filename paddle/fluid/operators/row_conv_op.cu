@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -46,11 +47,11 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
         (d < input_dim) ? wt[thy * input_dim + d] : static_cast<T>(0);
   }
   __syncthreads();
+
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -76,11 +77,11 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
   int thy = threadIdx.y;
 
   if (d >= input_dim) return;
+
   for (size_t i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -113,12 +114,10 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
   }
   __syncthreads();
 
-  int current_timesteps = 0;
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    current_timesteps = end - start;
-
+    int current_timesteps = end - start;
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -143,13 +142,10 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
   int thy = threadIdx.y;
 
   if (d >= input_dim) return;
-  int current_timesteps = 0;
-
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
-    current_timesteps = end - start;
-
+    int current_timesteps = end - start;
     for (int k = thy; k < current_timesteps; k += bly) {
       T sum = 0;
       for (int w = 0; (w < future_context) && ((k - w) >= 0); w++) {
@@ -179,6 +175,7 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
   int xdim_sh_in = block_y;
   int xdim_sh_dout = block_y;
+  // int xdim_sh_dfilter = future_context;
   int ydim_sh_in = block_x;
   int ydim_sh_dout = block_x + future_context - 1;
   int ydim_sh_dfilter = block_y;
@@ -200,7 +197,6 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-
     int scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
@@ -262,11 +258,11 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
   // NOTE(zcd): temporary solution
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
+
   for (int i = 0; i < num_sequence; i++) {
     int start = static_cast<int>(batch_indices[i]);
     int end = static_cast<int>(batch_indices[i + 1]);
     int current_timesteps = end - start;
-
     int scaled_cur_steps =
         ((current_timesteps + block_x - 1) / block_x) * block_x;
 
@@ -314,26 +310,9 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     const T *in = X->data<T>();
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
-    bool is_tensor = X->lod().empty();
-    int batch_size = 0;
-    if (is_tensor) {
-      batch_size = X->dims()[0];
-    } else {
-      batch_size = X->lod()[0].size() - 1;
-    }
-    int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
-    int timesteps = X->dims()[1];
-    if (is_tensor) {
-      for (int i = 0; i < batch_size + 1; i++) {
-        batch_indices[i] = i * timesteps;
-      }
-      input_dim = X->dims()[2];
-    } else {
-      batch_indices = X->lod()[0];
-      input_dim = X->dims()[1];
-    }
 
+    auto batch_indices = X->lod()[0];
+    int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
     size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
@@ -369,27 +348,9 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
 
     Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
     Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
-    int batch_size = 0;
-    bool is_tensor = X->lod().empty();
-    if (is_tensor) {
-      batch_size = X->dims()[0];
-    } else {
-      batch_size = X->lod()[0].size() - 1;
-    }
 
-    int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
-    int timesteps = X->dims()[1];
-    if (is_tensor) {
-      for (int i = 0; i < batch_size + 1; i++) {
-        batch_indices[i] = i * timesteps;
-      }
-      input_dim = X->dims()[2];
-    } else {
-      batch_indices = X->lod()[0];
-      input_dim = X->dims()[1];
-    }
-    // int input_dim = X->dims()[1];
+    auto batch_indices = X->lod()[0];
+    int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
     size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());

@@ -255,11 +255,23 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyInplaceInference,
-                           {"Logits", "Softmax"});
+class SoftmaxWithCrossEntropyInplaceInference
+    : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const {
+    return {{"Logits", "Softmax"}};
+  }
+};
 
-DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInference,
-                           {"Softmax", framework::GradVarName("Logits")});
+class SoftmaxWithCrossEntropyGradInplaceInference
+    : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const {
+    return {{"Softmax", framework::GradVarName("Logits")}};
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

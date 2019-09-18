@@ -317,10 +317,21 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+class ElementwiseOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{"X", "Out"}};
+  }
+};
+
+class ElementwiseGradOpInplace : public framework::InplaceOpInference {
+ public:
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc &op_desc, bool use_cuda) const override {
+    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
+  }
+};
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
 

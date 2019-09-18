@@ -109,7 +109,8 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
-  if (HasFusedActivation(conv_op)) return;
+  auto fuse_relu = HasAttribute<bool>(*conv_op, "fuse_relu");
+  if (fuse_relu && *fuse_relu) return;
 
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
@@ -178,7 +179,8 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
     return;
   }
 
-  if (HasFusedActivation(residual_conv_op)) return;
+  auto fuse_relu = HasAttribute<bool>(*residual_conv_op, "fuse_relu");
+  if (fuse_relu && *fuse_relu) return;
 
   residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
   residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});

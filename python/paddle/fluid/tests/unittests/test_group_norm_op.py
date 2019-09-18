@@ -61,15 +61,11 @@ class TestGroupNormOp(OpTest):
 
     def test_check_output(self):
         atol = 1e-4
-        inplace_atol = 1e-4
         place = core.CPUPlace()
-        # add inplace_atol bacause group_norm doesn't ensure computational consistency
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol)
+        self.check_output_with_place(place, atol=atol)
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol)
+            self.check_output_with_place(place, atol=atol)
 
     def do_compare_between_place(self):
         if not core.is_compiled_with_cuda(): return

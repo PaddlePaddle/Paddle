@@ -25,8 +25,7 @@ namespace math {
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT_MSG(std::is_floating_point<T>::value,
-                      "TolerableValue should be float in cross_entropy.");
+    PADDLE_ASSERT(std::is_floating_point<T>::value);
     const T kApproInf = 1e20;
 
     if (x == INFINITY) return kApproInf;

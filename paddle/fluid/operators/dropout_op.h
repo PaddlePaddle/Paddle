@@ -77,20 +77,13 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         }
       }
     } else {
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
       if (upscale_in_train) {
-        const auto* X_data = x->data<T>();
-        auto* Y_data = y->mutable_data<T>(context.GetPlace());
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-        for (int i = 0; i < x->numel(); i++) {
-          Y_data[i] = X_data[i];
-        }
+        Y.device(place) = X;
       } else {
-        auto X = EigenMatrix<T>::Reshape(*x, 1);
-        auto Y = EigenMatrix<T>::Reshape(*y, 1);
-        auto& place =
-            *context.template device_context<DeviceContext>().eigen_device();
         Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
       }
     }

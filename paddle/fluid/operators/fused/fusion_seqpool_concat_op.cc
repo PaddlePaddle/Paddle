@@ -126,7 +126,8 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_seqpool_concat, ops::FusionSeqPoolConcatOp,
-                  ops::FusionSeqPoolConcatOpMaker);
+                  ops::FusionSeqPoolConcatOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_concat,
                        ops::FusionSeqPoolConcatKernel<float>,

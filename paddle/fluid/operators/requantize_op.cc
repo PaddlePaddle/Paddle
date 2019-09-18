@@ -42,4 +42,5 @@ void ReQuantOpMaker::Make() {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker);
+REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
