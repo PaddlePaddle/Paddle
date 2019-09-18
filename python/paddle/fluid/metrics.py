@@ -49,7 +49,7 @@ def _is_numpy_(var):
 
 def _is_number_(var):
     return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
-        var, float) or (isinstance(var, np.ndarray) and var.shape == (1,))
+        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
 
 
 def _is_number_or_matrix_(var):
@@ -540,7 +540,7 @@ class ChunkEvaluator(MetricBase):
         recall = float(self.num_correct_chunks
                        ) / self.num_label_chunks if self.num_label_chunks else 0
         f1_score = float(2 * precision * recall) / (
-                precision + recall) if self.num_correct_chunks else 0
+            precision + recall) if self.num_correct_chunks else 0
         return precision, recall, f1_score
 
 
