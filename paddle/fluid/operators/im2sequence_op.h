@@ -48,7 +48,8 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    if (ctx.HasInput("Y") && batch_size > 1) {
+    if (ctx.InputVar("Y") != nullptr &&
+        batch_size > 1) {  // if (ctx.HasInput("Y") && batch_size > 1) {
       const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       Tensor cpu_shape_tensor;

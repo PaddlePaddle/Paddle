@@ -50,7 +50,8 @@ namespace paddle {
 namespace operators {
 inline std::vector<int> get_expand_times(
     const framework::ExecutionContext& ctx) {
-  if (ctx.HasInput("ExpandTimes")) {
+  if (ctx.InputVar("ExpandTimes") !=
+      nullptr) {  // if (ctx.HasInput("ExpandTimes")) {
     auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     framework::Tensor cpu_expand_tensor;

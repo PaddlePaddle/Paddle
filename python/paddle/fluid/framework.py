@@ -1857,6 +1857,7 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+            print("in_dygraph_mode, type is: ", kwargs.get("type", None))
             attrs = kwargs.get("attrs", {})
             if _dygraph_tracer_._train_mode == False:
                 # eval mode
@@ -1887,6 +1888,7 @@ class Block(object):
                                        if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
+            print("in_static_mode, type is: ", kwargs.get("type", None))
             op_desc = self.desc.append_op()
             op = Operator(
                 block=self,

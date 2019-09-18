@@ -45,7 +45,8 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
@@ -74,7 +75,8 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
                     np.array(output), [len(self.lod[0]), 2 * self.emb_size])
             }
             self.attrs = {'padding_idx': int(padding_idx)}
-            self.check_output()
+            # TODO(wangzhongpu): support lod in dygraph mode
+            self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():

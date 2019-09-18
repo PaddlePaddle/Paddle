@@ -188,7 +188,8 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8)
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False, atol=1e-8)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.

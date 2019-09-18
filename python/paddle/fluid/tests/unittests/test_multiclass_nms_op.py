@@ -289,7 +289,8 @@ class TestMulticlassNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestMulticlassNMSOpNoOutput(TestMulticlassNMSOp):
@@ -354,7 +355,8 @@ class TestMulticlassNMSLoDInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestIOU(unittest.TestCase):
@@ -421,7 +423,8 @@ class TestMulticlassNMS2Op(TestMulticlassNMSOp):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestMulticlassNMS2OpNoOutput(TestMulticlassNMS2Op):
@@ -489,7 +492,8 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestMulticlassNMS2LoDNoOutput(TestMulticlassNMS2LoDInput):

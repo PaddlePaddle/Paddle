@@ -78,7 +78,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Output<Tensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
-    if (ctx.HasInput("MaxLenTensor")) {
+    if (ctx.InputVar("MaxLenTensor") !=
+        nullptr) {  // if (ctx.HasInput("MaxLenTensor")) {
       auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
       PADDLE_ENFORCE(max_len_tensor != NULL, "MaxLenTensor is NULL");
       if (platform::is_gpu_place(max_len_tensor->place())) {

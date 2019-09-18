@@ -62,6 +62,8 @@ static framework::VariableNameMap CreateVarNameMap(
        is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
     auto it = varbase_map.find(var.name());
     if (it == varbase_map.end()) {
+      VLOG(1) << "-----LOGGING----- not have var, var name: " << var.name()
+              << std::endl;
       PADDLE_ENFORCE_EQ(
           var.dispensable(), true,
           "Var: %s not dispensable and there are no such var in inputs",
@@ -72,6 +74,8 @@ static framework::VariableNameMap CreateVarNameMap(
       std::vector<std::string> args;
       args.reserve(var_vector.size());
       for (auto& var_base : var_vector) {
+        VLOG(1) << "-----LOGGING----- have var, var name: " << var.name()
+                << " var_base name: " << var_base->Name() << std::endl;
         args.emplace_back(var_base->Name());
       }
       result[var.name()] = std::move(args);
@@ -84,9 +88,12 @@ static framework::RuntimeContext PrepareRuntimeContext(
     const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   framework::VariableValueMap inputs, outputs;
   for (auto& in_pair : ins) {
+    VLOG(1) << "-----LOGGING----- in_pair.first is: " << in_pair.first
+            << std::endl;
     auto& in_ctx = inputs[in_pair.first];
     in_ctx.reserve(in_pair.second.size());
     for (auto& in_var : in_pair.second) {
+      VLOG(1) << "-----LOGGING----- var_base MutableVar" << std::endl;
       in_ctx.emplace_back(in_var->MutableVar());
     }
   }

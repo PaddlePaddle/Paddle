@@ -410,18 +410,23 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 }
 
 bool ExecutionContext::HasInput(const std::string& name) const {
+  // VLOG(1) << "if have offset2 " << op_.HasInputs(name) << std::endl;
   if (!op_.HasInputs(name)) {
     return false;
   }
   auto& ins = Inputs(name);
   size_t length = ins.size();
+  // VLOG(1) << "if have offset3 " << length << std::endl;
   if (length == 0) {
     return false;
   }
   PADDLE_ENFORCE_EQ(length, 1UL,
                     "Input %s should not have more than one inputs", name);
   auto arg = ins[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  // VLOG(1) << "caocaocaocaocao " << (arg == kEmptyVarName) << " pointer " <<
+  // arg << " " << InputVar(arg) << std::endl;
+  auto* var =
+      arg == kEmptyVarName ? nullptr : InputVar(arg);  // scope_.FindVar(arg);
   return var != nullptr;
 }
 
@@ -443,11 +448,18 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
+  // VLOG(1) << "is end " << (it == ctx_.inputs.end()) << std::endl;
   if (it == ctx_.inputs.end()) return nullptr;
+
+  // VLOG(1) << "9999999999 can find var, size is " << it->second.size() << "
+  // it->second.empty()? "<< it->second.empty() << " it is "<< it->second[0] <<
+  // std::endl;
 
   PADDLE_ENFORCE_LE(it->second.size(), 1UL,
                     "Operator %s's input %s should contain only one variable.",
                     op_.Type(), name);
+  // VLOG(1) << "return real is: " << (it->second.empty() ? nullptr :
+  // it->second[0]) << std::endl;
   return it->second.empty() ? nullptr : it->second[0];
 }
 

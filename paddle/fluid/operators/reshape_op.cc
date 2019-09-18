@@ -288,9 +288,10 @@ class ReshapeKernel {
       out_dims = ReshapeOp::ValidateShape(new_shape, in->dims());
 
     } else {
-      auto *shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
-                               : nullptr;
+      auto *shape_tensor =
+          ctx.InputVar("Shape") != nullptr /*ctx.HasInput("Shape")*/
+              ? ctx.Input<framework::LoDTensor>("Shape")
+              : nullptr;
 
       if (shape_tensor) {
         auto *shape_data = shape_tensor->data<int>();

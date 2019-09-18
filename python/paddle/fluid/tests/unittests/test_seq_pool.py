@@ -71,7 +71,8 @@ class TestSeqAvgPool(OpTest):
         self.compute(x, offset, out)
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         # Remove MaxIndex after check_grad is refined.

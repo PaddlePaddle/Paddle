@@ -93,7 +93,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     size_t tag_num;
     const int64_t* length_data = nullptr;
     framework::Vector<size_t> in_lod;
-    if (ctx.HasInput("length")) {
+    if (ctx.InputVar("length") != nullptr) {  // if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
@@ -144,7 +144,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = 0;
       int end_pos = 0;
-      if (ctx.HasInput("length")) {
+      if (ctx.InputVar("length") != nullptr) {  // if (ctx.HasInput("length")) {
         if (length_data[i] == 0) continue;
         start_pos = i * emission_dims[1];
         end_pos = start_pos + static_cast<int>(length_data[i]);
@@ -261,7 +261,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     size_t seq_num = 0;
     framework::Vector<size_t> lod;
     const int64_t* length_data = nullptr;
-    if (ctx.HasInput("length")) {
+    if (ctx.InputVar("length") != nullptr) {  // if (ctx.HasInput("length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
@@ -297,13 +297,13 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     Tensor beta;
     auto* beta_data = beta.mutable_data<T>(emission_dims, platform::CPUPlace());
     memset(beta_data, 0, beta.numel() * sizeof(T));
-    if (ctx.HasInput("length")) {
+    if (ctx.InputVar("length") != nullptr) {  // if (ctx.HasInput("length")) {
       beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
     }
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = 0;
       int end_pos = 0;
-      if (ctx.HasInput("length")) {
+      if (ctx.InputVar("length") != nullptr) {  // if (ctx.HasInput("length")) {
         if (length_data[i] == 0) continue;
         start_pos = i * emission_dims[1];
         end_pos = start_pos + static_cast<int>(length_data[i]);

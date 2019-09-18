@@ -55,7 +55,8 @@ class TestSeqConvEltAddRelu(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
 
 class TestSeqConvEltAddReluBS1(TestSeqConvEltAddRelu):

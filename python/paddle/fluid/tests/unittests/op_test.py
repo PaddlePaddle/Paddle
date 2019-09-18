@@ -274,106 +274,89 @@ class OpTest(unittest.TestCase):
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
         with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
+            try:
+                block = fluid.default_main_program().global_block()
 
-            # prepare input variable
-            inputs = defaultdict(list)
-            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for input_ in op_proto.inputs:
-                name = input_.name
-                if name not in self.inputs:
-                    if input_.dispensable:
-                        continue
-                    else:
-                        assert input_.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        inputs[name] = v
-                    continue
-                if input_.duplicable:
-                    assert isinstance(
-                        self.inputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.inputs[name]:
-                        if isinstance(np_value, tuple):
-                            v = self._create_var_from_numpy(np_value[0])
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(np_value[1])
+                # prepare input variable
+                inputs = defaultdict(list)
+                op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+                for input_ in op_proto.inputs:
+                    name = input_.name
+                    if name not in self.inputs:
+                        if input_.dispensable:
+                            continue
                         else:
-                            v = self._create_var_from_numpy(np_value)
-                        var_list.append(v)
-                    inputs[slot_name] = var_list
-                else:
-                    np_value = self.inputs[name]
-                    if isinstance(self.inputs[name], list):
+                            assert input_.intermediate, "{} not found".format(
+                                name)
+                            v = block.create_var(
+                                dtype='float32',
+                                type=core.VarDesc.VarType.LOD_TENSOR)
+                            inputs[name].append(v)
+                        continue
+                    if input_.duplicable:
+                        assert isinstance(
+                            self.inputs[name],
+                            list), "Duplicable {} should be set as list".format(
+                                name)
+                        var_list = []
                         slot_name = name
-                        for name, np_value in self.inputs[name]:
+                        for (name, np_value) in self.inputs[name]:
                             if isinstance(np_value, tuple):
                                 v = self._create_var_from_numpy(np_value[0])
                                 v._ivar.value().get_tensor(
                                 ).set_recursive_sequence_lengths(np_value[1])
                             else:
                                 v = self._create_var_from_numpy(np_value)
-                            inputs[slot_name].append(v)
+                            var_list.append(v)
+                        inputs[slot_name] = var_list
                     else:
-                        if isinstance(self.inputs[name], tuple):
-                            v = self._create_var_from_numpy(self.inputs[name][
-                                0])
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(self.inputs[name][
-                                1])
+                        np_value = self.inputs[name]
+                        if isinstance(self.inputs[name], list):
+                            slot_name = name
+                            for name, np_value in self.inputs[name]:
+                                if isinstance(np_value, tuple):
+                                    v = self._create_var_from_numpy(np_value[0])
+                                    v._ivar.value().get_tensor(
+                                    ).set_recursive_sequence_lengths(np_value[
+                                        1])
+                                else:
+                                    v = self._create_var_from_numpy(np_value)
+                                inputs[slot_name].append(v)
                         else:
-                            v = self._create_var_from_numpy(self.inputs[name])
-                        inputs[name].append(v)
-
-            # prepare output variable
-            outputs = defaultdict(list)
-            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for output in op_proto.outputs:
-                name = output.name
-                if name not in self.outputs:
-                    if output.dispensable:
+                            if isinstance(self.inputs[name], tuple):
+                                v = self._create_var_from_numpy(self.inputs[
+                                    name][0])
+                                v._ivar.value().get_tensor(
+                                ).set_recursive_sequence_lengths(self.inputs[
+                                    name][1])
+                            else:
+                                v = self._create_var_from_numpy(self.inputs[
+                                    name])
+                            inputs[name].append(v)
+                # prepare output variable
+                outputs = defaultdict(list)
+                op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+                for output in op_proto.outputs:
+                    name = output.name
+                    if name not in self.outputs:
+                        if output.dispensable:
+                            continue
+                        else:
+                            assert output.intermediate, "{} not found".format(
+                                name)
+                            v = block.create_var(
+                                dtype='float32',
+                                type=core.VarDesc.VarType.LOD_TENSOR)
+                            outputs[name].append(v)
                         continue
-                    else:
-                        assert output.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        outputs[name] = v
-                    continue
-                if output.duplicable:
-                    assert isinstance(
-                        self.outputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.outputs[name]:
-                        if isinstance(np_value, tuple):
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value[0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        else:
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value.dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        var_list.append(v)
-                    outputs[slot_name] = var_list
-                else:
-                    np_value = self.outputs[name]
-                    if isinstance(self.outputs[name], list):
+                    if output.duplicable:
+                        assert isinstance(
+                            self.outputs[name],
+                            list), "Duplicable {} should be set as list".format(
+                                name)
+                        var_list = []
                         slot_name = name
-                        for name, np_value in self.outputs[name]:
+                        for (name, np_value) in self.outputs[name]:
                             if isinstance(np_value, tuple):
                                 v = block.create_var(
                                     name=name,
@@ -388,30 +371,56 @@ class OpTest(unittest.TestCase):
                                     type=core.VarDesc.VarType.LOD_TENSOR,
                                     persistable=False,
                                     stop_gradient=False)
-                            outputs[slot_name].append(v)
+                            var_list.append(v)
+                        outputs[slot_name] = var_list
                     else:
-                        if isinstance(self.outputs[name], tuple):
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name][0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
+                        np_value = self.outputs[name]
+                        if isinstance(self.outputs[name], list):
+                            slot_name = name
+                            for name, np_value in self.outputs[name]:
+                                if isinstance(np_value, tuple):
+                                    v = block.create_var(
+                                        name=name,
+                                        dtype=np_value[0].dtype,
+                                        type=core.VarDesc.VarType.LOD_TENSOR,
+                                        persistable=False,
+                                        stop_gradient=False)
+                                else:
+                                    v = block.create_var(
+                                        name=name,
+                                        dtype=np_value.dtype,
+                                        type=core.VarDesc.VarType.LOD_TENSOR,
+                                        persistable=False,
+                                        stop_gradient=False)
+                                outputs[slot_name].append(v)
                         else:
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        outputs[name].append(v)
+                            if isinstance(self.outputs[name], tuple):
+                                v = block.create_var(
+                                    name=unique_name.generate("%s_out" %
+                                                              (name)),
+                                    dtype=self.outputs[name][0].dtype,
+                                    type=core.VarDesc.VarType.LOD_TENSOR,
+                                    persistable=False,
+                                    stop_gradient=False)
+                            else:
+                                v = block.create_var(
+                                    name=unique_name.generate("%s_out" %
+                                                              (name)),
+                                    dtype=self.outputs[name].dtype,
+                                    type=core.VarDesc.VarType.LOD_TENSOR,
+                                    persistable=False,
+                                    stop_gradient=False)
+                            outputs[name].append(v)
 
-            block.append_op(
-                type=self.op_type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs=self.attrs if hasattr(self, "attrs") else None)
-            return outputs
+                block.append_op(
+                    type=self.op_type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=self.attrs if hasattr(self, "attrs") else None)
+                return outputs
+            except core.EnforceNotMet as ex:
+                exception = ex
+                self.assertIsNotNone(exception)
 
     def _compare_expect_and_actual_outputs(self,
                                            place,
@@ -694,8 +703,10 @@ class OpTest(unittest.TestCase):
                                 check_dygraph=True,
                                 inplace_atol=None):
         if check_dygraph:
+            print("-----LOGGING----- check_dygraph")
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
+        print("-----LOGGING----- check_static")
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -813,6 +824,7 @@ class OpTest(unittest.TestCase):
         if inplace_atol is not None:
             warnings.warn(
                 "By default, inplace_atol should not be set, please check it")
+        print("-----LOGGING----- check_inplace")
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -846,6 +858,7 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None):
         places = self._get_places()
         for place in places:
+            print("-----LOGGING----- check_output", place)
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)
 
