@@ -25,6 +25,7 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
+    VLOG(5) << "====into gpu forward simple! ===";
     auto size = x->numel();
     dim3 block_size = dim3(TILE_SIZE, 1);
     dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
@@ -40,6 +41,7 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
+    VLOG(5) << "====into gpu forward fp16 ===";
     auto size = x->numel();
     dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
     dim3 block_size = dim3(TILE_SIZE, 1);
@@ -100,6 +102,11 @@ class ElementwiseAddGradKernel<plat::CUDADeviceContext, T>
   }
 };
 
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, float>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, double>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int64_t>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, plat::float16>;
 }  // namespace operators
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(

@@ -27,7 +27,7 @@ void default_elementwise_add(const framework::ExecutionContext &ctx,
                                                         AddFunctor<T>(), z);
 }
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename T, class Enable = void>
 struct SameDimsElemwiseAdd {
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,

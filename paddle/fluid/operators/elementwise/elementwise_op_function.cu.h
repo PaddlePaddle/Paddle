@@ -11,7 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_fp16.h>
 #include <glog/logging.h>
 #include "paddle/fluid/operators/elementwise/elementwise.h"
 
@@ -19,7 +18,11 @@ namespace paddle {
 namespace operators {
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#define PADDLE_CUDA_FP16
+#include <cuda_fp16.h>
+#endif
 
+#ifdef PADDLE_CUDA_FP16
 #define DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Func, expr, FP16Function)            \
   template <typename T>                                                       \
   __global__ void SameDimsElemwise##Func##CUDAKernel(const T* x, const T* y,  \
