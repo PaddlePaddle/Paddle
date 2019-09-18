@@ -80,6 +80,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
 
+        # distribute lookup table
+        self.table_name = find_distributed_lookup_table(self.origin_program)
+        self.has_distributed_lookup_table = self.table_name != None
+        self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
+
         # add distributed attrs to program
         self.origin_program._is_distributed = True
         self.origin_program._endpoints = self.pserver_endpoints
