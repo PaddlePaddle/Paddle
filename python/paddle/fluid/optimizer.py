@@ -3045,14 +3045,14 @@ class RecomputeOptimizer(Optimizer):
 
     def load(self, stat_dict):
         """
-        load function is not supported by Recompute Optimizer for now
+        load function is not supported by Recompute Optimizer for now.
         """
         raise NotImplementedError(
             "load function is not supported by Recompute Optimizer for now")
 
     def apply_gradients(self, params_grads):
         """
-        call apply_gradients function of self._optimizer
+        call apply_gradients function of self._optimizer.
         """
         return self._optimizer.apply_gradients(params_grads=params_grads)
 
@@ -3064,7 +3064,7 @@ class RecomputeOptimizer(Optimizer):
                  callbacks=None,
                  checkpoints=None):
         """
-        call append_backward with checkpoints 
+        call append_backward with checkpoints.
         """
         if framework.in_dygraph_mode():
             raise NotImplementedError(
