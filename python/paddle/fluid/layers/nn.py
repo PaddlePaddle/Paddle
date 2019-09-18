@@ -10806,7 +10806,7 @@ def strided_slice(input, axes, starts, ends, strides):
     strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
     The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
     example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
-    [start1, start2, ..., startN], [end1, end2, ..., endN], [step1, step2, ..., stepN]),
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
     the axes which controls the dimension you want to slice makes it more flexible.
 
     .. code-block:: text
@@ -10833,9 +10833,9 @@ def strided_slice(input, axes, starts, ends, strides):
     Atrgs:
        input (Varibale): the input variable.
        axes(List):axis we need to slice
-       begin (List): the begin index 
-       end (List): the end index
-       stride (List): the stride index
+       starts (List): the begin index 
+       ends (List): the end index
+       strides (List): the stride index
     Returns
        out(Variable): the result by strided_slice Op
     
