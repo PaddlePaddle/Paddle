@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -511,3 +510,8 @@ REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
 REGISTER_OP_KERNEL(conv3d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
                    paddle::operators::CUDNNConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(
+    conv3d_grad_grad, CUDNN, plat::CUDAPlace,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);

@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(use_ngraph);
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -81,6 +83,29 @@ class ParallelExecutorPrivate {
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
+
+  /**
+   * NOTE(zengjinle): the feeded variables of users should not be reused,
+   * because users may feed them into another network. Changing the feeded
+   * variables that users can visit may cause calculation wrong, which is
+   * a very subtle bug when traning networks. However, these variables
+   * can be garbage collected.
+   *
+   * ParallelExecutor provides 2 methods to feed variables:
+   *
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *                                variables, so we have to skip these.
+   *
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *                                       variables, so we do not need to skip
+   *                                       them.
+   */
+  inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
+    auto iter = mem_opt_var_infos_[scope_idx].find(name);
+    if (iter != mem_opt_var_infos_[scope_idx].end()) {
+      iter->second->SetSkipMemoryReuse(true);
+    }
+  }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
@@ -233,6 +258,13 @@ class ParallelExecutorPrivate {
 };
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
+  if (FLAGS_use_ngraph) {
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_use_ngraph=True, memory optimization strategy is "
+           "disabled in ParallelExecutor";
+    return graph;
+  }
+
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -250,6 +282,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
+    LOG(INFO) << "Inplace strategy is enabled, when "
+                 "build_strategy.enable_inplace = True";
   }
 
   /**
@@ -278,6 +312,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+    LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
+                 "build_strategy.memory_optimize = True or garbage collection "
+                 "strategy is disabled, which is not recommended";
   }
 
   if (!is_gc_enabled) {
@@ -710,6 +747,9 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
     auto &map = tensors[i];
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
+      if (!is_persistable) {
+        member_->SetSkipMemoryReuse(i, pair.first);
+      }
       auto *feed_scope = is_persistable ? member_->local_scopes_[i]
                                         : member_->local_exec_scopes_[i];
       auto *feed_var = feed_scope->Var(pair.first);

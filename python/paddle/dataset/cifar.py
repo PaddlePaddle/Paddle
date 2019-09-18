@@ -14,8 +14,7 @@
 """
 CIFAR dataset.
 
-This module will download dataset from
-https://www.cs.toronto.edu/~kriz/cifar.html and parse train/test set into
+This module will download dataset from https://dataset.bj.bcebos.com/cifar/cifar-10-python.tar.gz and https://dataset.bj.bcebos.com/cifar/cifar-100-python.tar.gz, parse train/test set into
 paddle reader creators.
 
 The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
@@ -39,7 +38,7 @@ from six.moves import cPickle as pickle
 
 __all__ = ['train100', 'test100', 'train10', 'test10']
 
-URL_PREFIX = 'https://www.cs.toronto.edu/~kriz/'
+URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
 CIFAR10_MD5 = 'c58f30108f718f92721af3b95e74349a'
 CIFAR100_URL = URL_PREFIX + 'cifar-100-python.tar.gz'
@@ -95,7 +94,7 @@ def test100():
     CIFAR-100 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [0, 1] and label in [0, 99].
 
     :return: Test reader creator.
     :rtype: callable

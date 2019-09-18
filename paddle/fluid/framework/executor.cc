@@ -39,11 +39,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_NGRAPH
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 #endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -78,10 +78,11 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-        block_id_, ops_);
-    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(block_id_, ops_);
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(prog_, block_id_,
+                                                               ops_);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        block_id_, ops_);
+        prog_, block_id_, ops_);
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }

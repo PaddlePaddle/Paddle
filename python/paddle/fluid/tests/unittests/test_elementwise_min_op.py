@@ -55,7 +55,7 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_Vector(TestElementwiseOp):
+class TestElementwiseMinOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.random((32, )).astype("float32")
@@ -65,7 +65,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -81,7 +81,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -97,7 +97,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -112,7 +112,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
@@ -126,6 +126,18 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
             'Out':
             np.minimum(self.inputs['X'], self.inputs['Y'].reshape(1, 3, 4, 1))
         }
+
+
+class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_min"
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float32)
+        y = x + sgn * \
+            np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float32)
+        self.inputs = {'X': x, 'Y': y}
+
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
 if __name__ == '__main__':

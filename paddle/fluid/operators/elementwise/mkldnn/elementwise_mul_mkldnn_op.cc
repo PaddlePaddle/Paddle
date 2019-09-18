@@ -37,7 +37,7 @@ static void UpdateDataFormat(const framework::ExecutionContext& ctx,
   if (ctx.op().HasAttr(attribute)) {
     auto format_as_string = ctx.Attr<std::string>(attribute);
     auto format = StringToMKLDNNFormat(&format_as_string);
-    if (format != memory::format::any) {
+    if (format != MKLDNNMemoryFormat::any) {
       tensor->set_format(format);
     }
   }
@@ -48,10 +48,11 @@ static void ReorderInput(framework::Tensor* tensor,
                          const platform::Place& place,
                          const mkldnn::engine& engine, bool isFourDim) {
   using platform::to_void_cast;
-  auto dims = paddle::framework::vectorize2int(tensor->dims());
+  auto dims = paddle::framework::vectorize<int>(tensor->dims());
   framework::Tensor out_tensor;
   out_tensor.Resize(tensor->dims());
-  out_tensor.set_format(isFourDim ? memory::format::nchw : memory::format::nc);
+  out_tensor.set_format(isFourDim ? MKLDNNMemoryFormat::nchw
+                                  : MKLDNNMemoryFormat::nc);
   out_tensor.set_layout(tensor->layout());
   mkldnn::memory input_memory = {
       {{dims, platform::MKLDNNGetDataType<T>(), tensor->format()}, engine},
@@ -79,15 +80,15 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims_untrimmed = y->dims();
-    auto x_int_dims = paddle::framework::vectorize2int(x_dims);
+    auto x_int_dims = paddle::framework::vectorize<int>(x_dims);
 
     UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
     UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");
 
     const bool is_avx512_enabled = platform::MayIUse(platform::avx512f);
     const bool are_dims_divisable = !(x_int_dims[1] % 16);
-    const bool is_x_format_correct = x->format() == memory::format::nChw16c;
-    const bool is_y_format_correct = y->format() == memory::format::nc;
+    const bool is_x_format_correct = x->format() == MKLDNNMemoryFormat::nChw16c;
+    const bool is_y_format_correct = y->format() == MKLDNNMemoryFormat::nc;
     if (is_x_format_correct && is_y_format_correct && are_dims_divisable &&
         is_avx512_enabled) {
       int pre, n, post;
@@ -133,12 +134,12 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     } else {
       // Fallback to naive version:
       const bool are_inputs_in_same_format = x->format() == y->format();
-      const bool is_x_nchw = x->format() == memory::format::nchw;
-      const bool is_x_nc = x->format() == memory::format::nc;
-      const bool is_x_x = x->format() == memory::format::x;
-      const bool is_y_nchw = y->format() == memory::format::nchw;
-      const bool is_y_nc = y->format() == memory::format::nc;
-      const bool is_y_x = y->format() == memory::format::x;
+      const bool is_x_nchw = x->format() == MKLDNNMemoryFormat::nchw;
+      const bool is_x_nc = x->format() == MKLDNNMemoryFormat::nc;
+      const bool is_x_x = x->format() == MKLDNNMemoryFormat::x;
+      const bool is_y_nchw = y->format() == MKLDNNMemoryFormat::nchw;
+      const bool is_y_nc = y->format() == MKLDNNMemoryFormat::nc;
+      const bool is_y_x = y->format() == MKLDNNMemoryFormat::x;
       if (!are_inputs_in_same_format) {
         using platform::MKLDNNDeviceContext;
         auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
