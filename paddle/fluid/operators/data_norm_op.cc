@@ -227,6 +227,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSize")), "");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSum")), "");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
+                   "");
 
     const auto x_dims = ctx->GetInputDim("X");
     const DataLayout data_layout = framework::StringToDataLayout(
