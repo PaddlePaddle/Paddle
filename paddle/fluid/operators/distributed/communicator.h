@@ -227,7 +227,7 @@ class Communicator {
   bool running_ = false;
 
   static std::once_flag init_flag_;
-  static std::unique_ptr<Communicator> communicator_;
+  static std::shared_ptr<Communicator> communicator_;
 };
 
 class AsyncCommunicator : Communicator {
