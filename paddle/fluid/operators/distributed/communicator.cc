@@ -712,6 +712,9 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     VLOG(1) <<"Geo-Sgd Recv Sparse var "<< var_name <<" row size "<<new_rows.size();
     for (size_t i = 0; i< new_rows.size(); i++) {
       float diff =0;
+      VLOG(1) << "Geo-Sgd Recv " << new_rows[i]<< " before update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
+            <<" ;old_scope: "<< y_mutable_data[new_rows[i]*row_numel]
+            <<" ;pserver_scope: "<< z_mutable_data[i * row_numel];
       for (int64_t j = 0; j< row_numel; j++) {
         if(j == 0){
           diff = z_mutable_data[i * row_numel + j] - y_mutable_data[new_rows[i]*row_numel + j];
@@ -731,7 +734,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
     float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
 
-    VLOG(4) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
+    VLOG(1) << "Geo-Sgd Recv " << var_name<< " before update Vars recv_scope: "<< *x_mutable_data
             <<" ;old_scope: "<< *y_mutable_data
             <<" ;pserver_scope: "<< *z_mutable_data;
     float diff = 0;

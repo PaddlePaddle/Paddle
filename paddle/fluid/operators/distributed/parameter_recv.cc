@@ -61,11 +61,12 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       local_scope->Var(recv_var_name);
       VLOG(1) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       if(recv_var->IsType<framework::LoDTensor>()){
+        // sparse param in recv_scope is LoDTensor
         rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name));
       } else {
-        //sparse
+        // sparse param in pserver_scope is SelectedRows
         rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
                                              *local_scope.get(), recv_var_name,
                                              recv_var_name, recv_var_name));
@@ -141,16 +142,20 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     int64_t width = 0;
     int64_t height = 0;
     std::vector<int64_t> new_rows{};
+    // trans sparse ids from local to global
+    auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
-    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_var_names[i];
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
       auto *var_slr_row = var_slr->mutable_rows();
       width = var_slr->mutable_value()->dims()[1];
       height += var_slr->height();
+      auto row_offset = abs_sections[i];
       VLOG(1)<<"Recv split_var "<<recv_var_name <<" Row size "<<var_slr_row->size();
-      for(size_t i =0; i<var_slr_row->size(); i++){
-        new_rows.push_back(var_slr_row->at(i));
+      for(size_t j =0; j<var_slr_row->size(); j++){
+        new_rows.push_back(row_offset + var_slr_row->at(j));
       }
     }
     slr->set_rows(new_rows);
