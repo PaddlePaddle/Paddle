@@ -163,7 +163,10 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
   cudaStream_t stream_;
+
   cudnnHandle_t cudnn_handle_;
+  mutable std::mutex cudnn_handle_mtx_;
+
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
@@ -190,8 +193,8 @@ class CUDADeviceContext : public DeviceContext {
 
 class CudnnWorkspaceHandle {
  public:
-  inline explicit CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx)
-      : device_context_(dev_ctx) {}
+  inline CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx, std::mutex* mtx)
+      : device_context_(dev_ctx), mtx_(mtx) {}
 
   template <typename Callback>
   inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
@@ -200,7 +203,10 @@ class CudnnWorkspaceHandle {
     }
     VLOG(2) << "Cudnn workspace size at RunFunc: "
             << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    {
+      std::lock_guard<std::mutex> guard(*mtx_);
+      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    }
   }
 
   /*! \brief Thread which call RunFuncSync() would release gpu memory after
@@ -218,8 +224,6 @@ class CudnnWorkspaceHandle {
     if (required_workspace_bytes <= WorkspaceSize()) {
       return;
     }
-    // reset allocation first before re-allocate to save memory
-    allocation_.reset();
     allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
   }
 
@@ -238,6 +242,7 @@ class CudnnWorkspaceHandle {
  private:
   memory::allocation::AllocationPtr allocation_;
   const CUDADeviceContext& device_context_;
+  std::mutex* mtx_;
 };
 
 template <>
