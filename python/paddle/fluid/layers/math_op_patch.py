@@ -40,7 +40,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block.program.current_block()
+        return var.block
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
