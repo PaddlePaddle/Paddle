@@ -425,8 +425,7 @@ bool ExecutionContext::HasInput(const std::string& name) const {
   auto arg = ins[0];
   // VLOG(1) << "caocaocaocaocao " << (arg == kEmptyVarName) << " pointer " <<
   // arg << " " << InputVar(arg) << std::endl;
-  auto* var =
-      arg == kEmptyVarName ? nullptr : InputVar(arg);  // scope_.FindVar(arg);
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
   return var != nullptr;
 }
 
@@ -448,12 +447,13 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
-  // VLOG(1) << "is end " << (it == ctx_.inputs.end()) << std::endl;
+  // VLOG(1) << "name is ? " << name << " is end ? " << (it ==
+  // ctx_.inputs.end()) << std::endl;
   if (it == ctx_.inputs.end()) return nullptr;
 
-  // VLOG(1) << "9999999999 can find var, size is " << it->second.size() << "
-  // it->second.empty()? "<< it->second.empty() << " it is "<< it->second[0] <<
-  // std::endl;
+  // VLOG(1) << "can find var, size is ? " << it->second.size() << "
+  // it->second.empty() ? "<< it->second.empty(); //<< " it is "<< it->second[0]
+  // << std::endl;
 
   PADDLE_ENFORCE_LE(it->second.size(), 1UL,
                     "Operator %s's input %s should contain only one variable.",

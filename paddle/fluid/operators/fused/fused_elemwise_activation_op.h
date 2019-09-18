@@ -389,7 +389,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
                              "Cannot get input tensor %s, variable name = %s",
                              "Y", ctx.op().Input("Y"));
-    PADDLE_ENFORCE(ctx.InputVar("Out") != nullptr /*ctx.HasOutput("Out")*/,
+    PADDLE_ENFORCE(ctx.OutputVar("Out") != nullptr /*ctx.HasOutput("Out")*/,
                    "The output(Out) should not be empty");
     auto output = ctx.Output<framework::Tensor>("Out");
 

@@ -99,9 +99,12 @@ static framework::RuntimeContext PrepareRuntimeContext(
   }
 
   for (auto& out_pair : outs) {
+    VLOG(1) << "-----LOGGING----- out_pair.first is: " << out_pair.first
+            << std::endl;
     auto& out_ctx = outputs[out_pair.first];
     out_ctx.reserve(out_pair.second.size());
     for (auto& out_var : out_pair.second) {
+      VLOG(1) << "-----LOGGING----- var_base MutableVar" << std::endl;
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
