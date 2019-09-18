@@ -130,6 +130,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_passes_filter_);
   CP_MEMBER(anakin_ops_filter_);
 
+  // profile related.
+  CP_MEMBER(with_profile_);
+
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
@@ -255,6 +258,7 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder_.reset(new CpuPassStrategy);
     }
+
   } else {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
@@ -272,7 +276,6 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
-
   if (use_gpu() && use_cudnn_) {
 #ifdef PADDLE_WITH_CUDA
     if (!enable_ir_optim_) {
@@ -381,6 +384,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
 
+  ss << with_profile_;
+
   ss << enable_ir_optim_;
   ss << use_feed_fetch_ops_;
   ss << ir_debug_;
@@ -455,6 +460,12 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
+
+void AnalysisConfig::EnableProfile() {
+  with_profile_ = true;
+  Update();
+}
+
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
     int min_subgraph_size, AnalysisConfig::Precision precision_mode,

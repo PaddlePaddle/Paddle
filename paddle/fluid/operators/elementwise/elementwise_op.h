@@ -264,7 +264,18 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("DOut")->type();
+    framework::proto::VarType::Type input_data_type;
+    if (ctx.HasInput("DDX") == false) {
+      PADDLE_ENFORCE_EQ(ctx.HasInput("DDY"), true,
+                        "Input(DDY) should not be null");
+      input_data_type = ctx.Input<Tensor>("DDY")->type();
+    } else if (ctx.HasInput("DDY") == false) {
+      PADDLE_ENFORCE_EQ(ctx.HasInput("DDX"), true,
+                        "Input(DDX) should not be null");
+      input_data_type = ctx.Input<Tensor>("DDX")->type();
+    } else {
+      input_data_type = ctx.Input<Tensor>("DDX")->type();
+    }
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -321,8 +332,11 @@ DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
+                                      "Y", "DOut");
 
 }  // namespace operators
 }  // namespace paddle
