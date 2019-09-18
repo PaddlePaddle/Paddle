@@ -39,7 +39,7 @@ __all__ = [
     'EditDistance',
     'DetectionMAP',
     'Auc',
-    'RMSE'
+    'RMSE',
 ]
 
 
@@ -279,9 +279,10 @@ class Precision(MetricBase):
 
 class RMSE(MetricBase):
     """
-    The root-mean-square deviation (RMSD) or root-mean-square error (RMSE) (or sometimes root-mean-squared error) is a
-    frequently used measure of the differences between values (sample or population values) predicted by a
-    model or an estimator and the values observed.
+    The root-mean-square deviation (RMSD) or root-mean-square error (RMSE)
+    (or sometimes root-mean-squared error) is a frequently used measure of
+    the differences between values (sample or population values) predicted
+    by a model or an estimator and the values observed.
 
     https://en.wikipedia.org/wiki/Root-mean-square_deviation
     Args:
