@@ -57,7 +57,7 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
     OpDesc* desc = fc->Op();
     auto dims = fc->inputs[0]->Var()->GetShape();
     auto dim_num = dims.size();
-    bool are_dims_supported = dim_num != 2 && dim_num != 4;
+    bool are_dims_supported = dim_num == 2 || dim_num == 4;
     constexpr size_t height_axis = 2;
     constexpr size_t width_axis = 3;
     bool is_size_supported =

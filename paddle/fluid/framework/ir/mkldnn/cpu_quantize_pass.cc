@@ -254,8 +254,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     auto* fc_op_desc = fc->Op();
 
     // skip if should not be quantized
-    if (!fc_op_desc->HasAttr("use_quantizer") ||
-        !boost::get<bool>(fc_op_desc->GetAttr("use_quantizer")))
+    if (fc_op_desc->GetAttrIfExists<bool>("use_quantizer") != true ||
+        fc_op_desc->GetAttrIfExists<bool>("use_mkldnn") != true)
       return;
 
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
