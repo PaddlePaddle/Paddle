@@ -308,6 +308,7 @@ def fc(input,
 
     Returns:
         Variable: The transformation result.
+        test
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
