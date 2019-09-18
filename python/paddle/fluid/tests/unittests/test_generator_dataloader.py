@@ -18,6 +18,7 @@ import numpy as np
 import time
 import six
 import unittest
+from paddle.fluid.reader import DataLoaderBase
 
 EPOCH_NUM = 20
 BATCH_SIZE = 32
@@ -173,6 +174,22 @@ class TestBase(unittest.TestCase):
                         diff = np.max(
                             np.abs(results[0]['loss'] - results[1]['loss']))
                         self.assertLess(diff, 1e-3)
+
+
+class TestDataLoaderBaseAbstract(unittest.TestCase):
+    def test_main(self):
+        loader = DataLoaderBase()
+        try:
+            loader.__iter__()
+            self.assertTrue(False)
+        except NotImplementedError:
+            self.assertTrue(True)
+
+        try:
+            loader.__next__()
+            self.assertTrue(False)
+        except NotImplementedError:
+            self.assertTrue(True)
 
 
 if __name__ == '__main__':
