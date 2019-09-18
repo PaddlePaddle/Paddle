@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 template <typename T>
-static __global__ void SimpleElemwiseAddCUDAKernel(const T* x, const T* y, T* z,
+static __global__ void SimpleElemwiseAddCUDAKernel(const T* __restrict__ x, const T* __restrict__ y, T* z,
                                                    int64_t size) {
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -107,8 +107,7 @@ void SimpleSpeed(const paddle::framework::DDim& dims, int loop = 1000) {
   size_t size = static_cast<size_t>(paddle::framework::product(dims));
 
   for (int i = 0; i < loop; i++) {
-    SimpleElemwiseAddCUDAKernel<
-        T><<<(size + 511) / 512, 512, 0, context.stream()>>>(x_ptr, y_ptr,
+    SimpleElemwiseAddCUDAKernel<T><<<(size + 511) / 512, 512, 0, context.stream()>>>(x_ptr, y_ptr,
                                                              z_ptr, size);
   }
   context.Wait();
@@ -148,5 +147,5 @@ void TestSpeed(const paddle::framework::DDim& dims, int loop = 1000) {
 TEST(DataTypeTransform, GPUTransform) {
   paddle::framework::DDim dims({1024, 1024});
   // TestSpeed<float>(dims, 1000);
-  // TestSpeed<paddle::platform::float16>(dims, 10000);
+  TestSpeed<paddle::platform::float16>(dims, 100);
 }
