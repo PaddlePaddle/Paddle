@@ -10833,9 +10833,9 @@ def strided_slice(input, axes, starts, ends, strides):
     Atrgs:
        input (Varibale): the input variable.
        axes(List):axis we need to slice
-       starts (List): the begin index 
-       ends (List): the end index
-       strides (List): the stride index
+       starts (List): the start index in axis
+       ends (List): the end index in axis
+       strides (List): the stride length when we do slice operation
     Returns
        out(Variable): the result by strided_slice Op
     
