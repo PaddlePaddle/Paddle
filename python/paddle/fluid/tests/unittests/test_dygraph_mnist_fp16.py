@@ -125,7 +125,8 @@ class TestMnist(unittest.TestCase):
             model = MNIST("mnist", dtype="float16")
             x = fluid.dygraph.to_variable(x)
             y = fluid.dygraph.to_variable(y)
-            print(model(x, y))
+            loss = model(x, y)
+            print(loss.numpy())
 
 
 if __name__ == "__main__":
