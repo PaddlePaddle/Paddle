@@ -344,7 +344,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    if (g_var == nullptr) {
+      continue;
+    }
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
