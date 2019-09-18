@@ -26,11 +26,11 @@ namespace framework {
 namespace ir {
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph);
   Init("fc_mkldnn_pass", graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(scope);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
