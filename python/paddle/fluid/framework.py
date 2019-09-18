@@ -972,20 +972,6 @@ class Variable(object):
 
         return out
 
-    # @property
-    # def require_grad(self):
-    #     if in_dygraph_mode():
-    #         return self._ivar.require_grad
-    #     else:
-    #         raise SyntaxError("require_grad is only avaliable in dygraph mode")
-    #
-    # @require_grad.setter
-    # def require_grad(self, s):
-    #     if in_dygraph_mode():
-    #         self._ivar.require_grad = s
-    #     else:
-    #         raise SyntaxError("require_grad is only avaliable in dygraph mode")
-
 
 def get_all_op_protos():
     """

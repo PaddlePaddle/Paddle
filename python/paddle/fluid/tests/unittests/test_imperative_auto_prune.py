@@ -204,6 +204,43 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue(case4.fc._w._ivar._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
 
+    def test_auto_prune6(self):
+        with fluid.dygraph.guard():
+            value0 = np.arange(26).reshape(2, 13).astype("float32")
+            value1 = np.arange(6).reshape(2, 3).astype("float32")
+            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            fc = fluid.FC("fc1", size=5, dtype="float32")
+            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            a = fluid.dygraph.to_variable(value0)
+            b = fluid.dygraph.to_variable(value1)
+            c = fluid.dygraph.to_variable(value2)
+            out1 = fc(a)
+            out2 = fc2(b)
+            out1.stop_gradient = True
+            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            out.backward()
+            self.assertTrue((fc._w.gradient() == 0).all())
+            self.assertTrue((out1.gradient() == 0).all())
+
+    def test_auto_prune7(self):
+        with fluid.dygraph.guard():
+            value0 = np.arange(26).reshape(2, 13).astype("float32")
+            value1 = np.arange(6).reshape(2, 3).astype("float32")
+            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            fc = fluid.FC("fc1", size=5, dtype="float32")
+            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            a = fluid.dygraph.to_variable(value0)
+            b = fluid.dygraph.to_variable(value1)
+            c = fluid.dygraph.to_variable(value2)
+            out1 = fc(a)
+            out2 = fc2(b)
+            out1.stop_gradient = True
+            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            out.backward(backward_strategy)
+            self.assertTrue((fc._w.gradient() == 0).all())
+            self.assertTrue((out1.gradient() == 0).all())
+
     def test_auto_prune_with_optimizer(self):
         vocab_size = 100
         size = 20

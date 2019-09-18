@@ -85,7 +85,7 @@ void BasicEngine::CheckBackwardInputs(OpBase* op) {
     for (auto& var : pair.second) {
       if (var && IsGrad(var.get())) {
         // if grad var has OverridedStopGradient skip this Op
-        if (var->OverridedStopGradient() || !var->GradGenerated()) {
+        if (!var->GradGenerated()) {
           VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(op->place());
@@ -106,7 +106,6 @@ void BasicEngine::SetBackwardOutputs(paddle::imperative::OpBase* op) {
       if (var) {
         // Set Backward outputs's generate_grad as true
         var->SetGradGenerated(true);
-        var->InnerSetOverridedStopGradient(false);
         VLOG(6) << "Set backward output: " << var->Name()
                 << "'s SetGeneratedGrad as True";
       }
