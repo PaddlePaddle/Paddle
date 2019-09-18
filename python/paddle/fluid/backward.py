@@ -577,7 +577,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
                                            Default: None
         no_grad_set(set|None): Variables in the Block 0 whose gradients
                                should be ignored. All variables with
-                               `step_gradient=True` from all blocks will
+                               `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                Default: None
         callbacks(list[callable object]|None): The callbacks are used for
@@ -712,8 +712,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         parameters = parameter_list
     else:
         params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
-        parameters = [param.name for param in params]
+        parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
     for param in parameters:

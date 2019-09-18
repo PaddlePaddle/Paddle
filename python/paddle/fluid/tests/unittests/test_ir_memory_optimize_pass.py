@@ -21,26 +21,16 @@ import paddle.dataset.mnist as mnist
 import unittest
 import os
 
-MNIST_RECORDIO_FILE = "./mnist_test_pe.recordio"
 
-
-def _feed_data_helper(use_feed):
-    if use_feed:
-        img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    else:
-        reader = fluid.layers.open_files(
-            filenames=[MNIST_RECORDIO_FILE],
-            shapes=[[-1, 784], [-1, 1]],
-            lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
-        reader = fluid.layers.io.double_buffer(reader)
-        img, label = fluid.layers.read_file(reader)
+def _feed_data_helper():
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     return img, label
 
 
 def simple_fc_net(use_feed):
-    x, y = _feed_data_helper(use_feed)
+    assert use_feed
+    x, y = _feed_data_helper()
     hidden_layer = 4
     for _ in range(hidden_layer):
         x = fluid.layers.fc(input=x, size=20, act='relu')
@@ -51,7 +41,8 @@ def simple_fc_net(use_feed):
 
 
 def fc_with_inplace_net(use_feed):
-    x, y = _feed_data_helper(use_feed)
+    assert use_feed
+    x, y = _feed_data_helper()
     fc = fluid.layers.fc(input=x, size=20, act='relu')
     fc = fluid.layers.fc(input=fc, size=10, act='relu')
     reshape = fluid.layers.reshape(x=fc, shape=[-1, 2, 5])
@@ -63,23 +54,6 @@ def fc_with_inplace_net(use_feed):
 
 
 class TestMNIST(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-        # Convert mnist to recordio file
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=4)
-            feeder = fluid.DataFeeder(
-                feed_list=[  # order is image and label
-                    fluid.layers.data(
-                        name='image', shape=[784]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                MNIST_RECORDIO_FILE, reader, feeder)
-
     def _dummy_data(self):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)

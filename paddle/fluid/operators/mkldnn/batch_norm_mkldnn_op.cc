@@ -58,6 +58,15 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
         batch_norm_pd_->variance_primitive_desc(), ptr, "@variance_mem_p");
   }
 
+  template <typename T>
+  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(
+      framework::Tensor *output, platform::Place place) {
+    T *ptr = output->mutable_data<T>(
+        place, batch_norm_pd_->dst_primitive_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(
+        batch_norm_pd_->dst_primitive_desc(), ptr, "@dst_mem_p");
+  }
+
   std::shared_ptr<batch_norm_fwd::primitive_desc>
   AcquireBatchNormPrimitiveDescriptor(const batch_norm_fwd::desc &bn_fwd_desc,
                                       const mkldnn::engine &engine) {
@@ -109,21 +118,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandler {
     }
 
     return batch_norm_p;
-  }
-
-  static std::string GetHash(const memory::dims &input_dims, float epsilon,
-                             unsigned flag, bool is_test, memory::format format,
-                             const std::string &suffix = "") {
-    auto dims2str = [](const memory::dims &operand_dims) {
-      std::string dstr = "";
-      for (size_t i = 0; i < operand_dims.size(); ++i) {
-        dstr += std::to_string(operand_dims[i]) + "-";
-      }
-      return dstr;
-    };
-    return dims2str(input_dims) + std::to_string(epsilon) +
-           std::to_string(flag) + std::to_string(is_test) +
-           std::to_string(format) + suffix;
   }
 
  private:
@@ -182,14 +176,14 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *shift = ctx.Input<Tensor>("Bias");
 
-    PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                       x->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input x tensor");
+    PADDLE_ENFORCE_EQ(x->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for X tensor");
+    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for X tensor");
 
     const T *x_data = x->data<T>();
     const T *mean_data = mean->data<T>();
     const T *variance_data = variance->data<T>();
-    T *y_data = y->mutable_data<T>(ctx.GetPlace());
     T *mean_out_data = mean_out->mutable_data<T>(ctx.GetPlace());
     T *variance_out_data = variance_out->mutable_data<T>(ctx.GetPlace());
     T *batch_mean_data = nullptr;
@@ -204,8 +198,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                            ? mkldnn::prop_kind::forward_scoring
                            : mkldnn::prop_kind::forward_training;
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto src_tz = paddle::framework::vectorize<int>(x->dims());
+    auto scale_tz = paddle::framework::vectorize<int>(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
     const unsigned int ic = scale_tz[0];
 
@@ -222,13 +216,13 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     if (fuse_with_relu) flags |= mkldnn::fuse_bn_relu;
 
     // create mkldnn memory from input x tensor
-    mkldnn::memory::format input_format =
+    MKLDNNMemoryFormat input_format =
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     // keys for backward pass
-    const std::string key = BatchNormMKLDNNHandler::GetHash(
-        src_tz, epsilon, flags, global_stats, input_format,
-        ctx.op().Output("SavedMean"));
+    const std::string key =
+        platform::CreateKey(src_tz, epsilon, flags, global_stats, input_format,
+                            ctx.op().Output("SavedMean"));
     BatchNormMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
     auto user_src_md = platform::MKLDNNMemDesc(
@@ -250,8 +244,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireScaleshiftMemoryFromPrimitive(scaleshift_data.data());
 
     // create mkldnn memory for output y tensor
-    auto dst_memory = handler.AcquireDstMemory(
-        batch_norm_fwd_pd->dst_primitive_desc().desc(), y_data);
+    auto dst_memory =
+        handler.AcquireDstMemoryFromPrimitive<T>(y, ctx.GetPlace());
 
     std::shared_ptr<batch_norm_fwd> batch_norm_p;
     if (global_stats) {
@@ -323,9 +317,10 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto *diff_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    PADDLE_ENFORCE(diff_y->layout() == DataLayout::kMKLDNN &&
-                       diff_y->format() != memory::format::format_undef,
-                   "Wrong layout/format set for Input diff_y tensor");
+    PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input diff_y tensor");
+    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input diff_y tensor");
 
     const T *x_data = x->data<T>();
     const T *diff_y_data = diff_y->data<T>();
@@ -334,38 +329,38 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const T *scale_data = scale->data<T>();
     const T *shift_data = shift->data<T>();
     T *diff_x_data = diff_x->mutable_data<T>(ctx.GetPlace());
+
     T *diff_scale_data = diff_scale->mutable_data<T>(ctx.GetPlace());
     T *diff_shift_data = diff_shift->mutable_data<T>(ctx.GetPlace());
 
-    auto src_tz = paddle::framework::vectorize2int(x->dims());
+    auto src_tz = paddle::framework::vectorize<int>(x->dims());
     auto diff_src_tz = src_tz;
     auto dst_tz = src_tz;
     auto diff_dst_tz = dst_tz;
-    auto scale_tz = paddle::framework::vectorize2int(scale->dims());
+    auto scale_tz = paddle::framework::vectorize<int>(scale->dims());
     PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
 
     const unsigned int ic = scale_tz[0];
 
     using bn_bwd_types = bn_type_traits<mkldnn::batch_normalization_backward>;
 
-    mkldnn::memory::format dst_format =
+    MKLDNNMemoryFormat dst_format =
         platform::MKLDNNFormatForSize(src_tz.size(), diff_y->format());
 
-    mkldnn::memory::format input_format =
+    MKLDNNMemoryFormat input_format =
         platform::MKLDNNFormatForSize(src_tz.size(), x->format());
 
     unsigned flags = mkldnn::use_scale_shift;
 
     // keys from forward pass
-    const std::string key = BatchNormMKLDNNHandler::GetHash(
-        src_tz, epsilon, flags, false, input_format,
-        ctx.op().Input("SavedMean"));
+    const std::string key =
+        platform::CreateKey(src_tz, epsilon, flags, false, input_format,
+                            ctx.op().Input("SavedMean"));
     const std::string key_batch_norm_fwd_pd = key + "@bn_fwd_pd";
 
     // keys for primitives reuse
     const std::string key_with_hash =
-        key + BatchNormMKLDNNHandler::GetHash(src_tz, epsilon, flags, false,
-                                              input_format);
+        key + platform::CreateKey(src_tz, epsilon, flags, false, input_format);
     const std::string key_batch_norm_bwd_p =
         key_with_hash + "@batch_norm_bwd_p";
     const std::string key_batch_norm_src_mem_p =
@@ -472,9 +467,10 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       // set layout/format of output tensors
       diff_x->set_layout(DataLayout::kMKLDNN);
-      diff_x->set_format((memory::format)diff_src_memory->get_primitive_desc()
-                             .desc()
-                             .data.format);
+      diff_x->set_format(
+          (MKLDNNMemoryFormat)diff_src_memory->get_primitive_desc()
+              .desc()
+              .data.format);
     } else {
       // primitives already exist
       UpdateMemoryData(dev_ctx, key_batch_norm_src_mem_p, to_void_cast(x_data));
@@ -500,9 +496,10 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
       // set layout/format of output tensors
       diff_x->set_layout(DataLayout::kMKLDNN);
-      diff_x->set_format((memory::format)diff_src_memory->get_primitive_desc()
-                             .desc()
-                             .data.format);
+      diff_x->set_format(
+          (MKLDNNMemoryFormat)diff_src_memory->get_primitive_desc()
+              .desc()
+              .data.format);
     }
 
     // execute optional reorder and batch_norm backward primitive

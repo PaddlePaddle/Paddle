@@ -278,10 +278,12 @@ class LocalSGD(Collective):
         Collective._transpile_startup_program(self)
 
         block = self.startup_program.global_block()
+        non_dist_params = []
         for param in block.iter_parameters():
-            if param.is_distributed:
-                continue
+            if not param.is_distributed:
+                non_dist_params.append(param)
 
+        for param in non_dist_params:
             snapshot = block.create_var(
                 name=self.snapshot_name(param.name),
                 shape=param.shape,

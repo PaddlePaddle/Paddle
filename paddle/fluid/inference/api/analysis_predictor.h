@@ -65,6 +65,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string &name) override;
 
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+
   bool ZeroCopyRun() override;
 
   void CreateFeedFetchVar(framework::Scope *scope);
@@ -178,10 +180,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   // Some status here that help to determine the status inside the predictor.
-  bool status_program_optimized_{false};
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
-  bool status_ir_optim_enabled_{false};
 };
 
 }  // namespace paddle

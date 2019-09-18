@@ -137,8 +137,7 @@ class TestInstance(unittest.TestCase):
         cp_prog = CompiledProgram(program).with_data_parallel(
             loss_name=avg_cost.name)
 
-        self.assertRaises(TypeError, save_inference_model,
-                          [MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog])
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
 

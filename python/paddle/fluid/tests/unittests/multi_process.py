@@ -20,14 +20,14 @@ def train():
     trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
     worker_endpoints_env = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-    worker_endpoints = worker_endpoints_env.split(",")
-    trainers_num = len(worker_endpoints)
+    worker_endpoints = worker_endpoints_env
+    trainers_num = len(worker_endpoints.split(','))
 
     name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
         .format(selected_gpus, worker_endpoints, trainers_num, current_endpoint,trainer_id)
 
     print(name)
-    with open("multi_process.check.log", "w") as f:
+    with open("multi_process.check_{}.log".format(trainer_id), "w") as f:
         f.write(name)
 
 
