@@ -346,6 +346,8 @@ class TransformThroughFP32Pass(object):
                     self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = _convert_scale2tensor(scale)
                 self.VarQuantScales[input_name] = (False, lod_tensor)
+                self.VarQuantScales[scale_name.replace(".scale", "")] = (
+                    False, lod_tensor)
 
             if op.name() in self.fake_dequantize_types:
                 input_name = op.input("X")[0]
