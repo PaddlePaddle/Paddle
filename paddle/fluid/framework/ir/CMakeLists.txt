@@ -6,6 +6,7 @@ file(APPEND ${pass_file} "\#include \"paddle/fluid/framework/ir/pass.h\"\n")
 add_subdirectory(fuse_optimizer_ops_pass)
 add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
+add_subdirectory(fusion_group)
 
 # Usage: pass_library(target inference) will append to paddle_inference_pass.h
 unset(INFER_IR_PASSES CACHE) # clear the global variable
