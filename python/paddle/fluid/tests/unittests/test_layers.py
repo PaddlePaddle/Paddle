@@ -2139,6 +2139,17 @@ class TestBook(LayerTest):
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
 
+    def test_stridedslice(self):
+        axes = [0, 1, 2]
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        strides = [1, 1, 1]
+        with self.static_graph():
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            out = layers.strided_slice(
+                x, axes=axes, starts=starts, ends=ends, strides=strides)
+            return out
+
     def test_psroi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
