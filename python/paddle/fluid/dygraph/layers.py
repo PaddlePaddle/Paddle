@@ -24,6 +24,7 @@ from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from ..dygraph import base
 
 __all__ = ['Layer']
 
@@ -216,11 +217,18 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
-        if isinstance(value, framework.Parameter):
+        if isinstance(value, (framework.Parameter, np.ndarray)):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
+            elif name in params and isinstance(value, np.ndarray):
+                # replace existing param tensor value
+                tensor = params[name]._ivar.value().get_tensor()
+                if value.dtype == np.float16:
+                    value = value.view(np.uint16)
+                tensor.set(value, framework._current_expected_place())
+                return
             if value.name in self._loaddict_holder:
                 var = value._ivar.value()
                 tensor = var.get_tensor()

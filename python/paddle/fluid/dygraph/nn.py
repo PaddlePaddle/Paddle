@@ -845,6 +845,10 @@ class FC(layers.Layer):
         is_test(bool): A flag indicating whether execution is in test phase. Default: False
         dtype(str): Dtype used for weight
 
+    Parameters:
+        weight (list): the learnable weights of this layer.
+        bias (Parameter|None): the learnable bias of this layer.
+
     Raises:
         ValueError: If rank of the input tensor is less than 2.
 
@@ -881,16 +885,17 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self.__w = list()
 
-    @property
-    def _w(self, i=0):
-        return self.__w[i]
+        class _list(list):
+            def __init__(self, holder):
+                super(_list).__init__(self)
+                self.__holder__ = holder
 
-    @_w.setter
-    def _w(self, value, i=0):
-        assert isinstance(value, Parameter)
-        self.__w[i] = value
+            def __setitem__(self, key, value):
+                self.__holder__.__setattr__('_w%d' % key, value)
+
+        self.weight = _list(self)
+        self.bias = None
 
     def _build_once(self, input):
         i = 0
@@ -902,7 +907,7 @@ class FC(layers.Layer):
                 reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
                        1)
             ] + [self._size]
-            self.__w.append(
+            self.weight.append(
                 self.add_parameter(
                     '_w%d' % i,
                     self.create_parameter(
@@ -913,7 +918,7 @@ class FC(layers.Layer):
             i += 1
 
         size = list([self._size])
-        self._b = self.create_parameter(
+        self.bias = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
     def forward(self, input):
@@ -925,7 +930,7 @@ class FC(layers.Layer):
             self._helper.append_op(
                 type="mul",
                 inputs={"X": inp,
-                        "Y": self.__w[i]},
+                        "Y": self.weight[i]},
                 outputs={"Out": tmp},
                 attrs={
                     "x_num_col_dims": self._num_flatten_dims,
@@ -945,13 +950,13 @@ class FC(layers.Layer):
                 outputs={"Out": pre_bias},
                 attrs={"use_mkldnn": False})
 
-        if self._b:
+        if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self._b]},
+                        'Y': [self.bias]},
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': self._num_flatten_dims})
         else:
