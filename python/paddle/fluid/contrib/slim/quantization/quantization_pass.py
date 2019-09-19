@@ -1196,7 +1196,7 @@ class AddQuantDequantPass(object):
                         in_nodes_all_not_persistable and
                         not in_node.persistable())
                 is_insert_quant_dequant_op = in_nodes_all_not_persistable
-            else if op_node.name() == self._target_ops[1]:
+            elif op_node.name() == self._target_ops[1]:
                 is_insert_quant_dequant_op = op_node.op().has_attr("pooling_type") \
                 and op_node.op().attr("pooling_type") == 'avg'
 
