@@ -292,10 +292,11 @@ class TransformThroughFP32Pass(object):
             passes (`cpu_quantize_pass`, `cpu_quantize_squash_pass`).
     """
 
-    def __init__(self, scope=None, place=None, core=None):
+    def __init__(self, scope=None, place=None, core=None, debug=False):
         self._scope = scope
         self._place = place
         self._core = core
+        self._debug = debug
         self.quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max',
@@ -343,6 +344,7 @@ class TransformThroughFP32Pass(object):
 
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
+                # Gather new weights scale after folding batchnorm in convolution
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = self._convert_scale2tensor(scale)
@@ -478,7 +480,9 @@ class TransformThroughFP32Pass(object):
                 ir_pass.set(attr, value)
         ir_pass.apply(ir_graph)
         graph = IrGraph(ir_graph, for_test=True)
-        graph.draw('.', 'qat_fp32_{}'.format(pass_name), graph.all_op_nodes())
+        if self._debug:
+            graph.draw('.', 'qat_fp32_{}'.format(pass_name),
+                       graph.all_op_nodes())
         self._remove_unused_var_nodes(graph)
         return graph
 
