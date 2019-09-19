@@ -46,9 +46,8 @@ class SendOp : public framework::OperatorBase {
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
     auto height_sections = Attr<std::vector<int64_t>>("sections");
 
-    PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-
     if (send_varnames.size() > 0) {
+      PADDLE_ENFORCE_EQ(ins.size(), 1, "");
       distributed::Communicator::GetInstance()->Send(ins[0], scope);
     } else {
       platform::DeviceContextPool& pool =
