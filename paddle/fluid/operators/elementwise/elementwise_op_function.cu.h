@@ -42,8 +42,8 @@ DEFINE_SIMPLE_BINARY_FUNCTOR(Div, /)
 
 #define DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Func, expr)                         \
   template <typename T>                                                       \
-  struct get##Func##Functor {                                                 \
-    get##Func##Functor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {} \
+  struct Func##RangeFunctor {                                                 \
+    Func##RangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {} \
     inline HOSTDEVICE void operator()(size_t id) const {                      \
       z_[id] = x_[id] expr y_[id];                                            \
     }                                                                         \

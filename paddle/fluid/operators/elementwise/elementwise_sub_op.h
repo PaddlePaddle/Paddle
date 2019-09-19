@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,49 +30,12 @@ void default_elementwise_sub(const framework::ExecutionContext& ctx,
                                                         SubFunctor<T>(), z);
 }
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VSUB(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-}
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
-  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  eigen_z.device(place) = eigen_x - eigen_y;
-}
-
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z);
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z);
-#endif  // PADDLE_CUDA
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseSub {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z);
+};
 
 template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
@@ -82,7 +48,8 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
 
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
-      elementwise_sub_same_dims<DeviceContext, T>(ctx, x, y, z);
+      SameDimsElemwiseSub<DeviceContext, T> same_dims_sub;
+      same_dims_sub(ctx, x, y, z);
     } else {
       default_elementwise_sub<DeviceContext, T>(ctx, x, y, z);
     }
@@ -100,6 +67,29 @@ struct SubGradDY {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+}
+
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy);
+
+template <typename DeviceContext, typename T>
 class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -113,9 +103,13 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     // skip out, x, y
     auto* out = dout;
     auto *x = dout, *y = dout;
-
-    ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
+          SubGradDY<T>());
+    }
   }
 };
 

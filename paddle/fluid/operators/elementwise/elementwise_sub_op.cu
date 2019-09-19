@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,39 +23,44 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto size = x->numel();
-  dim3 block_size = dim3(TILE_SIZE, 1);
-  dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-  SameDimsElemwiseSubCUDAKernel<
-      T><<<gird_size, block_size, 0,
-           ctx.template device_context<DeviceContext>().stream()>>>(
-      x->data<T>(), y->data<T>(), z->data<T>(), size);
-}
+template <typename T>
+struct SameDimsElemwiseSub<platform::CUDADeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z) {
+    SubRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
+                                                              x->numel());
+    for_range(functor);
+  }
+};
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_same<T, platform::float16>::value &&
-    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
-elementwise_sub_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto size = x->numel();
-  dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-  dim3 block_size = dim3(TILE_SIZE, 1);
-  const half* x2 = reinterpret_cast<const half*>(x->data<T>());
-  const half* y2 = reinterpret_cast<const half*>(y->data<T>());
-  half* z2 = reinterpret_cast<half*>(z->data<T>());
-  SameDimsElemwiseSubCUDAKernel<<<gird_size, block_size, 0,
-                                  ctx.template device_context<DeviceContext>()
-                                      .stream()>>>(x2, y2, z2, size);
-}
+template <>
+struct SameDimsElemwiseSub<platform::CUDADeviceContext, platform::float16> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z) {
+    auto size = x->numel();
+    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
+    dim3 block_size = dim3(TILE_SIZE, 1);
+    const half* x2 =
+        reinterpret_cast<const half*>(x->data<platform::float16>());
+    const half* y2 =
+        reinterpret_cast<const half*>(y->data<platform::float16>());
+    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
+    SameDimsElemwiseSubCUDAKernel<<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x2, y2, z2, size);
+  }
+};
+
+template struct SameDimsElemwiseSub<platform::CUDADeviceContext, float>;
+template struct SameDimsElemwiseSub<platform::CUDADeviceContext, double>;
+template struct SameDimsElemwiseSub<platform::CUDADeviceContext, int>;
+template struct SameDimsElemwiseSub<platform::CUDADeviceContext, int64_t>;
+template struct SameDimsElemwiseSub<platform::CUDADeviceContext, plat::float16>;
 
 template <typename T>
 static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
@@ -67,40 +75,23 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T* dout,
   }
 }
 
-template <typename T>
-class ElementwiseSubGradKernel<plat::CUDADeviceContext, T>
-    : public ElemwiseGradKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
-
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
-    // skip out, x, y
-    auto* out = dout;
-    auto *x = dout, *y = dout;
-
-    if (platform::is_gpu_place(ctx.GetPlace()) && dx != nullptr &&
-        dy != nullptr && (dx->dims() == dy->dims())) {
-      dim3 block_size = dim3(TILE_SIZE, 1);
-      auto size = x->numel();
-      dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-      SimpleElemwiseSubGradCUDAKernel<T><<<
-          gird_size, block_size, 0,
-          ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-          dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
-          dy->mutable_data<T>(ctx.GetPlace()));
-    } else {
-      ElemwiseExplicitGradCompute<plat::CUDADeviceContext, T, SubGradDX<T>,
-                                  SubGradDY<T>>(ctx, *x, *y, *out, *dout, axis,
-                                                dx, dy, SubGradDX<T>(),
-                                                SubGradDY<T>());
-    }
-  }
-};
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
+elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  dim3 block_size = dim3(TILE_SIZE, 1);
+  auto size = x->numel();
+  dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
+  SimpleElemwiseSubGradCUDAKernel<
+      T><<<gird_size, block_size, 0,
+           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+      dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
+      dy->mutable_data<T>(ctx.GetPlace()));
+}
 
 }  // namespace operators
 }  // namespace paddle

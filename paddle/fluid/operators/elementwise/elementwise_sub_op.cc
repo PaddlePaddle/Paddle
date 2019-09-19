@@ -20,6 +20,39 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct SameDimsElemwiseSub<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VSUB(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
+
+template <typename T>
+struct SameDimsElemwiseSub<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x - eigen_y;
+  }
+};
+
+template struct SameDimsElemwiseSub<platform::CPUDeviceContext, float>;
+template struct SameDimsElemwiseSub<platform::CPUDeviceContext, double>;
+template struct SameDimsElemwiseSub<platform::CPUDeviceContext, int>;
+template struct SameDimsElemwiseSub<platform::CPUDeviceContext, int64_t>;
+
 class ElementwiseSubDoubleGradDescMaker
     : public framework::SingleGradOpDescMaker {
  public:

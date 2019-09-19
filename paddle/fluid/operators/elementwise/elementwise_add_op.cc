@@ -27,7 +27,6 @@ struct SameDimsElemwiseAdd<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    VLOG(5) << "====into math::GetBlas ===";
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
     blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
   }
@@ -40,7 +39,6 @@ struct SameDimsElemwiseAdd<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    VLOG(5) << "====into eigen ===";
     auto eigen_x = framework::EigenVector<T>::Flatten(*x);
     auto eigen_y = framework::EigenVector<T>::Flatten(*y);
     auto eigen_z = framework::EigenVector<T>::Flatten(*z);

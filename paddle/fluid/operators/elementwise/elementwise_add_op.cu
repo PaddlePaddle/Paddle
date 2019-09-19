@@ -1,14 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/float16.h"
@@ -25,7 +27,7 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    getAddFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
+    AddRangeFunctor<T> functor(x->data<T>(), y->data<T>(), z->data<T>());
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
                                                               x->numel());
@@ -38,7 +40,6 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    VLOG(5) << "====into gpu forward fp16 ===";
     auto size = x->numel();
     dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
     dim3 block_size = dim3(TILE_SIZE, 1);
@@ -54,6 +55,12 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
   }
 };
 
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, float>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, double>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int64_t>;
+template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, plat::float16>;
+
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(const T* dout,
                                                        int64_t size, T* dx,
@@ -67,43 +74,24 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(const T* dout,
   }
 }
 
-template <typename T>
-class ElementwiseAddGradKernel<plat::CUDADeviceContext, T>
-    : public ElemwiseGradKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, plat::CUDADeviceContext>::value>::type
+elementwise_add_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  dim3 block_size = dim3(TILE_SIZE, 1);
+  auto size = x->numel();
+  dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
+  SimpleElemwiseAddGradCUDAKernel<
+      T><<<gird_size, block_size, 0,
+           ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
+      dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
+      dy->mutable_data<T>(ctx.GetPlace()));
+}
 
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    // skip out, x, y
-    auto* out = dout;
-    auto *x = dout, *y = dout;
-
-    if (platform::is_gpu_place(ctx.GetPlace()) && dx != nullptr &&
-        dy != nullptr && (dx->dims() == dy->dims())) {
-      dim3 block_size = dim3(TILE_SIZE, 1);
-      auto size = x->numel();
-      dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
-      SimpleElemwiseAddGradCUDAKernel<T><<<
-          gird_size, block_size, 0,
-          ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
-          dout->data<T>(), size, dx->mutable_data<T>(ctx.GetPlace()),
-          dy->mutable_data<T>(ctx.GetPlace()));
-    } else {
-      default_elementwise_add_grad<plat::CUDADeviceContext, T>(ctx, x, y, out,
-                                                               dout, dx, dy);
-    }
-  }
-};
-
-template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, float>;
-template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, double>;
-template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int>;
-template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, int64_t>;
-template struct SameDimsElemwiseAdd<platform::CUDADeviceContext, plat::float16>;
 }  // namespace operators
 }  // namespace paddle
 REGISTER_OP_CUDA_KERNEL(
