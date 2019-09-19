@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#NOTE: use np.broadcast_to and np.broadcast_arrays instead of np.tile
+
 from __future__ import print_function
 
 import unittest
