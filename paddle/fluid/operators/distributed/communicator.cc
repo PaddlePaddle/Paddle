@@ -121,40 +121,40 @@ void Communicator::SendThread() {
     VLOG(3) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
     if (is_geo_sgd_) {
-      if( ids_send_queue_.size() < geo_need_push_nums_){
-        VLOG(3)<<"ids_send_queue_ Size: "<<ids_send_queue_.size();
+      if( ids_send_vec_.size() < geo_need_push_nums_){
+        VLOG(3)<<"ids_send_queue_ Size: "<<ids_send_vec_.size();
         if (need_push_queue_->Size() > 0) {
-          ids_send_queue_.push_back(need_push_queue_->Pop());
+          ids_send_vec_.push_back(*need_push_queue_->Pop());
           VLOG(4) <<"ids_send_queue pushed";
         }
       } else {
-        std::vector<SparseIdsMap> new_ids_send_queue{};
-        for(auto ids_map:ids_send_queue_) {
-          new_ids_send_queue.push_back(*ids_map);
-        }
-        ids_send_queue_.clear();
-        GeoSgdUpdate(new_ids_send_queue);
         for (auto &iter : send_varname_to_queue_) {
           auto &var_name = iter.first;
           auto &var_queue = iter.second;
-          if (var_queue->Size() > 0) {
-            auto send_task = [this, &var_name, &var_queue] {
-              auto before_send = GetCurrentUS();
-              auto send_functor = distributed::ParameterSend<float>();
-              var_queue->Pop();    
-              auto &ctx = send_varname_to_ctx_.at(var_name);
-              // delta parameter is in delta scope
-              if (!FLAGS_communicator_fake_rpc) {
-                send_functor(ctx, *delta_scope_.get(), true);
-              }
-              auto after_send = GetCurrentUS();
-              VLOG(1) << "send " << var_name << " use time "
-                << after_send - before_send;
-            };
-            task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
+          auto send_task = [this, &var_name] {
+            auto before_send = GetCurrentUS();
+            if(var_list_[var_name] == true) {
+              auto temp_ids_send_vec = ids_send_vec_;
+              auto ids_set = SparseIdsMerge(temp_ids_send_vec , var_name);
+              SendUpdateSparseVars(var_name,ids_set);
+            } else {
+              SendUpdateDenseVars(var_name);
             }
-          } 
-        }  
+            auto send_functor = distributed::ParameterSend<float>();   
+            auto &ctx = send_varname_to_ctx_.at(var_name);
+            // delta parameter is in delta scope
+            if (!FLAGS_communicator_fake_rpc) {
+              send_functor(ctx, *delta_scope_.get(), true);
+            }
+            auto after_send = GetCurrentUS();
+            VLOG(1) << "send " << var_name << " use time "
+              << after_send - before_send;
+          };
+          task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
+          }
+          
+        }
+        ids_send_vec_.clear();
     } else {
       for (auto &iter : send_varname_to_queue_) {
         auto &var_name = iter.first;
@@ -226,12 +226,10 @@ void Communicator::RecvNonIndependent() {
   }
 
   if (is_geo_sgd_) {
-    auto push_num = have_push_.load();
-    if (push_num >= var_nums_ ) {
+    auto push_nums = have_push_.load();
+    if(push_nums >= send_varname_to_ctx_.size()) {
       RecvAll();
       have_push_.store(0);
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
   else {
@@ -454,9 +452,6 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   }
   is_geo_sgd_ = true;
   FLAGS_communicator_independent_recv_thread = false;
-  var_nums_ = send_varname_to_ctx.size();
-
-  VLOG(1) <<"var nums is: "<<var_nums_;
   VLOG(1) <<"geo sgd push nums: "<<geo_need_push_nums;
   need_push_queue_ = std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(geo_need_push_nums);
 
@@ -566,40 +561,20 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
   VLOG(4)<<"GeoSgd send complete";
 }
 
-void Communicator::GeoSgdUpdate(std::vector<SparseIdsMap> &ids_send_queue) {
-  SparseIdsMap ids_map;
-  for(auto table : ids_send_queue) {
-    for (auto &iter : table) {
-      auto &var_name = iter.first;
-      auto &ids_vec = iter.second;
-      if(ids_map.find(var_name) == ids_map.end()) {
-        ids_map.insert(std::pair<std::string,std::unordered_set<int64_t>>
-                      (var_name,std::unordered_set<int64_t>{}));
-      }
-      for (auto ids:ids_vec) {
-        if(ids_map[var_name].find(ids) == ids_map[var_name].end()) {
-          ids_map[var_name].insert(ids);
-          VLOG(4)<<"Sparse ids map insert "<<var_name <<" insert " <<ids;
-        }
+std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
+                                             const std::string &var_name) {
+  std::unordered_set<int64_t> ids_set;
+  for(auto table : ids_send_vec) {
+    if(table.find(var_name) == table.end()){
+      continue;
+    }
+    for(auto ids:table[var_name]) {
+      if(ids_set.find(ids) == ids_set.end()){
+        ids_set.insert(ids);
       }
     }
   }
-
-  for (auto &iter:var_list_) {
-    std::string local_var_name = iter.first;
-    bool is_sparse = iter.second;
-    VLOG(1) <<"geo sgd send_varname_to_queue_: "<<local_var_name;
-    if (is_sparse) {
-      // sparse param
-      SendUpdateSparseVars(local_var_name,ids_map[local_var_name]);
-    } else {
-      // dense param
-      SendUpdateDenseVars(local_var_name);
-    }
-    auto &queue = send_varname_to_queue_.at(VarToDeltaVar(local_var_name));
-    auto tmp_param_var = std::make_shared<Variable>();
-    queue->Push(tmp_param_var);
-  }
+  return ids_set;
 }
 
 void Communicator::SendUpdateDenseVars(const std::string& var_name) {
