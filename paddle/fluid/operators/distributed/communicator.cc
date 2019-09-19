@@ -130,7 +130,6 @@ void Communicator::SendThread() {
       } else {
         for (auto &iter : send_varname_to_queue_) {
           auto &var_name = iter.first;
-          auto &var_queue = iter.second;
           auto send_task = [this, &var_name] {
             auto before_send = GetCurrentUS();
             if(var_list_[var_name] == true) {
