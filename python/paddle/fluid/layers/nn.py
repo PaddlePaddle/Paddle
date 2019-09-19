@@ -171,6 +171,7 @@ __all__ = [
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
+    'strided_slice',
     'shape',
     'rank',
     'size',
@@ -2501,18 +2502,19 @@ def conv3d(input,
         input (Variable): The input image with [N, C, D, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_depth, filter_size_height, 
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv3d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -3990,23 +3992,23 @@ def conv2d_transpose(input,
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). None if use
+            tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size.
+            it must contain two integers, (filter_size_height, filter_size_width).
+            Otherwise, filter_size_height = filter_size_width = filter_size. None if 
+            use output size to calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise, 
+            padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise, 
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -4184,18 +4186,19 @@ def conv3d_transpose(input,
             tuple, it must contain three integers, (image_D, image_H, image_W). This
             parameter only works when filter_size is None.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
+            it must contain three integers, (filter_size_depth, filter_size_height, \
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size. None if use output size to
             calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -10801,6 +10804,85 @@ def slice(input, axes, starts, ends):
         dtype=helper.input_dtype('input'))
     helper.append_op(
         type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+
+    return out
+
+
+@templatedoc()
+def strided_slice(input, axes, starts, ends, strides):
+    """
+    Strided Slice OP
+
+    The conceptualization that really helped me understand this was 
+    that this function emulates the indexing behavior of numpy arrays.
+    If you're familiar with numpy arrays, you'll know that you can make 
+    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
+    Basically, a very succinct way of writing for loops to get certain elements of the array.
+    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
+    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
+    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
+    the axes which controls the dimension you want to slice makes it more flexible.
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides = [1, 1]
+            Then:
+                result = [ [5, 6, 7] ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, -1]
+                ends = [-1, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [4, 3, 2] ]
+    Atrgs:
+       input (Varibale): the input variable.
+       axes(List):axis we need to slice
+       starts (List): the start index in axis
+       ends (List): the end index in axis
+       strides (List): the stride length when we do slice operation
+    Returns
+       out(Variable): the result by strided_slice Op
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+ 
+            starts = [1, 0, 2]
+            ends = [3, 3, 4]
+            axes = [0, 1, 2]
+            strides= [1, 1, 1]
+
+            input = fluid.layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+    """
+    helper = LayerHelper('strided_slice', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+
+    helper.append_op(
+        type='strided_slice',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'strides': strides
+        })
 
     return out
 
