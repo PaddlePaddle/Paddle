@@ -41,9 +41,10 @@ __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer'
+    'FtrlOptimizer', 'Adadelta', 'AdadeltaOptimizer', 'ModelAverage',
+    'LarsMomentum', 'LarsMomentumOptimizer', 'DGCMomentumOptimizer',
+    'LambOptimizer', 'ExponentialMovingAverage', 'PipelineOptimizer',
+    'LookaheadOptimizer'
 ]
 
 
@@ -1699,14 +1700,15 @@ class AdadeltaOptimizer(Optimizer):
     average squared update state.
     The details of adadelta please refer to this
     `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
-    <http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf>`_.
+    <https://arxiv.org/abs/1212.5701>`_.
 
     ..  math::
 
-        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2 \\\\
-        learning\\_rate &= sqrt( ( E(dx_{t-1}^2) + \\epsilon ) / ( \\
-                          E(g_t^2) + \\epsilon ) ) \\\\
-        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
+        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2
+
+        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }
+
+        E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
 
     Args:
         learning_rate(float): global learning rate
@@ -1720,6 +1722,10 @@ class AdadeltaOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
+            image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+            fc = fluid.layers.fc(image, size=10)
+            cost = fluid.layers.reduce_mean(fc)
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
