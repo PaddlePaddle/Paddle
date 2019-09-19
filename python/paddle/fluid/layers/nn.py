@@ -2325,18 +2325,19 @@ def conv2d(input,
         input (Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size 
+            is a tuple, it must contain two integers, (filter_size_height, 
+            filter_size_width). Otherwise, filter_size_height = filter_\
+            size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise,
+            padding_height = padding_width =  padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise,
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
