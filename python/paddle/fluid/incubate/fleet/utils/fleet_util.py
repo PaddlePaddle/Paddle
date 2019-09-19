@@ -926,7 +926,10 @@ class FleetUtil(object):
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
-            client.upload(dest, model_name)
+            if os.path.isdir(model_name):
+                client.upload_dir(dest, model_name)
+            else:
+                client.upload(dest, model_name)
 
         fleet._role_maker._barrier_worker()
 

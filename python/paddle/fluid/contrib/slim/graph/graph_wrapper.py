@@ -410,6 +410,8 @@ class GraphWrapper(object):
                 target_name = graph.out_nodes['loss']
             elif 'cost' in graph.out_nodes:
                 target_name = graph.out_nodes['cost']
+            else:
+                return None
             target = graph.var(target_name)._var
             # The learning rate variable may be created in other program.
             # Update information in optimizer to make
