@@ -104,7 +104,7 @@ DEFINE_bool(cudnn_deterministic, false,
  * CUDNN related FLAG
  * Name: FLAGS_conv_workspace_size_limit
  * Since Version: 0.13.0
- * Value Range: uint64, default=4096 (MB)
+ * Value Range: uint64, default=512 (MB)
  * Example:
  * Note: The internal function of cuDNN obtains the fastest matching algorithm
  *       within this memory limit. Usually, faster algorithms can be chosen in
@@ -316,10 +316,15 @@ DEFINE_string(allocator_strategy, "naive_best_fit",
 /**
  * Memory related FLAG
  * Name: FLAGS_fraction_of_cpu_memory_to_use
- * Since Version:
- * Value Range:
+ * Since Version: 0.12.0
+ * Value Range: double, [0.0, 1.0], default=1
  * Example:
- * Note:
+ * Note: Represents the proportion of allocated CPU memory blocks
+ *       to the total memory size of the CPU. Future CPU memory usage
+ *       will be allocated from this memory block. If the memory block does
+ *       not have enough CUDA pinned memory, new memory blocks of the same
+ *       size as the memory block will be allocated from the CUDA pinned
+ *       request util the CPU does not have enough memory.
  */
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
@@ -343,10 +348,15 @@ DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
 /**
  * Memory related FLAG
  * Name: FLAGS_fraction_of_cuda_pinned_memory_to_use
- * Since Version:
- * Value Range:
+ * Since Version: 0.12.0
+ * Value Range: double, [0.0, 1.0], default=0.5
  * Example:
- * Note:
+ * Note: Represents the proportion of allocated CUDA pinned memory blocks
+ *       to the total memory size of the CPU. Future CUDA pinned memory usage
+ *       will be allocated from this memory block. If the memory block does
+ *       not have enough CPU memory, new memory blocks of the same
+ *       size as the memory block will be allocated from the CPU
+ *       request util the CPU does not have enough memory.
  */
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
