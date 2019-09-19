@@ -131,21 +131,22 @@ void Communicator::SendThread() {
       if (ids_send_vec_.size() >= geo_need_push_nums_) {
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
-          auto &var_name = iter.first;
+          VLOG(1)<<"Before varname: "<<iter.first;
+          auto &var_name = DeltaVarToVar(iter.first);
+          VLOG(1)<<"After varname: "<<var_name;
           auto send_task = [this, &var_name] {
-            auto origin_var_name = DeltaVarToVar(var_name);
             auto before_send = GetCurrentUS();
-            if(var_list_[origin_var_name] == true) {
+            if(var_list_[var_name] == true) {
               auto temp_ids_send_vec = ids_send_vec_;
-              auto ids_set = SparseIdsMerge(temp_ids_send_vec , origin_var_name);
-              VLOG(1)<<"Before send update var name: "<<origin_var_name;
-              SendUpdateSparseVars(origin_var_name,ids_set);
+              auto ids_set = SparseIdsMerge(temp_ids_send_vec , var_name);
+              VLOG(1)<<"Before send update var name: "<<var_name;
+              SendUpdateSparseVars(var_name,ids_set);
             } else {
-              VLOG(1)<<"Before send update var name: "<<origin_var_name;
-              SendUpdateDenseVars(origin_var_name);
+              VLOG(1)<<"Before send update var name: "<<var_name;
+              SendUpdateDenseVars(var_name);
             }
             auto send_functor = distributed::ParameterSend<float>();   
-            auto &ctx = send_varname_to_ctx_.at(var_name);
+            auto &ctx = send_varname_to_ctx_.at(VarToDeltaVar(var_name));
             // delta parameter is in delta scope
             if (!FLAGS_communicator_fake_rpc) {
               send_functor(ctx, *delta_scope_.get(), true);
@@ -568,12 +569,18 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
 std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
                                              const std::string &var_name) {
   std::unordered_set<int64_t> ids_set;
+  VLOG(1)<<"Sparse ids merge name: "<<var_name;
+  VLOG(1)<<"ids_send_vec Size: "<< ids_send_vec.size();
   for(auto table : ids_send_vec) {
+    bool find = table.find(var_name) == table.end();
+    VLOG(1)<<"Sparse var find: "<< find;
     if(table.find(var_name) == table.end()){
       continue;
     }
+    VLOG(1)<<"table[var_name] Size: "<<table[var_name].size();
     for(auto ids:table[var_name]) {
       if(ids_set.find(ids) == ids_set.end()){
+        VLOG(1)<<"ids set insert: "<<ids;
         ids_set.insert(ids);
       }
     }
@@ -620,7 +627,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table) {
   VLOG(1) << "Geo-Sgd Communicator Send update Sparse Vars: "<< var_name;
   auto ids_num = (long)ids_table.size();
-  VLOG(1) << "Ids nums is : "<<ids_num;
+  VLOG(1) << "Ids num is : "<<ids_num;
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
