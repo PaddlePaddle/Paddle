@@ -131,7 +131,9 @@ void Communicator::SendThread() {
       if (ids_send_vec_.size() >= geo_need_push_nums_) {
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
+          VLOG(1)<<"Before varname: "<<iter.first;
           auto &var_name = DeltaVarToVar(iter.first);
+          VLOG(1)<<"After varname: "<<var_name;
           auto send_task = [this, &var_name] {
             auto before_send = GetCurrentUS();
             if(var_list_[var_name] == true) {

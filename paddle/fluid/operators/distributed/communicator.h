@@ -267,7 +267,9 @@ class Communicator {
   const std::string DeltaVarToVar(const std::string var_name) {
     std::string origin_name = var_name;
     origin_name.erase(origin_name.find(".delta"),6);
+    VLOG(1)<<"origin_name "<<origin_name;
     const std::string param_name = origin_name;
+    VLOG(1)<<"param_name "<<param_name;
     return param_name;
   }
 
