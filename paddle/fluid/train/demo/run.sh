@@ -25,4 +25,5 @@ make
 
 cd ..
 
+# run demo trainer
 build/demo_trainer
