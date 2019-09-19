@@ -425,7 +425,7 @@ class Variable(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -617,6 +617,17 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                new_variable.to_string(True)
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
@@ -641,18 +652,6 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
-
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
 
     @property
     def stop_gradient(self):
@@ -903,6 +902,21 @@ class Variable(object):
         slice_end = []
         reverse_axis = []
 
+        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+            self.block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [out]},
+                attrs={
+                    'shape': shape,
+                    'dtype': out.dtype,
+                    'value': float(value),
+                    'force_cpu': force_cpu or force_init_on_cpu()
+                },
+                stop_gradient=True)
+            out.stop_gradient = True
+            return out
+
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -928,17 +942,81 @@ class Variable(object):
                 slice_start.append(start)
                 slice_end.append(end)
             else:
-                # int
                 decrease_axis.append(dim)
                 slice_axis.append(dim)
                 slice_start.append(slice_item)
-                slice_end.append(slice_item + 1
-                                 if slice_item != -1 else 10000000)
+                if isinstance(slice_item, Variable):
+                    temp_1 = self.block.create_var(dtype='int32')
+                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
+                    temp_end = self.block.create_var(dtype='int32')
+                    self.block.append_op(
+                        type='elementwise_add',
+                        inputs={'X': slice_item,
+                                'Y': temp_1},
+                        outputs={'Out': temp_end},
+                        attrs={'axis': -1})
+                    slice_end.append(temp_end)
+                else:
+                    slice_end.append(slice_item + 1
+                                     if slice_item != -1 else 10000000)
+
+        def contain_var(one_list):
+            for ele in one_list:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        def get_new_list_tensor(old_list):
+            new_list_tensor = []
+            for dim in old_list:
+                if isinstance(dim, Variable):
+                    dim.stop_gradient = True
+                    new_list_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = self.block.create_var(dtype='int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_list_tensor.append(temp_out)
+            return new_list_tensor
+
+        inputs = {'Input': [self]}
+        attrs = {
+            'axes': slice_axis,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axis
+        }
+        infer_flags = list(1 for i in range(len(slice_axis)))
+
+        # starts
+        if not contain_var(slice_start):
+            attrs['starts'] = slice_start
+        else:
+            inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+            for i, dim in enumerate(slice_start):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
+        # ends
+        if not contain_var(slice_end):
+            attrs['ends'] = slice_end
+        else:
+            inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+            for i, dim in enumerate(slice_end):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+        # infer_flags
+        attrs['infer_flags'] = infer_flags
 
         out = self
         if len(slice_axis) > 0:
             # append slice_op here
-
             slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
                                                              "_slice"),
@@ -946,14 +1024,9 @@ class Variable(object):
 
             self.block.append_op(
                 type="slice",
-                inputs={'Input': [out]},
+                inputs=inputs,
                 outputs={'Out': [slice_out_var]},
-                attrs={
-                    'axes': slice_axis,
-                    'starts': slice_start,
-                    'ends': slice_end,
-                    'decrease_axis': decrease_axis
-                })
+                attrs=attrs)
 
             out = slice_out_var
 
@@ -1067,7 +1140,7 @@ class Operator(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
@@ -3095,14 +3168,14 @@ class Program(object):
 
         * Set for_test to False when we want to clone the program for training.
         * Set for_test to True when we want to clone the program for testing.
-          We will not do any prune on program here, So if you just want an
-          forward program for testing, please use :code:`clone` before using
-          :code:`Opimizer.minimize`
+          We will prune the backward and optimize part of the program when you
+          use :code:`clone` after :code:`Opimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         Notes: 
         1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
-        2. This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. E.g.
+        2. We recommend you to use :code:`clone(for_test=True)` before backward
+           and optimization. E.g.
 
         .. code-block:: python
 
@@ -3234,7 +3307,17 @@ class Program(object):
         The two code snippets above will generate and print same programs.
         """
         if for_test:
-            p = self._inference_optimize(prune_read_op=False)
+            if self._appending_grad_times > 0:
+                forward_prog = Program()
+                forward_prog.desc = core.prune_backward(self.desc)
+                forward_prog.blocks = [
+                    Block(forward_prog, i)
+                    for i in six.moves.range(forward_prog.desc.num_blocks())
+                ]
+                forward_prog._sync_with_cpp()
+                p = forward_prog._inference_optimize(prune_read_op=False)
+            else:
+                p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx

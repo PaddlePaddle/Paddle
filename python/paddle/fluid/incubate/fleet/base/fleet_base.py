@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
 
 HDFS_PREFIX = 'hdfs:'
 
@@ -275,7 +276,8 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__):
+        if not isinstance(optimizer, SGD.__bases__) \
+                 and not isinstance(optimizer, OptimizerWithMixedPrecison):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer

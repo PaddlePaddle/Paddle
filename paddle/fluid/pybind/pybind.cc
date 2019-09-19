@@ -338,8 +338,8 @@ PYBIND11_MODULE(core_noavx, m) {
                        recursive_sequence_lengths.end(),
                        std::back_inserter(new_lod));
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE(
-                 CheckLoD(new_offset_lod, -1),
+             PADDLE_ENFORCE_EQ(
+                 CheckLoD(new_offset_lod, -1), true,
                  "the provided recursive_sequence_lengths info is invalid");
              new (&instance) LoDTensor(new_offset_lod);
            })
@@ -355,8 +355,9 @@ PYBIND11_MODULE(core_noavx, m) {
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             PADDLE_ENFORCE(CheckLoD(new_lod, vectorize(self.dims()).front()),
-                            "the provided lod info is invalid");
+             PADDLE_ENFORCE_EQ(
+                 CheckLoD(new_lod, vectorize(self.dims()).front()), true,
+                 "the provided lod info is invalid");
              self.set_lod(new_lod);
            },
            py::arg("lod"), R"DOC(
@@ -386,8 +387,8 @@ PYBIND11_MODULE(core_noavx, m) {
                        recursive_sequence_lengths.end(),
                        std::back_inserter(new_lod));
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE(
-                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()),
+             PADDLE_ENFORCE_EQ(
+                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
                  "the provided recursive_sequence_lengths info is invalid");
              self.set_lod(new_offset_lod);
            },
@@ -596,7 +597,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
-             PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
+             PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true);
              return self.GetMutable<framework::ReaderHolder>();
            },
            py::return_value_policy::reference);
@@ -721,8 +722,8 @@ All parameter, weight, gradient are variables in Paddle.
       auto &info = iter.second;
       if (info.HasOpProtoAndChecker()) {
         std::string str;
-        PADDLE_ENFORCE(
-            info.Proto().SerializeToString(&str),
+        PADDLE_ENFORCE_EQ(
+            info.Proto().SerializeToString(&str), true,
             "Serialize OpProto Error. This could be a bug of Paddle.");
         ret_values.emplace_back(str);
       }
@@ -767,6 +768,9 @@ All parameter, weight, gradient are variables in Paddle.
     proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
+  });
+  m.def("prune_backward", [](const framework::ProgramDesc &program) {
+    return PruneBackward(program);
   });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
@@ -950,16 +954,17 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    proto::OpDesc desc;
-                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                                   "Cannot parse user input to OpDesc");
-                    PADDLE_ENFORCE(desc.IsInitialized(),
-                                   "User OpDesc is not initialized, reason %s",
-                                   desc.InitializationErrorString());
-                    return OpRegistry::CreateOp(desc);
-                  })
+      .def_static(
+          "create",
+          [](py::bytes protobin) {
+            proto::OpDesc desc;
+            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
+                              "Cannot parse user input to OpDesc");
+            PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
+                              "User OpDesc is not initialized, reason %s",
+                              desc.InitializationErrorString());
+            return OpRegistry::CreateOp(desc);
+          })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })
@@ -1331,7 +1336,8 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
           R"DOC(The type is fluid.BuildStrategy.ReduceStrategy, there are two reduce
@@ -1354,7 +1360,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finalized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finalized.");
             self.gradient_scale_ = strategy;
           },
           R"DOC(The type is fluid.BuildStrategy.GradientScaleStrategy, there are three
@@ -1415,7 +1422,8 @@ All parameter, weight, gradient are variables in Paddle.
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
           R"DOC(The type is STR, debug_graphviz_path indicates the path that
@@ -1436,7 +1444,8 @@ All parameter, weight, gradient are variables in Paddle.
             return self.enable_sequential_execution_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
           R"DOC(The type is BOOL. If set True, the execution order of ops would
@@ -1455,7 +1464,8 @@ All parameter, weight, gradient are variables in Paddle.
             return self.remove_unnecessary_lock_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
           R"DOC(The type is BOOL. If set True, some locks in GPU ops would be
@@ -1516,7 +1526,8 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_elewise_add_act_ops_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
@@ -1536,7 +1547,8 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_relu_depthwise_conv_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.fuse_relu_depthwise_conv_ = b;
           },
           R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
@@ -1552,14 +1564,17 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy = fluid.BuildStrategy()
                         build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
-      .def_property(
-          "fuse_broadcast_ops",
-          [](const BuildStrategy &self) { return self.fuse_broadcast_ops_; },
-          [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
-            self.fuse_broadcast_ops_ = b;
-          },
-          R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+      .def_property("fuse_broadcast_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_broadcast_ops_ == true ||
+                             self.fuse_broadcast_ops_ == boost::none;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                                        "BuildStrategy is finlaized.");
+                      self.fuse_broadcast_ops_ = b;
+                    },
+                    R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
@@ -1567,18 +1582,20 @@ All parameter, weight, gradient are variables in Paddle.
                       for NCCLReduce operations for a period of time. Default False.)DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
-                      return self.fuse_all_optimizer_ops_;
+                      return self.fuse_all_optimizer_ops_ == true ||
+                             self.fuse_all_optimizer_ops_ == boost::none;
                     },
                     [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE(!self.IsFinalized(),
-                                     "BuildStrategy is finlaized.");
+                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                                        "BuildStrategy is finlaized.");
                       self.fuse_all_optimizer_ops_ = b;
                     })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE(!self.IsFinalized(), "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              "BuildStrategy is finlaized.");
             self.sync_batch_norm_ = b;
           },
           R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
@@ -1645,7 +1662,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def_property(
           "fuse_all_reduce_ops",
-          [](const BuildStrategy &self) { return self.fuse_all_reduce_ops_; },
+          [](const BuildStrategy &self) {
+            return self.fuse_all_reduce_ops_ == true ||
+                   self.fuse_all_reduce_ops_ == boost::none;
+          },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property("enable_backward_optimizer_op_deps",
                     [](const BuildStrategy &self) {

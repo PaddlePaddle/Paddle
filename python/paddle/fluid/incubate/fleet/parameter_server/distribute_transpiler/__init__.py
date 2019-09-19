@@ -210,7 +210,7 @@ class DistributedTranspiler(Fleet):
                                     export_for_deployment)
         else:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, self._origin_program, None, None,
+                                    executor, self.main_program, None, None,
                                     export_for_deployment, True)
 
             model_basename = "__model__"

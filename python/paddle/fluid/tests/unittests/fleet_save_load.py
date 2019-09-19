@@ -234,7 +234,7 @@ def get_train_reader(batch_size):
     train_file = os.path.join(paddle.dataset.common.DATA_HOME, "simnet",
                               "train")
     train_reader = get_batch_reader([train_file], batch_size)
-    train_feed = ["query_ids", "pos_title_ids", "neg_title_ids", "label"]
+    train_feed = ["query_ids", "pos_title_ids", "neg_title_ids"]
     return train_reader, train_feed
 
 
@@ -376,7 +376,8 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
                             feed=feeder.feed(get_data()))
             print("loss = {} ".format(loss))
         if need_save and model_dir and fleet.worker_index() == 0:
-            fleet.save_persistables(exe, model_dir)
+            fleet.save_inference_model(exe, model_dir, feed_var_names,
+                                       self.predict)
 
 
 if __name__ == "__main__":
