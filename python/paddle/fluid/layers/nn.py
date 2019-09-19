@@ -203,6 +203,7 @@ __all__ = [
     'temporal_shift',
     'py_func',
     'psroi_pool',
+    'prroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
@@ -12719,6 +12720,70 @@ def psroi_pool(input,
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='psroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
+    return out
+
+
+@templatedoc()
+def prroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale=1.0,
+               pooled_height=1,
+               pooled_width=1,
+               name=None):
+    """
+    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+
+    Args:
+        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+                        [N,C,H,W]. Where N is batch size,C is number of input channels,H
+                        is height of the feature, and W is the width of the feature.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates.
+        output_channels (integer): The output's channel.
+        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
+                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+        pooled_height (integer): The pooled output height. Default: 1.
+        pooled_width (integer): The pooled output width. Default: 1.
+        name (str, default None): The name of this operation.
+
+    Returns:
+        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.prroi_pool(x, rois, 10, 1.0, 7, 7)
+    """
+    helper = LayerHelper('prroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='prroi_pool',
         inputs={'X': input,
                 'ROIs': rois},
         outputs={'Out': out},
