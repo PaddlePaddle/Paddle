@@ -82,13 +82,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
     }
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
-<<<<<<< HEAD
-    std::vector<int> len_dims_vec{out_dim_0, 1};
-    auto time_step_dims_vec = framework::vectorize<int>(time_step_dims);
-=======
     std::vector<int> len_dims_vec{out_dim_0};
     auto time_step_dims_vec = framework::vectorize2int(time_step_dims);
->>>>>>> Removing last dims constraints of seq_pad and seq_unpad test=develop
     out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
