@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, stable_softmax
+from paddle.fluid.tests.unittests.test_softmax_op import *
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
@@ -30,6 +30,26 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 class TestSoftmaxMKLDNNOp2(TestSoftmaxMKLDNNOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
+
+
+class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+
+class TestSoftmaxMKLDNNOp4(TestSoftmaxOp3):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+
+class TestSoftmaxMKLDNNOp5(TestSoftmaxOp3):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+
+class TestSoftmaxMKLDNNOp6(TestSoftmaxOp3):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
 
 
 # Check if primitives already exist in backward
