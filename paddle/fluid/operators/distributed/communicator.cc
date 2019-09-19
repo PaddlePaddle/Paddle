@@ -131,22 +131,21 @@ void Communicator::SendThread() {
       if (ids_send_vec_.size() >= geo_need_push_nums_) {
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
-          VLOG(1)<<"Before varname: "<<iter.first;
-          auto &var_name = DeltaVarToVar(iter.first);
-          VLOG(1)<<"After varname: "<<var_name;
+          auto &var_name = iter.first;
           auto send_task = [this, &var_name] {
+            auto origin_var_name = DeltaVarToVar(var_name);
             auto before_send = GetCurrentUS();
-            if(var_list_[var_name] == true) {
+            if(var_list_[origin_var_name] == true) {
               auto temp_ids_send_vec = ids_send_vec_;
-              auto ids_set = SparseIdsMerge(temp_ids_send_vec , var_name);
-              VLOG(1)<<"Before send update var name: "<<var_name;
-              SendUpdateSparseVars(var_name,ids_set);
+              auto ids_set = SparseIdsMerge(temp_ids_send_vec , origin_var_name);
+              VLOG(1)<<"Before send update var name: "<<origin_var_name;
+              SendUpdateSparseVars(origin_var_name,ids_set);
             } else {
-              VLOG(1)<<"Before send update var name: "<<var_name;
-              SendUpdateDenseVars(var_name);
+              VLOG(1)<<"Before send update var name: "<<origin_var_name;
+              SendUpdateDenseVars(origin_var_name);
             }
             auto send_functor = distributed::ParameterSend<float>();   
-            auto &ctx = send_varname_to_ctx_.at(VarToDeltaVar(var_name));
+            auto &ctx = send_varname_to_ctx_.at(var_name);
             // delta parameter is in delta scope
             if (!FLAGS_communicator_fake_rpc) {
               send_functor(ctx, *delta_scope_.get(), true);
