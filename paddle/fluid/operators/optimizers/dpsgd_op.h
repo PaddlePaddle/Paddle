@@ -56,8 +56,7 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     const T *grad_data = grad->data<T>();
 
     T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
-    // LOG(INFO) <<
-    // "********************************************************************************";
+    
     T clip = static_cast<T>(ctx.Attr<float>("clip"));
     T batch_size = static_cast<T>(ctx.Attr<float>("batch_size"));
     T sigma = static_cast<T>(ctx.Attr<float>("sigma"));
@@ -68,13 +67,11 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
       l2_norm = l2_norm + grad_data[i] * grad_data[i];
     }
     l2_norm = std::sqrt(l2_norm);
-    // LOG(INFO) << "********************l2_norm: " << l2_norm;
 
     float scale = 1.0;
     if (l2_norm > clip) {
       scale = l2_norm / clip;
     }
-    // LOG(INFO) << "********************scale: " << scale;
 
     // generate gaussian noise.
     // [https://en.wikipedia.org/wiki/Box-Muller_transform]
@@ -95,30 +92,6 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     X = V1 * sqrt(-2 * log(S) / S);
 
     float gaussian_noise = mu + X * sigma;
-
-    /*
-    thread_local double V1, V2, S;
-    double X;
-    double mu = 0.0;
-    thread_local bool generate;
-    generate = !generate;
-
-    if ( generate ) {
-        do {
-          srand((unsigned int)(time(NULL)));
-          double U1 = (double)rand() / RAND_MAX;
-          double U2 = (double)rand() / RAND_MAX;
-          V1 = 2 * U1 - 1;
-          V2 = 2 * U2 - 1;
-          S = V1 * V1 + V2 * V2;
-        } while(S >= 1 || S == 0);
-
-        X = V1 * sqrt(-2 * log(S) / S);
-    } else
-        X = V2 * sqrt(-2 * log(S) / S);
-
-    double gaussian_noise = mu + X * sigma * sigma;
-    */
 
     // update parameters
     for (int64_t i = 0; i < grad->numel(); ++i) {
