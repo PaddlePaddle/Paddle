@@ -81,7 +81,9 @@ REGISTER_OPERATOR(
     elementwise_mul_grad, ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad);
+
+REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+                  ops::ElementwiseMulDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,

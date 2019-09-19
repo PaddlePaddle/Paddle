@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/deformable_conv_op.h"
+#include <memory>
 #include "paddle/fluid/operators/conv_op.h"
 
 namespace paddle {
@@ -197,7 +199,6 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
                       deformable_groups,
                       "mask filter must divide deformable group size.");
-
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   }
 
@@ -278,3 +279,9 @@ REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
                   ops::DeformableConvGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
+
+REGISTER_OP_CPU_KERNEL(deformable_conv, ops::DeformableConvCPUKernel<float>,
+                       ops::DeformableConvCPUKernel<double>);
+REGISTER_OP_CPU_KERNEL(deformable_conv_grad,
+                       ops::DeformableConvGradCPUKernel<float>,
+                       ops::DeformableConvGradCPUKernel<double>);

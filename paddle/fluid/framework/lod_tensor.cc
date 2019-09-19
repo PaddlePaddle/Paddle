@@ -283,6 +283,21 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   std::vector<LoDTensor> results;
   results.reserve(result_size);
 
+  // if result_size(batch_size) is 0, just return #places.size() copys of empty
+  // tensors.
+  if (result_size == 0) {
+    for (size_t i = 0; i < places.size(); ++i) {
+      LoDTensor dst;
+      dst.Resize(dims());
+      dst.mutable_data(places[i], type());
+      if (!lod().empty()) {
+        dst.set_lod(lod());
+      }
+      results.emplace_back(dst);
+    }
+    return results;
+  }
+
   int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
     int begin = static_cast<int>(i * step_width);
