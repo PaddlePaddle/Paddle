@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/fusion_group/elementwise_pattern.h"
+#include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace patterns {
 
 static std::unordered_set<std::string> binary_op_types = {
     "elementwise_add", "elementwise_sub", "elementwise_mul",
@@ -64,20 +64,27 @@ static bool IsBinaryOp(Node* n) {
 
 static bool IsUnaryOp(Node* n) { return IsSpecifiedOp(unary_op_types, n); }
 
-bool IsElementwiseOp(Node* n) { return IsBinaryOp(n) || IsUnaryOp(n); }
+bool ElementwiseGroupDetector::IsElementwiseOp(Node* n) {
+  return IsBinaryOp(n) || IsUnaryOp(n);
+}
 
-bool IsInputOfElementwiseOp(Node* n) {
+bool ElementwiseGroupDetector::IsInputOfElementwiseOp(Node* n,
+                                                      std::string name) {
   if (n && n->IsVar() && n->Var()) {
     for (auto* op : n->outputs) {
       if (IsElementwiseOp(op)) {
-        return true;
+        if (name.empty()) {
+          return true;
+        } else if (IsNthInput(n, op, name, 0)) {
+          return true;
+        }
       }
     }
   }
   return false;
 }
 
-bool IsOutputOfElementwiseOp(Node* n) {
+bool ElementwiseGroupDetector::IsOutputOfElementwiseOp(Node* n) {
   if (n && n->IsVar() && n->Var()) {
     for (auto* op : n->inputs) {
       if (IsElementwiseOp(op)) {
@@ -88,86 +95,63 @@ bool IsOutputOfElementwiseOp(Node* n) {
   return false;
 }
 
-static bool IsInputOfRepeatedElementwiseOp(Node* n, int num) {
-  Node* p = n;
-  for (int i = 0; i < num; ++i) {
-    bool find = false;
-    if (p && p->IsVar() && p->Var()) {
-      for (auto* op : p->outputs) {
-        if (IsElementwiseOp(op)) {
-          p = op->outputs[0];
-          find = true;
-          break;
-        }
-      }
-    }
-    if (!find) {
-      return false;
-    }
+void ElementwiseGroupDetector::Insert(Node* n) {
+  if (subgraph_.find(n) == subgraph_.end()) {
+    LOG(INFO) << "Insert " << n->Name() << " to subgraph " << name_;
+    subgraph_.insert(n);
   }
-  return true;
 }
 
-int NumAbjacentElementwiseOps(Node* n, std::vector<Node*> expect_nodes) {
-  // LOG(INFO) << "Enter NumAbjacentElementwiseOps: " << n->Name();
-  std::unordered_set<Node*> expect_nodes_set;
-  for (size_t i = 0; i < expect_nodes.size(); ++i) {
-    expect_nodes_set.insert(expect_nodes[i]);
+int ElementwiseGroupDetector::Search(Node* n, std::vector<Node*> except_nodes) {
+  std::unordered_set<Node*> except_nodes_set;
+  for (size_t i = 0; i < except_nodes.size(); ++i) {
+    except_nodes_set.insert(except_nodes[i]);
   }
 
-  int res = 0;
+  int num_operations = 0;
   if (IsElementwiseOp(n)) {
-    res += 1;
+    Insert(n);
+    num_operations += 1;
     for (auto* var : n->inputs) {
-      if (expect_nodes_set.find(var) == expect_nodes_set.end()) {
-        res += NumAbjacentElementwiseOps(var, {n});
+      Insert(var);
+      if (except_nodes_set.find(var) == except_nodes_set.end()) {
+        num_operations += Search(var, {n});
       }
     }
     for (auto* var : n->outputs) {
-      if (expect_nodes_set.find(var) == expect_nodes_set.end()) {
-        res += NumAbjacentElementwiseOps(var, {n});
+      Insert(var);
+      if (except_nodes_set.find(var) == except_nodes_set.end()) {
+        num_operations += Search(var, {n});
       }
     }
   } else if (n && n->IsVar() && n->Var()) {
     for (auto* op : n->inputs) {
       if (IsElementwiseOp(op) &&
-          expect_nodes_set.find(op) == expect_nodes_set.end()) {
-        res += NumAbjacentElementwiseOps(op, {n});
+          except_nodes_set.find(op) == except_nodes_set.end()) {
+        num_operations += Search(op, {n});
       }
     }
     for (auto* op : n->outputs) {
       if (IsElementwiseOp(op) &&
-          expect_nodes_set.find(op) == expect_nodes_set.end()) {
-        res += NumAbjacentElementwiseOps(op, {n});
+          except_nodes_set.find(op) == except_nodes_set.end()) {
+        num_operations += Search(op, {n});
       }
     }
   }
-  // LOG(INFO) << "Leave NumAbjacentElementwiseOps: " << n->Name() << ", res="
-  // << res;
-  return res;
+  return num_operations;
 }
 
-void ElementwiseGroupPattern::operator()(PDNode* x, int num_operations) {
-  // x->assert_more(IsInputOfElementwiseOp);
-  // if (num_operations == 2) {
-  //   for (int i = 0; i < num_operations; ++i) {
-  //     auto* op = pattern->NewNode(IsElementwiseOp,
-  //                                 name_scope_ + "/op_" +std::to_string(i));
-  //     auto* out = pattern->NewNode(IsOutputOfElementwiseOp,
-  //                                 name_scope_ + "/out_" +std::to_string(i));
-  //     ops.push_back(op);
-  //     outputs.push_back(out);
-  //     if (i == 0) {
-  //       ops[i]->LinksFrom({x}).LinksTo({outputs[i]});
-  //     } else {
-  //       ops[i]->LinksFrom({outputs[i - 1]}).LinksTo({outputs[i]});
-  //     }
-  //   }
-  // }
-  x->assert_more(IsInputOfElementwiseOp);
+int ElementwiseGroupDetector::operator()(Node* n) {
+  if (!IsOutputOfElementwiseOp(n) && IsInputOfElementwiseOp(n, "X")) {
+    name_ = n->Name();
+    Insert(n);
+    num_operations_ = Search(n, n->inputs);
+    LOG(INFO) << "Detect elementwise subgraph begin with " << name_ << ", "
+              << num_operations_ << " operations.";
+  }
+  return num_operations_;
 }
 
-}  // namespace patterns
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

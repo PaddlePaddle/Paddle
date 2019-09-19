@@ -15,20 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class FusionGroupPass : public FusePassBase {
- public:
-  virtual ~FusionGroupPass() {}
-
+class FusionGroupPass : public Pass {
  protected:
   void ApplyImpl(Graph* graph) const override;
 
-  int ApplyPattern(Graph* graph, int num_operations) const;
+ private:
+  int DetectFusionGroup(Graph* graph, int type = 0) const;
 
   const std::string name_scope_{"fusion_group"};
 };

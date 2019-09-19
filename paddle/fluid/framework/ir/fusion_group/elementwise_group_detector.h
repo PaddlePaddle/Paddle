@@ -16,29 +16,32 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace patterns {
 
-struct ElementwiseGroupPattern : public PatternBase {
-  ElementwiseGroupPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_group") {}
+struct ElementwiseGroupDetector {
+ public:
+  int operator()(Node* n);
 
-  void operator()(PDNode* x, int num_operations);
+  std::unordered_set<Node*> GetSubgraph() const { return subgraph_; }
 
-  std::vector<PDNode*> ops;
-  std::vector<PDNode*> outputs;
+ private:
+  bool IsElementwiseOp(Node* n);
+  bool IsInputOfElementwiseOp(Node* n, std::string name = "");
+  bool IsOutputOfElementwiseOp(Node* n);
+
+  void Insert(Node* n);
+  int Search(Node* n, std::vector<Node*> except_nodes = {});
+
+ private:
+  std::string name_;
+  int num_operations_{0};
+  std::unordered_set<Node*> subgraph_;
 };
 
-bool IsElementwiseOp(Node* n);
-bool IsInputOfElementwiseOp(Node* n);
-bool IsOutputOfElementwiseOp(Node* n);
-int NumAbjacentElementwiseOps(Node* n, std::vector<Node*> expect_nodes);
-
-}  // namespace patterns
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

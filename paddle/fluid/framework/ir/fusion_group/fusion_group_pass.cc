@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
-#include "paddle/fluid/framework/ir/fusion_group/elementwise_pattern.h"
+#include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -21,45 +23,35 @@ namespace ir {
 
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph);
-  FusePassBase::Init("fusion_group", graph);
 
-  int found_fusion_group_count = 0;
-  // for (int num_operations = 2; num_operations < 3; ++num_operations) {
-  //   found_fusion_group_count += ApplyPattern(graph, num_operations);
-  // }
-  found_fusion_group_count += ApplyPattern(graph, 3);
-
-  AddStatis(found_fusion_group_count);
+  DetectFusionGroup(graph, 0);
 }
 
-int FusionGroupPass::ApplyPattern(Graph* graph, int num_operations) const {
-  GraphPatternDetector gpd;
-  auto* x = gpd.mutable_pattern()->NewNode(
-      [=](Node* n) {
-        if (patterns::IsInputOfElementwiseOp(n) &&
-            patterns::NumAbjacentElementwiseOps(n, n->inputs) ==
-                num_operations) {
-          return true;
-        }
-        return false;
-      },
-      "fusison_group/in");
-  patterns::ElementwiseGroupPattern pattern(gpd.mutable_pattern(),
-                                            "fusion_group");
-  pattern(x, num_operations);
-
-  int fusion_count{0};
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    if (subgraph.count(x) <= 0) {
-      LOG(WARNING) << "The subgraph is empty.";
-      return;
+int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
+  std::vector<std::unordered_set<Node*>> subgraphs;
+  std::unordered_set<Node*> all_nodes = graph->Nodes();
+  for (Node* n : all_nodes) {
+    bool is_found = false;
+    for (auto& subgraph : subgraphs) {
+      if (subgraph.find(n) != subgraph.end()) {
+        is_found = true;
+        break;
+      }
+    }
+    if (is_found) {
+      continue;
     }
 
-    fusion_count++;
-  };
-  gpd(graph, handler);
-  return fusion_count;
+    std::unordered_set<Node*> subgraph;
+    if (type == 0) {
+      ElementwiseGroupDetector detector;
+      int num_operations = detector(n);
+      if (num_operations >= 2) {
+        subgraph = detector.GetSubgraph();
+      }
+    }
+  }
+  return subgraphs.size();
 }
 
 }  // namespace ir
