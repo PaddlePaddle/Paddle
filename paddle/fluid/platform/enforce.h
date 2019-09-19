@@ -52,6 +52,8 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+#define WITH_SIMPLE_TRACEBACK
+
 namespace paddle {
 namespace platform {
 
@@ -72,10 +74,6 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
-  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
-                          line)
-       << std::endl;
-  sout << "PaddlePaddle Call Stacks: " << std::endl;
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
@@ -84,6 +82,15 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   for (int i = 0; i < size; ++i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
+#ifdef WITH_SIMPLE_TRACEBACK
+      static int idx = 0;
+      std::string path(info.dli_fname);
+      // TODO(chenweihang): if user execute python be /usr/bin/python,
+      //   the python function can't be removed here
+      if (path.compare(0, 6, "python") != 0) {
+        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+      }
+#else
       auto addr_offset = static_cast<char*>(call_stack[i]) -
                          static_cast<char*>(info.dli_saddr);
       sout << string::Sprintf("%-3d %*0p %s + %zd\n", i, 2 + sizeof(void*) * 2,
@@ -91,8 +98,12 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
     } else {
       sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
                               call_stack[i]);
+#endif
     }
   }
+  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
+                          line)
+       << std::endl;
   free(symbols);
 #else
   sout << "Windows not support stack backtrace yet.";
@@ -107,33 +118,13 @@ struct EnforceNotMet : public std::exception {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
       err_str_ = GetTraceBackString(e.what(), file, line);
-      SaveErrorInformation(err_str_);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {
-    SaveErrorInformation(err_str_);
-  }
+      : err_str_(GetTraceBackString(str, file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  static void SaveErrorInformation(const std::string& err) {
-    const std::string output_file_name{"paddle_err_info"};
-    std::stringstream ss;
-    ss << output_file_name;
-    std::time_t t = std::time(nullptr);
-    std::tm* tm = std::localtime(&t);
-    char mbstr[100];
-    std::strftime(mbstr, sizeof(mbstr), "%F-%H-%M-%S", tm);
-    ss << "_" << mbstr << ".log";
-    std::ofstream err_file(ss.str(), std::ofstream::out);
-    if (err_file.is_open()) {
-      err_file << err;
-      err_file.close();
-    }
-  }
 };
 
 struct EOFException : public std::exception {
@@ -358,7 +349,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
  *    PADDLE_ENFORCE_EQ(a, b);
  *
  *    will raise an expression described as follows:
- *    "Enforce failed. Expected input a == b, but received a(1) != b(2)."
+ *    "PaddleEnforceError. Expected input a == b, but received a(1) != b(2)."
  *      with detailed stack information.
  *
  *    extra messages is also supported, for example:
@@ -465,7 +456,7 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("Enforce failed. Expected %s " #__CMP                       \
+      PADDLE_THROW("PaddleEnforceError. Expected %s " #__CMP                   \
                    " %s, but received %s " #__INV_CMP " %s.\n%s",              \
                    #__VAL1, #__VAL2,                                           \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
@@ -508,7 +499,7 @@ struct BinaryCompareMessageConverter<false> {
     bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(  \
         static_cast<__COMMON_TYPE2__>(__val2));                          \
     if (UNLIKELY(!__is_not_error)) {                                     \
-      PADDLE_THROW("Enforce failed. Expected %s " #__CMP                 \
+      PADDLE_THROW("PaddleEnforceError. Expected %s " #__CMP             \
                    " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s",  \
                    #__VAL1, #__VAL2, #__VAL1,                            \
                    ::paddle::string::to_string(__val1), #__VAL2,         \

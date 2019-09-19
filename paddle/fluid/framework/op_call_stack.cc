@@ -33,13 +33,25 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
     return;
   }
   std::ostringstream sout;
-  sout << "Invoke operator " << type << " error.\n";
-  sout << "Python Call stacks: \n";
+  std::ostringstream sout_py_trace;
+  // Step 1. Construct python call stack string
+  sout_py_trace << "\n------------------------------------------\n";
+  sout_py_trace << "Python Call Stacks (More useful to users):";
+  sout_py_trace << "\n------------------------------------------\n";
   for (auto &line : callstack) {
-    sout << line;
+    sout_py_trace << line;
   }
-  sout << "C++ Call stacks: \n";
+  // Step 2. Insert python traceback into err_str_
+  std::size_t found = exception->err_str_.rfind("PaddleEnforceError.");
+  if (found != std::string::npos) {
+    exception->err_str_.insert(found, sout_py_trace.str());
+  }
+  // Step 3. Construct final call stack
+  sout << "\n--------------------------------------------\n";
+  sout << "C++ Call Stacks (More useful to developers):";
+  sout << "\n--------------------------------------------\n";
   sout << exception->err_str_;
+  sout << "  [[{{operator " << type << "}}]]";
   exception->err_str_ = sout.str();
 }
 

@@ -17,6 +17,7 @@ from __future__ import print_function
 import logging
 import os
 import multiprocessing
+import re
 import sys
 import warnings
 import numpy as np
@@ -25,6 +26,7 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
+from . import error_format
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 
@@ -613,8 +615,20 @@ class Executor(object):
                 use_program_cache=use_program_cache)
         except Exception as e:
             if not isinstance(e, core.EOFException):
-                print("!!!A non-EOF exception is thrown.")
-            six.reraise(*sys.exc_info())
+                warnings.warn(
+                    "The following exception is not an EOF exception.")
+            _, ex_val, _ = sys.exc_info()
+            ex_val = error_format.hint_augment(str(cpt.to_text(ex_val)))
+            ex_msgs = ex_val.split("PaddleEnforceError.")
+            # print C++ stack and python stack
+            print(ex_msgs[0])
+            # print error messgae
+            print("----------------------")
+            print("Error Message Summary:")
+            print("----------------------")
+            print("Error:%s" % ex_msgs[1])
+            # avoid Python throwing exceptions
+            sys.exit(0)
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):
