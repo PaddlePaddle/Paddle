@@ -79,6 +79,22 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
 
+    def test_op_desc_attr_default_value(self):
+        program_desc = core.ProgramDesc()
+        self.assertIsNotNone(program_desc)
+        block = program_desc.block(0)
+        self.assertIsNotNone(block)
+        op = block.append_op()
+        self.assertIsNotNone(op)
+
+        op.set_type("elementwise_add")
+        op_attr_map = dict()
+        op.set_default_attrs_only(op_attr_map)
+        attr_name = "axis"
+        expected_attr_default_value = -1
+        self.assertEqual(
+            op_attr_map.get(attr_name), expected_attr_default_value)
+
 
 class TestProgramDesc(unittest.TestCase):
     def test_instance(self):
