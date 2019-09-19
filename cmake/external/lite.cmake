@@ -58,6 +58,9 @@ ExternalProject_Add(
 ExternalProject_Get_property(${LITE_PROJECT} BINARY_DIR)
 ExternalProject_Get_property(${LITE_PROJECT} SOURCE_DIR)
 
+message(STATUS "Paddle-lite BINARY_DIR: ${BINARY_DIR}")
+message(STATUS "Paddle-lite SOURCE_DIR: ${SOURCE_DIR}")
+
 function(external_lite_static_libs alias path)
   add_library(${alias} STATIC IMPORTED GLOBAL) 
   SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION 
@@ -65,5 +68,6 @@ function(external_lite_static_libs alias path)
   add_dependencies(${alias} ${LITE_PROJECT})
 endfunction()
 
-include_directories(${SOURCE_DIR}/include)
-external_lite_static_libs(api_full_static_1 ${BINARY_DIR}/lite/api/libapi_full_static.a)
+include_directories(${SOURCE_DIR})
+include_directories(${BINARY_DIR})
+external_lite_static_libs(lite_full_static ${BINARY_DIR}/lite/api/libapi_full_static.a)
