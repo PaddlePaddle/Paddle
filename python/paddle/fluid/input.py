@@ -111,7 +111,7 @@ def embedding(input,
           import paddle.fluid as fluid
           # [batch_size, 20]  ->  [batch_size, 20, 64]
           data = fluid.layers.data(name='sequence', shape=[20], dtype='int64')
-          emb = fluid.input.embedding(input=data, size=[128, 64])    
+          emb = fluid.embedding(input=data, size=[128, 64])    
     """
 
     helper = LayerHelper('embedding', **locals())
