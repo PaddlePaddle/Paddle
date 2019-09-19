@@ -261,6 +261,16 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
 
+        try:
+            _out = fluid.functional.conv2d(
+                input=images, filter=filters, groups=6, use_cudnn=None)
+        except:
+            try:
+                _out = fluid.functional.conv2d(
+                    input=images, filter=filters, groups=5, use_cudnn=None)
+            except:
+                pass
+
     def test_gru_unit(self):
         lod = [[2, 4, 3]]
         D = 5

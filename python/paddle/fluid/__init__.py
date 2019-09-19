@@ -45,6 +45,7 @@ from . import dataset
 from .dataset import *
 
 from . import functional
+from .functional import *
 
 from . import trainer_desc
 from . import inferencer
