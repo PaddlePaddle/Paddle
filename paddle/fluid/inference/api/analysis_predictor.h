@@ -65,6 +65,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string &name) override;
 
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+
   bool ZeroCopyRun() override;
 
   void CreateFeedFetchVar(framework::Scope *scope);
