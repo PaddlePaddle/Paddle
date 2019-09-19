@@ -125,7 +125,6 @@ void BuddyAllocator::Free(void* p) {
     VLOG(10) << "Merging this block " << block << " with its right buddy "
              << right_buddy;
 
-    // auto right_buddy = block->right_buddy(cache_);
     auto rb_desc = cache_.load_desc(right_buddy);
     if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
@@ -251,7 +250,6 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   block->split(&cache_, size);
 
   VLOG(10) << "Left block (" << block << ", " << desc->total_size << ")";
-  // block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
   desc->type = MemoryBlock::ARENA_CHUNK;
   desc->update_guards();
 
