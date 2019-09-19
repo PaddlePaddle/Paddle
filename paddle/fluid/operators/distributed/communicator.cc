@@ -124,10 +124,12 @@ void Communicator::SendThread() {
       if( ids_send_vec_.size() < geo_need_push_nums_){
         VLOG(3)<<"ids_send_queue_ Size: "<<ids_send_vec_.size();
         if (need_push_queue_->Size() > 0) {
-          ids_send_vec_.push_back(*need_push_queue_->Pop());
-          VLOG(4) <<"ids_send_queue pushed";
+          ids_send_vec_.push_back(*(need_push_queue_->Pop()));
+          VLOG(3) <<"ids_send_queue pushed";
         }
-      } else {
+      } 
+      if (ids_send_vec_.size() >= geo_need_push_nums_) {
+        VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_queue_) {
           auto &var_name = iter.first;
           auto send_task = [this, &var_name] {
