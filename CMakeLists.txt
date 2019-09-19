@@ -153,6 +153,8 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/warpctc)   # download, build, install warpctc
 
+include(external/lite)
+
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
 include(cupti)
