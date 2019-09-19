@@ -218,6 +218,8 @@ class CudnnWorkspaceHandle {
     if (required_workspace_bytes <= WorkspaceSize()) {
       return;
     }
+    // reset allocation first before re-allocate to save memory
+    allocation_.reset();
     allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
   }
 
