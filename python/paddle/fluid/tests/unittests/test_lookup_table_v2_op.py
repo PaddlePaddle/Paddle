@@ -199,7 +199,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
         x = fluid.layers.data(name='x', shape=[20], dtype='int64')
-        emb = fluid.input.embedding(input=x, size=[128, 64])
+        emb = fluid.embedding(input=x, size=[128, 64])
 
         place = fluid.CPUPlace()
         x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
