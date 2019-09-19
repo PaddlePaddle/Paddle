@@ -7,7 +7,8 @@ PADDLE_ROOT=$1
 
 # download models
 function download() {
-    echo "downloading is currently not supported"
+    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/main_program
+    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/startup_program
 }
 
 download
