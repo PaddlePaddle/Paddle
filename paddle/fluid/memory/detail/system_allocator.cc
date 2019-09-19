@@ -23,6 +23,8 @@ limitations under the License. */
 #endif
 #include <stdlib.h>   // for malloc and free
 #include <algorithm>  // for std::max
+#include <string>
+#include <utility>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -118,19 +120,41 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    PADDLE_THROW_BAD_ALLOC(
-        "Out of memory error on GPU %s. Cannot malloc %lf MB GPU memory. "
-        "(1) Please shrink the batch size of your model or check "
-        "whether there is enough memory for the model. or (2) Please shrink "
-        "FLAGS_fraction_of_gpu_memory_to_use or "
-        "FLAGS_initial_gpu_memory_in_mb or "
-        "FLAGS_reallocate_gpu_memory_in_mb "
-        "environment variable to a lower value. "
-        "Current FLAGS_fraction_of_gpu_memory_to_use value is %lf. "
-        "Current FLAGS_initial_gpu_memory_in_mb value is %lf. "
-        "Current FLAGS_reallocate_gpu_memory_in_mb value is %lf.",
-        gpu_id_, size / 1024.0 / 1024.0, FLAGS_fraction_of_gpu_memory_to_use,
-        FLAGS_initial_gpu_memory_in_mb, FLAGS_reallocate_gpu_memory_in_mb);
+    /**
+     * If available GPU memory is less than the requested size, users
+     * should check whether the GPU memory is occupied by another process
+     * or decrease batch size of model.
+     *
+     * If available GPU memory is larger than the requested size, users
+     * should increase FLAGS_fraction_of_gpu_memory_to_use to pre-allocate
+     * more GPU memory or decrease batch size of model.
+     */
+    size_t avail, total;
+    platform::GpuMemoryUsage(&avail, &total);
+
+    auto err_msg = string::Sprintf(
+        "Out of memory error on GPU %d. "
+        "Cannot allocate %s GPU memory, "
+        "available memory is %s.\n"
+        "Please check if there is any other process using the same GPU.\n"
+        "If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "If no, please try to decrease the batch size of your model. ",
+        gpu_id_, string::HumanReadableSize(size),
+        string::HumanReadableSize(avail));
+
+    std::string partial_err_msg =
+        avail <= size
+            ? ""
+            : "Or try to set environment variable "
+              "FLAGS_fraction_of_gpu_memory_to_use to a higher value. "
+              "For example, try to "
+              "'export FLAGS_fraction_of_gpu_memory_to_use=0.98' "
+              "or higher value less than 1.0. Currently, it is " +
+                  std::to_string(FLAGS_fraction_of_gpu_memory_to_use);
+
+    err_msg += partial_err_msg;
+
+    PADDLE_THROW_BAD_ALLOC(std::move(err_msg));
   }
 }
 
