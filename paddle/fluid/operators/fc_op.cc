@@ -132,7 +132,7 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1)
         .EqualGreaterThan(1);
     AddAttr<std::string>("activation_type",
-                         "Avctivation type used in fully connected operator.")
+                         "Activation type used in fully connected operator.")
         .SetDefault("");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
