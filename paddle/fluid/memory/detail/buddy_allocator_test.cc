@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include <memory>
 
+#ifdef WITH_GPERFTOOLS
 #include "gflags/gflags.h"
+#endif
 #include "gperftools/profiler.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
