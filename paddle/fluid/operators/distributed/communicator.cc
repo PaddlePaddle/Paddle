@@ -132,11 +132,11 @@ void Communicator::SendThread() {
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
           auto &var_name = iter.first;
-          auto send_task = [this, &var_name] {
+          auto &temp_ids_send_vec = ids_send_vec_;
+          auto send_task = [this, &var_name, &temp_ids_send_vec] {
             auto origin_var_name = DeltaVarToVar(var_name);
             auto before_send = GetCurrentUS();
             if(var_list_[origin_var_name] == true) {
-              auto temp_ids_send_vec = ids_send_vec_;
               auto ids_set = SparseIdsMerge(temp_ids_send_vec , origin_var_name);
               VLOG(1)<<"Before send update var name: "<<origin_var_name;
               SendUpdateSparseVars(origin_var_name,ids_set);
