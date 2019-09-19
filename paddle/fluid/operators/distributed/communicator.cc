@@ -139,8 +139,10 @@ void Communicator::SendThread() {
             if(var_list_[var_name] == true) {
               auto temp_ids_send_vec = ids_send_vec_;
               auto ids_set = SparseIdsMerge(temp_ids_send_vec , var_name);
+              VLOG(1)<<"Before send update var name: "<<var_name;
               SendUpdateSparseVars(var_name,ids_set);
             } else {
+              VLOG(1)<<"Before send update var name: "<<var_name;
               SendUpdateDenseVars(var_name);
             }
             auto send_functor = distributed::ParameterSend<float>();   
