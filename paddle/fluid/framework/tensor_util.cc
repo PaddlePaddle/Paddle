@@ -521,7 +521,7 @@ std::ostream& operator<<(std::ostream& os, const Tensor& t) {
     tensor.ShareDataWith(t);
   } else {
     platform::CPUPlace place;
-    framework::TensorCopySync(t, place, &tensor);
+    framework::TensorCopy(t, place, &tensor);
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
