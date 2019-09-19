@@ -42,6 +42,10 @@ def parse_args():
         help='Number of the first minibatches to skip in performance statistics.'
     )
     parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='If used, the graph of QAT model is drawn.')
+    parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument(
         '--qat2',
@@ -172,7 +176,7 @@ class TestQatInt8Comparison(unittest.TestCase):
             if (transform_to_int8):
                 if (test_case_args.qat2):
                     transform_to_fp32_pass = TransformThroughFP32Pass(
-                        scope=inference_scope, place=place, core=core)
+                        scope=inference_scope, place=place, core=core, debug=self._debug)
                     graph = transform_to_fp32_pass.apply(graph)
                 else:
                     mkldnn_int8_pass = TransformForMkldnnPass(
@@ -277,6 +281,7 @@ class TestQatInt8Comparison(unittest.TestCase):
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num
         acc_diff_threshold = test_case_args.acc_diff_threshold
+        self._debug = test_case_args.debug
 
         _logger.info('QAT FP32 & INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
