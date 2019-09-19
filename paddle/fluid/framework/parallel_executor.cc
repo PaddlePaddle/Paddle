@@ -569,7 +569,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   if (loss_var_name.size()) {
     size_t graph_num = ir::GraphNum(*graph);
     if (graph_num > 1) {
-      LOG(WARNING)
+      VLOG(3)
           << "The number of graph should be only one, "
              "but the current graph has "
           << ir::GraphNum(*graph)
