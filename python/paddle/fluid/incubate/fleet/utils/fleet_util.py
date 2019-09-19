@@ -27,6 +27,7 @@ from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 from . import hdfs
 from .hdfs import *
 import uuid
+import tempfile
 
 __all__ = ["FleetUtil"]
 
@@ -1324,8 +1325,7 @@ class FleetUtil(object):
     def generate_random_path(self):
         rets = ""
         while True:
-            rets = os.path.join(
-                str(os.getenv("TMP", "/tmp")), str(uuid.uuid4()))
+            rets = os.path.join(tempfile.gettempdir(), str(uuid.uuid4()))
             if not os.path.exists(rets):
                 break
         return rets

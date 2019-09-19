@@ -14,6 +14,7 @@
 import os
 import warnings
 
+from paddle.fluid import core
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -229,7 +230,7 @@ class DistributedTranspiler(Fleet):
                                              dirname)
             os.system('rm -rf ' + dirname)
 
-    def _save_distributed_persistables(executor, dirname, main_program):
+    def _save_distributed_persistables(self, executor, dirname, main_program):
         """
         save_persistables for distributed training.
         the method will do things listed below:
@@ -382,7 +383,7 @@ class DistributedTranspiler(Fleet):
         hdfs_dirname = None
         if dirname.startswith(HDFS_PREFIX):
             hdfs_dirname = dirname
-            fleet_util_instance = Fleet_Util()
+            fleet_util_instance = FleetUtil()
             dirname = fleet_util_instance.generate_random_path()
             if not self._hdfs_client_trainer.is_exist(hdfs_dirname[len(
                     HDFS_PREFIX):]):
@@ -466,7 +467,7 @@ class DistributedTranspiler(Fleet):
         if not main_program._is_distributed:
             raise ValueError(
                 "main_program is for local, may not use fleet.save_persistables")
-        _save_distributed_persistables(executor, dirname, main_program)
+        self._save_distributed_persistables(executor, dirname, main_program)
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):
