@@ -285,6 +285,14 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
+        dataset2 = fluid.DatasetFactory().create_dataset("QueueDataset")
+        dataset2.set_use_var(slots_vars)
+        dataset2.set_batch_size(32)
+        dataset2.set_thread(3)
+        dataset2.set_pipe_command("cat")
+        dataset.set_filelist([])
+        exe.train_from_dataset(fluid.default_main_program(), dataset2)
+
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
 
