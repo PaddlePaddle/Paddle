@@ -132,12 +132,11 @@ void Communicator::SendThread() {
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
           auto &var_name = iter.first;
-          auto &temp_ids_send_vec = ids_send_vec_;
-          auto send_task = [this, &var_name, &temp_ids_send_vec] {
+          auto send_task = [this, &var_name] {
             auto origin_var_name = DeltaVarToVar(var_name);
             auto before_send = GetCurrentUS();
             if(var_list_[origin_var_name] == true) {
-              auto ids_set = SparseIdsMerge(temp_ids_send_vec , origin_var_name);
+              auto ids_set = SparseIdsMerge(ids_send_vec_ , origin_var_name);
               VLOG(1)<<"Before send update var name: "<<origin_var_name;
               SendUpdateSparseVars(origin_var_name,ids_set);
             } else {
@@ -158,7 +157,7 @@ void Communicator::SendThread() {
           }
           
         }
-        ids_send_vec_.clear();
+        
     } else {
       for (auto &iter : send_varname_to_queue_) {
         auto &var_name = iter.first;
@@ -232,6 +231,7 @@ void Communicator::RecvNonIndependent() {
   if (is_geo_sgd_) {
     auto push_nums = have_push_.load();
     if(push_nums >= send_varname_to_ctx_.size()) {
+      ids_send_vec_.clear();
       RecvAll();
       have_push_.store(0);
     }
