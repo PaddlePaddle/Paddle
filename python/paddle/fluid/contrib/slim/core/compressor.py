@@ -242,6 +242,8 @@ class Compressor(object):
                  eval_reader=None,
                  eval_feed_list=None,
                  eval_fetch_list=None,
+                 eval_func=None,
+                 save_eval_model=True,
                  teacher_programs=[],
                  checkpoint_path=None,
                  train_optimizer=None,
@@ -260,13 +262,22 @@ class Compressor(object):
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
             eval_program(Program): The program used for evaluation.
-            eval_reader: The data reader used for evaluation.
+            eval_reader: The data reader used for evaluation. It can be None if eval_func is not None.
             eval_feed_list(dict): A dict to indicate the input variable of the evaluation program.
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
+                                   It can be None if eval_func is not None.
             eval_fetch_list(dict): A dict to indicate the output variable of the evaluation program.
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
+            eval_func(dict|function): Callback functions used to evaluate the compressed model.
+                                   The eval_func is a dict, the key is user-defined name and the value is 
+                                   a callback function. And the score returned from callback functions 
+                                   can be referenced in config file by the key of eval_func.
+                                   The args of callback function are compressed eval_program and scope which
+                                   store the compressed parameters.
+                                   Default: None.
+            save_eval_model(bool): Whether to save eval model when saving checkpoints. Default: True.
             teacher_programs: The teacher graphs used in distillation strategies.
             train_optimizer: The optimizer used to append backward ops and
                              optimization ops into train_graph.
@@ -294,6 +305,9 @@ class Compressor(object):
             eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
         self.train_reader = train_reader
         self.eval_reader = eval_reader
+        self.eval_func = eval_func
+        self.save_eval_model = save_eval_model
+
         self.teacher_graphs = []
         for teacher in teacher_programs:
             self.teacher_graphs.append(GraphWrapper(teacher))
@@ -393,6 +407,9 @@ class Compressor(object):
                             strategies = pickle.load(
                                 strategy_file, encoding='bytes')
 
+                for s, s1 in zip(self.strategies, strategies):
+                    s1.__dict__.update(s.__dict__)
+
                 for strategy in strategies:
                     strategy.restore_from_checkpoint(context)
 
@@ -416,6 +433,7 @@ class Compressor(object):
             checkpoint_path = os.path.join(self.checkpoint_path,
                                            str(context.epoch_id))
             model_path = os.path.join(checkpoint_path, 'model')
+            eval_model_path = os.path.join(checkpoint_path, 'eval_model')
             context_path = os.path.join(checkpoint_path, 'context')
             strategy_path = os.path.join(checkpoint_path, 'strategies')
             if not os.path.isdir(model_path):
@@ -423,6 +441,8 @@ class Compressor(object):
             exe = SlimGraphExecutor(context.place)
             with scope_guard(context.scope):
                 context.optimize_graph.save_persistables(model_path, exe)
+                if self.save_eval_model:
+                    context.eval_graph.save_model(eval_model_path, exe)
             context.to_file(context_path)
             with open(strategy_path, 'wb') as strategy_file:
                 pickle.dump(self.strategies, strategy_file)
@@ -485,11 +505,19 @@ class Compressor(object):
         """
         Runing evaluation.
         """
-        results, names = context.run_eval_graph()
-        for name, result in zip(names, results):
-            if name not in context.eval_results:
-                context.eval_results[name] = []
-            context.eval_results[name].append(result)
+        if self.eval_func is not None:
+            for key in self.eval_func:
+                func = self.eval_func[key]
+                if key not in context.eval_results:
+                    context.eval_results[key] = []
+                context.eval_results[key].append(
+                    func(self.eval_graph.program, self.scope))
+        else:
+            results, names = context.run_eval_graph()
+            for name, result in zip(names, results):
+                if name not in context.eval_results:
+                    context.eval_results[name] = []
+                context.eval_results[name].append(result)
 
     def run(self):
         """
@@ -518,7 +546,7 @@ class Compressor(object):
             else:
                 context.optimize_graph = context.train_graph
 
-        context, self.strategies = self._load_checkpoint(context)
+        context, strategies = self._load_checkpoint(context)
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)

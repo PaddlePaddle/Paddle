@@ -211,6 +211,7 @@ class GraphWrapper(object):
                 self.persistables[var.name] = var
         self.compiled_graph = None
         in_nodes = [] if in_nodes is None else in_nodes
+        out_nodes = [] if out_nodes is None else out_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
@@ -468,6 +469,27 @@ class GraphWrapper(object):
                 flops += np.product(input_shape)
 
         return flops
+
+    def save_model(self, path, exe):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+        """
+        out_vars = [
+            self.var(var_name)._var for var_name in self.out_nodes.values()
+        ]
+        in_vars = list(self.in_nodes.values())
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            main_program=self.program,
+            export_for_deployment=False)
 
     def save_persistables(self, path, exe):
         """
