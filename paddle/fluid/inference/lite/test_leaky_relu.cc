@@ -18,6 +18,8 @@
 #include <vector>
 #include "lite/api/paddle_api.h"
 #include "lite/api/paddle_place.h"
+#include "lite/api/paddle_use_ops.h"
+#include "lite/api/paddle_use_passes.h"
 
 namespace paddle {
 namespace lite {
