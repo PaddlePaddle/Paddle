@@ -51,9 +51,9 @@ class SplitOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SplitGradMaker : public framework::SingleGradOpDescMaker<T> {
+class SplitGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker<T>::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   std::unique_ptr<T> Apply() const override {

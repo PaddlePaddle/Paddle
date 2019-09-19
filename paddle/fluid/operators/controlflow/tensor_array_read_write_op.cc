@@ -188,35 +188,37 @@ class ReadFromArrayInferShape : public WriteToArrayInferShape {
   }
 };
 
-class WriteToArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("read_from_array");
-    grad_op->SetInput("I", Input("I"));
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("I", this->Input("I"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
-class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("write_to_array");
-    grad_op->SetInput("I", Input("I"));
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("I", this->Input("I"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -226,7 +228,10 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(write_to_array, ops::WriteToArrayOp,
                   ops::WriteToArrayInferShape, ops::WriteToArrayOpProtoMaker,
-                  ops::WriteToArrayGradMaker, ops::WriteToArrayInferVarType);
+                  ops::WriteToArrayGradMaker<paddle::framework::OpDesc>,
+                  ops::WriteToArrayGradMaker<paddle::imperative::OpBase>,
+                  ops::WriteToArrayInferVarType);
 REGISTER_OPERATOR(read_from_array, ops::ReadFromArrayOp,
                   ops::ReadFromArrayInferShape, ops::ReadFromArrayProtoMaker,
-                  ops::ReadFromArrayGradMaker);
+                  ops::ReadFromArrayGradMaker<paddle::framework::OpDesc>,
+                  ops::ReadFromArrayGradMaker<paddle::imperative::OpBase>);

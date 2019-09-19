@@ -59,7 +59,7 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
 
 using DygraphGradOpMakerFN =
     std::function<std::vector<std::unique_ptr<imperative::OpBase>>(
-        const imperative::OpBase& fw_op_base,
+        const imperative::OpBase* fw_op_base,
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out)>;
 

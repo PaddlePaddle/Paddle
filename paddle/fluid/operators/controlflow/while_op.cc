@@ -309,17 +309,18 @@ class WhileGradOp : public framework::OperatorBase {
   }
 };
 
-class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *while_grad = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *while_grad = new T();
     while_grad->SetType("while_grad");
-    while_grad->SetInput(kX, Input(kX));
-    while_grad->SetInput(kOutputs, Output(kOutputs));
-    while_grad->SetInput(kStepScopes, Output(kStepScopes));
+    while_grad->SetInput(kX, this->Input(kX));
+    while_grad->SetInput(kOutputs, this->Output(kOutputs));
+    while_grad->SetInput(kStepScopes, this->Output(kStepScopes));
 
     auto *grad_block = this->grad_block_[0];
     auto *fwd_block = grad_block->ForwardBlock();
@@ -333,12 +334,9 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         inner_op_outputs.insert(oname);
       }
     }
-    auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
+    auto igs = this->InputGrad(kX, /*do not drop empty gradient*/ false);
 
-    PADDLE_ENFORCE_EQ(igs.dygraph_mode_, false,
-                      "while op not suport dygraph mode");
-
-    for (auto &each_ig : igs.vec_name_) {
+    for (auto &each_ig : igs) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
         VLOG(8) << "Ignore " << each_ig;
         each_ig = framework::kEmptyVarName;
@@ -349,12 +347,11 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // OG should be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
-    block_ins.reserve(Input(kX).vec_name_.size() +
-                      Output(kOutputs).vec_name_.size());
-    for (auto &p : Input(kX).vec_name_) {
+    block_ins.reserve(this->Input(kX).size() + this->Output(kOutputs).size());
+    for (auto &p : this->Input(kX)) {
       block_ins.insert(p);
     }
-    for (auto &o : Output(kOutputs).vec_name_) {
+    for (auto &o : this->Output(kOutputs)) {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;
@@ -392,7 +389,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
     while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
 
-    return std::unique_ptr<framework::OpDesc>(while_grad);
+    return std::unique_ptr<T>(while_grad);
   }
 };
 
@@ -462,9 +459,9 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(while, paddle::operators::WhileOp,
-                  paddle::operators::WhileOpMaker,
-                  paddle::operators::WhileGradOpDescMaker);
+REGISTER_OPERATOR(
+    while, paddle::operators::WhileOp, paddle::operators::WhileOpMaker,
+    paddle::operators::WhileGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(while_grad, paddle::operators::WhileGradOp,
                   paddle::operators::WhileGradOpShapeInference,
                   paddle::operators::WhileGradOpVarTypeInference);

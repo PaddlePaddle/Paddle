@@ -387,7 +387,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
  private:
   OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
-         const NameVarBaseMap& outs, framework::AttributeMap attrs,
+         const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
          const platform::Place& place);
 
   OpBase(size_t id, const framework::OpDesc& op_desc,
@@ -406,6 +406,33 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     outs_.emplace(name, vec_var_base);
   }
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
+  void SetAttr(const std::string& name, const framework::Attribute& v) {
+    attrs_[name] = v;
+  }
+  void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {}
+
+  const framework::AttributeMap& Attrs() { return attrs_; }
+
+  bool create_operator_base();
+
+  void SetId(size_t id) { id_ = id; }
+  void SetPlace(platform::Place place) { place_ = place; }
+
+  bool HasAttr(const std::string& name) const {
+    return attrs_.find(name) != attrs_.end();
+  }
+
+  framework::Attribute GetAttr(const std::string& name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it != attrs_.end(), "can not find attribute [%s]", name);
+
+    return it->second;
+  }
+
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return boost::get<T>(GetAttr(name));
+  }
 
  private:
   size_t id_;

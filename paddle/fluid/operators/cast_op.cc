@@ -49,19 +49,20 @@ class CastOpInferShape : public framework::InferShapeBase {
   }
 };
 
-class CastOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto grad = new T();
     grad->SetType("cast");
-    grad->SetInput("X", OutputGrad("Out"));
-    grad->SetOutput("Out", InputGrad("X"));
-    grad->SetAttr("out_dtype", GetAttr("in_dtype"));
-    grad->SetAttr("in_dtype", GetAttr("out_dtype"));
-    return std::unique_ptr<framework::OpDesc>(grad);
+    grad->SetInput("X", this->OutputGrad("Out"));
+    grad->SetOutput("Out", this->InputGrad("X"));
+    grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
+    grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
+    return std::unique_ptr<T>(grad);
   }
 };
 
@@ -84,7 +85,9 @@ class CastOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(cast, ops::CastOp, ops::CastOpGradMaker,
+REGISTER_OPERATOR(cast, ops::CastOp,
+                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpInferShape, ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,

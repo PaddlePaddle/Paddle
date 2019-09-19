@@ -367,19 +367,20 @@ class Reshape2OpMaker : public ReshapeOpMaker {
   }
 };
 
-class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("reshape2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -431,9 +432,11 @@ DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::ReshapeOpInplaceInToOut);
+REGISTER_OPERATOR(
+    reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
                   ops::ReshapeGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
@@ -445,7 +448,9 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                ops::ReshapeGradKernel);
 
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
-                  ops::Reshape2GradMaker, ops::ReshapeOpInplaceInToOut);
+                  ops::Reshape2GradMaker<paddle::framework::OpDesc>,
+                  ops::Reshape2GradMaker<paddle::imperative::OpBase>,
+                  ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::ReshapeGradInplaceInToOut);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,

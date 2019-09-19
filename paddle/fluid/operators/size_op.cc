@@ -50,8 +50,10 @@ Return the number of elements in the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(size, ops::SizeOp, ops::SizeOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    size, ops::SizeOp, ops::SizeOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(size, ops::SizeKernel<int>, ops::SizeKernel<int32_t>,
                        ops::SizeKernel<float>, ops::SizeKernel<double>,
                        ops::SizeKernel<bool>);

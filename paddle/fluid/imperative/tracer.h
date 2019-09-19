@@ -44,7 +44,6 @@ class Tracer {
                            const NameVarBaseMap& outs, bool trace_backward);
 
   void TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
-                     const framework::OpDesc& fwd_op_desc,
                      const NameVarBaseMap& ins, const NameVarBaseMap& outs);
   Engine* GetDefaultEngine() const { return engine_.get(); }
 

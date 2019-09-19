@@ -81,6 +81,8 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(feed, paddle::operators::FeedOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::FeedOpInfoMaker);
+REGISTER_OPERATOR(
+    feed, paddle::operators::FeedOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::FeedOpInfoMaker);

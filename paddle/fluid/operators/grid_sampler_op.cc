@@ -170,23 +170,24 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class GridSampleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GridSampleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("grid_sampler_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Grid", Input("Grid"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Grid", this->Input("Grid"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Grid"), InputGrad("Grid"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Grid"), this->InputGrad("Grid"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -195,7 +196,8 @@ class GridSampleGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
-                  ops::GridSampleGradMaker);
+                  ops::GridSampleGradMaker<paddle::framework::OpDesc>,
+                  ops::GridSampleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

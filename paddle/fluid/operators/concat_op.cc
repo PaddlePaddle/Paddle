@@ -178,18 +178,19 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
                                       "X");
 
-class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("concat_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -199,7 +200,8 @@ class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
-                  ops::ConcatGradOpDescMaker);
+                  ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatOpGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(

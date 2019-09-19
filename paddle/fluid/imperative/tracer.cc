@@ -26,15 +26,11 @@ struct OpBaseCmp {
   }
 };
 
-static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
-    const framework::OpInfo& op_info, const framework::OpDesc& op_desc,
-    const std::unordered_set<std::string>& no_grad_set,
-    const std::vector<framework::BlockDesc*>& grad_sub_block,
-    std::unordered_map<std::string, std::string>* grad_to_var,
-    const NameVarBaseMap* in, const NameVarBaseMap* out) {
-  if (op_info.grad_op_maker_) {
-    return op_info.grad_op_maker_(op_desc, no_grad_set, grad_to_var,
-                                  grad_sub_block, in, out);
+static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
+    const OpBase* fw_op_base, const NameVarBaseMap& in,
+    const NameVarBaseMap& out) {
+  if (fw_op_base->Info().dygraph_grad_op_maker_) {
+    return fw_op_base->Info().dygraph_grad_op_maker_(fw_op_base, in, out);
   } else {
     return {};
   }
@@ -50,8 +46,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    auto fw_op_desc = framework::OpDesc(type, {}, {}, op->Attrs());
-    TraceBackward(op, fw_op_desc, ins, outs);
+    TraceBackward(op, ins, outs);
 
     VLOG(6) << "Finish tracking Backward of op: " << type;
   }
@@ -66,7 +61,6 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 }
 
 void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
-                           const framework::OpDesc& fwd_op_desc,
                            const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs) {
   // grad_to_var is a map of framework::GradVarName(in_var_name/out_var_name) ->
@@ -74,23 +68,18 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   std::unordered_map<std::string, std::string> grad_to_var;
 
   // Get grad_op_desc using fwd_op_desc
-  std::vector<std::unique_ptr<framework::OpDesc>> grad_op_descs_ =
-      CreateGradOpDescs(fwd_op->Info(), fwd_op_desc, {}, {}, &grad_to_var, &ins,
-                        &outs);
+  std::vector<std::unique_ptr<OpBase>> grad_op_bases_ =
+      CreateGradOpBases(fwd_op.get(), ins, outs);
 
-  size_t grad_op_num = grad_op_descs_.size();
+  size_t grad_op_num = grad_op_bases_.size();
 
   for (size_t i = 0; i < grad_op_num; ++i) {
     size_t trace_id = fwd_op->id();
 
-    auto& temp_in = grad_op_descs_[i]->DygraphInput();
-    auto& temp_out = grad_op_descs_[i]->DygraphOutput();
-    std::shared_ptr<OpBase> grad_op =
-        OpBase::Create(trace_id, grad_op_descs_[i]->Type(), temp_in, temp_out,
-                       grad_op_descs_[i]->GetAttrMap(), fwd_op->place());
-
-    grad_op_descs_[i]->GetDygraphInput(grad_op->GetMutableInsMap());
-    grad_op_descs_[i]->GetDygraphOutput(grad_op->GetMutableOutsMap());
+    std::shared_ptr<OpBase> grad_op = std::move(grad_op_bases_[i]);
+    grad_op->SetId(trace_id);
+    grad_op->SetPlace(fwd_op->place());
+    grad_op->create_operator_base();
 
     auto& grad_in = *(grad_op->GetMutableInsMap());
     auto& grad_out = *(grad_op->GetMutableOutsMap());

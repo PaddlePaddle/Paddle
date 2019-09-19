@@ -363,32 +363,35 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class DataNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("data_norm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetInput("BatchSize", Input("BatchSize"));
-    op->SetInput("BatchSum", Input("BatchSum"));
-    op->SetInput("BatchSquareSum", Input("BatchSquareSum"));
-    op->SetInput("Scales", Output("Scales"));
-    op->SetInput("Means", Output("Means"));
+    op->SetInput("BatchSize", this->Input("BatchSize"));
+    op->SetInput("BatchSum", this->Input("BatchSum"));
+    op->SetInput("BatchSquareSum", this->Input("BatchSquareSum"));
+    op->SetInput("Scales", this->Output("Scales"));
+    op->SetInput("Means", this->Output("Means"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("BatchSize"), InputGrad("BatchSize"));
-    op->SetOutput(framework::GradVarName("BatchSum"), InputGrad("BatchSum"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("BatchSize"),
+                  this->InputGrad("BatchSize"));
+    op->SetOutput(framework::GradVarName("BatchSum"),
+                  this->InputGrad("BatchSum"));
     op->SetOutput(framework::GradVarName("BatchSquareSum"),
-                  InputGrad("BatchSquareSum"));
+                  this->InputGrad("BatchSquareSum"));
 
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -397,7 +400,8 @@ class DataNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(data_norm, ops::DataNormOp, ops::DataNormOpMaker,
-                  ops::DataNormGradMaker);
+                  ops::DataNormGradMaker<paddle::framework::OpDesc>,
+                  ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

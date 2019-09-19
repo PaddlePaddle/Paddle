@@ -154,9 +154,10 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::FusedEmbeddingSeqPoolOpMaker);
+REGISTER_OPERATOR(
+    fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);

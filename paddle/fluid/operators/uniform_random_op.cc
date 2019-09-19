@@ -153,10 +153,12 @@ class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(uniform_random, paddle::operators::UniformRandomOp,
-                  paddle::operators::UniformRandomOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::UniformRandomOpVarTypeInference);
+REGISTER_OPERATOR(
+    uniform_random, paddle::operators::UniformRandomOp,
+    paddle::operators::UniformRandomOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::UniformRandomOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(uniform_random,
                        paddle::operators::CPUUniformRandomKernel<float>,

@@ -94,6 +94,8 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(fetch, paddle::operators::FetchOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::FetchOpInfoMaker);
+REGISTER_OPERATOR(
+    fetch, paddle::operators::FetchOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::FetchOpInfoMaker);

@@ -21,18 +21,20 @@ namespace operators {
 
 // NOTE: Input(Out) is unnecessary in reduce_sum_grad, and Input(X) needs no
 // buffer
-class ReduceSumOpGradDescMaker : public framework::SingleGradOpDescMaker {
+
+template <typename T>
+class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("reduce_sum_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     return op;
   }
 };
@@ -50,7 +52,8 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
 };
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
-                  ops::ReduceSumOpGradDescMaker);
+                  ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumGradNoNeedBufferVarInference);
 

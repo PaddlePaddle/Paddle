@@ -193,8 +193,8 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     };
 
     info->use_default_grad_op_desc_maker_ =
-        std::is_base_of<DefaultGradOpDescMaker<OpDesc, true>, T>::value ||
-        std::is_base_of<DefaultGradOpDescMaker<OpDesc, false>, T>::value;
+        std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
+        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value;
   }
 };
 
@@ -202,7 +202,7 @@ template <typename T>
 struct OpInfoFiller<T, kGradOpBaseMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     info->dygraph_grad_op_maker_ = [](
-        const imperative::OpBase& fw_op_base,
+        const imperative::OpBase* fw_op_base,
         const imperative::NameVarBaseMap& var_base_map_in,
         const imperative::NameVarBaseMap& var_base_map_out) {
       T maker(fw_op_base, var_base_map_in, var_base_map_out);

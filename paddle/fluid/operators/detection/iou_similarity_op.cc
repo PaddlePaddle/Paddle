@@ -87,9 +87,10 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(iou_similarity, ops::IOUSimilarityOp,
-                  ops::IOUSimilarityOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    iou_similarity, ops::IOUSimilarityOp, ops::IOUSimilarityOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     iou_similarity,

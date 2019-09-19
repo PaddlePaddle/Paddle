@@ -85,9 +85,11 @@ we return an array which indicate the original index of rois in
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
-                  ops::DistributeFpnProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
+    ops::DistributeFpnProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
                        ops::DistributeFpnProposalsOpKernel<float>,
                        ops::DistributeFpnProposalsOpKernel<double>);

@@ -201,22 +201,23 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("softmax_grad");
 
-    op->SetInput("Out", Output("Out"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -243,7 +244,9 @@ class SoftmaxGradInplaceInferer final : public framework::InplaceOpInference {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker,
+                  ops::SoftmaxOpInferVarType,
+                  ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
                   ops::SoftmaxGradInplaceInferer);

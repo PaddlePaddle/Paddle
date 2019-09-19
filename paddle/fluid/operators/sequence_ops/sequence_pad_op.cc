@@ -202,18 +202,19 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequencePadGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequencePadGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_pad_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     return op;
   }
 };
@@ -226,7 +227,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pad, ops::SequencePadOp, ops::SequencePadOpMaker,
-                  ops::SequencePadGradOpDescMaker);
+                  ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

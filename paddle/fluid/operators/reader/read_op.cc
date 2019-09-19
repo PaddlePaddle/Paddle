@@ -125,5 +125,8 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(read, ops::ReadOp, ops::ReadInferShape, ops::ReadOpMaker,
-                  paddle::framework::EmptyGradOpMaker, ops::ReadInferVarType);
+REGISTER_OPERATOR(
+    read, ops::ReadOp, ops::ReadInferShape, ops::ReadOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ReadInferVarType);

@@ -120,6 +120,8 @@ class GradOpDescMakerBase {
     return fwd_op_.Output(name);
   }
 
+  std::vector<std::string> Empty() const { return {}; }
+
   const std::unordered_map<std::string, Attribute>& Attrs() const {
     return fwd_op_.GetAttrMap();
   }
@@ -163,7 +165,7 @@ class GradOpDescMakerBase {
 };
 
 template <typename T>
-class SingleGradOpDescMaker {
+class SingleGradOpMaker {
  public:
   std::vector<std::unique_ptr<T>> operator()() const {
     PADDLE_ENFORCE(false, "should not call this function");
@@ -175,7 +177,7 @@ class SingleGradOpDescMaker {
 };
 
 template <>
-class SingleGradOpDescMaker<OpDesc> : public GradOpDescMakerBase {
+class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
@@ -190,7 +192,7 @@ class SingleGradOpDescMaker<OpDesc> : public GradOpDescMakerBase {
 };
 
 template <>
-class SingleGradOpDescMaker<imperative::OpBase>
+class SingleGradOpMaker<imperative::OpBase>
     : public imperative::GradOpBaseMakerBase {
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
@@ -208,9 +210,9 @@ class SingleGradOpDescMaker<imperative::OpBase>
 };
 
 template <typename T, bool DropEmptyIG = true>
-class DefaultGradOpDescMaker final : public SingleGradOpDescMaker<T> {
+class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
  public:
-  using SingleGradOpDescMaker<T>::SingleGradOpDescMaker;
+  using SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   std::unique_ptr<T> Apply() const final {
@@ -237,7 +239,10 @@ class DefaultGradOpDescMaker final : public SingleGradOpDescMaker<T> {
 template <typename T>
 class EmptyGradOpMaker {
  public:
-  std::vector<std::unique_ptr<T>> operator()() const final { return {}; }
+  virtual std::vector<std::unique_ptr<T>> operator()()
+      const final { /* NOLINT */
+    return {};
+  }
 };
 
 template <>

@@ -110,18 +110,19 @@ class CompareOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_OP(op_type, _equation)                      \
-  struct _##op_type##Comment {                                       \
-    static char type[];                                              \
-    static char equation[];                                          \
-  };                                                                 \
-  char _##op_type##Comment::type[]{#op_type};                        \
-  char _##op_type##Comment::equation[]{_equation};                   \
-  REGISTER_OPERATOR(                                                 \
-      op_type, ::paddle::operators::CompareOp,                       \
-      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::CompareOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+#define REGISTER_COMPARE_OP(op_type, _equation)                         \
+  struct _##op_type##Comment {                                          \
+    static char type[];                                                 \
+    static char equation[];                                             \
+  };                                                                    \
+  char _##op_type##Comment::type[]{#op_type};                           \
+  char _##op_type##Comment::equation[]{_equation};                      \
+  REGISTER_OPERATOR(                                                    \
+      op_type, ::paddle::operators::CompareOp,                          \
+      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,    \
+      ::paddle::operators::CompareOpInferShape<_##op_type##Comment>,    \
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
 REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);

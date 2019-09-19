@@ -354,24 +354,25 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
                                  ctx.GetPlace(), layout_, library_);
 }
 
-class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOpType() + "_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    if (HaveInput("Bias")) {
-      op->SetInput("Bias", Input("Bias"));
-      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+    if (this->HaveInput("Bias")) {
+      op->SetInput("Bias", this->Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -384,7 +385,8 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -400,7 +402,8 @@ REGISTER_OP_CPU_KERNEL(
 // conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -416,7 +419,8 @@ REGISTER_OP_CPU_KERNEL(
 // depthwise conv2d_transpose
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

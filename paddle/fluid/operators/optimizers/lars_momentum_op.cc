@@ -78,8 +78,10 @@ class LarsMomentumOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lars_momentum, ops::MomentumOp, ops::LarsMomentumOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::LarsMomentumOpVarTypeInference);
+REGISTER_OPERATOR(
+    lars_momentum, ops::MomentumOp, ops::LarsMomentumOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::LarsMomentumOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(lars_momentum, ops::LarsMomentumOpKernel<float>,
                        ops::LarsMomentumOpKernel<double>);

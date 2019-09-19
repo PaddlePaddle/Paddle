@@ -126,22 +126,24 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequencePoolGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op_desc_ptr = new T();
     op_desc_ptr->SetType("sequence_pool_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    if (boost::get<std::string>(GetAttr("pooltype")) == "MAX") {
-      op_desc_ptr->SetInput("MaxIndex", Output("MaxIndex"));
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
+      op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 
@@ -153,7 +155,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
-                  ops::SequencePoolGradOpMaker);
+                  ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

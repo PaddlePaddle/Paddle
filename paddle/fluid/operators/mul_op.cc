@@ -213,20 +213,21 @@ class MulGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class MulOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> retv(new T());
     retv->SetType("mul_grad");
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    retv->SetAttrMap(Attrs());
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    retv->SetAttrMap(this->Attrs());
     return retv;
   }
 };
@@ -252,33 +253,32 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> retv(new T());
     retv->SetType("mul_grad_grad");
 
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput("DOut", Input(framework::GradVarName("Out")));
-    retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    retv->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    retv->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    auto ddx = OutputGrad(framework::GradVarName("X"));
-    auto ddw = OutputGrad(framework::GradVarName("Y"));
-    // std::vector<std::string> empty_str = {};
-    imperative::StrVarBaseNode empty_str;
+    auto ddx = this->OutputGrad(framework::GradVarName("X"));
+    auto ddw = this->OutputGrad(framework::GradVarName("Y"));
 
-    retv->SetOutput("DDOut", (ddx.empty())
-                                 ? empty_str
-                                 : InputGrad(framework::GradVarName("Out")));
-    retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
+    retv->SetOutput(
+        "DDOut", ddx.empty() ? this->Empty()
+                             : this->InputGrad(framework::GradVarName("Out")));
+    retv->SetOutput("DX", ddw.empty() ? this->Empty() : this->InputGrad("X"));
+    retv->SetOutput("DY", ddx.empty() ? this->Empty() : this->InputGrad("Y"));
 
-    retv->SetAttrMap(Attrs());
+    retv->SetAttrMap(this->Attrs());
     return retv;
   }
 };
@@ -288,9 +288,12 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
-                  ops::MulOpGradMaker);
+                  ops::MulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::MulOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
+                  ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::MulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
 

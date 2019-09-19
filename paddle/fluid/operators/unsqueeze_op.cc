@@ -183,18 +183,19 @@ class Unsqueeze2OpMaker : public UnsqueezeOpMaker {
   }
 };
 
-class Unsqueeze2GradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Unsqueeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("unsqueeze2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -229,12 +230,16 @@ DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp);
 
 REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
-                  ops::Unsqueeze2GradOpMaker, ops::UnsqueezeInplaceInferer);
+                  ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Unsqueeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::UnsqueezeInplaceInferer);
 REGISTER_OPERATOR(unsqueeze2_grad, ops::Unsqueeze2GradOp,
                   ops::UnsqueezeGradInplaceInferer);
 

@@ -216,39 +216,47 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class SumGradMaker : public framework::GradOpDescMakerBase {
+class SumGradDescMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto x_grads = InputGrad("X", false);
     std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
-
-    size_t grads_number = x_grads.vec_name_.size();
-    if (x_grads.dygraph_mode_) {
-      grads_number = x_grads.vec_var_base_.size();
-    }
-
-    grad_ops.reserve(grads_number);
-
+    grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
+    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
+                   [&og](const std::string& x_grad) {
+                     auto* grad_op = new framework::OpDesc();
+                     grad_op->SetType("scale");
+                     grad_op->SetInput("X", og);
+                     grad_op->SetOutput("Out", {x_grad});
+                     grad_op->SetAttr("scale", 1.0f);
+                     return std::unique_ptr<framework::OpDesc>(grad_op);
+                   });
 
-    for (size_t i = 0; i < grads_number; ++i) {
-      auto* grad_op = new framework::OpDesc();
-      grad_op->SetType("scale");
-      grad_op->SetInput("X", og);
-      imperative::StrVarBaseNode str_var_base_temp;
-      str_var_base_temp.dygraph_mode_ = x_grads.dygraph_mode_;
-      if (x_grads.dygraph_mode_) {
-        str_var_base_temp.vec_var_base_ = {x_grads.vec_var_base_[i]};
-      } else {
-        str_var_base_temp.vec_name_ = {x_grads.vec_name_[i]};
-      }
-      grad_op->SetOutput("Out", str_var_base_temp);
-      grad_op->SetAttr("scale", 1.0f);
+    return grad_ops;
+  }
+};
 
-      grad_ops.push_back(std::unique_ptr<framework::OpDesc>(grad_op));
-    }
+class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
+ public:
+  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
+    auto x_grads = InputGrad("X", false);
+    std::vector<std::unique_ptr<imperative::OpBase>> grad_ops;
+    grad_ops.reserve(x_grads.size());
+    auto og = OutputGrad("Out");
+    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
+                   [&og](const std::shared_ptr<imperative::VarBase>& x_grad) {
+                     auto* grad_op = new imperative::OpBase();
+                     grad_op->SetType("scale");
+                     grad_op->SetInput("X", og);
+                     grad_op->SetOutput("Out", {x_grad});
+                     grad_op->SetAttr("scale", 1.0f);
+                     return std::unique_ptr<imperative::OpBase>(grad_op);
+                   });
 
     return grad_ops;
   }
@@ -261,8 +269,9 @@ DECLARE_INPLACE_OP_INFERER(SumInplace, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
-                  ops::SumOpVarTypeInference, ops::SumInplace);
+REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradDescMaker,
+                  ops::SumGradOpBaseMaker, ops::SumOpVarTypeInference,
+                  ops::SumInplace);
 
 REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reverse_op.h"
+#include <memory>
 #include <vector>
 
 namespace paddle {
@@ -77,17 +78,18 @@ class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class ReverseGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ReverseGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* grad_op = new T();
     grad_op->SetType("reverse");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttr("axis", GetAttr("axis"));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttr("axis", this->GetAttr("axis"));
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -96,7 +98,8 @@ class ReverseGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
-                  ops::ReverseGradMaker);
+                  ops::ReverseGradMaker<paddle::framework::OpDesc>,
+                  ops::ReverseGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reverse_grad, ops::ReverseOp);
 REGISTER_OP_CPU_KERNEL(
     reverse, ops::ReverseKernel<paddle::platform::CPUDeviceContext, int>,

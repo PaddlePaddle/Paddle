@@ -122,7 +122,9 @@ will be divided by the length of reference string.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(edit_distance, ops::EditDistanceOp, ops::EditDistanceOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    edit_distance, ops::EditDistanceOp, ops::EditDistanceOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     edit_distance, ops::EditDistanceKernel<paddle::platform::CPUPlace, float>);

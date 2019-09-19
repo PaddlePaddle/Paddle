@@ -206,19 +206,20 @@ class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
   }
 };
 
-class LoDTensorToArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LoDTensorToArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("array_to_lod_tensor");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetInput("RankTable", Input("RankTable"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("RankTable", this->Input("RankTable"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -230,4 +231,5 @@ REGISTER_OPERATOR(lod_tensor_to_array, ops::LoDTensorToArrayOp,
                   ops::LoDTensorToArrayOpProtoMaker,
                   ops::LoDTensorToArrayInferShape,
                   ops::LoDTensorToArrayInferVarType,
-                  ops::LoDTensorToArrayGradMaker);
+                  ops::LoDTensorToArrayGradMaker<paddle::framework::OpDesc>,
+                  ops::LoDTensorToArrayGradMaker<paddle::imperative::OpBase>);
