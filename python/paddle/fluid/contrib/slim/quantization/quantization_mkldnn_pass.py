@@ -309,6 +309,7 @@ class TransformThroughFP32Pass(object):
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
         self._mul_ops = ['mul']
+        self._fc_ops = ['fc']
         self.WeightScales = {}
         self.VarQuantScales = {}
         self.max_range = {}
@@ -372,15 +373,13 @@ class TransformThroughFP32Pass(object):
                 op_out = graph._find_node_by_name(op.outputs,
                                                   op.output("Out")[0])
                 next_op = op_out.outputs[0]
-                if next_op.name() not in self._mul_ops:
-                    self._remove_fake_quantize(graph, op)
+                self._remove_fake_quantize(graph, op)
 
         for op in graph.all_op_nodes():
             if op.name() in self.fake_dequantize_types:
                 op_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
                 prev_op = op_in.inputs[0]
-                if prev_op.name() not in self._mul_ops:
-                    self._remove_fake_dequantize(graph, op)
+                self._remove_fake_dequantize(graph, op)
         return graph
 
     def _remove_fake_quantize(self, graph, op):
@@ -426,12 +425,23 @@ class TransformThroughFP32Pass(object):
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops:
                 self._dequantize_conv_weights(graph, op)
+            elif op.name() in self._mul_ops:
+                self._dequantize_mul_weights(graph, op)
         return graph
 
     def _dequantize_conv_weights(self, graph, op_node):
         weight_name = op_node.input("Filter")[0]
         output_name = op_node.output("Output")[0]
         # Convert int8 range weights to fp32 range weights
+        scales = self.WeightScales[output_name]
+        weight = self._load_param(self._scope, weight_name)
+        w_fp32 = np.divide(np.multiply(weight, self.s8_max), scales)
+        w_fp32 = w_fp32.reshape(weight.shape)
+        self._restore_var(weight_name, w_fp32)
+
+    def _dequantize_mul_weights(self, graph, op_node):
+        weight_name = op_node.input("Y")[0]
+        output_name = op_node.output("Out")[0]
         scales = self.WeightScales[output_name]
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(np.multiply(weight, self.s8_max), scales)
@@ -452,6 +462,7 @@ class TransformThroughFP32Pass(object):
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'fc_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
@@ -490,20 +501,22 @@ class TransformThroughFP32Pass(object):
         return graph
 
     def _compute_weight_scales(self, graph):
-        def _compute_var_scales(ops, out_name, w_name):
+        def _compute_var_scales(ops, out_name, w_name, axis):
             for op in graph.all_op_nodes():
                 if op.op().type() in ops:
                     weight_var_name = op.input(w_name)[0]
                     weights = np.array(
                         self._load_param(self._scope, weight_var_name))
                     scales = 1.0 / np.amax(
-                        np.abs(weights.reshape(weights.shape[0], -1)), axis=1)
+                        np.abs(weights.reshape(weights.shape[0], -1)),
+                        axis=axis)
 
                     lod_tensor = self._convert_scale2tensor(
                         scales.astype(np.float64))
                     self.VarQuantScales[weight_var_name] = (False, lod_tensor)
 
-        _compute_var_scales(self._conv_ops, "Output", "Filter")
+        _compute_var_scales(self._conv_ops, "Output", "Filter", axis=1)
+        _compute_var_scales(self._fc_ops, "Out", "W", axis=0)
         return graph
 
     def _quantize_fp32_graph(self, graph):
