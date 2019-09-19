@@ -320,6 +320,7 @@ class TransformThroughFP32Pass(object):
 
         self._gather_scales(graph)
         graph = self._remove_fake_ops(graph)
+        graph = self._update_pooling_scales(graph)
         graph = self._dequantize_weights(graph)
         graph = self._optimize_fp32_graph(graph)
         self._compute_weight_scales(graph)
@@ -353,6 +354,16 @@ class TransformThroughFP32Pass(object):
                 scale_names = op.input("Scale")
                 max_range = op.op().attr("max_range")
                 self.WeightScales[input_name] = max_range
+
+    def _update_pooling_scales(self, graph):
+        for op in graph.all_op_nodes():
+            if op.name() in self._pool_ops:
+                input_name = op.input("X")[0]
+                output_name = op.output("Out")[0]
+                if input_name in self.VarQuantScales:
+                    self.VarQuantScales[output_name] = self.VarQuantScales[
+                        input_name]
+        return graph
 
     def _load_param(self, scope, param_name):
         return np.array(scope.find_var(param_name).get_tensor())
