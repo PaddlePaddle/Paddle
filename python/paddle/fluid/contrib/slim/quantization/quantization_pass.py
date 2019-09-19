@@ -1158,34 +1158,36 @@ class ScaleForInferencePass(object):
         """
         return "%s@scale" % (var_name)
 
-
 class AddQuantDequantPass(object):
     def __init__(self, scope=None, place=None, moving_rate=0.9, quant_bits=8):
         """
         This pass is used to add quant_dequant op for some ops, such as the
-        `elementwise_add` op.
+        'elementwise_add' and 'average pool2d' op.
         """
         self._scope = scope
         self._place = place
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._is_test = None
-        self._target_ops = ["elementwise_add"]
+        self._target_ops = ["elementwise_add", "pool2d"]
+        self._target_grad_ops = ['%s_grad' % (op) for op in self._target_ops]
 
     def apply(self, graph):
         """
-        Add quant_dequant before some ops, such as the `elementwise_add` op. This
-        is required by TensorRT.
+        Add quant_dequant before some ops, such as the 'elementwise_add'
+        and 'average pool2d' op.
         Args:
             graph(IrGraph): the target graph.
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
         self._is_test = graph.is_test()
+        dequantized_vars_map = collections.OrderedDict()
         ops = graph.all_op_nodes()
+
         for op_node in ops:
-            name = op_node.name()
-            if name in self._target_ops:
+            is_insert_quant_dequant_op = False
+            if op_node.name() == self._target_ops[0]:
                 in_nodes_all_not_persistable = True
                 for input_name in op_node.input_arg_names():
                     in_node = graph._find_node_by_name(op_node.inputs,
@@ -1193,15 +1195,29 @@ class AddQuantDequantPass(object):
                     in_nodes_all_not_persistable = (
                         in_nodes_all_not_persistable and
                         not in_node.persistable())
-                if not in_nodes_all_not_persistable:
-                    continue
+                is_insert_quant_dequant_op = in_nodes_all_not_persistable
+            else if op_node.name() == self._target_ops[1]:
+                is_insert_quant_dequant_op = op_node.op().has_attr("pooling_type") \
+                and op_node.op().attr("pooling_type") == 'avg'
+
+            if is_insert_quant_dequant_op:
                 input_names = op_node.input_arg_names()
                 for input_name in input_names:
-                    in_node = graph._find_node_by_name(op_node.inputs,
-                                                       input_name)
-                    quant_var_node, scale_var_node = self._inser_quant_dequant_moving_average_abs_max_op(
+                    in_node = graph._find_node_by_name(op_node.inputs, input_name)
+                    quant_var_node, scale_var_node = \
+                        self._inser_quant_dequant_moving_average_abs_max_op(
                         graph, in_node, self._quant_bits)
+                    dequantized_vars_map[input_name] = quant_var_node
                     graph.update_input_link(in_node, quant_var_node, op_node)
+
+        for op_node in ops:
+            if op_node.name() in self._target_grad_ops:
+                for input_name in op_node.input_arg_names():
+                    if input_name in dequantized_vars_map:
+                        in_node = graph._find_node_by_name(op_node.inputs, input_name)
+                        dequant_var_node = dequantized_vars_map[input_name]
+                        graph.update_input_link(in_node, dequant_var_node, op_node)
+
         graph.resolve_hazard()
         return graph
 
