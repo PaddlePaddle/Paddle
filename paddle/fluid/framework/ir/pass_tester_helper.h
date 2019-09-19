@@ -137,6 +137,31 @@ struct Layers {
     return out;
   }
 
+  std::vector<VarDesc*> layer_norm(VarDesc* x, VarDesc* scale = nullptr,
+                                   VarDesc* bias = nullptr) {
+    VarDesc* y = lod_tensor(unique_name());
+    VarDesc* mean = lod_tensor(unique_name());
+    VarDesc* variance = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("layer_norm");
+    op->SetInput("X", {x->Name()});
+    if (scale) {
+      op->SetInput("Scale", {scale->Name()});
+    }
+    if (bias) {
+      op->SetInput("Bias", {bias->Name()});
+    }
+    op->SetOutput("Y", {y->Name()});
+    op->SetOutput("Mean", {mean->Name()});
+    op->SetOutput("Variance", {variance->Name()});
+    op->SetAttr("epsilon", static_cast<float>(1E-05));
+    op->SetAttr("begin_norm_axis", static_cast<int>(1));
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    std::vector<VarDesc*> outs = {y, mean, variance};
+    return outs;
+  }
+
  private:
   VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
                       bool is_persistable = false) {
