@@ -69,12 +69,17 @@ inline std::string demangle(std::string name) { return name; }
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
-  static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
   sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
                           line)
        << std::endl;
+  return sout.str();
+}
+
+inline std::string GetNativeBackString() {
+  static constexpr int TRACE_STACK_LIMIT = 100;
+  std::ostringstream sout;
   sout << "PaddlePaddle Call Stacks: " << std::endl;
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
@@ -131,6 +136,8 @@ struct EnforceNotMet : public std::exception {
     std::ofstream err_file(ss.str(), std::ofstream::out);
     if (err_file.is_open()) {
       err_file << err;
+      // append the native call stack information
+      err_file << GetNativeBackString();
       err_file.close();
     }
   }
