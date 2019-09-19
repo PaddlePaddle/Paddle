@@ -264,6 +264,14 @@ class Communicator {
     return send_name;
   }
 
+  const std::string DeltaVarToVar(const std::string var_name) {
+    std::string origin_name = var_name;
+    // delete ".delta"
+    origin_name = origin_name.substr(0,origin_name.length()-6);
+    const std::string param_name = origin_name;
+    return origin_name;
+  }
+
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;

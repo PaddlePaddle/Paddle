@@ -130,8 +130,8 @@ void Communicator::SendThread() {
       } 
       if (ids_send_vec_.size() >= geo_need_push_nums_) {
         VLOG(1)<<"Start send after get need_push_num";
-        for (auto &iter : send_varname_to_queue_) {
-          auto &var_name = iter.first;
+        for (auto &iter : send_varname_to_ctx_) {
+          auto &var_name = DeltaVarToVar(iter.first);
           auto send_task = [this, &var_name] {
             auto before_send = GetCurrentUS();
             if(var_list_[var_name] == true) {
@@ -142,7 +142,7 @@ void Communicator::SendThread() {
               SendUpdateDenseVars(var_name);
             }
             auto send_functor = distributed::ParameterSend<float>();   
-            auto &ctx = send_varname_to_ctx_.at(var_name);
+            auto &ctx = send_varname_to_ctx_.at(VarToDeltaVar(var_name));
             // delta parameter is in delta scope
             if (!FLAGS_communicator_fake_rpc) {
               send_functor(ctx, *delta_scope_.get(), true);
