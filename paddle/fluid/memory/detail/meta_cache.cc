@@ -22,18 +22,32 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
+MemoryBlock::Desc* MetadataCache::load_desc(const MemoryBlock* block) const {
   if (uses_gpu_) {
     auto existing_desc = cache_.find(block);
     PADDLE_ENFORCE_EQ(existing_desc->second.check_guards(), true);
-    return existing_desc->second;
+    return const_cast<MemoryBlock::Desc*>(&(existing_desc->second));
   } else {
     auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
     PADDLE_ENFORCE_EQ(desc->check_guards(), true);
-    return *reinterpret_cast<const MemoryBlock::Desc*>(block);
+    return const_cast<MemoryBlock::Desc*>(
+        reinterpret_cast<const MemoryBlock::Desc*>(block));
   }
 }
+
+// MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
+//   if (uses_gpu_) {
+//     auto existing_desc = cache_.find(block);
+//     PADDLE_ENFORCE_EQ(existing_desc->second.check_guards(), true);
+//     return (existing_desc->second);
+//   } else {
+//     auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
+//     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
+//     PADDLE_ENFORCE_EQ(desc->check_guards(), true);
+//     return *reinterpret_cast<const MemoryBlock::Desc*>(block);
+//   }
+// }
 
 void MetadataCache::save(MemoryBlock* block,
                          const MemoryBlock::Desc& original_desc) {

@@ -44,14 +44,18 @@ struct MemoryBlock {
   // All these accessors returns fields in the MemoryBlock::Desc of the memory
   // block.  They all need a MetadataCache instance as their first
   // parameter because they read the MemoryBlock::Desc from the cache.
-  Type type(const MetadataCache& cache) const;
-  size_t size(const MetadataCache& cache) const;
-  size_t index(const MetadataCache& cache) const;
-  size_t total_size(const MetadataCache& cache) const;
-  bool has_left_buddy(const MetadataCache& cache) const;
-  bool has_right_buddy(const MetadataCache& cache) const;
-  MemoryBlock* left_buddy(const MetadataCache& cache) const;
-  MemoryBlock* right_buddy(const MetadataCache& cache) const;
+  //  Type type(const MetadataCache& cache) const;
+  //  size_t size(const MetadataCache& cache) const;
+  //  size_t index(const MetadataCache& cache) const;
+  //  size_t total_size(const MetadataCache& cache) const;
+  bool get_left_buddy(const MetadataCache& cache,
+                      MemoryBlock*& buddy) const;  // NOLINT
+  bool get_right_buddy(const MetadataCache& cache,
+                       MemoryBlock*& buddy) const;  // NOLINT
+  //  bool has_left_buddy(const MetadataCache& cache) const;
+  //  bool has_right_buddy(const MetadataCache& cache) const;
+  //  MemoryBlock* left_buddy(const MetadataCache& cache) const;
+  //  MemoryBlock* right_buddy(const MetadataCache& cache) const;
 
   // Split the allocation into left/right blocks.
   void split(MetadataCache* cache, size_t size);
@@ -63,7 +67,7 @@ struct MemoryBlock {
   void mark_as_free(MetadataCache* cache);
 
   // Change the type of the allocation.
-  void set_type(MetadataCache* cache, Type t);
+  // void set_type(MetadataCache* cache, Type t);
 
   void* data() const;
   MemoryBlock* metadata() const;
@@ -109,11 +113,13 @@ class MetadataCache {
   // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
   // of the memory block; when used to manage GPU memory, the
   // Meatadata resides in CPU memory indexed by cache_.
-  MemoryBlock::Desc load(const MemoryBlock* memory_block) const;
+  MemoryBlock::Desc* load_desc(const MemoryBlock* memory_block) const;
+  //  MemoryBlock::Desc load(const MemoryBlock* memory_block) const;
 
   // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU
   // memory block, writes the MemoryBlock::Desc to the beginning of the memory
   // block; whereas for GPU memory, writes it to cache_.
+  // void save(MemoryBlock* memory_block, const MemoryBlock::Desc& meta_data);
   void save(MemoryBlock* memory_block, const MemoryBlock::Desc& meta_data);
 
   // For GPU memory block, erases its MemoryBlock::Desc from cache_.

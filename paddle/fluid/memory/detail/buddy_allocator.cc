@@ -40,10 +40,10 @@ BuddyAllocator::~BuddyAllocator() {
               "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    VLOG(10) << "Free from block (" << block << ", " << block->size(cache_)
-             << ")";
+    auto desc = cache_.load_desc(block);
+    VLOG(10) << "Free from block (" << block << ", " << desc->size << ")";
 
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
+    system_allocator_->Free(block, desc->size, desc->index);
     cache_.invalidate(block);
     pool_.erase(pool_.begin());
   }
@@ -103,10 +103,10 @@ void BuddyAllocator::Free(void* p) {
 
   VLOG(10) << "Free from address " << block;
 
-  if (block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
+  auto* desc = cache_.load_desc(block);
+  if (desc->type == MemoryBlock::HUGE_CHUNK) {
     VLOG(10) << "Free directly from system allocator";
-    system_allocator_->Free(block, block->total_size(cache_),
-                            block->index(cache_));
+    system_allocator_->Free(block, desc->total_size, desc->index);
 
     // Invalidate GPU allocation from cache
     cache_.invalidate(block);
@@ -116,21 +116,21 @@ void BuddyAllocator::Free(void* p) {
 
   block->mark_as_free(&cache_);
 
-  total_used_ -= block->total_size(cache_);
-  total_free_ += block->total_size(cache_);
+  total_used_ -= desc->total_size;
+  total_free_ += desc->total_size;
 
   // Trying to merge the right buddy
-  if (block->has_right_buddy(cache_)) {
+  MemoryBlock* right_buddy = nullptr;
+  if (block->get_right_buddy(cache_, right_buddy)) {
     VLOG(10) << "Merging this block " << block << " with its right buddy "
-             << block->right_buddy(cache_);
+             << right_buddy;
 
-    auto right_buddy = block->right_buddy(cache_);
-
-    if (right_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+    // auto right_buddy = block->right_buddy(cache_);
+    auto rb_desc = cache_.load_desc(right_buddy);
+    if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(right_buddy->index(cache_),
-                                   right_buddy->total_size(cache_),
-                                   right_buddy));
+      pool_.erase(
+          IndexSizeAddress(rb_desc->index, rb_desc->total_size, right_buddy));
 
       // merge its right buddy to the block
       block->merge(&cache_, right_buddy);
@@ -138,28 +138,29 @@ void BuddyAllocator::Free(void* p) {
   }
 
   // Trying to merge the left buddy
-  if (block->has_left_buddy(cache_)) {
+  MemoryBlock* left_buddy = nullptr;
+  if (block->get_left_buddy(cache_, left_buddy)) {
     VLOG(10) << "Merging this block " << block << " with its left buddy "
-             << block->left_buddy(cache_);
+             << left_buddy;
 
-    auto left_buddy = block->left_buddy(cache_);
-
-    if (left_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+    // auto left_buddy = block->left_buddy(cache_);
+    auto* lb_desc = cache_.load_desc(left_buddy);
+    if (lb_desc->type == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(left_buddy->index(cache_),
-                                   left_buddy->total_size(cache_), left_buddy));
+      pool_.erase(
+          IndexSizeAddress(lb_desc->index, lb_desc->total_size, left_buddy));
 
       // merge the block to its left buddy
       left_buddy->merge(&cache_, block);
       block = left_buddy;
+      desc = lb_desc;
     }
   }
 
   // Dumping this block into pool
-  VLOG(10) << "Inserting free block (" << block << ", "
-           << block->total_size(cache_) << ")";
-  pool_.insert(
-      IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
+  VLOG(10) << "Inserting free block (" << block << ", " << desc->total_size
+           << ")";
+  pool_.insert(IndexSizeAddress(desc->index, desc->total_size, block));
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -243,26 +244,27 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
 void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
                                    size_t size) {
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
+  auto desc = cache_.load_desc(block);
   pool_.erase(it);
 
-  VLOG(10) << "Split block (" << block << ", " << block->total_size(cache_)
-           << ") into";
+  VLOG(10) << "Split block (" << block << ", " << desc->total_size << ") into";
   block->split(&cache_, size);
 
-  VLOG(10) << "Left block (" << block << ", " << block->total_size(cache_)
-           << ")";
-  block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
+  VLOG(10) << "Left block (" << block << ", " << desc->total_size << ")";
+  // block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
+  desc->type = MemoryBlock::ARENA_CHUNK;
+  desc->update_guards();
 
   // the rest of memory if exist
-  if (block->has_right_buddy(cache_)) {
-    if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
-      VLOG(10) << "Insert right block (" << block->right_buddy(cache_) << ", "
-               << block->right_buddy(cache_)->total_size(cache_) << ")";
+  MemoryBlock* right_buddy = nullptr;
+  if (block->get_right_buddy(cache_, right_buddy)) {
+    auto* rb_desc = cache_.load_desc(right_buddy);
+    if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
+      VLOG(10) << "Insert right block (" << right_buddy << ", "
+               << rb_desc->total_size << ")";
 
       pool_.insert(
-          IndexSizeAddress(block->right_buddy(cache_)->index(cache_),
-                           block->right_buddy(cache_)->total_size(cache_),
-                           block->right_buddy(cache_)));
+          IndexSizeAddress(rb_desc->index, rb_desc->total_size, right_buddy));
     }
   }
 

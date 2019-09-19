@@ -27,118 +27,140 @@ void MemoryBlock::init(MetadataCache* cache, Type t, size_t index, size_t size,
                               static_cast<MemoryBlock*>(right_buddy)));
 }
 
-MemoryBlock::Type MemoryBlock::type(const MetadataCache& cache) const {
-  return cache.load(this).type;
+// MemoryBlock::Type MemoryBlock::type(const MetadataCache& cache) const {
+//   return cache.load(this).type;
+// }
+//
+// size_t MemoryBlock::size(const MetadataCache& cache) const {
+//   return cache.load(this).size;
+// }
+//
+// size_t MemoryBlock::index(const MetadataCache& cache) const {
+//   return cache.load(this).index;
+// }
+//
+// size_t MemoryBlock::total_size(const MetadataCache& cache) const {
+//   return cache.load(this).total_size;
+// }
+
+bool MemoryBlock::get_left_buddy(const MetadataCache& cache,
+                                 MemoryBlock*& buddy) const {
+  buddy = cache.load_desc(this)->left_buddy;
+  return buddy == nullptr ? false : true;
 }
 
-size_t MemoryBlock::size(const MetadataCache& cache) const {
-  return cache.load(this).size;
+bool MemoryBlock::get_right_buddy(const MetadataCache& cache,
+                                  MemoryBlock*& buddy) const {
+  buddy = cache.load_desc(this)->right_buddy;
+  return buddy == nullptr ? false : true;
 }
-
-size_t MemoryBlock::index(const MetadataCache& cache) const {
-  return cache.load(this).index;
-}
-
-size_t MemoryBlock::total_size(const MetadataCache& cache) const {
-  return cache.load(this).total_size;
-}
-
-bool MemoryBlock::has_left_buddy(const MetadataCache& cache) const {
-  return left_buddy(cache) != nullptr;
-}
-
-bool MemoryBlock::has_right_buddy(const MetadataCache& cache) const {
-  return right_buddy(cache) != nullptr;
-}
-
-MemoryBlock* MemoryBlock::left_buddy(const MetadataCache& cache) const {
-  return cache.load(this).left_buddy;
-}
-
-MemoryBlock* MemoryBlock::right_buddy(const MetadataCache& cache) const {
-  return cache.load(this).right_buddy;
-}
+// bool MemoryBlock::has_left_buddy(const MetadataCache& cache) const {
+//   return left_buddy(cache) != nullptr;
+// }
+//
+// bool MemoryBlock::has_right_buddy(const MetadataCache& cache) const {
+//   return right_buddy(cache) != nullptr;
+// }
+//
+// MemoryBlock* MemoryBlock::left_buddy(const MetadataCache& cache) const {
+//   return cache.load(this).left_buddy;
+// }
+//
+// MemoryBlock* MemoryBlock::right_buddy(const MetadataCache& cache) const {
+//   return cache.load(this).right_buddy;
+// }
 
 void MemoryBlock::split(MetadataCache* cache, size_t size) {
+  auto desc = cache->load_desc(this);
   // make sure the split fits
-  PADDLE_ENFORCE_GE(total_size(*cache), size);
+  PADDLE_ENFORCE_GE(desc->total_size, size);
 
   // bail out if there is no room for another partition
-  if (total_size(*cache) - size <= sizeof(MemoryBlock::Desc)) {
+  if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {
     return;
   }
 
   // find the position of the split
   void* right_partition = reinterpret_cast<uint8_t*>(this) + size;
 
-  size_t remaining_size = total_size(*cache) - size;
+  size_t remaining_size = desc->total_size - size;
 
   // Add the new block as a buddy
-  auto metadata = cache->load(this);
+  // auto metadata = cache->load(this);
 
   // Write the metadata for the new block
-  auto new_block_right_buddy = metadata.right_buddy;
+  auto new_block_right_buddy = desc->right_buddy;
 
   cache->save(static_cast<MemoryBlock*>(right_partition),
-              MemoryBlock::Desc(FREE_CHUNK, index(*cache),
+              MemoryBlock::Desc(FREE_CHUNK, desc->index,
                                 remaining_size - sizeof(MemoryBlock::Desc),
                                 remaining_size, this, new_block_right_buddy));
 
-  metadata.right_buddy = static_cast<MemoryBlock*>(right_partition);
-  metadata.size = size - sizeof(MemoryBlock::Desc);
-  metadata.total_size = size;
+  desc->right_buddy = static_cast<MemoryBlock*>(right_partition);
+  desc->size = size - sizeof(MemoryBlock::Desc);
+  desc->total_size = size;
 
-  cache->save(this, metadata);
+  desc->update_guards();
+  // cache->save(this, metadata);
 
   // Write metadata for the new block's right buddy
   if (new_block_right_buddy != nullptr) {
-    auto buddy_metadata = cache->load(new_block_right_buddy);
+    auto buddy_desc = cache->load_desc(new_block_right_buddy);
 
-    buddy_metadata.left_buddy = static_cast<MemoryBlock*>(right_partition);
+    buddy_desc->left_buddy = static_cast<MemoryBlock*>(right_partition);
+    buddy_desc->update_guards();
 
-    cache->save(new_block_right_buddy, buddy_metadata);
+    // cache->save(new_block_right_buddy, buddy_metadata);
   }
 }
 
 void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
-  PADDLE_ENFORCE_EQ(type(*cache), FREE_CHUNK);
-  PADDLE_ENFORCE_EQ(right_buddy->type(*cache), FREE_CHUNK);
+  auto desc = cache->load_desc(this);
+  auto rb_desc = cache->load_desc(right_buddy);
+  PADDLE_ENFORCE_EQ(desc->type, FREE_CHUNK);
+  PADDLE_ENFORCE_EQ(rb_desc->type, FREE_CHUNK);
 
-  auto metadata = cache->load(this);
+  // auto metadata = cache->load(this);
 
   // link this->buddy's buddy
-  metadata.right_buddy = right_buddy->right_buddy(*cache);
+  desc->right_buddy = rb_desc->right_buddy;
 
   // link buddy's buddy -> this
-  if (metadata.right_buddy != nullptr) {
-    auto buddy_metadata = cache->load(metadata.right_buddy);
+  if (desc->right_buddy != nullptr) {
+    auto buddy_metadata = cache->load_desc(desc->right_buddy);
 
-    buddy_metadata.left_buddy = this;
+    buddy_metadata->left_buddy = this;
 
-    cache->save(metadata.right_buddy, buddy_metadata);
+    buddy_metadata->update_guards();
+    // cache->save(desc->right_buddy, *buddy_metadata);
   }
 
-  metadata.size += right_buddy->total_size(*cache);
-  metadata.total_size += right_buddy->total_size(*cache);
+  desc->size += rb_desc->total_size;
+  desc->total_size += rb_desc->total_size;
 
-  cache->save(this, metadata);
+  desc->update_guards();
+  // cache->save(this, *desc);
+
   cache->save(right_buddy,
               MemoryBlock::Desc(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
 }
 
 void MemoryBlock::mark_as_free(MetadataCache* cache) {
   // check for double free or corruption
-  PADDLE_ENFORCE_NE(type(*cache), FREE_CHUNK);
-  PADDLE_ENFORCE_NE(type(*cache), INVALID_CHUNK);
-  set_type(cache, FREE_CHUNK);
+  auto desc = cache->load_desc(this);
+  PADDLE_ENFORCE_NE(desc->type, FREE_CHUNK);
+  PADDLE_ENFORCE_NE(desc->type, INVALID_CHUNK);
+  // set_type(cache, FREE_CHUNK);
+  desc->type = FREE_CHUNK;
+  desc->update_guards();
 }
 
-void MemoryBlock::set_type(MetadataCache* cache, Type t) {
-  auto metadata = cache->load(this);
-  metadata.type = t;
-  cache->save(this, metadata);
-}
+// void MemoryBlock::set_type(MetadataCache* cache, Type t) {
+//   auto metadata = cache->load(this);
+//   metadata.type = t;
+//   cache->save(this, metadata);
+// }
 
 void* MemoryBlock::data() const {
   return const_cast<MemoryBlock::Desc*>(
