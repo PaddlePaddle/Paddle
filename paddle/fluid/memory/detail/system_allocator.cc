@@ -126,18 +126,20 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     platform::GpuMemoryUsage(&avail, &total);
 
     PADDLE_THROW_BAD_ALLOC(
-        "Out of memory error on GPU %d. "
-        "Cannot allocate %s GPU memory, "
-        "available memory is %s.\n"
-        "Please check if there is any other process using the same GPU.\n"
-        "If yes, please stop them, or start PaddlePaddle on another GPU.\n"
-        "If no, please try to decrease the batch size of your model. "
-        "Or try to set environment variable "
-        "FLAGS_fraction_of_gpu_memory_to_use to a higher value. "
-        "For example, try to 'export FLAGS_fraction_of_gpu_memory_to_use=0.98' "
-        "or higher value less than 1.0. Currently, it is %lf.",
-        gpu_id_, string::HumanReadableSize(size),
-        string::HumanReadableSize(avail), FLAGS_fraction_of_gpu_memory_to_use);
+        "\n\nOut of memory error on GPU %d. "
+        "Cannot allocate %s memory on GPU %d, "
+        "available memory is only %s.\n\n"
+        "Please check whether there is any other process using GPU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "2. If no, please try one of the following suggestions:\n"
+        "   1) Decrease the batch size of your model.\n"
+        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
+        "please set it to a higher value but less than 1.0.\n"
+        "      The command is "
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
+        gpu_id_, string::HumanReadableSize(size), gpu_id_,
+        string::HumanReadableSize(avail), gpu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use);
   }
 }
 
