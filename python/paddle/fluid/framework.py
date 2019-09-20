@@ -611,12 +611,15 @@ class Variable(object):
 
         """
         assert isinstance(value, (Variable, np.ndarray))
-        if value.shape != self.shape:
+        if list(value.shape) != list(self.shape):
             raise ValueError(
                 "The shape of the new value must be the same as that of the original Variable."
             )
         from .layers import assign
         assign(value, self)
+
+    def __set__(self, instance, value):
+        self.set_value(value)
 
     def backward(self, backward_strategy=None):
         if in_dygraph_mode():

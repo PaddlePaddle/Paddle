@@ -161,6 +161,7 @@ class TestLayer(LayerTest):
             fc2(t)
             self.assertFalse(np.array_equal(fc2.weight[0], custom_weight))
             fc2.weight[0].set_value(custom_weight)
+            fc2.weight[0] = custom_weight
             out2 = fc2(t)
             loss = fluid.layers.reduce_mean(out2)
             fc2_weight = fc2.weight[0].numpy()

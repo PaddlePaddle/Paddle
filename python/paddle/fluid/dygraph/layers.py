@@ -51,6 +51,26 @@ class Layer(core.Layer):
 
         self._helper = LayerObjectHelper(self._full_name)
 
+    @property
+    def weight(self):
+        return self._weight
+
+    @weight.setter
+    def weight(self, value):
+        if self._weight is not None:
+            self._weight.set_value(value)
+
+    @property
+    def bias(self):
+        return self._bias
+
+    @bias.setter
+    def bias(self, value):
+        if value is None:
+            self._bias = None
+        else:
+            self._bias.set_value(value)
+
     def train(self):
         framework._dygraph_tracer().train_mode()
 

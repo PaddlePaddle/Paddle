@@ -120,7 +120,7 @@ class Conv2D(layers.Layer):
             Default: None
 
     Attributes:
-        filter (Parameter): the learnable weights of filters of this layer.
+        weight (Parameter): the learnable weights of filter of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Raises:
@@ -197,13 +197,13 @@ class Conv2D(layers.Layer):
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
             dtype=self._dtype,
@@ -217,7 +217,7 @@ class Conv2D(layers.Layer):
             type=self._l_type,
             inputs={
                 'Input': input,
-                'Filter': self.filter,
+                'Filter': self._weight,
             },
             outputs={"Output": pre_bias},
             attrs={
@@ -229,13 +229,13 @@ class Conv2D(layers.Layer):
                 'use_mkldnn': False,
             })
 
-        if self.bias is not None:
+        if self._bias is not None:
             pre_act = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_act]},
                 attrs={'axis': 1})
         else:
@@ -328,7 +328,7 @@ class Conv3D(layers.Layer):
             Default: None.
 
     Attributes:
-        filter (Parameter): the learnable weights of filters of this layer.
+        weight (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
@@ -401,13 +401,13 @@ class Conv3D(layers.Layer):
             std = (2.0 / filter_elem_num)**0.5
             return Normal(0.0, std, 0)
 
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
             default_initializer=_get_default_param_initializer())
 
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
             dtype=self._dtype,
@@ -421,7 +421,7 @@ class Conv3D(layers.Layer):
             type='conv3d',
             inputs={
                 'Input': input,
-                'Filter': self.filter,
+                'Filter': self._weight,
             },
             outputs={"Output": pre_bias},
             attrs={
@@ -439,7 +439,7 @@ class Conv3D(layers.Layer):
         self._helper.append_op(
             type='elementwise_add',
             inputs={'X': [pre_bias],
-                    'Y': [self.bias]},
+                    'Y': [self._bias]},
             outputs={'Out': [pre_act]},
             attrs={'axis': 1})
 
@@ -540,7 +540,7 @@ class Conv3DTranspose(layers.Layer):
             will be named automatically.
 
     Attributes:
-        filter (Parameter): the learnable weights of filters of this layer.
+        weight (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
@@ -630,10 +630,10 @@ class Conv3DTranspose(layers.Layer):
         filter_shape = [
             self._input_channel, self._num_filters // self._groups
         ] + self._filter_size
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
         if self._bias_attr:
-            self.bias = self.create_parameter(
+            self._bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=[self._num_filters],
                 dtype=self._dtype,
@@ -645,7 +645,7 @@ class Conv3DTranspose(layers.Layer):
         self._helper.append_op(
             type="conv3d_transpose",
             inputs={'Input': [input],
-                    'Filter': [self.filter]},
+                    'Filter': [self._weight]},
             outputs={'Output': pre_bias},
             attrs={
                 'strides': self._stride,
@@ -661,7 +661,7 @@ class Conv3DTranspose(layers.Layer):
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_act]},
                 attrs={'axis': 1})
         else:
@@ -897,7 +897,12 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self.weight = list()
+
+        class param_list(list):
+            def __setitem__(_self, key, value):
+                _self[key].set_value(value)
+
+        self._weight = param_list()
 
     def _build_once(self, input):
         i = 0
@@ -909,7 +914,7 @@ class FC(layers.Layer):
                 reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
                        1)
             ] + [self._size]
-            self.weight.append(
+            self._weight.append(
                 self.add_parameter(
                     '_w%d' % i,
                     self.create_parameter(
@@ -920,7 +925,7 @@ class FC(layers.Layer):
             i += 1
 
         size = list([self._size])
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
     def forward(self, input):
@@ -932,7 +937,7 @@ class FC(layers.Layer):
             self._helper.append_op(
                 type="mul",
                 inputs={"X": inp,
-                        "Y": self.weight[i]},
+                        "Y": self._weight[i]},
                 outputs={"Out": tmp},
                 attrs={
                     "x_num_col_dims": self._num_flatten_dims,
@@ -952,13 +957,13 @@ class FC(layers.Layer):
                 outputs={"Out": pre_bias},
                 attrs={"use_mkldnn": False})
 
-        if self.bias:
+        if self._bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': self._num_flatten_dims})
         else:
@@ -1250,7 +1255,7 @@ class Embedding(layers.Layer):
         if self._remote_prefetch:
             assert self._is_sparse is True and self._is_distributed is False
 
-        self.weight = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=self._size,
             dtype=self._dtype,
@@ -1261,7 +1266,7 @@ class Embedding(layers.Layer):
         self._helper.append_op(
             type='lookup_table',
             inputs={'Ids': input,
-                    'W': self.weight},
+                    'W': self._weight},
             outputs={'Out': out},
             attrs={
                 'is_sparse': self._is_sparse,
@@ -1541,18 +1546,18 @@ class GRUUnit(layers.Layer):
         self._dtype = dtype
         size = size // 3
         # create weight
-        self.weight = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=param_attr, shape=[size, 3 * size], dtype=dtype)
 
         # create bias
         bias_size = [1, 3 * size]
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     def forward(self, input, hidden):
-        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self.weight}
-        if self.bias:
-            inputs['Bias'] = self.bias
+        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
+        if self._bias:
+            inputs['Bias'] = self._bias
 
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
@@ -1767,19 +1772,19 @@ class NCE(layers.Layer):
 
         dim = input.shape[1]
         num_true_class = label.shape[1]
-        self.weight = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=[self._num_total_classes, dim],
             is_bias=False,
             dtype=input.dtype)
         if self._bias_attr:
-            self.bias = self.create_parameter(
+            self._bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=[self._num_total_classes, 1],
                 is_bias=True,
                 dtype=input.dtype)
-            self._inputs['Bias'] = self.bias
-        self._inputs['Weight'] = self.weight
+            self._inputs['Bias'] = self._bias
+        self._inputs['Weight'] = self._weight
 
     def forward(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
@@ -1825,7 +1830,7 @@ class PRelu(layers.Layer):
           weight (alpha).
 
     Attributes:
-        alpha (Parameter): the learnable weights of this layer.
+        weight (Parameter): the learnable weights of this layer.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -1863,7 +1868,7 @@ class PRelu(layers.Layer):
         elif self._mode == 'element':
             self._alpha_shape = input.shape
         self._dtype = self._helper.input_dtype(input)
-        self.alpha = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
             dtype='float32',
@@ -1876,7 +1881,7 @@ class PRelu(layers.Layer):
         self._helper.append_op(
             type="prelu",
             inputs={"X": input,
-                    'Alpha': self.alpha},
+                    'Alpha': self._weight},
             attrs={"mode": self._mode},
             outputs={"Out": out})
         return out
@@ -1952,23 +1957,23 @@ class BilinearTensorProduct(layers.Layer):
 
         param_shape = [self._size, x.shape[1], y.shape[1]]
 
-        self.weight = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
 
         bias_size = [1, self._size]
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=bias_size,
             dtype=self._dtype,
             is_bias=True)
 
     def forward(self, x, y):
-        self._inputs = {"X": x, "Y": y, "Weight": self.weight}
-        if self.bias:
-            self._inputs["Bias"] = self.bias
+        self._inputs = {"X": x, "Y": y, "Weight": self._weight}
+        if self._bias:
+            self._inputs["Bias"] = self._bias
         if self._name is not None:
             out = self._helper.create_variable(
                 name=".".join([self.full_name(), self._name]),
@@ -2081,7 +2086,7 @@ class Conv2DTranspose(layers.Layer):
             Default: None.
 
     Attributes:
-        filter (Parameter): the learnable weights of filters of this layer.
+        weight (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
@@ -2183,10 +2188,10 @@ class Conv2DTranspose(layers.Layer):
         filter_shape = [input_channel, self._num_filters // self._groups
                         ] + self._filter_size
 
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             dtype=input.dtype, shape=filter_shape, attr=self._param_attr)
 
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
             dtype=self._dtype,
@@ -2198,7 +2203,7 @@ class Conv2DTranspose(layers.Layer):
         self._helper.append_op(
             type=self._op_type,
             inputs={'Input': [input],
-                    'Filter': [self.filter]},
+                    'Filter': [self._weight]},
             outputs={'Output': pre_bias},
             attrs={
                 'output_size': self._output_size,
@@ -2209,13 +2214,13 @@ class Conv2DTranspose(layers.Layer):
                 'use_cudnn': self._use_cudnn
             })
 
-        if self.bias is not None:
+        if self._bias is not None:
             pre_act = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_act]},
                 attrs={'axis': 1})
         else:
@@ -2250,7 +2255,7 @@ class SequenceConv(layers.Layer):
             Default: None.
 
     Attributes:
-        filter (Parameter): the learnable weights of filters of this layer.
+        weight (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
@@ -2280,10 +2285,10 @@ class SequenceConv(layers.Layer):
     def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._filter_size * input.shape[1], self._num_filters]
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr, shape=filter_shape, dtype=self._dtype)
 
-        self.bias = self.create_parameter(
+        self._bias = self.create_parameter(
             attr=self._bias_attr,
             shape=[self._num_filters],
             dtype=self._dtype,
@@ -2295,7 +2300,7 @@ class SequenceConv(layers.Layer):
             type='sequence_conv',
             inputs={
                 'X': [input],
-                'Filter': [self.filter],
+                'Filter': [self._weight],
             },
             outputs={"Out": pre_bias},
             attrs={
@@ -2304,13 +2309,13 @@ class SequenceConv(layers.Layer):
                 'contextLength': self._filter_size
             })
 
-        if self.bias is not None:
+        if self._bias is not None:
             pre_act = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_act]},
                 attrs={'axis': 1})
         else:
@@ -2347,7 +2352,7 @@ class RowConv(layers.Layer):
         act (str): Non-linear activation to be applied to output variable. Default: None.
 
     Attributes:
-        filter (Parameter): the learnable weights of this layer.
+        weight (Parameter): the learnable weights of this layer.
 
     Returns:
         the output(Out) is a LodTensor, which supports variable time-length input sequences.
@@ -2382,7 +2387,7 @@ class RowConv(layers.Layer):
     def _build_once(self, input):
         self._dtype = self._helper.input_dtype(input)
         filter_shape = [self._future_context_size + 1, input.shape[1]]
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=filter_shape,
             dtype=self._dtype,
@@ -2393,7 +2398,7 @@ class RowConv(layers.Layer):
         self._helper.append_op(
             type='row_conv',
             inputs={'X': [input],
-                    'Filter': [self.filter]},
+                    'Filter': [self._weight]},
             outputs={'Out': [out]})
         return self._helper.append_activation(out, act=self._act)
 
@@ -2620,7 +2625,7 @@ class TreeConv(layers.Layer):
             name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default: None.
 
         Attributes:
-            filter (Parameter): the learnable weights of filters of this layer.
+            weight (Parameter): the learnable weights of filters of this layer.
             bias (Parameter|None): the learnable bias of this layer.
 
         Returns:
@@ -2668,12 +2673,12 @@ class TreeConv(layers.Layer):
         feature_size = nodes_vector.shape[2]
         w_shape = [feature_size, 3, self._output_size, self._num_filters]
         if self._bias_attr:
-            self.bias = self.create_parameter(
+            self._bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=[self._num_filters],
                 dtype=self._dtype,
                 is_bias=True)
-        self.filter = self.create_parameter(
+        self._weight = self.create_parameter(
             attr=self._param_attr,
             shape=w_shape,
             dtype=self._dtype,
@@ -2694,7 +2699,7 @@ class TreeConv(layers.Layer):
             inputs={
                 'NodesVector': nodes_vector,
                 'EdgeSet': edge_set,
-                'Filter': self.filter
+                'Filter': self._weight
             },
             outputs={'Out': out, },
             attrs={'max_depth': self._max_depth})
@@ -2704,7 +2709,7 @@ class TreeConv(layers.Layer):
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [out],
-                        'Y': [self.bias]},
+                        'Y': [self._bias]},
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': 1})
         else:
