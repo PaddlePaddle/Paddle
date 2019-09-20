@@ -56,12 +56,12 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     const T *grad_data = grad->data<T>();
 
     T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
-    
+
     T clip = static_cast<T>(ctx.Attr<float>("clip"));
     T batch_size = static_cast<T>(ctx.Attr<float>("batch_size"));
     T sigma = static_cast<T>(ctx.Attr<float>("sigma"));
 
-    // compute clip value
+    // compute clipping
     float l2_norm = 0.0;
     for (int64_t i = 0; i < grad->numel(); ++i) {
       l2_norm = l2_norm + grad_data[i] * grad_data[i];
