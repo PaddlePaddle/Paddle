@@ -28,7 +28,6 @@ class StackKernel<platform::CUDADeviceContext, T>
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Y");
 
-    // Call concat functor
     int axis = ctx.Attr<int>("axis");
     axis = (axis >= 0) ? axis : axis + ins[0]->dims().size() + 1;
 
@@ -57,7 +56,9 @@ class StackKernel<platform::CUDADeviceContext, T>
           continue;
         }
       }
+      // Call concat functor
       // This op's output's dims is different from concat.
+      // It can be further optimized when all the inputs are the same Tensor.
       math::ConcatFunctor<platform::CUDADeviceContext, T> concat_functor;
       concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
     }
