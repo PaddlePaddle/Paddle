@@ -52,6 +52,10 @@ def parse_args():
         '--qat2',
         action='store_true',
         help='If used, the QAT model is treated as a second generation model.')
+    parser.add_argument(
+        '--save_model',
+        action='store_true',
+        help='If used, the QAT model will be saved after all transformations')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--batch_num',
@@ -249,6 +253,12 @@ class TestQatInt8Comparison(unittest.TestCase):
             acc5_avg = np.mean(infer_accs5)
             _logger.info('Total inference run time: {:.2f} s'.format(
                 infer_total_time))
+
+            if test_case_args.save_model:
+                with fluid.scope_guard(inference_scope):
+                    fluid.io.save_inference_model(
+                        'transformed_qat_int8_model', feed_target_names,
+                        fetch_targets, exe, inference_program)
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
