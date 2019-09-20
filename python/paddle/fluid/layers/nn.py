@@ -13672,35 +13672,35 @@ def deformable_roi_pooling(input,
     to the number of region bounding boxes after deformable_roi_pooling.
     
     Args:
-       input (Variable):The input of deformable roi pooling.The shape of input 'tensor https://www.paddlepaddle.org.cn/documentation/docs/en/1.5/api/fluid.html#tensor'_ is 
+       input (Tensor):The input of deformable roi pooling.The shape of input 'tensor https://www.paddlepaddle.org.cn/documentation/docs/en/1.5/api/fluid.html#tensor'_ is 
                         [N,C,H,W]. Where N is batch size, C is number of input channels,
                         H is height of the feature, and W is the width of the feature.
-       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+       rois (LoDTensor): ROIs (Regions of Interest) with type float32 to pool over.It should be
                         a 2-D 'LoDTensor https://www.paddlepaddle.org.cn/documentation/docs/en/1.5/api/fluid.html#lodtensor'_ of shape (num_rois, 4), the lod level
                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
+       trans (Tensor): Offset of features with type float32 on ROIs while pooling.The format is NCHW, where 
                          N is number of ROIs, C is number of channels, which indicate the offset distance 
                          in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
-                          value is True or False. Default: False.
-       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
+       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which
+                          value with type bool is True or False. Default: False.
+       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width), which value type is float32.
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
        group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
                          is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height (integer): The pooled output height. Default: 1.
-       pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
+       pooled_height (integer): The pooled output height which value type is int32. Default: 1.
+       pooled_width (integer): The pooled output width which value type is int32. Default: 1.
+       part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, Default: 
                         if None, default value is [pooled_height, pooled_width].
-       sample_per_part (integer): The number of samples in each bin. Default: 1.
-       trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
-       name (str): Name of layer. Default: None.
+       sample_per_part (integer): The number of samples in each bin which value type is int32. Default: 1.
+       trans_std (float): Coefficient of offset which value type is float32. Default: 0.1.
+       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not, and value type is bool(True or False). Default: False.
+       name (str|None): Name of layer. Default: None.
     Returns:
         Variable: The 'tensor https://www.paddlepaddle.org.cn/documentation/docs/en/1.5/api/fluid.html#tensor'_ variable storing the deformable roi pooling \
-                  result.
+                  result which value type is float32.
 
 
     Examples:
