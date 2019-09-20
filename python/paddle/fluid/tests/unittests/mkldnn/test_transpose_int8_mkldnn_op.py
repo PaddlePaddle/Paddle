@@ -46,7 +46,8 @@ class TestTransposeOp(OpTest):
         self.op_type = "transpose2"
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(no_check_set=['XShape'], check_dygraph=False)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)

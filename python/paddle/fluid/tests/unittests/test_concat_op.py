@@ -37,7 +37,6 @@ class TestConcatOp(OpTest):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output()
 
     def test_check_grad(self):

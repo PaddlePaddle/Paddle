@@ -896,7 +896,8 @@ class OpTest(unittest.TestCase):
                    numeric_grad_delta=0.005,
                    in_place=False,
                    max_relative_error=0.005,
-                   user_defined_grads=None):
+                   user_defined_grads=None,
+                   check_dygraph=True):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
@@ -912,7 +913,8 @@ class OpTest(unittest.TestCase):
                               numeric_grad_delta=0.005,
                               in_place=False,
                               max_relative_error=0.005,
-                              user_defined_grads=None):
+                              user_defined_grads=None,
+                              check_dygraph=True):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

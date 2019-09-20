@@ -146,7 +146,9 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), atol=0)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False)
 
     def test_check_grad(self):
         pass
