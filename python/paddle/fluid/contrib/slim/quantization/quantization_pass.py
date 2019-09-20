@@ -1201,18 +1201,19 @@ class AddQuantDequantPass(object):
                 if not in_nodes_all_not_persistable:
                     continue
 
-            if op_node.op().has_attr("pooling_type") and \
-                op_node.op().attr("pooling_type") == 'avg':
-                continue
+                if op_node.op().has_attr("pooling_type") and \
+                    op_node.op().attr("pooling_type") == 'max':
+                    continue
 
-            input_names = op_node.input_arg_names()
-            for input_name in input_names:
-                in_node = graph._find_node_by_name(op_node.inputs, input_name)
-                quant_var_node, scale_var_node = \
-                    self._inser_quant_dequant_moving_average_abs_max_op(
-                    graph, in_node, self._quant_bits)
-                dequantized_vars_map[input_name] = quant_var_node
-                graph.update_input_link(in_node, quant_var_node, op_node)
+                input_names = op_node.input_arg_names()
+                for input_name in input_names:
+                    in_node = graph._find_node_by_name(op_node.inputs,
+                                                       input_name)
+                    quant_var_node, scale_var_node = \
+                        self._inser_quant_dequant_moving_average_abs_max_op(
+                        graph, in_node, self._quant_bits)
+                    dequantized_vars_map[input_name] = quant_var_node
+                    graph.update_input_link(in_node, quant_var_node, op_node)
 
         for op_node in ops:
             if op_node.name() in self._target_grad_ops:
