@@ -56,7 +56,10 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
     def setUp(self):
         self.fuse_bias = False
         self.bias_size = None
-        self.fuse_relu = False
+        self.fuse_activation = ""
+        self.fuse_alpha = 0
+        self.fuse_beta = 0
+        self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
         TestConv2dOp.setUp(self)
@@ -81,16 +84,39 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 input_residual)
 
-        if self.fuse_relu:
+        if self.fuse_activation == "relu":
             output = np.maximum(output, 0).astype(self.dsttype)
 
+        if self.fuse_activation == "relu6":
+            output = np.minimum(np.maximum(output, 0),
+                                self.fuse_alpha).astype(self.dsttype)
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias
-        self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_activation'] = self.fuse_activation
+        self.attrs['fuse_alpha'] = self.fuse_alpha
+        self.attrs['fuse_beta'] = self.fuse_beta
+        self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
+
+
+class TestWithbreluFusion(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dMKLDNNOp.init_test_case(self)
+        self.fuse_activation = "relu6"
+        self.fuse_alpha = 6.0
+        self.dsttype = np.float32
+
+    def test_check_grad(self):
+        pass
+
+    def test_check_grad_no_filter(self):
+        pass
+
+    def test_check_grad_no_input(self):
+        pass
 
 
 class TestWithFuse(TestConv2dMKLDNNOp):

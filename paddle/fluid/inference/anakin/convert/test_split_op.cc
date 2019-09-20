@@ -92,7 +92,7 @@ TEST(split_op, test_different_shape_axis3_batch1) {
   platform::CUDADeviceContext ctx(gpu_place);
   AnakinSliceTest<::anakin::saber::NV, 3>(ctx, true, {1, 3, 2, 3}, {2, 1});
 }
-
+#ifdef ANAKIN_X86_PLACE
 TEST(split_op, test_different_shape_axis1_batch1_cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
@@ -110,13 +110,10 @@ TEST(split_op, test_different_shape_axis3_batch1_cpu) {
   platform::CPUDeviceContext ctx(cpu_place);
   AnakinSliceTest<::anakin::saber::X86, 3>(ctx, false, {1, 3, 2, 4}, {2, 2});
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(split);
-USE_CPU_ANAKIN_CONVERTER(split);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(split);
-#endif

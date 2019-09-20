@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 
+DECLARE_bool(use_ngraph);
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -398,6 +400,11 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
     }
   }
 
+  // In use for ngraph subgraph pass for parallel executor,
+  // this will remove all nodes, bypass this and let ngraph
+  // subgraph pass to process outputs
+  if (FLAGS_use_ngraph && valid_output.size() == 0) return;
+
   outputs->assign(valid_output.begin(), valid_output.end());
 }
 
@@ -420,7 +427,7 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
     // as deleted. 3. Replace the deleted node with the new Block Node.
     framework::OpDesc empty_desc;
-    empty_desc.SetType("anakin_engine");
+    empty_desc.SetType(name_);
     auto *block_node = graph_->CreateOpNode(&empty_desc);
     Agent(block_node).set_subgraph({});
     auto io = ExtractInputAndOutputOfSubGraph(subgraph);

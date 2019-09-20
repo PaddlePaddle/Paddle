@@ -23,6 +23,7 @@ DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_int64(gpu_allocator_retry_time);
 #endif
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -91,6 +92,8 @@ TEST(Allocator, SpecifyGpuMemory) {
   FLAGS_gpu_allocator_retry_time = 500;
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;
 #endif
+
+  FLAGS_allocator_strategy = "naive_best_fit";
 
   AllocateTestCases();
 }

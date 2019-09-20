@@ -38,20 +38,13 @@ void BroadcastOpHandle::RunImpl() {
 
   VarHandle *in_var_handle = in_var_handles[0];
 
-  WaitInputVarGenerated();
-
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
-
-  BroadcastOneVar(*in_var_handle, out_var_handles, var_scopes);
+  BroadcastOneVar(*in_var_handle, out_var_handles, local_exec_scopes_);
 }
 
 void BroadcastOpHandle::BroadcastOneVar(
     const VarHandle &in_var_handle,
     const std::vector<VarHandle *> &out_var_handles,
-    const std::vector<const Scope *> &var_scopes) {
+    const std::vector<Scope *> &var_scopes) {
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
   PADDLE_ENFORCE_NOT_NULL(in_var);
@@ -64,6 +57,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   InitOutputValue(in_var_handle, out_var_handles);
 
   if (platform::is_cpu_place(in_tensor.place())) {
+    WaitInputVarGenerated();
     for (auto *out_var_handle : out_var_handles) {
       if (out_var_handle->IsTheSameVar(in_var_handle)) {
         continue;
@@ -114,6 +108,7 @@ void BroadcastOpHandle::BroadcastOneVar(
           });
     }
 
+    WaitInputVarGenerated();
     this->RunAndRecordEvent([&] {
       {
         platform::NCCLGroupGuard guard;
@@ -131,6 +126,9 @@ void BroadcastOpHandle::BroadcastOneVar(
             &VariableVisitor::GetMutableTensor(out_var));
       }
     });
+    for (auto &p : places_) {
+      nccl_ctxs_->DevCtx(p)->Wait();
+    }
 #else
     PADDLE_THROW("CUDA is not enabled.");
 #endif
@@ -140,10 +138,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 void BroadcastOpHandle::InitOutputValue(
     const VarHandle &in_var_handle,
     const std::vector<VarHandle *> &out_var_handles) const {
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
+  auto &var_scopes = local_exec_scopes_;
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
 

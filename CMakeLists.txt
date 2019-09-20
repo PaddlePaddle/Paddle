@@ -27,18 +27,27 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
 message(STATUS "AR tools: ${CMAKE_AR}")
 
 if(WIN32)
+    option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
+
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
-    set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
-    set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
-    set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
-    set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    
+    if (MSVC_STATIC_CRT)
+        message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
+        set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
+        set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
+        set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
+        set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    endif()
+    
     add_compile_options(/wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838)
     set(PADDLE_LINK_FLAGS "/IGNORE:4006 /IGNORE:4098 /IGNORE:4217 /IGNORE:4221")
     set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
+else(WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
 find_package(CUDA QUIET)
@@ -59,25 +68,21 @@ option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization."               OFF)
 ################################ Internal Configurations #######################################
-option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
-option(WITH_JEMALLOC    "Compile PaddlePaddle with jemalloc"            OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
+option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
-# TODO(Superjomn) Remove WITH_ANAKIN option if not needed latter.
-option(ANAKIN_BUILD_FAT_BIN "Build anakin cuda fat-bin lib for all device plantform, ignored when WITH_ANAKIN=OFF" OFF)
-option(ANAKIN_BUILD_CROSS_PLANTFORM "Build anakin lib for any nvidia device plantform. ignored when WITH_ANAKIN=OFF" ON)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -87,7 +92,7 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
 endif()
@@ -126,6 +131,12 @@ endif()
 if (REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
+
+if (SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
+  message("Choose the correct type of sanitizer")
+  return()
+endif()
+
 ########################################################################################
 
 include(external/mklml)     # download mklml package
@@ -148,14 +159,11 @@ include(external/cub)
 include(external/rocprim)
 include(external/xxhash)    # download xxhash
 include(external/dlpack)
-include(external/snappy)    # download snappy
-include(external/snappystream) # download snappystream
 include(external/warpctc)   # download, build, install warpctc
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows
 include(cupti)
-include(external/gzstream)
 endif (NOT WIN32)
 
 if(WITH_PSLIB)
@@ -163,6 +171,9 @@ if(WITH_PSLIB)
     include(external/pslib_brpc)
     include(external/pslib)
 endif(WITH_PSLIB)
+if(WITH_BOX_PS)
+    include(external/box_ps)
+endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -185,6 +196,7 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+include(anakin_subgraph)
 
 include(external/threadpool)
 include(flags)              # set paddle compile flags
@@ -194,7 +206,6 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
-    include(anakin_subgraph)
 endif()
 
 if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
@@ -207,26 +218,13 @@ if(WITH_DGC)
     add_definitions(-DPADDLE_WITH_DGC)
 endif()
 
-if(WITH_MKL OR WITH_MKLML)
-    include(external/anakin)
-elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
-endif()
-
 if (WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-if (WITH_JEMALLOC)
-    find_package(JeMalloc REQUIRED)
-    include_directories(${JEMALLOC_INCLUDE_DIR})
-    add_definitions(-DPADDLE_WITH_JEMALLOC)
-endif()
-
 include(generic)            # simplify cmake module
-include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION

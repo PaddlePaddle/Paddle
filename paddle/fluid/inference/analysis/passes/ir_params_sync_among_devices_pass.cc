@@ -69,7 +69,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       // Copy the parameter data to a tmp tensor.
       TensorCopySync(*t, cpu_place, &temp_tensor);
       // Reallocation the space on GPU
-      t->mutable_data<float>(place);
+      t->clear();
 
       // Copy parameter data to newly allocated GPU space.
       TensorCopySync(temp_tensor, place, t);

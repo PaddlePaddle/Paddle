@@ -21,23 +21,29 @@ import six
 import logging
 from functools import reduce
 
+import paddle
+import paddle.reader
+from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
 from . import core
 from .. import compat as cpt
 
+batch = paddle.batch
+
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
-] + reader.__all__
+    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+] + reader.__all__ + paddle.reader.__all__
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 def is_parameter(var):
@@ -54,6 +60,7 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.w')
             res = fluid.io.is_parameter(param)
     """
@@ -74,6 +81,7 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
@@ -86,13 +94,35 @@ def is_persistable(var):
 
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
-    return block.create_var(
-        name=var.name,
-        shape=var.shape,
-        dtype=var.dtype,
-        type=var.type,
-        lod_level=var.lod_level,
-        persistable=True)
+    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+    else:
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            persistable=True)
+
+
+def _get_valid_program(main_program):
+    if main_program is None:
+        main_program = default_main_program()
+    elif isinstance(main_program, CompiledProgram):
+        main_program = main_program._program
+        if main_program is None:
+            raise TypeError("program should be as Program type or None")
+        warnings.warn(
+            "The input is a CompiledProgram, this is not recommended.")
+    if not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
+    return main_program
 
 
 def save_vars(executor,
@@ -177,12 +207,9 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
-    if vars is None:
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
+    main_program = _get_valid_program(main_program)
 
+    if vars is None:
         save_vars(
             executor,
             main_program=main_program,
@@ -193,11 +220,6 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
-
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
@@ -205,13 +227,13 @@ def save_vars(executor,
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                save_file_path = os.path.join(save_dirname, new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
-                    })
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -242,7 +264,9 @@ def save_params(executor, dirname, main_program=None, filename=None):
     NOTICE: Some variables are not Parameter while they are necessary for
     training. So you can NOT save and continue your training just by
     `save_params()` and `load_params()`. Please use `save_persistables()`
-    and `load_persistables()` instead.
+    and `load_persistables()` instead. If you want to save your model for
+    the inference, please use the `save_inference_model` API. You can refer
+    to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         executor(Executor): The executor to run for saving parameters.
@@ -261,6 +285,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
@@ -299,6 +325,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -423,7 +450,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         return is_valid
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -485,6 +512,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             # `prog` can be a program defined by the user
@@ -492,11 +521,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.save_persistables(executor=exe, dirname=param_path,
                                        main_program=prog)
     """
-
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
-
     else:
         save_vars(
             executor,
@@ -592,6 +619,7 @@ def load_vars(executor,
             # been saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     load_dirname = os.path.normpath(dirname)
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
@@ -610,6 +638,7 @@ def load_vars(executor,
 
         if main_program is None:
             main_program = default_main_program()
+
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
@@ -658,6 +687,9 @@ def load_params(executor, dirname, main_program=None, filename=None):
     training. So you can NOT save and continue your training just by
     `save_params()` and `load_params()`. Please use `save_persistables()`
     and `load_persistables()` instead.
+    If you want to load the pre-trained model structure and parameters
+    for the inference, please use the `load_inference_model` API. You can
+    refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         executor(Executor): The executor to run for loading parameters.
@@ -676,6 +708,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -718,6 +751,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             prog = fluid.default_main_program()
@@ -755,6 +789,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
@@ -840,7 +875,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
-        raise ValueError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' should be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -902,10 +937,15 @@ def save_inference_model(dirname,
                          main_program=None,
                          model_filename=None,
                          params_filename=None,
-                         export_for_deployment=True):
+                         export_for_deployment=True,
+                         program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
+    If you just want to save parameters of your trained model, please use the
+    `save_params` API. You can refer to :ref:`api_guide_model_save_reader_en` for
+    more details.
+
 
     Args:
         dirname(str): The directory path to save the inference model.
@@ -929,6 +969,7 @@ def save_inference_model(dirname,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
+        program_only(bool): If True, It will save inference program only, and do not save params of Program.
 
     Returns:
         target_var_name_list(list): The fetch variables' name list
@@ -988,15 +1029,7 @@ def save_inference_model(dirname,
                 all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
-    if main_program is None:
-        main_program = default_main_program()
-        if main_program._is_mem_optimized:
-            warnings.warn(
-                "save_inference_model must put before you call memory_optimize. \
-                                            the memory_optimize will modify the original program, \
-                                            is not suitable for saving inference model \
-                                            we save the original program as inference model.",
-                RuntimeWarning)
+    main_program = _get_valid_program(main_program)
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -1047,7 +1080,7 @@ def save_inference_model(dirname,
 
         main_program.desc.flush()
 
-        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._prune(feeded_var_names, target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
@@ -1061,6 +1094,12 @@ def save_inference_model(dirname,
         # for training and more flexible post-processing.
         with open(model_basename + ".main_program", "wb") as f:
             f.write(main_program.desc.serialize_to_string())
+
+    if program_only:
+        warnings.warn(
+            "save_inference_model specified the param `program_only` to True, It will not save params of Program."
+        )
+        return target_var_name_list
 
     main_program._copy_dist_param_info_from(origin_program)
 
@@ -1077,7 +1116,10 @@ def load_inference_model(dirname,
                          params_filename=None,
                          pserver_endpoints=None):
     """
-    Load inference model from a directory
+    Load inference model from a directory. By this API, you can get the model
+    structure(inference program) and model parameters. If you just want to load
+    parameters of the pre-trained model, please use the `load_params` API.
+    You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
         dirname(str): The directory path
@@ -1128,8 +1170,8 @@ def load_inference_model(dirname,
             fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
                          target_vars=[hidden_b], executor=exe, main_program=main_prog)
             tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
-            [inference_program, feed_target_names, fetch_targets] = \
-                fluid.io.load_inference_model(dirname=path, executor=exe)
+            [inference_program, feed_target_names, fetch_targets] = (
+                fluid.io.load_inference_model(dirname=path, executor=exe))
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
@@ -1137,10 +1179,10 @@ def load_inference_model(dirname,
             # endpoints is your pserver endpoints list, the above is just an example
             endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
             # if we need lookup table, we will use:
-            [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = \
+            [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
                 fluid.io.load_inference_model(dirname=path,
                                               executor=exe,
-                                              pserver_endpoints=endpoints)
+                                              pserver_endpoints=endpoints))
 
             # In this example, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
@@ -1210,6 +1252,7 @@ def get_parameter_value(para, executor):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             param = fluid.default_main_program().global_block().var('fc.w')
             p = fluid.io.get_parameter_value(param, exe)
@@ -1247,6 +1290,7 @@ def get_parameter_value_by_name(name, executor, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             exe = fluid.Executor(fluid.CPUPlace())
             p = fluid.io.get_parameter_value('fc.w', exe)
     """

@@ -86,18 +86,8 @@ class ReadOp : public framework::OperatorBase {
 
     reader->ReadNext(&ins);
     if (ins.empty()) {
-      VLOG(3) << "read empty data in";
-      if (Attr<bool>("throw_eof_exp")) {
-        VLOG(3) << "throw_eof_exp";
-        PADDLE_THROW_EOF();
-      } else {
-        ins.resize(out_arg_names.size());
-        for (auto& tensor : ins) {
-          // data type is not important for subsequent DataBalanceOpHandle
-          tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
-        }
-      }
-      VLOG(3) << "read empty data out";
+      VLOG(3) << "throw_eof_exp";
+      PADDLE_THROW_EOF();
     }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < out_arg_names.size(); ++i) {

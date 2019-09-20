@@ -15,7 +15,40 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1, TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
+
+
+class TestNGRAPHDepthwiseConv(TestDepthwiseConv):
+    def init_test_case(self):
+        super(TestNGRAPHDepthwiseConv, self).init_test_case()
+        self.use_cuda = False
+
+
+class TestNGRAPHDepthwiseConv2(TestDepthwiseConv2):
+    def init_test_case(self):
+        super(TestNGRAPHDepthwiseConv2, self).init_test_case()
+        self.use_cuda = False
+
+
+class TestNGRAPHDepthwiseConv3(TestDepthwiseConv3):
+    def init_test_case(self):
+        super(TestNGRAPHDepthwiseConv3, self).init_test_case()
+        self.use_cuda = False
+
+
+class TestNGRAPHDepthwiseConvWithDilation(TestDepthwiseConvWithDilation):
+    def init_test_case(self):
+        super(TestNGRAPHDepthwiseConvWithDilation, self).init_test_case()
+        self.use_cuda = False
+
+
+class TestNGRAPHDepthwiseConvWithDilation2(TestDepthwiseConvWithDilation2):
+    def init_test_case(self):
+        super(TestNGRAPHDepthwiseConvWithDilation2, self).init_test_case()
+        self.use_cuda = False
+
+
+del TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
 
 if __name__ == '__main__':
     unittest.main()

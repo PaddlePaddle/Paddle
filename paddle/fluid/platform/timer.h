@@ -50,7 +50,7 @@ class Timer {
   struct timeval _start;
   struct timeval _now;
   int _count;
-  int _elapsed;
+  int64_t _elapsed;
   bool _paused;
 
   // get us difference between start and now

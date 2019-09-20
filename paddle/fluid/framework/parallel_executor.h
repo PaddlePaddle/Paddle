@@ -23,7 +23,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -73,8 +75,7 @@ class ParallelExecutor {
   void FeedAndSplitTensorIntoLocalScopes(
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  void Run(const std::vector<std::string> &fetch_tensors,
-           const std::string &fetched_var_name);
+  FeedFetchList Run(const std::vector<std::string> &fetch_tensors);
 
  private:
   // broadcast the parameters from the 0th device.
@@ -87,10 +88,6 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  std::unique_ptr<ncclUniqueId> local_nccl_id_;
-#endif
 };
-
 }  // namespace framework
 }  // namespace paddle

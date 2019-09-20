@@ -1,11 +1,32 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor async_executor fleet_wrapper nccl_wrapper prune
-  feed_fetch_method pass_builder parallel_executor profiler layer scope_pool
-  tracer analysis_predictor imperative_profiler nccl_context)
+set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune
+  feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
+  analysis_predictor imperative_profiler nccl_context imperative_flag)
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
 endif()
-set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc reader_py.cc async_executor_py.cc fleet_wrapper_py.cc nccl_wrapper_py.cc data_set_py.cc imperative.cc ir.cc inference_api.cc)
+
+if (WITH_DISTRIBUTE)
+  list(APPEND PYBIND_DEPS communicator)
+endif()
+
+set(PYBIND_SRCS
+  pybind.cc
+  exception.cc
+  protobuf.cc
+  const_value.cc
+  reader_py.cc
+  fleet_wrapper_py.cc
+  box_helper_py.cc
+  nccl_wrapper_py.cc
+  data_set_py.cc
+  imperative.cc
+  ir.cc
+  inference_api.cc)
+
+if (WITH_DISTRIBUTE)
+  list(APPEND PYBIND_SRCS communicator_py.cc)
+endif()
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)

@@ -51,7 +51,9 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         self.pad = [0, 0]
         self.fuse_bias = False
         self.bias_size = None
-        self.fuse_relu = False
+        self.fuse_activation = ""
+        self.fuse_alpha = 0.0
+        self.fuse_beta = 0.0
         self.stride = [1, 1]
         self.dilations = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -71,11 +73,13 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
             self.attrs['fuse_bias'] = self.fuse_bias
             self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
 
-        if self.fuse_relu:
+        if self.fuse_activation == "relu":
             output = np.maximum(output, 0).astype(self.dtype)
+        output = output.astype(self.dtype)
 
-        self.attrs['fuse_bias'] = self.fuse_bias
-        self.attrs['fuse_relu'] = self.fuse_relu
+        self.attrs['fuse_activation'] = self.fuse_activation
+        self.attrs['fuse_alpha'] = self.fuse_alpha
+        self.attrs['fuse_beta'] = self.fuse_beta
 
         self.outputs['Output'] = output
 

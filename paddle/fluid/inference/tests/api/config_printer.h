@@ -78,6 +78,8 @@ std::ostream &operator<<(std::ostream &os, const AnalysisConfig &config) {
      << "use_tensorrt: " << config.tensorrt_engine_enabled() << "\n";
   os << GenSpaces(num_spaces) << "use_mkldnn: " << config.mkldnn_enabled()
      << "\n";
+  os << GenSpaces(num_spaces) << "use_ngraph: " << config.ngraph_enabled()
+     << "\n";
   num_spaces--;
   os << GenSpaces(num_spaces) << "}\n";
   return os;

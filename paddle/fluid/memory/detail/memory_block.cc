@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/memory_block.h"
-#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -61,7 +61,7 @@ MemoryBlock* MemoryBlock::right_buddy(const MetadataCache& cache) const {
 
 void MemoryBlock::split(MetadataCache* cache, size_t size) {
   // make sure the split fits
-  PADDLE_ASSERT(total_size(*cache) >= size);
+  PADDLE_ENFORCE_GE(total_size(*cache), size);
 
   // bail out if there is no room for another partition
   if (total_size(*cache) - size <= sizeof(MemoryBlock::Desc)) {
@@ -102,8 +102,8 @@ void MemoryBlock::split(MetadataCache* cache, size_t size) {
 
 void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
-  PADDLE_ASSERT(type(*cache) == FREE_CHUNK);
-  PADDLE_ASSERT(right_buddy->type(*cache) == FREE_CHUNK);
+  PADDLE_ENFORCE_EQ(type(*cache), FREE_CHUNK);
+  PADDLE_ENFORCE_EQ(right_buddy->type(*cache), FREE_CHUNK);
 
   auto metadata = cache->load(this);
 
@@ -129,8 +129,8 @@ void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 
 void MemoryBlock::mark_as_free(MetadataCache* cache) {
   // check for double free or corruption
-  PADDLE_ASSERT(type(*cache) != FREE_CHUNK);
-  PADDLE_ASSERT(type(*cache) != INVALID_CHUNK);
+  PADDLE_ENFORCE_NE(type(*cache), FREE_CHUNK);
+  PADDLE_ENFORCE_NE(type(*cache), INVALID_CHUNK);
   set_type(cache, FREE_CHUNK);
 }
 

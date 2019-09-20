@@ -60,9 +60,14 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("W", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Out", {outputs[0]});
+  } else if (type == "concat") {
+    op->SetInput("X", inputs);
+    op->SetOutput("Out", outputs);
+    op->SetAttr("use_quantizer", use_quantizer);
   }
 }
 
+namespace {
 static const std::initializer_list<std::string> variable_names{
     "a", "w1", "c",  "d", "w2", "e",  "f", "g",
     "h", "w3", "b1", "i", "j",  "w4", "b2"};
@@ -105,8 +110,7 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32,
-                       ::paddle::memory::Allocator::kDefault, 1);
+  tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
 void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
@@ -203,6 +207,101 @@ TEST(CpuQuantizePass, do_not_quantize) {
   MainTest(BuildProgramDesc(use_mkldnn, use_quantizer), 4, 2, 0, 0, added_nodes,
            1.0f);
 }
+
+}  // namespace
+
+namespace {
+static const std::initializer_list<std::string> variable_names_concat = {
+    "a1", "b1", "a2", "b2", "c", "d"};
+
+// a1->Pool1->b1
+// a2->Pool2->b2
+// (b1,b2)->Concat->c
+// c->Pool3->d
+ProgramDesc BuildProgramDescConcat() {
+  ProgramDesc prog;
+
+  SetOp(&prog, "pool2d", "Pool1", {"a1"}, {"b1"}, true, false);
+  SetOp(&prog, "pool2d", "Pool2", {"a2"}, {"b2"}, true, false);
+  SetOp(&prog, "concat", "Concat", {"b1", "b2"}, {"c"}, true, true);
+  SetOp(&prog, "pool2d", "Pool3", {"c"}, {"d"}, true, false);
+
+  return prog;
+}
+
+void MainTestConcat(const ProgramDesc& prog, int pool_count, int concat_count,
+                    int quant_count, int dequant_count, int added_nodes_count) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  // Init scope, as it is used in pass
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  exe.CreateVariables(prog, 0, true, &scope);
+
+  auto* scales = new VarQuantScale();
+
+  for (auto& v : variable_names_concat) {
+    InitTensorHolder(&scope, place, v.c_str());
+    LoDTensor tensor;
+    tensor.Resize({1});
+    auto* ptr = tensor.mutable_data<double>(place);
+    ptr[0] = 2.0;
+
+    (*scales)[v] = std::make_pair(false, std::move(tensor));
+  }
+
+  graph->SetNotOwned(kParamScopeAttr, &scope);
+
+  auto pass = PassRegistry::Instance().Get("cpu_quantize_pass");
+  pass->Set("quant_var_scales", scales);
+
+  int original_nodes_num = graph->Nodes().size();
+
+  graph.reset(pass->Apply(graph.release()));
+
+  int current_nodes_num = graph->Nodes().size();
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int concat_nodes_count = 0;
+  int pool2d_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "concat") {
+        concat_nodes_count++;
+      } else if (op->Type() == "pool2d") {
+        pool2d_nodes_count++;
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(concat_nodes_count, concat_count);
+  EXPECT_EQ(pool2d_nodes_count, pool_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, concat) {
+  // a1->Pool1->b1
+  // a2->Pool2->b2
+  // (b1->QUANT1->IN1, b2->QUANT2->IN2)->Concat->c
+  // c->OUT1->DEQUANT1->Pool3->d
+  int pool_count = 3;
+  int concat_count = 1;
+  int quant_count = 2;
+  int dequant_count = 1;
+  int added_nodes_count = 6;
+  MainTestConcat(BuildProgramDescConcat(), pool_count, concat_count,
+                 quant_count, dequant_count, added_nodes_count);
+}
+
+}  // namespace
 
 }  // namespace ir
 }  // namespace framework

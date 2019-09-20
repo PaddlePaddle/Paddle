@@ -35,8 +35,7 @@ import paddle.compat as cpt
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info',
-    'convert'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
@@ -257,14 +256,6 @@ def unittest():
 
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "movielens_train")
-    paddle.dataset.common.convert(path, test(), 1000, "movielens_test")
 
 
 if __name__ == '__main__':

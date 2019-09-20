@@ -27,35 +27,11 @@ import six
 import numpy as np
 import subprocess
 import multiprocessing
-
+import sys
 from .. import compat as cpt
 from .proto import framework_pb2
-try:
-    if os.name == 'nt':
-        import sys
-        third_lib_path = os.path.abspath(os.path.dirname(
-            __file__)) + os.sep + '..' + os.sep + 'libs'
-        os.environ['path'] += ';' + third_lib_path
-        sys.path.append(third_lib_path)
 
-    from . import core
-except ImportError as e:
-    if os.name == 'nt':
-        executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
-        if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
-    else:
-        raise ImportError(
-            """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
-        if you encounters \"libmkldnn.so not found\" errors. If you have python
-        installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
-except Exception as e:
-    raise e
+from . import core
 from . import unique_name
 
 __all__ = [
@@ -68,6 +44,7 @@ __all__ = [
     'cpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'is_compiled_with_cuda',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -90,6 +67,7 @@ def in_dygraph_mode():
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
                 pass
 
@@ -106,7 +84,42 @@ def _current_expected_place():
 
 
 def _cpu_num():
-    return int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+    if "CPU_NUM" not in os.environ.keys():
+        if multiprocessing.cpu_count() > 1:
+            sys.stderr.write(
+                '!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n'
+                'CPU_NUM indicates that how many CPUPlace are used in the current task.\n'
+                'And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n'
+                'export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n'
+                '!!! The default number of CPU_NUM=1.\n'.format(
+                    multiprocessing.cpu_count(), multiprocessing.cpu_count()))
+        os.environ['CPU_NUM'] = str(1)
+    cpu_num = os.environ.get('CPU_NUM')
+    return int(cpu_num)
+
+
+def _cuda_ids():
+    gpus_env = os.getenv("FLAGS_selected_gpus")
+    if gpus_env:
+        device_ids = [int(s) for s in gpus_env.split(",")]
+    else:
+        device_ids = six.moves.range(core.get_cuda_device_count())
+    return device_ids
+
+
+def is_compiled_with_cuda():
+    """
+    Whether this whl package can be used to run the model on GPU.
+
+    Returns (bool): support gpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_gpu = fluid.is_compiled_with_cuda()
+    """
+    return core.is_compiled_with_cuda()
 
 
 def cuda_places(device_ids=None):
@@ -134,17 +147,14 @@ def cuda_places(device_ids=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_places = fluid.cuda_places()
 
     """
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_ids is None:
-        gpus_env = os.getenv("FLAGS_selected_gpus")
-        if gpus_env:
-            device_ids = [int(s) for s in gpus_env.split(",")]
-        else:
-            device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = _cuda_ids()
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.CUDAPlace(dev_id) for dev_id in device_ids]
@@ -156,8 +166,8 @@ def cpu_places(device_count=None):
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
 
     Args:
         device_count (None|int): device number.
@@ -168,6 +178,7 @@ def cpu_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cpu_places = fluid.cpu_places()
     """
 
@@ -194,6 +205,7 @@ def cuda_pinned_places(device_count=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
             # or
             cuda_pinned_places = fluid.cuda_pinned_places(1)
@@ -246,6 +258,7 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           with fluid.name_scope("s1"):
               a = fluid.layers.data(name='data', shape=[1], dtype='int32')
               b = a + 1
@@ -259,11 +272,15 @@ def name_scope(prefix=None):
               g = f - 1
     """
     # TODO(panyx0718): Only [0-9a-z].
-    assert prefix, "namescope prefix cannot be empty."
-    global _name_scope
-    _name_scope = _name_scope.child(prefix)
-    yield
-    _name_scope = _name_scope.parent()
+    # in dygraph we don't need namescope since it will cause mem leak
+    if not in_dygraph_mode():
+        assert prefix, "namescope prefix cannot be empty."
+        global _name_scope
+        _name_scope = _name_scope.child(prefix)
+        yield
+        _name_scope = _name_scope.parent()
+    else:
+        yield
 
 
 def _full_name_scope():
@@ -371,7 +388,7 @@ class Variable(object):
     two variables in different blocks could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please reference the framework.proto for details.
+    and usages. Please refer to the framework.proto for details.
 
     Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
@@ -407,7 +424,8 @@ class Variable(object):
     Examples:
         .. code-block:: python
 
-            cur_program = Program()
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -440,9 +458,10 @@ class Variable(object):
             self._ivar = kwargs.get("ivar", None)
             if not self._ivar:
                 self._ivar = core.VarBase(
-                    name, dtype if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [],
-                    _current_expected_place(), stop_gradient, True
+                    name, type
+                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
+                    if dtype else core.VarDesc.VarType.FP32,
+                    list(shape) if shape else [], stop_gradient, True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -525,18 +544,55 @@ class Variable(object):
             self._stop_gradient = stop_gradient
             self.is_data = is_data
 
+    def detach(self):
+        """
+        Returns a new Variable, detached from the current graph.
+        
+        Returns:
+            Variable: The detached Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    y = x.detach()
+
+        """
+        if in_dygraph_mode():
+            new_var = self._cloneVar()
+            self.block.append_op(
+                type="assign",
+                inputs={'X': [self]},
+                outputs={'Out': [new_var]},
+                stop_gradient=True)
+            return new_var
+        else:
+            raise AttributeError("static graph model DO NOT supprt detach")
+
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
     def backward(self, backward_strategy=None):
-        from .dygraph import BackwardStrategy
-        if backward_strategy is None:
-            backward_strategy = BackwardStrategy()
-            backward_strategy.sort_sum_gradient = False
+        if in_dygraph_mode():
+            from .dygraph import BackwardStrategy
+            if backward_strategy is None:
+                backward_strategy = BackwardStrategy()
+                backward_strategy.sort_sum_gradient = False
 
-        self._ivar._run_backward(backward_strategy)
-        _dygraph_tracer()._clear_ops()
+            self._ivar._run_backward(backward_strategy, _dygraph_tracer())
+        else:
+            raise ValueError(
+                "Variable.backward() is only avaliable in DyGraph mode")
 
     def gradient(self):
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
@@ -561,11 +617,27 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                new_variable.to_string(True)
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            tensor = self._ivar.value().get_tensor()
+            if tensor._is_initialized():
+                return 'name %s, dtype: %s shape: %s %s' % (
+                    self.name, self.dtype, self.shape, str(tensor))
+            else:
+                return 'name %s, shape: %s, not inited' % (self.name,
+                                                           self.shape)
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -580,18 +652,6 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
-
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
 
     @property
     def stop_gradient(self):
@@ -653,12 +713,14 @@ class Variable(object):
     @property
     def lod_level(self):
         # TODO(minqiyang): Support lod_level in dygraph mode
+        if in_dygraph_mode():
+            raise Exception("Dygraph model DO NOT supprt lod")
         return self.desc.lod_level()
 
     @property
     def type(self):
         if in_dygraph_mode():
-            return self._ivar.dtype
+            return self._ivar.type
         else:
             return self.desc.type()
 
@@ -764,10 +826,8 @@ class Variable(object):
     def _cloneVar(self, copy=False):
         if not copy:
             return self.block.create_var(
-                name=unique_name.generate(".".join(self.name)),
-                dtype=self.dtype,
-                persistable=self.persistable,
-                stop_gradient=self.stop_gradient, )
+                name=unique_name.generate_with_ignorable_key(self.name),
+                dtype=self.dtype)
         else:
             return self
 
@@ -832,35 +892,158 @@ class Variable(object):
         Returns:
             Sliced variable
         """
-        new_var = None
-        if isinstance(item, tuple):
-            if len(item) > len(self.shape):
-                raise IndexError("Too many indexes")
-            fixedSize = True
-            for i in range(len(self.shape)):
-                if self.shape[i] == -1:
-                    fixedSize = False
-                    break
 
-            newitem = self._reconstructSliceinfo(item) or item
-            if fixedSize:
-                check, info = self._detectContinuesSlice(newitem)
-                if check:
-                    starts = info[0]
-                    ends = info[1]
-                    axes = [i for i in range(len(starts))]
-                    return self._sliceVar(axes, starts, ends)
-                else:
-                    new_var = self
-                    for index, o in enumerate(newitem):
-                        new_var = new_var._sliceAndConcatVar(o, index)
+        if not isinstance(item, tuple):
+            item = [item]
+
+        decrease_axis = []
+        slice_axis = []
+        slice_start = []
+        slice_end = []
+        reverse_axis = []
+
+        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+            self.block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [out]},
+                attrs={
+                    'shape': shape,
+                    'dtype': out.dtype,
+                    'value': float(value),
+                    'force_cpu': force_cpu or force_init_on_cpu()
+                },
+                stop_gradient=True)
+            out.stop_gradient = True
+            return out
+
+        for dim, slice_item in enumerate(item):
+            if isinstance(slice_item, slice):
+                start = slice_item.start
+                end = slice_item.stop
+                step = slice_item.step if slice_item.step else 1
+
+                assert (step == 1 or step == -1)
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+
+                if start is None and end is None:
+                    continue
+
+                if start is None:
+                    start = 0
+
+                if end is None:
+                    end = 10000000
+
+                slice_axis.append(dim)
+                slice_start.append(start)
+                slice_end.append(end)
             else:
-                new_var = self
-                for index, o in enumerate(newitem):
-                    new_var = new_var._sliceAndConcatVar(o, index)
+                decrease_axis.append(dim)
+                slice_axis.append(dim)
+                slice_start.append(slice_item)
+                if isinstance(slice_item, Variable):
+                    temp_1 = self.block.create_var(dtype='int32')
+                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
+                    temp_end = self.block.create_var(dtype='int32')
+                    self.block.append_op(
+                        type='elementwise_add',
+                        inputs={'X': slice_item,
+                                'Y': temp_1},
+                        outputs={'Out': temp_end},
+                        attrs={'axis': -1})
+                    slice_end.append(temp_end)
+                else:
+                    slice_end.append(slice_item + 1
+                                     if slice_item != -1 else 10000000)
+
+        def contain_var(one_list):
+            for ele in one_list:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        def get_new_list_tensor(old_list):
+            new_list_tensor = []
+            for dim in old_list:
+                if isinstance(dim, Variable):
+                    dim.stop_gradient = True
+                    new_list_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = self.block.create_var(dtype='int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_list_tensor.append(temp_out)
+            return new_list_tensor
+
+        inputs = {'Input': [self]}
+        attrs = {
+            'axes': slice_axis,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axis
+        }
+        infer_flags = list(1 for i in range(len(slice_axis)))
+
+        # starts
+        if not contain_var(slice_start):
+            attrs['starts'] = slice_start
         else:
-            new_var = self._sliceAndConcatVar(item, 0)
-        return new_var
+            inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+            for i, dim in enumerate(slice_start):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
+        # ends
+        if not contain_var(slice_end):
+            attrs['ends'] = slice_end
+        else:
+            inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+            for i, dim in enumerate(slice_end):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+        # infer_flags
+        attrs['infer_flags'] = infer_flags
+
+        out = self
+        if len(slice_axis) > 0:
+            # append slice_op here
+            slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice"),
+                dtype=self.dtype)
+
+            self.block.append_op(
+                type="slice",
+                inputs=inputs,
+                outputs={'Out': [slice_out_var]},
+                attrs=attrs)
+
+            out = slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
+
+        return out
 
 
 def get_all_op_protos():
@@ -956,7 +1139,8 @@ class Operator(object):
     Examples:
         .. code-block:: python
 
-            cur_program = Program()
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
@@ -966,7 +1150,9 @@ class Operator(object):
     OP_WITHOUT_KERNEL_SET = {
         'feed', 'fetch', 'recurrent', 'go', 'rnn_memory_helper_grad',
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
-        'ncclInit', 'select', 'checkpoint_notify', 'gen_nccl_id'
+        'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
+        'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
+        'c_sync_comm_stream'
     }
 
     def __init__(self,
@@ -980,9 +1166,7 @@ class Operator(object):
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None.")
-            self.iop = core.OpBase(type)
-            self.previous_ops = []
-
+            self._type = type
             self.attrs = attrs if attrs else {}
         else:
             self.block = block
@@ -1012,7 +1196,7 @@ class Operator(object):
                 return
             if type is None:
                 raise ValueError(
-                    "`type` to initilized an Operator can not be None.")
+                    "`type` to initialized an Operator can not be None.")
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
@@ -1035,7 +1219,6 @@ class Operator(object):
                     found = find_name(inputs, in_proto.name)
                     assert found or in_proto.dispensable, "Input {} not found".format(
                         in_proto.name)
-
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
@@ -1045,13 +1228,17 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for arg in in_args:
+                        for index, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            else:
+                            elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
+                            else:
+                                raise ValueError(
+                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
+                                )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1125,7 +1312,7 @@ class Operator(object):
     @property
     def type(self):
         if in_dygraph_mode():
-            return self.iop.type
+            return self._type
         else:
             return self.desc.type()
 
@@ -1673,12 +1860,18 @@ class Block(object):
             attrs = kwargs.get("attrs", {})
             if _dygraph_tracer_._train_mode == False:
                 # eval mode
-                attrs['is_test'] = True
+                if ('trainable_statistics' not in attrs
+                    ) or not attrs['trainable_statistics']:
+                    attrs['is_test'] = True
+                else:
+                    attrs['is_test'] = False
+
+            type = kwargs.get("type", None)
 
             op = Operator(
                 block=self,
                 desc=None,
-                type=kwargs.get("type", None),
+                type=type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs)
@@ -1687,9 +1880,11 @@ class Block(object):
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
             # currently, we only support stop_gradient in dygraph mode.
-            _dygraph_tracer().trace_op(op,
+
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc.append_op()
@@ -1750,17 +1945,15 @@ class Block(object):
 
     def _prepend_op(self, *args, **kwargs):
         if in_dygraph_mode():
+            type = kwargs.get("type", None)
+            attrs = kwargs.get("attrs", {})
             op = Operator(
-                self,
-                None,
-                type=kwargs.get("type", None),
-                inputs=None,
-                outputs=None,
-                attrs=kwargs.get("attrs", {}))
+                self, None, type=type, inputs=None, outputs=None, attrs=attrs)
 
-            _dygraph_tracer().trace_op(op,
+            _dygraph_tracer().trace_op(type,
                                        kwargs.get("inputs", {}),
-                                       kwargs.get("outputs", {}),
+                                       kwargs.get("outputs", {}), attrs
+                                       if attrs else {},
                                        kwargs.get("stop_gradient", False))
         else:
             op_desc = self.desc._prepend_op()
@@ -2650,6 +2843,8 @@ class IrGraph(object):
             if self.graph.has('__graphviz__marked_node__'):
                 self.graph.erase('__graphviz__marked_node__')
             self.graph.set('__graphviz__marked_node__', marked_nodes)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         viz_dot_path = os.path.join(save_path, name) + '.dot'
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
@@ -2707,8 +2902,17 @@ class Program(object):
     create c++ Program. A program is a self-contained programing
     language like container. It has at least one Block, when the
     control flow op like conditional_block, while_op is included,
-    it will contains nested block.
+    it will contain nested block.
     Please reference the framework.proto for details.
+
+    A set of Program usually contains startup program and main program.
+    A startup program is set to contain some initial work , and the main
+    program will contain the network structure and vars for train.
+
+    A set of Program can be used for test or train, in train program ,
+    Paddle will contain all content to build a train network,  in test
+    program Paddle will prune some content which is irrelevant to test, eg.
+    backward ops and vars.
 
     Notes: we have default_startup_program and default_main_program
     by default, a pair of them will shared the parameters.
@@ -2761,25 +2965,22 @@ class Program(object):
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
+        self._use_lamb = False
 
-        # @deprecated(the python memory optimize transpiler is deprecated)
-        # whether the program is optimized by memory_optimize_transpiler
-        self.__is_mem_optimized = False
+        self._nccl_comm_num = 1
+        self._use_hierarchical_allreduce = False
+        self._hierarchical_allreduce_inter_nranks = 0
 
         # if this program has been optimized by distributed optimizer
         # fleet_opt will be given a value
         self._fleet_opt = None
         self._program_config = None
 
-    @property
-    def _is_mem_optimized(self):
-        # if the program is optimized, operator input/outputs
-        # maybe same, which conflict with save_inference_model.
-        return self.__is_mem_optimized
+        # assigned if this program has been parsed by a pipeline optimizer
+        self._pipeline_opt = None
 
-    @_is_mem_optimized.setter
-    def _is_mem_optimized(self, target):
-        self.__is_mem_optimized = target
+        # appending gradients times
+        self._appending_grad_times = 0
 
     @property
     def _op_role(self):
@@ -2835,6 +3036,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
@@ -2868,6 +3070,7 @@ class Program(object):
 
         Examples:
 
+            >>> import paddle.fluid as fluid
             >>> p, g = backward(...)
             >>> with program.lr_schedule_guard():
             >>>     lr = lr * decay
@@ -2964,12 +3167,15 @@ class Program(object):
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing. We will not do any prune
-          on program here, So if you just want an forward program for testing, please use :code:`clone`
-          before using :code:`Opimizer.minimize`
+        * Set for_test to True when we want to clone the program for testing.
+          We will prune the backward and optimize part of the program when you
+          use :code:`clone` after :code:`Opimizer.minimize`, but we still
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
-        Notes: This API DOES NOT prune any operator. Use
-        :code:`clone(for_test=True)` before backward and optimization please. e.g.
+        Notes: 
+        1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
+        2. We recommend you to use :code:`clone(for_test=True)` before backward
+           and optimization. E.g.
 
         .. code-block:: python
 
@@ -2986,7 +3192,12 @@ class Program(object):
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and this will not affect your training or testing progress. In the following example we give you an simple method :code:`print_prog(program)` to print Program Descs inorder to make sure you have same print result after :code:`clone`:
+        Notes: The Program Descs' order maybe different after :code:`clone` and
+        this will not affect your training or testing progress. In the following
+        example we give you an simple method :code:`print_prog(program)` to
+        print Program Descs inorder to make sure you have same print result
+        after :code:`clone`:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3024,6 +3235,9 @@ class Program(object):
 
                     train_program = fluid.Program()
                     startup_program = fluid.Program()
+
+                    # startup_program is used to do some parameter init work,
+                    # and main program is used to hold the network
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             img = fluid.layers.data(name='image', shape=[784])
@@ -3035,6 +3249,15 @@ class Program(object):
                             avg_loss = fluid.layers.mean(loss)
                             test_program = train_program.clone(for_test=False)
                     print_prog(test_program)
+
+                    # Due to parameter sharing usage for train and test, so we need to use startup program of train
+                    # instead of using test startup program, while nothing is in test's startup program
+
+                    # In Paddle Fluid we will share weights by using the same Variable name. In train and test program
+                    # all parameters will have the same name and this can make train and test program sharing parameters,
+                    # that's why we need to use startup program of train. And for startup program of test, it has nothing,
+                    # since it is a new program.
+
                     with fluid.program_guard(train_program, startup_program):
                         with fluid.unique_name.guard():
                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -3084,7 +3307,17 @@ class Program(object):
         The two code snippets above will generate and print same programs.
         """
         if for_test:
-            p = self._inference_optimize(prune_read_op=False)
+            if self._appending_grad_times > 0:
+                forward_prog = Program()
+                forward_prog.desc = core.prune_backward(self.desc)
+                forward_prog.blocks = [
+                    Block(forward_prog, i)
+                    for i in six.moves.range(forward_prog.desc.num_blocks())
+                ]
+                forward_prog._sync_with_cpp()
+                p = forward_prog._inference_optimize(prune_read_op=False)
+            else:
+                p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -3096,6 +3329,7 @@ class Program(object):
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
+            p._appending_grad_times = self._appending_grad_times
 
             p._sync_with_cpp()
 
@@ -3104,7 +3338,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, targets):
+    def _prune(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3120,8 +3354,16 @@ class Program(object):
             Program:  A new, pruned program.
 
         """
+        if not isinstance(feeded_var_names, list):
+            feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
             targets = [targets]
+
+        for var in feeded_var_names:
+            if not isinstance(var, six.string_types):
+                raise ValueError("All feeded_var_names of prune() can only be "
+                                 "str.")
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -3148,7 +3390,7 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, targets_idx)
+        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
@@ -3520,6 +3762,8 @@ class Parameter(Variable):
 
         self.do_model_average = kwargs.get('do_model_average', None)
 
+        self.is_distributed = False
+
     def __str__(self):
         return self.to_string(True)
 
@@ -3641,7 +3885,8 @@ def default_main_program():
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
-            print(fluid.default_main_program())
+            print(fluid.default_main_program().num_blocks)
+            print(fluid.default_main_program().blocks[0].var('image'))
     """
     return _main_program_
 
@@ -3680,8 +3925,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
-    Change the global main program and startup program with `with` statement.
-    Layer functions in the Python `with` block will append operators and
+    Change the global main program and startup program with `"with"` statement.
+    Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
     Examples:
@@ -3709,9 +3954,9 @@ def program_guard(main_program, startup_program=None):
              data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
 
     Args:
-        main_program(Program): New main program inside `with` statement.
-        startup_program(Program): New startup program inside `with` statement.
-            None means do not change startup program.
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")

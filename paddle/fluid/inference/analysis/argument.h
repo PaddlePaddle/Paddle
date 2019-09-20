@@ -59,10 +59,22 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
-  using engine_opt_info_t = std::map<std::string, std::string>;
   using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
+  // If we set the model using config.SetModelBuffer,
+  // the model and parameter will occupy additional CPU resources.
+  // Use this interface to release these resources.
+  void PartiallyRelease() {
+    if (Has("model_program_path")) {
+      if (Has("model_from_memory") && model_from_memory()) {
+        model_program_path().clear();
+        model_program_path().shrink_to_fit();
+        model_params_path().clear();
+        model_params_path().shrink_to_fit();
+      }
+    }
+  }
 
 #define DECL_ARGUMENT_FIELD(field__, Field, type__)          \
  public:                                                     \
@@ -120,7 +132,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
-  DECL_ARGUMENT_FIELD(engine_opt_info, EngineOptInfo, engine_opt_info_t);
+  DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
+  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -139,6 +152,8 @@ struct Argument {
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
+  // The cache capacity of different input shapes for mkldnn.
+  DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
   // A set of op types to enable their quantized kernels
@@ -164,6 +179,7 @@ struct Argument {
                       AnalysisConfig::Precision);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine, TensorRtUseStaticEngine,
                       bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
 
   DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
                       anakin_max_shape_t);

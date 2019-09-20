@@ -11,66 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
+
+#include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 namespace paddle {
 namespace operators {
 
-class ConditionalOp : public framework::OperatorBase {
- public:
-  ConditionalOp(const std::string &type,
-                const framework::VariableNameMap &inputs,
-                const framework::VariableNameMap &outputs,
-                const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- protected:
-  std::vector<const framework::LoDTensor *> InputTensors(
-      const framework::Scope &scope, const std::string &in_name) const {
-    std::vector<const framework::LoDTensor *> retv;
-    auto xs = Inputs(in_name);
-    retv.resize(xs.size(), nullptr);
-    std::transform(
-        xs.begin(), xs.end(), retv.begin(),
-        [&scope](const std::string &var_name) -> const framework::LoDTensor * {
-          auto *var = scope.FindVar(var_name);
-          PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", var_name);
-          return &var->Get<framework::LoDTensor>();
-        });
-    return retv;
-  }
-
-  bool ScalarCondition(
-      const std::vector<const framework::LoDTensor *> &ips) const {
-    if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
-      PADDLE_THROW("should have one initialized input as condition");
-    }
-
-    PADDLE_ENFORCE(ips[0]->type() == framework::proto::VarType::BOOL &&
-                       ips[0]->numel() == 1,
-                   "condition input's data type should be bool, "
-                   "numel should be 1, actual numel is %d",
-                   ips[0]->numel());
-    bool res = false;
-    if (platform::is_gpu_place(ips[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
-      framework::LoDTensor cpu_tensor;
-      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
-      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
-      res = cpu_tensor.data<bool>()[0];
-#endif
-    } else {
-      res = ips[0]->data<bool>()[0];
-    }
-    return res;
-  }
-};
+const char ConditionalOp::kInputs[] = "Input";
+const char ConditionalOp::kOutputs[] = "Out";
+const char ConditionalOp::kCondition[] = "Cond";
+const char ConditionalOp::kScope[] = "Scope";
+const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 class ConditionalBlockOp : public ConditionalOp {
  public:
@@ -88,20 +39,20 @@ class ConditionalBlockOp : public ConditionalOp {
       // When is_scalar_condition is True, the conditional variable is a scalar,
       // whether need to execute the operators in sub-block depends on the
       // conditional variable (Cond).
-      auto xs = InputTensors(scope, "Cond");
+      auto xs = InputTensors(scope, ConditionalOp::kCondition);
       need_run = ScalarCondition(xs);
     } else {
       // When is_scalar_condition is False, the conditional variable maybe a
       // vector or tensor, whether need to execute the operators in sub-block
       // depends on the input variables (Input).
-      auto xs = InputTensors(scope, "Input");
+      auto xs = InputTensors(scope, ConditionalOp::kInputs);
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
     if (need_run) {
-      auto *scope_var = scope.FindVar(Output("Scope"));
+      auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
@@ -110,40 +61,11 @@ class ConditionalBlockOp : public ConditionalOp {
 
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+      auto &skip_vars =
+          Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
+      exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
+               skip_vars);
     }
-  }
-};
-
-class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Cond",
-             "The conditional variable of this operator. If Cond is empty, the "
-             "whole sub-block will not be executed.")
-        .AsDuplicable();
-    AddInput("Input", "The input variables of the sub-block.").AsDuplicable();
-    AddOutput("Out", "The output variables of the sub-block.").AsDuplicable();
-    AddOutput("Scope",
-              "(std::vector<Scope*>) The step scope of conditional block. To "
-              "unify the conditional block, rnn and while op, the type of "
-              "scope is std::vector<Scope*>");
-    AddAttr<framework::BlockDesc *>(
-        "sub_block", "The step block of conditional block operator");
-    AddAttr<bool>("is_scalar_condition",
-                  "The conditional variable (Cond) is used as scalar "
-                  "condition.")
-        .SetDefault(false);
-    AddComment(R"DOC(Conditional block operator
-
-If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,
-run the operators in sub-block if Cond is True.
-
-If `is_scalar_condition` is False, the conditional variable (Cond) is a vector or
-tensor, run the operators in sub-block if all of input variables are not empty.
-
-
-)DOC");
   }
 };
 
@@ -160,17 +82,17 @@ class ConditionalBlockGradOp : public ConditionalOp {
                const platform::Place &dev_place) const override {
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
-      auto xs = this->InputTensors(scope, "Cond");
+      auto xs = this->InputTensors(scope, ConditionalOp::kCondition);
       need_run = ScalarCondition(xs);
     } else {
-      auto xs = this->InputTensors(scope, "Input");
+      auto xs = this->InputTensors(scope, ConditionalOp::kInputs);
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
     if (need_run) {
-      auto *scope_var = scope.FindVar(Input("Scope"));
+      auto *scope_var = scope.FindVar(Input(ConditionalOp::kScope));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
@@ -178,10 +100,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
 
-      const auto &ins = Inputs("Input");
-      const auto &d_ins = Outputs(framework::GradVarName("Input"));
-      const auto &conds = Inputs("Cond");
-      const auto &d_conds = Outputs(framework::GradVarName("Cond"));
+      const auto &ins = Inputs(ConditionalOp::kInputs);
+      const auto &d_ins =
+          Outputs(framework::GradVarName(ConditionalOp::kInputs));
+      const auto &conds = Inputs(ConditionalOp::kCondition);
+      const auto &d_conds =
+          Outputs(framework::GradVarName(ConditionalOp::kCondition));
 
       std::vector<std::string> ins_conds_grads;
       ins_conds_grads.reserve(ins.size() + conds.size());
@@ -229,15 +153,17 @@ class ConditionalBlockGradOp : public ConditionalOp {
 class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("Cond"));
-    if (context->HasInputs("Input")) {
-      PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("Input")));
-      context->SetOutputsDim(framework::GradVarName("Input"),
-                             context->GetInputsDim("Input"));
+    PADDLE_ENFORCE(context->HasInputs(ConditionalOp::kCondition));
+    if (context->HasInputs(ConditionalOp::kInputs)) {
+      PADDLE_ENFORCE(
+          context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs)));
+      context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
+                             context->GetInputsDim(ConditionalOp::kInputs));
     }
-    if (context->HasOutputs(framework::GradVarName("Cond"))) {
-      context->SetOutputsDim(framework::GradVarName("Cond"),
-                             context->GetInputsDim("Cond"));
+    if (context->HasOutputs(
+            framework::GradVarName(ConditionalOp::kCondition))) {
+      context->SetOutputsDim(framework::GradVarName(ConditionalOp::kCondition),
+                             context->GetInputsDim(ConditionalOp::kCondition));
     }
   }
 };
@@ -250,15 +176,17 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto grad_op = new framework::OpDesc();
     grad_op->SetType("conditional_block_grad");
-    grad_op->SetInput("Cond", Input("Cond"));
-    grad_op->SetInput("Input", Input("Input"));
-    grad_op->SetInput("Out", Output("Out"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetOutput(framework::GradVarName("Cond"),
-                       InputGrad("Cond", false));
-    grad_op->SetOutput(framework::GradVarName("Input"),
-                       InputGrad("Input", false));
+    grad_op->SetInput(ConditionalOp::kCondition,
+                      Input(ConditionalOp::kCondition));
+    grad_op->SetInput(ConditionalOp::kInputs, Input(ConditionalOp::kInputs));
+    grad_op->SetInput(ConditionalOp::kOutputs, Output(ConditionalOp::kOutputs));
+    grad_op->SetInput(framework::GradVarName(ConditionalOp::kOutputs),
+                      OutputGrad(ConditionalOp::kOutputs));
+    grad_op->SetInput(ConditionalOp::kScope, Output(ConditionalOp::kScope));
+    grad_op->SetOutput(framework::GradVarName(ConditionalOp::kCondition),
+                       InputGrad(ConditionalOp::kCondition, false));
+    grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
+                       InputGrad(ConditionalOp::kInputs, false));
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
     return std::unique_ptr<framework::OpDesc>(grad_op);

@@ -44,7 +44,8 @@ struct ExecutorPrepareContext {
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
-  std::unordered_map<OperatorBase*, std::vector<std::string>> unused_vars_;
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
   bool force_disable_gc_{false};
 };
 
@@ -83,6 +84,21 @@ class Executor {
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
+  // This API is very slow.
+  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                          std::map<std::string, const LoDTensor*>* feed_targets,
+                          std::map<std::string, LoDTensor*>* fetch_targets,
+                          bool create_local_scope = true,
+                          bool create_vars = true,
+                          const std::string& feed_holder_name = "feed",
+                          const std::string& fetch_holder_name = "fetch");
+
+  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
+
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
@@ -100,15 +116,6 @@ class Executor {
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);
-
-  // This API is very slow.
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          std::map<std::string, const LoDTensor*>* feed_targets,
-                          std::map<std::string, LoDTensor*>* fetch_targets,
-                          bool create_local_scope = true,
-                          bool create_vars = true,
-                          const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch");
 
   void EnableMKLDNN(const ProgramDesc& program);
 

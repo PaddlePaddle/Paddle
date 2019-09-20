@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
+#include <limits>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -68,6 +69,51 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   IR_NODE_LINK_TO(input, quantize_op);
   IR_NODE_LINK_TO(quantize_op, quantize_out_node);
   IR_NODE_LINK_TO(quantize_out_node, op);
+
+  if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
+}
+
+void CPUQuantizePass::QuantizeInputs(Graph* g, Node* op, std::string input_name,
+                                     VarQuantScale* scales, bool are_unsigned,
+                                     std::string scale_attr_name) const {
+  auto inputs = op->inputs;
+  auto output = op->outputs[0];
+  PADDLE_ENFORCE_GE(inputs.size(), 1);
+  PADDLE_ENFORCE_EQ(op->outputs.size(), 1);
+
+  // create a quantize op desc prototype
+  OpDesc q_desc;
+  q_desc.SetType("quantize");
+
+  std::vector<Node*> quantize_out_nodes(inputs.size());
+  std::vector<std::string> quantize_out_node_names(inputs.size());
+
+  double scale_out = (*scales)[output->Name()].second.data<double>()[0];
+  unsigned max = are_unsigned ? U8_MAX : S8_MAX;
+  float scale = scale_out * max;
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    // Create quantize output variable
+    VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
+    quantize_out_nodes[i] = g->CreateVarNode(&quantize_out_desc);
+    quantize_out_node_names[i] = quantize_out_nodes[i]->Name();
+
+    q_desc.SetAttr("Scale", scale);
+    q_desc.SetInput("Input", std::vector<std::string>({inputs[i]->Name()}));
+    q_desc.SetOutput("Output",
+                     std::vector<std::string>({quantize_out_node_names[i]}));
+    q_desc.SetAttr("is_negative_input", !are_unsigned);
+    auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
+
+    // link quantize op
+    UnlinkNodes(inputs[i], op);
+    IR_NODE_LINK_TO(inputs[i], quantize_op);
+    IR_NODE_LINK_TO(quantize_op, quantize_out_nodes[i]);
+    IR_NODE_LINK_TO(quantize_out_nodes[i], op);
+  }
+
+  // update op's input
+  op->Op()->SetInput(input_name, quantize_out_node_names);
 
   if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
@@ -162,6 +208,14 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     DequantizeOutput(g, conv_op, conv_output, "Output", output_scale,
                      is_output_unsigned, "Scale_out");
 
+    // change threshold in bounded ReLu
+    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
+        "relu6") {
+      float scale_out = boost::get<float>(conv_op->Op()->GetAttr("Scale_out"));
+      float threshold = boost::get<float>(conv_op->Op()->GetAttr("fuse_alpha"));
+      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
+    }
+
     ++quantize_conv_count;
   };
 
@@ -216,6 +270,87 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
   PrettyLogDetail("---    quantized %d pool2d ops", quantize_pool_count);
 }
 
+void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Concat concat_pattern{pattern, name_scope_};
+  concat_pattern();
+
+  int quantize_concat_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize concat op";
+    GET_IR_NODE_FROM_SUBGRAPH(concat_op, concat_op, concat_pattern);
+    auto* concat_op_desc = concat_op->Op();
+
+    // skip if should not be quantized
+    if (!concat_op_desc->HasAttr("use_quantizer") ||
+        !boost::get<bool>(concat_op_desc->GetAttr("use_quantizer")))
+      return;
+
+    GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
+
+    // get scales calculated after warmup, they scale variables to MAX=1.0
+    auto scales = Get<VarQuantScale>("quant_var_scales");
+
+    // if all inputs were unsigned, then the output was set to unsigned
+    // during the scale calculation step
+    bool are_all_inputs_unsigned = scales[concat_out->Name()].first;
+    QuantizeInputs(g, concat_op, "X", &scales, are_all_inputs_unsigned);
+
+    auto output_scale = scales[concat_out->Name()].second.data<double>()[0];
+
+    DequantizeOutput(g, concat_op, concat_out, "Out", output_scale,
+                     are_all_inputs_unsigned);
+
+    ++quantize_concat_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_concat_count);
+
+  PrettyLogDetail("---    quantized %d concat ops", quantize_concat_count);
+}
+
+void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::PriorBox prior_box_pattern{pattern, name_scope_};
+  prior_box_pattern();
+
+  int quantize_prior_box_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize prior_box op";
+    GET_IR_NODE_FROM_SUBGRAPH(prior_box_op, prior_box_op, prior_box_pattern);
+    auto* prior_box_op_desc = prior_box_op->Op();
+
+    // skip if should not be quantized
+    if (!prior_box_op_desc->HasAttr("use_quantizer") ||
+        !boost::get<bool>(prior_box_op_desc->GetAttr("use_quantizer")))
+      return;
+
+    GET_IR_NODE_FROM_SUBGRAPH(prior_box_input, prior_box_input,
+                              prior_box_pattern);
+
+    // get scales calculated after warmup, they scale variables to MAX=1.0
+    auto scales = Get<VarQuantScale>("quant_var_scales");
+
+    auto input_scale = scales[prior_box_input->Name()].second.data<double>()[0];
+    bool is_input_unsigned = scales[prior_box_input->Name()].first;
+    QuantizeInput(g, prior_box_op, prior_box_input, "Input", input_scale,
+                  is_input_unsigned);
+
+    ++quantize_prior_box_count;
+  };
+
+  gpd(graph, handler);
+  AddStatis(quantize_prior_box_count);
+
+  PrettyLogDetail("---    quantized %d prior_box ops",
+                  quantize_prior_box_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE(graph);
@@ -226,6 +361,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConv(graph, false /* with_residual_data */);
   QuantizeConv(graph, true /* with_residual_data */);
   QuantizePool(graph);
+  QuantizeConcat(graph);
+  QuantizePriorBox(graph);
 }
 
 }  // namespace ir

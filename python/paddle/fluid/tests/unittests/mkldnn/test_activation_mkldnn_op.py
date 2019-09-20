@@ -18,13 +18,20 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs
+from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
 class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
         super(TestMKLDNNReluDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim2, self).setUp()
 
         self.attrs = {"use_mkldnn": True}
 
@@ -57,6 +64,20 @@ class TestMKLDNNReluDim4(TestRelu):
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim4, self).setUp()
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0.02 * x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}

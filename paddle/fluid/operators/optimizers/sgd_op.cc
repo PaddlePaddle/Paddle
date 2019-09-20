@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-
+#include <string>
 namespace paddle {
 namespace operators {
 
@@ -32,6 +32,11 @@ class SGDOp : public framework::OperatorWithKernel {
                    "Output(ParamOut) of SGDOp should not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
@@ -45,6 +50,17 @@ class SGDOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
     return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "LearningRate") {
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 

@@ -43,7 +43,7 @@ void RenameAndGetOutputs(
     std::set<std::string> *output_names,
     std::unordered_map<std::string, std::string> *output_name_map,
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
-    bool is_trt = true);
+    bool trt_and_not_int8 = false);
 
 }  // namespace analysis
 }  // namespace inference

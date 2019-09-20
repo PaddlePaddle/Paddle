@@ -60,23 +60,13 @@ correction. For more information, please refer to https://arxiv.org/abs/1904.009
 The updating of parameters follows:
 
 $$
-m_t^l &= \beta_1 m_{t - 1}^l + (1 - \beta_1)g_t^l \\
+m_t &= \beta_1 m_{t - 1}+ (1 - \beta_1)g_t \\
 
-v_t^l &= \beta_2 v_{t - 1}^l + (1 - \beta_2)g_t^l \odot g_t^l \\
+v_t &= \beta_2 v_{t - 1}  + (1 - \beta_2)g_t^2 \\
 
-\widehat{m}_t^l &= m_t^l/(1 - \beta_1^t) \\
+r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 
-\widehat{v}_t^l &= v_t^l/(1 - \beta_2^t) \\
-
-r_1 &= \left \| w_{t-1}^l \right \|_2 \\
-
-r_2 &= \left \|  \frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l \right \|_2 \\
-
-r &= r_1 / r_2 \\
-
-\eta^l &= r \times \eta \\
-
-w_t^l &= w_{t-1}^l -\eta ^l \times (\frac{\widehat{m}_t^l}{\sqrt{\widehat{v}_t^l+\epsilon}} + \lambda w_{t-1}^l)
+w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 $$
 
 where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 

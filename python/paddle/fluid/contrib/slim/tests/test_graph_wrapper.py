@@ -19,6 +19,8 @@ import six
 import numpy as np
 from paddle.fluid.contrib.slim.graph import GraphWrapper
 from paddle.fluid import core
+import os
+os.environ['CPU_NUM'] = str(4)
 
 
 def residual_block(num):
@@ -90,7 +92,9 @@ class TestGraphWrapper(unittest.TestCase):
         # activation inplace has been disabled in python side
         # which may produce more variable in program_desc
         # update 90 => 94
-        self.assertEquals(len(self.train_graph.vars()), 94)
+        # delete three useless RAW variables in Conv2D
+        # update 94 => 91
+        self.assertEquals(len(self.train_graph.vars()), 91)
 
     def test_numel_params(self):
         self.build_program()
@@ -135,9 +139,25 @@ class TestGraphWrapper(unittest.TestCase):
                 feed={'image': image,
                       'label': label})
 
+    def test_get_optimize_graph_without_loss(self):
+        self.build_program()
+        self.eval_graph.out_nodes = {}
+        place = fluid.CPUPlace()
+        if fluid.core.is_compiled_with_cuda():
+            place = fluid.CUDAPlace(0)
+        opt = fluid.optimizer.SGD(learning_rate=0.001)
+        train_graph = self.eval_graph.get_optimize_graph(
+            opt, place, self.scope, no_grad_var_names=['image'])
+        self.assertEquals(train_graph, None)
+
     def test_flops(self):
         self.build_program()
         self.assertEquals(self.train_graph.flops(), 354624)
+
+    def test_merge(self):
+        self.build_program()
+        self.train_graph.merge(self.eval_graph)
+        self.assertEquals(len(self.train_graph.ops()), 72)
 
 
 if __name__ == '__main__':

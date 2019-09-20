@@ -21,8 +21,8 @@ import six
 from six.moves import zip, range, xrange
 import multiprocessing
 
-from .framework import Variable, default_main_program
-
+from .framework import Variable, default_main_program, _current_expected_place
+from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
 
@@ -171,7 +171,7 @@ class DataFeeder(object):
         
         feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
         reader = feeder.decorate_reader(
-                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=False)
+                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=True)
 
     Args:
         feed_list(list): The Variables or Variables'name that will
@@ -278,8 +278,8 @@ class DataFeeder(object):
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
-                "The number of fields in data (%s) does not match " +
-                "len(feed_list) (%s)") % (len(each_sample), len(converter))
+                "The number of fields in data (%d) does not match " +
+                "len(feed_list) (%d)") % (len(each_sample), len(converter))
             for each_converter, each_slot in six.moves.zip(converter,
                                                            each_sample):
                 each_converter.feed(each_slot)
@@ -312,13 +312,15 @@ class DataFeeder(object):
                 
                 def reader(limit=10):
                     for i in range(limit):
-                        yield [random.random([784]).astype('float32'), random.randint(10)],
+                        yield [random.random([784]).astype('float32'), random.random([1]).astype('float32')],
                 
                 x = fluid.layers.data(name='x', shape=[1, 28, 28])
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                
+                fluid.layers.elementwise_add(x, y)
                 
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
+                place_num = 2 
                 places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -359,11 +361,9 @@ class DataFeeder(object):
         if num_places is not None:
             return int(num_places)
         elif isinstance(self.place, core.CUDAPlace):
-            return core.get_cuda_device_count()
+            return len(_cuda_ids())
         else:
-            cpu_num = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            return cpu_num
+            return _cpu_num()
 
     def decorate_reader(self,
                         reader,
@@ -395,8 +395,9 @@ class DataFeeder(object):
                 import numpy.random as random
                 import paddle
                 import paddle.fluid as fluid
+                import paddle.fluid.compiler as compiler
                 
-                def reader(limit=5):
+                def reader(limit=10):
                     for i in range(limit):
                         yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
                 
@@ -404,13 +405,18 @@ class DataFeeder(object):
                 data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
                 
+                hidden = fluid.layers.fc(input=data, size=10)
+                
                 feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=False)
+                reader = feeder.decorate_reader(reader, multi_devices=True)
                 
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
-                for data in reader():
-                    exe.run(feed=data)
+                compiled_prog = compiler.CompiledProgram(
+                         fluid.default_main_program()).with_data_parallel()
+                for i,data in enumerate(reader()):
+                    print('iteration : ', i + 1)
+                    ret = exe.run(compiled_prog, feed=data, fetch_list=[hidden])
         """
 
         def __reader_creator__():
@@ -432,3 +438,63 @@ class DataFeeder(object):
                         "not implemented")
 
         return __reader_creator__
+
+
+class NumpyToLoDTensorConverter(object):
+    def __init__(self, place):
+        self.place = place
+        self.data = []
+        self._reset()
+
+    def _reset(self):
+        self.data = []
+
+    def feed(self, data):
+        self.data.append(data)
+
+    def done(self):
+        arr = numpy.array(self.data)
+        t = core.LoDTensor()
+        t.set(arr, self.place)
+        self._reset()
+        return t
+
+
+class ListTensorProvider(object):
+    def __init__(self, generator, places):
+        self.generator = generator
+        self.converters = []
+        self.places = []
+        if places:
+            if not isinstance(places, (list, tuple)):
+                places = [places]
+            assert len(
+                places) == 1, "dygraph mode CAN NOT specify multiple places."
+            for place in places:
+                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
+                    self.places.append(place)
+                else:
+                    raise ValueError(
+                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
+                    )
+        if len(self.places) == 0:
+            self.places.append(_current_expected_place())
+
+    def _readData(self, iterable, places):
+        for place, each_sample in six.moves.zip(places, iterable):
+            for item in each_sample:
+                if len(self.converters) < len(item):
+                    for i in item:
+                        self.converters.append(NumpyToLoDTensorConverter(place))
+                for each_converter, each_slot in six.moves.zip(self.converters,
+                                                               item):
+                    each_converter.feed(each_slot)
+            yield [c.done() for c in self.converters]
+
+    def __call__(self):
+        item = []
+        for batch in self.generator():
+            item.append(batch)
+            if len(item) == len(self.places):
+                yield list(self._readData(item, self.places))
+                item = []

@@ -134,6 +134,8 @@ inline void MergeVars(const std::string& var_name,
       auto in = EigenVector<float>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
+    result.device(*cpu_ctx.eigen_device()) =
+        result / static_cast<float>(vars.size());
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
@@ -144,10 +146,10 @@ inline void MergeVars(const std::string& var_name,
     for (auto& var : vars) {
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
-    math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
-        merge_add;
     auto dev_ctx = paddle::platform::CPUDeviceContext();
-    merge_add(dev_ctx, inputs, out_slr, false);
+    math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
+        merge_average;
+    merge_average(dev_ctx, inputs, out_slr);
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims();
   } else {
@@ -165,6 +167,9 @@ class Communicator {
   ~Communicator();
 
   void Start();
+  void Stop();
+
+  bool IsRunning() { return running_; }
 
   // send grad
   void Send(const std::string& var_name, const framework::Scope& scope);
@@ -172,6 +177,7 @@ class Communicator {
  private:
   // recv all parameter
   void RecvAll();
+  void RecvNonIndependent();
   void SendThread();
   void RecvThread();
 
@@ -181,8 +187,8 @@ class Communicator {
       send_varname_to_queue_;
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> send_thread_;
-  std::unique_ptr<std::thread> recv_thread_;
+  std::unique_ptr<std::thread> send_thread_{nullptr};
+  std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
@@ -193,25 +199,21 @@ class Communicator {
  public:
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope) {
-    InitImpl(send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
-  }
-
-  static Communicator* GetInstance();
-
- private:
-  // Init is called by GetInstance.
-  static void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                       const RpcCtxMap& recv_varname_to_ctx,
-                       Scope* recv_scope) {
     if (communicator_ == nullptr) {
       communicator_.reset(new Communicator(send_varname_to_ctx,
                                            recv_varname_to_ctx, recv_scope));
     }
   }
 
+  static void Init(const paddle::framework::ProgramDesc& program,
+                   Scope* param_scope);
+
+  static Communicator* GetInstance();
+
+  static std::shared_ptr<Communicator> GetInstantcePtr();
+
  private:
-  static std::once_flag init_flag_;
-  static std::unique_ptr<Communicator> communicator_;
+  static std::shared_ptr<Communicator> communicator_;
 };
 
 }  // namespace distributed

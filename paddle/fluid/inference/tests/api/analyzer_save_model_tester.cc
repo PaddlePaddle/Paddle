@@ -34,14 +34,22 @@ TEST(Analyzer, save_model) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
-  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
+  //  ensure the path being unique
+  std::string optimModelPath = FLAGS_infer_model + "/only_for_save_model_test";
   mkdir(optimModelPath.c_str(), 0777);
   SaveOptimModel(&cfg, optimModelPath);
 
-  cfg.pass_builder()->ClearPasses();
-  int origin_num_ops = GetNumOps(cfg);
-  cfg.SetModel(optimModelPath + "/model", optimModelPath + "/params");
-  int fused_num_ops = GetNumOps(cfg);
+  // Each config can only be applied to one predictor.
+  AnalysisConfig cfg2;
+  SetConfig(&cfg2);
+  cfg2.pass_builder()->ClearPasses();
+  cfg2.SetModel(optimModelPath + "/model", optimModelPath + "/params");
+  int origin_num_ops = GetNumOps(cfg2);
+
+  AnalysisConfig cfg3;
+  SetConfig(&cfg3);
+  cfg3.SetModel(optimModelPath + "/model", optimModelPath + "/params");
+  int fused_num_ops = GetNumOps(cfg3);
   CHECK_LE(fused_num_ops, origin_num_ops);
 }
 

@@ -19,7 +19,22 @@ import unittest
 from paddle.fluid.tests.unittests.test_gaussian_random_op import TestGaussianRandomOp
 
 
-class TestMKLDNN(TestGaussianRandomOp):
+class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+
+class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
+    def setUp(self):
+        TestGaussianRandomOp.setUp(self)
+        self.attrs = {
+            "shape": [1000, 784],
+            "mean": .0,
+            "std": 1.,
+            "seed": 0,
+            "use_mkldnn": self.use_mkldnn
+        }
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 

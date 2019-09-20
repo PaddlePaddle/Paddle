@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace paddle {

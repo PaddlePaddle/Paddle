@@ -52,8 +52,6 @@
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
-DECLARE_bool(profile);
-
 namespace paddle {
 
 using inference::Singleton;
@@ -79,12 +77,14 @@ bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+  if (config_.with_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else {
+    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
+                 "generated.";
   }
 
   // no matter with or without MKLDNN
@@ -135,7 +135,6 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-
     // If not cloned, the parameters should be loaded.
     // If config_.ir_optim() is True, parameters is loaded in
     // OptimizeInferenceProgram(), but other persistable variables
@@ -145,17 +144,10 @@ bool AnalysisPredictor::PrepareProgram(
     // So in both case, create persistable variables at first.
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
-    // Optimize the program, and load parameters and modify them in the
-    // scope_.
-    // This will change the scope_ address.
-    if (config_.ir_optim()) {
-      status_ir_optim_enabled_ = true;
-      OptimizeInferenceProgram();
-    } else {
-      // Load parameters
-      LOG(INFO) << "load parameters ";
-      LoadParameters();
-    }
+    // if enable_ir_optim_ is false,
+    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // not be executed.
+    OptimizeInferenceProgram();
   } else {
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
@@ -185,11 +177,39 @@ bool AnalysisPredictor::PrepareExecutor() {
   return true;
 }
 
-void AnalysisPredictor::SetMkldnnThreadID(int tid) {
+void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
-  platform::set_cur_thread_id(tid);
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+  VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
+          << platform::get_cur_mkldnn_session_id();
+  // In cache clearing mode.
+  if (config_.mkldnn_cache_capacity_ > 0) {
+    VLOG(2) << "In mkldnn cache clear mode.";
+    platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_CacheClearing);
+    platform::set_cur_input_shape_cache_capacity(
+        config_.mkldnn_cache_capacity_);
+    // Set current_input_shape for caching dynamic shape.
+    std::stringstream ss;
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      for (size_t j = 0; j < inputs[i].shape.size(); ++j) {
+        ss << inputs[i].shape[j] << "-";
+      }
+    }
+    VLOG(2) << "Set input shape=" << ss.str();
+    platform::set_cur_input_shape_str(ss.str());
+  }
+#endif
+}
+
+void AnalysisPredictor::MkldnnPostReset() {
+#ifdef PADDLE_WITH_MKLDNN
+  // In cache clearing mode.
+  if (config_.mkldnn_cache_capacity_ > 0) {
+    paddle::platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_Default);
+    platform::set_cur_input_shape_cache_capacity(0);
+    platform::set_cur_input_shape_str("");
+  }
 #endif
 }
 
@@ -197,11 +217,15 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+#endif
   VLOG(3) << "Predictor::predict";
   inference::Timer timer;
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -229,8 +253,17 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Here is a bugfix, collect all the container variables, and reset then to a
   // bool; the next time, the operator will call MutableData and construct a new
   // container again, so that the container will be empty for each batch.
-  tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  if (sub_scope_) {
+    tensor_array_batch_cleaner_.CollectNoTensorVars(sub_scope_);
+  }
   tensor_array_batch_cleaner_.ResetNoTensorVars();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
+#ifdef PADDLE_WITH_MKLDNN
+  if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
   return true;
 }
 
@@ -355,15 +388,16 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
+  argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
   argument_.SetStaticMemoryOptimForceUpdate(
       config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
-  argument_.SetEngineOptInfo(config_.engine_opt_info_);
   // Analyze inference_program
   argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
+  argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -385,6 +419,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
   if (config_.anakin_engine_enabled()) {
@@ -425,8 +460,6 @@ void AnalysisPredictor::PrepareArgument() {
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  status_program_optimized_ = true;
-
   PrepareArgument();
   Analyzer().Run(&argument_);
 
@@ -435,13 +468,19 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
       new framework::ProgramDesc(argument_.ir_analyzed_program()));
-  LOG(INFO) << "== optimize end ==";
+  // The config and argument take a lot of storage,
+  // when the predictor settings are complete, we release these stores.
+  argument_.PartiallyRelease();
+  config_.PartiallyRelease();
+  LOG(INFO) << "======= optimize end =======";
 }
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
+  PADDLE_ENFORCE(config.is_valid(),
+                 "Note: Each config can only be used for one predictor.");
   if (config.use_gpu()) {
     // 1. GPU memory
     PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
@@ -459,7 +498,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     }
 
     if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
+      flags.push_back("dummy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
@@ -471,6 +510,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
+  // Each config can only be used for one predictor.
+  config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
 
   if (!predictor_p->Init(nullptr)) {
@@ -535,6 +576,18 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
   return input_names;
 }
 
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetInputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> input_shapes;
+  std::vector<std::string> names = GetInputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    input_shapes[name] = var->GetShape();
+  }
+  return input_shapes;
+}
+
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
   for (auto &item : idx2fetches_) {
@@ -582,6 +635,10 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
+
+  // recover the cpu_math_library_num_threads to 1, in order to avoid thread
+  // conflict when integrating it into deployment service.
+  paddle::platform::SetNumThreads(1);
   return true;
 }
 
@@ -747,7 +804,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     SaveTrtCalibToDisk();
   }
 #endif
-  if (FLAGS_profile) {
+  if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
@@ -914,6 +971,8 @@ USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
+USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(swish);
 #endif
 
 #if PADDLE_WITH_ANAKIN

@@ -87,7 +87,7 @@ TEST(Pool2dOpConverter, avg_ceil_test) {
   test_pool2d<::anakin::saber::NV>(ctx, true, false, true, "avg");
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(Pool2dOpConverter, normal_cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
@@ -110,14 +110,10 @@ TEST(Pool2dOpConverter, avg_ceil_test_cpu) {
   platform::CPUDeviceContext ctx(cpu_place);
   test_pool2d<::anakin::saber::X86>(ctx, false, false, true, "avg");
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(pool2d);
-USE_CPU_ANAKIN_CONVERTER(pool2d);
-
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(pool2d);
-#endif

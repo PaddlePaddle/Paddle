@@ -26,9 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
 namespace paddle {
 namespace framework {
 
@@ -53,32 +50,8 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  if (!platform::is_cpu_place(t.place())) {
-    LoDTensor cpu_tensor;
-    cpu_tensor.set_lod(t.lod());
-    framework::TensorCopy(t, platform::CPUPlace(), &cpu_tensor);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(t.place());
-    dev_ctx.Wait();
-
-    os << cpu_tensor;
-    return os;
-  }
-
-  os << "dim: " << t.dims() << "\n";
-  os << "lod: " << t.lod() << "\n";
-
-  // only print first ten elements
-  int64_t size = t.numel() < 10 ? t.numel() : 10;
-  for (int64_t i = 0; i < size; ++i) {
-    if (t.type() == proto::VarType::FP32) {
-      os << t.data<float>()[i] << " ";
-    } else if (t.type() == proto::VarType::INT64) {
-      os << t.data<int64_t>()[i] << " ";
-    } else {
-      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
-    }
-  }
+  os << "\tlod: " << t.lod() << "\n";
+  os << static_cast<Tensor>(t) << "\n";
 
   return os;
 }
@@ -299,36 +272,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {
-  std::stringstream buffer;
-  size_t sz = tensor.size();
-  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
-  for (auto &each : tensor) {
-    SerializeToStream(buffer, each, dev_ctx);
-  }
-  writer->Write(buffer.str());
-}
-
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  if (!scanner->HasNext()) {
-    return false;
-  }
-  std::istringstream sin(scanner->Next());
-  uint32_t sz;
-  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-  auto &result = *result_ptr;
-  result.resize(sz);
-  for (uint32_t i = 0; i < sz; ++i) {
-    DeserializeFromStream(sin, &result[i], dev_ctx);
-  }
-
-  return true;
-}
-
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -339,6 +282,21 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
 
   std::vector<LoDTensor> results;
   results.reserve(result_size);
+
+  // if result_size(batch_size) is 0, just return #places.size() copys of empty
+  // tensors.
+  if (result_size == 0) {
+    for (size_t i = 0; i < places.size(); ++i) {
+      LoDTensor dst;
+      dst.Resize(dims());
+      dst.mutable_data(places[i], type());
+      if (!lod().empty()) {
+        dst.set_lod(lod());
+      }
+      results.emplace_back(dst);
+    }
+    return results;
+  }
 
   int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
@@ -383,17 +341,28 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  auto new_type = lod_tensors[0]->type();
+  proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout = lod_tensors[0]->layout();
+  for (auto *t : lod_tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = t->type();
+      new_layout = t->layout();
+      break;
+    }
+  }
+
   LoD new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type, t->type());
-    PADDLE_ENFORCE_EQ(new_layout, t->layout());
-
-    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
-                      framework::product(t->dims()) / t->dims()[0]);
-    new_dim[0] += t->dims()[0];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(new_type, t->type());
+      PADDLE_ENFORCE_EQ(new_layout, t->layout());
+      PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                        framework::product(t->dims()) / t->dims()[0]);
+      new_dim[0] += t->dims()[0];
+    }
 
     auto &lod = t->lod();
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
@@ -413,6 +382,9 @@ void LoDTensor::MergeLoDTensor(
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
+    if (end == begin) {
+      continue;
+    }
     auto dst = Slice(begin, end);
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;

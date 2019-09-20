@@ -42,9 +42,7 @@ bool FetchBarrierOpHandle::IsMultiDeviceTransfer() {
 void FetchBarrierOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  auto run_func = [this]() {
-    op_->Run(*run_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  };
+  auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
 
   if (is_lock_and_record_event_free_) {
     run_func();

@@ -42,9 +42,12 @@ typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";
 
+constexpr char kNRanks[] = "nranks";
+
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
+constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
@@ -57,15 +60,22 @@ constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 typedef std::string FusedOptType;
 constexpr char kFusedOptType[] = "fused_opt_type";
 
-typedef std::string FusedGrads;
+typedef std::vector<std::string> FusedGrads;
 constexpr char kFusedGrads[] = "fused_gradients";
 
 typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
-constexpr char kParamsAndGrads[] = "params_grads";
+constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
+constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
+
+typedef std::vector<ProgramDesc> ProgramDescs;
+constexpr char kProgramDescs[] = "program_descs";
+
+typedef std::unordered_set<std::string> PinnedVars;
+constexpr char kPinnedVars[] = "pinned_vars";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
-    GroupGradsAndParams;
-constexpr char kGroupGradsAndParams[] = "group_grads_params";
+    GroupParamsAndGrads;
+constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
 
 }  // namespace details
 }  // namespace framework

@@ -80,13 +80,6 @@ typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
 
 using PlaceList = std::vector<Place>;
 
-void set_place(const Place &);
-const Place &get_place();
-
-const CUDAPlace default_gpu();
-const CPUPlace default_cpu();
-const CUDAPinnedPlace default_cuda_pinned();
-
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);

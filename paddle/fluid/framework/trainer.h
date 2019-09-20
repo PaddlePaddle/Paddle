@@ -74,8 +74,9 @@ class MultiTrainer : public TrainerBase {
  protected:
   int thread_num_;
   std::vector<std::thread> threads_;
-  std::vector<std::shared_ptr<DataFeed>> readers_;
+  std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
+  std::vector<std::string> need_merge_var_names_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -86,10 +87,77 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  virtual void FinalizeDumpEnv();
+  virtual void InitDumpEnv();
+  virtual void DumpWork();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::thread dump_thread_;
+  std::shared_ptr<FILE> fp_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
+
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  std::vector<std::string> dump_fields_;
+  int mpi_rank_;
 };
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+class PipelineTrainer : public TrainerBase {
+ public:
+  PipelineTrainer() {}
+  ~PipelineTrainer() override {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override {}
+  void Run() override;
+  void Finalize() override;
+
+ protected:
+  int section_num_;
+  int pipeline_num_;
+  int scope_queue_size_;
+  int sync_steps_;
+
+  SectionWorkerParameter pipeline_config_;
+
+  // The in/output var names for each section
+  std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
+  std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
+
+  // Counter for the running thread
+  std::vector<std::vector<int*>> worker_count_;
+  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
+
+  // worker: [section_id][pipeline_id][thread_id]
+  std::vector<std::vector<
+      std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
+      workers_;
+  std::vector<std::thread> section_threads_;
+
+  // We use scope to maintain context info, and scopes
+  // will be deliverd between different sections.
+  std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
+  std::vector<Scope*> pipeline_scopes_;
+
+  // The parameters that should be syncronized between different cards using
+  // nccl all-reduce
+  std::shared_ptr<std::vector<std::string>> param_need_sync_;
+  std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
+  std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
+
+  std::vector<DataFeed*> readers_;
+
+  void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
+                           const ProgramDesc& main_program);
+  void CopyParameters(const Scope& root_scope, int pipeline_id);
+  void construct_sync_functor();
+};
+#endif
 }  // namespace framework
 }  // namespace paddle

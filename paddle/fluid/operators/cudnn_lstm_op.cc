@@ -45,7 +45,11 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
+    auto out_dims = in_dims;
+    auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
+    out_dims[2] = hidden_size;
+
+    ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
     ctx->SetOutputDim("last_c", ctx->GetInputDim("InitC"));
   }

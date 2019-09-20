@@ -176,5 +176,55 @@ class TestCRFDecodingOp4(TestCRFDecodingOp2):
         self.lod = [[0, 2, 3, 0]]
 
 
+class TestCRFDecodingOp5(OpTest):
+    """
+    Compare the dynamic program with random generated parameters and inputs
+    with grouth truth not being given.
+    """
+
+    def seq_pad(self, data, length):
+        max_len = np.max(length)
+        shape = [len(length), max_len] + list(data.shape[1:])
+        padded = np.zeros(shape).astype(data.dtype)
+        offset = 0
+        for i, l in enumerate(length):
+            padded[i, 0:l] = data[offset:offset + l]
+            offset += l
+        return np.squeeze(padded)
+
+    def set_test_data(self):
+        SEQ_NUM = 3
+        TAG_NUM = 17
+        MAX_SEQ_LEN = 10
+
+        lod = [[]]
+        total_len = 0
+        for i in range(SEQ_NUM):
+            lod[-1].append(random.randint(1, MAX_SEQ_LEN))
+            total_len += lod[-1][-1]
+        emission = np.random.uniform(-1, 1,
+                                     [total_len, TAG_NUM]).astype("float64")
+        transition = np.random.uniform(-0.5, 0.5,
+                                       [TAG_NUM + 2, TAG_NUM]).astype("float64")
+
+        self.inputs = {
+            "Emission": self.seq_pad(emission, lod[0]),
+            "Transition": transition,
+            "Length": np.array(lod).astype('int64'),
+        }
+
+        decoder = CRFDecoding(emission, transition, lod[0])
+        decoded_path = decoder.decode()
+
+        self.outputs = {"ViterbiPath": self.seq_pad(decoded_path, lod[0])}
+
+    def setUp(self):
+        self.op_type = "crf_decoding"
+        self.set_test_data()
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == "__main__":
     unittest.main()

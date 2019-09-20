@@ -59,29 +59,23 @@ TEST(elementwise_op, native_mul_gpu) {
   test_elementwise_op<::anakin::saber::NV>("elementwise_mul", ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(elementwise_op, native_add_cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_elementwise_op<::anakin::saber::X86>("elementwise_add", ctx, false);
 }
-
 TEST(elementwise_op, native_mul_cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_elementwise_op<::anakin::saber::X86>("elementwise_mul", ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(elementwise_add);
 USE_OP(elementwise_mul);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(elementwise_add);
 USE_ANAKIN_CONVERTER(elementwise_mul);
-#endif
-
-USE_CPU_ANAKIN_CONVERTER(elementwise_add);
-USE_CPU_ANAKIN_CONVERTER(elementwise_mul);

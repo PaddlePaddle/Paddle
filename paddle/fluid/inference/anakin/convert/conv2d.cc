@@ -41,7 +41,7 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
   auto *filter_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(filter_v);
   auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
-  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+  auto weight_shape = framework::vectorize<int>(weight_tensor->dims());
 
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 
@@ -70,7 +70,8 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
   if (enable_int8) {
     const float int8_range = 127.;
     float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
-    float weight_scale = boost::get<float>(op_desc.GetAttr("weight_scale"));
+    auto weight_scale =
+        boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
     PBlock<TargetT> *weight1 =
         new PBlock<TargetT>(anakin_shape, ::anakin::AK_INT8);
     this->engine_->RegistBlock(weight1);
@@ -91,8 +92,8 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
     weight1->d_tensor().copy_from(weight1->h_tensor());
     this->engine_->AddOpAttr(op_name, "weight_1", *weight1);
     this->engine_->Graph()->SetOpPrec(op_name, ::anakin::AK_INT8);
-    this->engine_->Graph()->SetWeightsScale(op_name,
-                                            {weight_scale / int8_range}, false);
+    this->engine_->Graph()->SetWeightsScale(
+        op_name, {weight_scale[0] / int8_range}, false);
     this->engine_->AddTensorScale(input_name, in_scale / int8_range);
   } else {
     auto *weight1 = pblock_from_tensor<TargetT, PrecisionT>(

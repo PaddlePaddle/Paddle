@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -248,6 +249,8 @@ class ExecutionContext {
     return op_.Attr<T>(name);
   }
 
+  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
+
   bool HasInput(const std::string& name) const;
 
   bool HasOutput(const std::string& name) const;
@@ -339,7 +342,7 @@ class ExecutionContext {
 
 #ifdef PADDLE_WITH_CUDA
   const inline platform::CUDADeviceContext& cuda_device_context() const {
-    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true);
     return *reinterpret_cast<const platform::CUDADeviceContext*>(
         &device_context_);
   }
@@ -358,17 +361,12 @@ class ExecutionContext {
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = platform::DeviceTemporaryAllocator::Instance()
-                                  .Get<DevContext>(dev_ctx)
-                                  .Allocate(product(dim) * sizeof(T));
+    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -380,12 +378,12 @@ class ExecutionContext {
   }
 
   template <typename T>
-  T& GetKernelConfig(int idx) const {
+  T& GetKernelConfig(size_t idx) const {
     PADDLE_ENFORCE(
         kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %d",
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
         op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>(kernel_configs_->at(idx));
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
  private:
@@ -465,7 +463,8 @@ class OperatorWithKernel : public OperatorBase {
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
 
- protected:
+  // change this to public so that in dygraph mode we can call it to check if we
+  // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
@@ -502,9 +501,10 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
-  mutable bool enable_cache_runtime_context = false;
-  mutable bool all_kernels_must_compute_runtime_shape = false;
+  mutable bool enable_cache_runtime_context_ = false;
+  mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
+  mutable bool enable_cache_transfer_scope_ = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

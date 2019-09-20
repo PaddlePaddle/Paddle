@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include <deque>
 #include <memory>
-#include <queue>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -27,9 +29,11 @@ namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
+      local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
       fetch_ctxs_(places),
@@ -49,6 +53,9 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 
 FeedFetchList FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>
       op_deps = atomic_op_deps_.get();
   PrepareAtomicOpDeps();
@@ -63,7 +70,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
                  &fetch_ops, &ready_fetch_ops);
-
+  event.reset(nullptr);
   if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
     // execution in the first iteration, and in subsequent iterations,
@@ -118,7 +125,9 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
     std::vector<OpHandleBase *> *ready_fetch_ops) {
-  for (auto &fetch_var_name : fetch_tensors) {
+  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
+                                                   fetch_tensors.end());
+  for (auto &fetch_var_name : fetch_tensor_set) {
     for (auto &var_map : graph_->Get<GraphVars>(kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
@@ -139,7 +148,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_);
+    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                 &local_exec_scopes_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -181,13 +191,13 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
-    std::queue<OpHandleBase *> op_queue;
-    op_queue.push(op);
+    std::deque<OpHandleBase *> op_queue;
+    op_queue.push_front(op);
 
     size_t complete = 0;
     while (!op_queue.empty()) {
-      OpHandleBase *op_to_run = op_queue.front();
-      op_queue.pop();
+      OpHandleBase *op_to_run = op_queue.back();
+      op_queue.pop_back();
 
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
@@ -203,7 +213,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           // NOTE(zjl): op with highest priority should run
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
-            op_queue.push(pending_op);
+            op_queue.push_back(pending_op);
           } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
@@ -214,7 +224,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
         }
       }
 
-      if (op_to_run != nullptr) op_queue.push(op_to_run);
+      if (op_to_run != nullptr) {
+        op_queue.push_front(op_to_run);
+      }
     }
     --remaining_;
     complete_q->Push(complete);

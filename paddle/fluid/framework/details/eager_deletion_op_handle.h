@@ -26,15 +26,18 @@ namespace paddle {
 namespace framework {
 class Scope;
 
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+
 namespace details {
 
 class EagerDeletionOpHandle : public OpHandleBase {
  public:
-  EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
+  EagerDeletionOpHandle(ir::Node *node, Scope *scope,
                         const platform::Place &place,
-                        const std::unordered_set<std::string> &var_names,
-                        GarbageCollector *gc,
-                        ir::AtomicReferenceCountMap *ref_cnts);
+                        const std::unordered_set<ir::MemOptVarInfo *> &vars,
+                        GarbageCollector *gc);
 
   ~EagerDeletionOpHandle();
 
@@ -50,13 +53,20 @@ class EagerDeletionOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  void InitCUDA() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
+
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
-  const Scope *scope_;
-  std::vector<std::string> var_names_;
-  GarbageCollector *gc_;                   // not own
-  ir::AtomicReferenceCountMap *ref_cnts_;  // not own
+  void CallOnce();
+
+  Scope *scope_;
+  platform::Place place_;
+  std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
+  GarbageCollector *gc_;                        // not own
+  std::vector<Variable *> vars_;
 #ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceContext *dev_ctx_{nullptr};
   cudaEvent_t event_{nullptr};

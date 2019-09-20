@@ -22,6 +22,7 @@ extern "C" {
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -65,6 +66,9 @@ class Scope {
   Variable* Var(std::string* name = nullptr);
 
   void EraseVars(const std::vector<std::string>& var_names);
+
+  // Erase all variables except the given `vars`
+  void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
@@ -137,9 +141,12 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
   mutable RWLock kids_lock_;
   mutable RWLock vars_lock_;
+#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

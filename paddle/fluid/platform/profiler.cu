@@ -35,13 +35,13 @@ void DummyKernelAndEvent() {
     ForEachDevice([](int d) {
       platform::SetDeviceId(d);
       cudaStream_t stream;
-      PADDLE_ENFORCE(cudaStreamCreate(&stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
       Mark("_cuda_startup_");
       int *ptr;
-      PADDLE_ENFORCE(cudaMalloc(&ptr, sizeof(int)));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&ptr, sizeof(int)));
       DummyKernel<<<1, 1, 0, stream>>>(ptr);
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
-      PADDLE_ENFORCE(cudaFree(ptr));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaFree(ptr));
     });
   }
 }

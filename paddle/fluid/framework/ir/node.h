@@ -49,7 +49,7 @@ class Node {
  public:
   virtual ~Node() {
     if (!wrapper_.empty()) {
-      VLOG(4) << "ir::Node deleting a wrapper node " << Name();
+      VLOG(10) << "ir::Node deleting a wrapper node " << Name();
       wrapper_deleter_();
     }
   }
@@ -66,12 +66,12 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE(IsVar());
+    PADDLE_ENFORCE_EQ(IsVar(), true);
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE(IsOp());
+    PADDLE_ENFORCE_EQ(IsOp(), true);
     return op_desc_.get();
   }
 
@@ -89,12 +89,17 @@ class Node {
   // Return a reference to the `wrapper`.
   template <typename T>
   T& Wrapper() {
-    return *boost::any_cast<T*>(wrapper_);
+    try {
+      return *boost::any_cast<T*>(wrapper_);
+    } catch (boost::bad_any_cast&) {
+      PADDLE_THROW("Invalid wrapper type error, expected %s, actual %s",
+                   typeid(T).name(), wrapper_type_.name());
+    }
   }
 
   // Test if the Node is wrapped by type T.
   template <typename T>
-  bool IsWrappedBy() {
+  bool IsWrappedBy() const {
     return std::type_index(typeid(T)) == wrapper_type_;
   }
 

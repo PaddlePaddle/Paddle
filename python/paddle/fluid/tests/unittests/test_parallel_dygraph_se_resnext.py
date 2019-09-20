@@ -25,10 +25,8 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
         self._dygraph = True
 
     def test_se_resnext(self):
-        # TODO(Yancey1989): BN and Dropout is related with batchsize, so the delta is the 1,
-        # try to remove the BN and Dropout in the network and using delta = 1e-5
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_se_resnext.py", delta=1)
+            self.check_with_place("parallel_dygraph_se_resnext.py", delta=0.01)
 
 
 if __name__ == "__main__":

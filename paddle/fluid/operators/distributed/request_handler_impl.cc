@@ -104,7 +104,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
       if (enable_dc_asgd_) {
-        // NOTE: the format is determined by distributed_transpiler.py
+        // NOTE: the format is determined by distribute_transpiler.py
         std::string param_bak_name =
             string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
         VLOG(3) << "getting " << param_bak_name << " trainer_id " << trainer_id;
@@ -116,42 +116,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
-          !table_name.empty()) {
-        std::vector<int64_t> updated_rows;
-        AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(
-            varname, trainer_id, &updated_rows);
-        if (VLOG_IS_ON(3)) {
-          std::ostringstream sstream;
-          sstream << "[";
-          for (auto& row_id : updated_rows) {
-            sstream << row_id << ", ";
-          }
-          sstream << "]";
-          VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
-                  << sstream.str();
-        }
-        auto& origin_tensor =
-            scope_->FindVar(varname)->Get<framework::LoDTensor>();
-        auto* origin_tensor_data = origin_tensor.data<float>();
-        auto& dims = origin_tensor.dims();
-        *outvar = scope->Var();
-        auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
-        out_slr->set_rows(updated_rows);
-        out_slr->set_height(dims[0]);
-        auto out_dims = framework::make_ddim(
-            {static_cast<int64_t>(updated_rows.size()), dims[1]});
-        auto* data = out_slr->mutable_value()->mutable_data<float>(
-            out_dims, origin_tensor.place());
-        auto width = dims[1];
-        for (auto i = 0; i < updated_rows.size(); ++i) {
-          PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
-          memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
-                 sizeof(float) * width);
-        }
-      } else {
-        *outvar = scope_->FindVar(varname);
-      }
+      *outvar = scope_->FindVar(varname);
     }
   }
   return true;

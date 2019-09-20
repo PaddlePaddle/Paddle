@@ -49,19 +49,16 @@ TEST(sum_op, gpu) {
   test_sum_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(sum_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
   test_sum_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(sum);
-USE_CPU_ANAKIN_CONVERTER(sum);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(sum);
-#endif

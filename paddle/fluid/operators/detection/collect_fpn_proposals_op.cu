@@ -127,8 +127,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         nullptr, temp_storage_bytes, concat_scores.data<T>(), keys_out, idx_in,
         idx_out, total_roi_num);
     // Allocate temporary storage
-    auto d_temp_storage = memory::Alloc(place, temp_storage_bytes,
-                                        memory::Allocator::kScratchpad);
+    auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
     // sort score to get corresponding index
@@ -160,8 +159,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
         batch_idx_in, index_out_t.data<int>(), real_post_num);
     // Allocate temporary storage
-    d_temp_storage = memory::Alloc(place, temp_storage_bytes,
-                                   memory::Allocator::kScratchpad);
+    d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
     // sort batch_id to get corresponding index

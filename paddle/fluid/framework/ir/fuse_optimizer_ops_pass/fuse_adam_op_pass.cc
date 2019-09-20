@@ -32,19 +32,63 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     return {"Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
   }
 
-  void FuseOptimizerOps(
+  ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
-    FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
-    FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
-                 adam_ops, graph);
-    FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
-                 adam_ops, graph);
+    auto fused_adam_node =
+        FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
+    auto fused_scale1 =
+        FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
+                     adam_ops, graph);
+    auto fused_scale2 =
+        FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
+                     adam_ops, graph);
+    RemoveCycleDepsBetweenOpNodes(graph, fused_scale1, fused_scale2);
+    return fused_adam_node;
   }
 
-  void FuseAdamOps(
+  void RemoveCycleDepsBetweenOpNodes(Graph *graph, const Node *fused_scale1,
+                                     const Node *fused_scale2) const {
+    std::unordered_set<Node *> not_need_ctrl_var_nodes;
+    std::unordered_set<Node *> fused_scale2_in_nodes;
+    fused_scale2_in_nodes.insert(fused_scale2->inputs.begin(),
+                                 fused_scale2->inputs.end());
+    for (auto &out_node : fused_scale1->outputs) {
+      if (fused_scale2_in_nodes.count(out_node)) {
+        PADDLE_ENFORCE(out_node->IsCtrlVar(),
+                       "The dependency var only should be ctrl var.");
+        not_need_ctrl_var_nodes.insert(out_node);
+      }
+    }
+
+    for (auto &node : not_need_ctrl_var_nodes) {
+      // remove this node from the input op node.
+      PADDLE_ENFORCE(!node->inputs.empty(),
+                     "The input should not be empty here.");
+      auto op_node = node->inputs.front();
+      PADDLE_ENFORCE(op_node->IsOp());
+      op_node->outputs.erase(
+          remove_if(
+              op_node->outputs.begin(), op_node->outputs.end(),
+              [&node](const Node *op_out_node) { return op_out_node == node; }),
+          op_node->outputs.end());
+
+      // remove this node from the output op nodes.
+      for (auto &out_op_node : node->outputs) {
+        out_op_node->inputs.erase(
+            remove_if(
+                out_op_node->inputs.begin(), out_op_node->inputs.end(),
+                [&node](const Node *op_in_node) { return op_in_node == node; }),
+            out_op_node->inputs.end());
+      }
+
+      graph->RemoveNode(node);
+    }
+  }
+
+  ir::Node *FuseAdamOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
@@ -80,7 +124,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert adam to graph ";
+    VLOG(6) << "Insert adam to graph ";
     OpDesc adam_desc(adam_ops[0]->Op()->Block());
     adam_desc.SetType("adam");
     adam_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
@@ -102,16 +146,13 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     adam_desc.SetAttr("min_row_size_to_use_multithread",
                       min_row_size_to_use_multithread);
     adam_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
-
-    auto adam_node = graph->CreateOpNode(&adam_desc);
-
-    InserInputAndOutputForOptOps(adam_ops, adam_node);
+    return graph->CreateOpNode(&adam_desc);
   }
 
-  void FuseScaleOps(const std::vector<std::string> &beta_name,
-                    const std::string &fused_var_name,
-                    const std::vector<ir::Node *> &adam_ops,
-                    ir::Graph *graph) const {
+  ir::Node *FuseScaleOps(const std::vector<std::string> &beta_name,
+                         const std::string &fused_var_name,
+                         const std::vector<ir::Node *> &adam_ops,
+                         ir::Graph *graph) const {
     PADDLE_ENFORCE_EQ(beta_name.size(), adam_ops.size());
     const std::string scale_op_name = "scale";
 
@@ -139,7 +180,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       scale_ops.emplace_back(*scale_op_iter);
     }
     PADDLE_ENFORCE_EQ(scale_ops.size(), beta_name.size());
-
+    VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role = boost::get<int>(
@@ -164,7 +205,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert fused scale to graph.";
+    VLOG(6) << "Insert fused scale to graph.";
     OpDesc scale_desc(scale_ops[0]->Op()->Block());
     scale_desc.SetType("scale");
     scale_desc.SetInput("X", {fused_var_name});
@@ -175,35 +216,16 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     scale_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
     auto scale_node = graph->CreateOpNode(&scale_desc);
 
-    for (auto scale_op : scale_ops) {
-      // set inputs
-      scale_node->inputs.insert(scale_node->inputs.begin(),
-                                scale_op->inputs.begin(),
-                                scale_op->inputs.end());
-      for (auto &input : scale_op->inputs) {
-        std::replace(input->outputs.begin(), input->outputs.end(), scale_op,
-                     scale_node);
-      }
-      // set outputs
-      scale_node->outputs.insert(scale_node->outputs.begin(),
-                                 scale_op->outputs.begin(),
-                                 scale_op->outputs.end());
-      for (auto &output : scale_op->outputs) {
-        std::replace(output->inputs.begin(), output->inputs.end(), scale_op,
-                     scale_node);
-      }
-    }
-
+    InsertInputAndOutputForFusedOpNode(scale_ops, graph, scale_node);
     // Delete scale_ops
     for (auto &scale_op : scale_ops) {
       graph->RemoveNode(scale_op);
     }
+    return scale_node;
   }
 };
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_adam_op_pass, paddle::framework::ir::FuseAdamOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_adam_op_pass, paddle::framework::ir::FuseAdamOpPass);

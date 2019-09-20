@@ -30,11 +30,14 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ParallelSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
   ~ParallelSSAGraphExecutor() final = default;
 
   const ir::Graph &Graph() const override { return *graphs_[0]; }
+
+  std::vector<ir::Graph *> Graphs();
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
 

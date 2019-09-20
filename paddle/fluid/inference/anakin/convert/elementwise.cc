@@ -60,7 +60,7 @@ void ElementwiseMulOpConverter<TargetT, PrecisionT>::operator()(
   auto op_name = op_desc.Type() + ":" + op_desc.Output("Out").front();
 
   this->engine_->AddOp(op_name, "Eltwise", {x_name, y_name}, {out_name});
-  std::string elementwise_type = "Prod";
+  std::string elementwise_type = "Mul";
   this->engine_->template AddOpAttr<std::string>(op_name, "type",
                                                  elementwise_type);
   std::vector<float> coeff = {1.0, 1.0};

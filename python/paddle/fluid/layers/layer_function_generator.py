@@ -92,7 +92,7 @@ def _generate_doc_string_(op_proto, additional_args_lines=None):
     # attr use_mkldnn and is_test also should not be visible to users.
     skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
-
+    skip_attrs.add("use_cudnn")
     for each_attr in op_proto.attrs:
         if each_attr.name in skip_attrs:
             continue
@@ -253,6 +253,7 @@ def generate_activation_fn(op_type):
 Examples:
     .. code-block:: python
 
+        import paddle.fluid as fluid
         data = fluid.layers.data(name="input", shape=[32, 784])
         result = fluid.layers.%s(data)
 """ % op_type

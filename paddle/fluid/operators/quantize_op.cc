@@ -43,5 +43,4 @@ void QuantOpMaker::Make() {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker);

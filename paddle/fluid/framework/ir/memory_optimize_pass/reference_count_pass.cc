@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -295,21 +296,30 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
 }
 
 void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
-  auto &ref_cnts = Get<std::vector<ReferenceCountMap>>(kGlobalReferenceCount);
+  auto &var_infos = Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList);
   auto &last_live_ops_of_vars =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
-  PADDLE_ENFORCE(last_live_ops_of_vars.empty() && ref_cnts.empty(),
+  PADDLE_ENFORCE(last_live_ops_of_vars.empty() && var_infos.empty(),
                  "Last Live Ops and Reference Counts of vars should be "
                  "initialized at here.");
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);
 
   last_live_ops_of_vars.resize(vars.size());
-  ref_cnts.resize(vars.size());
+  var_infos.resize(vars.size());
 
   ShrinkDepsOpFunctor shrink_func(
       ir::FilterByNodeWrapper<details::OpHandleBase>(*graph));
+
+  details::PinnedVars *pinned_var_set = nullptr;
+  if (graph->Has(details::kPinnedVars)) {
+    pinned_var_set = &graph->Get<details::PinnedVars>(details::kPinnedVars);
+  }
+  auto is_pinned_var = [&pinned_var_set](const VarDesc &var_desc) {
+    return var_desc.Persistable() ||
+           (pinned_var_set && pinned_var_set->count(var_desc.Name()));
+  };
 
   VLOG(1) << "Place number: " << vars.size();
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -317,7 +327,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       // Whether this variable can be reused or deleted? If not, we do not
       // compute reference counts and dependencies.
       VarDesc *var_desc = TryGetLatestVarDesc(name_var_pair.second);
-      if (var_desc == nullptr || var_desc->Persistable()) {
+      if (var_desc == nullptr || is_pinned_var(*var_desc)) {
         continue;
       }
 
@@ -336,6 +346,10 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
 
       for (auto iter = var_handles.rbegin(); iter != var_handles.rend();
            ++iter) {
+        if ((*iter)->Node()->IsCtrlVar()) {
+          break;
+        }
+
         VLOG(10) << "Try to find last living ops of " << var_name << " "
                  << (iter - var_handles.rbegin()) << " time";
         LastLiveOpSearchStatus status = LastLiveOpSearchStatus::kFailure;
@@ -345,6 +359,8 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         // Seldomly, some vars may have no pending or preceding computation ops
         // Just break;
         if (status == LastLiveOpSearchStatus::kFailure) {
+          VLOG(1) << "Cannot find last live ops of variable " << var_name
+                  << " in scope " << (*iter)->scope_idx();
           break;
         }
 
@@ -359,8 +375,11 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
                        var_name);
 
         VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
-        ref_cnts[i].emplace(var_name, result.size());
-        last_live_ops_of_vars[i].emplace(var_name, std::move(result));
+        var_infos[i][var_name].reset(
+            new MemOptVarInfo(var_name, result.size()));
+        auto &last_live_ops_of_var = last_live_ops_of_vars[i][var_name];
+        last_live_ops_of_var.set_var(*iter);
+        *(last_live_ops_of_var.mutable_ops()) = std::move(result);
         break;
       }
 
@@ -375,5 +394,5 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(reference_count_pass, paddle::framework::ir::ReferenceCountPass)
-    .RequirePassAttr(paddle::framework::ir::kGlobalReferenceCount)
+    .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)
     .RequirePassAttr(paddle::framework::ir::kLastLiveOpsOfVars);

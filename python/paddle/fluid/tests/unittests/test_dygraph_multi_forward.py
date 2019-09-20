@@ -51,7 +51,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
         self._conv2d = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,

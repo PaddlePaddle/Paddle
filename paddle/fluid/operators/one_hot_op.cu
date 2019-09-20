@@ -24,7 +24,7 @@ template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data, OutT* p_out_data,
                                  const int64_t numel, const int depth) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < numel) {
+  if (idx < numel && p_in_data[idx] >= 0 && p_in_data[idx] < depth) {
     *(p_out_data + (idx * depth) + p_in_data[idx]) = 1.0;
   }
 }
@@ -62,8 +62,25 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int depth = context.Attr<int>("depth");
 
+    int depth = -1;
+    if (context.HasInput("depth_tensor")) {
+      auto* depth_tensor = context.Input<framework::Tensor>("depth_tensor");
+      if (platform::is_gpu_place(depth_tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*depth_tensor, platform::CPUPlace(), &temp);
+        depth = *temp.data<int32_t>();
+      } else {
+        depth = *depth_tensor->data<int32_t>();
+      }
+
+      auto in_dims = in->dims();
+      framework::DDim out_dims(in_dims);
+      out_dims[out_dims.size() - 1] = depth;
+      out->Resize(out_dims);
+    } else {
+      depth = context.Attr<int>("depth");
+    }
     framework::VisitDataType(
         static_cast<framework::proto::VarType::Type>(
             context.Attr<int>("dtype")),

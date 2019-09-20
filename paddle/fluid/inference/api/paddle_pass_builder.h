@@ -72,9 +72,9 @@ class PaddlePassBuilder {
 
  protected:
   std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass", "ir_analysis_pass",
-       "ir_params_sync_among_devices_pass",
-       "adjust_cudnn_workspace_size_pass"}};
+      {"ir_graph_build_pass", "ir_graph_clean_pass", "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass", "adjust_cudnn_workspace_size_pass",
+       "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
 };
 
@@ -85,10 +85,18 @@ class PassStrategy : public PaddlePassBuilder {
   explicit PassStrategy(const std::vector<std::string> &passes)
       : PaddlePassBuilder(passes) {}
 
+  /** Enable the use of cuDNN kernel
+   */
+  virtual void EnableCUDNN() {}
+
   /** The MKLDNN control exists in both CPU and GPU mode, because there can be
    * still some CPU kernels running in CPU mode.
    */
   virtual void EnableMKLDNN() {}
+
+  /** Enable NGRAPH optimization
+   */
+  virtual void EnableNgraph() {}
 
   /** Enable MKLDNN quantize optimization
    */
@@ -99,6 +107,7 @@ class PassStrategy : public PaddlePassBuilder {
   virtual ~PassStrategy() = default;
 
  protected:
+  bool use_ngraph_{false};
   bool use_gpu_{false};
   bool use_mkldnn_{false};
 };
@@ -112,16 +121,20 @@ class CpuPassStrategy : public PassStrategy {
   explicit CpuPassStrategy(const CpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = other.use_gpu_;
+    use_ngraph_ = other.use_ngraph_;
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
   }
 
   virtual ~CpuPassStrategy() = default;
 
+  void EnableCUDNN() override;
+  void EnableNgraph() override;
   void EnableMKLDNN() override;
   void EnableMkldnnQuantizer() override;
 
  protected:
+  bool use_ngraph_{false};
   bool use_mkldnn_quantizer_{false};
 };
 
@@ -134,14 +147,21 @@ class GpuPassStrategy : public PassStrategy {
   explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
+    use_cudnn_ = other.use_cudnn_;
   }
 
+  void EnableCUDNN() override;
+  void EnableNgraph() override;
   void EnableMKLDNN() override;
   void EnableMkldnnQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
+
+ protected:
+  bool use_cudnn_{false};
 };
 
+extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kAnakinSubgraphPasses;
 
 }  // namespace paddle

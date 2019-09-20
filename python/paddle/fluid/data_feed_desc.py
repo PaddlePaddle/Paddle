@@ -31,6 +31,7 @@ class DataFeedDesc(object):
 
     .. code-block:: python
 
+      import paddle.fluid as fluid
       f = open("data.proto", "w")
       print >> f, 'name: "MultiSlotDataFeed"'
       print >> f, 'batch_size: 2'
@@ -61,6 +62,7 @@ class DataFeedDesc(object):
 
     .. code-block:: python
 
+      import paddle.fluid as fluid
       data_feed = fluid.DataFeedDesc('data.proto')
       data_feed.set_batch_size(128)
       data_feed.set_dense_slots('wd')  # The slot named 'wd' will be dense
@@ -95,6 +97,7 @@ class DataFeedDesc(object):
         Example:
             .. code-block:: python
 
+              import paddle.fluid as fluid
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -131,6 +134,7 @@ class DataFeedDesc(object):
         Example:
             .. code-block:: python
 
+              import paddle.fluid as fluid
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -175,6 +179,7 @@ class DataFeedDesc(object):
         Example:
             .. code-block:: python
 
+              import paddle.fluid as fluid
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'
@@ -217,6 +222,7 @@ class DataFeedDesc(object):
         Example:
             .. code-block:: python
 
+              import paddle.fluid as fluid
               f = open("data.proto", "w")
               print >> f, 'name: "MultiSlotDataFeed"'
               print >> f, 'batch_size: 2'

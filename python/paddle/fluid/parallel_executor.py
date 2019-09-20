@@ -125,12 +125,6 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  scope=None):
-        sys.stderr.write(
-            'ParallelExecutor is deprecated. '
-            'Please use CompiledProgram and Executor. CompiledProgram '
-            'is a central place for optimization and Executor is the '
-            'unified executor. Example can be found in compiler.py.\n')
-
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
@@ -169,6 +163,7 @@ class ParallelExecutor(object):
             assert isinstance(
                 share_vars_from, ParallelExecutor
             ), "The share_vars_from should be ParallelExecutor."
+
         self._compiled_program.with_data_parallel(
             loss_name=loss_name,
             build_strategy=build_strategy,
@@ -178,7 +173,6 @@ class ParallelExecutor(object):
 
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
-        self._compiled_program._compile(place=self._place, scope=self._scope)
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
@@ -186,7 +180,7 @@ class ParallelExecutor(object):
 
         The feed parameter can be a dict or a list. If feed is a dict, the
         feed data will be split into multiple devices. If feed is a list, we
-        assume the data has been splitted into multiple devices, the each
+        assume the data has been split into multiple devices, the each
         element in the list will be copied to each device directly.
 
         Examples:
@@ -218,7 +212,6 @@ class ParallelExecutor(object):
                   loss = fluid.layers.mean(hidden)
                   fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-              startup_program.random_seed=1
               exe.run(startup_program)
 
               train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
@@ -245,7 +238,7 @@ class ParallelExecutor(object):
         Args:
             fetch_list(list): The fetched variable names
             feed(list|dict|None): The feed variables. If the feed is a dict,
-                tensors in that dict will be splitted into each devices. If
+                tensors in that dict will be split into each devices. If
                 the feed is a list, each element of the list will be copied
                 to each device. Default None.
             feed_dict: Alias for feed parameter, for backward compatibility.
@@ -330,6 +323,7 @@ class ParallelExecutor(object):
                   loss = fluid.layers.mean(hidden)
 
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              exe = fluid.Executor(place)
               exe.run(startup_program)
 
               parallel_exe = fluid.ParallelExecutor(use_cuda=use_cuda,

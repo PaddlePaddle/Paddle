@@ -94,4 +94,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>);
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
+                                        plat::float16>);

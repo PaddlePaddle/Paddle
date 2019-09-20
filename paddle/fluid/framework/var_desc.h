@@ -67,6 +67,8 @@ class VarDesc {
 
   proto::VarDesc *Proto() { return &desc_; }
 
+  const proto::VarDesc *Proto() const { return &desc_; }
+
   std::string Name() const { return desc_.name(); }
 
   void SetName(std::string name) { desc_.set_name(name); }
@@ -116,5 +118,7 @@ class VarDesc {
 
   proto::VarDesc desc_;
 };
+
+bool operator==(const VarDesc &left, const VarDesc &right);
 }  // namespace framework
 }  // namespace paddle

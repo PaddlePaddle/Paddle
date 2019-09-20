@@ -51,6 +51,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
+                           const std::vector<Scope *> &local_exec_scopes,
                            const std::vector<platform::Place> &places,
                            ir::Graph *graph);
 
@@ -71,6 +72,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   // be destroyed first.
   ir::Graph *graph_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
+
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   ExceptionHolder exception_holder_;

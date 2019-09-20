@@ -15,7 +15,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
   set(INFER_IR_PASSES ${INFER_IR_PASSES} tensorrt_subgraph_pass CACHE INTERNAL "")
 endif()
 
-if (ANAKIN_FOUND) 
+if (ANAKIN_SUBGRAPH) 
   cc_library(anakin_subgraph_pass SRCS anakin_subgraph_pass.cc DEPS subgraph_detector anakin_op_teller)
 
   set(analysis_deps ${analysis_deps}
