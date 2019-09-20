@@ -27,9 +27,9 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp2(TestSoftmaxMKLDNNOp):
-    def get_x_shape(self):
-        return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
@@ -37,17 +37,17 @@ class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp4(TestSoftmaxOp3):
+class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp5(TestSoftmaxOp3):
+class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp6(TestSoftmaxOp3):
+class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
 

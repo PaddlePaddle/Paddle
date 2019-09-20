@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <iostream>
+#include <numeric>
 #include "mkldnn.hpp"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
@@ -48,7 +49,7 @@ class SoftmaxMKLDNNHandler
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
-                                            axis /*dim: C*/);
+                                            axis);
   }
 
   SoftmaxMKLDNNHandler(const std::vector<int>& dims,
@@ -66,9 +67,9 @@ class SoftmaxMKLDNNHandler
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            data_softmax_md, axis /*dim: C*/);
+                                            data_softmax_md, axis);
     this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
-                                             axis /* dim: C*/);
+                                             axis);
   }
 };
 
@@ -85,19 +86,14 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
         input->dims(), output->dims(),
         "The shape of softmax's input and output must be identical.");
 
-    // flatten input and output to 2-D matrixs
     auto dims = input->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-    // auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
 
-    auto src_tz = paddle::framework::vectorize<int>(dims);
-    auto dst_tz = src_tz;
-    // Same memory descriptor to be used for input and output
-    // memory::dims softmax_tz = {src_tz[0], src_tz[1]};
+    auto softmax_tz = paddle::framework::vectorize<int>(dims);
 
-    SoftmaxMKLDNNHandler<T> handler(src_tz, input->format(), axis, dev_ctx,
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, input->format(), axis, dev_ctx,
                                     ctx.GetPlace(), ctx.op().Output("Out"));
-    // Currently only NC data format is supported
+
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     auto softmax_dst_memory_p = handler.AcquireDstMemory(output);
     auto softmax_p = handler.AcquireForwardPrimitive(*softmax_src_memory_p,
@@ -106,18 +102,14 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     std::vector<primitive> pipeline{*softmax_p};
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
     const bool is_test = ctx.Attr<bool>("is_test");
     if (!is_test) {
-      T threshold = exp(-64);
-      int size = 1;
-      for (int i = 0; i < src_tz.size(); ++i) {
-        size *= src_tz[i];
-      }
-      for (int i = 0; i < size; ++i) {
-        output_data[i] =
-            output_data[i] < threshold ? threshold : output_data[i];
-      }
+      T* output_data = output->mutable_data<T>(ctx.GetPlace());
+      int size = std::accumulate(begin(softmax_tz), end(softmax_tz), 1,
+                                 std::multiplies<int>());
+      std::for_each(output_data, &output_data[size], [](T& val) {
+        val = std::max(val, static_cast<T>(exp(-64)));
+      });
     }
 
     output->set_layout(framework::DataLayout::kMKLDNN);
@@ -145,26 +137,17 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 
     auto dims = dout->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
-    // auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
 
-    std::vector<int> dst_tz = paddle::framework::vectorize<int>(dims);
-    // std::vector<int> src_tz(dst_tz);
+    std::vector<int> softmax_tz = paddle::framework::vectorize<int>(dims);
 
-    // Same memory descriptor to be used for input and output
-    // memory::dims softmax_tz = {src_tz[0], src_tz[1]};
-
-    // TODO(jczaja): Add layouts support when there is a need to do so
-    // Two dimensional softmax does support NC format
-    // Normalization is made after innermost dimension eg. C out of NC
-    SoftmaxMKLDNNHandler<T> handler(dst_tz, output->format(), dout->format(),
-                                    axis, dev_ctx, ctx.GetPlace(),
-                                    ctx.op().Input("Out"));
+    SoftmaxMKLDNNHandler<T> handler(softmax_tz, output->format(),
+                                    dout->format(), axis, dev_ctx,
+                                    ctx.GetPlace(), ctx.op().Input("Out"));
 
     auto dst_memory_p = handler.AcquireDstMemory(output);
     auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
     auto diff_src_memory_p = handler.AcquireDiffSrcMemory(dx);
 
-    // Get primitve from device context
     auto softmax_bwd_p = handler.AcquireBackwardPrimitive(
         *dst_memory_p, *diff_dst_memory_p, *diff_src_memory_p);
 

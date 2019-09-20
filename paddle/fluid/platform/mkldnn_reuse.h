@@ -78,8 +78,8 @@ class MKLDNNHandlerT {
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
-    auto md = fwd_pd_->src_primitive_desc();
-    return this->AcquireMemoryFromPrimitive(md, to_void_cast<T>(input_data),
+    return this->AcquireMemoryFromPrimitive(fwd_pd_->src_primitive_desc(),
+                                            to_void_cast<T>(input_data),
                                             "@src_mem_p");
   }
 
