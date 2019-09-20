@@ -24,7 +24,9 @@ namespace ir {
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph);
 
-  DetectFusionGroup(graph, 0);
+  int num_elementwise_groups = DetectFusionGroup(graph, 0);
+  LOG(INFO) << "Detect " << num_elementwise_groups
+            << " elementwise fusion groups.";
 }
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
@@ -50,6 +52,8 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
         subgraph = detector.GetSubgraph();
       }
     }
+
+    subgraphs.push_back(subgraph);
   }
   return subgraphs.size();
 }

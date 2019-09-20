@@ -23,7 +23,8 @@ static std::unordered_set<std::string> binary_op_types = {
     "elementwise_add", "elementwise_sub", "elementwise_mul",
     "elementwise_div", "elementwise_min", "elementwise_max"};
 
-static std::unordered_set<std::string> unary_op_types = {"relu", "sigmoid"};
+static std::unordered_set<std::string> unary_op_types = {"relu", "sigmoid",
+                                                         "tanh"};
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
                           Node* n) {
