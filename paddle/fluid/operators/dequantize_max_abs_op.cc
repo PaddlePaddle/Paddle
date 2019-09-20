@@ -24,7 +24,6 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
                   float max_range, framework::Tensor* out) {
-    VLOG(3) << "dequantize_max_abs cpu compute";
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -47,7 +46,6 @@ class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(3) << "dequantize_max_abs infer shape";
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       "Input(X) of DequantizeMaxAbsOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
