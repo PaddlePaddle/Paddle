@@ -30,14 +30,14 @@ class TestMKLDNNReluDim2(TestRelu):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
@@ -48,14 +48,14 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNTanhDim2(TestTanh):
@@ -66,14 +66,14 @@ class TestMKLDNNTanhDim2(TestTanh):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNSqrtDim2(TestSqrt):
@@ -84,14 +84,14 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNAbsDim2(TestAbs):
@@ -101,14 +101,14 @@ class TestMKLDNNAbsDim2(TestAbs):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNReluDim4(TestRelu):
@@ -126,14 +126,14 @@ class TestMKLDNNReluDim4(TestRelu):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
@@ -151,14 +151,14 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNTanhDim4(TestTanh):
@@ -173,14 +173,14 @@ class TestMKLDNNTanhDim4(TestTanh):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNSqrtDim4(TestSqrt):
@@ -195,14 +195,14 @@ class TestMKLDNNSqrtDim4(TestSqrt):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 class TestMKLDNNAbsDim4(TestAbs):
@@ -218,14 +218,14 @@ class TestMKLDNNAbsDim4(TestAbs):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph == False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph == False)
+            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
 # Check if primitives already exist in backward
