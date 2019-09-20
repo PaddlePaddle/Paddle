@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 
 
 def trilinear_interp_np(input,
@@ -422,6 +423,167 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
         self.scale = 0.2
         self.align_corners = False
         self.align_mode = 0
+
+
+class TestTrilinearInterpOp_attr_tensor(OpTest):
+    def setUp(self):
+        self.out_size = None
+        self.actual_shape = None
+        self.init_test_case()
+        self.op_type = "trilinear_interp"
+        self.shape_by_1Dtensor = False
+        self.scale_by_1Dtensor = False
+        self.attrs = {
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode
+        }
+
+        input_np = np.random.random(self.input_shape).astype("float32")
+        self.inputs = {'X': input_np}
+
+        if self.scale_by_1Dtensor:
+            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
+        elif self.scale > 0:
+            out_d = int(self.input_shape[2] * self.scale)
+            out_h = int(self.input_shape[3] * self.scale)
+            out_w = int(self.input_shape[4] * self.scale)
+            self.attrs['scale'] = self.scale
+        else:
+            out_d = self.out_d
+            out_h = self.out_h
+            out_w = self.out_w
+
+        if self.shape_by_1Dtensor:
+            self.inputs['OutSize'] = self.out_size
+        elif self.out_size is not None:
+            size_tensor = []
+            for index, ele in enumerate(self.out_size):
+                size_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+            self.inputs['SizeTensor'] = size_tensor
+
+        self.attrs['out_d'] = self.out_d
+        self.attrs['out_h'] = self.out_h
+        self.attrs['out_w'] = self.out_w
+        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w,
+                                        self.out_size, self.actual_shape,
+                                        self.align_corners, self.align_mode)
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True)
+
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 4, 4, 4]
+        self.out_d = 2
+        self.out_h = 3
+        self.out_w = 3
+        self.scale = 0.
+        self.out_size = [2, 3, 3]
+        self.align_corners = True
+        self.align_mode = 1
+
+
+# out_size is a 1-D tensor
+class TestTrilinearInterp_attr_tensor_Case1(TestTrilinearInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [3, 2, 9, 6, 8]
+        self.out_d = 32
+        self.out_h = 16
+        self.out_w = 8
+        self.scale = 0.3
+        self.out_size = [12, 4, 4]
+        self.align_corners = True
+        self.align_mode = 1
+
+
+# scale is a 1-D tensor
+class TestTrilinearInterp_attr_tensor_Case2(TestTrilinearInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 8, 8, 4]
+        self.out_d = 16
+        self.out_h = 12
+        self.out_w = 4
+        self.scale = 0.
+        self.out_size = [16, 4, 10]
+        self.align_corners = True
+        self.align_mode = 1
+        self.shape_by_1Dtensor = True
+
+
+# scale is a 1-D tensor
+class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 3, 8, 8, 4]
+        self.out_d = 16
+        self.out_h = 16
+        self.out_w = 8
+        self.scale = 2.0
+        self.out_size = None
+        self.align_corners = True
+        self.align_mode = 1
+        self.scale_by_1Dtensor = True
+
+
+class TestTrilinearInterpAPI(OpTest):
+    def test_case(self):
+        x = fluid.layers.data(name="x", shape=[3, 6, 9, 4], dtype="float32")
+
+        dim = fluid.layers.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.layers.data(
+            name="shape_tensor",
+            shape=[3],
+            dtype="int32",
+            append_batch_size=False)
+        actual_size = fluid.layers.data(
+            name="actual_size",
+            shape=[3],
+            dtype="int32",
+            append_batch_size=False)
+        scale_tensor = fluid.layers.data(
+            name="scale_tensor",
+            shape=[1],
+            dtype="float32",
+            append_batch_size=False)
+
+        out1 = fluid.layers.resize_trilinear(x, out_shape=[12, 18, 8])
+        out2 = fluid.layers.resize_trilinear(x, out_shape=[12, dim, 8])
+        out3 = fluid.layers.resize_trilinear(x, out_shape=shape_tensor)
+        out4 = fluid.layers.resize_trilinear(
+            x, out_shape=[4, 4, 8], actual_shape=actual_size)
+        out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
+
+        x_data = np.random.random((1, 3, 6, 9, 4)).astype("float32")
+        dim_data = np.array([18]).astype("int32")
+        shape_data = np.array([12, 18, 8]).astype("int32")
+        actual_size_data = np.array([12, 18, 8]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
+
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "x": x_data,
+                              "dim": dim_data,
+                              "shape_tensor": shape_data,
+                              "actual_size": actual_size_data,
+                              "scale_tensor": scale_data
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5],
+                          return_numpy=True)
+
+        expect_res = trilinear_interp_np(
+            x_data, out_d=12, out_h=18, out_w=8, align_mode=1)
+        for res in results:
+            self.assertTrue(np.allclose(res, expect_res))
 
 
 if __name__ == "__main__":
