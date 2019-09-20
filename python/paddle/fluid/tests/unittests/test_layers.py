@@ -82,6 +82,21 @@ class LayerTest(unittest.TestCase):
 
 
 class TestLayer(LayerTest):
+    def test_custom_layer_with_kwargs(self):
+        class CustomLayer(fluid.Layer):
+            def __init__(self, name_scope):
+                super(CustomLayer, self).__init__(name_scope)
+
+            def forward(self, x, b=0, multiples=1):
+                return x * multiples + b
+
+        with self.dynamic_graph():
+            inp = np.ones([3, 3], dtype='float32')
+            x = base.to_variable(inp)
+            cust_layer = CustomLayer('cust')
+            ret = cust_layer(x, multiples=2)
+            self.assertTrue(np.array_equal(ret.numpy(), inp * 2))
+
     def test_fc(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():

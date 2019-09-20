@@ -151,20 +151,20 @@ class Layer(core.Layer):
             if p.trainable:
                 p.clear_gradient()
 
-    def _build_once(self, *args):
+    def _build_once(self, *args, **kwargs):
         pass
 
-    def __call__(self, *inputs):
+    def __call__(self, *inputs, **kwargs):
         if not self._built:
-            self._build_once(*inputs)
+            self._build_once(*inputs, **kwargs)
             if parallel_helper._is_data_parallel_mode():
                 parallel_helper._broadcast_parameters(self._parameters.values())
 
-        outputs = self.forward(*inputs)
+        outputs = self.forward(*inputs, **kwargs)
         self._built = True
         return outputs
 
-    def forward(self, *inputs):
+    def forward(self, *inputs, **kwargs):
         raise NotImplementedError
 
     def backward(self, *inputs):
