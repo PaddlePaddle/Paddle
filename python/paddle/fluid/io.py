@@ -34,6 +34,7 @@ from . import reader
 from .reader import *
 from . import core
 from .. import compat as cpt
+from paddle.fluid import Executor
 
 batch = paddle.batch
 
@@ -1375,3 +1376,133 @@ def _load_persistable_nodes(executor, dirname, graph):
         else:
             _logger.warn("Cannot find the var %s!!!" % (node.name()))
     load_vars(executor=executor, dirname=dirname, vars=var_list)
+
+
+def get_parameter(program):
+    vars = list(filter(is_parameter, program.list_vars()))
+    para_dict = {var.name: var for var in vars}
+    return para_dict
+
+
+def get_optimizer(program):
+    para_dict = get_parameter(program)
+    para_names = para_dict.keys()
+    decay_counter_name = "@LR_DECAY_COUNTER@"
+    lr_name = "learning_rate"
+    var_dict = {var.name: var for var in program.list_vars()}
+    var_names = var_dict.keys()
+    para_name = para_names[0]
+    opt_var_names = list()
+    opt_dict = dict()
+    for para_name in para_names:
+        for var_name in var_names:
+            if var_name.find(para_name) == 0 and len(var_name) > len(
+                    para_name) and var_name.find("GRAD") == -1:
+                opt_dict[var_name] = var_dict[var_name]
+    for var_name in var_names:
+        if var_name.find(lr_name) == 0:
+            opt_dict[var_name] = var_dict[var_name]
+        if var_name.find(decay_counter_name) == 0:
+            opt_dict[var_name] = var_dict[var_name]
+    return opt_dict
+
+
+def save(program, save_dir):
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+
+    #save model structure
+    model_desc_path = os.path.join(save_dir, "model.pdmodel")
+    with open(model_desc_path, "wb") as f:
+        f.write(program.desc.serialize_to_string())
+
+    #save parameters
+    para_dict = get_parameter(program)
+    if core.is_compiled_with_cuda():
+        place = core.CUDAPlace(0)
+    else:
+        place = core.CPUPlace()
+    exe = Executor(place)
+    save_program = Program()
+    save_block = save_program.global_block()
+    save_var_list = []
+    for name in sorted(para_dict.keys()):
+        new_var = _clone_var_in_block_(save_block, para_dict.get(name))
+        save_var_list.append(new_var)
+    save_block.append_op(
+        type='save_combine',
+        inputs={'X': save_var_list},
+        outputs={},
+        attrs={'file_path': os.path.join(save_dir, "model.pdparams")})
+    exe.run(save_program)
+
+    #save optimizer
+    opt_dict = get_optimizer(program)
+    opt_path = os.path.join(save_dir, "model.pdopt")
+    opt_program = Program()
+    opt_block = opt_program.global_block()
+    opt_var_list = list()
+    for name in sorted(opt_dict.keys()):
+        new_var = _clone_var_in_block_(opt_block, opt_dict.get(name))
+        opt_var_list.append(new_var)
+    opt_block.append_op(
+        type='save_combine',
+        inputs={'X': opt_var_list},
+        outputs={},
+        attrs={'file_path': opt_path})
+    exe.run(opt_program)
+
+
+def load(program, load_dir):
+    #if not os.path.exists(load_dir):
+    #    raise IOError("Can't load frome %s, please ensure the dir exists", load_dir)
+
+    #load desc
+    #model_desc_path = os.path.join("model.pamodel")
+    #with open(model_desc_path, "rb") as f:
+    #    program_desc_str = f.read()
+    #program = Program.parse_from_string(program_desc_str)
+    #print(program._version())
+    #if not core._is_program_version_supported(program._version()):
+    #    raise ValueError("Unsupported program version: %d\n" %
+    #                     program._version())
+
+    #load parameters
+    if core.is_compiled_with_cuda():
+        place = core.CUDAPlace(0)
+    else:
+        place = core.CPUPlace()
+    exe = Executor(place)
+
+    para_dict = get_parameter(program)
+    load_prog = Program()
+    load_block = load_prog.global_block()
+    load_var_list = []
+    for name in sorted(para_dict.keys()):
+        new_var = _clone_var_in_block_(load_block, para_dict.get(name))
+        load_var_list.append(new_var)
+
+    para_path = os.path.join(load_dir, "model.pdparams")
+    load_block.append_op(
+        type='load_combine',
+        inputs={},
+        outputs={"Out": load_var_list},
+        attrs={'file_path': para_path})
+    exe.run(load_prog)
+
+    #load optimizer
+    opt_dict = get_parameter(program)
+    load_prog = Program()
+    load_block = load_prog.global_block()
+    load_var_list = []
+    for name in sorted(opt_dict.keys()):
+        new_var = _clone_var_in_block_(load_block, opt_dict.get(name))
+        load_var_list.append(new_var)
+
+    opt_path = os.path.join(load_dir, "model.pdopt")
+    load_block.append_op(
+        type='load_combine',
+        inputs={},
+        outputs={"Out": load_var_list},
+        attrs={'file_path': para_path})
+    exe.run(load_prog)
