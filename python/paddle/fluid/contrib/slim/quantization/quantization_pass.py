@@ -90,9 +90,9 @@ class QuantizationTransformPass(object):
                 usually is not used for weight, since weights are fixed once the
                 model is well trained.
             window_size (int): the window size for 'range_abs_max' quantization.
-						skip_pattern(str): The user-defined quantization skip pattern，which
-								will be presented in the name scope of an op. When the skip pattern is
-								detected in an op's name scope, the corresponding op will not be quantized.
+				skip_pattern(str): The user-defined quantization skip pattern，which
+				will be presented in the name scope of an op. When the skip pattern is
+				detected in an op's name scope, the corresponding op will not be quantized.
 
         Examples:
         .. code-block:: python
