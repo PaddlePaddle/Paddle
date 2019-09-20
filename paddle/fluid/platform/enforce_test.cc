@@ -199,7 +199,8 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
     PADDLE_ENFORCE_NOT_NULL(a);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "a should not be null"));
+    EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
+                          "PaddleEnforceError. a should not be null"));
   }
   EXPECT_TRUE(caught_exception);
 }

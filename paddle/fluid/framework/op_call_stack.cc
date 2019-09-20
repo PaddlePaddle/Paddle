@@ -45,6 +45,8 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   std::size_t found = exception->err_str_.rfind("PaddleEnforceError.");
   if (found != std::string::npos) {
     exception->err_str_.insert(found, sout_py_trace.str());
+  } else {
+    exception->err_str_.append(sout_py_trace.str());
   }
   // Step 3. Construct final call stack
   sout << "\n--------------------------------------------\n";

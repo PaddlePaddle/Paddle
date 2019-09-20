@@ -618,20 +618,8 @@ class Executor(object):
                 warnings.warn(
                     "The following exception is not an EOF exception.")
             if os.name != 'nt' and isinstance(e, core.EnforceNotMet):
-                ex_msg = cpt.get_exception_message(e)
-                ex_msg_augment = error_format.hint_augment(ex_msg)
-                ex_msg_list = ex_msg_augment.split("PaddleEnforceError.")
-                # print C++ stack and python stack
-                print(ex_msg_list[0])
-                # print error messgae
-                print("----------------------")
-                print("Error Message Summary:")
-                print("----------------------")
-                print("Error:%s" % ex_msg_list[1])
-                # avoid Python throwing exceptions
-                sys.exit(0)
-            else:
-                six.reraise(*sys.exc_info())
+                sys.excepthook = error_format.paddle_enforce_handler
+            six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):

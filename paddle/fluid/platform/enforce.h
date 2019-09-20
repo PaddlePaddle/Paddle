@@ -354,12 +354,12 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
-  do {                                                      \
-    if (UNLIKELY(nullptr == (__VAL))) {                     \
-      PADDLE_THROW(#__VAL " should not be null\n%s",        \
-                   ::paddle::string::Sprintf(__VA_ARGS__)); \
-    }                                                       \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                 \
+  do {                                                                      \
+    if (UNLIKELY(nullptr == (__VAL))) {                                     \
+      PADDLE_THROW("PaddleEnforceError. " #__VAL " should not be null\n%s", \
+                   ::paddle::string::Sprintf(__VA_ARGS__));                 \
+    }                                                                       \
   } while (0)
 
 namespace details {
