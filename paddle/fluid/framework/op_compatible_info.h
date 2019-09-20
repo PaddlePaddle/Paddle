@@ -47,12 +47,8 @@ class OpCompatibleMap {
   CompatibleInfo GetOpCompatibleInfo(std::string op_name);
 
   /* IsRequireMiniVersion
-   *  return type
-   *  0 for support previus version
-   *  1 for definitely not support previous version
-   *  2 for possible not support previous version
-   *  3 for bug fix, not support previous version
-   *  4 for precision change */
+   *  return type OpCompatibleType */
+
   OpCompatibleType IsRequireMiniVersion(std::string op_name,
                                         std::string current_version);
 
