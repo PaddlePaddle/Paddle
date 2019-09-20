@@ -65,8 +65,6 @@ class TransformForMkldnnPass(object):
         self.quantize_type = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max'
-            #  'fake_quantize_range_abs_max',
-            #  'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self.dequantize_type = ['fake_dequantize_max_abs']
         self.quantize_dequantize_type = [
