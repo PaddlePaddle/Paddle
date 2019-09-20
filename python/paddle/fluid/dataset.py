@@ -292,6 +292,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_ins_id = False
         self.parse_content = False
         self.merge_by_lineid = False
+        self.fleet_send_sleep_seconds = None
 
     def _prepare_to_run(self):
         """
@@ -372,7 +373,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.parse_content = parse_content
 
-    def set_fleet_send_batch_size(self, fleet_send_batch_size):
+    def set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
         """
         Set fleet send batch size, default is 1024
 
@@ -388,6 +389,23 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.fleet_send_batch_size = fleet_send_batch_size
+
+    def set_fleet_send_sleep_seconds(self, fleet_send_sleep_seconds=0):
+        """
+        Set fleet send sleep time, default is 0
+
+        Args:
+            fleet_send_sleep_seconds(int): fleet send sleep time
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_fleet_send_sleep_seconds(2)
+
+        """
+        self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
 
     def set_merge_by_lineid(self,
                             var_list,
@@ -524,9 +542,13 @@ class InMemoryDataset(DatasetBase):
             trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
             self.fleet_send_batch_size = 1024
+        if self.fleet_send_sleep_seconds is None:
+            self.fleet_send_sleep_seconds = 0
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
+        self.dataset.set_fleet_send_sleep_seconds(
+            self.fleet_send_sleep_seconds);
         if fleet is not None:
             fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle(thread_num)

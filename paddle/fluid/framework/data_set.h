@@ -123,6 +123,8 @@ class Dataset {
   // seperate train thread and dataset thread
   virtual void DynamicAdjustChannelNum(int channel_num) = 0;
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
+  // set fleet send sleep seconds
+  virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -186,6 +188,7 @@ class DatasetImpl : public Dataset {
   virtual void SetPreLoadThreadNum(int thread_num);
   virtual void DynamicAdjustChannelNum(int channel_num);
   virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void SetFleetSendSleepSeconds(int seconds);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

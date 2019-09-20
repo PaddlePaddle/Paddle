@@ -52,7 +52,7 @@ class TestDataNormOpInference(unittest.TestCase):
 
     def setUp(self):
         """
-        do some init 
+        init members of this class
         """
         self.dtype = np.float32
 
@@ -137,7 +137,7 @@ class TestDataNormOpInference(unittest.TestCase):
 
     def test_check_output(self):
         """
-        test check forward
+        test check forward, check output
         """
         places = [core.CPUPlace()]
         for place in places:
@@ -191,13 +191,13 @@ class TestDataNormOp(OpTest):
 
     def test_check_output(self):
         """
-        test check forward
+        test check forward, check output
         """
         self.check_output()
 
     def test_check_grad(self):
         """
-        test check backward
+        test check backward, check grad
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 

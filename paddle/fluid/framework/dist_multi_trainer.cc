@@ -170,6 +170,11 @@ void DistMultiTrainer::Finalize() {
   }
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
+
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  if (mpi_rank_ == 0) {
+    fleet_ptr_->ClientFlush();
+  }
 }
 
 template <typename T>

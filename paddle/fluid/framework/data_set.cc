@@ -42,8 +42,8 @@ DatasetImpl<T>::DatasetImpl() {
   channel_num_ = 1;
   file_idx_ = 0;
   cur_channel_ = 0;
-  fleet_send_batch_size_ = 80000;
-  fleet_send_sleep_seconds_ = 2;
+  fleet_send_batch_size_ = 1024;
+  fleet_send_sleep_seconds_ = 0;
   merge_by_insid_ = false;
   erase_duplicate_feas_ = true;
   keep_unmerged_ins_ = true;
@@ -360,9 +360,11 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
       data.clear();
       data.shrink_to_fit();
       // currently we find bottleneck is server not able to handle large data
-      // in time, so we remove this sleep and set fleet_send_batch_size to
-      // 1024, and set server thread to 24
-      // sleep(this->fleet_send_sleep_seconds_);
+      // in time, so we can remove this sleep and set fleet_send_batch_size to
+      // 1024, and set server thread to 24.
+      if (fleet_send_sleep_seconds_ != 0) {
+        sleep(this->fleet_send_sleep_seconds_);
+      }
     }
   };
 
@@ -474,6 +476,11 @@ void DatasetImpl<T>::DynamicAdjustReadersNum(int thread_num) {
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   CreateReaders();
   VLOG(3) << "adjust readers num done";
+}
+
+template <typename T>
+void DatasetImpl<T>::SetFleetSendSleepSeconds(int seconds) {
+  fleet_send_sleep_seconds_ = seconds;
 }
 
 template <typename T>
