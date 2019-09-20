@@ -17,9 +17,9 @@ limitations under the License. */
 #include <memory>
 
 #ifdef WITH_GPERFTOOLS
-#include "gflags/gflags.h"
-#endif
 #include "gperftools/profiler.h"
+#endif
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -257,7 +257,7 @@ TEST(BuddyAllocator, SpeedAna) {
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
 
   std::fstream in_file;
-  in_file.open("test_list", std::ios::in);
+  in_file.open("buddy_allocator_test_data", std::ios::in);
 
   std::vector<void*> vec_ptr;
   std::vector<int> vec_size;
@@ -275,7 +275,9 @@ TEST(BuddyAllocator, SpeedAna) {
 
   auto start = std::chrono::steady_clock::now();
 
+#ifdef WITH_GPERFTOOLS
   ProfilerStart("test.prof");
+#endif
   for (size_t loop = 0; loop < 5000; ++loop) {
     vec_ptr.clear();
     for (size_t i = 0; i < vec_size.size(); ++i) {
@@ -302,7 +304,9 @@ TEST(BuddyAllocator, SpeedAna) {
     }
   }
 
+#ifdef WITH_GPERFTOOLS
   ProfilerStop();
+#endif
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
   std::cerr << "time cost " << diff.count() << std::endl;
