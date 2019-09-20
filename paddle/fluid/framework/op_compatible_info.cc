@@ -48,38 +48,28 @@ inline bool CompareVersion(const std::string& str_first,
   auto vec_second_version = ConvertStr2Int(str_second);
 
   // first version id
-  if (vec_first_version[0] < vec_second_version[0]) {
-    return false;
-  } else if (vec_first_version[0] > vec_second_version[0]) {
-    return true;
-  } else {
-    // second version id
-    if (vec_first_version[1] < vec_second_version[1]) {
-      return false;
-    } else if (vec_first_version[1] > vec_second_version[1]) {
-      return true;
-    } else {
-      // last version id
-      if (vec_first_version[2] < vec_second_version[2]) {
-        return false;
-      } else if (vec_first_version[2] >= vec_second_version[2]) {
-        return true;
-      }
+  PADDLE_ENFORCE_EQ(
+      vec_first_version.size(), vec_second_version.size(),
+      "version information size not equal, first is [%d] second is [%d]",
+      vec_first_version.size(), vec_second_version.size());
+
+  for (size_t i = 0; i < vec_first_version.size() - 1; ++i) {
+    if (vec_first_version[i] != vec_second_version[i]) {
+      return vec_first_version[i] > vec_second_version[i];
     }
   }
-
-  return false;
+  return vec_first_version[2] >= vec_second_version[2];
 }
 
 void OpCompatibleMap::InitOpCompatibleMap() {
-  op_compatible_map_["sequence_pad"] = {"1.6.0", 1};
-  op_compatible_map_["sequence_unpad"] = {"1.6.0", 1};
+  op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
 
-  op_compatible_map_["reshape2"] = {"1.6.0", 1};
-  op_compatible_map_["slice"] = {"1.6.0", 2};
-  op_compatible_map_["expand"] = {"1.6.0", 2};
+  op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["slice"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["expand"] = {"1.6.0", OpCompatibleType::possible};
 
-  op_compatible_map_["layer_norm"] = {"1.6.0", 3};
+  op_compatible_map_["layer_norm"] = {"1.6.0", OpCompatibleType::bug_fix};
 }
 
 CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) {
@@ -87,25 +77,25 @@ CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) {
   if (it != op_compatible_map_.end()) {
     return it->second;
   } else {
-    return {default_required_version_, 1};
+    return {default_required_version_, OpCompatibleType::DEFIN_NOT};
   }
 }
 
-int OpCompatibleMap::IsRequireMiniVersion(std::string op_name,
-                                          std::string str_current_version) {
+OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
+    std::string op_name, std::string str_current_version) {
   auto it = op_compatible_map_.find(op_name);
   if (it != op_compatible_map_.end()) {
     if (CompareVersion(str_current_version, it->second.required_version_)) {
-      return 0;
+      return OpCompatibleType::compatible;
     } else {
       return it->second.compatible_type_;
     }
 
   } else {
     if (CompareVersion(str_current_version, default_required_version_)) {
-      return 0;
+      return OpCompatibleType::compatible;
     } else {
-      return 1;
+      return OpCompatibleType::DEFIN_NOT;
     }
   }
 }

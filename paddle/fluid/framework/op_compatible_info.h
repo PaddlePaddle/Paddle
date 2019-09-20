@@ -19,21 +19,24 @@
 
 namespace paddle {
 namespace framework {
+
+enum class OpCompatibleType {
+  compatible = 0,       //   support previous version
+  DEFIN_NOT = 1,        //   definitely can't support previous version
+  possible = 2,         //   possible can support previous version, not sure
+  bug_fix = 3,          //   bug fix, can't support previous version
+  precision_change = 4  //   precision change, may cause difference
+};
+
 struct CompatibleInfo {
-  CompatibleInfo(std::string required_version, int compatible_type)
+  CompatibleInfo(std::string required_version, OpCompatibleType compatible_type)
       : required_version_(required_version),
         compatible_type_(compatible_type) {}
   CompatibleInfo() {}
 
   // op required version, previous version not support
   std::string required_version_;
-  /* op support previous version
-   *  0 for support previus version
-   *  1 for definitely can't support previous version
-   *  2 for possibel can't support previous version
-   *  3 for bug fix  can't support previous version
-   *  4 for precision change */
-  int compatible_type_;
+  OpCompatibleType compatible_type_;
 };
 
 class OpCompatibleMap {
@@ -47,10 +50,11 @@ class OpCompatibleMap {
    *  return type
    *  0 for support previus version
    *  1 for definitely not support previous version
-   *  2 for possibel not support previous version
+   *  2 for possible not support previous version
    *  3 for bug fix, not support previous version
    *  4 for precision change */
-  int IsRequireMiniVersion(std::string op_name, std::string current_version);
+  OpCompatibleType IsRequireMiniVersion(std::string op_name,
+                                        std::string current_version);
 
   void SerializeToStr(std::string& str) {} /* NOLINT */
   void UnSerialize(const std::string& str) {}

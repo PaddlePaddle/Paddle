@@ -31,24 +31,28 @@ TEST(test_op_compatible_info, test_op_compatible) {
 
   auto deafult_info = comp_map.GetOpCompatibleInfo("layer_xx");
 
-  int comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", "1.5.0");
-  ASSERT_EQ(comp_1, 1);
-  int comp_2 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.0");
-  ASSERT_EQ(comp_2, 0);
-  int comp_3 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.1");
-  ASSERT_EQ(comp_3, 0);
-  int comp_6 = comp_map.IsRequireMiniVersion("sequence_pad", "1.7.0");
-  ASSERT_EQ(comp_6, 0);
-  int comp_7 = comp_map.IsRequireMiniVersion("sequence_pad", "0.7.0");
-  ASSERT_EQ(comp_7, 1);
-  int comp_8 = comp_map.IsRequireMiniVersion("sequence_pad", "2.0.0");
-  ASSERT_EQ(comp_8, 0);
+  auto comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", "1.5.0");
+  ASSERT_EQ(comp_1, OpCompatibleType::DEFIN_NOT);
+  auto comp_2 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.0");
+  ASSERT_EQ(comp_2, OpCompatibleType::compatible);
+  auto comp_3 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.1");
+  ASSERT_EQ(comp_3, OpCompatibleType::compatible);
+  auto comp_6 = comp_map.IsRequireMiniVersion("sequence_pad", "1.7.0");
+  ASSERT_EQ(comp_6, OpCompatibleType::compatible);
+  auto comp_7 = comp_map.IsRequireMiniVersion("sequence_pad", "0.7.0");
+  ASSERT_EQ(comp_7, OpCompatibleType::DEFIN_NOT);
+  auto comp_8 = comp_map.IsRequireMiniVersion("sequence_pad", "2.0.0");
+  ASSERT_EQ(comp_8, OpCompatibleType::compatible);
 
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "2.0.0"), 0);
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "0.7.0"), 1);
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "2.0.0"),
+            OpCompatibleType::compatible);
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "0.7.0"),
+            OpCompatibleType::DEFIN_NOT);
 
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "0.7.0"), 2);
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "1.6.0"), 0);
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "0.7.0"),
+            OpCompatibleType::possible);
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "1.6.0"),
+            OpCompatibleType::compatible);
 }
 }  // namespace framework
 }  // namespace paddle
