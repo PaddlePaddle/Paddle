@@ -59,24 +59,23 @@ static size_t GetTensorMemorySize(Scope *scope, bool clear_cpu_tensor) {
   std::unordered_set<Tensor *> tensor_set;
   GetTensors(scope, &tensor_set);
   size_t memory_size = 0;
+  std::unordered_set<memory::Allocation *> allocation_set;
   for (auto *tensor : tensor_set) {
     if (clear_cpu_tensor && platform::is_cpu_place(tensor->place())) {
       tensor->clear();
     } else {
-      memory_size += tensor->Holder()->size();
+      auto allocation = tensor->Holder().get();
+      if (!allocation_set.count(allocation)) {
+        memory_size += allocation->size();
+        allocation_set.insert(allocation);
+      }
     }
   }
   return memory_size;
 }
 
 size_t GetScopeVarMemorySize(Scope *scope) {
-  std::unordered_set<Tensor *> tensor_set;
-  GetTensors(scope, &tensor_set);
-  size_t memory_size = 0;
-  for (auto *tensor : tensor_set) {
-    memory_size += tensor->Holder()->size();
-  }
-  return memory_size;
+  return GetTensorMemorySize(scope, false /*clear_cpu_tensor*/);
 }
 
 ScopeBufferedMonitor::ScopeBufferedMonitor(
@@ -143,34 +142,40 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     }
   }
 
-  // Delete CPU Memory
-  size_t gpu_memory_size = 0;
-  for (auto &scope_vec : history_local_exec_scopes_) {
-    for (auto &scope_set : scope_vec) {
-      for (auto &scope : scope_set) {
-        gpu_memory_size +=
-            GetTensorMemorySize(scope, /*clear cpu tensor*/ true);
-      }
-    }
-  }
-
-  VLOG(8) << "history local exec scopes contains "
-          << string::HumanReadableSize(gpu_memory_size) << ".";
-
   size_t history_step = history_local_exec_scopes_.size();
   if (has_fetch && history_step >= 2) {
     ClearHistoryLocalExecScopes(history_step - 1);
   }
 
-  if (FLAGS_local_exe_sub_scope_limit > 0 &&
-      (gpu_memory_size * kMB > FLAGS_local_exe_sub_scope_limit)) {
-    for (auto &p : places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
+  // Delete CPU Memory
+  std::vector<size_t> gpu_memory_size_per_gpu(places_.size());
+  for (auto &scope_vec : history_local_exec_scopes_) {
+    for (size_t idx = 0; idx < scope_vec.size(); ++idx) {
+      for (auto &scope : scope_vec.at(idx)) {
+        gpu_memory_size_per_gpu.at(idx) +=
+            GetTensorMemorySize(scope, true /*clear_cpu_tensor*/);
+      }
     }
-    for (auto &scope : local_exec_scopes_) {
-      scope->DropKids();
+  }
+  if (VLOG_IS_ON(8)) {
+    for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
+      VLOG(8) << "history local exec scopes contains "
+              << string::HumanReadableSize(gpu_memory_size_per_gpu.at(idx))
+              << " in " << places_.at(idx);
     }
-    ClearHistoryLocalExecScopes();
+  }
+
+  if (FLAGS_local_exe_sub_scope_limit > 0) {
+    for (size_t idx = 0; idx < gpu_memory_size_per_gpu.size(); ++idx) {
+      if (gpu_memory_size_per_gpu.at(idx) / kMB >=
+          FLAGS_local_exe_sub_scope_limit) {
+        platform::DeviceContextPool::Instance().Get(places_.at(idx))->Wait();
+        local_exec_scopes_.at(idx)->DropKids();
+      }
+      for (auto &scope_vec : history_local_exec_scopes_) {
+        scope_vec.at(idx).clear();
+      }
+    }
   }
 }
 
