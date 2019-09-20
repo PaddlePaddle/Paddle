@@ -24,7 +24,8 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass, TransformToMkldnnINT8Pass
+from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
+from paddle.fluid.contrib.slim.quantization import TransformToMkldnnINT8Pass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -296,14 +297,13 @@ class TestQatInt8Comparison(unittest.TestCase):
         _logger.info('--- QAT FP32 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size)
-        #  fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
-        #  val_reader,
-        #  qat_model_path,
-        #  batch_size,
-        #  batch_num,
-        #  skip_batch_num,
-        #  transform_to_int8=False)
-        fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = 1, 1, 1, 1, 1
+        fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
+            val_reader,
+            qat_model_path,
+            batch_size,
+            batch_num,
+            skip_batch_num,
+            transform_to_int8=False)
 
         _logger.info('--- QAT INT8 prediction start ---')
         val_reader = paddle.batch(
