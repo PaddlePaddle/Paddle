@@ -116,6 +116,17 @@ class TestLayer(LayerTest):
         self.assertTrue(np.array_equal(static_ret, static_ret2))
         self.assertTrue(np.array_equal(static_ret, dy_ret.numpy()))
 
+        with fluid.dygraph.guard():
+            t = base.to_variable(inp)
+            fc = fluid.dygraph.FC("fc", 4, num_flatten_dims=1)
+            out1 = fc(t)
+            new_weight = np.random.randn(1024, 4).astype("float32")
+            fc.weight[0] = new_weight  # change existing param
+            out2 = fc(t)
+
+        self.assertTrue(np.array_equal(fc.weight[0].numpy(), new_weight))
+        self.assertFalse(np.array_equal(out1.numpy(), out2.numpy()))
+
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():

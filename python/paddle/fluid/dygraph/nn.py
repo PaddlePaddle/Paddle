@@ -858,7 +858,7 @@ class FC(layers.Layer):
         dtype(str): Dtype used for weight
 
     Parameters:
-        weight (list): the learnable weights of this layer.
+        weight (list of Parameter): the learnable weights of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
     Raises:
@@ -907,7 +907,6 @@ class FC(layers.Layer):
                 self.__holder__.__setattr__('_w%d' % key, value)
 
         self.weight = _list(self)
-        self.bias = None
 
     def _build_once(self, input):
         i = 0
@@ -1922,7 +1921,7 @@ class BilinearTensorProduct(layers.Layer):
 
     Parameters:
         weight (Parameter): the learnable weights of this layer.
-        bias (Parameter): the learnable bias of this layer.
+        bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
        Variable: A 2-D Tensor of shape [batch_size, size].
