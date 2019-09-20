@@ -283,6 +283,21 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   std::vector<LoDTensor> results;
   results.reserve(result_size);
 
+  // if result_size(batch_size) is 0, just return #places.size() copys of empty
+  // tensors.
+  if (result_size == 0) {
+    for (size_t i = 0; i < places.size(); ++i) {
+      LoDTensor dst;
+      dst.Resize(dims());
+      dst.mutable_data(places[i], type());
+      if (!lod().empty()) {
+        dst.set_lod(lod());
+      }
+      results.emplace_back(dst);
+    }
+    return results;
+  }
+
   int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
     int begin = static_cast<int>(i * step_width);
@@ -326,17 +341,28 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  auto new_type = lod_tensors[0]->type();
+  proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout = lod_tensors[0]->layout();
+  for (auto *t : lod_tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = t->type();
+      new_layout = t->layout();
+      break;
+    }
+  }
+
   LoD new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type, t->type());
-    PADDLE_ENFORCE_EQ(new_layout, t->layout());
-
-    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
-                      framework::product(t->dims()) / t->dims()[0]);
-    new_dim[0] += t->dims()[0];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(new_type, t->type());
+      PADDLE_ENFORCE_EQ(new_layout, t->layout());
+      PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                        framework::product(t->dims()) / t->dims()[0]);
+      new_dim[0] += t->dims()[0];
+    }
 
     auto &lod = t->lod();
     PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
@@ -356,6 +382,9 @@ void LoDTensor::MergeLoDTensor(
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
+    if (end == begin) {
+      continue;
+    }
     auto dst = Slice(begin, end);
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;

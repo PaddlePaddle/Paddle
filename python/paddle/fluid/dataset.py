@@ -423,9 +423,12 @@ class InMemoryDataset(DatasetBase):
         self._prepare_to_run()
         self.dataset.load_into_memory()
 
-    def preload_into_memory(self):
+    def preload_into_memory(self, thread_num=None):
         """
         Load data into memory in async mode
+
+        Args:
+            thread_num(int): preload thread num
 
         Examples:
             .. code-block:: python
@@ -438,6 +441,10 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         self._prepare_to_run()
+        if thread_num is None:
+            thread_num = self.thread_num
+        self.dataset.set_preload_thread_num(thread_num)
+        self.dataset.create_preload_readers()
         self.dataset.preload_into_memory()
 
     def wait_preload_done(self):
@@ -455,6 +462,7 @@ class InMemoryDataset(DatasetBase):
               dataset.wait_preload_done()
         """
         self.dataset.wait_preload_done()
+        self.dataset.destroy_preload_readers()
 
     def local_shuffle(self):
         """
@@ -720,3 +728,54 @@ class FileInstantDataset(DatasetBase):
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")
+
+
+class BoxPSDataset(InMemoryDataset):
+    """
+    BoxPSDataset: derived from InMemoryDataset.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+    """
+
+    def __init__(self):
+        """
+        Init
+        """
+        super(BoxPSDataset, self).__init__()
+        self.boxps = core.BoxPS(self.dataset)
+
+    def begin_pass(self):
+        """
+	Notify BoxPS to begin next pass
+	"""
+        self.boxps.begin_pass()
+
+    def end_pass(self):
+        """
+	Notify BoxPS to end current pass
+	"""
+        self.boxps.end_pass()
+
+    def wait_preload_done(self):
+        """
+	Wait async proload done
+	"""
+        self.boxps.wait_feed_pass_done()
+
+    def load_into_memory(self):
+        """
+	Load next pass into memory and notify boxps to fetch its emb from SSD
+	"""
+        self._prepare_to_run()
+        self.boxps.load_into_memory()
+
+    def preload_into_memory(self):
+        """
+	begin async preload next pass while current pass may be training
+	"""
+        self._prepare_to_run()
+        self.boxps.preload_into_memory()

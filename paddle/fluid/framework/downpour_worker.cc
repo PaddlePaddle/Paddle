@@ -64,6 +64,10 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
 
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
+
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
@@ -681,7 +685,6 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
-
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean

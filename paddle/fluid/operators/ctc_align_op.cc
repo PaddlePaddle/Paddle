@@ -57,7 +57,7 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
                   "merge repeated elements between two blanks. ")
         .SetDefault(true);
     // add attr padding number for tensor input
-    AddAttr<int>("padding_num",
+    AddAttr<int>("padding_value",
                  "(int, default: 0), padding number "
                  "use to padding tensor. ")
         .SetDefault(0);
@@ -89,7 +89,7 @@ or Given:
 And:
     blank = 0
     merge_repeated = True
-    padding_num = 0
+    padding_value = 0
 
 Then:
     Output.data = [[1, 2, 4, 0, 0, 0],

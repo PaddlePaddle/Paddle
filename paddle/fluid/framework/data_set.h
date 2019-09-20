@@ -114,6 +114,12 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
+  // create preload readers
+  virtual void CreatePreLoadReaders() = 0;
+  // destroy preload readers after prelaod done
+  virtual void DestroyPreLoadReaders() = 0;
+  // set preload thread num
+  virtual void SetPreLoadThreadNum(int thread_num) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -146,6 +152,7 @@ class DatasetImpl : public Dataset {
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
+  virtual Channel<T> GetInputChannel() { return input_channel_; }
   virtual int64_t GetFleetSendBatchSize() { return fleet_send_batch_size_; }
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
@@ -171,11 +178,15 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
+  virtual void CreatePreLoadReaders();
+  virtual void DestroyPreLoadReaders();
+  virtual void SetPreLoadThreadNum(int thread_num);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
@@ -205,6 +216,7 @@ class DatasetImpl : public Dataset {
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
+  int preload_thread_num_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type

@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/inlined_vector.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -26,14 +27,14 @@ namespace memory {
 namespace allocation {
 
 // Exception when `Alloc`/`AllocShared` failed
-class BadAlloc : public std::exception {
- public:
-  inline explicit BadAlloc(std::string msg) : msg_(std::move(msg)) {}
+struct BadAlloc : public std::exception {
+  inline explicit BadAlloc(std::string err_msg, const char* file, int line)
+      : err_str_(platform::GetTraceBackString(std::move(err_msg), file, line)) {
+  }
 
-  inline const char* what() const noexcept override { return msg_.c_str(); }
+  const char* what() const noexcept override { return err_str_.c_str(); }
 
- private:
-  std::string msg_;
+  std::string err_str_;
 };
 
 class Allocator;

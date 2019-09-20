@@ -111,6 +111,13 @@ void BindDataset(py::module* m) {
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_preload_thread_num", &framework::Dataset::SetPreLoadThreadNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("create_preload_readers", &framework::Dataset::CreatePreLoadReaders,
+           py::call_guard<py::gil_scoped_release>())
+      .def("destroy_preload_readers",
+           &framework::Dataset::DestroyPreLoadReaders,
            py::call_guard<py::gil_scoped_release>());
 }
 

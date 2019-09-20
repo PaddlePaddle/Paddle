@@ -35,7 +35,6 @@ namespace ir {
 
 constexpr char kLossVarName[] = "loss_var_name";
 constexpr char kStrategy[] = "strategy";
-constexpr char kNRanks[] = "nranks";
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
@@ -124,7 +123,7 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                           const std::string &g_name) const override {}
 
   bool NeedCollectiveForGrad(const std::string &grad_name,
-                             std::vector<ir::Node *> ops) const {
+                             std::vector<ir::Node *> ops) const override {
     return false;
   }
 

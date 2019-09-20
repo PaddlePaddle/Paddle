@@ -60,6 +60,7 @@ message DownpourWorkerParameter {
   repeated ProgramConfig program_config = 4;
   optional bool push_sparse = 5 [ default = true ];
   optional bool push_dense = 6 [ default = true ];
+  repeated string stat_var_names = 7;
 }
 
 message SectionWorkerParameter {

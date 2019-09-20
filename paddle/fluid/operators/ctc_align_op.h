@@ -39,7 +39,8 @@ class CTCAlignKernel : public framework::OpKernel<T> {
 
     // support tensor input, no lod information
     if (input->lod().empty()) {
-      size_t padding_num = static_cast<size_t>(ctx.Attr<int>("padding_num"));
+      size_t padding_value =
+          static_cast<size_t>(ctx.Attr<int>("padding_value"));
       for (size_t batch_id = 0; batch_id < (unsigned)input_dims[0];
            batch_id++) {
         T prev_token = -1;
@@ -55,7 +56,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
           prev_token = input_data[input_ind];
         }
         for (size_t j = output_idx; j < (unsigned)input_dims[1]; j++)
-          output_data[batch_id * input_dims[1] + j] = padding_num;
+          output_data[batch_id * input_dims[1] + j] = padding_value;
       }
     } else {
       const size_t level = 0;

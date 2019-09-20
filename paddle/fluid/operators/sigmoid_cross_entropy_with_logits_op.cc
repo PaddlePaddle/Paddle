@@ -168,6 +168,12 @@ class SigmoidCrossEntropyWithLogitsGradOpDescMaker
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(SigmoidCrossEntropyWithLogitsInplaceInferer,
+                           {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SigmoidCrossEntropyWithLogitsGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -175,9 +181,11 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
                   ops::SigmoidCrossEntropyWithLogitsOp,
                   ops::SigmoidCrossEntropyWithLogitsOpMaker,
-                  ops::SigmoidCrossEntropyWithLogitsGradOpDescMaker);
+                  ops::SigmoidCrossEntropyWithLogitsGradOpDescMaker,
+                  ops::SigmoidCrossEntropyWithLogitsInplaceInferer);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
-                  ops::SigmoidCrossEntropyWithLogitsGradOp);
+                  ops::SigmoidCrossEntropyWithLogitsGradOp,
+                  ops::SigmoidCrossEntropyWithLogitsGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     sigmoid_cross_entropy_with_logits,
     ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
