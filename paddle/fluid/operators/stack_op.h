@@ -26,25 +26,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename VecXType, typename T>
-struct StackFunctor {
-  HOSTDEVICE StackFunctor(const VecXType &x, T *y, int n, int post)
-      : x_(x), y_(y), n_(n), post_(post) {}
-
-  HOSTDEVICE void operator()(int idx) {
-    int i = idx / (n_ * post_);
-    int which_x = idx / post_ - i * n_;
-    int x_index = i * post_ + idx % post_;
-    y_[idx] = x_[which_x][x_index];
-  }
-
- private:
-  VecXType x_;
-  T *y_;
-  int n_;
-  int post_;
-};
-
 template <typename VecDxType, typename T>
 struct StackGradFunctor {
   HOSTDEVICE StackGradFunctor(const VecDxType &dx, const T *dy, int n, int post)
@@ -82,7 +63,7 @@ class StackKernel : public framework::OpKernel<T> {
     auto *y = ctx.Output<Tensor>("Y");
 
     int axis = ctx.Attr<int>("axis");
-    axis = (axis > 0) ? axis : axis + x[0]->dims().size() + 1;
+    axis = (axis >= 0) ? axis : axis + x[0]->dims().size() + 1;
 
     int n = static_cast<int>(x.size());
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());

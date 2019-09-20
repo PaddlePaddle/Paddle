@@ -26,7 +26,8 @@ class StackOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs("X").size(), 0,
                       "Number of Inputs(X) must be larger than 0");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
+                      "Output(Y) of stack_op should not be null.");
 
     auto input_dims = ctx->GetInputsDim("X");
     for (size_t i = 1; i < input_dims.size(); ++i) {
@@ -39,8 +40,11 @@ class StackOp : public framework::OperatorWithKernel {
 
     int axis = ctx->Attrs().Get<int>("axis");
     int rank = input_dims[0].size();
-    PADDLE_ENFORCE(
-        axis >= -(rank + 1) && axis < rank + 1,
+    PADDLE_ENFORCE_GE(
+        axis, -(rank + 1),
+        "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
+    PADDLE_ENFORCE_LT(
+        axis, rank + 1,
         "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
     if (axis < 0) axis += (rank + 1);
 
@@ -71,15 +75,18 @@ class StackOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@Grad) must exist.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
+                      "Input(Y@Grad) must exist.");
 
     int axis = ctx->Attrs().Get<int>("axis");
     auto dy_dim = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = dy_dim.size();
-    PADDLE_ENFORCE(axis >= -rank && axis < rank,
-                   "Attr(axis) must be inside [-rank, rank), where rank = %d",
-                   rank);
+    PADDLE_ENFORCE_GE(
+        axis, -rank, "Attr(axis) must be inside [-rank, rank), where rank = %d",
+        rank);
+    PADDLE_ENFORCE_LT(
+        axis, rank, "Attr(axis) must be inside [-rank, rank), where rank = %d",
+        rank);
     if (axis < 0) axis += rank;
 
     PADDLE_ENFORCE_EQ(ctx->Outputs(framework::GradVarName("X")).size(),

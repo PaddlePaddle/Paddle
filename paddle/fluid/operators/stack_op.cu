@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include <vector>
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/stack_op.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -30,25 +30,23 @@ class StackKernel<platform::CUDADeviceContext, T>
 
     // Call concat functor
     int axis = ctx.Attr<int>("axis");
-    axis = (axis > 0) ? axis : axis + ins[0]->dims().size();
+    axis = (axis >= 0) ? axis : axis + ins[0]->dims().size() + 1;
 
     out->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (axis == 0 && ins.size() < 10) {
+    if (axis == 0 && ins.size() < 10U) {
       size_t output_offset = 0;
+      auto& gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      int64_t num_elements = ins[0]->numel();
       for (auto* in : ins) {
-        if (!in || in->numel() == 0UL) {
-          continue;
-        }
-        auto in_stride = framework::stride_numel(in->dims());
-        auto out_stride = framework::stride_numel(out->dims());
-        StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
-                                    out->data<T>() + output_offset, out_stride,
-                                    in->data<T>(), in_stride, in_stride[axis]);
-        output_offset += in_stride[axis];
+        PADDLE_ENFORCE_EQ(in->numel(), num_elements,
+                          "All inputs should have the same shape.");
+        memory::Copy(gpu_place, out->data<T>() + output_offset, gpu_place,
+                     in->data<T>(), sizeof(T) * num_elements, dev_ctx.stream());
+        output_offset += num_elements;
       }
     } else {
       std::vector<framework::Tensor> inputs;
@@ -59,6 +57,7 @@ class StackKernel<platform::CUDADeviceContext, T>
           continue;
         }
       }
+      // This op's output's dims is different from concat.
       math::ConcatFunctor<platform::CUDADeviceContext, T> concat_functor;
       concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
     }
