@@ -212,9 +212,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                i_shape.end());
         std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
                                                  t_shape.end());
-        PADDLE_ENFORCE_EQ(model_input_shape == model_input_shape, true,
-                          "input shapes not consistent with the model. TRT5 "
-                          "does not support dynamic shapes.");
+        PADDLE_ENFORCE_EQ(model_input_shape == runtime_input_shape, true,
+                          "Input shapes are inconsistent with the model. TRT 5 "
+                          "or lower version "
+                          "does not support dynamic input shapes. Please check "
+                          "your input shapes.");
       }
 
       runtime_batch = t_shape[0];
