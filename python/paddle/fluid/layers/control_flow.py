@@ -682,8 +682,8 @@ class While(object):
             raise TypeError("condition should be a boolean variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [], but given shape as [%d]." %
-                cond.shape)
+                "condition expected shape as [], but given shape as {0}.".
+                format(list(cond.shape)))
         self.cond_var = cond
         self.is_test = is_test
 
