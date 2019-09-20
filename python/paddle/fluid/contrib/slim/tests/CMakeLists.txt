@@ -36,7 +36,7 @@ function(inference_qat_int8_test target model_dir data_dir test_script use_mkldn
                  --infer_data ${data_dir}/data.bin
                  --batch_size 25
                  --batch_num 2
-                 --acc_diff_threshold 0.1
+                 --acc_diff_threshold 0.01
                  ${QAT2_FLAG})
 endfunction()
 
