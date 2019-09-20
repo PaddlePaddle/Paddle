@@ -311,9 +311,17 @@ class FleetUtil(object):
                       xbox_base_key,
                       data_path,
                       hadoop_fs_name,
-                      monitor_data={}):
+                      monitor_data={},
+                      mode="patch"):
         xbox_dict = collections.OrderedDict()
-        xbox_dict["id"] = str(xbox_base_key)
+        if mode == "base":
+            xbox_dict["id"] = str(xbox_base_key)
+        elif mode == "patch":
+            xbox_dict["id"] = str(int(time.time()))
+        else:
+            print("warning: unknown mode %s, set it to patch" % mode)
+            mode = "patch"
+            xbox_dict["id"] = str(int(time.time()))
         xbox_dict["key"] = str(xbox_base_key)
         if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
             model_path = model_path[model_path.find(":") + 1:]
@@ -478,13 +486,16 @@ class FleetUtil(object):
         day = str(day)
         pass_id = str(pass_id)
         xbox_base_key = int(xbox_base_key)
+        mode = None
 
         if pass_id != "-1":
+            mode = "patch"
             suffix_name = "/%s/delta-%s/" % (day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_patch_done.txt"
         else:
+            mode = "base"
             suffix_name = "/%s/base/" % day
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
@@ -496,7 +507,8 @@ class FleetUtil(object):
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
             xbox_str = self._get_xbox_str(output_path, day, model_path, \
-                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={})
+                    xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
+                    mode=mode)
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi
