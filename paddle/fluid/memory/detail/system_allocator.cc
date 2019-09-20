@@ -120,41 +120,24 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    /**
-     * If available GPU memory is less than the requested size, users
-     * should check whether the GPU memory is occupied by another process
-     * or decrease batch size of model.
-     *
-     * If available GPU memory is larger than the requested size, users
-     * should increase FLAGS_fraction_of_gpu_memory_to_use to pre-allocate
-     * more GPU memory or decrease batch size of model.
-     */
+    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
+
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
 
-    auto err_msg = string::Sprintf(
+    PADDLE_THROW_BAD_ALLOC(
         "Out of memory error on GPU %d. "
         "Cannot allocate %s GPU memory, "
         "available memory is %s.\n"
         "Please check if there is any other process using the same GPU.\n"
         "If yes, please stop them, or start PaddlePaddle on another GPU.\n"
-        "If no, please try to decrease the batch size of your model. ",
+        "If no, please try to decrease the batch size of your model. "
+        "Or try to set environment variable "
+        "FLAGS_fraction_of_gpu_memory_to_use to a higher value. "
+        "For example, try to 'export FLAGS_fraction_of_gpu_memory_to_use=0.98' "
+        "or higher value less than 1.0. Currently, it is %lf.",
         gpu_id_, string::HumanReadableSize(size),
-        string::HumanReadableSize(avail));
-
-    std::string partial_err_msg =
-        avail <= size
-            ? ""
-            : "Or try to set environment variable "
-              "FLAGS_fraction_of_gpu_memory_to_use to a higher value. "
-              "For example, try to "
-              "'export FLAGS_fraction_of_gpu_memory_to_use=0.98' "
-              "or higher value less than 1.0. Currently, it is " +
-                  std::to_string(FLAGS_fraction_of_gpu_memory_to_use);
-
-    err_msg += partial_err_msg;
-
-    PADDLE_THROW_BAD_ALLOC(std::move(err_msg));
+        string::HumanReadableSize(avail), FLAGS_fraction_of_gpu_memory_to_use);
   }
 }
 
