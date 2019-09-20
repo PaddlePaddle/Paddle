@@ -109,12 +109,10 @@ struct Layers {
   VarDesc* dropout(VarDesc* x, float dropout_prob,
                    std::string dropout_implementation) {
     VarDesc* out = lod_tensor(unique_name());
-    VarDesc* mask = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("dropout");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
-    op->SetOutput("Mask", {mask->Name()});
     op->SetAttr("is_test", true);
     op->SetAttr("dropout_prob", dropout_prob);
     op->SetAttr("dropout_implementation", dropout_implementation);
@@ -309,7 +307,7 @@ static std::string DebugString(Node* node) {
   return os.str();
 }
 
-static std::string DebugString(Graph* graph) {
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
   std::ostringstream os;
   os << "Graph: {\n";
   for (auto* node : graph->Nodes()) {

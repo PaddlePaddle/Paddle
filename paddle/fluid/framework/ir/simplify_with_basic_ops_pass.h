@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -29,23 +28,13 @@ class SimplifyWithBasicOpsPass : public Pass {
 
  private:
   bool SimplifyDropout(Graph* graph, Node* n,
-                       std::unordered_set<const Node*>* del_node_set,
-                       std::vector<int>* info) const;
+                       std::unordered_set<const Node*>* del_node_set) const;
 
   Node* GetInputVar(Node* n, const std::string& name) const;
   Node* GetOutputVar(Node* n, const std::string& name) const;
 
   void ReplaceInputVar(Node* op, Node* old_var, Node* new_var) const;
   void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) const;
-
-  enum SimplifyOption {
-    DELETE_DROPOIUT_OPS = 0,
-    REPLACE_DROPOUT_WITH_SCALE_OPS = 1,
-    NUM_SUPPORT_OPTIONS = 2
-  };
-
-  void AddStatis(std::vector<int>* info, SimplifyOption option) const;
-  void PrintStatis(const std::vector<int>& info) const;
 };
 
 }  // namespace ir
