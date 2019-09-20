@@ -25,9 +25,7 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-
-static void ReplaceOutputVar(Node* op, Node* old_var,
-                                                Node* new_var) {
+static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
   if (op->IsOp() && op->Op()) {
     new_var->inputs.push_back(op);
     for (size_t i = 0; i < op->outputs.size(); ++i) {
@@ -45,22 +43,23 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
-  FCReshapeTransposePattern fc_rts_pattern(pattern, name_scope);
+  MultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
 
   PDNode* x =
       pattern->NewNode(patterns::UniqueKey("X"))->assert_var_not_persistable();
 
-  fc_rts_pattern(x);
+  multihead_pattern(x);
   // Create New OpDesc
-  auto fuse_creater = [&](Node* x, Node* mul0, Node* mul1, Node* mul2,
-      Node* mul0_out, Node* mul1_out, Node* mul2_out, Node* eltadd0_b,
-      Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
+  auto fuse_creater = [&](
+      Node* x, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
+      Node* mul1_out, Node* mul2_out, Node* eltadd0_b, Node* eltadd1_b,
+      Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
       Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
 
     auto scale_attr = boost::get<float>(scale->Op()->GetAttr("scale"));
-    //auto scale_bias = boost::get<float>(scale->Op()->GetAttr("bias"));
-    //bool after_scale =
+    // auto scale_bias = boost::get<float>(scale->Op()->GetAttr("bias"));
+    // bool after_scale =
     //    boost::get<bool>(scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
@@ -68,31 +67,31 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // create tmp tensor
 
-      VarDesc k_var_desc(*mul1_out->Var());
-      k_var_desc.SetName("K" + mul1_out->Name());
-      auto* k_var_node = graph->CreateVarNode(&k_var_desc);
+    VarDesc k_var_desc(*mul1_out->Var());
+    k_var_desc.SetName("K" + mul1_out->Name());
+    auto* k_var_node = graph->CreateVarNode(&k_var_desc);
 
-      VarDesc q_var_desc(*mul0_out->Var());
-      q_var_desc.SetName("Q" + mul0_out->Name());
-      auto* q_var_node = graph->CreateVarNode(&q_var_desc);
+    VarDesc q_var_desc(*mul0_out->Var());
+    q_var_desc.SetName("Q" + mul0_out->Name());
+    auto* q_var_node = graph->CreateVarNode(&q_var_desc);
 
-      VarDesc v_var_desc(*mul2_out->Var());
-      v_var_desc.SetName("V" + mul2_out->Name());
-      auto* v_var_node = graph->CreateVarNode(&v_var_desc);
-  
-      auto reshape_desc = reshape2->Op();
-      int head_number =
-                boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
-    //IR_NODE_LINK_TO(mul1, q_tmp_node);
-    //IR_NODE_LINK_TO(mul0, k_tmp_node);
-    //IR_NODE_LINK_TO(mul2, v_tmp_node);
+    VarDesc v_var_desc(*mul2_out->Var());
+    v_var_desc.SetName("V" + mul2_out->Name());
+    auto* v_var_node = graph->CreateVarNode(&v_var_desc);
+
+    auto reshape_desc = reshape2->Op();
+    int head_number =
+        boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
+    // IR_NODE_LINK_TO(mul1, q_tmp_node);
+    // IR_NODE_LINK_TO(mul0, k_tmp_node);
+    // IR_NODE_LINK_TO(mul2, v_tmp_node);
     ReplaceOutputVar(mul0, mul0_out, q_var_node);
     ReplaceOutputVar(mul1, mul1_out, k_var_node);
     ReplaceOutputVar(mul2, mul2_out, v_var_node);
 
-    IR_NODE_LINK_TO(mul0, q_var_node);
-    IR_NODE_LINK_TO(mul1, k_var_node);
-    IR_NODE_LINK_TO(mul2, v_var_node);
+    // IR_NODE_LINK_TO(mul0, q_var_node);
+    // IR_NODE_LINK_TO(mul1, k_var_node);
+    // IR_NODE_LINK_TO(mul2, v_var_node);
 
     multihead_op_desc.SetType("multihead_matmul");
     multihead_op_desc.SetInput("Q", {q_var_node->Name()});
@@ -124,96 +123,119 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fc_rts_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(mul0, mul0, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul0, mul0, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
+                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(scale, scale, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, fc_rts_pattern);
+                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale, scale, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(mul1, mul1, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul1, mul1, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
+                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              fc_rts_pattern);
+                              multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
+                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              fc_rts_pattern);
+                              multihead_pattern);
 
     // nodes need be removed
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd0, eltadd0, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd0_b, eltadd0_b, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd0_out, eltadd0_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd0, eltadd0, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd0_b, eltadd0_b, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd0_out, eltadd0_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd1, eltadd1, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd1_b, eltadd1_b, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd1_out, eltadd1_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd1, eltadd1, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd1_b, eltadd1_b, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd1_out, eltadd1_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd2, eltadd2, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd2_b, eltadd2_b, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd2_out, eltadd2_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd2, eltadd2, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd2_b, eltadd2_b, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd2_out, eltadd2_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qk, matmul_qk, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qk_out, matmul_qk_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_qk, matmul_qk, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_qk_out, matmul_qk_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk, eltadd_qk, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_b, eltadd_qk_b, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk, eltadd_qk, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_b, eltadd_qk_b, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
+                              multihead_pattern);
 
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_qk, dropout_qk, fc_rts_pattern);
+    // GET_IR_NODE_FROM_SUBGRAPH(dropout_qk, dropout_qk, multihead_pattern);
     // GET_IR_NODE_FROM_SUBGRAPH(dropout_qk_out, dropout_qk_out,
-    // fc_rts_pattern);
+    // multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
+                              multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, fc_rts_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out, reshape2_qkv_out,
-                              fc_rts_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv, fc_rts_pattern);
+                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv,
+                              multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
-                              fc_rts_pattern);
+                              multihead_pattern);
 
-    fuse_creater(layer_norm, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, eltadd0_b, eltadd1_b,
-                 eltadd2_b, eltadd_qk_b, reshape2_0, reshape2_qkv_out, scale,
-                 scale_out);
+    fuse_creater(layer_norm, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out,
+                 eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b, reshape2_0,
+                 reshape2_qkv_out, scale, scale_out);
 
     std::unordered_set<const Node*> marked_nodes(
-        {eltadd0,          eltadd1,
-         eltadd2,          eltadd0_out,
-         eltadd1_out,      eltadd2_out,
-         reshape2_0,       reshape2_1,
-         reshape2_2,       reshape2_0_out,
-         reshape2_1_out,   reshape2_2_out,
-         transpose2_0,     transpose2_1,
-         transpose2_2,     transpose2_0_out,
-         transpose2_1_out, transpose2_2_out,
-         matmul_qk,        matmul_qk_out,
-         eltadd_qk,        eltadd_qk_out,
-         softmax_qk,       softmax_qk_out,  // dropout_qk, dropout_qk_out,
-         transpose2_qkv,   transpose2_qkv_out,
-         matmul_qkv,       matmul_qkv_out,
-	 mul0_out, mul1_out, mul2_out,
-         reshape2_qkv,     scale});
+        {eltadd0,
+         eltadd1,
+         eltadd2,
+         eltadd0_out,
+         eltadd1_out,
+         eltadd2_out,
+         reshape2_0,
+         reshape2_1,
+         reshape2_2,
+         reshape2_0_out,
+         reshape2_1_out,
+         reshape2_2_out,
+         transpose2_0,
+         transpose2_1,
+         transpose2_2,
+         transpose2_0_out,
+         transpose2_1_out,
+         transpose2_2_out,
+         matmul_qk,
+         matmul_qk_out,
+         eltadd_qk,
+         eltadd_qk_out,
+         softmax_qk,
+         softmax_qk_out,  // dropout_qk, dropout_qk_out,
+         transpose2_qkv,
+         transpose2_qkv_out,
+         matmul_qkv,
+         matmul_qkv_out,
+         mul0_out,
+         mul1_out,
+         mul2_out,
+         reshape2_qkv,
+         scale});
     GraphSafeRemoveNodes(graph, marked_nodes);
     // Remove unneeded nodes.
     ++fusion_count;
@@ -223,8 +245,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-PDNode* FCReshapeTransposePattern::operator()(
-    paddle::framework::ir::PDNode* x) {
+PDNode* MultiHeadMatmulPattern::operator()(paddle::framework::ir::PDNode* x) {
   // Create shared nodes.
   auto* layer_norm = pattern->NewNode(layer_norm_repr());
 
@@ -383,7 +404,6 @@ PDNode* FCReshapeTransposePattern::operator()(
   transpose2_2_out_var->AsIntermediate()->assert_is_op_input(
       "matmul");  // link to matmul qkv
 
-
   // Link all nodes together
   layer_norm->LinksFrom({x}).LinksTo({layer_norm_out_var});
   // Q path
@@ -422,7 +442,7 @@ PDNode* FCReshapeTransposePattern::operator()(
 
 }  // namespace patterns
 
-void FCReshapeTransposeFusePass::ApplyImpl(Graph* graph) const {
+void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_, param_scope());
@@ -435,5 +455,5 @@ void FCReshapeTransposeFusePass::ApplyImpl(Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_reshape_transpose_fuse_pass,
-              paddle::framework::ir::FCReshapeTransposeFusePass);
+REGISTER_PASS(multihead_matmul_fuse_pass,
+              paddle::framework::ir::MultiHeadMatmulFusePass);

@@ -25,9 +25,9 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct FCReshapeTransposePattern : public PatternBase {
-  FCReshapeTransposePattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fc_reshape_transpose") {}
+struct MultiHeadMatmulPattern : public PatternBase {
+  MultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multi_head_matmul") {}
 
   PDNode* operator()(PDNode* x);
 
@@ -88,14 +88,14 @@ struct FCReshapeTransposePattern : public PatternBase {
 }  // namespace patterns
 
 // The MulGRUFusePass and MulGRUFusePass will fuse to the same FusionGRU op.
-class FCReshapeTransposeFusePass : public FusePassBase {
+class MultiHeadMatmulFusePass : public FusePassBase {
  public:
-  virtual ~FCReshapeTransposeFusePass() {}
+  virtual ~MultiHeadMatmulFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const;
 
-  const std::string name_scope_{"fc_reshape_transpose_fuse"};
+  const std::string name_scope_{"multihead_matmul_fuse"};
 };
 
 }  // namespace ir

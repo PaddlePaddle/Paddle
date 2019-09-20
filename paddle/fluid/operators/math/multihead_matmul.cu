@@ -14,6 +14,7 @@
 
 #include <cuda_runtime.h>
 #include <paddle/fluid/platform/device_context.h>
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/multihead_matmul.h"
 
 namespace paddle {
@@ -102,24 +103,24 @@ __global__ void add_QKV(const T *Q, const T *K, const T *V, T *q_buf_,
   int word_start_id = (blockIdx.x) % seq_len;
 
 #if __CUDA_ARCH__ >= 350
-  //T tmp_bias_q = __ldg(&bias_ptr_q[threadIdx.x]);
-  //T tmp_bias_k = __ldg(&bias_ptr_k[threadIdx.x]);
-  //T tmp_bias_v = __ldg(&bias_ptr_v[threadIdx.x]);
+  // T tmp_bias_q = __ldg(&bias_ptr_q[threadIdx.x]);
+  // T tmp_bias_k = __ldg(&bias_ptr_k[threadIdx.x]);
+  // T tmp_bias_v = __ldg(&bias_ptr_v[threadIdx.x]);
   T tmp_q = __ldg(&data_ptr_q[threadIdx.x]) + __ldg(&bias_ptr_q[threadIdx.x]);
   T tmp_k = __ldg(&data_ptr_k[threadIdx.x]) + __ldg(&bias_ptr_k[threadIdx.x]);
   T tmp_v = __ldg(&data_ptr_v[threadIdx.x]) + __ldg(&bias_ptr_v[threadIdx.x]);
 #else
-  //T tmp_bias_q = bias_ptr_q[threadIdx.x];
-  //T tmp_bias_k = bias_ptr_k[threadIdx.x];
-  //T tmp_bias_v = bias_ptr_v[threadIdx.x];
+  // T tmp_bias_q = bias_ptr_q[threadIdx.x];
+  // T tmp_bias_k = bias_ptr_k[threadIdx.x];
+  // T tmp_bias_v = bias_ptr_v[threadIdx.x];
   T tmp_q = data_ptr_q[threadIdx.x] + bias_ptr_q[threadIdx.x];
   T tmp_k = data_ptr_k[threadIdx.x] + bias_ptr_k[threadIdx.x];
   T tmp_v = data_ptr_v[threadIdx.x] + bias_ptr_v[threadIdx.x];
 #endif
 
-  //T tmp_q = data_ptr_q[threadIdx.x] + tmp_bias_q;
-  //T tmp_k = data_ptr_k[threadIdx.x] + tmp_bias_k;
-  //T tmp_v = data_ptr_v[threadIdx.x] + tmp_bias_v;
+  // T tmp_q = data_ptr_q[threadIdx.x] + tmp_bias_q;
+  // T tmp_k = data_ptr_k[threadIdx.x] + tmp_bias_k;
+  // T tmp_v = data_ptr_v[threadIdx.x] + tmp_bias_v;
 
   int target_id = batch_id * (seq_len * head_num * size_per_head) +
                   head_id * seq_len * size_per_head +
@@ -132,33 +133,29 @@ __global__ void add_QKV(const T *Q, const T *K, const T *V, T *q_buf_,
 
 template <typename T>
 __global__ void add_QKV_V2(const T *Q, const T *K, const T *V, T *q_buf_,
-                        T *k_buf_, T *v_buf_, const T *bias_Q, const T *bias_K,
-                        const T *bias_V, int batch_size, int seq_len,
-                        int head_num, int size_per_head, const int word_per_block) {
-  const T* data_ptr;
-  T* buf_ptr;
-  const T* bias_ptr;
-  
+                           T *k_buf_, T *v_buf_, const T *bias_Q,
+                           const T *bias_K, const T *bias_V, int batch_size,
+                           int seq_len, int head_num, int size_per_head,
+                           const int word_per_block) {
+  const T *data_ptr;
+  T *buf_ptr;
+  const T *bias_ptr;
+
   int m = batch_size * seq_len;
   int n = head_num * size_per_head;
 
   int qkv_id = blockIdx.x * word_per_block / m;
   int row_offset = (blockIdx.x * word_per_block % m) * n;
 
-  if(qkv_id == 0)
-  {
+  if (qkv_id == 0) {
     data_ptr = Q + row_offset;
     buf_ptr = q_buf_;
     bias_ptr = bias_Q;
-  }
-  else if(qkv_id == 1)
-  {
+  } else if (qkv_id == 1) {
     data_ptr = K + row_offset;
     buf_ptr = k_buf_;
     bias_ptr = bias_K;
-  }
-  else
-  {
+  } else {
     data_ptr = V + row_offset;
     buf_ptr = v_buf_;
     bias_ptr = bias_V;
@@ -175,30 +172,32 @@ __global__ void add_QKV_V2(const T *Q, const T *K, const T *V, T *q_buf_,
   T bias = bias_ptr[threadIdx.x];
 #endif
 
-  for(int i = word_start_id; i < word_start_id + word_per_block; ++i)
-  {
+  for (int i = word_start_id; i < word_start_id + word_per_block; ++i) {
     T tmp = data_ptr[threadIdx.x] + bias;
 
-    int target_id = batch_id * (seq_len * head_num * size_per_head) + head_id * seq_len * size_per_head + 
-      i * size_per_head + id_in_head;
+    int target_id = batch_id * (seq_len * head_num * size_per_head) +
+                    head_id * seq_len * size_per_head + i * size_per_head +
+                    id_in_head;
 
     buf_ptr[target_id] = tmp;
     data_ptr += n;
   }
-
 }
 
 template <typename T>
-__global__ void softmax_kernel_v2(T *qk_buf_, const T* bias_qk_, const int batch_size,
-                                  const int head_num, const int seq_len) {
+__global__ void softmax_kernel_v2(T *qk_buf_, const T *bias_qk_,
+                                  const int batch_size, const int head_num,
+                                  const int seq_len) {
   int batch_id = blockIdx.x / head_num / seq_len;
   int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
 
   __shared__ float s_sum, s_max;
 
-  float qk =
-      threadIdx.x < seq_len ? (float)((qk_buf_[threadIdx.x + qk_offset] + bias_qk_[threadIdx.x + qk_offset])) : 0.0f;
+  float qk = threadIdx.x < seq_len
+                 ? (float)((qk_buf_[threadIdx.x + qk_offset] +
+                            bias_qk_[threadIdx.x + qk_offset]))
+                 : 0.0f;
   float tmp = threadIdx.x < seq_len ? (float)(qk) : -1e20f;
   float max_val = blockReduceMax<float>(tmp);
   if (threadIdx.x == 0) s_max = max_val;
@@ -253,7 +252,8 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
   int block = k;
 
   // For verify result
-  //elt_qk_add<T><<<grid, block, 0, stream>>>(bias_qk, qk_buf_, head_num, seq_len,
+  // elt_qk_add<T><<<grid, block, 0, stream>>>(bias_qk, qk_buf_, head_num,
+  // seq_len,
   //                                          size_per_head, batch_size);
 
   softmax_kernel_v2<T><<<grid, block, 0, stream>>>(qk_buf_, bias_qk, batch_size,
@@ -311,8 +311,7 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
     int qk_buf_size = batch_size * head_num * seq_len * seq_len;
 
     auto alloc_buf =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            (buf_size * 4 + qk_buf_size) * sizeof(T));
+        memory::Alloc(dev_ctx, (buf_size * 4 + qk_buf_size) * sizeof(T));
     T *buf = (T *)alloc_buf->ptr();
     T *q_buf = buf;
     T *k_buf = buf + buf_size;
@@ -332,13 +331,16 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
     add_QKV<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf, bias_q,
                                            bias_k, bias_v, batch_size, seq_len,
                                            head_num, size_per_head);
-/*    const int word_per_block = 1;
-    dim3 grid(m / word_per_block * 3);
-    dim3 block(k);
-    add_QKV_V2<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf, bias_q,
-                                           bias_k, bias_v, batch_size, seq_len,
-                                           head_num, size_per_head, word_per_block);
-*/
+    /*    const int word_per_block = 1;
+        dim3 grid(m / word_per_block * 3);
+        dim3 block(k);
+        add_QKV_V2<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf,
+       bias_q,
+                                               bias_k, bias_v, batch_size,
+       seq_len,
+                                               head_num, size_per_head,
+       word_per_block);
+    */
     MatMulWithHeadQK<T>(dev_ctx, head_num, seq_len, size_per_head, batch_size,
                         false, true, q_buf, k_buf, qk_buf, bias_qk, alpha,
                         beta);
@@ -347,7 +349,6 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
                          beta);
   }
 };
-
 
 template class MultiHeadGPUCompute<platform::CUDADeviceContext, float>;
 template class MultiHeadGPUCompute<platform::CUDADeviceContext, double>;
