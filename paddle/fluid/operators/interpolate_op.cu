@@ -365,20 +365,41 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
-  if (scale > 0) {
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
-  }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
-  if (out_size != nullptr) {
-    Tensor sizes;
-    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-    auto size_data = sizes.data<int>();
-    out_h = size_data[0];
-    out_w = size_data[1];
+  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_shape_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_shape_tensor);
+    out_h = new_size[0];
+    out_w = new_size[1];
+  } else {
+    float scale;
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    if (scale_tensor != nullptr) {
+      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+      scale = scale_data[0];
+    } else {
+      scale = ctx.Attr<float>("scale");
+    }
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+    auto out_size = ctx.Input<Tensor>("OutSize");
+    if (out_size != nullptr) {
+      Tensor sizes;
+      framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+      auto size_data = sizes.data<int>();
+      out_h = size_data[0];
+      out_w = size_data[1];
+    }
   }
+  PADDLE_ENFORCE_GT(
+      out_h, 0,
+      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_w, 0,
+      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
 
   auto output_data =
       output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
@@ -439,22 +460,47 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
-  if (scale > 0) {
-    out_d = static_cast<int>(in_d * scale);
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
-  }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
-  if (out_size != nullptr) {
-    Tensor sizes;
-    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
-    auto size_data = sizes.data<int>();
-    out_d = size_data[0];
-    out_h = size_data[1];
-    out_w = size_data[2];
+  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_shape_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_shape_tensor);
+    out_d = new_size[0];
+    out_h = new_size[1];
+    out_w = new_size[2];
+  } else {
+    float scale;
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    if (scale_tensor != nullptr) {
+      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+      scale = scale_data[0];
+    } else {
+      scale = ctx.Attr<float>("scale");
+    }
+    if (scale > 0) {
+      out_d = static_cast<int>(in_d * scale);
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+    auto out_size = ctx.Input<Tensor>("OutSize");
+    if (out_size != nullptr) {
+      Tensor sizes;
+      framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+      auto size_data = sizes.data<int>();
+      out_d = size_data[0];
+      out_h = size_data[1];
+      out_w = size_data[2];
+    }
   }
+  PADDLE_ENFORCE_GT(
+      out_d, 0,
+      "out_d in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_h, 0,
+      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_w, 0,
+      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
 
   auto output_data =
       output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
@@ -513,7 +559,14 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
+  float scale;
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  if (scale_tensor != nullptr) {
+    auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+    scale = scale_data[0];
+  } else {
+    scale = ctx.Attr<float>("scale");
+  }
   if (scale > 0) {
     out_h = static_cast<int>(in_h * scale);
     out_w = static_cast<int>(in_w * scale);
@@ -522,10 +575,17 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
     Tensor sizes;
-    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
+  }
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_h = new_size[0];
+    out_w = new_size[1];
   }
 
   auto* output_grad_data = output_grad.data<T>();
@@ -591,7 +651,14 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
+  float scale;
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  if (scale_tensor != nullptr) {
+    auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+    scale = scale_data[0];
+  } else {
+    scale = ctx.Attr<float>("scale");
+  }
   if (scale > 0) {
     out_d = static_cast<int>(in_d * scale);
     out_h = static_cast<int>(in_h * scale);
@@ -601,11 +668,19 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
     Tensor sizes;
-    framework::TensorCopy(*out_size, platform::CPUPlace(), &sizes);
+    framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];
     out_w = size_data[2];
+  }
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_d = new_size[0];
+    out_h = new_size[1];
+    out_w = new_size[2];
   }
 
   auto* output_grad_data = output_grad.data<T>();

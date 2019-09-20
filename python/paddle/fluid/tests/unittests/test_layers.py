@@ -223,6 +223,13 @@ class TestLayer(LayerTest):
             conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
 
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            conv2d = nn.Conv2D(
+                'conv2d', num_filters=3, filter_size=[2, 2], bias_attr=False)
+            dy_ret = conv2d(base.to_variable(images))
+            self.assertTrue(conv2d._bias_param is None)
+
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
@@ -993,6 +1000,133 @@ class TestLayer(LayerTest):
             dy_ret = layers.hard_swish(base.to_variable(t))
 
         self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+
+    def test_compare(self):
+        value_a = np.arange(3)
+        value_b = np.arange(3)
+        # less than
+        with self.static_graph():
+            a = layers.data(name='a', shape=[1], dtype='int64')
+            b = layers.data(name='b', shape=[1], dtype='int64')
+            cond = layers.less_than(x=a, y=b)
+            static_ret = self.get_static_graph_result(
+                feed={"a": value_a,
+                      "b": value_b}, fetch_list=[cond])[0]
+        with self.dynamic_graph():
+            da = base.to_variable(value_a)
+            db = base.to_variable(value_b)
+            dcond = layers.less_than(x=da, y=db)
+
+        for i in range(len(static_ret)):
+            self.assertTrue(dcond.numpy()[i] == static_ret[i])
+
+        # less equal
+        with self.static_graph():
+            a1 = layers.data(name='a1', shape=[1], dtype='int64')
+            b1 = layers.data(name='b1', shape=[1], dtype='int64')
+            cond1 = layers.less_equal(x=a1, y=b1)
+            static_ret1 = self.get_static_graph_result(
+                feed={"a1": value_a,
+                      "b1": value_b}, fetch_list=[cond1])[0]
+        with self.dynamic_graph():
+            da1 = base.to_variable(value_a)
+            db1 = base.to_variable(value_b)
+            dcond1 = layers.less_equal(x=da1, y=db1)
+
+            for i in range(len(static_ret1)):
+                self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
+
+        #greater than
+        with self.static_graph():
+            a2 = layers.data(name='a2', shape=[1], dtype='int64')
+            b2 = layers.data(name='b2', shape=[1], dtype='int64')
+            cond2 = layers.greater_than(x=a2, y=b2)
+            static_ret2 = self.get_static_graph_result(
+                feed={"a2": value_a,
+                      "b2": value_b}, fetch_list=[cond2])[0]
+        with self.dynamic_graph():
+            da2 = base.to_variable(value_a)
+            db2 = base.to_variable(value_b)
+            dcond2 = layers.greater_than(x=da2, y=db2)
+
+            for i in range(len(static_ret2)):
+                self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
+
+        #greater equal
+        with self.static_graph():
+            a3 = layers.data(name='a3', shape=[1], dtype='int64')
+            b3 = layers.data(name='b3', shape=[1], dtype='int64')
+            cond3 = layers.greater_equal(x=a3, y=b3)
+            static_ret3 = self.get_static_graph_result(
+                feed={"a3": value_a,
+                      "b3": value_b}, fetch_list=[cond3])[0]
+        with self.dynamic_graph():
+            da3 = base.to_variable(value_a)
+            db3 = base.to_variable(value_b)
+            dcond3 = layers.greater_equal(x=da3, y=db3)
+
+            for i in range(len(static_ret3)):
+                self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
+
+        # equal
+        with self.static_graph():
+            a4 = layers.data(name='a4', shape=[1], dtype='int64')
+            b4 = layers.data(name='b4', shape=[1], dtype='int64')
+            cond4 = layers.equal(x=a4, y=b4)
+            static_ret4 = self.get_static_graph_result(
+                feed={"a4": value_a,
+                      "b4": value_b}, fetch_list=[cond4])[0]
+        with self.dynamic_graph():
+            da4 = base.to_variable(value_a)
+            db4 = base.to_variable(value_b)
+            dcond4 = layers.equal(x=da4, y=db4)
+
+            for i in range(len(static_ret4)):
+                self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
+
+        # not equal
+        with self.static_graph():
+            a5 = layers.data(name='a5', shape=[1], dtype='int64')
+            b5 = layers.data(name='b5', shape=[1], dtype='int64')
+            cond5 = layers.equal(x=a5, y=b5)
+            static_ret5 = self.get_static_graph_result(
+                feed={"a5": value_a,
+                      "b5": value_b}, fetch_list=[cond5])[0]
+        with self.dynamic_graph():
+            da5 = base.to_variable(value_a)
+            db5 = base.to_variable(value_b)
+            dcond5 = layers.equal(x=da5, y=db5)
+
+            for i in range(len(static_ret5)):
+                self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
+
+    def test_crop_tensor(self):
+        with self.static_graph():
+            x = fluid.layers.data(name="x1", shape=[6, 5, 8])
+
+            dim1 = fluid.layers.data(
+                name="dim1", shape=[1], append_batch_size=False)
+            dim2 = fluid.layers.data(
+                name="dim2", shape=[1], append_batch_size=False)
+            crop_shape1 = (1, 2, 4, 4)
+            crop_shape2 = fluid.layers.data(
+                name="crop_shape", shape=[4], append_batch_size=False)
+            crop_shape3 = [-1, dim1, dim2, 4]
+            crop_offsets1 = [0, 0, 1, 0]
+            crop_offsets2 = fluid.layers.data(
+                name="crop_offset", shape=[4], append_batch_size=False)
+            crop_offsets3 = [0, dim1, dim2, 0]
+
+            out1 = fluid.layers.crop_tensor(
+                x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = fluid.layers.crop_tensor(
+                x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = fluid.layers.crop_tensor(
+                x, shape=crop_shape3, offsets=crop_offsets3)
+
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            self.assertIsNotNone(out3)
 
 
 class TestBook(LayerTest):
@@ -1912,6 +2046,14 @@ class TestBook(LayerTest):
             out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
+    def make_square_error_cost(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[1], dtype="float32")
+            y = self._get_data(name="Y", shape=[1], dtype="float32")
+            out = layers.square_error_cost(input=x, label=y)
+            return (out)
+
     def test_dynamic_lstmp(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -1986,6 +2128,17 @@ class TestBook(LayerTest):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+
+    def test_stridedslice(self):
+        axes = [0, 1, 2]
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        strides = [1, 1, 1]
+        with self.static_graph():
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            out = layers.strided_slice(
+                x, axes=axes, starts=starts, ends=ends, strides=strides)
+            return out
 
     def test_psroi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -2162,32 +2315,31 @@ class TestBook(LayerTest):
         print(str(program))
 
     def test_deformable_conv(self):
-        if core.is_compiled_with_cuda():
-            with program_guard(fluid.default_main_program(),
-                               fluid.default_startup_program()):
-                input = layers.data(
-                    name='input',
-                    append_batch_size=False,
-                    shape=[2, 3, 32, 32],
-                    dtype="float32")
-                offset = layers.data(
-                    name='offset',
-                    append_batch_size=False,
-                    shape=[2, 18, 32, 32],
-                    dtype="float32")
-                mask = layers.data(
-                    name='mask',
-                    append_batch_size=False,
-                    shape=[2, 9, 32, 32],
-                    dtype="float32")
-                out = layers.deformable_conv(
-                    input=input,
-                    offset=offset,
-                    mask=mask,
-                    num_filters=2,
-                    filter_size=3,
-                    padding=1)
-                return (out)
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            mask = layers.data(
+                name='mask',
+                append_batch_size=False,
+                shape=[2, 9, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=mask,
+                num_filters=2,
+                filter_size=3,
+                padding=1)
+            return (out)
 
     def test_unfold(self):
         with self.static_graph():
@@ -2223,6 +2375,29 @@ class TestBook(LayerTest):
                 sample_per_part=4,
                 trans_std=0.1)
         return (out)
+
+    def test_deformable_conv_v1(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=None,
+                num_filters=2,
+                filter_size=3,
+                padding=1,
+                modulated=False)
+            return (out)
 
     def test_retinanet_target_assign(self):
         with program_guard(fluid.default_main_program(),

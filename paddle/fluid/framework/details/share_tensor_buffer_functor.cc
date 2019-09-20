@@ -100,7 +100,7 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
     auto *out_tensor = GetMutableTensorFromVar(in_out_vars_[i].second);
     auto *in_var_info = in_var_infos_[i];
 
-    if (UNLIKELY(in_var_info->IsSkipped())) {
+    if (UNLIKELY(in_var_info->IsSkippedMemoryReuse())) {
       // If in_var is inplaced in the previous batch and we want to fetch
       // in_var in the current batch, we have to reset memory of out_var
       // to avoid wrong calculation result.

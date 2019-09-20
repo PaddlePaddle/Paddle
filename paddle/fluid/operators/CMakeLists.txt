@@ -55,7 +55,7 @@ if (NOT WITH_MKL)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op deformable_conv_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+	sync_batch_norm_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -73,8 +73,6 @@ if (WITH_GPU)
         op_library(sync_batch_norm_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
     endif()
-    op_library(deformable_conv_op)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(deformable_conv);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
