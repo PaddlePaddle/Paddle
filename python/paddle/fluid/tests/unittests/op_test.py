@@ -955,6 +955,13 @@ class OpTest(unittest.TestCase):
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
 
+        if check_dygraph:
+            #dygraph_grad = self._get_dygraph_grad()
+            pass
+
+    def _get_dygraph_grad(self):
+        pass
+
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
         tensor = core.LoDTensor()
