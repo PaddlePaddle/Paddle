@@ -141,7 +141,6 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
-        cls._grad_depth = 2
 
         np.random.seed(123)
         random.seed(124)
@@ -446,12 +445,12 @@ class OpTest(unittest.TestCase):
         grad_program._sync_with_cpp()
         return grad_program
 
-    def _construct_grad_feed_map_from_forward(
-            self, place, fwd_feed_map, fwd_fetch_list, fwd_outs, fwd_program,
-            grad_op_desc, op_grad_to_var):
+    def _construct_grad_feed_map_from_forward(self, place, fwd_res,
+                                              grad_op_desc, op_grad_to_var):
         # generate grad_feed_map for grad_program
         # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
         # we use fwd outs (also inputs sometimes) as grad (fake) feeds
+        fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc = fwd_res
         p = core.Place()
         p.set_place(place)
         grad_feed_map = {}
@@ -473,45 +472,146 @@ class OpTest(unittest.TestCase):
                             grad_feed_map[arg] = fwd_outs[i]._copy(p)
         return grad_feed_map
 
+    def _get_need_run_ops(self, op_desc, father_op_desc=None):
+        """
+        Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
+        (1) op has infer_inplace
+        (2) op has infer_inplace in its descendants
+        """
+        need_run_ops = []
+        visited_ops = []
+
+        def _dfs_grad_op(op_desc, father_op_desc=None):
+            visited_ops.append(op_desc.type())
+            has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
+            has_grad_op_maker = fluid.core.has_grad_op_maker(op_desc.type())
+            has_infer_inplace_in_descendants = False
+            if not has_grad_op_maker:
+                has_infer_inplace_in_descendants = False
+            else:
+                # get grad_op_desc 
+                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                    op_desc, set(), [])
+                if not grad_op_desc_list:
+                    has_infer_inplace_in_descendants = False
+                else:
+                    for i, grad_op_desc in enumerate(grad_op_desc_list):
+                        if grad_op_desc.type(
+                        ) not in visited_ops and _dfs_grad_op(
+                                grad_op_desc, father_op_desc=op_desc):
+                            has_infer_inplace_in_descendants = True
+            if has_infer_inplace or has_infer_inplace_in_descendants:
+                need_run_ops.append((op_desc, father_op_desc))
+                return True
+            else:
+                return False
+
+        _dfs_grad_op(op_desc, father_op_desc=father_op_desc)
+        return need_run_ops
+
+    def _check_forward_inplace(self,
+                               place,
+                               no_check_set=None,
+                               inplace_atol=None):
+        expect_res = self._calc_output(
+            place,
+            no_check_set=no_check_set,
+            enable_inplace=False,
+            for_inplace_test=True)
+        actual_res = self._calc_output(
+            place,
+            no_check_set=no_check_set,
+            enable_inplace=True,
+            for_inplace_test=True)
+        # compare expect_outs and actual_outs
+        self._compare_expect_and_actual_outputs(
+            place,
+            expect_res[1],
+            expect_res[0],
+            actual_res[0],
+            inplace_atol=inplace_atol)
+        return expect_res
+
+    def _calc_grad_output(self,
+                          place,
+                          fwd_res,
+                          grad_op_desc,
+                          enable_inplace=None):
+        # get grad_op 
+        fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc = fwd_res
+
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(fwd_op_desc,
+                                                                  set(), [])
+        grad_program = self._construct_grad_program_from_forward(
+            fwd_program, grad_op_desc, op_grad_to_var)
+
+        grad_feed_map = self._construct_grad_feed_map_from_forward(
+            place, fwd_res, grad_op_desc, op_grad_to_var)
+
+        grad_fetch_list = grad_op_desc.output_arg_names()
+
+        exe = Executor(place)
+        program = grad_program
+        if enable_inplace is not None:
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = enable_inplace
+            compiled_program = fluid.CompiledProgram(
+                grad_program).with_data_parallel(
+                    loss_name="", build_strategy=build_strategy, places=place)
+            program = compiled_program
+        outs = exe.run(program,
+                       feed=grad_feed_map,
+                       fetch_list=grad_fetch_list,
+                       return_numpy=False)
+        return outs, grad_fetch_list, grad_feed_map, grad_program, grad_op_desc
+
+    def _check_grad_inplace(self,
+                            place,
+                            fwd_res,
+                            grad_op_desc,
+                            inplace_atol=None):
+        expect_res = self._calc_grad_output(
+            place, fwd_res, grad_op_desc, enable_inplace=False)
+        actual_res = self._calc_grad_output(
+            place, fwd_res, grad_op_desc, enable_inplace=True)
+        # compare expect_outs and actual_outs
+        self._compare_expect_and_actual_outputs(
+            place,
+            expect_res[1],
+            expect_res[0],
+            actual_res[0],
+            inplace_atol=inplace_atol)
+        return expect_res
+
     def check_inplace_output_with_place(self,
                                         place,
                                         no_check_set=None,
                                         inplace_atol=None):
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
-        self._checked_grad_inplace_ops = []
 
-        # op has neither inplace nor grad_op
-        if not (has_infer_inplace or has_grad_op_maker):
-            return
-        else:
-            # op has inplace, check forward inplace
-            if has_infer_inplace:
-                expect_res = self._calc_output(
-                    place,
-                    no_check_set=no_check_set,
-                    enable_inplace=False,
-                    for_inplace_test=True)
-                actual_res = self._calc_output(
-                    place,
-                    no_check_set=no_check_set,
-                    enable_inplace=True,
-                    for_inplace_test=True)
-                # compare expect_outs and actual_outs
-                self._compare_expect_and_actual_outputs(
-                    place,
-                    expect_res[1],
-                    expect_res[0],
-                    actual_res[0],
-                    inplace_atol=inplace_atol)
+        fwd_res = self._calc_output(
+            place, no_check_set=no_check_set, for_inplace_test=True)
+        op_desc = fwd_res[4]
+        need_run_ops = self._get_need_run_ops(op_desc)
 
-            # op has grad_op_maker, check grad inplace
-            if has_grad_op_maker:
-                fwd_res = self._calc_output(
-                    place, no_check_set=no_check_set, for_inplace_test=True)
-
-                # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
-                # skip use_mkldnn currently
+        res = {}
+        for op_desc, father_op_desc in reversed(need_run_ops):
+            # the first one is the 'root' forward op
+            has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
+            if op_desc.type() == self.op_type:
+                if has_infer_inplace:
+                    print(op_desc.type())
+                    res[op_desc] = self._check_forward_inplace(
+                        place,
+                        no_check_set=no_check_set,
+                        inplace_atol=inplace_atol)
+                else:
+                    res[op_desc] = self._calc_output(
+                        place, no_check_set=no_check_set, for_inplace_test=True)
+            else:
+                # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
+                # skip use_mkldnn and use_ngraph currently
                 flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
                 attrs_use_mkldnn = hasattr(
                     self,
@@ -520,109 +620,22 @@ class OpTest(unittest.TestCase):
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
-                    return
+                    continue
                 use_ngraph = fluid.core.is_compiled_with_ngraph(
                 ) and fluid.core.get_flags_use_ngraph()
                 if use_ngraph:
                     warnings.warn(
                         "check inplace_grad for ops using ngraph is not supported"
                     )
-                    return
-
-                self.check_inplace_grad_output_using_fwd_inputs_outputs(
-                    place,
-                    fwd_res[2],
-                    fwd_res[1],
-                    fwd_res[0],
-                    fwd_res[3],
-                    fwd_res[4],
-                    no_check_set=no_check_set,
-                    inplace_atol=inplace_atol,
-                    depth=0)
-
-    def check_inplace_grad_output_using_fwd_inputs_outputs(self,
-                                                           place,
-                                                           fwd_feed_map,
-                                                           fwd_fetch_list,
-                                                           fwd_outs,
-                                                           fwd_program,
-                                                           fwd_op_desc,
-                                                           no_check_set=None,
-                                                           inplace_atol=None,
-                                                           depth=0):
-        # depth=0 means grad
-        # depth=1 means double_grad
-        # depth=2 means triple_grad, which is not supported yet
-        if depth >= self._grad_depth:
-            return
-        self._checked_grad_inplace_ops.append(fwd_op_desc.type())
-
-        # get grad_op 
-        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(fwd_op_desc,
-                                                                  set(), [])
-        # has grad_op_maker but no grad_op 
-        if not grad_op_desc_list:
-            return
-        for i, grad_op_desc in enumerate(grad_op_desc_list):
-            has_infer_inplace = fluid.core.has_infer_inplace(grad_op_desc.type(
-            ))
-            has_grad_op_maker = fluid.core.has_grad_op_maker(grad_op_desc.type(
-            ))
-            # op has neither inplace nor grad_op
-            if not (has_infer_inplace or has_grad_op_maker):
-                continue
-            else:
-                grad_program = self._construct_grad_program_from_forward(
-                    fwd_program, grad_op_desc, op_grad_to_var)
-                grad_feed_map = self._construct_grad_feed_map_from_forward(
-                    place, fwd_feed_map, fwd_fetch_list, fwd_outs, fwd_program,
-                    grad_op_desc, op_grad_to_var)
-                grad_fetch_list = grad_op_desc.output_arg_names()
-
-                def _calc_grad_output(enable_inplace=None):
-                    exe = Executor(place)
-                    program = grad_program
-                    if enable_inplace is not None:
-                        build_strategy = fluid.BuildStrategy()
-                        build_strategy.enable_inplace = enable_inplace
-                        compiled_program = fluid.CompiledProgram(
-                            grad_program).with_data_parallel(
-                                loss_name="",
-                                build_strategy=build_strategy,
-                                places=place)
-                        program = compiled_program
-                    outs = exe.run(program,
-                                   feed=grad_feed_map,
-                                   fetch_list=grad_fetch_list,
-                                   return_numpy=False)
-                    return outs
-
+                    continue
                 if has_infer_inplace:
-                    expect_outs = _calc_grad_output(enable_inplace=False)
-                    actual_outs = _calc_grad_output(enable_inplace=True)
-                    # compare expect_outs and actual_outs
-                    self._compare_expect_and_actual_outputs(
-                        place,
-                        grad_fetch_list,
-                        expect_outs,
-                        actual_outs,
-                        inplace_atol=inplace_atol)
-
-                if has_grad_op_maker and grad_op_desc.type(
-                ) not in self._checked_grad_inplace_ops:
-                    # we should check grad, even if forward can not inplace
-                    # check grad of grad, recursively
-                    fwd_outs = _calc_grad_output()
-                    self.check_inplace_grad_output_using_fwd_inputs_outputs(
-                        place,
-                        grad_feed_map,
-                        grad_fetch_list,
-                        fwd_outs,
-                        grad_program,
-                        grad_op_desc,
-                        no_check_set=no_check_set,
-                        inplace_atol=inplace_atol,
-                        depth=depth + 1)
+                    print(op_desc.type())
+                    fwd_res = res[father_op_desc]
+                    res[op_desc] = self._check_grad_inplace(
+                        place, fwd_res, op_desc, inplace_atol=inplace_atol)
+                else:
+                    res[op_desc] = self._calc_grad_output(place, fwd_res,
+                                                          op_desc)
 
     def check_output_with_place(self,
                                 place,
