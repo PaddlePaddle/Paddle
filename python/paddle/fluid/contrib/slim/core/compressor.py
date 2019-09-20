@@ -139,7 +139,7 @@ class Context(object):
         """
         Load the context from file.
         """
-        with open(file_name) as context_file:
+        with open(file_name, 'rb') as context_file:
             if sys.version_info < (3, 0):
                 data = pickle.load(context_file)
             else:
