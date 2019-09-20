@@ -35,6 +35,10 @@ namespace framework {
 const char kFeedOpType[] = "feed";
 const char kFetchOpType[] = "fetch";
 
+const char kRecurrent[] = "recurrent";
+const char kStates[] = "states";
+const char kExStates[] = "ex_states";
+
 bool HasDependentInputVar(
     const proto::OpDesc& op_desc,
     const std::unordered_set<std::string>& dependent_vars) {
@@ -173,6 +177,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       auto* op = op_field->Add();
       *op = input.blocks(block_id).ops(i);
       if (HasSubBlock(*op)) {
+        VLOG(2) << "Pruning op which has sub block: " << op->type();
         // create sub_block_dependent_vars here to help prune the sub block
         std::unordered_set<std::string> sub_block_dependent_vars;
         for (auto& var : op->inputs()) {
@@ -186,6 +191,20 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
           for (auto& argu : var.arguments()) {
             if (feed_var_names.count(argu) == 0) {
               sub_block_dependent_vars.insert(argu);
+            }
+          }
+        }
+
+        // Recurrent op's states are also dependent vars
+        if (op->type() == kRecurrent) {
+          auto& attributes = op->attrs();
+          for (auto& attr : attributes) {
+            if (attr.name() == kStates || attr.name() == kExStates) {
+              for (auto& argu : attr.strings()) {
+                if (feed_var_names.count(argu) == 0) {
+                  sub_block_dependent_vars.insert(argu);
+                }
+              }
             }
           }
         }
