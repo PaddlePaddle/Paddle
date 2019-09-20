@@ -416,6 +416,8 @@ class Variable(object):
         stop_gradient (bool): True if the variable will stop to calculate its
             gradients when backward. Default: False.
         is_data (bool): True if the variable is an input data. Default: False
+        check_feed (bool): True if the variable is an input data and have
+            to check the feed data shape and dtype. Default: False
 
     Notes:
         The constructor of Variable should not be invoked directly. Please
@@ -444,6 +446,7 @@ class Variable(object):
                  error_clip=None,
                  stop_gradient=False,
                  is_data=False,
+                 check_feed=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -542,6 +545,7 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
+            self.check_feed = check_feed
 
     def numpy(self):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
@@ -1987,7 +1991,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                check_feed=var.check_feed)
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -1996,7 +2001,8 @@ class Block(object):
                 type=var.type,
                 lod_level=var.lod_level,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                check_feed=var.check_feed)
         return ret_var
 
 
@@ -3558,6 +3564,8 @@ class Program(object):
         for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
+            if var.check_feed:
+                self.global_block().var(var.name).check_feed = True
 
     def list_vars(self):
         """

@@ -93,6 +93,8 @@ class ReadOp : public framework::OperatorBase {
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+      PADDLE_ENFORCE_EQ(ins[i].dims, out->dims(),
+                        "Reader feed data whose shape doesn't match input");
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }

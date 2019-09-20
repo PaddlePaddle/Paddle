@@ -443,13 +443,16 @@ class Executor(object):
 
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
-        for op in program.global_block().ops:
+        global_block = program.global_block()
+        for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
+                var = global_block.var(feed_var_name)
+                var_check_feed(var, cur_feed)
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
@@ -496,6 +499,8 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
+                var = program.global_block().var(feed_name)
+                var_check_feed(var, feed[feed_name])
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be splitted
