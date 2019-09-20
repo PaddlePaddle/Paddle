@@ -85,6 +85,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
             'Y': np.random.rand(1).astype(np.float32)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_Vector(ElementwiseMulOp):
@@ -95,6 +96,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
             'Y': np.random.random((32, )).astype("float64")
         }
         self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
@@ -119,6 +121,7 @@ class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 1)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
@@ -132,6 +135,7 @@ class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 4)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
@@ -146,6 +150,7 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 4, 1)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
@@ -156,6 +161,7 @@ class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
             'Y': np.random.rand(2, 1, 4).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
@@ -166,6 +172,7 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
             'Y': np.random.rand(2, 3, 1, 5).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
