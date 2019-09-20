@@ -83,7 +83,7 @@ class Conv2D(layers.Layer):
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
-    Args:
+    Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -119,7 +119,7 @@ class Conv2D(layers.Layer):
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -292,7 +292,7 @@ class Conv3D(layers.Layer):
             H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
-    Args:
+    Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output image channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -327,7 +327,7 @@ class Conv3D(layers.Layer):
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -497,7 +497,7 @@ class Conv3DTranspose(layers.Layer):
            H_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
            W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
 
-    Args:
+    Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -539,7 +539,7 @@ class Conv3DTranspose(layers.Layer):
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -679,7 +679,7 @@ class Pool2D(layers.Layer):
     Parameters(ksize, strides, paddings) are two elements. These two elements represent height and width, respectively.
     The input(X) size and output(Out) size may be different.
 
-    Args:
+    Parameters:
         name_scope(str) : The name of this class.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
@@ -836,7 +836,7 @@ class FC(layers.Layer):
             out.data = [[0.18669507, 0.1893476]]
             out.shape = (1, 2)
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         size(int): The number of output units in this layer.
         num_flatten_dims (int): The fc layer can accept an input tensor with more than
@@ -857,7 +857,7 @@ class FC(layers.Layer):
         is_test(bool): A flag indicating whether execution is in test phase. Default: False
         dtype(str): Dtype used for weight
 
-    Parameters:
+    Attributes:
         weight (list of Parameter): the learnable weights of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -897,16 +897,7 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-
-        class _list(list):
-            def __init__(self, holder):
-                super(_list).__init__(self)
-                self.__holder__ = holder
-
-            def __setitem__(self, key, value):
-                self.__holder__.__setattr__('_w%d' % key, value)
-
-        self.weight = _list(self)
+        self.weight = list()
 
     def _build_once(self, input):
         i = 0
@@ -1016,7 +1007,7 @@ class BatchNorm(layers.Layer):
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         act(str|None): Activation type, linear|relu|prelu|...
         is_test (bool): A flag indicating whether it is in
@@ -1200,7 +1191,7 @@ class Embedding(layers.Layer):
     :attr:`input`.
     All the input variables are passed in as local variables to the LayerHelper constructor
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
@@ -1212,7 +1203,7 @@ class Embedding(layers.Layer):
         param_attr(ParamAttr): Parameters for this layer. Default: None.
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc. Default: 'float32'.
 
-    Parameters:
+    Attributes:
         weight (Parameter): the learnable weights of this layer.
 
     Returns:
@@ -1310,7 +1301,7 @@ class LayerNorm(layers.Layer):
 
     * :math:`b`: the trainable bias parameter.
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         scale(bool): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
@@ -1470,7 +1461,7 @@ class GRUUnit(layers.Layer):
     This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         size (int): The input dimension value.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
@@ -1500,7 +1491,7 @@ class GRUUnit(layers.Layer):
                                   Default: 'sigmoid'
         dtype(str): The dtype of the layers. Default: 'float32'
 
-    Parameters:
+    Attributes:
         weight (Parameter): the learnable weights of this layer.
         bias (Parameter): the learnable bias of this layer.
 
@@ -1590,7 +1581,7 @@ class NCE(layers.Layer):
     `Noise-contrastive estimation: A new estimation principle for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_ .
     By default this operator uses a uniform distribution for sampling.
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         num_total_classes (int): Total number of classes in all samples
         param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
@@ -1613,7 +1604,7 @@ class NCE(layers.Layer):
         seed (int): The seed used in sampler. Default: 0.
         is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
 
-    Parameters:
+    Attributes:
         weight (Parameter): the learnable weights of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -1824,7 +1815,7 @@ class PRelu(layers.Layer):
     .. math::
         y = \max(0, x) + \\alpha * \min(0, x)
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         mode (str): The mode for weight sharing. It supports all, channel
           and element. all: all elements share same weight
@@ -1833,7 +1824,7 @@ class PRelu(layers.Layer):
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha).
 
-    Parameters:
+    Attributes:
         alpha (Parameter): the learnable weights of this layer.
 
     Returns:
@@ -1908,7 +1899,7 @@ class BilinearTensorProduct(layers.Layer):
      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
-    Args:
+    Parameters:
        name_scope(str): The name of this class.
        size (int): The dimension of this layer.
        act (str): Activation to be applied to the output of this layer. Default: None.
@@ -1919,7 +1910,7 @@ class BilinearTensorProduct(layers.Layer):
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. Default: None.
 
-    Parameters:
+    Attributes:
         weight (Parameter): the learnable weights of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -2047,7 +2038,7 @@ class Conv2DTranspose(layers.Layer):
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
@@ -2089,7 +2080,7 @@ class Conv2DTranspose(layers.Layer):
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -2240,7 +2231,7 @@ class SequenceConv(layers.Layer):
     other convolutional configurations for the filters and stride as given
     in the input parameters to the function.
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         num_filters (int): number of filters.
         filter_size (int): the filter size (H and W). Default: 3.
@@ -2258,7 +2249,7 @@ class SequenceConv(layers.Layer):
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None.
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of filters of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
@@ -2347,7 +2338,7 @@ class RowConv(layers.Layer):
 
     More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
@@ -2355,7 +2346,7 @@ class RowConv(layers.Layer):
             name, initializer etc. Default: None.
         act (str): Non-linear activation to be applied to output variable. Default: None.
 
-    Parameters:
+    Attributes:
         filter (Parameter): the learnable weights of this layer.
 
     Returns:
@@ -2413,7 +2404,7 @@ class GroupNorm(layers.Layer):
 
         Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
-        Args:
+        Parameters:
             name_scope(str): The name of this class.
             groups(int): The number of groups that divided from channels.
             epsilon(float): The small value added to the variance to prevent
@@ -2541,7 +2532,7 @@ class SpectralNorm(layers.Layer):
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
-    Args:
+    Parameters:
         name_scope(str): The name of this class.
         dim(int): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int): The number of power iterations to calculate spectral norm. Default: 1.
@@ -2618,7 +2609,7 @@ class TreeConv(layers.Layer):
         The paper of Tree-Based Convolution Operator is here: https://arxiv.org/abs/1409.5718v1
 
 
-        Args:
+        Parameters:
             name_scope(str): The name of this class.
             output_size(int): output feature width
             num_filters(int): number of filters, Default: 1.
@@ -2628,7 +2619,7 @@ class TreeConv(layers.Layer):
             bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default: None.
             name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default: None.
 
-        Parameters:
+        Attributes:
             filter (Parameter): the learnable weights of filters of this layer.
             bias (Parameter|None): the learnable bias of this layer.
 

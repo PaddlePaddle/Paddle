@@ -133,14 +133,47 @@ class TestLayer(LayerTest):
 
         with fluid.dygraph.guard():
             t = base.to_variable(inp)
-            fc = fluid.dygraph.FC("fc", 4, num_flatten_dims=1)
-            out1 = fc(t)
-            new_weight = np.random.randn(1024, 4).astype("float32")
-            fc.weight[0] = new_weight  # change existing param
-            out2 = fc(t)
+            custom_weight = np.random.randn(1024, 4).astype("float32")
 
-        self.assertTrue(np.array_equal(fc.weight[0].numpy(), new_weight))
-        self.assertFalse(np.array_equal(out1.numpy(), out2.numpy()))
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            fc1 = fluid.dygraph.FC("fc",
+                                   4,
+                                   num_flatten_dims=1,
+                                   param_attr=weight_attr)
+            out1 = fc1(t)
+            loss = fluid.layers.reduce_mean(out1)
+            fc1_weight = fc1.weight[0].numpy()
+            self.assertTrue(np.array_equal(fc1_weight, custom_weight))
+            loss.backward()
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss)
+            fc1_weight_updated = fc1.weight[0].numpy()
+            self.assertFalse(np.array_equal(fc1_weight_updated, custom_weight))
+
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform())
+            fc2 = fluid.dygraph.FC("fc",
+                                   4,
+                                   num_flatten_dims=1,
+                                   param_attr=weight_attr)
+            fc2(t)
+            self.assertFalse(np.array_equal(fc2.weight[0], custom_weight))
+            fc2.weight[0].set_value(custom_weight)
+            out2 = fc2(t)
+            loss = fluid.layers.reduce_mean(out2)
+            fc2_weight = fc2.weight[0].numpy()
+            self.assertTrue(np.array_equal(fc2_weight, custom_weight))
+            loss.backward()
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss)
+            fc2_weight_updated = fc2.weight[0].numpy()
+            self.assertFalse(np.array_equal(fc2_weight_updated, custom_weight))
+
+            self.assertTrue(np.array_equal(out1.numpy(), out2.numpy()))
+            self.assertTrue(
+                np.array_equal(fc1_weight_updated, fc2_weight_updated))
 
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')

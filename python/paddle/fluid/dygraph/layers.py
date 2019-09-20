@@ -217,27 +217,11 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
-        if isinstance(value, (framework.Parameter, np.ndarray)):
+        if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
-            elif name in params:
-                # replace existing param
-                if isinstance(value, np.ndarray):  # ndarray
-                    tensor = params[name]._ivar.value().get_tensor()
-                    if tensor.shape() != value.shape:
-                        raise ValueError(
-                            "The shape of the ndarray must be the same as that of the original Paramter."
-                        )
-                    if value.dtype == np.float16:
-                        value = value.view(np.uint16)
-                    tensor.set(value, framework._current_expected_place())
-                    return
-                elif value.shape != params[name].shape:  # Parameter
-                    raise ValueError(
-                        "The shape of the new Parameter must be the same as that of the original one."
-                    )
             if value.name in self._loaddict_holder:
                 var = value._ivar.value()
                 tensor = var.get_tensor()

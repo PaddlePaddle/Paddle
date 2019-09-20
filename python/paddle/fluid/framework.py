@@ -582,6 +582,42 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
+    def set_value(self, value):
+        """
+        Set a new value for this Variable.
+
+        Args:
+            value (Variable|np.ndarray): the new value.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.ones([3, 32, 32], dtype='float32')
+                with fluid.dygraph.guard():
+                    fc = fluid.dygraph.FC("fc", 4)
+                    data = to_variable(data)
+                    fc(t)  # call with default weight
+                    custom_weight = np.random.randn(1024, 4).astype("float32")
+                    fc.weight[0].set_value(custom_weight)  # change existing weight
+                    out = fc(t)  # call with different weight
+
+        """
+        assert isinstance(value, (Variable, np.ndarray))
+        if value.shape != self.shape:
+            raise ValueError(
+                "The shape of the new value must be the same as that of the original Variable."
+            )
+        from .layers import assign
+        assign(value, self)
+
     def backward(self, backward_strategy=None):
         if in_dygraph_mode():
             from .dygraph import BackwardStrategy
