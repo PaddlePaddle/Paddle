@@ -265,6 +265,12 @@ class DatasetBase(object):
         """
         return text_format.MessageToString(self.proto_desc)
 
+    def _dynamic_adjust_before_train(self, thread_num):
+        pass
+
+    def _dynamic_adjust_after_train(self):
+        pass
+
 
 class InMemoryDataset(DatasetBase):
     """
@@ -281,6 +287,7 @@ class InMemoryDataset(DatasetBase):
         super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
+        self.is_user_set_queue_num = False
         self.queue_num = None
         self.parse_ins_id = False
         self.parse_content = False
@@ -303,6 +310,16 @@ class InMemoryDataset(DatasetBase):
         self.dataset.create_channel()
         self.dataset.create_readers()
 
+    def _dynamic_adjust_before_train(self, thread_num):
+        if not self.is_user_set_queue_num:
+            self.dataset.dynamic_adjust_channel_num(thread_num)
+        self.dataset.dynamic_adjust_readers_num(thread_num)
+
+    def _dynamic_adjust_after_train(self):
+        if not self.is_user_set_queue_num:
+            self.dataset.dynamic_adjust_channel_num(self.thread_num)
+        self.dataset.dynamic_adjust_readers_num(self.thread_num)
+
     def set_queue_num(self, queue_num):
         """
         Set Dataset output queue num, training threads get data from queues
@@ -318,6 +335,7 @@ class InMemoryDataset(DatasetBase):
               dataset.set_queue_num(12)
 
         """
+        self.is_user_set_queue_num = True
         self.queue_num = queue_num
 
     def set_parse_ins_id(self, parse_ins_id):
@@ -356,7 +374,7 @@ class InMemoryDataset(DatasetBase):
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size):
         """
-        Set fleet send batch size, default is 80000
+        Set fleet send batch size, default is 1024
 
         Args:
             fleet_send_batch_size(int): fleet send batch size

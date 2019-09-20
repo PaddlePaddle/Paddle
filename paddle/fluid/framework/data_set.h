@@ -120,6 +120,9 @@ class Dataset {
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
+  // seperate train thread and dataset thread
+  virtual void DynamicAdjustChannelNum(int channel_num) = 0;
+  virtual void DynamicAdjustReadersNum(int thread_num) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -181,6 +184,8 @@ class DatasetImpl : public Dataset {
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
+  virtual void DynamicAdjustChannelNum(int channel_num);
+  virtual void DynamicAdjustReadersNum(int thread_num);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

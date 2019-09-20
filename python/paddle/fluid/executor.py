@@ -799,7 +799,6 @@ class Executor(object):
                     program.program._fleet_opt)
             trainer._set_program(program.program)
 
-        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -885,9 +884,11 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None
 
@@ -969,8 +970,10 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None

@@ -49,6 +49,7 @@ class TestDataNormOpInference(unittest.TestCase):
     test class for data norm op
     test forward
     """
+
     def setUp(self):
         """
         do some init 
@@ -149,6 +150,7 @@ class TestDataNormOp(OpTest):
     test class for data norm op
     test forward and backward
     """
+
     def setUp(self):
         """
         init data norm op test env
@@ -160,7 +162,7 @@ class TestDataNormOp(OpTest):
         tp = np.float32
 
         x_val = np.array([[-0.35702616, -0.42756206, -0.08306625],
-                         [0.41199666, -0.21719968, -0.10180971]]).astype(tp)
+                          [0.41199666, -0.21719968, -0.10180971]]).astype(tp)
         batch_size = np.ones(scale_shape).astype(tp)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(tp)
@@ -172,11 +174,20 @@ class TestDataNormOp(OpTest):
         mean = np.array([[0, 0, 0], [0, 0, 0]]).astype(tp)
         scale = np.array([[1, 1, 1], [1, 1, 1]]).astype(tp)
 
-        self.inputs = {"X": x_val, "BatchSize": batch_size,
-                       "BatchSum": batch_sum,
-                       "BatchSquareSum": batch_square_sum}
-        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {"epsilon": epsilon}
+        self.inputs = {
+            "X": x_val,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum":batch_square_sum
+        }
+        self.outputs = {
+            "Y": y,
+            "Means": mean,
+            "Scales": scale
+        }
+        self.attrs = {
+            "epsilon": epsilon
+        }
 
     def test_check_output(self):
         """

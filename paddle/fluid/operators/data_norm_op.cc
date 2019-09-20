@@ -335,7 +335,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
-        if (d_x) {
+        if (d_x != nullptr) {
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
           d_x_arr.setZero();
           for (int nc = 0; nc < N; ++nc) {

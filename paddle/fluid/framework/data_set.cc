@@ -386,6 +386,97 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 }
 
 template <typename T>
+void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
+  if (channel_num_ == channel_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
+            << channel_num_ << ", channel_num_=channel_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust channel num from " << channel_num_ << " to "
+          << channel_num;
+  channel_num_ = channel_num;
+  std::vector<paddle::framework::Channel<T>>* origin_channels = nullptr;
+  std::vector<paddle::framework::Channel<T>>* other_channels = nullptr;
+  // find out which channel (output or consume) has data
+  int cur_channel = 0;
+  uint64_t output_channels_data_size = 0;
+  uint64_t consume_channels_data_size = 0;
+  CHECK(multi_output_channel_.size() == multi_consume_channel_.size());
+  for (int i = 0; i < multi_output_channel_.size(); ++i) {
+    output_channels_data_size += multi_output_channel_[i]->Size();
+    consume_channels_data_size += multi_consume_channel_[i]->Size();
+  }
+  if (output_channels_data_size != 0) {
+    CHECK(consume_channels_data_size == 0);
+    cur_channel = 0;
+  } else {
+    CHECK(output_channels_data_size == 0);
+    cur_channel = 1;
+  }
+  if (cur_channel == 0) {
+    origin_channels = &multi_output_channel_;
+    other_channels = &multi_consume_channel_;
+  } else {
+    origin_channels = &multi_consume_channel_;
+    other_channels = &multi_output_channel_;
+  }
+  CHECK(origin_channels != nullptr);  // NOLINT
+  CHECK(other_channels != nullptr);  // NOLINT
+
+  paddle::framework::Channel<T> total_data_channel =
+      paddle::framework::MakeChannel<T>();
+  std::vector<paddle::framework::Channel<T>> new_channels;
+  std::vector<paddle::framework::Channel<T>> new_other_channels;
+  std::vector<T> local_vec;
+  for (int i = 0; i < origin_channels->size(); ++i) {
+    local_vec.clear();
+    (*origin_channels)[i]->Close();
+    (*origin_channels)[i]->ReadAll(local_vec);
+    total_data_channel->Write(std::move(local_vec));
+  }
+  total_data_channel->Close();
+  total_data_channel->SetBlockSize(
+      total_data_channel->Size() / channel_num + 1);
+
+  for (int i = 0; i < channel_num; ++i) {
+    local_vec.clear();
+    total_data_channel->Read(local_vec);
+    new_other_channels.push_back(paddle::framework::MakeChannel<T>());
+    new_channels.push_back(paddle::framework::MakeChannel<T>());
+    new_channels[i]->Write(std::move(local_vec));
+  }
+
+  total_data_channel->Clear();
+  origin_channels->clear();
+  other_channels->clear();
+  *origin_channels = new_channels;
+  *other_channels = new_other_channels;
+
+  new_channels.clear();
+  new_other_channels.clear();
+  std::vector<paddle::framework::Channel<T>>().swap(new_channels);
+  std::vector<paddle::framework::Channel<T>>().swap(new_other_channels);
+  local_vec.clear();
+  std::vector<T>().swap(local_vec);
+  VLOG(3) << "adjust channel num done";
+}
+
+template <typename T>
+void DatasetImpl<T>::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to "
+          << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+}
+
+template <typename T>
 void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "Calling CreateReaders()";
   VLOG(3) << "thread num in Dataset: " << thread_num_;

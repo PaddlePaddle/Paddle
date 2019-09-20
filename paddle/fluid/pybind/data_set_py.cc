@@ -118,6 +118,12 @@ void BindDataset(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("destroy_preload_readers",
            &framework::Dataset::DestroyPreLoadReaders,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dynamic_adjust_channel_num",
+           &framework::Dataset::DynamicAdjustChannelNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dynamic_adjust_readers_num",
+           &framework::Dataset::DynamicAdjustReadersNum,
            py::call_guard<py::gil_scoped_release>());
 }
 
