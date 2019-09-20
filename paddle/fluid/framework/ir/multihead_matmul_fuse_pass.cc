@@ -82,16 +82,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto reshape_desc = reshape2->Op();
     int head_number =
         boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
-    // IR_NODE_LINK_TO(mul1, q_tmp_node);
-    // IR_NODE_LINK_TO(mul0, k_tmp_node);
-    // IR_NODE_LINK_TO(mul2, v_tmp_node);
+
     ReplaceOutputVar(mul0, mul0_out, q_var_node);
     ReplaceOutputVar(mul1, mul1_out, k_var_node);
     ReplaceOutputVar(mul2, mul2_out, v_var_node);
-
-    // IR_NODE_LINK_TO(mul0, q_var_node);
-    // IR_NODE_LINK_TO(mul1, k_var_node);
-    // IR_NODE_LINK_TO(mul2, v_var_node);
 
     multihead_op_desc.SetType("multihead_matmul");
     multihead_op_desc.SetInput("Q", {q_var_node->Name()});
@@ -182,10 +176,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
                               multihead_pattern);
 
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_qk, dropout_qk, multihead_pattern);
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_qk_out, dropout_qk_out,
-    // multihead_pattern);
-
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
                               multihead_pattern);
@@ -236,8 +226,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
          mul2_out,
          reshape2_qkv,
          scale});
-    GraphSafeRemoveNodes(graph, marked_nodes);
     // Remove unneeded nodes.
+    GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
   };
   gpd(graph, handler);
@@ -329,7 +319,6 @@ PDNode* MultiHeadMatmulPattern::operator()(paddle::framework::ir::PDNode* x) {
       pattern->NewNode(reshape2_qkv_repr())->assert_is_op("reshape2");
   auto* reshape2_qkv_out_var = pattern->NewNode(reshape2_qkv_out_repr())
                                    ->assert_is_op_output("reshape2");
-  // reshape2_qkv_out_var->AsIntermediate()->assert_is_op_input("mul");
   reshape2_qkv_out_var->assert_is_op_input("mul");
 
   // Second path to matmul

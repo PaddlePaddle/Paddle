@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -19,7 +19,6 @@ namespace math {
 
 template <typename DeviceContext, typename T>
 struct MultiHeadGPUCompute {
-  MultiHeadGPUCompute(){};
   static void compute(const DeviceContext &dev_ctx, int head_num,
                       const framework::DDim &mat_q,
                       const framework::DDim &mat_k,
@@ -28,6 +27,7 @@ struct MultiHeadGPUCompute {
                       const T *bias_v, const T *bias_qk, T *out, T alpha,
                       T beta);
 };
-}
-}
-}
+
+}  // namespace math
+}  // namespace operators
+}  // namespace paddle

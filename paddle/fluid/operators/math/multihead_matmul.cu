@@ -14,6 +14,7 @@
 
 #include <cuda_runtime.h>
 #include <paddle/fluid/platform/device_context.h>
+#include <algorithm>
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/multihead_matmul.h"
 
@@ -22,18 +23,20 @@ namespace operators {
 namespace math {
 
 #define FINAL_MASK 0xffffffff
+#define HALF_WARP 16
+#define WARP_SIZE 32
 
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val) {
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val += __shfl_xor_sync(FINAL_MASK, val, mask, 32);
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+    val += __shfl_xor_sync(FINAL_MASK, val, mask, warpSize);
   return val;
 }
 
 /* Calculate the sum of all elements in a block */
 template <typename T>
 __inline__ __device__ T blockReduceSum(T val) {
-  static __shared__ T shared[32];
+  static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
 
@@ -51,15 +54,15 @@ __inline__ __device__ T blockReduceSum(T val) {
 
 template <typename T>
 __inline__ __device__ T warpReduceMax(T val) {
-  for (int mask = 16; mask > 0; mask >>= 1)
-    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, 32));
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+    val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, warpSize));
   return val;
 }
 
 /* Calculate the maximum of all elements in a block */
 template <typename T>
 __inline__ __device__ T blockReduceMax(T val) {
-  static __shared__ T shared[32];
+  static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;  // in-warp idx
   int wid = threadIdx.x >> 5;     // warp idx
 
@@ -131,6 +134,7 @@ __global__ void add_QKV(const T *Q, const T *K, const T *V, T *q_buf_,
   v_buf_[target_id] = tmp_v;
 }
 
+// Keep to compare performance
 template <typename T>
 __global__ void add_QKV_V2(const T *Q, const T *K, const T *V, T *q_buf_,
                            T *k_buf_, T *v_buf_, const T *bias_Q,
@@ -185,9 +189,10 @@ __global__ void add_QKV_V2(const T *Q, const T *K, const T *V, T *q_buf_,
 }
 
 template <typename T>
-__global__ void softmax_kernel_v2(T *qk_buf_, const T *bias_qk_,
-                                  const int batch_size, const int head_num,
-                                  const int seq_len) {
+__global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
+                                           const int batch_size,
+                                           const int head_num,
+                                           const int seq_len) {
   int batch_id = blockIdx.x / head_num / seq_len;
   int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
@@ -195,15 +200,16 @@ __global__ void softmax_kernel_v2(T *qk_buf_, const T *bias_qk_,
   __shared__ float s_sum, s_max;
 
   float qk = threadIdx.x < seq_len
-                 ? (float)((qk_buf_[threadIdx.x + qk_offset] +
-                            bias_qk_[threadIdx.x + qk_offset]))
+                 ? static_cast<float>((qk_buf_[threadIdx.x + qk_offset] +
+                                       bias_qk_[threadIdx.x + qk_offset]))
                  : 0.0f;
-  float tmp = threadIdx.x < seq_len ? (float)(qk) : -1e20f;
+  float tmp = threadIdx.x < seq_len ? static_cast<float>(qk) : -1e20f;
   float max_val = blockReduceMax<float>(tmp);
   if (threadIdx.x == 0) s_max = max_val;
   __syncthreads();
 
-  float qk_tmp = threadIdx.x < seq_len ? __expf((float)(tmp - s_max)) : 0.0f;
+  float qk_tmp =
+      threadIdx.x < seq_len ? __expf(static_cast<float>(tmp - s_max)) : 0.0f;
   float sum_val = blockReduceSum<float>(qk_tmp);
 
   if (threadIdx.x == 0) {
@@ -215,6 +221,7 @@ __global__ void softmax_kernel_v2(T *qk_buf_, const T *bias_qk_,
     qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
 }
 
+// For verify result
 template <typename T>
 __global__ void elt_qk_add(const T *bias_qk, T *qk_buf, int head_num,
                            int seq_len, int size_per_head, int batch_size) {
@@ -230,6 +237,8 @@ __global__ void elt_qk_add(const T *bias_qk, T *qk_buf, int head_num,
 
   qk_buf[dst_id] += tmp_bias;
 }
+
+// Compute Q*K->softmax->eltadd
 template <typename T>
 void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
                       int seq_len, int size_per_head, int batch_size,
@@ -251,13 +260,8 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
   int grid = m;
   int block = k;
 
-  // For verify result
-  // elt_qk_add<T><<<grid, block, 0, stream>>>(bias_qk, qk_buf_, head_num,
-  // seq_len,
-  //                                          size_per_head, batch_size);
-
-  softmax_kernel_v2<T><<<grid, block, 0, stream>>>(qk_buf_, bias_qk, batch_size,
-                                                   head_num, seq_len);
+  softmax_kernel_with_eltadd<T><<<grid, block, 0, stream>>>(
+      qk_buf_, bias_qk, batch_size, head_num, seq_len);
 }
 
 template <typename T>
@@ -272,6 +276,7 @@ __global__ void transpose(T *src, T *dst, const int batch_size,
       threadIdx.x] = src[blockIdx.x * size_per_head + threadIdx.x];
 }
 
+// Compute QK*V->transpose
 template <typename T>
 void MatMulWithHeadQKV(const platform::CUDADeviceContext &context, int head_num,
                        int seq_len, int size_per_head, int batch_size,
@@ -312,7 +317,8 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
 
     auto alloc_buf =
         memory::Alloc(dev_ctx, (buf_size * 4 + qk_buf_size) * sizeof(T));
-    T *buf = (T *)alloc_buf->ptr();
+
+    T *buf = reinterpret_cast<T *>(alloc_buf->ptr());
     T *q_buf = buf;
     T *k_buf = buf + buf_size;
     T *v_buf = buf + 2 * buf_size;
@@ -322,7 +328,8 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
     int m = batch_size * seq_len;
     int k = head_num * size_per_head;
 
-    // each block process 768 element, have 128 lines. bias is 768
+    // Each block process head*size-per_head element,
+    // have m lines. bias is m lines
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     auto stream = dev_ctx.stream();
 
@@ -331,16 +338,7 @@ struct MultiHeadGPUCompute<platform::CUDADeviceContext, T> {
     add_QKV<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf, bias_q,
                                            bias_k, bias_v, batch_size, seq_len,
                                            head_num, size_per_head);
-    /*    const int word_per_block = 1;
-        dim3 grid(m / word_per_block * 3);
-        dim3 block(k);
-        add_QKV_V2<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf,
-       bias_q,
-                                               bias_k, bias_v, batch_size,
-       seq_len,
-                                               head_num, size_per_head,
-       word_per_block);
-    */
+
     MatMulWithHeadQK<T>(dev_ctx, head_num, seq_len, size_per_head, batch_size,
                         false, true, q_buf, k_buf, qk_buf, bias_qk, alpha,
                         beta);
