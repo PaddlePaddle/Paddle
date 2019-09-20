@@ -123,8 +123,8 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope
-  glog box_wrapper shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog data_feed_proto
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -179,7 +179,7 @@ if(WITH_DISTRIBUTE)
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper box_wrapper lodtensor_printer
+  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -190,7 +190,7 @@ else()
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
@@ -202,7 +202,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)

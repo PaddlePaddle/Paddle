@@ -40,7 +40,7 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
 static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
                                                 const mkldnn::engine& engine,
                                                 const memory::data_type& dt) {
-  const auto dims = paddle::framework::vectorize2int(input.dims());
+  const auto dims = paddle::framework::vectorize<int>(input.dims());
   const auto format = input.format();
   auto description = memory::desc(dims, dt, format);
   auto mem_prim_desc = memory::primitive_desc(description, engine);
@@ -64,29 +64,6 @@ static const mkldnn::engine& GetMKLDNNEngine(
     const paddle::framework::ExecutionContext& ctx) {
   auto& dev_ctx = ctx.template device_context<platform::MKLDNNDeviceContext>();
   return dev_ctx.GetEngine();
-}
-
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const std::vector<const Tensor*> multi_input,
-                      const int64_t& concat_axis, const memory::data_type& dt) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  for (size_t i = 0; i < multi_input.size(); i++) {
-    platform::MKLDNNHandler::AppendKeyDims(
-        &key, paddle::framework::vectorize2int(multi_input[i]->dims()));
-  }
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
-  platform::MKLDNNHandler::AppendKey(&key,
-                                     std::to_string(multi_input[0]->format()));
-  if (platform::get_cur_mkldnn_session_id() ==
-      platform::kMKLDNNSessionID_Default) {
-    platform::MKLDNNHandler::AppendKey(&key, "-t:");
-    platform::MKLDNNHandler::AppendKey(
-        &key, platform::MKLDNNHandler::ThreadIDasStr());
-  }
-  return key;
 }
 
 template <typename T>
@@ -124,7 +101,7 @@ class ConcatPrimitiveFactory {
  private:
   memory::desc CreateDstMemDescriptor(Tensor* output,
                                       const memory::data_type& dt) {
-    auto dst_dims = paddle::framework::vectorize2int(output->dims());
+    auto dst_dims = paddle::framework::vectorize<int>(output->dims());
     return memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
   }
 
@@ -177,7 +154,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
 
     ConcatPrimitiveFactory<T> prim_creator;
-    std::string key = CreateKey(ctx, multi_input, concat_axis, dt);
+    std::string key = platform::CreateKey(
+        paddle::framework::vectorize<int>(multi_input[0]->dims()), concat_axis,
+        ctx.op().Output("Out"), dt, multi_input[0]->format(),
+        platform::ThreadIDasStr());
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
     const std::string key_srcs = key + "@concat_srcs";

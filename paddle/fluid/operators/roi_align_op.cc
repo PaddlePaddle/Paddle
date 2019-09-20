@@ -85,7 +85,7 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("ROIs")->type(),
                                    ctx.device_context());
   }
 };
@@ -167,13 +167,16 @@ class ROIAlignGradDescMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(RoiAlignGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
                   ops::ROIAlignGradDescMaker);
-REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp);
+REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
+                  ops::RoiAlignGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     roi_align,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,

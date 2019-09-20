@@ -78,8 +78,8 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   framework::Tensor* col) const {
-    PADDLE_ENFORCE(vol.dims().size() == 4);
-    PADDLE_ENFORCE(col->dims().size() == 7);
+    PADDLE_ENFORCE_EQ(vol.dims().size(), 4);
+    PADDLE_ENFORCE_EQ(col->dims().size(), 7);
 
     int input_channels = vol.dims()[0];
     int input_depth = vol.dims()[1];
@@ -204,8 +204,8 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   framework::Tensor* vol) const {
-    PADDLE_ENFORCE(vol->dims().size() == 4);
-    PADDLE_ENFORCE(col.dims().size() == 7);
+    PADDLE_ENFORCE_EQ(vol->dims().size(), 4);
+    PADDLE_ENFORCE_EQ(col.dims().size(), 7);
 
     int input_channels = vol->dims()[0];
     int input_depth = vol->dims()[1];

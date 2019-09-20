@@ -92,8 +92,8 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
   bool in_place = out_var == in_vars[0];
   auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
   for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-    PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                   "Only support all inputs are TensorArray");
+    PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensorArray>(), true,
+                      "Only support all inputs are TensorArray");
     auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
 
     for (size_t i = 0; i < in_array.size(); ++i) {
@@ -106,7 +106,7 @@ void LodTensorArrayCompute(const framework::ExecutionContext &context) {
                                 context.device_context(), &out_array[i]);
           out_array[i].set_lod(in_array[i].lod());
         } else {
-          PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+          PADDLE_ENFORCE_EQ(out_array[i].lod(), in_array[i].lod());
           auto in = EigenVector<T>::Flatten(in_array[i]);
           auto result = EigenVector<T>::Flatten(out_array[i]);
           result.device(*context.template device_context<DeviceContext>()

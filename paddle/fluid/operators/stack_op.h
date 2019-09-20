@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -24,6 +25,25 @@
 
 namespace paddle {
 namespace operators {
+
+template <typename VecXType, typename T>
+struct StackFunctor {
+  HOSTDEVICE StackFunctor(const VecXType &x, T *y, int n, int post)
+      : x_(x), y_(y), n_(n), post_(post) {}
+
+  HOSTDEVICE void operator()(int idx) {
+    int i = idx / (n_ * post_);
+    int which_x = idx / post_ - i * n_;
+    int x_index = i * post_ + idx % post_;
+    y_[idx] = x_[which_x][x_index];
+  }
+
+ private:
+  VecXType x_;
+  T *y_;
+  int n_;
+  int post_;
+};
 
 template <typename VecDxType, typename T>
 struct StackGradFunctor {

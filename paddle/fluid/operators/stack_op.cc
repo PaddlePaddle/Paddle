@@ -44,7 +44,7 @@ class StackOp : public framework::OperatorWithKernel {
         "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize2int(input_dims[0]);
+    auto vec = framework::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
     ctx->SetOutputDim("Y", framework::make_ddim(vec));
   }
@@ -85,7 +85,7 @@ class StackOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Outputs(framework::GradVarName("X")).size(),
                       static_cast<size_t>(dy_dim[axis]),
                       "Number of Outputs(X@Grad) is wrong");
-    auto vec = framework::vectorize2int(dy_dim);
+    auto vec = framework::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(
         framework::GradVarName("X"),
