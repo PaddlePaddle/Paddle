@@ -24,7 +24,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass, TransformThroughFP32Pass
+from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass, TransformToMkldnnINT8Pass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -175,9 +175,12 @@ class TestQatInt8Comparison(unittest.TestCase):
             graph.draw('.', 'qat_orig', graph.all_op_nodes())
             if (transform_to_int8):
                 if (test_case_args.qat2):
-                    transform_to_fp32_pass = TransformThroughFP32Pass(
-                        scope=inference_scope, place=place, core=core, debug=self._debug)
-                    graph = transform_to_fp32_pass.apply(graph)
+                    transform_to_mkldnn_int8_pass = TransformToMkldnnINT8Pass(
+                        scope=inference_scope,
+                        place=place,
+                        core=core,
+                        debug=self._debug)
+                    graph = transform_to_mkldnn_int8_pass.apply(graph)
                 else:
                     mkldnn_int8_pass = TransformForMkldnnPass(
                         scope=inference_scope, place=place)

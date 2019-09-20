@@ -17,7 +17,7 @@ from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
 
-__all__ = ['TransformForMkldnnPass', 'TransformThroughFP32Pass']
+__all__ = ['TransformForMkldnnPass', 'TransformToMkldnnINT8Pass']
 
 
 class TransformForMkldnnPass(object):
@@ -278,7 +278,7 @@ class TransformForMkldnnPass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
 
-class TransformThroughFP32Pass(object):
+class TransformToMkldnnINT8Pass(object):
     """
     Transform a QAT model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
