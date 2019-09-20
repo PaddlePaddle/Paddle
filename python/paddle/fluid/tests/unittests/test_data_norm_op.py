@@ -45,14 +45,30 @@ def create_or_get_tensor(scope, var_name, var, place):
 
 
 class TestDataNormOpInference(unittest.TestCase):
+    """
+    test class for data norm op
+    test forward
+    """
     def setUp(self):
+        """
+        do some init 
+        """
         self.dtype = np.float32
-        self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
     def check_with_place(self, place, data_layout, dtype, shape):
+        """
+        do forward and check
+
+        Args:
+            place(Place): CPUPlace
+            data_layout(str): NCHW or NWHC
+            dtype(dtype): np.float32
+            shape(list): input shape
+
+        """
         epsilon = 0.00001
         if len(shape) == 2:
             x_shape = shape
@@ -69,8 +85,8 @@ class TestDataNormOpInference(unittest.TestCase):
         batch_square_sum = np.ones(scale_shape).astype(np.float32)
         batch_square_sum *= 1e4
 
-        y_out = _reference_testing(
-            x_val, batch_size, batch_sum, batch_square_sum).astype(dtype)
+        y_out = _reference_testing(x_val, batch_size, batch_sum,
+                                   batch_square_sum).astype(dtype)
 
         scope = core.Scope()
 
@@ -119,26 +135,32 @@ class TestDataNormOpInference(unittest.TestCase):
             atol=1e-3)
 
     def test_check_output(self):
+        """
+        test check forward
+        """
         places = [core.CPUPlace()]
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(place, data_format, self.dtype, [2, 3])
 
-    def init_kernel_type(self):
-        pass
-
 
 class TestDataNormOp(OpTest):
+    """
+    test class for data norm op
+    test forward and backward
+    """
     def setUp(self):
+        """
+        init data norm op test env
+        """
         self.op_type = 'data_norm'
         epsilon = 0.00001
         x_shape = [2, 3]
         scale_shape = [3]
         tp = np.float32
 
-        x_val = np.array(
-            [[-0.35702616, -0.42756206, -0.08306625],
-             [0.41199666, -0.21719968, -0.10180971]]).astype(tp)
+        x_val = np.array([[-0.35702616, -0.42756206, -0.08306625],
+                         [0.41199666, -0.21719968, -0.10180971]]).astype(tp)
         batch_size = np.ones(scale_shape).astype(tp)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(tp)
@@ -150,27 +172,23 @@ class TestDataNormOp(OpTest):
         mean = np.array([[0, 0, 0], [0, 0, 0]]).astype(tp)
         scale = np.array([[1, 1, 1], [1, 1, 1]]).astype(tp)
 
-        self.inputs = {
-            "X": x_val,
-            "BatchSize": batch_size,
-            "BatchSum": batch_sum,
-            "BatchSquareSum": batch_square_sum
-        }
-        self.outputs = {
-            "Y": y,
-            "Means": mean,
-            "Scales": scale
-        }
-        self.attrs = {
-            "epsilon": epsilon
-        }
+        self.inputs = {"X": x_val, "BatchSize": batch_size,
+                       "BatchSum": batch_sum,
+                       "BatchSquareSum": batch_square_sum}
+        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
+        self.attrs = {"epsilon": epsilon}
 
     def test_check_output(self):
+        """
+        test check forward
+        """
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Y', no_grad_set=set([]))
+        """
+        test check backward
+        """
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 if __name__ == '__main__':
