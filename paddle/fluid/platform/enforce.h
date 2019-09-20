@@ -107,33 +107,13 @@ struct EnforceNotMet : public std::exception {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
       err_str_ = GetTraceBackString(e.what(), file, line);
-      SaveErrorInformation(err_str_);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {
-    SaveErrorInformation(err_str_);
-  }
+      : err_str_(GetTraceBackString(str, file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  static void SaveErrorInformation(const std::string& err) {
-    const std::string output_file_name{"paddle_err_info"};
-    std::stringstream ss;
-    ss << output_file_name;
-    std::time_t t = std::time(nullptr);
-    std::tm* tm = std::localtime(&t);
-    char mbstr[100];
-    std::strftime(mbstr, sizeof(mbstr), "%F-%H-%M-%S", tm);
-    ss << "_" << mbstr << ".log";
-    std::ofstream err_file(ss.str(), std::ofstream::out);
-    if (err_file.is_open()) {
-      err_file << err;
-      err_file.close();
-    }
-  }
 };
 
 struct EOFException : public std::exception {
