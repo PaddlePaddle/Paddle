@@ -79,15 +79,14 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
+  int idx = 0;
   for (int i = 0; i < size; ++i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
 #ifdef WITH_SIMPLE_TRACEBACK
-      static int idx = 0;
       std::string path(info.dli_fname);
-      // TODO(chenweihang): if user execute python be /usr/bin/python,
-      //   the python function can't be removed here
-      if (path.compare(0, 6, "python") != 0) {
+      // C++ traceback info are from core.so
+      if (path.substr(path.length() - 3).compare(".so") == 0) {
         sout << string::Sprintf("%-3d %s\n", idx++, demangled);
       }
 #else
