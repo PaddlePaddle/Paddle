@@ -5805,18 +5805,19 @@ def ctc_greedy_decoder(input,
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in thehalf-opened
                     interval [0, num_classes + 1).
-        input_length(Variable): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
+        input_length(Variable, optional): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
                                  is None.
         padding_value(int): padding value.
-        name (str): The name of this layer. It is optional.
+        name (str, optional): The name of this layer. It is optional.
 
     Returns:
-        Variable: For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
+        output(Variable): For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
                   'Lp' is the sum if all output sequences' length. If all the sequences \
                   in result were empty, the result LoDTensor will be [-1] with  \
                   LoD [[]] and dims [1, 1]. For padding mode, CTC greedy decode result is a 2-D tensor \
                   with shape [batch_size, N], output length's shape is [batch_size, 1] which is length \
                   of every sequence in output.
+        output_length(Variable, optional): length of each sequence of output for padding mode.
 
     Examples:
         .. code-block:: python
