@@ -14,6 +14,7 @@
 
 import paddle
 import unittest
+import os
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.core import Compressor
@@ -51,6 +52,8 @@ class TestCompressor(unittest.TestCase):
             paddle.dataset.mnist.train(), batch_size=128)
         train_feed_list = [('img', image.name), ('label', label.name)]
         train_fetch_list = [('loss', avg_cost.name)]
+        eval_feed_list = [('img', image.name), ('label', label.name)]
+        eval_fetch_list = [('acc_top1', acc_top1.name)]
 
         def eval_func(program, scope):
             place = fluid.CPUPlace()
@@ -77,11 +80,20 @@ class TestCompressor(unittest.TestCase):
             train_feed_list=train_feed_list,
             train_fetch_list=train_fetch_list,
             eval_program=val_program,
+            eval_feed_list=eval_feed_list,
+            eval_fetch_list=eval_fetch_list,
             eval_func={"score": eval_func},
+            prune_infer_model=[[image.name], [out.name]],
             train_optimizer=optimizer)
         com_pass.config('./configs/compress.yaml')
         com_pass.run()
-        print(com_pass.context.eval_results['score'])
+        print com_pass.context.eval_results['score']
+        self.assertTrue('score' in com_pass.context.eval_results)
+        self.assertTrue(float(com_pass.context.eval_results['score'][0]) > 0.9)
+        self.assertTrue(os.path.exists("./checkpoints/0/eval_model/__model__"))
+        self.assertTrue(
+            os.path.exists("./checkpoints/0/eval_model/__model__.infer"))
+        self.assertTrue(os.path.exists("./checkpoints/0/eval_model/__params__"))
 
 
 if __name__ == '__main__':
