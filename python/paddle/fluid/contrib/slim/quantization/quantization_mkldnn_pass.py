@@ -538,8 +538,9 @@ class TransformToMkldnnINT8Pass(object):
                     self._find_avg_pooling_ids(graph))
         ir_pass.apply(ir_graph)
         graph = IrGraph(ir_graph, for_test=True)
-        graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
-                   graph.all_op_nodes())
+        if self._debug:
+            graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
+                       graph.all_op_nodes())
 
         graph = self._apply_pass(graph, 'cpu_quantize_pass',
                                  ['quant_var_scales'], [self.VarQuantScales])
