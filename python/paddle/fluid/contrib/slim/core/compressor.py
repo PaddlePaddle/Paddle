@@ -279,6 +279,12 @@ class Compressor(object):
                                    store the compressed parameters.
                                    Default: None.
             save_eval_model(bool): Whether to save eval model when saving checkpoints. Default: True.
+            prune_infer_model(tuple|list): If prune_infer_model is not None, compressor will prune
+                                   eval program into inference program according to inputs and outputs
+                                   defined in prune_infer_model. prune_infer_model[0] is a list of input
+                                   variables' names and prune_infer_model[1] is a list of output variables'
+                                   names. If prune_infer_model is None, it will not save inference model.
+                                   Default: None.
             teacher_programs: The teacher graphs used in distillation strategies.
             train_optimizer: The optimizer used to append backward ops and
                              optimization ops into train_graph.

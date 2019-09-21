@@ -499,6 +499,9 @@ class GraphWrapper(object):
         Args:
             path(str): The path to save the persistables.
             exe(framework.Executor): The executor used to save the persistables.
+            in_out(tuple|list): in_out[0] is a list of input nodes' names
+            and in_out[1] is a list of output nodes' names.
+            program_only(bool): Whether to save program only.
         """
         out_vars = [self.var(var_name)._var for var_name in in_out[1]]
         in_vars = list(in_out[0])
