@@ -94,8 +94,6 @@ class TestFilterPruning(unittest.TestCase):
         np.random.seed(0)
         acc_1 = self.uniform_restore_from_checkpoint(
             "./filter_pruning/uniform_restore.yaml")
-        print acc_0
-        print acc_1
         self.assertTrue(abs((acc_0 - acc_1) / acc_1) < 0.001)
 
     def uniform_restore_from_checkpoint(self, config_file):

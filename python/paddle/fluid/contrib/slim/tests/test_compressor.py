@@ -87,7 +87,6 @@ class TestCompressor(unittest.TestCase):
             train_optimizer=optimizer)
         com_pass.config('./configs/compress.yaml')
         com_pass.run()
-        print com_pass.context.eval_results['score']
         self.assertTrue('score' in com_pass.context.eval_results)
         self.assertTrue(float(com_pass.context.eval_results['score'][0]) > 0.9)
         self.assertTrue(os.path.exists("./checkpoints/0/eval_model/__model__"))
