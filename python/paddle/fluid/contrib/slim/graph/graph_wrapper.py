@@ -488,8 +488,32 @@ class GraphWrapper(object):
             in_vars,
             out_vars,
             exe.exe,
-            main_program=self.program,
-            export_for_deployment=False)
+            model_filename="__model__",
+            params_filename="__params__",
+            main_program=self.program.clone(),
+            export_for_deployment=True)
+
+    def save_infer_model(self, path, exe, in_out, program_only=False):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+        """
+        out_vars = [self.var(var_name)._var for var_name in in_out[1]]
+        in_vars = list(in_out[0])
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            model_filename="__model__.infer",
+            params_filename="__params__",
+            program_only=program_only,
+            main_program=self.program.clone(),
+            export_for_deployment=True)
 
     def save_persistables(self, path, exe):
         """

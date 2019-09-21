@@ -244,6 +244,7 @@ class Compressor(object):
                  eval_fetch_list=None,
                  eval_func=None,
                  save_eval_model=True,
+                 prune_infer_model=None,
                  teacher_programs=[],
                  checkpoint_path=None,
                  train_optimizer=None,
@@ -307,6 +308,7 @@ class Compressor(object):
         self.eval_reader = eval_reader
         self.eval_func = eval_func
         self.save_eval_model = save_eval_model
+        self.prune_infer_model = prune_infer_model
 
         self.teacher_graphs = []
         for teacher in teacher_programs:
@@ -439,6 +441,13 @@ class Compressor(object):
                 context.optimize_graph.save_persistables(model_path, exe)
                 if self.save_eval_model:
                     context.eval_graph.save_model(eval_model_path, exe)
+                if self.prune_infer_model:
+                    context.eval_graph.save_infer_model(
+                        eval_model_path,
+                        exe,
+                        self.prune_infer_model,
+                        program_only=self.save_eval_model)
+
             context.to_file(context_path)
             with open(strategy_path, 'wb') as strategy_file:
                 pickle.dump(self.strategies, strategy_file)
