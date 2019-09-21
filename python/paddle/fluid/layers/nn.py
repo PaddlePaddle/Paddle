@@ -5821,6 +5821,7 @@ def ctc_greedy_decoder(input,
 
     Examples:
         .. code-block:: python
+
             # for lod mode
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
