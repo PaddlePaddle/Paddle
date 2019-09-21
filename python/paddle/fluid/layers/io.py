@@ -665,6 +665,9 @@ def py_reader(capacity,
          except fluid.core.EOFException:
              test_reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.PyReader() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
