@@ -574,5 +574,6 @@ class GraphWrapper(object):
 
     def update_groups_of_conv(self):
         for op in self.ops():
-            if op.type() == 'depthwise_conv2d':
+            if op.type() == 'depthwise_conv2d' or op.type(
+            ) == 'depthwise_conv2d_grad':
                 op.set_attr('groups', op.inputs('Filter')[0].shape()[0])
