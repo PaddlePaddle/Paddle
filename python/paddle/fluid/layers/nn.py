@@ -5776,7 +5776,7 @@ def ctc_greedy_decoder(input,
                         [0.2, 0.2, 0.1, 0.5],
                         [0.5, 0.1, 0.3, 0.1]]]
 
-        input.lod = [[4, 4]]
+        input_length.data = [[4], [4]]
         input.shape = [2, 4, 4]
 
         step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
