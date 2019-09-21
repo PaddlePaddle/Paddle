@@ -414,10 +414,7 @@ def tree_conv(nodes_vector,
     W_shape = [feature_size, 3, output_size, num_filters]
     W = helper.create_parameter(
         attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
-    if name == None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='tree_conv',
         inputs={'NodesVector': nodes_vector,
