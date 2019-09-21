@@ -549,8 +549,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.register_client2client_msg_handler()
         self.dataset.set_trainer_num(trainer_num)
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
-        self.dataset.set_fleet_send_sleep_seconds(
-            self.fleet_send_sleep_seconds);
+        self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
             fleet._role_maker._barrier_worker()
         self.dataset.global_shuffle(thread_num)
@@ -706,6 +705,9 @@ class QueueDataset(DatasetBase):
               dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
               dataset.local_shuffle()
 
+        Raises:
+            NotImplementedError: QueueDataset does not support local shuffle
+
         """
         raise NotImplementedError(
             "QueueDataset does not support local shuffle, "
@@ -729,6 +731,9 @@ class QueueDataset(DatasetBase):
               dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
               dataset.global_shuffle(fleet)
 
+        Raises:
+            NotImplementedError: QueueDataset does not support global shuffle
+
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
@@ -748,14 +753,16 @@ class FileInstantDataset(DatasetBase):
 
     def __init__(self):
         """
-        Init
+        Initialize FileInstantDataset
+        This class should be created by DatasetFactory
         """
         super(FileInstantDataset, self).__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def local_shuffle(self):
         """
-        Local shuffle, FileInstantDataset does not support local shuffle
+        Local shuffle
+        FileInstantDataset does not support local shuffle
         """
         raise NotImplementedError(
             "FileInstantDataset does not support local shuffle, "
@@ -764,6 +771,7 @@ class FileInstantDataset(DatasetBase):
     def global_shuffle(self, fleet=None):
         """
         Global shuffle
+        FileInstantDataset does not support global shuffle
         """
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
@@ -783,26 +791,30 @@ class BoxPSDataset(InMemoryDataset):
 
     def __init__(self):
         """
-        Init
+        Initialize BoxPSDataset
+        This class should be created by DatasetFactory
         """
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
 
     def begin_pass(self):
         """
-	Notify BoxPS to begin next pass
+        Begin Pass
+        Notify BoxPS to begin next pass
 	"""
         self.boxps.begin_pass()
 
     def end_pass(self):
         """
-	Notify BoxPS to end current pass
+        End Pass
+        Notify BoxPS to end current pass
 	"""
         self.boxps.end_pass()
 
     def wait_preload_done(self):
         """
-	Wait async proload done
+        Wait async proload done
+        Wait Until Feed Pass Done
 	"""
         self.boxps.wait_feed_pass_done()
 

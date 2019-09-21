@@ -178,16 +178,10 @@ class TestDataNormOp(OpTest):
             "X": x_val,
             "BatchSize": batch_size,
             "BatchSum": batch_sum,
-            "BatchSquareSum":batch_square_sum
+            "BatchSquareSum": batch_square_sum
         }
-        self.outputs = {
-            "Y": y,
-            "Means": mean,
-            "Scales": scale
-        }
-        self.attrs = {
-            "epsilon": epsilon
-        }
+        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
+        self.attrs = {"epsilon": epsilon}
 
     def test_check_output(self):
         """
