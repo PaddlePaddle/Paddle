@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This is defination of dataset class, which is high performance IO."""
 
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
@@ -534,6 +535,7 @@ class InMemoryDataset(DatasetBase):
 
         Args:
             fleet(Fleet): fleet singleton. Default None.
+            thread_num(int): shuffle thread num. Default is 12.
 
         """
         trainer_num = 1

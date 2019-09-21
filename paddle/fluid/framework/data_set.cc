@@ -423,7 +423,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
     other_channels = &multi_output_channel_;
   }
   CHECK(origin_channels != nullptr);  // NOLINT
-  CHECK(other_channels != nullptr);  // NOLINT
+  CHECK(other_channels != nullptr);   // NOLINT
 
   paddle::framework::Channel<T> total_data_channel =
       paddle::framework::MakeChannel<T>();
@@ -437,8 +437,8 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
     total_data_channel->Write(std::move(local_vec));
   }
   total_data_channel->Close();
-  total_data_channel->SetBlockSize(
-      total_data_channel->Size() / channel_num + 1);
+  total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
+                                   1);
 
   for (int i = 0; i < channel_num; ++i) {
     local_vec.clear();
@@ -470,8 +470,7 @@ void DatasetImpl<T>::DynamicAdjustReadersNum(int thread_num) {
             << thread_num_ << ", thread_num_=thread_num, no need to adjust";
     return;
   }
-  VLOG(3) << "adjust readers num from " << thread_num_ << " to "
-          << thread_num;
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
   thread_num_ = thread_num;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
   CreateReaders();

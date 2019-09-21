@@ -471,7 +471,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_download,
@@ -561,7 +561,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_upload, args=(

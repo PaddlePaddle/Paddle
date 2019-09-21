@@ -150,9 +150,9 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 void FleetWrapper::CreateClient2ClientConnection() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to create client2client connection";
-  pslib_ptr_->create_client2client_connection(
-      client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
-      client2client_max_retry_);
+  pslib_ptr_->create_client2client_connection(client2client_request_timeout_ms_,
+                                              client2client_connect_timeout_ms_,
+                                              client2client_max_retry_);
 #endif
 }
 
