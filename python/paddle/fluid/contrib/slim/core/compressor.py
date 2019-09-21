@@ -418,10 +418,6 @@ class Compressor(object):
                     with scope_guard(context.scope):
                         context.optimize_graph.load_persistables(model_path,
                                                                  exe)
-                    context.optimize_graph.update_param_shape(context.scope)
-                    context.optimize_graph.update_groups_of_conv()
-                    context.eval_graph.update_param_shape(context.scope)
-                    context.eval_graph.update_groups_of_conv()
                     _logger.info("Loaded params from: {}".format(model_path))
         return context, strategies
 
