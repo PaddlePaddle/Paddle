@@ -582,21 +582,21 @@ class Executor(object):
             program(Program|CompiledProgram): the program that need to run,
                 if not provided, then default_main_program (not compiled) will be used.
             feed(dict): feed variable map, e.g. {"image": ImageData, "label": LabelData}
-            fetch_list(list): a list of variable or variable names that user 
+            fetch_list(list): a list of variable or variable names that user
                 wants to get, this method will return them according to this list.
-            feed_var_name(str): the name for the input variable of 
+            feed_var_name(str): the name for the input variable of
                 feed Operator.
-            fetch_var_name(str): the name for the output variable of 
+            fetch_var_name(str): the name for the output variable of
                 fetch Operator.
-            scope(Scope): the scope used to run this program, you can switch 
+            scope(Scope): the scope used to run this program, you can switch
                 it to different scope. default is global_scope
             return_numpy(bool): if convert the fetched tensor to numpy
-            use_program_cache(bool): whether to use the cached program 
-                settings across batches. Setting it be true would be faster 
-                only when (1) the program is not compiled with data parallel, 
-                and (2) program, feed variable names and fetch_list variable 
-                names do not changed compared to the last step. 
-                
+            use_program_cache(bool): whether to use the cached program
+                settings across batches. Setting it be true would be faster
+                only when (1) the program is not compiled with data parallel,
+                and (2) program, feed variable names and fetch_list variable
+                names do not changed compared to the last step.
+
         Returns:
 
             list(numpy.array): fetch result according to fetch_list.
@@ -870,7 +870,7 @@ class Executor(object):
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
-                                       dataset=dataset)        
+                                       dataset=dataset)
 
         """
         if dataset == None:
@@ -912,7 +912,7 @@ class Executor(object):
         Thread number used in training will be minimum value of threadnum in Dataset and
         the value of thread in this interface. Debug can be set so that executor will display
         Run-Time for all operators and the throughputs of current training task.
-        
+
         Note: train_from_dataset will destroy all resources created within executor for each run.
 
         Args:
@@ -925,7 +925,7 @@ class Executor(object):
                for each run. default is global_scope
             thread(int): number of thread a user wants to run in this function. The actual number
                of thread will be min(Dataset.thread_num, thread)
-            debug(bool): whether a user wants to run train_from_dataset 
+            debug(bool): whether a user wants to run train_from_dataset
             fetch_list(Variable List): fetch variable list, each variable
                                        will be printed during training
             fetch_info(String List): print information for each variable
@@ -933,9 +933,9 @@ class Executor(object):
 
         Returns:
             None
-        
+
         Examples:
-        
+
             .. code-block:: python
 
               import paddle.fluid as fluid
