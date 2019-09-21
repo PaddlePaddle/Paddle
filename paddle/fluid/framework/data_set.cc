@@ -409,10 +409,10 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
     consume_channels_data_size += multi_consume_channel_[i]->Size();
   }
   if (output_channels_data_size != 0) {
-    CHECK(consume_channels_data_size == 0);
+    CHECK(consume_channels_data_size == 0);  // NOLINT
     cur_channel = 0;
   } else {
-    CHECK(output_channels_data_size == 0);
+    CHECK(output_channels_data_size == 0);  // NOLINT
     cur_channel = 1;
   }
   if (cur_channel == 0) {
