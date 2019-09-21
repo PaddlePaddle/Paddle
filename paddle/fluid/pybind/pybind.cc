@@ -1180,11 +1180,10 @@ All parameter, weight, gradient are variables in Paddle.
               std::unordered_set<std::string> set) {
              self.Set(name, new std::unordered_set<std::string>(set));
            })
-      // TODO(wojtuss): add setting default values to missing required
-      // attributes
-      .def("setEmptyIntSetAttr",
-           [](ir::Pass &self, const std::string &name) {
-             self.Set(name, new std::unordered_set<int>());
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::unordered_set<int> set) {
+             self.Set(name, new std::unordered_set<int>(set));
            })
       .def("set",
            [](ir::Pass &self, const std::string &name, VarQuantScale scales) {

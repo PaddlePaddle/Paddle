@@ -521,12 +521,21 @@ class TransformToMkldnnINT8Pass(object):
         _compute_var_scales(self._fc_ops, "Out", "W", axis=0)
         return graph
 
+    def _find_avg_pooling_ids(self, graph):
+        ids = []
+        for op in graph.all_op_nodes():
+            if op.name() in self._pool_ops:
+                if op.op().attr("pooling_type") == "avg":
+                    ids.append(op.id())
+        return set(ids)
+
     def _quantize_fp32_graph(self, graph):
         ir_pass = self._core.get_pass('cpu_quantize_placement_pass')
         inference_program = graph.to_program()
         ir_graph = self._core.Graph(inference_program.desc)
         ir_pass.set('quantize_enabled_op_types', {'conv2d', 'pool2d'})
-        ir_pass.setEmptyIntSetAttr('quantize_excluded_op_ids')
+        ir_pass.set('quantize_excluded_op_ids',
+                    self._find_avg_pooling_ids(graph))
         ir_pass.apply(ir_graph)
         graph = IrGraph(ir_graph, for_test=True)
         graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
