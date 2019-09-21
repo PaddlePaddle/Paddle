@@ -70,7 +70,7 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #else
   if (enable_fp16)
-    LOG(INFO) << "Using FP16 in Paddle-trt must ensure that the version of TRT "
+    LOG(INFO) << "Using FP16 in Paddle-TRT must ensure that the version of TRT "
                  "is at least 5."
                  "So, use FP32 to run.";
 #endif
@@ -146,8 +146,8 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
   PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
   PADDLE_ENFORCE(output->isNetworkOutput());
-  // output buffers' size can only be decided latter, set zero here to mark this
-  // and will reset latter.
+  // output buffers' size can only be decided later, set zero here to mark this
+  // and will reset later.
   buffer_sizes_[name] = 0;
 }
 
@@ -164,8 +164,8 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
   output->setName(name.c_str());
   PADDLE_ENFORCE(!output->isNetworkInput());
   infer_network_->markOutput(*output);
-  // output buffers' size can only be decided latter, set zero here to mark this
-  // and will reset latter.
+  // output buffers' size can only be decided later, set zero here to mark this
+  // and will reset later.
   buffer_sizes_[name] = 0;
 }
 
@@ -190,20 +190,26 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                                         framework::Tensor *weight_tensor,
                                         bool enable_int8,
                                         const std::vector<float> &scale) {
+  static int name_suffix_counter = 0;
+  std::string name_suffix = std::to_string(name_suffix_counter);
+  std::string name_with_suffix = name + name_suffix;
   auto w_dims = weight_tensor->dims();
   platform::CPUPlace cpu_place;
-  PADDLE_ENFORCE(!weight_map.count(name),
-                 "During TRT Op converter: We set weight %s with the same name "
-                 "twice into the weight_map",
-                 name);
-  weight_map[name].reset(new framework::Tensor());
-  weight_map[name]->Resize(weight_tensor->dims());
-  TensorCopySync(*weight_tensor, cpu_place, weight_map[name].get());
-  float *weight_data = weight_map[name]->mutable_data<float>(cpu_place);
+  PADDLE_ENFORCE_EQ(
+      weight_map.count(name_with_suffix), 0,
+      "During TRT Op converter: We set weight %s with the same name "
+      "twice into the weight_map",
+      name_with_suffix);
+  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix]->Resize(weight_tensor->dims());
+  TensorCopySync(*weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  float *weight_data =
+      weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
+  name_suffix_counter += 1;
 
   if (enable_int8) {
     // when the op is fc, scale's size should be 1
-    // when the op is conv, the scale's size should be w_dims[0]
+    // when the op is conv, scale's size should be w_dims[0]
     bool valid_scale_size =
         (scale.size() == 1 || scale.size() == static_cast<size_t>(w_dims[0]));
     PADDLE_ENFORCE(valid_scale_size, "TRT int8 quant: invalid scale size");
