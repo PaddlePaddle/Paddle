@@ -19,6 +19,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
@@ -28,6 +29,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       "bilinear" == interp_method || "nearest" == interp_method,
       "Interpolation method can only be \"bilinear\" or \"nearest\" when "
       "Input(X) dimension is 4");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -38,8 +41,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
         "Attr(out_shape)'s length must be 2 for 4-D input tensor.");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {dim_x[0], dim_x[1], out_h, out_w};
+    } else {
+      dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
+    }
+    ctx->SetOutputDim("Out", dim_out);
 
     return;
   }
@@ -55,8 +63,12 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_h = static_cast<int>(dim_x[2] * scale);
-      out_w = static_cast<int>(dim_x[3] * scale);
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
       // protect when input shape is -1
       out_h = out_h > 0 ? out_h : -1;
       out_w = out_w > 0 ? out_w : -1;
@@ -75,8 +87,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {dim_x[0], dim_x[1], out_h, out_w};
+  } else {
+    dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
+  }
+  ctx->SetOutputDim("Out", dim_out);
 }
 
 static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
@@ -86,6 +103,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   PADDLE_ENFORCE("trilinear" == interp_method,
                  "Interpolation method can only be \"trilinear\" when Input(X) "
                  "dimension is 5");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -97,8 +116,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     int out_d = ctx->Attrs().Get<int>("out_d");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
+    } else {
+      dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
+    }
+    ctx->SetOutputDim("Out", dim_out);
 
     return;
   }
@@ -115,9 +139,15 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_d = static_cast<int>(dim_x[2] * scale);
-      out_h = static_cast<int>(dim_x[3] * scale);
-      out_w = static_cast<int>(dim_x[4] * scale);
+      out_d = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[4] * scale)
+                   : static_cast<int>(dim_x[3] * scale));
       // protect when input shape is -1
       out_d = out_d > 0 ? out_d : -1;
       out_h = out_h > 0 ? out_h : -1;
@@ -138,8 +168,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
-  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
+  } else {
+    dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
+  }
+  ctx->SetOutputDim("Out", dim_out);
 }
 
 class InterpolateOp : public framework::OperatorWithKernel {
@@ -213,6 +248,13 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output tensor of interpolate operator, "
               "This is a tensor in same rank with Input(X).");
 
+    AddAttr<std::string>(
+        "data_layout",
+        "(string, default NCHW) Only used in "
+        "an optional string from: \"NHWC\", \"NCHW\". "
+        "Specify that the data format of the input and output data is "
+        "channel_first or channel_last.")
+        .SetDefault("NCHW");
     AddAttr<int>("out_d", "output depth of interpolate op.").SetDefault(0);
     AddAttr<int>("out_h", "output height of interpolate op.").SetDefault(0);
     AddAttr<int>("out_w", "output width of interpolate op.").SetDefault(0);
