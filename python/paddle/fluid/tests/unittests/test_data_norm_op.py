@@ -122,7 +122,8 @@ class TestDataNormOpInference(unittest.TestCase):
             Means="mean",
             Scales="scales",
             # attrs
-            epsilon=epsilon)
+            epsilon=epsilon,
+            use_mkldnn=False)
 
         data_norm_op.run(scope, place)
 
@@ -181,7 +182,7 @@ class TestDataNormOp(OpTest):
             "BatchSquareSum": batch_square_sum
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {"epsilon": epsilon}
+        self.attrs = {"epsilon": epsilon, "use_mkldnn": False}
 
     def test_check_output(self):
         """
