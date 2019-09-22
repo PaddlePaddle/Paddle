@@ -61,6 +61,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'instance_norm',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -3496,6 +3497,128 @@ def batch_norm(input,
         })
 
     return helper.append_activation(batch_norm_out)
+
+
+def instance_norm(input,
+                  epsilon=1e-05,
+                  param_attr=None,
+                  bias_attr=None,
+                  name=None):
+    """
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for 
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean of one  feature map in mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance of one feature map in mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Args:
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying instance normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.instance_norm(input=hidden1)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for in parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=dtype,
+        is_bias=True,
+        default_initializer=Constant(0.0))
+
+    # create output
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="instance_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+        },
+        outputs={
+            "Y": instance_norm_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={"epsilon": epsilon, })
+
+    return instance_norm_out
 
 
 def data_norm(input,
