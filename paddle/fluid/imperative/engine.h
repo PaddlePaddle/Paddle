@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
@@ -49,11 +50,20 @@ class Engine {
   void InsertOp(OpBase* op, std::shared_ptr<OpBase> op_shared) {
     grad_ops_[op] = std::move(op_shared);
   }
-  void Clear() { grad_ops_.clear(); }
+
+  void InsertGradVar(VarBase* grad) { grad_vars_.emplace(grad); }
+
+  bool IsGrad(VarBase* var) { return grad_vars_.count(var) > 0; }
+
+  void Clear() {
+    grad_ops_.clear();
+    grad_vars_.clear();
+  }
 
  private:
   std::unordered_map<OpBase*, std::shared_ptr<OpBase>>
       grad_ops_;  // opBase for remove - grad_op
+  std::unordered_set<VarBase*> grad_vars_;
 };
 
 class BasicEngine : public Engine {
@@ -69,7 +79,9 @@ class BasicEngine : public Engine {
  private:
   void PrepareDeps();
 
-  bool CheckBackwardInputs(OpBase* op);
+  void CheckBackwardInputs(OpBase* op);
+
+  void SetBackwardOutputs(OpBase* op);
 
   void PrepareGradAccumulators(OpBase* op);
 
