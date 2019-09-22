@@ -55,6 +55,7 @@ class TestDataNormOpInference(unittest.TestCase):
         init members of this class
         """
         self.dtype = np.float32
+        self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
@@ -123,7 +124,7 @@ class TestDataNormOpInference(unittest.TestCase):
             Scales="scales",
             # attrs
             epsilon=epsilon,
-            use_mkldnn=False)
+            use_mkldnn=self.use_mkldnn)
 
         data_norm_op.run(scope, place)
 
@@ -157,6 +158,7 @@ class TestDataNormOp(OpTest):
         init data norm op test env
         """
         self.op_type = 'data_norm'
+        self.use_mkldnn = False
         epsilon = 0.00001
         x_shape = [2, 3]
         scale_shape = [3]
@@ -182,7 +184,7 @@ class TestDataNormOp(OpTest):
             "BatchSquareSum": batch_square_sum
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {"epsilon": epsilon, "use_mkldnn": False}
+        self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
 
     def test_check_output(self):
         """
