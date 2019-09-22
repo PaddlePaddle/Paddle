@@ -92,6 +92,7 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+        self._cached_accumulator_states = None
 
     def load(self, stat_dict):
         """
@@ -315,6 +316,13 @@ class Optimizer(object):
             shape=shape)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
+
+        if self._cached_accumulator_states is not None:
+            tensor = var._ivar.value().get_tensor()
+            tensor.set(
+                self._cached_accumulator_states[pure_acc_name][param.name],
+                framework._current_expected_place())
+
         self._accumulators[name][param.name] = var
         return var
 
@@ -622,6 +630,37 @@ class Optimizer(object):
             loss, startup_program=startup_program, params_grads=params_grads)
 
         return optimize_ops, params_grads
+
+    def set_dict(self, opt_dict):
+        if framework.in_dygraph_mode():
+            self._cached_acc_states = opt_dict.get('accumulator_states')
+            self._learning_rate = opt_dict.get('learning_rate')
+        else:
+            raise TypeError("set_dict can only be used under DyGraph mode")
+
+    def state_dict(self):
+        if framework.in_dygraph_mode():
+            if len(self._accumulators
+                   ) == 0 and self._cached_accumulator_states is not None:
+                return {
+                    'learning_rate': self._learning_rate,
+                    'accumulator_states': self._cached_accumulator_states
+                }
+            acc_names = self._accumulators.keys()
+            acc_states = defaultdict(dict)
+            for acc_name in acc_names:
+                pure_acc_name = acc_name[acc_name.find(
+                    '_', acc_name.find('_') + 1) + 1:]
+                pnames = self._accumulators[acc_name].keys()
+                for pname in pnames:
+                    acc_states[pure_acc_name][pname] = self._accumulators[
+                        acc_name][pname].numpy()
+            return {
+                'learning_rate': self._learning_rate,
+                'accumulator_states': acc_states
+            }
+        else:
+            raise TypeError("state_dict can only be used under DyGraph mode")
 
 
 class SGDOptimizer(Optimizer):

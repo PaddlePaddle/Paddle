@@ -21,7 +21,10 @@ import pickle
 from . import learning_rate_scheduler
 import warnings
 
-__all__ = ['save_persistables', 'load_persistables']
+__all__ = [
+    'save_persistables', 'load_persistables', 'save_parameter',
+    'load_parameter', 'save_optimizer', 'load_optimizer'
+]
 
 
 def save_persistables(model_dict, dirname='save_dir', optimizers=None):
@@ -237,3 +240,59 @@ def _clone_var_in_block_(block, var):
         type=var.type,
         lod_level=0,
         persistable=True)
+
+
+def save_parameter(para_dict, save_dir):
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+    save_block = default_main_program().global_block()
+    save_var_list = list()
+    for name in sorted(para_dict.keys()):
+        save_var_list.append(para_dict[name])
+    save_block.append_op(
+        type='save_combine',
+        inputs={'X': save_var_list},
+        outputs={},
+        attrs={'file_path': os.path.join(save_dir, "model.pdparams")})
+
+    var_names_path = os.path.join(save_dir, "var_names.pdvar")
+    var_names_str = "\n".join(sorted(para_dict.keys()))
+    with open(var_names_path, "w") as f:
+        f.write(var_names_str)
+        f.close()
+
+
+def load_parameter(load_dir):
+    var_names_path = os.path.join(load_dir, "var_names.pdvar")
+    with open(var_names_path, "r") as f:
+        var_names = [line.strip() for line in f.readlines()]
+        f.close()
+
+    load_block = default_main_program().global_block()
+    load_var_list = list()
+    for var_name in var_names:
+        new_var = Variable(block=load_block, name=var_name)
+        load_var_list.append(new_var)
+    para_path = os.path.join(load_dir, "model.pdparams")
+    load_block.append_op(
+        type='load_combine',
+        inputs={},
+        outputs={"Out": load_var_list},
+        attrs={'file_path': para_path})
+    para_dict = {var.name: var for var in load_var_list}
+    return para_dict
+
+
+def save_optimizer(opt_dict, save_dir):
+    opt_path = os.path.join(save_dir, "model.pdopt")
+    with open(opt_path, "wb") as f:
+        pickle.dump(opt_dict, f, 2)
+        f.close()
+
+
+def load_optimizer(load_dir):
+    opt_path = os.path.join(load_dir, "model.pdopt")
+    with open(opt_path, "rb") as f:
+        opt_dict = pickle.load(f)
+        f.close()
+    return opt_dict

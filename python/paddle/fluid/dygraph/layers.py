@@ -274,3 +274,6 @@ class Layer(core.Layer):
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
                     layer_item.load_dict(stat_dict)
+
+    def set_dict(self, para_dict):
+        self.load_dict(para_dict)
