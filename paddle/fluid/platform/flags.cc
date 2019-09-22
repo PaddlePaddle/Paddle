@@ -438,6 +438,6 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
  */
 DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
               "The memory up limit of sub-scopes of local execution scope for "
-              "each GPUPlace. If you don't need to limit the memory, "
+              "each CUDAPlace. If you don't need to limit the memory, "
               "you should set FLAGS_local_exe_sub_scope_limit=-1. "
               "The default value is 256 MBytes.");

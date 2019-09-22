@@ -123,16 +123,16 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
       }
     }
 
-    if (incr_local_exec_scopes.at(scope_id).size() &&
-        FLAGS_local_exe_sub_scope_limit > 0) {
-      LOG_FIRST_N(WARNING, 1)
-          << "FLAGS_local_exe_sub_scope_limit is "
-          << FLAGS_local_exe_sub_scope_limit
-          << " MBytes now. If you don't need to limit the memory of local "
-             "execution scope, you should set "
-             "FLAGS_local_exe_sub_scope_limit=-1.";
-    }
     if (VLOG_IS_ON(10)) {
+      if (incr_local_exec_scopes.at(scope_id).size() &&
+          FLAGS_local_exe_sub_scope_limit > 0) {
+        VLOG(10)
+            << "FLAGS_local_exe_sub_scope_limit is "
+            << FLAGS_local_exe_sub_scope_limit
+            << " MBytes now. If you don't need to limit the memory of local "
+               "execution scope, you should set "
+               "FLAGS_local_exe_sub_scope_limit=-1.";
+      }
       std::stringstream out;
       out << scope_id << " kids: ";
       for (auto &scope : incr_local_exec_scopes.at(scope_id)) {
