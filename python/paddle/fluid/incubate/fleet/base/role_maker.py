@@ -371,13 +371,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 except ValueError as ve:
                     if six.PY2:
                         raise ValueError(
-                            "something wrong with PaddleCloud, please check environment, error: {}".
-                            format(ve.message))
-                    if six.PY3:
-                        raise ValueError(
-                            "something wrong with PaddleCloud, please check environment, error: {}".
-                            format(ve.msg))
-
+                            "something wrong with PaddleCloud, please check environment")
                 self._trainers_num = trainers_num
                 self._server_endpoints = eplist
                 self._role = role
