@@ -956,7 +956,7 @@ function test_fluid_lib_train() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
-    ./run.sh ${PADDLE_ROOT}
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
     ./clean.sh
 }
 
