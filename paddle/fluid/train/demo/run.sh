@@ -3,7 +3,7 @@
 set -x
 
 PADDLE_ROOT=$1
-
+TURN_ON_MKL=$2 # use MKL or Openblas
 
 # download models
 function download() {
@@ -21,7 +21,7 @@ cd build
 rm -rf *
 cmake .. -DPADDLE_LIB=$fluid_install_dir \
          -DWITH_MKLDNN=OFF \
-         -DWITH_MKL=OFF
+         -DWITH_MKL=TURN_ON_MKL
 make
 
 cd ..
