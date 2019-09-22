@@ -336,16 +336,16 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             if not self._is_collective:
                 try:
                     port = os.environ["PADDLE_PORT"]
-                    pserver_ips = os.environ["PADDLE_PSERVERS"]
+                    pserver_ips = os.environ["PADDLE_PSERVERS"].split(",")
                     if "," in port:
                         ports = port.split(",")
                     else:
-                        ports = [port] * len(pserver_ips.split(","))
+                        ports = [port] * len(pserver_ips)
                     eplist = []
                     # note that, we usually assign the same port to different ips
                     # if we run parameter server training in local mode
                     # port should be different in environment variables
-                    for i, ip in enumerate(pserver_ips.split(",")):
+                    for i, ip in enumerate(pserver_ips):
                         eplist.append(':'.join([ip, ports[i]]))
 
                     trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
