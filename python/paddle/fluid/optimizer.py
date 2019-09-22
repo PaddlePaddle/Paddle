@@ -632,35 +632,29 @@ class Optimizer(object):
         return optimize_ops, params_grads
 
     def set_dict(self, opt_dict):
-        if framework.in_dygraph_mode():
-            self._cached_acc_states = opt_dict.get('accumulator_states')
-            self._learning_rate = opt_dict.get('learning_rate')
-        else:
-            raise TypeError("set_dict can only be used under DyGraph mode")
+        self._cached_acc_states = opt_dict.get('accumulator_states')
+        self._learning_rate = opt_dict.get('learning_rate')
 
     def state_dict(self):
-        if framework.in_dygraph_mode():
-            if len(self._accumulators
-                   ) == 0 and self._cached_accumulator_states is not None:
-                return {
-                    'learning_rate': self._learning_rate,
-                    'accumulator_states': self._cached_accumulator_states
-                }
-            acc_names = self._accumulators.keys()
-            acc_states = defaultdict(dict)
-            for acc_name in acc_names:
-                pure_acc_name = acc_name[acc_name.find(
-                    '_', acc_name.find('_') + 1) + 1:]
-                pnames = self._accumulators[acc_name].keys()
-                for pname in pnames:
-                    acc_states[pure_acc_name][pname] = self._accumulators[
-                        acc_name][pname].numpy()
+        if len(self._accumulators
+               ) == 0 and self._cached_accumulator_states is not None:
             return {
                 'learning_rate': self._learning_rate,
-                'accumulator_states': acc_states
+                'accumulator_states': self._cached_accumulator_states
             }
-        else:
-            raise TypeError("state_dict can only be used under DyGraph mode")
+        acc_names = self._accumulators.keys()
+        acc_states = defaultdict(dict)
+        for acc_name in acc_names:
+            pure_acc_name = acc_name[acc_name.find('_', acc_name.find('_') + 1)
+                                     + 1:]
+            pnames = self._accumulators[acc_name].keys()
+            for pname in pnames:
+                acc_states[pure_acc_name][pname] = self._accumulators[acc_name][
+                    pname].numpy()
+        return {
+            'learning_rate': self._learning_rate,
+            'accumulator_states': acc_states
+        }
 
 
 class SGDOptimizer(Optimizer):
