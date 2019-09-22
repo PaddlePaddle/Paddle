@@ -369,7 +369,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                             "TRAINING_ROLE must be PSERVER or TRAINER")
                 except ValueError as ve:
                     raise ValueError(
-                        "something wrong with PaddleCloud, please check environment")
+                        "something wrong with PaddleCloud, please check environment"
+                    )
 
                 self._trainers_num = trainers_num
                 self._server_endpoints = eplist
