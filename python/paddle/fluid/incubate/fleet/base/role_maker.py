@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import six
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
@@ -368,9 +369,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         raise ValueError(
                             "TRAINING_ROLE must be PSERVER or TRAINER")
                 except ValueError as ve:
-                    raise ValueError(
-                        "something wrong with PaddleCloud, please check environment, error: {}".
-                        format(ve.message))
+                    if six.PY2:
+                        raise ValueError(
+                            "something wrong with PaddleCloud, please check environment, error: {}".
+                            format(ve.message))
+                    else:
+                        raise ValueError(
+                            "something wrong with PaddleCloud, please check environment, error: {}".
+                            format(ve.msg))
 
                 self._trainers_num = trainers_num
                 self._server_endpoints = eplist
