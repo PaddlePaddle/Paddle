@@ -357,7 +357,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
                     if training_role == "TRAINER":
                         role = Role.WORKER
-                        current_id = os.environ["PADDLE_TRAINER_ID"]
+                        current_id = int(os.environ["PADDLE_TRAINER_ID"])
                     elif training_role == "PSERVER":
                         role = Role.SERVER
                         cur_ip = os.environ["POD_IP"]
