@@ -373,7 +373,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         raise ValueError(
                             "something wrong with PaddleCloud, please check environment, error: {}".
                             format(ve.message))
-                    else:
+                    if six.PY3:
                         raise ValueError(
                             "something wrong with PaddleCloud, please check environment, error: {}".
                             format(ve.msg))
