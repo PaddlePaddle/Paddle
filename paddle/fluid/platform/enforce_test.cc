@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/string/piece.h"
 
 using StringPiece = paddle::string::Piece;
-using paddle::string::HasPrefix;
+using paddle::string::HasSuffix;
 
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, "Enforce is ok %d now %f", 123, 0.345);
@@ -36,7 +36,7 @@ TEST(ENFORCE, FAILED) {
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
-        HasPrefix(StringPiece(error.what()), "Enforce is not ok 123 at all"));
+        HasSuffix(StringPiece(error.what()), "Enforce is not ok 123 at all"));
   }
   EXPECT_TRUE(caught_exception);
 
@@ -46,7 +46,7 @@ TEST(ENFORCE, FAILED) {
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
-        HasPrefix(StringPiece(error.what()), "Enforce is not ok at all"));
+        HasSuffix(StringPiece(error.what()), "Enforce is not ok at all"));
   }
   EXPECT_TRUE(caught_exception);
 
@@ -75,7 +75,7 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
     PADDLE_ENFORCE_EQ(a, 1 + 3);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    HasPrefix(StringPiece(error.what()),
+    HasSuffix(StringPiece(error.what()),
               "PaddleEnforceError. Expected a == 1 + 3, but received a:2 != 1 "
               "+ 3:4.");
   }
@@ -89,7 +89,7 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
     PADDLE_ENFORCE_EQ(a, 1 + 3, "%s size not match", "their");
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    HasPrefix(
+    HasSuffix(
         StringPiece(error.what()),
         "PaddleEnforceError. Expected a == 1 + 3, but received a:2 != 1 + "
         "3:4.\ntheir size not match");
@@ -109,7 +109,7 @@ TEST(ENFORCE_NE, FAIL) {
     PADDLE_ENFORCE_NE(1.0, 1UL);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
+    EXPECT_TRUE(HasSuffix(StringPiece(error.what()),
                           "PaddleEnforceError. Expected 1.0 != 1UL, but "
                           "received 1.0:1 == 1UL:1."))
         << error.what() << " does not have expected prefix";
@@ -124,7 +124,7 @@ TEST(ENFORCE_GT, FAIL) {
     PADDLE_ENFORCE_GT(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(
+    EXPECT_TRUE(HasSuffix(
         StringPiece(error.what()),
         "PaddleEnforceError. Expected 1 > 2, but received 1:1 <= 2:2."));
   }
@@ -142,7 +142,7 @@ TEST(ENFORCE_GE, FAIL) {
     PADDLE_ENFORCE_GE(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(
+    EXPECT_TRUE(HasSuffix(
         StringPiece(error.what()),
         "PaddleEnforceError. Expected 1 >= 2, but received 1:1 < 2:2."));
   }
@@ -162,7 +162,7 @@ TEST(ENFORCE_LE, FAIL) {
     PADDLE_ENFORCE_GT(1, 2);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(
+    EXPECT_TRUE(HasSuffix(
         StringPiece(error.what()),
         "PaddleEnforceError. Expected 1 > 2, but received 1:1 <= 2:2."));
   }
@@ -180,7 +180,7 @@ TEST(ENFORCE_LT, FAIL) {
     PADDLE_ENFORCE_LT(1UL, 0.12);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
+    EXPECT_TRUE(HasSuffix(StringPiece(error.what()),
                           "PaddleEnforceError. Expected 1UL < 0.12, but "
                           "received 1UL:1 >= 0.12:0.12."));
   }
@@ -199,7 +199,7 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
     PADDLE_ENFORCE_NOT_NULL(a);
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()),
+    EXPECT_TRUE(HasSuffix(StringPiece(error.what()),
                           "PaddleEnforceError. a should not be null"));
   }
   EXPECT_TRUE(caught_exception);
@@ -253,7 +253,7 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
     PADDLE_THROW_EOF();
   } catch (paddle::platform::EOFException error) {
     caught_eof = true;
-    EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "There is no next data."));
+    EXPECT_TRUE(HasSuffix(StringPiece(error.what()), "There is no next data."));
   }
   EXPECT_TRUE(caught_eof);
 }
