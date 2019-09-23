@@ -14,17 +14,18 @@
 
 #pragma once
 #include <ThreadPool.h>
+#include <deque>
 #include <list>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/var_handle.h"
-
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scope_buffered_monitor.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -72,6 +73,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+  ScopeBufferedMonitor scope_monitor_;
 };
 }  // namespace details
 }  // namespace framework

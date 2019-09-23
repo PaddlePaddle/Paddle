@@ -94,7 +94,7 @@ class TestRowConvOp2(OpTest):
         self.check_output()
 
     #max_relative_error is increased from 0.05 to 0.06 as for higher
-    #dimensional input, the dX on CPU for some values has max_rel_error 
+    #dimensional input, the dX on CPU for some values has max_rel_error
     #slightly more than 0.05
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.06)
@@ -106,6 +106,53 @@ class TestRowConvOp2(OpTest):
     def test_check_grad_ignore_wt(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Filter'))
+
+
+def row_conv_foward_Tensor(x, wt):
+    out = np.zeros_like(x)
+    num_sequence = x.shape[0]
+    timesteps = x.shape[1]
+    context_length = wt.shape[0]
+    for i in range(num_sequence):
+        cur_in = x[i:i + 1, :][0]
+        cur_out = out[i:i + 1, :][0]
+        for j in range(timesteps):
+            for k in range(context_length):
+                if j + k >= timesteps:
+                    continue
+                cur_out[j, :] += cur_in[j + k, :] * wt[k, :]
+    return out
+
+
+class TestRowOpWithTensorInput(OpTest):
+    def setUp(self):
+        self.op_type = "row_conv"
+        length = [3, 2, 4]
+        B = 2
+        T = sum(length)
+        D = 16
+        context_length = 2
+
+        x = np.random.random((B, T, D)).astype("float32")
+        wt = np.random.random((context_length, D)).astype("float32")
+        self.inputs = {'X': x, 'Filter': wt}
+
+        out = row_conv_foward_Tensor(x, wt)
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(
+            ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.05)
+
+    def test_check_grad_ignore_wt(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
 
 
 if __name__ == '__main__':

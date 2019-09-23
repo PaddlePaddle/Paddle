@@ -21,10 +21,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
+
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
     std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
@@ -35,7 +35,8 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       local_scopes_(std::move(local_scopes)),
       local_exec_scopes_(std::move(local_exec_scopes)),
       var_infos_(std::move(var_infos)),
-      places_(std::move(places)) {
+      places_(std::move(places)),
+      scope_monitor_(places_, local_exec_scopes_) {
   PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
   PrepareLocalExeScopes();
 }
@@ -49,16 +50,42 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
 
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr = nullptr;
-  try {
-    fetch_data = underlying_executor_->Run(fetch_tensors);
-  } catch (...) {
-    eptr = std::current_exception();
+
+  auto exe_run_func = [&]() {
+    try {
+      fetch_data = underlying_executor_->Run(fetch_tensors);
+    } catch (...) {
+      eptr = std::current_exception();
+    }
+  };
+
+  if (strategy_.num_iteration_per_drop_scope_ == 1) {
+    exe_run_func();
+  } else {
+    scope_monitor_.Apply(exe_run_func, fetch_tensors.size() > 0);
+  }
+
+  if (VLOG_IS_ON(5)) {
+    for (auto *scope : local_exec_scopes_) {
+      VLOG(5) << "Left "
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << " on scope " << scope << " before deleting";
+    }
   }
 
   ++drop_scope_counter_;
   if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     DropLocalExeScopes();
   }
+
+  if (VLOG_IS_ON(5)) {
+    for (auto *scope : local_exec_scopes_) {
+      VLOG(5) << "Left "
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << " on scope " << scope << " after deleting";
+    }
+  }
+
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {
@@ -103,7 +130,7 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   for (auto &p : places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
-
+  scope_monitor_.ClearHistoryLocalExecScopes();
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     local_exec_scopes_[i]->EraseVarsExcept(preserve_vars_[i]);
     local_exec_scopes_[i]->DropKids();

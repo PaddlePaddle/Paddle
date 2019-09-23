@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,17 +22,14 @@ from op_test import OpTest
 
 class TestFlattenOp(OpTest):
     def setUp(self):
-        self.op_type = "flatten2"
+        self.op_type = "flatten"
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float32")}
         self.init_attrs()
-        self.outputs = {
-            "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.in_shape).astype("float32")
-        }
+        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

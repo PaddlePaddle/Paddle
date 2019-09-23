@@ -53,7 +53,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
     auto stream =
@@ -64,7 +64,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
     auto stream =
@@ -75,7 +75,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {

@@ -109,7 +109,7 @@ class TestCTCAlignPaddingOp(OpTest):
         self.op_type = "ctc_align"
         self.input_lod = []
         self.blank = 0
-        self.padding_num = 0
+        self.padding_value = 0
         self.merge_repeated = True
         self.input = np.array([[0, 2, 4, 4, 0, 6, 3, 6, 6, 0, 0],
                                [1, 1, 3, 0, 0, 4, 5, 6, 0, 0, 0]]).reshape(
@@ -118,13 +118,13 @@ class TestCTCAlignPaddingOp(OpTest):
     def setUp(self):
         self.config()
         output = CTCAlign(self.input, self.input_lod, self.blank,
-                          self.merge_repeated, self.padding_num)
+                          self.merge_repeated, self.padding_value)
         self.inputs = {"Input": (self.input, self.input_lod), }
         self.outputs = {"Output": output}
         self.attrs = {
             "blank": self.blank,
             "merge_repeated": self.merge_repeated,
-            "padding_num": self.padding_num
+            "padding_value": self.padding_value
         }
 
     def test_check_output(self):
@@ -138,7 +138,7 @@ class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = True
-        self.padding_num = 0
+        self.padding_value = 0
         self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 7, 7, 0, 0]]).reshape(
                                    [3, 6]).astype("int32")
@@ -146,7 +146,7 @@ class TestCTCAlignOpCase3(TestCTCAlignPaddingOp):
 
 class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
     '''
-    # test tensor input which has attr input padding_num
+    # test tensor input which has attr input padding_value
     '''
 
     def config(self):
@@ -154,7 +154,7 @@ class TestCTCAlignOpCase4(TestCTCAlignPaddingOp):
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = False
-        self.padding_num = 0
+        self.padding_value = 0
         self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 7, 7, 0, 0]]).reshape(
                                    [3, 6]).astype("int32")
@@ -166,7 +166,7 @@ class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
         self.blank = 0
         self.input_lod = []
         self.merge_repeated = False
-        self.padding_num = 1
+        self.padding_value = 1
         self.input = np.array([[0, 1, 2, 2, 0, 4], [0, 4, 5, 0, 6, 0],
                                [0, 7, 1, 7, 0, 0]]).reshape(
                                    [3, 6]).astype("int32")

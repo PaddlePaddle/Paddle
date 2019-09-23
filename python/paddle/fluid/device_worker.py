@@ -169,6 +169,9 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                downpour.stat_var_names.extend([i])
 
         for i in self._fleet_desc.trainer_param.dense_table:
             if i.table_id in dense_table_set:

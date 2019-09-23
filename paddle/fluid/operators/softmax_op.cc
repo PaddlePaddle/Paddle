@@ -47,10 +47,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "R is the rank of Input(X).");
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
     if (axis != rank_x - 1 && axis != -1) {
       PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
-      PADDLE_ENFORCE(!use_mkldnn, "MKLDNN kernel only support axis as -1.");
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -220,14 +218,33 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
+
+class SoftmaxGradInplaceInferer final : public framework::InplaceOpInference {
+ public:
+  using framework::InplaceOpInference::InplaceOpInference;
+
+  std::unordered_map<std::string, std::string> operator()(
+      const framework::OpDesc& op_desc, bool use_cuda) const final {
+    if (use_cuda) {
+      return {{"Out", framework::GradVarName("X")}};
+    } else {
+      // NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
+      return {};
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker);
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
+                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker,
+                  ops::SoftmaxInplaceInferer);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
+                  ops::SoftmaxGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);

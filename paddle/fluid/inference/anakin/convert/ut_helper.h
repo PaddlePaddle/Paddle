@@ -136,7 +136,7 @@ class AnakinConvertValidation {
       if (parameters_.count(input)) continue;
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(*scope_,
                                                                         input);
-      auto t_shape = framework::vectorize2int(t.dims());
+      auto t_shape = framework::vectorize<int>(t.dims());
       while (t_shape.size() < 4) {
         t_shape.push_back(1);
       }

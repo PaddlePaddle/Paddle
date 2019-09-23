@@ -83,8 +83,6 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if six.PY3:
             data = warmup_reader.__next__()
 
-        # TODO (Intel) Remove limits that MKLDNNPostTrainingQuantStrategy
-        # only support image classification
         num_images = len(data)
         image_data = [img.tolist() for (img, _) in data]
         image_data = np.array(image_data).astype("float32").reshape(
