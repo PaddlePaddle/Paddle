@@ -5828,11 +5828,10 @@ def ctc_greedy_decoder(input,
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
 
             # for padding mode
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[4,8], dtype='float32')
-            x_len = fluid.layers.data(name='x_len', shape=[1], dtype='int64')
-            out, out_len = fluid.layers.ctc_greedy_decoder(input=x, blank=0,
-                            input_length=x_len)
+            x_pad = fluid.layers.data(name='x_pad', shape=[4,8], dtype='float32')
+            x_pad_len = fluid.layers.data(name='x_pad_len', shape=[1], dtype='int64')
+            out, out_len = fluid.layers.ctc_greedy_decoder(input=x_pad, blank=0,
+                            input_length=x_pad_len)
 
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
