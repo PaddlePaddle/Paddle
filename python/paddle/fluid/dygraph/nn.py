@@ -24,7 +24,7 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import logging
-from future.moves.collections import UserList
+from six.moves import UserList
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
