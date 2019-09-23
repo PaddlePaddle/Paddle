@@ -40,7 +40,7 @@ def one_hot(input, depth, allow_out_of_range=False):
 
             import paddle.fluid as fluid
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            one_hot_label = fluid.input.one_hot(input=label, depth=10)
+            one_hot_label = fluid.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot_v2", **locals())
 
