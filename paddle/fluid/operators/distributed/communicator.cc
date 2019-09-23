@@ -115,11 +115,13 @@ Communicator::~Communicator() {
 
 void Communicator::SendThread() {
   VLOG(1) << "SendThread start!";
+  auto before_run_training = GetCurrentUS();
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
     VLOG(3) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
+    
     if (is_geo_sgd_) {
       if( ids_send_vec_.size() < geo_need_push_nums_){
         VLOG(3)<<"ids_send_queue_ Size: "<<ids_send_vec_.size();
@@ -129,6 +131,10 @@ void Communicator::SendThread() {
         }
       } 
       if (ids_send_vec_.size() >= geo_need_push_nums_) {
+        auto after_run_training = GetCurrentUS();
+        VLOG(1) << "run Training use time "
+            << after_run_training - before_run_training;
+        before_run_training = GetCurrentUS();
         VLOG(1)<<"Start send after get need_push_num";
         for (auto &iter : send_varname_to_ctx_) {
           auto &var_name = iter.first;
@@ -211,7 +217,7 @@ void Communicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
 
-    VLOG(1) << "run send graph use time "
+    VLOG(2) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     RecvNonIndependent();
   }
