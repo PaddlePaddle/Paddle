@@ -40,7 +40,7 @@ _invalid_traceback_str = "" \
 
 class TestErrorMessageHintAugment(unittest.TestCase):
     def augment_result_check(self, origin, augment_str):
-        origin_augment = error_format.hint_augment(origin)
+        origin_augment = error_format._hint_augment(origin)
         origin_lines = origin.splitlines()
         origin_augment_lines = origin_augment.splitlines()
         origin_lines.reverse()
@@ -58,7 +58,7 @@ class TestErrorMessageHintAugment(unittest.TestCase):
         ex_msg_lines = _normal_traceback_str.splitlines()
         # remove tag
         ex_msg_no_tag = "\n".join(ex_msg_lines[:-1])
-        ex_msg_augment = error_format.hint_augment(ex_msg_no_tag)
+        ex_msg_augment = error_format._hint_augment(ex_msg_no_tag)
         self.assertEqual(ex_msg_augment, ex_msg_no_tag)
 
     def test_hint_augment_no_frame(self):
