@@ -228,18 +228,30 @@ class TestDataset(unittest.TestCase):
         for i in range(2):
             try:
                 exe.train_from_dataset(fluid.default_main_program(), dataset)
+                exe.train_from_dataset(fluid.default_main_program(), dataset,
+                                       thread=1)
+                exe.train_from_dataset(fluid.default_main_program(), dataset,
+                                       thread=2)
+                exe.train_from_dataset(fluid.default_main_program(), dataset,
+                                       thread=2)
+                exe.train_from_dataset(fluid.default_main_program(), dataset
+                                       thread=3)
+                exe.train_from_dataset(fluid.default_main_program(), dataset,
+                                       thread=4)
             except ImportError as e:
                 pass
             except Exception as e:
                 self.assertTrue(False)
 
         dataset.set_merge_by_lineid(slots_vars)
+        dataset.set_fleet_send_sleep_seconds(2)
         dataset.preload_into_memory()
         dataset.wait_preload_done()
         dataset.release_memory()
         dataset.preload_into_memory(1)
         dataset.wait_preload_done()
         fleet_ptr = fluid.core.Fleet()
+        fleet_ptr.set_client2client_config(1, 1, 1)
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
