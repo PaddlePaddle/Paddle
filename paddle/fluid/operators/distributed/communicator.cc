@@ -20,6 +20,7 @@ limitations under the License. */
 #include <map>
 #include <thread>  // NOLINT
 #include <unordered_set>
+#include "paddle/fluid/framework/threadpool.h"
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -54,6 +55,13 @@ inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
+template <typename T>
+inline void VSUB(int n, const T *x, const T *y, T *z) const {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
 }
 
 inline std::vector<int> bucket(const int v_size, const int b_size) {
@@ -97,8 +105,8 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
-  VLOG(0) << "communicator_merge_sparse_parallelism: "
-          << FLAGS_communicator_merge_sparse_parallelism;
+  VLOG(0) << "communicator_merge_sparse_bucket: "
+          << FLAGS_communicator_merge_sparse_bucket;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
@@ -472,8 +480,8 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
           << FLAGS_communicator_merge_sparse_grad;
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
-  VLOG(0) << "communicator_merge_sparse_parallelism"
-          << FLAGS_communicator_merge_sparse_parallelism;
+  VLOG(0) << "communicator_merge_sparse_bucket"
+          << FLAGS_communicator_merge_sparse_bucket;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
@@ -715,13 +723,13 @@ void Communicator::SendUpdateSparseVars(
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
+
   var_z_select_rows->set_height(rows);
 
   // copy value
   auto *var_z_value = var_z_select_rows->mutable_value();
   var_z_value->Resize({ids_num, row_numel});
-  var_z_value->mutable_data<float>(var_x_tensor.place());
-  auto *var_select_data = var_z_value->data<float>();
+  auto *z_mutable_data = var_z_value->mutable_data<float>(var_x_tensor.place());
 
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
@@ -729,24 +737,37 @@ void Communicator::SendUpdateSparseVars(
 
   std::vector<int> buts =
       bucket(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);
+
   std::vector<std::future<void>> fs;
 
   for (int x = 0; x < buts.size() - 1; x++) {
     int start = buts[x];
     int end = buts[x + 1];
+    float avg = 1 / static_cast<float>(trainer_nums_);
 
     fs.push_back(
-        framework::Async([&x_mutable_data, &y_mutable_data, &var_select_data,
-                          &new_rows, row_numel, start, end]() {
+        framework::Async([&x_mutable_data, &y_mutable_data, &z_mutable_data,
+                          &new_rows, row_numel, start, end, avg]() {
+          auto x_value = x_mutable_data.data<float>();
+          auto y_value = y_mutable_data.data<float>();
+          auto z_value = z_mutable_data.data<float>();
+
+          auto cpu_ctx = paddle::platform::CPUDeviceContext();
+          auto blas =
+              math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+
           for (int y = start; y < end; y++) {
-            autp ids = new_rows[y];
-            for (int64_t i = 0; i < row_numel; i++) {
-              float value = (x_mutable_data[ids * row_numel + i] -
-                             y_mutable_data[ids * row_numel + i]) /
-                            static_cast<float>(trainer_nums_);
-              y_mutable_data[ids * row_numel + i] += value;
-              var_select_data[row * row_numel + i] = value;
-            }
+            auto ids = new_rows[y];
+            std::vector<float> row_diff(row_numel, 0);
+            VSUB(x_value, y_value, row_diff.data());
+            blas.SCAL(row_numel, avg, row_diff.data());
+
+            float *x_val = x_value + ids * row_numel;
+            float *y_val = y_value + ids * row_numel;
+            float *z_val = z_value + y * row_numel;
+
+            blas.VADD(row_numel, row_diff.data(), y_val, y_val);
+            blas.VCOPY(row_numel, row_diff.data(), z_val);
           }
         }));
   }
@@ -760,8 +781,7 @@ void Communicator::SendUpdateSparseVars(
 void Communicator::RecvUpdateVars(const std::string &var_name) {
   // calc var_recv = var_pserver - var_old
   // calc var_old = var_pserver
-
-  VLOG(2) << "Geo-Sgd Communicator Recv update Vars: " << var_name;
+  VLOG(1) << "Geo-Sgd Communicator Recv update Vars: " << var_name;
   auto before_run_recv = GetCurrentUS();
 
   auto *var_x = recv_scope_->FindVar(var_name);
@@ -782,52 +802,34 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
     auto &new_rows = var_z_slr->rows();
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
-
     auto *z_mutable_data = new_value.data<float>();
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
             << new_rows.size();
-
-    auto row_buts =
-        buckets(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);
-    std::vector<std::future<void>> fs;
-
-    for (int x = 0; x < row_buts.size() - 1, x++) {
-      int start = row_buts[x];
-      int end = row_buts[x + 1];
-
-      fs.push_back(framework::Async([&x_mutable_data, &y_mutable_data,
-                                     &z_mutable_data, &new_rows, row_numel,
-                                     start, end]() {
-        for (int i = start; i < end; i++) {
-          float diff = 0;
-          VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
-                  << " before update Vars recv_scope: "
-                  << x_mutable_data[new_rows[i] * row_numel]
-                  << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
-                  << " ;pserver_scope: " << z_mutable_data[i * row_numel];
-          for (int64_t j = 0; j < row_numel; j++) {
-            if (j == 0) {
-              diff = z_mutable_data[i * row_numel + j] -
-                     y_mutable_data[new_rows[i] * row_numel + j];
-            }
-            x_mutable_data[new_rows[i] * row_numel + j] +=
-                (z_mutable_data[i * row_numel + j] -
-                 y_mutable_data[new_rows[i] * row_numel + j]);
-            y_mutable_data[new_rows[i] * row_numel + j] =
-                z_mutable_data[i * row_numel + j];
-          }
-          VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
-                  << " after update Vars recv_scope: "
-                  << x_mutable_data[new_rows[i] * row_numel]
-                  << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
-                  << " ;pserver_scope: " << z_mutable_data[i * row_numel]
-                  << " ;diff: " << diff;
+    for (size_t i = 0; i < new_rows.size(); i++) {
+      float diff = 0;
+      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
+              << " before update Vars recv_scope: "
+              << x_mutable_data[new_rows[i] * row_numel]
+              << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
+              << " ;pserver_scope: " << z_mutable_data[i * row_numel];
+      for (int64_t j = 0; j < row_numel; j++) {
+        if (j == 0) {
+          diff = z_mutable_data[i * row_numel + j] -
+                 y_mutable_data[new_rows[i] * row_numel + j];
         }
-      }));
+        x_mutable_data[new_rows[i] * row_numel + j] +=
+            (z_mutable_data[i * row_numel + j] -
+             y_mutable_data[new_rows[i] * row_numel + j]);
+        y_mutable_data[new_rows[i] * row_numel + j] =
+            z_mutable_data[i * row_numel + j];
+      }
+      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
+              << " after update Vars recv_scope: "
+              << x_mutable_data[new_rows[i] * row_numel]
+              << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
+              << " ;pserver_scope: " << z_mutable_data[i * row_numel]
+              << " ;diff: " << diff;
     }
-
-    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
-
   } else {
     // dense param
     auto *var_y_sub = old_scope_->Var(VarToDeltaVar(var_name));
