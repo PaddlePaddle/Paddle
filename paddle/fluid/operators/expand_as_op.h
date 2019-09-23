@@ -77,14 +77,19 @@ class ExpandAsKernel : public framework::OpKernel<T> {
 
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
+    int bcast_dims_remainder = 0;
     VLOG(2)<<"ExpandAs 2222";
     auto x_dims = in0->dims();
     auto y_dims = expand_tensor->dims();
     VLOG(2)<<"ExpandAs 3333";
     for (int i = 0; i < y_dims.size(); ++i) {
       bcast_dims[i] = y_dims[i]/x_dims[i];
+      bcast_dims_remainder += y_dims[i]%x_dims[i];
       VLOG(2)<<"bcast_dims"<<bcast_dims[i];
     }
+   PADDLE_ENFORCE_EQ(
+          bcast_dims_remainder, 0,
+          "X(input) could not be broadcast together with remapped shape(expand tensor's shape)");
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
       out_dims[i] *= bcast_dims[i];
@@ -104,27 +109,26 @@ template <typename DeviceContext, typename T>
 class ExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    VLOG(2)<<"grad 1111";
     auto* in0 = context.Input<Tensor>("X");
     auto* expand_tensor = context.Input<Tensor>("expand_tensor");
     auto x_dims = in0->dims();
     auto y_dims = expand_tensor->dims();
-    std::vector<int> expand_times;
+    std::vector<int> bcast_dims;
     for (int i = 0; i < y_dims.size(); ++i) {
-        expand_times[i] = y_dims[i]/x_dims[i];
+        bcast_dims[i] = y_dims[i]/x_dims[i];
     }
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
-    for (size_t i = 0; i < expand_times.size(); ++i) {
-      if (expand_times[i] == 1) {
+    for (size_t i = 0; i < bcast_dims.size(); ++i) {
+      if (bcast_dims[i] == 1) {
         reshape_dims_vec.push_back(x_dims[i]);
       } else {
         if (x_dims[i] == 1) {
           reduce_dims_vec.push_back(reshape_dims_vec.size());
-          reshape_dims_vec.push_back(expand_times[i]);
+          reshape_dims_vec.push_back(bcast_dims[i]);
         } else {
           reduce_dims_vec.push_back(reshape_dims_vec.size());
-          reshape_dims_vec.push_back(expand_times[i]);
+          reshape_dims_vec.push_back(bcast_dims[i]);
           reshape_dims_vec.push_back(x_dims[i]);
         }
       }
