@@ -241,16 +241,16 @@ class TestDataset(unittest.TestCase):
         for i in range(2):
             try:
                 exe.train_from_dataset(fluid.default_main_program(), dataset)
-                exe.train_from_dataset(fluid.default_main_program(), dataset,
-                                       thread=1)
-                exe.train_from_dataset(fluid.default_main_program(), dataset,
-                                       thread=2)
-                exe.train_from_dataset(fluid.default_main_program(), dataset,
-                                       thread=2)
-                exe.train_from_dataset(fluid.default_main_program(), dataset,
-                                       thread=3)
-                exe.train_from_dataset(fluid.default_main_program(), dataset,
-                                       thread=4)
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=1)
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=2)
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=2)
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=3)
+                exe.train_from_dataset(
+                    fluid.default_main_program(), dataset, thread=4)
             except ImportError as e:
                 pass
             except Exception as e:
