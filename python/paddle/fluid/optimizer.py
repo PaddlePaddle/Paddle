@@ -1538,7 +1538,6 @@ class AdamaxOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        print("***********adamax**************8")
 
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
@@ -1661,7 +1660,6 @@ class DpsgdOptimizer(Optimizer):
         self._clip = clip
         self._batch_size = batch_size
         self._sigma = sigma
-        print("************************")
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
