@@ -243,6 +243,96 @@ def _clone_var_in_block_(block, var):
 
 
 def save_parameter(para_dict, save_dir):
+    """
+    This function saves model parameter dict to the folder `save_dir`.
+
+    Args:
+        para_dict(dict of Parameter): specify the model state dict. The key type is str, the value type is Parameter
+        save_dir(str): the folder to save the parameters.
+
+    Returns:
+        None.
+
+    Examples:
+
+         .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.base import to_variable
+
+
+            class MyLayer(fluid.dygraph.Layer):
+                def __init__(self, name_scope):
+                    super(MyLayer, self).__init__(name_scope)
+
+                def forward(self, inputs):
+                    x = fluid.layers.relu(inputs)
+                    self._x_for_debug = x
+                    x = fluid.layers.elementwise_mul(x, x)
+                    x = fluid.layers.reduce_sum(x)
+                    return [x]
+
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+
+            if __name__ == '__main__':
+                    train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                    with fluid.dygraph.guard():
+                        mlp = MLP("mlp")
+
+                        opt = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+                            learning_rate=0.1,
+                            decay_steps=1,
+                            decay_rate=0.5,
+                            staircase=True))
+                        for batch_id, data in enumerate(train_reader()):
+                            dy_x_data = np.array(
+                                [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                                128, 1)
+
+                            img = to_variable(dy_x_data)
+                            label = to_variable(y_data)
+                            label._stop_gradient = True
+
+                            cost = mlp(img)
+                            avg_loss = fluid.layers.reduce_mean(cost)
+                            avg_loss.backward()
+
+                            opt.minimize(avg_loss)
+                        
+                            if batch_id == 1:
+                                break
+
+
+                        with fluid.unique_name.guard():
+                            fluid.dygraph.save_parameter(mlp.state_dict(), save_dir="dirname")
+                            para_dict = fluid.dygraph.load_parameter(load_dir="dirname")
+                            another_mlp = MLP("mlp")
+                            another_mlp.set_dict(para_dict)
+
+                        opt_dict = opt.state_dict()
+                        fluid.dygraph.save_optimizer(opt_dict, "dirname")
+                        opt.set_dict(fluid.dygraph.load_optimizer("dirname"))
+
+    """
+
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     save_block = default_main_program().global_block()
@@ -263,6 +353,95 @@ def save_parameter(para_dict, save_dir):
 
 
 def load_parameter(load_dir):
+    """
+    This function loads model parameter dict from the folder `load_dir`.
+
+    Args:
+        para_dict(dict of Parameter): the model state dict. The key type is str, the value type is Parameter
+        load_dir(str): the folder to load from.
+
+    Returns:
+        para_dict(dict of Parameter): the dict of model parameters.
+
+    Examples:
+
+         .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.base import to_variable
+
+
+            class MyLayer(fluid.dygraph.Layer):
+                def __init__(self, name_scope):
+                    super(MyLayer, self).__init__(name_scope)
+
+                def forward(self, inputs):
+                    x = fluid.layers.relu(inputs)
+                    self._x_for_debug = x
+                    x = fluid.layers.elementwise_mul(x, x)
+                    x = fluid.layers.reduce_sum(x)
+                    return [x]
+
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+
+            if __name__ == '__main__':
+                    train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                    with fluid.dygraph.guard():
+                        mlp = MLP("mlp")
+
+                        opt = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+                            learning_rate=0.1,
+                            decay_steps=1,
+                            decay_rate=0.5,
+                            staircase=True))
+                        for batch_id, data in enumerate(train_reader()):
+                            dy_x_data = np.array(
+                                [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                                128, 1)
+
+                            img = to_variable(dy_x_data)
+                            label = to_variable(y_data)
+                            label._stop_gradient = True
+
+                            cost = mlp(img)
+                            avg_loss = fluid.layers.reduce_mean(cost)
+                            avg_loss.backward()
+
+                            opt.minimize(avg_loss)
+                        
+                            if batch_id == 1:
+                                break
+
+
+                        with fluid.unique_name.guard():
+                            fluid.dygraph.save_parameter(mlp.state_dict(), save_dir="dirname")
+                            para_dict = fluid.dygraph.load_parameter(load_dir="dirname")
+                            another_mlp = MLP("mlp")
+                            another_mlp.set_dict(para_dict)
+
+                        opt_dict = opt.state_dict()
+                        fluid.dygraph.save_optimizer(opt_dict, "dirname")
+                        opt.set_dict(fluid.dygraph.load_optimizer("dirname"))
+    """
+
     var_names_path = os.path.join(load_dir, "var_names.pdvar")
     with open(var_names_path, "r") as f:
         var_names = [line.strip() for line in f.readlines()]
@@ -284,6 +463,98 @@ def load_parameter(load_dir):
 
 
 def save_optimizer(opt_dict, save_dir):
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+    """
+    This function saves optimizer state dict to the folder `save_dir`.
+
+    Args:
+        opt_dict(dict of numpy array): the optimizer state dict. The key type is str, the value type is numpy array.
+        save_dir(str): the folder to save the optimizer state.
+
+    Returns:
+        None.
+
+    Examples:
+
+         .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.base import to_variable
+
+
+            class MyLayer(fluid.dygraph.Layer):
+                def __init__(self, name_scope):
+                    super(MyLayer, self).__init__(name_scope)
+
+                def forward(self, inputs):
+                    x = fluid.layers.relu(inputs)
+                    self._x_for_debug = x
+                    x = fluid.layers.elementwise_mul(x, x)
+                    x = fluid.layers.reduce_sum(x)
+                    return [x]
+
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+
+            if __name__ == '__main__':
+                    train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                    with fluid.dygraph.guard():
+                        mlp = MLP("mlp")
+
+                        opt = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+                            learning_rate=0.1,
+                            decay_steps=1,
+                            decay_rate=0.5,
+                            staircase=True))
+                        for batch_id, data in enumerate(train_reader()):
+                            dy_x_data = np.array(
+                                [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                                128, 1)
+
+                            img = to_variable(dy_x_data)
+                            label = to_variable(y_data)
+                            label._stop_gradient = True
+
+                            cost = mlp(img)
+                            avg_loss = fluid.layers.reduce_mean(cost)
+                            avg_loss.backward()
+
+                            opt.minimize(avg_loss)
+                        
+                            if batch_id == 1:
+                                break
+
+
+                        with fluid.unique_name.guard():
+                            fluid.dygraph.save_parameter(mlp.state_dict(), save_dir="dirname")
+                            para_dict = fluid.dygraph.load_parameter(load_dir="dirname")
+                            another_mlp = MLP("mlp")
+                            another_mlp.set_dict(para_dict)
+
+                        opt_dict = opt.state_dict()
+                        fluid.dygraph.save_optimizer(opt_dict, "dirname")
+                        opt.set_dict(fluid.dygraph.load_optimizer("dirname"))
+
+
+    """
     opt_path = os.path.join(save_dir, "model.pdopt")
     with open(opt_path, "wb") as f:
         pickle.dump(opt_dict, f, 2)
@@ -291,6 +562,97 @@ def save_optimizer(opt_dict, save_dir):
 
 
 def load_optimizer(load_dir):
+    """
+    This function loads optimizer state parameter dict from the folder `load_dir`.
+
+    Args:
+        opt_dict(dict of numpy array): the optimizer state dict. The key type is str, the value type is numpy array.
+        load_dir(str): the folder to load from.
+
+    Returns:
+        opt_dict(dict of numpy array): the dict of optimizer state.
+
+    Examples:
+
+         .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.optimizer import SGDOptimizer
+            from paddle.fluid.dygraph.base import to_variable
+
+
+            class MyLayer(fluid.dygraph.Layer):
+                def __init__(self, name_scope):
+                    super(MyLayer, self).__init__(name_scope)
+
+                def forward(self, inputs):
+                    x = fluid.layers.relu(inputs)
+                    self._x_for_debug = x
+                    x = fluid.layers.elementwise_mul(x, x)
+                    x = fluid.layers.reduce_sum(x)
+                    return [x]
+
+
+            class MLP(fluid.Layer):
+                def __init__(self, name_scope):
+                    super(MLP, self).__init__(name_scope)
+                    self._fc1 = FC(self.full_name(), 10)
+                    self._fc2 = FC(self.full_name(), 10)
+
+                def forward(self, inputs):
+                    y = self._fc1(inputs)
+                    y = self._fc2(y)
+                    return y
+
+
+            if __name__ == '__main__':
+                    train_reader = paddle.batch(
+                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+                    with fluid.dygraph.guard():
+                        mlp = MLP("mlp")
+
+                        opt = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
+                            learning_rate=0.1,
+                            decay_steps=1,
+                            decay_rate=0.5,
+                            staircase=True))
+                        for batch_id, data in enumerate(train_reader()):
+                            dy_x_data = np.array(
+                                [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
+                            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
+                                128, 1)
+
+                            img = to_variable(dy_x_data)
+                            label = to_variable(y_data)
+                            label._stop_gradient = True
+
+                            cost = mlp(img)
+                            avg_loss = fluid.layers.reduce_mean(cost)
+                            avg_loss.backward()
+
+                            opt.minimize(avg_loss)
+                        
+                            if batch_id == 1:
+                                break
+
+
+                        with fluid.unique_name.guard():
+                            fluid.dygraph.save_parameter(mlp.state_dict(), save_dir="dirname")
+                            para_dict = fluid.dygraph.load_parameter(load_dir="dirname")
+                            another_mlp = MLP("mlp")
+                            another_mlp.set_dict(para_dict)
+
+                        opt_dict = opt.state_dict()
+                        fluid.dygraph.save_optimizer(opt_dict, "dirname")
+                        opt.set_dict(fluid.dygraph.load_optimizer("dirname"))
+
+
+    """
+
     opt_path = os.path.join(load_dir, "model.pdopt")
     with open(opt_path, "rb") as f:
         opt_dict = pickle.load(f)

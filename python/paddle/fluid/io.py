@@ -1409,6 +1409,43 @@ def get_optimizer(program):
 
 
 def save(program, save_dir):
+    """
+    Save model parameters and optimizer state to the directory.
+
+    Args:
+        program(Program): The program to get model parameters and optimizer state from.
+        save_dir(str): The directory to save the parameters.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.fluid.layers.device import get_places
+
+            img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            hidden = fluid.layers.fc(input=img, size=200, act='tanh')
+            hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
+            predict = fluid.layers.fc(input=hidden, size=12, act='softmax')
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+
+            program = fluid.default_main_program()
+
+            optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
+            optimizer.minimize(avg_cost)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            fluid.io.save(program, "save_dir")
+    """
+
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 
@@ -1455,6 +1492,48 @@ def save(program, save_dir):
 
 
 def load(program, load_dir):
+    """
+    Load model parameters and optimizer state to the program.
+
+    Args:
+        program(Program): The program to get model parameters and optimizer state from.
+        load_dir(str): The directory to load from.
+
+    Returns:
+        None.
+
+    Raises:
+        IOError: If load from non-existed directory.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.fluid.layers.device import get_places
+
+            img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            hidden = fluid.layers.fc(input=img, size=200, act='tanh')
+            hidden = fluid.layers.fc(input=hidden, size=200, act='tanh')
+            predict = fluid.layers.fc(input=hidden, size=12, act='softmax')
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+
+            program = fluid.default_main_program()
+
+            optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
+            optimizer.minimize(avg_cost)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            fluid.io.save(program, "save_dir")
+            fluid.io.load(program, "save_dir")
+
+    """
+
     if not os.path.exists(load_dir):
         raise IOError("Can't load frome {}, please ensure the dir exists".
                       formate(load_dir))
