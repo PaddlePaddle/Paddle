@@ -217,7 +217,7 @@ __global__ void elt_qk_add(const T *bias_qk, T *qk_buf, int head_num,
   int m = batch_size * head_num * seq_len;
   int row_id = blockIdx.x % m;
   int dst_id = row_id * seq_len + threadIdx.x;
-  T *bias_ptr = const_cast<T *>(bias_qk);
+  const T *bias_ptr = bias_qk;
 #if __CUDA_ARCH__ >= 350
   int tmp_bias = __ldg(&bias_ptr[dst_id]);
 #else
