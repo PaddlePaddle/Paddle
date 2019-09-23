@@ -27,15 +27,15 @@ class MultiHeadMatMulKernel : public framework::OpKernel<T> {
     auto *k = context.Input<framework::Tensor>("K");
     auto *v = context.Input<framework::Tensor>("V");
 
-    auto &bias_q =
-        detail::Ref(context.Input<framework::Tensor>("BiasQ"), "Cannot find X");
-    auto &bias_k =
-        detail::Ref(context.Input<framework::Tensor>("BiasK"), "Cannot find Y");
-    auto &bias_v =
-        detail::Ref(context.Input<framework::Tensor>("BiasV"), "Cannot find Y");
+    auto &bias_q = detail::Ref(context.Input<framework::Tensor>("BiasQ"),
+                               "Cannot find BiasQ");
+    auto &bias_k = detail::Ref(context.Input<framework::Tensor>("BiasK"),
+                               "Cannot find BiasK");
+    auto &bias_v = detail::Ref(context.Input<framework::Tensor>("BiasV"),
+                               "Cannot find BiasV");
 
     auto &bias_qk = detail::Ref(context.Input<framework::Tensor>("BiasQK"),
-                                "Cannot find Y");
+                                "Cannot find QK");
 
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
@@ -169,29 +169,15 @@ class MultiHeadMatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 MultiHeadMatMul Operator.
 
-If a transpose flag is specified, the last two dimensions of the
-tensor are transposed. If the tensor is rank-1 of shape [D], then
-for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
-in transposed form, whereas for `Y` it is the opposite: It is treated
-as [D, 1] in nontransposed form and as [1, D] in transposed form.
-
+This op is used for optimize multi head calculation in ernie model.
+Not suggest to use in other case except has same structure as ernie.
 
 Example of matrix multiplication with head_number of H
-- X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
+- X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 
-The behavior is designed to be similar to the `numpy.matmul` function.
-The differences are:
-- When the rank of the input data is less than or equal to 3, it
-  is similar to the `numpy.matmul` function.
-- When the rank of the input is greater than 3, the rank of X and
-  Y must be equal, and the first `rank - 2` dimensions must be equal.
-- We add `transpose_X` and `transpose_Y` flags.
-- We add `head_number` attribute, which is used to multiple two matrixes head
-  by head, and eventually concatenates the output of several (head_number)
-  small matrixes multiplication.
-
-Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD information with input `X`.
+Both the input `Q` and `K` can carry the LoD (Level of Details) information,
+or not. But the output only shares the LoD information with input `Q`, because
+they are the same.
 
 )DOC");
   }

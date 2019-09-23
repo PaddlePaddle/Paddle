@@ -62,9 +62,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         # Compute Q*K
         q_k = np.matmul(scale_q, transpose_k)
         eltadd_qk = q_k + self.BiasQK
-        #print(eltadd_qk.shape)
         softmax_qk = softmax(eltadd_qk, 3)
-        #softmax_qk = q_k
         # Compute V path
         fc_v = self.V + self.BiasV
         reshape_v = np.reshape(fc_v, (self.batch_size, self.seq_len,
