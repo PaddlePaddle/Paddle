@@ -306,7 +306,7 @@ class Normal(Distribution):
           lp = normal_a.log_prob(value_tensor)
           # [-1.2389386] with shape: [1]
           kl = normal_a.kl_divergence(normal_b)
-          # [0.34939718]
+          # [0.34939718] with shape: [1]
     """
 
     def __init__(self, loc, scale):
