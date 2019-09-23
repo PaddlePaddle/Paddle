@@ -155,8 +155,14 @@ inline void MergeVars(const std::string& var_name,
   }
 }
 
+inline std::set<int64_t> MergeSet(std::set<int64_t> set_l,std::set<int64_t> set_r) {
+  std::set<int64_t> result;
+  std::set_union(set_l.begin(),set_l.end(),set_r.begin(),set_r.end(),std::inserter(result, result.end()));
+  return result;
+}
+
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
-using SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>;
+using SparseIdsMap = std::unordered_map<std::string,std::set<int64_t>>;
 
 class Communicator {
  public:
@@ -236,11 +242,11 @@ class Communicator {
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  std::unordered_set<int64_t> SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
+  std::set<int64_t> SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
                                              const std::string &var_name);
   
   void SendUpdateDenseVars(const std::string& var_name);
-  void SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table);
+  void SendUpdateSparseVars(const std::string& var_name,std::set<int64_t> &ids_table);
   void RecvUpdateVars(const std::string& var_name);
 
   void GeoSgdParamInit(framework::Scope *scope) {
@@ -274,12 +280,11 @@ class Communicator {
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;
-  
   bool is_geo_sgd_ = false;
   std::shared_ptr<Scope> delta_scope_; //parameter local delta: recv - old
   std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
   std::shared_ptr<Scope> pserver_scope_; //parameter on pserver,gloabl scope
-  
+
   std::atomic_uint have_push_{0};
   
   std::unordered_map<std::string,bool> var_list_; //if var is sparse, using selected rows, bool=true
