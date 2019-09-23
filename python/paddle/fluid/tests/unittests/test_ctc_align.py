@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
+import paddle.fluid as fluid
 
 
 def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
@@ -185,6 +186,35 @@ class TestCTCAlignOpCase5(TestCTCAlignPaddingOp):
                                    [3, 6]).astype("int32")
         self.input_length = np.array([[6], [5],
                                       [4]]).reshape([3, 1]).astype("int32")
+
+
+class TestCTCAlignOpApi(unittest.TestCase):
+    def test_api(self):
+        x = fluid.layers.data('x', shape=[4], dtype='float32')
+        y = fluid.layers.ctc_greedy_decoder(x, blank=0)
+
+        x_pad = fluid.layers.data('x_pad', shape=[4, 4], dtype='float32')
+        x_pad_len = fluid.layers.data('x_pad_len', shape=[1], dtype='int64')
+        y_pad, y_pad_len = fluid.layers.ctc_greedy_decoder(
+            x_pad, blank=0, input_length=x_pad_len)
+
+        place = fluid.CUDAPlace(0)
+        x_tensor = fluid.create_lod_tensor(
+            np.random.rand(8, 4).astype("float32"), [[4, 4]], place)
+
+        x_pad_tensor = np.random.rand(2, 4, 4).astype("float32")
+        x_pad_len_tensor = np.array([[4], [4]]).reshape([2, 1]).astype("int64")
+
+        exe = fluid.Executor(place)
+
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={
+            'x': x_tensor,
+            'x_pad': x_pad_tensor,
+            'x_pad_len': x_pad_len_tensor
+        },
+                      fetch_list=[y, y_pad, y_pad_len],
+                      return_numpy=False)
 
 
 if __name__ == "__main__":
