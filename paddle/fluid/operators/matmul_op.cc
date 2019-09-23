@@ -66,8 +66,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
-      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number,
-                          split_vertical_y, out, T(0));
+      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
+                          T(0), split_vertical_y);
     } else {
       blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
     }

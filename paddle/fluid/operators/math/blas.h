@@ -125,8 +125,8 @@ class Blas {
                       const MatDescriptor& dim_a,
                       const framework::Tensor& mat_b,
                       const MatDescriptor& dim_b, T alpha, int head_number,
-                      bool mat_y_split_vertical, framework::Tensor* mat_out,
-                      T beta) const;
+                      framework::Tensor* mat_out, T beta,
+                      bool mat_y_split_vertical) const;
 #endif
 #endif
 

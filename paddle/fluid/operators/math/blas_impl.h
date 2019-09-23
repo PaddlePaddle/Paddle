@@ -587,14 +587,15 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
     int H2, T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB, int64_t head_number,
     bool split_b_vertical) const {
+  int lda = (transA == CblasNoTrans) ? W1 : H1;
+  int ldb = (transB == CblasNoTrans) ? W2 : H2;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+
   if (split_b_vertical) {
-    int lda = (transA == CblasNoTrans) ? W1 : H1;
-    int ldb = (transB == CblasNoTrans) ? W2 : H2;
     int ldc = W2;
     int sub_width = W2 / head_number;
-    auto a_array = std::vector<const T *>(batchCount);
-    auto b_array = std::vector<const T *>(batchCount);
-    auto c_array = std::vector<T *>(batchCount);
 
     for (int i = 0; i < head_number; i++) {
       int sub_matA_offset = (transA == CblasNoTrans)
@@ -618,13 +619,8 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
 
   } else {
     PADDLE_ENFORCE_EQ(W1, H2);
-    int lda = (transA == CblasNoTrans) ? W1 : H1;
-    int ldb = (transB == CblasNoTrans) ? W2 : H2;
     int ldc = W2 * head_number;
     int sub_width = W1 / head_number;
-    auto a_array = std::vector<const T *>(batchCount);
-    auto b_array = std::vector<const T *>(batchCount);
-    auto c_array = std::vector<T *>(batchCount);
 
     for (int i = 0; i < head_number; i++) {
       int sub_matA_offset = (transA == CblasNoTrans)
@@ -734,11 +730,13 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
  */
 template <typename DeviceContext>
 template <typename T>
-void Blas<DeviceContext>::MatMulWithHead(
-    const framework::Tensor &mat_a, const MatDescriptor &dim_a,
-    const framework::Tensor &mat_b, const MatDescriptor &dim_b, T alpha,
-    int head_number, bool mat_b_split_vertical, framework::Tensor *mat_out,
-    T beta) const {
+void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
+                                         const MatDescriptor &dim_a,
+                                         const framework::Tensor &mat_b,
+                                         const MatDescriptor &dim_b, T alpha,
+                                         int head_number,
+                                         framework::Tensor *mat_out, T beta,
+                                         bool mat_b_split_vertical) const {
   PADDLE_ENFORCE_EQ(dim_a.width_ % head_number, 0);
   PADDLE_ENFORCE_GE(head_number, 1);
   PADDLE_ENFORCE_LE(head_number, dim_a.width_);
@@ -747,71 +745,62 @@ void Blas<DeviceContext>::MatMulWithHead(
 
   if (mat_b_split_vertical) {
     PADDLE_ENFORCE_EQ(dim_b.height_, dim_a.width_ / head_number);
+    PADDLE_ENFORCE_EQ(dim_b.width_ % head_number, 0);
+  }
 
-    if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
-      for (int i = 0; i < head_number; i++) {
-        int sub_matA_offset =
-            dim_a.trans_ ? i * (dim_a.width_ / head_number) * dim_a.height_
-                         : i * (dim_a.width_ / head_number);
-        int sub_matB_offset =
-            dim_b.trans_ ? i * (dim_b.width_ / head_number) * dim_b.height_
-                         : i * (dim_b.width_ / head_number);
-        int sub_matC_offset = i * dim_b.width_ / head_number;
-        int lda = !dim_a.trans_ ? dim_a.width_ : dim_a.height_;
-        int ldb = !dim_b.trans_ ? dim_b.width_ : dim_b.height_;
-        int ldc = dim_b.width_;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    int lda = !dim_a.trans_ ? dim_a.width_ : dim_a.height_;
+    int ldb = !dim_b.trans_ ? dim_b.width_ : dim_b.height_;
+    int sub_matA_offset;
+    int sub_matB_offset;
+    int sub_matC_offset;
+    int sub_mat_M = dim_a.height_;
+    int sub_mat_N;
+    int sub_mat_K;
+    int ldc;
 
-        this->template GEMM<T>(transA, transB, dim_a.height_,
-                               dim_b.width_ / head_number, dim_b.height_, alpha,
-                               mat_a.data<T>() + sub_matA_offset, lda,
-                               mat_b.data<T>() + sub_matB_offset, ldb, beta,
-                               mat_out->data<T>() + sub_matC_offset, ldc);
-      }
-    } else {
-      PADDLE_ENFORCE_EQ((dim_a.batch_size_ == dim_b.batch_size_ ||
-                         dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0),
-                        true);
+    for (int i = 0; i < head_number; i++) {
+      sub_matA_offset = dim_a.trans_
+                            ? i * (dim_a.width_ / head_number) * dim_a.height_
+                            : i * (dim_a.width_ / head_number);
+      if (mat_b_split_vertical) {
+        sub_matB_offset = dim_b.trans_
+                              ? i * (dim_b.width_ / head_number) * dim_b.height_
+                              : i * (dim_b.width_ / head_number);
+        sub_matC_offset = i * dim_b.width_ / head_number;
 
-      this->template BatchedGEMMWithHead<T>(
-          transA, transB, dim_a.width_, dim_a.height_, dim_b.width_,
-          dim_b.height_, alpha, mat_a.data<T>(), mat_b.data<T>(), beta,
-          mat_out->data<T>(),
-          dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
-          dim_a.stride_, dim_b.stride_, head_number, mat_b_split_vertical);
-    }
+        sub_mat_N = dim_b.width_ / head_number;
+        sub_mat_K = dim_b.height_;
 
-  } else {
-    if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
-      for (int i = 0; i < head_number; i++) {
-        int sub_matA_offset =
-            dim_a.trans_ ? i * (dim_a.width_ / head_number) * dim_a.height_
-                         : i * (dim_a.width_ / head_number);
-        int sub_matB_offset =
+        ldc = dim_b.width_;
+      } else {
+        sub_matB_offset =
             dim_b.trans_ ? i * (dim_b.height_ / head_number)
                          : i * (dim_b.height_ / head_number) * dim_b.width_;
-        int sub_matC_offset = i * dim_b.width_;
-        int lda = !dim_a.trans_ ? dim_a.width_ : dim_a.height_;
-        int ldb = !dim_b.trans_ ? dim_b.width_ : dim_b.height_;
-        int ldc = head_number * dim_b.width_;
+        sub_matC_offset = i * dim_b.width_;
 
-        this->template GEMM<T>(transA, transB, dim_a.height_, dim_b.width_,
-                               dim_a.width_ / head_number, alpha,
-                               mat_a.data<T>() + sub_matA_offset, lda,
-                               mat_b.data<T>() + sub_matB_offset, ldb, beta,
-                               mat_out->data<T>() + sub_matC_offset, ldc);
+        sub_mat_N = dim_b.width_;
+        sub_mat_K = dim_a.width_ / head_number;
+
+        ldc = head_number * dim_b.width_;
       }
-    } else {
-      PADDLE_ENFORCE_EQ((dim_a.batch_size_ == dim_b.batch_size_ ||
-                         dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0),
-                        true);
 
-      this->template BatchedGEMMWithHead<T>(
-          transA, transB, dim_a.width_, dim_a.height_, dim_b.width_,
-          dim_b.height_, alpha, mat_a.data<T>(), mat_b.data<T>(), beta,
-          mat_out->data<T>(),
-          dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
-          dim_a.stride_, dim_b.stride_, head_number, mat_b_split_vertical);
+      this->template GEMM<T>(transA, transB, sub_mat_M, sub_mat_N, sub_mat_K,
+                             alpha, mat_a.data<T>() + sub_matA_offset, lda,
+                             mat_b.data<T>() + sub_matB_offset, ldb, beta,
+                             mat_out->data<T>() + sub_matC_offset, ldc);
     }
+  } else {
+    PADDLE_ENFORCE_EQ((dim_a.batch_size_ == dim_b.batch_size_ ||
+                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0),
+                      true);
+
+    this->template BatchedGEMMWithHead<T>(
+        transA, transB, dim_a.width_, dim_a.height_, dim_b.width_,
+        dim_b.height_, alpha, mat_a.data<T>(), mat_b.data<T>(), beta,
+        mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_, head_number, mat_b_split_vertical);
   }
 }
 #endif
