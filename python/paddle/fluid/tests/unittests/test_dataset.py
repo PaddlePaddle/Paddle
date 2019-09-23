@@ -234,7 +234,7 @@ class TestDataset(unittest.TestCase):
                                        thread=2)
                 exe.train_from_dataset(fluid.default_main_program(), dataset,
                                        thread=2)
-                exe.train_from_dataset(fluid.default_main_program(), dataset
+                exe.train_from_dataset(fluid.default_main_program(), dataset,
                                        thread=3)
                 exe.train_from_dataset(fluid.default_main_program(), dataset,
                                        thread=4)
