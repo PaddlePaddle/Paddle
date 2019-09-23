@@ -307,7 +307,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.use_mkldnn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
-        self.data_formats = ["NCHW"]
         self.momentum = 0.9
         self.epsilon = 0.00001
         self.init_kernel_type()
@@ -444,7 +443,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
             for id, name in enumerate(self.fetch_list):
                 if name == 'variance':
-                    self.__assert_close(var_dict[name], out[id], name, atol=1e-3)
+                    self.__assert_close(
+                        var_dict[name], out[id], name, atol=1e-3)
                     continue
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
@@ -460,6 +460,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def init_kernel_type(self):
         pass
+
+
+class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.data_formats = ["NCHW"]
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
