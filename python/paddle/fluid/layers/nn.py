@@ -61,6 +61,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'instance_norm',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -188,7 +189,6 @@ __all__ = [
     'space_to_depth',
     'affine_grid',
     'sequence_reverse',
-    'sequence_topk_avg_pooling',
     'affine_channel',
     'similarity_focus',
     'hash',
@@ -207,7 +207,6 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
-    'tree_conv',
     'npair_loss',
     'pixel_shuffle',
     'fsp_matrix',
@@ -217,11 +216,10 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
-    'match_matrix_tensor',
     'filter_by_instag',
-    'var_conv_2d',
     'shard_index',
     'hard_swish',
+    'mse_loss',
 ]
 
 kIgnoreIndex = -100
@@ -3498,6 +3496,128 @@ def batch_norm(input,
         })
 
     return helper.append_activation(batch_norm_out)
+
+
+def instance_norm(input,
+                  epsilon=1e-05,
+                  param_attr=None,
+                  bias_attr=None,
+                  name=None):
+    """
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for 
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean of one  feature map in mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance of one feature map in mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Args:
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying instance normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.instance_norm(input=hidden1)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for in parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=dtype,
+        is_bias=True,
+        default_initializer=Constant(0.0))
+
+    # create output
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="instance_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+        },
+        outputs={
+            "Y": instance_norm_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={"epsilon": epsilon, })
+
+    return instance_norm_out
 
 
 def data_norm(input,
@@ -6976,8 +7096,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         type="one_hot",
         inputs=inputs,
         attrs=attrs,
-        outputs={'Out': one_hot_out},
-        stop_gradient=True)
+        outputs={'Out': one_hot_out})
+    one_hot_out.stop_gradient = True
     return one_hot_out
 
 
@@ -7015,8 +7135,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)},
-            stop_gradient=True)
+            attrs={'step': float(step)})
         counter.stop_gradient = True
 
     return counter
@@ -11658,73 +11777,6 @@ def sequence_reverse(x, name=None):
     return out
 
 
-def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
-    """
-    The :attr:`topks` is a list with incremental values in this function. For each topk,
-    it will average the topk features as an output feature for each channel of every 
-    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
-    and width information for :attr:`input` tensor. If feature size of input sequence is less 
-    than topk, it will padding 0 at the back.
-
-    .. code-block:: text
-
-            If channel_num is 2 and given row LoDTensor and col LoDTensor as follows:
-                row.lod = [[5, 4]]
-                col.lod = [[6, 7]]
-
-            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i] 
-                input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
-                input.dims = [116, 1]   # where 116 = 60 + 56
-
-            If topks is [1, 3, 5], then we get a 1-level LoDTensor:
-                out.lod =  [[5, 4]] 	# share Lod info with row LodTensor
-                out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
-
-    Args:
-        input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide the height information
-                        of the input tensor data.
-        col (Variable): The col shoud be 1-level LodTensor to provide the width information
-                        of the input tensor data.
-        topks (list): A list of incremental value to average the topk feature.
-        channel_num (int): The number of input channel.
-
-    Returns:
-        Variable: output LodTensor specified by this layer.
-
-    Examples:
-
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.fluid import layers
-
-            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = layers.sequence_topk_avg_pooling(input=x_lod_tensor,
-                                                   row=row_lod_tensor,
-                                                   col=col_lod_tensor,
-                                                   topks=[1, 3, 5],
-                                                   channel_num=5)
-    """
-    helper = LayerHelper('sequence_topk_avg_pooling', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    pos = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype(), stop_gradient=True)
-    helper.append_op(
-        type='sequence_topk_avg_pooling',
-        inputs={'X': input,
-                'ROW': row,
-                'COLUMN': col},
-        outputs={'Out': out,
-                 'pos': pos},
-        attrs={'topks': topks,
-               'channel_num': channel_num})
-
-    return out
-
-
 def affine_channel(x,
                    scale=None,
                    bias=None,
@@ -12869,75 +12921,6 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     return loss
 
 
-@templatedoc()
-def tree_conv(nodes_vector,
-              edge_set,
-              output_size,
-              num_filters=1,
-              max_depth=2,
-              act='tanh',
-              param_attr=None,
-              bias_attr=None,
-              name=None):
-    """ 
-    ${comment}
-    		
-    Args:
-        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
-        edge_set(${edge_set_type}): ${edge_set_comment}
-        output_size(int): output feature width
-        num_filters(int): number of filters, Default 1
-        max_depth(int): max depth of filters, Default 2
-        act(str): activation function, Default tanh
-        param_attr(ParamAttr): the parameter attribute for the filters, Default None
-        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
-        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
-
-    Returns:
-        out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          # 10 for max_node_size of dataset, 5 for vector width
-          nodes_vector = fluid.layers.data(name='vectors', shape=[10, 5], dtype='float32')
-          # 10 for max_node_size of dataset, 2 for every edge has two nodes
-          # edges must be directional
-          edge_set = fluid.layers.data(name='edge_set', shape=[10, 2], dtype='float32')
-          # the shape of output will be [10, 6, 1],
-          # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
-          out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-          # After reshape, output tensor could be nodes_vector for next tree convolution
-          out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
-          out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-          # also output tensor could be pooling(the pooling in paper called global pooling)
-          pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
-    """
-    helper = LayerHelper("tree_conv", **locals())
-    dtype = helper.input_dtype('nodes_vector')
-    feature_size = nodes_vector.shape[2]
-    W_shape = [feature_size, 3, output_size, num_filters]
-    W = helper.create_parameter(
-        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
-    if name == None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
-    helper.append_op(
-        type='tree_conv',
-        inputs={'NodesVector': nodes_vector,
-                'EdgeSet': edge_set,
-                'Filter': W},
-        outputs={'Out': out, },
-        attrs={'max_depth': max_depth})
-    if helper.bias_attr:
-        pre_activation = helper.append_bias_op(out)
-    else:
-        pre_activation = out
-    return helper.append_activation(pre_activation)
-
-
 from .ops import square
 from .control_flow import equal
 
@@ -13810,203 +13793,6 @@ def deformable_roi_pooling(input,
     return output
 
 
-def var_conv_2d(input,
-                row,
-                col,
-                input_channel,
-                output_channel,
-                filter_size,
-                stride=1,
-                param_attr=None,
-                act=None,
-                dtype='float32',
-                name=None):
-    """
-    The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
-    row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
-    padding. Besides, input.dims[1] should be 1. 
-
-    .. code-block:: text
-            
-            If input_channel is 2 and given row lodTensor and col lodTensor as follows:
-                row.lod = [[5, 4]]
-                col.lod = [[6, 7]]
-            input is a lodTensor: 
-                input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
-                input.dims = [116, 1]	# where 116 = 60 + 56
-            
-            If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
-                output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
-                output.dims = [174, 1]  # where 174 = 90 + 84
-
-    Args:
-        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide height information.
-        col (Variable): The col shoud be 1-level LodTensor to provide width information.
-        input_channel (int): The number of input channel.
-        output_channel (int): The number of output channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-            of var_conv2d. If it is set to None or one attribute of ParamAttr, var_conv2d
-            will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None
-        dtype ('float32'): The data type of parameter and output.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
-
-    Returns:
-        Variable: Output variable with LoD specified by this layer.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.fluid import layers
-
-            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = layers.var_conv_2d(input=x_lod_tensor, 
-                                     row=row_lod_tensor,
-                                     col=col_lod_tensor,
-                                     input_channel=3,
-                                     output_channel=5,
-                                     filter_size=[3, 3],
-                                     stride=1)
-    """
-    helper = LayerHelper('var_conv_2d', **locals())
-    x_shape = list(input.shape)
-    assert len(x_shape) == 2
-
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-
-    filter_shape = [
-        int(output_channel),
-        int(input_channel) * filter_size[0] * filter_size[1]
-    ]
-    filter_param = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype, )
-
-    conv_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True)
-
-    helper.append_op(
-        type='var_conv_2d',
-        inputs={
-            'X': input,
-            'ROW': row,
-            'COLUMN': col,
-            'W': filter_param,
-        },
-        outputs={"Out": conv_res,
-                 "Col": tmp_res},
-        attrs={
-            'InputChannel': input_channel,
-            'OutputChannel': output_channel,
-            'StrideH': stride[0],
-            'StrideW': stride[1],
-            'KernelH': filter_size[0],
-            'KernelW': filter_size[1],
-        })
-
-    return helper.append_activation(conv_res)
-
-
-def match_matrix_tensor(x,
-                        y,
-                        channel_num,
-                        act=None,
-                        param_attr=None,
-                        dtype='float32',
-                        name=None):
-    """
-    Calculate the semantic matching matrix of two word sequences with variable length.
-    Given a query A of length `n` and a title B of length `m`, the input shape are respectively
-    [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
-    it will generate a learnable parameter matrix W with shape [h, 3, h].
-    Then the semantic matching matrix of query A and title B is calculated by 
-    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
-    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
-    the corresponding activation function will be applied to output matrix.
-    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
-
-    .. code-block:: text
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[2,                     3,                               ]]
-                x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
-                x.dims = [5, 2]
-            y is a Tensor:
-                y.lod =  [[3,                                 1,       ]]
-                y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
-                y.dims = [4, 2]
-            set channel_num 2, then we get a 1-level LoDTensor:
-                out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
-                out.dims = [18, 1]     # where 18 = 12 + 6
-
-    Args:
-        x (Variable): Input variable x which should be 1-level LodTensor.
-        y (Variable): Input variable y which should be 1-level LodTensor.
-        channel_num (int): The channel number of learnable parameter W.
-        act (str, default None): Activation to be applied to the output of this layer.
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
-            parameters/weights of this layer.
-        dtype ('float32'): The data type of w data.
-        name (str|None): A name for this layer(optional). If set None, the layer will be named automatically. Default: None
-
-    Returns:
-        Variable: output with LoD specified by this layer.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            from paddle.fluid import layers
-
-            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
-            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
-            out, out_tmp = layers.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
-    """
-    helper = LayerHelper('match_matrix_tensor', **locals())
-
-    x_shape = list(x.shape)
-    y_shape = list(y.shape)
-    assert len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[
-        -1]
-
-    weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False)
-    mm_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True)
-    helper.append_op(
-        type='match_matrix_tensor',
-        inputs={
-            'X': x,
-            'Y': y,
-            'W': w,
-        },
-        outputs={"Out": mm_res,
-                 "Tmp": tmp_res},
-        attrs={'dim_t': channel_num})
-
-    return helper.append_activation(mm_res), tmp_res
-
-
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     This layer creates the sharded index for input. This layers is used in
@@ -14124,3 +13910,40 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
                'scale': scale,
                'offset': offset})
     return out
+
+
+def mse_loss(input, label):
+    """
+    **Mean square error layer**
+
+    This layer accepts input predications and target label and returns the mean square error.
+
+    The loss can be described as:
+
+    .. math::
+        
+        Out = mean((X - Y)^2)
+
+    In the above equation:
+
+        * :math:`X`: Input predications, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+        input (Variable): Input tensor, has predictions.
+        label (Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the mean square error difference of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+            mse = fluid.layers.mse_loss(input=y_predict, label=y)
+
+    """
+    return reduce_mean(square_error_cost(input, label))
