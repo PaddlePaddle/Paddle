@@ -491,6 +491,10 @@ class Optimizer(object):
             else:
                 assert (isinstance(callbacks, list))
             program = loss.block.program
+            assert len(loss.shape) == 1 and loss.shape[0] == 1, \
+                "The loss.shape should be (1L,), but the current loss.shape is {}. " \
+                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                    loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                no_grad_set, callbacks)

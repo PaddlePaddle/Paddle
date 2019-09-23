@@ -23,6 +23,40 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
 
+inline std::vector<int> get_new_shape(
+    const std::vector<const Tensor*>& list_new_shape_tensor) {
+  // get tensor from
+  std::vector<int> vec_new_shape;
+  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
+    auto tensor = list_new_shape_tensor[i];
+    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                      "shape of dim tensor should be [1]");
+    if (platform::is_gpu_place(tensor->place())) {
+      framework::Tensor temp;
+      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+
+      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+    } else {
+      vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
+    }
+  }
+
+  return vec_new_shape;
+}
+
+template <typename T>
+inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
+  std::vector<T> vec_new_data;
+  auto* new_data = new_data_tensor->data<T>();
+  framework::Tensor cpu_starts_tensor;
+  if (platform::is_gpu_place(new_data_tensor->place())) {
+    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    new_data = cpu_starts_tensor.data<T>();
+  }
+  vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
+  return vec_new_data;
+}
+
 template <typename T>
 static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
                                        const float ratio_h, const float ratio_w,
@@ -403,19 +437,39 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
-  if (scale > 0) {
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
-  }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
-  if (out_size != nullptr) {
-    auto out_size_data = out_size->data<int>();
-    out_h = out_size_data[0];
-    out_w = out_size_data[1];
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_h = new_size[0];
+    out_w = new_size[1];
+  } else {
+    float scale;
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    if (scale_tensor != nullptr) {
+      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+      scale = scale_data[0];
+    } else {
+      scale = ctx.Attr<float>("scale");
+    }
+    if (scale > 0) {
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+    auto out_size = ctx.Input<Tensor>("OutSize");
+    if (out_size != nullptr) {
+      auto out_size_data = get_new_data_from_tensor<int>(out_size);
+      out_h = out_size_data[0];
+      out_w = out_size_data[1];
+    }
   }
-
+  PADDLE_ENFORCE_GT(
+      out_h, 0,
+      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_w, 0,
+      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
   output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
 
   if (in_h == out_h && in_w == out_w) {
@@ -459,21 +513,45 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
-  if (scale > 0) {
-    out_d = static_cast<int>(in_d * scale);
-    out_h = static_cast<int>(in_h * scale);
-    out_w = static_cast<int>(in_w * scale);
-  }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
-  if (out_size != nullptr) {
-    auto out_size_data = out_size->data<int>();
-    out_d = out_size_data[0];
-    out_h = out_size_data[1];
-    out_w = out_size_data[2];
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_d = new_size[0];
+    out_h = new_size[1];
+    out_w = new_size[2];
+  } else {
+    float scale;
+    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    if (scale_tensor != nullptr) {
+      auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+      scale = scale_data[0];
+    } else {
+      scale = ctx.Attr<float>("scale");
+    }
+    if (scale > 0) {
+      out_d = static_cast<int>(in_d * scale);
+      out_h = static_cast<int>(in_h * scale);
+      out_w = static_cast<int>(in_w * scale);
+    }
+    auto out_size = ctx.Input<Tensor>("OutSize");
+    if (out_size != nullptr) {
+      auto out_size_data = get_new_data_from_tensor<int>(out_size);
+      out_d = out_size_data[0];
+      out_h = out_size_data[1];
+      out_w = out_size_data[2];
+    }
   }
-
+  PADDLE_ENFORCE_GT(
+      out_d, 0,
+      "out_d in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_h, 0,
+      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(
+      out_w, 0,
+      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
   output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
@@ -519,17 +597,30 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
+  float scale;
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  if (scale_tensor != nullptr) {
+    auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+    scale = scale_data[0];
+  } else {
+    scale = ctx.Attr<float>("scale");
+  }
   if (scale > 0) {
     out_h = static_cast<int>(in_h * scale);
     out_w = static_cast<int>(in_w * scale);
   }
-
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
-    auto out_size_data = out_size->data<int>();
+    auto out_size_data = get_new_data_from_tensor<int>(out_size);
     out_h = out_size_data[0];
     out_w = out_size_data[1];
+  }
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_h = new_size[0];
+    out_w = new_size[1];
   }
 
   input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
@@ -580,19 +671,33 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale = ctx.Attr<float>("scale");
+  float scale;
+  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  if (scale_tensor != nullptr) {
+    auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
+    scale = scale_data[0];
+  } else {
+    scale = ctx.Attr<float>("scale");
+  }
   if (scale > 0) {
     out_d = static_cast<int>(in_d * scale);
     out_h = static_cast<int>(in_h * scale);
     out_w = static_cast<int>(in_w * scale);
   }
-
   auto out_size = ctx.Input<Tensor>("OutSize");
   if (out_size != nullptr) {
-    auto out_size_data = out_size->data<int>();
+    auto out_size_data = get_new_data_from_tensor<int>(out_size);
     out_d = out_size_data[0];
     out_h = out_size_data[1];
     out_w = out_size_data[2];
+  }
+  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  if (list_new_size_tensor.size() > 0) {
+    // have size tensor
+    auto new_size = get_new_shape(list_new_size_tensor);
+    out_d = new_size[0];
+    out_h = new_size[1];
+    out_w = new_size[2];
   }
 
   input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());

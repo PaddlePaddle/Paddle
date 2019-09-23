@@ -38,8 +38,6 @@ void BroadcastOpHandle::RunImpl() {
 
   VarHandle *in_var_handle = in_var_handles[0];
 
-  WaitInputVarGenerated();
-
   BroadcastOneVar(*in_var_handle, out_var_handles, local_exec_scopes_);
 }
 
@@ -59,6 +57,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   InitOutputValue(in_var_handle, out_var_handles);
 
   if (platform::is_cpu_place(in_tensor.place())) {
+    WaitInputVarGenerated();
     for (auto *out_var_handle : out_var_handles) {
       if (out_var_handle->IsTheSameVar(in_var_handle)) {
         continue;
@@ -109,6 +108,7 @@ void BroadcastOpHandle::BroadcastOneVar(
           });
     }
 
+    WaitInputVarGenerated();
     this->RunAndRecordEvent([&] {
       {
         platform::NCCLGroupGuard guard;
