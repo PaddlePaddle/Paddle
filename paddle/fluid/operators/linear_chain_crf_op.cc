@@ -28,19 +28,23 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. When a Tensor input,"
              "A Tensor with shape [N x S x D], where N is batch number,"
-             "S is max length of sequences, D is the total tag number.");
+             "S is max length of sequences, D is the total tag number."
+             "A LoDTensor or Tensor with type float32,float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
-             "operator. See more details in the operator's comments.");
+             "operator. See more details in the operator's comments."
+             "");
     AddInput("Label",
              "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
-             "S is max length of sequences. The ground truth.");
+             "S is max length of sequences. The ground truth."
+             "A  LoDTensor or Tensor with int64."");
     AddInput("length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
-             "[M x 1], where M is the sequence number in a mini-batch.")
+             "[M x 1], where M is the sequence number in a mini-batch."
+             "A Tensor with type int64.")
         .AsDispensable();
     AddOutput(
         "Alpha",
@@ -59,14 +63,16 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor, default Tensor<float>), the same shape with Emission. "
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
-        "backward computation.")
+        "backward computation."
+        "A LoDTensor or Tensor with type float32,float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
-        "will be reused in backward computation.")
+        "will be reused in backward computation."
+        "A LoDTensor or Tensor with type float32,float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -74,7 +80,8 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "likelihood of each training sample in a mini-batch. This is a 2-D "
         "tensor with shape [S x 1], where S is the sequence number in a "
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
-        "The output is no longer a LoDTensor.");
+        "The output is no longer a LoDTensor."
+        " A Tensor with type float32,float64.");
     AddComment(R"DOC(
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
