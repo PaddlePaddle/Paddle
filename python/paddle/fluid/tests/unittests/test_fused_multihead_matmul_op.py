@@ -19,9 +19,15 @@ import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
 import paddle.fluid as fluid
-from scipy.special import softmax
 
 np.random.random(123)
+
+
+def stable_softmax(x):
+    """Compute the softmax of vector x in a numerically stable way."""
+    shiftx = x - np.max(x).clip(-64.)
+    exps = np.exp(shiftx)
+    return exps / np.sum(exps)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -62,7 +68,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
         # Compute Q*K
         q_k = np.matmul(scale_q, transpose_k)
         eltadd_qk = q_k + self.BiasQK
-        softmax_qk = softmax(eltadd_qk, 3)
+        softmax_qk = np.apply_along_axis(stable_softmax, 3, eltadd_qk)
         # Compute V path
         fc_v = self.V + self.BiasV
         reshape_v = np.reshape(fc_v, (self.batch_size, self.seq_len,
