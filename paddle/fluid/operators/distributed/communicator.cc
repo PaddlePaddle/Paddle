@@ -570,14 +570,11 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMa
   VLOG(1)<<"ids_send_vec Size: "<< ids_send_vec.size();
   for(auto table : ids_send_vec) {
     bool find = table.find(var_name) == table.end();
-    VLOG(1)<<"Sparse var find: "<< find;
     if(table.find(var_name) == table.end()){
       continue;
     }
-    VLOG(1)<<"table[var_name] Size: "<<table[var_name].size();
     for(auto ids:table[var_name]) {
       if(ids_set.find(ids) == ids_set.end()){
-        VLOG(1)<<"ids set insert: "<<ids;
         ids_set.insert(ids);
       }
     }
@@ -648,40 +645,38 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   auto dims = var_x_tensor.dims();
   auto rows = dims[0];
   auto columns = dims[1];
-  VLOG(1)<<"Sparse var dims[0]: "<< rows<<" dims[1]: "<<columns;
+  VLOG(2)<<"Sparse var dims[0]: "<< rows<<" dims[1]: "<<columns;
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
   var_z_select_rows->set_height(rows);
-  std::vector<float> new_value;
   std::vector<int64_t> new_rows; 
-
-  size_t row = 0;
-  for (auto &ids:ids_table) {
-    VLOG(4) <<"Geo-Sgd Send: "<<ids <<" row: "<< row<< " Total row: "<<ids_num;
-    for(int64_t i = 0; i<columns; i++) { 
-      float value = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
-      y_mutable_data[ids*columns + i] += value;
-      new_value.push_back(value);
-    }
-    VLOG(1) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
-          <<" ;old_scope: "<< y_mutable_data[ids*columns]
-          <<" ;delta_scope: "<< new_value[new_value.size() - columns];
-    new_rows.push_back(ids);
-    row++;
-  }
-
-  // set rows
-  var_z_select_rows->set_rows(new_rows);
 
   // copy value 
   auto *var_z_value = var_z_select_rows->mutable_value();
   var_z_value->Resize({ids_num, columns});
   var_z_value->mutable_data<float>(var_x_tensor.place());
   auto *var_select_data = var_z_value->data<float>();
-  memcpy(var_select_data, &new_value[0], sizeof(float)*ids_num*columns);
+
+  size_t row = 0;
+  for (auto &ids:ids_table) {
+    VLOG(2) <<"Geo-Sgd Send: "<<ids <<" row: "<< row<< " Total row: "<<ids_num;
+    for(int64_t i = 0; i<columns; i++) { 
+      float value = (x_mutable_data[ids*columns + i] - y_mutable_data[ids*columns +i])/(float)(trainer_nums_);
+      y_mutable_data[ids*columns + i] += value;
+      memcpy(var_select_data + row * columns + i, &value, sizeof(float));
+    }
+    VLOG(2) << "Geo-Sgd Send " << ids<< " recv_scope: "<< x_mutable_data[ids*columns]
+          <<" ;old_scope: "<< y_mutable_data[ids*columns]
+          <<" ;delta_scope: "<< var_select_data[row * columns];
+    new_rows.push_back(ids);
+    row++;
+  }
+
+  // set rows
+  var_z_select_rows->set_rows(new_rows);
 
   auto after_run_send_sparse = GetCurrentUS();
   VLOG(1) << "run send update sparse var "<< var_name << " use time "
@@ -714,7 +709,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     VLOG(1) <<"Geo-Sgd Recv Sparse var "<< var_name <<" row size "<<new_rows.size();
     for (size_t i = 0; i< new_rows.size(); i++) {
       float diff =0;
-      VLOG(1) << "Geo-Sgd Recv " << new_rows[i]<< " before update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
+      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]<< " before update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
             <<" ;old_scope: "<< y_mutable_data[new_rows[i]*row_numel]
             <<" ;pserver_scope: "<< z_mutable_data[i * row_numel];
       for (int64_t j = 0; j< row_numel; j++) {
@@ -725,7 +720,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
                               y_mutable_data[new_rows[i]*row_numel + j]);
         y_mutable_data[new_rows[i]*row_numel + j] = z_mutable_data[i * row_numel + j];
       }
-      VLOG(1) << "Geo-Sgd Recv " << new_rows[i]<< " after update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
+      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]<< " after update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
             <<" ;old_scope: "<< y_mutable_data[new_rows[i]*row_numel]
             <<" ;pserver_scope: "<< z_mutable_data[i * row_numel]
             <<" ;diff: "<<diff;
