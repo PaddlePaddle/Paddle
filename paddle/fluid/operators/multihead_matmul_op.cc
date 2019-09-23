@@ -82,15 +82,15 @@ class MultiHeadMatMulOp : public framework::OperatorWithKernel {
 
     auto dim_q = context->GetInputDim("Q");
     PADDLE_ENFORCE_GT(dim_q.size(), 2,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 3-D tensor.");
 
     auto dim_k = context->GetInputDim("K");
     PADDLE_ENFORCE_GT(dim_q.size(), 2,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 3-D tensor.");
 
     auto dim_v = context->GetInputDim("V");
     PADDLE_ENFORCE_GT(dim_q.size(), 2,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 3-D tensor.");
 
     PADDLE_ENFORCE_EQ(dim_q[0], dim_k[0],
                       "Multihead input should have same batch size");
@@ -109,13 +109,13 @@ class MultiHeadMatMulOp : public framework::OperatorWithKernel {
 
     auto dim_bias_q = context->GetInputDim("BiasQ");
     PADDLE_ENFORCE_GT(dim_bias_q.size(), 0,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 1-D tensor.");
     auto dim_bias_k = context->GetInputDim("BiasK");
     PADDLE_ENFORCE_GT(dim_bias_k.size(), 0,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 1-D tensor.");
     auto dim_bias_v = context->GetInputDim("BiasV");
     PADDLE_ENFORCE_GT(dim_bias_v.size(), 0,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 1-D tensor.");
 
     PADDLE_ENFORCE_EQ(dim_bias_q[0], dim_bias_k[0],
                       "Multihead input bias should have same batch size");
@@ -129,7 +129,7 @@ class MultiHeadMatMulOp : public framework::OperatorWithKernel {
 
     auto dim_bias_qk = context->GetInputDim("BiasQK");
     PADDLE_ENFORCE_GT(dim_bias_qk.size(), 3,
-                      "Multihead input bias qk should be at least 3-D tensor.");
+                      "Multihead input bias qk should be at least 4-D tensor.");
 
     int head_number = context->Attrs().Get<int>("head_number");
     PADDLE_ENFORCE_GT(head_number, 1,
