@@ -39,6 +39,7 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
+    LIST(REMOVE_ITEM TEST_OPS test_error_format)
 endif()
 
 LIST(REMOVE_ITEM TEST_OPS test_launch)
