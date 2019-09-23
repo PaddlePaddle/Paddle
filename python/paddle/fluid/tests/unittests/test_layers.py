@@ -876,7 +876,7 @@ class TestLayer(LayerTest):
                 dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.tree_conv(
+            ret = fluid.contrib.layers.tree_conv(
                 nodes_vector=NodesVector,
                 edge_set=EdgeSet,
                 output_size=6,
