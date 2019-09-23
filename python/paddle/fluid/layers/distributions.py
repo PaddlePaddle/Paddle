@@ -141,6 +141,7 @@ class Uniform(Distribution):
     Examples:
         .. code-block:: python
 
+          import numpy as np
           from paddle.fluid import layers
           from paddle.fluid.layers import Uniform
 
@@ -158,19 +159,19 @@ class Uniform(Distribution):
           # With broadcasting:
           u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
-          # Variable as input
-          dims = 3
+          # Complete example
+          value_npdata = np.array([0.8], dtype="float32")
+          value_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(value_npdata, value_tensor)
 
-          low = layers.data(name='low', shape=[dims], dtype='float32')
-          high = layers.data(name='high', shape=[dims], dtype='float32')
-          values = layers.data(name='values', shape=[dims], dtype='float32')
+          uniform = Uniform([0.], [2.])
 
-          uniform = Uniform(low, high)
-
-          sample = uniform.sample([2, 3])
+          sample = uniform.sample([2])
+          # a random tensor created by uniform distribution with shape: [2, 1]
           entropy = uniform.entropy()
-          lp = uniform.log_prob(values)
-
+          # [0.6931472] with shape: [1]
+          lp = uniform.log_prob(value_tensor)
+          # [-0.6931472] with shape: [1]
     """
 
     def __init__(self, low, high):
@@ -278,36 +279,34 @@ class Normal(Distribution):
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
           # The first has mean 1 and standard deviation 11, the second 2 and 22.
-          dist = Normal(loc=[1, 2.], scale=[11, 22.])
+          dist = Normal(loc=[1., 2.], scale=[11., 22.])
           # Get 3 samples, returning a 3 x 2 tensor.
           dist.sample([3])
 
           # Define a batch of two scalar valued Normals.
           # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11, 22.])
+          dist = Normal(loc=1., scale=[11., 22.])
 
           # Define a batch of two scalar valued Normals.
           # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11, 22.])
+          dist = Normal(loc=1., scale=[11., 22.])
 
-          # Variable as input
-          dims = 3
+          # Complete example
+          value_npdata = np.array([0.8], dtype="float32")
+          value_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(value_npdata, value_tensor)
 
-          loc = layers.data(name='loc', shape=[dims], dtype='float32')
-          scale = layers.data(name='scale', shape=[dims], dtype='float32')
-          other_loc = layers.data(
-              name='other_loc', shape=[dims], dtype='float32')
-          other_scale = layers.data(
-              name='other_scale', shape=[dims], dtype='float32')
-          values = layers.data(name='values', shape=[dims], dtype='float32')
+          normal_a = Normal([0.], [1.])
+          normal_b = Normal([0.5], [2.])
 
-          normal = Normal(loc, scale)
-          other_normal = Normal(other_loc, other_scale)
-
-          sample = normal.sample([2, 3])
-          entropy = normal.entropy()
-          lp = normal.log_prob(values)
-          kl = normal.kl_divergence(other_normal)
+          sample = normal_a.sample([2])
+          # a random tensor created by normal distribution with shape: [2, 1]
+          entropy = normal_a.entropy()
+          # [1.4189385] with shape: [1]
+          lp = normal_a.log_prob(value_tensor)
+          # [-1.2389386] with shape: [1]
+          kl = normal_a.kl_divergence(normal_b)
+          # [0.34939718]
     """
 
     def __init__(self, loc, scale):
