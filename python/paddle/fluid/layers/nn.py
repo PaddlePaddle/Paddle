@@ -216,7 +216,6 @@ __all__ = [
     'var_conv_2d',
     'shard_index',
     'hard_swish',
-    'fused_emb_seq',
 ]
 
 kIgnoreIndex = -100
@@ -13289,31 +13288,4 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
-    return out
-
-
-def fused_emb_seq(input,
-                  size,
-                  is_sparse=False,
-                  padding_idx=None,
-                  combiner='sum',
-                  param_attr=None,
-                  dtype='float32'):
-
-    helper = LayerHelper('fused_emb_seq', **locals())
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
-    out = helper.create_variable_for_type_inference(dtype)
-    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-        size[0] + padding_idx)
-    helper.append_op(
-        type='fused_embedding_seq_pool',
-        inputs={'Ids': input,
-                'W': w},
-        outputs={'Out': out},
-        attrs={
-            'is_sparse': is_sparse,
-            'combiner': combiner,
-            'padding_idx': padding_idx
-        })
     return out
