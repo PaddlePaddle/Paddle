@@ -34,12 +34,12 @@ class TestPyReaderCombination(unittest.TestCase):
 
         return __impl__
 
-    def assertFeedVarEqual(self, d1, d2):
-        image1 = d1[0]
-        label1 = d1[1]
+    def assertFeedVarEqual(self, reader_list_data, py_reader_dict_data):
+        image1 = reader_list_data[0]
+        label1 = reader_list_data[1]
 
-        image2 = np.array(d2[0]['image'])
-        label2 = np.array(d2[0]['label'])
+        image2 = np.array(py_reader_dict_data[0]['image'])
+        label2 = np.array(py_reader_dict_data[0]['label'])
         self.assertTrue(np.array_equal(image1, image2))
         self.assertTrue(np.array_equal(label1, label2))
 
@@ -62,11 +62,10 @@ class TestPyReaderCombination(unittest.TestCase):
             for _ in range(10):
                 max_num = min(self.n1, self.n2)
                 batch_num = 0
-                for d11, d12, d21, d22 in zip(reader1(),
-                                              py_reader1(),
-                                              reader2(), py_reader2()):
-                    self.assertFeedVarEqual(d11, d12)
-                    self.assertFeedVarEqual(d21, d22)
+                for reader_np1, py_reader_dict1, reader_np2, py_reader_dict2 in zip(
+                        reader1(), py_reader1(), reader2(), py_reader2()):
+                    self.assertFeedVarEqual(reader_np1, py_reader_dict1)
+                    self.assertFeedVarEqual(reader_np2, py_reader_dict2)
                     batch_num += 1
 
                 self.assertEqual(batch_num, max_num)
