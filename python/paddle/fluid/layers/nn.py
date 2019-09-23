@@ -134,7 +134,6 @@ __all__ = [
     'selu',
     'log',
     'crop',
-    'crop_tensor',
     'rank_loss',
     'margin_rank_loss',
     'elu',
@@ -3884,7 +3883,7 @@ def group_norm(input,
             bias :math:`b`. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act(str): Activation to be applied to the output of group normalizaiton.
-        data_layout(string, default NCHW): NCHW(num_batch, channels, h, w) or NHWC(num_batch, h, w, channels).
+        data_layout(string|NCHW): Only NCHW is supported.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -3903,12 +3902,9 @@ def group_norm(input,
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
-    if data_layout != 'NCHW' and data_layout != 'NHWC':
-        raise ValueError(
-            "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
-            + data_layout + " but only NCHW or NHWC supported.")
-    channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
-    param_shape = [channel_num]
+    if data_layout != 'NCHW':
+        raise ValueError("unsupported data layout:" + data_layout)
+    param_shape = [input_shape[1]]
     if param_attr:
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3934,11 +3930,8 @@ def group_norm(input,
             "Mean": mean_out,
             "Variance": variance_out,
         },
-        attrs={
-            "epsilon": epsilon,
-            "groups": groups,
-            "data_layout": data_layout
-        })
+        attrs={"epsilon": epsilon,
+               "groups": groups})
 
     return helper.append_activation(group_norm_out)
 
@@ -8149,6 +8142,13 @@ def image_resize(input,
         input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of image resize
+                                    layer, the shape is (out_h, out_w) when
+                                    input is a 4-D tensor and is
+                                    (out_d, out_h, out_w) when input is a
+                                    5-D tensor. Default: None
+        scale(float|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
              (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If 
              a list, each element can be an integer or a Tensor Variable of shape: [1].
@@ -8167,12 +8167,12 @@ def image_resize(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output 
-                                shape dynamically, because :attr:`actual_shape` 
-                                will be deprecated. When using actual_shape to 
-                                specify output shape, one of :attr:`out_shape` 
-                                and :attr:`scale` should also be set, otherwise 
-                                errors would be occured in graph constructing stage.
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
                                 Default: None
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
                                input and output tensors are aligned, preserving the values at the 
@@ -8210,32 +8210,8 @@ def image_resize(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
-            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
-
-            out0 = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
-            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
-
-            # out_shape is a list in which each element is a integer or a tensor Variable
-            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
-            out1 = fluid.layers.image_resize(input, out_shape=[12, dim1], resample="NEAREST")
-            # out1.shape = [-1, 3, 12, -1]
-
-            # out_shape is a 1-D tensor Variable
-            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
-            out2 = fluid.layers.image_resize(input, out_shape=shape_tensor, resample="NEAREST")
-            # out2.shape = [-1, 3, -1, -1]
-
-            # when use actual_shape
-            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
-            out3 = fluid.layers.image_resize(input, out_shape=[4, 4], resample="NEAREST", actual_shape=actual_shape_tensor)
-            # out3.shape = [-1, 3, 4, 4]
-
-            # scale is a Variable
-            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
-            out4 = fluid.layers.image_resize(input, scale=scale_tensor)
-            # out4.shape = [-1, 3, -1, -1]
-
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
+            out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
@@ -8282,9 +8258,9 @@ def image_resize(input,
 
     inputs = {"X": input}
     attrs = {
-        "out_d": -1,
-        "out_h": -1,
-        "out_w": -1,
+        "out_d": 0,
+        "out_h": 0,
+        "out_w": 0,
         "interp_method": resample_type,
         "align_corners": align_corners,
         "align_mode": align_mode,
@@ -8293,80 +8269,36 @@ def image_resize(input,
 
     if out_shape is not None:
         if isinstance(out_shape, Variable):
-            out_shape.stop_gradient = True
+            warnings.warn("out_shape as Variable type is deprecated, \
+                    it is recommended to use actual_shape instead of \
+                    out_shape to specify output shape dynamically.")
             inputs['OutSize'] = out_shape
         else:
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError(
                     "out_shape should be a list or tuple or Variable.")
-            # Validate the shape
-            contain_var = False
-            for dim_idx, dim_size in enumerate(out_shape):
-                if isinstance(dim_size, Variable):
-                    contain_var = True
-                    continue
-                assert dim_size > 0, (
-                    "Each dimension size given in out_shape must be greater than 0."
-                )
-
-            if contain_var:
-                new_size_tensor = []
-                size_list = []
-                for dim in out_shape:
-                    if isinstance(dim, Variable):
-                        dim.stop_gradient = True
-                        new_size_tensor.append(dim)
-                        size_list.append(-1)
-                    else:
-                        assert (isinstance(dim, int))
-                        temp_out = helper.create_variable_for_type_inference(
-                            'int32')
-                        fill_constant(
-                            [1], 'int32', dim, force_cpu=True, out=temp_out)
-                        new_size_tensor.append(temp_out)
-                        size_list.append(dim)
-                inputs['SizeTensor'] = new_size_tensor
-
             if len(input.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError("out_shape length should be 2 for "
                                      "input 4-D tensor.")
-                if contain_var:
-                    attrs['out_h'] = size_list[0]
-                    attrs['out_w'] = size_list[1]
-                else:
-                    out_shape = list(map(int, out_shape))
-                    attrs['out_h'] = out_shape[0]
-                    attrs['out_w'] = out_shape[1]
+                out_shape = list(map(int, out_shape))
+                attrs['out_h'] = out_shape[0]
+                attrs['out_w'] = out_shape[1]
             if len(input.shape) == 5:
                 if len(out_shape) != 3:
                     raise ValueError("out_shape length should be 3 for "
                                      "input 5-D tensor.")
-                if contain_var:
-                    attrs['out_d'] = size_list[0]
-                    attrs['out_h'] = size_list[1]
-                    attrs['out_w'] = size_list[2]
-                else:
-                    out_shape = list(map(int, out_shape))
-                    attrs['out_d'] = out_shape[0]
-                    attrs['out_h'] = out_shape[1]
-                    attrs['out_w'] = out_shape[2]
+                out_shape = list(map(int, out_shape))
+                attrs['out_d'] = out_shape[0]
+                attrs['out_h'] = out_shape[1]
+                attrs['out_w'] = out_shape[2]
 
     else:
-        if isinstance(scale, Variable):
-            scale.stop_gradient = True
-            inputs["Scale"] = scale
-        if isinstance(scale, float):
-            if scale <= 0:
-                raise ValueError("scale should be greater than zero.")
-            attrs['scale'] = float(scale)
+        if scale <= 0:
+            raise ValueError("scale should be greater than zero.")
+        attrs['scale'] = float(scale)
 
     if isinstance(actual_shape, Variable):
-        warnings.warn(
-            "actual_shape will be deprecated, it is recommended to use "
-            "out_shape instead of actual_shape to specify output shape dynamically."
-        )
-        actual_shape.stop_gradient = True
         inputs["OutSize"] = actual_shape
     elif actual_shape is not None:
         raise TypeError("actual_shape should either be Variable or None.")
@@ -8393,9 +8325,6 @@ def resize_bilinear(input,
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
-
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
-    the future and only use :attr:`out_shape` instead.
 
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -8442,6 +8371,13 @@ def resize_bilinear(input,
               W_out = W_{in} * scale_{factor}
 
     Args:
+        input(${x_type}): input should be a 4-D tensor.
+
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
+
+        scale(float|None): The multiplier for the input height or width. At
         input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
@@ -8459,12 +8395,12 @@ def resize_bilinear(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output 
-                                shape dynamically, because :attr:`actual_shape` 
-                                will be deprecated. When using actual_shape to 
-                                specify output shape, one of :attr:`out_shape` 
-                                and :attr:`scale` should also be set, otherwise 
-                                errors would be occured in graph constructing stage.
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
@@ -8479,31 +8415,8 @@ def resize_bilinear(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
-            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
-
-            out0 = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
-            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
-
-            # out_shape is a list in which each element is a integer or a tensor Variable
-            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
-            out1 = fluid.layers.resize_bilinear(input, out_shape=[12, dim1])
-            # out1.shape = [-1, 3, 12, -1]
-
-            # out_shape is a 1-D tensor Variable
-            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
-            out2 = fluid.layers.resize_bilinear(input, out_shape=shape_tensor)
-            # out2.shape = [-1, 3, -1, -1]
-
-            # when use actual_shape
-            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
-            out3 = fluid.layers.resize_bilinear(input, out_shape=[4, 4], actual_shape=actual_shape_tensor)
-            # out3.shape = [-1, 3, 4, 4]
-
-            # scale is a Variable
-            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
-            out4 = fluid.layers.resize_bilinear(input, scale=scale_tensor)
-            # out4.shape = [-1, 3, -1, -1]
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
+            out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
@@ -8523,9 +8436,6 @@ def resize_trilinear(input,
     Resize input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
-
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated 
-    in the future and only use :attr:`out_shape` instead.
 
     Trilinear interpolation is an extension of linear interpolation for 
     interpolating functions of three variables (e.g. D-direction, 
@@ -8575,6 +8485,13 @@ def resize_trilinear(input,
               W_out = W_{in} * scale_{factor}
 
     Args:
+        input(${x_type}): input should be a 4-D tensor.
+
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+                                    layer, the shape is (out_d, out_h, out_w).
+                                    Default: None
+
+        scale(float|None): The multiplier for the input depth, height or width.
         input(${x_type}): 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
@@ -8592,12 +8509,12 @@ def resize_trilinear(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output 
-                                shape dynamically, because :attr:`actual_shape` 
-                                will be deprecated. When using actual_shape to 
-                                specify output shape, one of :attr:`out_shape` 
-                                and :attr:`scale` should also be set, otherwise 
-                                errors would be occured in graph constructing stage.
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
@@ -8613,6 +8530,8 @@ def resize_trilinear(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", shape=[3,6,9,11], dtype="float32")
+            out = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
             input = fluid.layers.data(name="input", shape=[3, 6, 9, 11], dtype="float32")
             # input.shape = [-1, 3, 6, 9, 11], where -1 indicates batch size, and it will get the exact value in runtime.
 
@@ -8657,9 +8576,6 @@ def resize_nearest(input,
     height direction and the width direction based on given output shape 
     which is specified by actual_shape, out_shape and scale in priority order.
 
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the 
-    future and only use :attr:`out_shape` instead.
-
     Example:
 
     .. code-block:: text
@@ -8698,6 +8614,13 @@ def resize_nearest(input,
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
+        input(${x_type}): input should be a 4-D tensor.
+
+        out_shape(list|tuple|Variable|None): Output shape of resize nearest
+                                    layer, the shape is (out_h, out_w).
+                                    Default: None
+
+        scale(float|None): The multiplier for the input height or width. At
         input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize nearest
@@ -8715,12 +8638,12 @@ def resize_nearest(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output 
-                                shape dynamically, because :attr:`actual_shape` 
-                                will be deprecated. When using actual_shape to 
-                                specify output shape, one of :attr:`out_shape` 
-                                and :attr:`scale` should also be set, otherwise 
-                                errors would be occured in graph constructing stage.
+                                actual_shape instead of :attr:`out_shape` if you
+                                want to specify output shape dynamically. When
+                                using actual_shape to specify output shape, one of
+                                :attr:`out_shape` and :attr:`scale` should also be
+                                set, otherwise errors would be occured in graph
+                                constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         data_format(str, optional): NCHW(num_batches, channels, height, width) or 
@@ -8735,6 +8658,8 @@ def resize_nearest(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
+            out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
             input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
             # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
 
@@ -9423,11 +9348,6 @@ def crop(x, shape=None, offsets=None, name=None):
     """
     Crop input into output, as specified by offsets and shape.
 
-    **Warning:** THIS FUNCTION IS DEPRECATED. It will be removed in a future version.
-    Instructions for updating: Use `fluid.layers.crop_tensor
-    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/layers/nn.html#crop_tensor>`_
-    instead.
-
     .. code-block:: text
 
         * Case 1:
@@ -9459,16 +9379,16 @@ def crop(x, shape=None, offsets=None, name=None):
     Args:
         x (Variable): The input tensor variable.
         shape (Variable|list/tuple of integer): The output shape is specified
-            by `shape`, which can be a Variable or a list/tuple of integer.
+            by `shape`, which can a Variable or a list/tupe of integer.
             If a tensor Variable, it's rank must be the same as `x`. This way
             is suitable for the case that the output shape may be changed each
-            iteration. If a list/tuple of integer, it's length must be the same
+            iteration. If a list/tupe of integer, it's length must be the same
             as the rank of `x`
         offsets (Variable|list/tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a Variable or a list/tuple
+            offsets at each dimension. It can be a Variable or or a list/tupe
             of integers. If a tensor Variable, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
-            each iteration. If a list/tuple of integer, it's length must be the
+            each iteration. If a list/tupe of integer, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each
             dimension.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -9517,188 +9437,6 @@ def crop(x, shape=None, offsets=None, name=None):
 
     helper.append_op(
         type='crop',
-        inputs=ipts,
-        outputs={'Out': out},
-        attrs=None if len(attrs) == 0 else attrs)
-    return out
-
-
-def crop_tensor(x, shape=None, offsets=None, name=None):
-    """
-    Crop input into output, as specified by offsets and shape.
-
-    .. code-block:: text
-
-        * Case 1:
-            Given
-                X = [[0, 1, 2, 0, 0]
-                     [0, 3, 4, 0, 0]
-                     [0, 0, 0, 0, 0]],
-            and
-                shape = [2, 2],
-                offsets = [0, 1],
-            output is:
-                Out = [[1, 2],
-                       [3, 4]].
-        * Case 2:
-            Given
-                X =  [[[0, 1, 2, 3]
-                       [0, 5, 6, 7]
-                       [0, 0, 0, 0]],
-
-                      [[0, 3, 4, 5]
-                       [0, 6, 7, 8]
-                       [0, 0, 0, 0]]].
-            and
-                shape = [2, 2, 3],
-                offsets = [0, 0, 1],
-            output is:
-                Out = [[[1, 2, 3]
-                        [5, 6, 7]],
-
-                        [[3, 4, 5]
-                         [6, 7, 8]]].
-
-    Args:
-        x (Variable): The input tensor variable.
-        shape (Variable|list|tuple of integer): The output shape is specified
-            by `shape`. It can be a 1-D tensor Variable or a list/tuple. If a 
-            1-D tensor Variable, it's rank must be the same as `x`. If a 
-            list/tuple, it's length must be the same as the rank of `x`. Each 
-            element of list can be an integer or a tensor Variable of shape: [1].
-            If Variable contained, it is suitable for the case that the shape may 
-            be changed each iteration. Only the first element of list/tuple can be 
-            set to -1, it means that the first dimension of the output is the same 
-            as the input.
-        offsets (Variable|list|tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a 1-D tensor Variable or a list/tuple.
-            If a 1-D tensor Variable, it's rank must be the same as `x`. If a list/tuple, 
-            it's length must be the same as the rank of `x`. Each element of list can be
-            an integer or a tensor Variable of shape: [1]. If Variable contained, it is 
-            suitable for the case that the offsets may be changed each iteration. If None, 
-            the offsets are 0 at each dimension.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-
-    Returns:
-        Variable: The cropped tensor variable.
-
-    Raises:
-        ValueError: If shape is not a list, tuple or Variable.
-        ValueError: If offsets is not None and not a list, tuple or Variable.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
-            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
-
-            # shape is a 1-D tensor variable
-            crop_shape = fluid.layers.data(name="crop_shape", shape=[3], dtype="int32", append_batch_size=False)
-            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
-            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
-
-            # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
-            # crop1.shape = [-1, 2, 3]
-
-            # or shape is a list in which each element is a constant or variable
-            y = fluid.layers.data(name="y", shape=[3, 8, 8], dtype="float32")
-            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
-            crop2 = fluid.layers.crop_tensor(y, shape=[-1, 3, dim1, 4])
-            # crop2.shape = [-1, 3, -1, 4]
-
-            # offsets is a 1-D tensor variable
-            crop_offsets = fluid.layers.data(name="crop_offsets", shape=[3], dtype="int32", append_batch_size=False)
-            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
-            # crop3.shape = [-1, 2, 3]
-
-            # offsets is a list in which each element is a constant or variable
-            offsets_var =  fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
-            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
-            # crop4.shape = [-1, 2, 3]
-
-    """
-    helper = LayerHelper('crop_tensor', **locals())
-
-    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-            isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
-
-    if offsets is None:
-        offsets = [0] * len(x.shape)
-
-    if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
-            isinstance(offsets, Variable)):
-        raise ValueError("The offsets should be a list, tuple or Variable.")
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
-
-    def contain_var(input_list):
-        for ele in input_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
-    if isinstance(offsets, Variable):
-        offsets.stop_gradient = True
-        ipts['Offsets'] = offsets
-    elif contain_var(offsets):
-        new_offsets_tensor = []
-        for dim in offsets:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_offsets_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                assert dim >= 0, ("offsets should be greater or equal to zero.")
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_offsets_tensor.append(temp_out)
-        ipts['OffsetsTensor'] = new_offsets_tensor
-    else:
-        attrs['offsets'] = offsets
-
-    unk_dim_idx = -1
-    if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        ipts['Shape'] = shape
-    elif contain_var(shape):
-        new_shape_tensor = []
-        shape_attr = []
-        for dim_idx, dim_size in enumerate(shape):
-            if isinstance(dim_size, Variable):
-                dim_size.stop_gradient = True
-                new_shape_tensor.append(dim_size)
-                shape_attr.append(-1)
-            else:
-                assert (isinstance(dim_size, int))
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one element in shape can be unknown.")
-                    assert dim_idx == 0, (
-                        "Only the first element in shape can be -1.")
-                    unk_dim_idx = dim_idx
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension size given in shape must be greater than zero."
-                    )
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-                shape_attr.append(dim_size)
-        ipts['ShapeTensor'] = new_shape_tensor
-        attrs['shape'] = shape_attr
-    else:
-        attrs['shape'] = shape
-
-    helper.append_op(
-        type='crop_tensor',
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
@@ -14019,43 +13757,88 @@ def deformable_roi_pooling(input,
                            position_sensitive=False,
                            name=None):
     """
-    Deformable PSROI Pooling Layer
+    Deformable ROI Pooling Layer
+
+    Performs deformable region-of-interest pooling on inputs.  described
+    in `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_, it will get offset for each bin after 
+    roi pooling so that pooling at correct region. Batch_size will change to the number of region bounding boxes after deformable_roi_pooling.
+
+    The operation has four steps:
     
+        1. Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height.
+
+        2. Add offset to pixel in ROI to get new location and the new value which are computed directly through
+           bilinear interpolation with four nearest pixel.
+     
+        3. Sample several points in each bin to get average values as output.
+
+
     Args:
-       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
-                        is height of the feature, and W is the width of the feature.
-       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+       input (Variable):The input of deformable roi pooling and it is tensor which value type is float32. The shape of input is
+                        [N,C,H,W]. Where N is batch size, C is number of input channels,
+                        H is height of the feature, and W is the width of the feature.
+       rois (Variable): ROIs (Regions of Interest) with type float32 to pool over. It should be
+                        a 2-D 'LoDTensor of shape (num_rois, 4), and the lod level
                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
+                        right coordinates, which value type is float32.
+       trans (Variable): Offset of features on ROIs while pooling which value type is float32. The format is NCHW, where 
                          N is number of ROIs, C is number of channels, which indicate the offset distance 
-                         in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
-                          value is True or False. Default: False.
-       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
-                         is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
+                         in the x and y directions, H is pooled height, and W is pooled width. 
+       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which value with type bool is True or False.
+                        If value is True, no offset will be added in operation. Default: False.
+       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width), which value type is float32.
+                        Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+       group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value is int32. (eg.number of input channels 
+                         is k1 * k2 * (C + 1), which k1 and k2 are group width and height and C+1 is number of output
                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height (integer): The pooled output height. Default: 1.
-       pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
-                        if None, default value is [pooled_height, pooled_width].
-       sample_per_part (integer): The number of samples in each bin. Default: 1.
-       trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
-       name (str): Name of layer. Default: None.
+       pooled_height (int): The pooled output height which value type is int32. Default: 1.
+       pooled_width (int): The pooled output width which value type is int32. Default: 1.
+       part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, and values always equal to pooled_height
+                        and pooled_width. Default: if None, default value is [pooled_height, pooled_width].
+       sample_per_part (int): The number of samples in each bin which value type is int32. If value is bigger, it will consume more performance. Default: 1.
+       trans_std (float): Coefficient of offset which value type is float32. It controls weight of offset. Default: 0.1.
+       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not, and value type is bool(True or False). If value is False, input dimension equals to output dimension.
+       If value is True, input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
+       name (str|None): Name of layer. Default: None.
     Returns:
-        Variable: The tensor variable storing the deformable psroi pooling \
-                  result.
+        Variable: output of deformable roi pooling.  If position_sensitive is False, input dimension equals to output dimension. If position_sensitive is True,
+                  input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
+
 
 
     Examples:
       .. code-block:: python
 
+        # position_sensitive=False
+        import paddle.fluid as fluid
+        input = fluid.layers.data(name="input",
+                                  shape=[2, 192, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        rois = fluid.layers.data(name="rois",
+                                 shape=[4],
+                                 dtype='float32', 
+                                 lod_level=1)
+        trans = fluid.layers.data(name="trans",
+                                  shape=[2, 384, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False) 
+        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
+                                                     rois=rois, 
+                                                     trans=trans, 
+                                                     no_trans=False,
+                                                     spatial_scale=1.0, 
+                                                     group_size=(1, 1),
+                                                     pooled_height=8,
+                                                     pooled_width=8,
+                                                     part_size=(8, 8),
+                                                     sample_per_part=4, 
+                                                     trans_std=0.1,
+                                                     position_sensitive=False)
+
+        
+        # position_sensitive = True
         import paddle.fluid as fluid
         input = fluid.layers.data(name="input",
                                   shape=[2, 192, 64, 64], 
