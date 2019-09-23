@@ -52,20 +52,14 @@ def _parse_target_tuple(message):
     representing the string {{type name}} and they are separated by 
     separators.
 
+    For example, the message "123{{operator mul}}456" after being processed
+    is like seps = ["123", "456"], tags = [_ParseTag("node", "Foo")].
+
     Args:
         messsge(String): String to parse
 
     Returns:
         list: (list of separator strings, list of _ParseTags)
-
-    Examples:
-
-    .. code-block:: python
-
-        message = "123{{operator mul}}456"
-        seps, tags = _parse_target_tuple(message)
-        # seps = ["123", "456"], tags = [_ParseTag("node", "Foo")]
-        
     """
     seps = []
     tags = []
@@ -108,7 +102,7 @@ def _get_defining_frame_of_op(error_traceback):
     return None, None
 
 
-def hint_augment(error_traceback):
+def _hint_augment(error_traceback):
     """
     Augment the operator execution error hint in error message.
     
@@ -119,7 +113,7 @@ def hint_augment(error_traceback):
     Args:
         error_traceback(String): exception info return from core.
 
-    Return:
+    Returns:
         String: the error traceback be augmented.
     """
     seps, tags = _parse_target_tuple(error_traceback)
@@ -140,8 +134,34 @@ def hint_augment(error_traceback):
 
 
 def paddle_enforce_handler(ex_type, ex_val, ex_traceback):
+    """
+    Define the core.EnforceNotMet exception handler to shape the error message stack.
+    This Inferface needs to be used with the sys.excepthook.
+
+    Args:
+        ex_type(exception type): the exception type of the exception being handled.
+        ex_val(exception value): the exception parameter (its associated value or the second argument to raise).
+        ex_traceback(exception traceback): a traceback object which encapsulates the call stack at the point where the exception originally occurred.
+
+    Returns: None
+
+    Examples:
+        .. code-block:: python
+
+        import sys
+        import paddle.fluid.core as core
+        from paddle.fluid import error_format
+
+        try:
+            core.__unittest_throw_exception__()
+        except Exception as e:
+            if isinstance(e, core.EnforceNotMet):
+                sys.excepthook = error_format.paddle_enforce_handler
+            six.reraise(*sys.exc_info())
+
+    """
     ex_msg = str(cpt.to_text(ex_val))
-    ex_msg_augment = hint_augment(ex_msg)
+    ex_msg_augment = _hint_augment(ex_msg)
     split_str = "PaddleEnforceError."
     if split_str in ex_msg_augment:
         ex_msg_list = ex_msg_augment.split(split_str)

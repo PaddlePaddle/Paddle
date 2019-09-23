@@ -100,13 +100,13 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #endif
     }
   }
-  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
-                          line)
-       << std::endl;
   free(symbols);
 #else
   sout << "Windows not support stack backtrace yet.";
 #endif
+  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
+                          line)
+       << std::endl;
   return sout.str();
 }
 

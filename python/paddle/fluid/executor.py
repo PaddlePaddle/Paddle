@@ -617,7 +617,7 @@ class Executor(object):
             if not isinstance(e, core.EOFException):
                 warnings.warn(
                     "The following exception is not an EOF exception.")
-            if os.name != 'nt' and isinstance(e, core.EnforceNotMet):
+            if isinstance(e, core.EnforceNotMet):
                 sys.excepthook = error_format.paddle_enforce_handler
             six.reraise(*sys.exc_info())
 
