@@ -5805,23 +5805,35 @@ def ctc_greedy_decoder(input,
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in thehalf-opened
                     interval [0, num_classes + 1).
-        input_length(Variable): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
+        input_length(Variable, optional): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
                                  is None.
-        padding_value(int): padding value
-        name (str): The name of this layer. It is optional.
+        padding_value(int): padding value.
+        name (str, optional): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
+        output(Variable): For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
                   'Lp' is the sum if all output sequences' length. If all the sequences \
                   in result were empty, the result LoDTensor will be [-1] with  \
-                  LoD [[]] and dims [1, 1].
+                  LoD [[]] and dims [1, 1]. For padding mode, CTC greedy decode result is a 2-D tensor \
+                  with shape [batch_size, N], output length's shape is [batch_size, 1] which is length \
+                  of every sequence in output.
+        output_length(Variable, optional): length of each sequence of output for padding mode.
 
     Examples:
         .. code-block:: python
 
+            # for lod mode
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
+
+            # for padding mode
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[4,8], dtype='float32')
+            x_len = fluid.layers.data(name='x_len', shape=[1], dtype='int64')
+            out, out_len = fluid.layers.ctc_greedy_decoder(input=x, blank=0,
+                            input_length=x_len)
+
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
