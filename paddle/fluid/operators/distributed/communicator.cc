@@ -700,7 +700,6 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
   
-  int element_number = var_x_tensor.numel();
   float* x_mutable_data = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float* y_mutable_data = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
@@ -739,7 +738,6 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
 
     auto *var_z = pserver_scope_.get()->FindVar(var_name);
     auto var_z_tensor = var_z->Get<framework::LoDTensor>();
-    float* z_mutable_data = var_z_tensor.mutable_data<float>(var_z_tensor.place());
 
     auto cpu_ctx = paddle::platform::CPUDeviceContext();
     auto blas = math::GetBlas<paddle::platform::CPUDeviceContext,float>(cpu_ctx);
