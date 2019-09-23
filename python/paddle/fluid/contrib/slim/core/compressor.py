@@ -557,7 +557,7 @@ class Compressor(object):
             else:
                 context.optimize_graph = context.train_graph
 
-        context, strategies = self._load_checkpoint(context)
+        context, self.strategies = self._load_checkpoint(context)
 
         for strategy in self.strategies:
             strategy.on_compression_begin(context)
