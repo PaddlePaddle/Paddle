@@ -40,7 +40,8 @@ batch = paddle.batch
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+    'load_persistables', 'save_inference_model', 'load_inference_model',
+    'batch', 'save', 'load'
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -1454,18 +1455,9 @@ def save(program, save_dir):
 
 
 def load(program, load_dir):
-    #if not os.path.exists(load_dir):
-    #    raise IOError("Can't load frome %s, please ensure the dir exists", load_dir)
-
-    #load desc
-    #model_desc_path = os.path.join("model.pamodel")
-    #with open(model_desc_path, "rb") as f:
-    #    program_desc_str = f.read()
-    #program = Program.parse_from_string(program_desc_str)
-    #print(program._version())
-    #if not core._is_program_version_supported(program._version()):
-    #    raise ValueError("Unsupported program version: %d\n" %
-    #                     program._version())
+    if not os.path.exists(load_dir):
+        raise IOError("Can't load frome {}, please ensure the dir exists".
+                      formate(load_dir))
 
     #load parameters
     if core.is_compiled_with_cuda():
