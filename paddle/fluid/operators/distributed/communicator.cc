@@ -216,9 +216,11 @@ void Communicator::SendThread() {
       have_push_.fetch_add(1, std::memory_order_relaxed);
     }
     auto after_run_send_graph = GetCurrentUS();
-
-    VLOG(2) << "run send graph use time "
+    if(after_run_send_graph - before_run_send_graph > 100) {
+      VLOG(1) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
+    }
+    
     RecvNonIndependent();
   }
   VLOG(0) << "communicator stopped, send thread exit";
