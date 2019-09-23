@@ -198,7 +198,7 @@ class TestCTCAlignOpApi(unittest.TestCase):
         y_pad, y_pad_len = fluid.layers.ctc_greedy_decoder(
             x_pad, blank=0, input_length=x_pad_len)
 
-        place = fluid.CUDAPlace(0)
+        place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
             np.random.rand(8, 4).astype("float32"), [[4, 4]], place)
 
