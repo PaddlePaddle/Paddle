@@ -569,12 +569,8 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMa
   VLOG(1)<<"Sparse ids merge name: "<<var_name;
   VLOG(1)<<"ids_send_vec Size: "<< ids_send_vec.size();
   for(auto table : ids_send_vec) {
-    bool find = table.find(var_name) == table.end();
-    if(table.find(var_name) == table.end()){
-      continue;
-    }
     for(auto ids:table[var_name]) {
-      if(ids_set.find(ids) == ids_set.end()){
+      if(ids_set.find(ids) == ids_set.end()) {
         ids_set.insert(ids);
       }
     }
