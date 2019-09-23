@@ -137,10 +137,8 @@ void Communicator::SendThread() {
             auto before_send = GetCurrentUS();
             if(var_list_[origin_var_name] == true) {
               auto ids_set = SparseIdsMerge(ids_send_vec_ , origin_var_name);
-              VLOG(1)<<"Before send update var name: "<<origin_var_name;
               SendUpdateSparseVars(origin_var_name,ids_set);
             } else {
-              VLOG(1)<<"Before send update var name: "<<origin_var_name;
               SendUpdateDenseVars(origin_var_name);
             }
             auto send_functor = distributed::ParameterSend<float>();   
@@ -574,8 +572,8 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMa
                                              const std::string &var_name) {
   auto before_run_ids_merge_ = GetCurrentUS();
   std::unordered_set<int64_t> ids_set;
-  VLOG(1)<<"Sparse ids merge name: "<<var_name;
-  VLOG(1)<<"ids_send_vec Size: "<< ids_send_vec.size();
+  VLOG(2)<<"Sparse ids merge name: "<<var_name;
+  VLOG(2)<<"ids_send_vec Size: "<< ids_send_vec.size();
   for(auto table : ids_send_vec) {
     for(auto ids:table[var_name]) {
       if(ids_set.find(ids) == ids_set.end()) {
@@ -592,7 +590,7 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMa
 void Communicator::SendUpdateDenseVars(const std::string& var_name) {
   // calc var_delata = (var_recv - var_old)/trainer_nums
   // calc var_old += var_delta
-  VLOG(1) << "Geo-Sgd Communicator Send update Dense Vars: "<< var_name;
+  VLOG(2) << "Geo-Sgd Communicator Send update Dense Vars: "<< var_name;
   auto before_run_send_dense = GetCurrentUS();
 
   auto *var_x = recv_scope_->FindVar(var_name);
@@ -693,7 +691,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
 void Communicator::RecvUpdateVars(const std::string& var_name) {
   // calc var_recv = var_pserver - var_old
   // calc var_old = var_pserver
-  VLOG(1) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
+  VLOG(2) << "Geo-Sgd Communicator Recv update Vars: "<< var_name;
   auto before_run_recv = GetCurrentUS();
   
   auto *var_x = recv_scope_->FindVar(var_name);
@@ -713,7 +711,7 @@ void Communicator::RecvUpdateVars(const std::string& var_name) {
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
     auto* z_mutable_data = new_value.data<float>();
-    VLOG(1) <<"Geo-Sgd Recv Sparse var "<< var_name <<" row size "<<new_rows.size();
+    VLOG(2) <<"Geo-Sgd Recv Sparse var "<< var_name <<" row size "<<new_rows.size();
     for (size_t i = 0; i< new_rows.size(); i++) {
       float diff =0;
       VLOG(2) << "Geo-Sgd Recv " << new_rows[i]<< " before update Vars recv_scope: "<< x_mutable_data[new_rows[i]*row_numel]
