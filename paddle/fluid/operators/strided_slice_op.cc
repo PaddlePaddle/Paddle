@@ -161,10 +161,10 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable()
         .AsDispensable();
     AddAttr<std::vector<int>>(
-        "axes", "(list<int>) Axes that `starts` and `ends` apply to.")
-        AddAttr<std::vector<int>>(
-            "starts", "(list<int>) Start indices for the strided slice start.")
-            .SetDefault({});
+        "axes", "(list<int>) Axes that `starts` and `ends` apply to.");
+    AddAttr<std::vector<int>>(
+        "starts", "(list<int>) Start indices for the strided slice start.")
+        .SetDefault({});
     AddAttr<std::vector<int>>("ends",
                               "(list<int>) End indices the tensor slice end")
         .SetDefault({});
