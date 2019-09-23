@@ -876,7 +876,7 @@ class TestLayer(LayerTest):
                 dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.tree_conv(
+            ret = fluid.contrib.layers.tree_conv(
                 nodes_vector=NodesVector,
                 edge_set=EdgeSet,
                 output_size=6,
@@ -1099,6 +1099,34 @@ class TestLayer(LayerTest):
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
+
+    def test_crop_tensor(self):
+        with self.static_graph():
+            x = fluid.layers.data(name="x1", shape=[6, 5, 8])
+
+            dim1 = fluid.layers.data(
+                name="dim1", shape=[1], append_batch_size=False)
+            dim2 = fluid.layers.data(
+                name="dim2", shape=[1], append_batch_size=False)
+            crop_shape1 = (1, 2, 4, 4)
+            crop_shape2 = fluid.layers.data(
+                name="crop_shape", shape=[4], append_batch_size=False)
+            crop_shape3 = [-1, dim1, dim2, 4]
+            crop_offsets1 = [0, 0, 1, 0]
+            crop_offsets2 = fluid.layers.data(
+                name="crop_offset", shape=[4], append_batch_size=False)
+            crop_offsets3 = [0, dim1, dim2, 0]
+
+            out1 = fluid.layers.crop_tensor(
+                x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = fluid.layers.crop_tensor(
+                x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = fluid.layers.crop_tensor(
+                x, shape=crop_shape3, offsets=crop_offsets3)
+
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            self.assertIsNotNone(out3)
 
 
 class TestBook(LayerTest):
@@ -2018,6 +2046,14 @@ class TestBook(LayerTest):
             out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
+    def make_mse_loss(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[1], dtype="float32")
+            y = self._get_data(name="Y", shape=[1], dtype="float32")
+            out = layers.mse_loss(input=x, label=y)
+            return (out)
+
     def make_square_error_cost(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2100,6 +2136,17 @@ class TestBook(LayerTest):
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
+
+    def test_stridedslice(self):
+        axes = [0, 1, 2]
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        strides = [1, 1, 1]
+        with self.static_graph():
+            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
+            out = layers.strided_slice(
+                x, axes=axes, starts=starts, ends=ends, strides=strides)
+            return out
 
     def test_psroi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -2276,32 +2323,31 @@ class TestBook(LayerTest):
         print(str(program))
 
     def test_deformable_conv(self):
-        if core.is_compiled_with_cuda():
-            with program_guard(fluid.default_main_program(),
-                               fluid.default_startup_program()):
-                input = layers.data(
-                    name='input',
-                    append_batch_size=False,
-                    shape=[2, 3, 32, 32],
-                    dtype="float32")
-                offset = layers.data(
-                    name='offset',
-                    append_batch_size=False,
-                    shape=[2, 18, 32, 32],
-                    dtype="float32")
-                mask = layers.data(
-                    name='mask',
-                    append_batch_size=False,
-                    shape=[2, 9, 32, 32],
-                    dtype="float32")
-                out = layers.deformable_conv(
-                    input=input,
-                    offset=offset,
-                    mask=mask,
-                    num_filters=2,
-                    filter_size=3,
-                    padding=1)
-                return (out)
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            mask = layers.data(
+                name='mask',
+                append_batch_size=False,
+                shape=[2, 9, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=mask,
+                num_filters=2,
+                filter_size=3,
+                padding=1)
+            return (out)
 
     def test_unfold(self):
         with self.static_graph():
@@ -2337,6 +2383,29 @@ class TestBook(LayerTest):
                 sample_per_part=4,
                 trans_std=0.1)
         return (out)
+
+    def test_deformable_conv_v1(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input',
+                append_batch_size=False,
+                shape=[2, 3, 32, 32],
+                dtype="float32")
+            offset = layers.data(
+                name='offset',
+                append_batch_size=False,
+                shape=[2, 18, 32, 32],
+                dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=None,
+                num_filters=2,
+                filter_size=3,
+                padding=1,
+                modulated=False)
+            return (out)
 
     def test_retinanet_target_assign(self):
         with program_guard(fluid.default_main_program(),

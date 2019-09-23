@@ -41,15 +41,24 @@ class AutoMixedPrecisionLists(object):
         """
         Update black and white list according to users' custom list.
         """
+        if self._custom_white_list and self._custom_black_list:
+            for op_name in self._custom_white_list:
+                if op_name in self._custom_black_list:
+                    raise ValueError("Custom white list overlap "
+                                     "custom black list")
         if self._custom_white_list:
             for op_name in self._custom_white_list:
                 if op_name in self.black_list:
                     self.black_list.remove(op_name)
+                elif op_name in self.gray_list:
+                    self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
                     self.white_list.remove(op_name)
+                elif op_name in self.gray_list:
+                    self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
 
 
