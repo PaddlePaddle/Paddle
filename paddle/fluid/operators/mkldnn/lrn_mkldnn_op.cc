@@ -32,15 +32,10 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "MKLDNN LRN must use CPUPlace.");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto x = ctx.Input<Tensor>("X");
     auto out = ctx.Output<Tensor>("Out");
     auto mid = ctx.Output<Tensor>("MidOut");
-
-    auto input_data = x->data<T>();
-    auto output_data = out->mutable_data<T>(ctx.GetPlace());
-    mid->mutable_data<T>(ctx.GetPlace());
 
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
@@ -52,31 +47,32 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
+    bool is_test = ctx.Attr<bool>("is_test");
 
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid = e_mid.constant(k);
+    auto dims = paddle::framework::vectorize<int>(x->dims());
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
+                                          is_test, dev_ctx, ctx.GetPlace(),
+                                          ctx.op().Output("Out"));
 
-    // Format and dims are assumed to be the same for dst and src
-    auto md = paddle::platform::MKLDNNMemDesc(
-        dims, platform::MKLDNNGetDataType<T>(), x->format());
+    auto src_memory = handler.AcquireSrcMemory(x);
+    auto dst_memory = handler.AcquireDstMemory(out);
 
-    const std::string key = platform::LRNMKLDNNHandler::GetHash(
-        dims, n, alpha, beta, k, x->format(), ctx.op().Output("Out"));
-
-    platform::LRNMKLDNNHandler handler(ctx.Attr<bool>("is_test"), dev_ctx,
-                                       mkldnn_engine, key);
-    auto src_memory =
-        handler.AcquireSrcMemory(md, platform::to_void_cast<T>(input_data));
-
-    // TODO(jczaja): Hide getting PD inside of handler for all Acquire API
-    handler.AcquireLRNPrimitiveDescriptor(md, n, alpha, beta, k);
-
-    auto dst_memory =
-        handler.AcquireDstMemory(md, platform::to_void_cast<T>(output_data));
-
-    auto lrn_p = handler.AcquireLRN(dst_memory, src_memory);
+    std::shared_ptr<mkldnn::memory> workspace_memory;
+    std::shared_ptr<mkldnn::lrn_forward> lrn_p;
+    if (is_test == false) {
+      workspace_memory = handler.AcquireWorkspaceMemory(mid);
+      lrn_p = handler.AcquireForwardPrimitive(*src_memory, *workspace_memory,
+                                              *dst_memory);
+    } else {
+      // mid has to be allocated and filled
+      // k to pass LRN unit tests
+      // TODO(jczaja): Disable checking mid in unit tests (Require API change)
+      mid->mutable_data<T>(ctx.GetPlace());
+      auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+      e_mid = e_mid.constant(k);
+      lrn_p = handler.AcquireForwardPrimitive(*src_memory, *dst_memory);
+    }
 
     std::vector<mkldnn::primitive> pipeline = {*lrn_p};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
@@ -104,6 +100,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         "is_test attribute should be set to False in training phase.");
 
     auto x = ctx.Input<Tensor>("X");
+    auto mid = ctx.Input<Tensor>("MidOut");
 
     auto out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -114,42 +111,20 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const float k = ctx.Attr<float>("k");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto x_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
-    auto out_grad_data = out_grad->data<T>();
+    auto dims = paddle::framework::vectorize<int>(x->dims());
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    platform::LRNMKLDNNHandler<T> handler(
+        dims, n, alpha, beta, k, x->format(), out_grad->format(), dev_ctx,
+        ctx.GetPlace(), ctx.op().Input("Out"));
 
-    const std::string key = platform::LRNMKLDNNHandler::GetHash(
-        dims, n, alpha, beta, k, x->format(), ctx.op().Input("Out"));
+    auto src_memory = handler.AcquireSrcMemory(x);
+    auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
+    auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
+    auto diff_src_memory = handler.AcquireDiffSrcMemory(x_grad);
 
-    platform::LRNMKLDNNHandler handler(false, dev_ctx, mkldnn_engine, key);
-
-    auto src_md = paddle::platform::MKLDNNMemDesc(
-        dims, platform::MKLDNNGetDataType<T>(), x->format());
-
-    // diff_dst and diff_src layouts are assumed to be the same
-    auto diff_md = paddle::platform::MKLDNNMemDesc(
-        dims, platform::MKLDNNGetDataType<T>(), out_grad->format());
-
-    auto workspace = handler.AcquireWorkspaceMemory();
-
-    auto diff_dst_memory = handler.AcquireDiffDstMemory(
-        diff_md, platform::to_void_cast<T>(out_grad_data));
-
-    auto diff_src_memory = handler.AcquireDiffSrcMemory(
-        diff_md, platform::to_void_cast<T>(x_grad_data));
-
-    auto src_memory = handler.AcquireSrcMemory(
-        src_md, platform::to_void_cast<T>(x->data<T>()));
-
-    // TODO(jczaja): Hide this call inside Handler
-    handler.AcquireLRNBackwardPrimitiveDescriptor(src_md, diff_md, n, alpha,
-                                                  beta, k);
-
-    auto lrn_bwd = handler.AcquireLRNBackward(src_memory, diff_dst_memory,
-                                              workspace, diff_src_memory);
+    auto lrn_bwd = handler.AcquireBackwardPrimitive(
+        *src_memory, *diff_dst_memory, *workspace, *diff_src_memory);
 
     std::vector<mkldnn::primitive> pipeline = {*lrn_bwd};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();

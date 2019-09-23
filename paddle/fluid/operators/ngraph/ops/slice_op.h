@@ -57,8 +57,18 @@ void BuildSliceNode(
     ng_end[axes[i]] = end;
   }
   auto out = std::make_shared<ngraph::op::Slice>(input, ng_start, ng_end);
-  platform::SetOutputNode(op, "Out", out, ngb_node_map);
+  auto out_shape = out->get_shape();
+
+  std::vector<size_t> out_axis_vec(out_shape.size());
+  std::iota(out_axis_vec.begin(), out_axis_vec.end(), 0);
+
+  paddle::platform::TrimTrailingSingularDims(&out_shape);
+  auto out_dim = std::make_shared<ngraph::op::Reshape>(
+      out, ngraph::AxisVector(out_axis_vec), ngraph::Shape(out_shape));
+
+  platform::SetOutputNode(op, "Out", out_dim, ngb_node_map);
 }
+
 void BuildSliceGradNode(
     const std::shared_ptr<framework::OperatorBase>& op,
     std::shared_ptr<

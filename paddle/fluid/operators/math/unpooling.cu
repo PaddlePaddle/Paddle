@@ -37,7 +37,10 @@ __global__ void KernelUnpool2dMax(const int nthreads, const T* input_data,
     int cidx = boffset / in_c_stride;
     int out_offset = bidx * out_n_stride + cidx * out_c_stride;
     int out_index = indices_data[i];
-    PADDLE_ASSERT(out_index < out_c_stride);
+    PADDLE_ENFORCE(out_index < out_c_stride,
+                   "out_index < out_c_stride. Expected %ld < %ld, but got "
+                   "%ld >= %ld. Please check input value.",
+                   out_index, out_c_stride, out_index, out_c_stride);
     output_data[out_offset + out_index] = input_data[i];
   }
 }
@@ -59,7 +62,10 @@ __global__ void KernelUnpool2dMaxGrad(
     int cidx = boffset / in_c_stride;
     int out_offset = bidx * out_n_stride + cidx * out_c_stride;
     int out_index = indices_data[i];
-    PADDLE_ASSERT(out_index < out_c_stride);
+    PADDLE_ENFORCE(out_index < out_c_stride,
+                   "out_index < out_c_stride. Expected %ld < %ld, but got "
+                   "%ld >= %ld. Please check input value.",
+                   out_index, out_c_stride, out_index, out_c_stride);
     input_grad[i] = output_grad[out_offset + out_index];
   }
 }

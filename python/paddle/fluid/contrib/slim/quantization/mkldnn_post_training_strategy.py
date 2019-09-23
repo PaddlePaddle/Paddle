@@ -83,24 +83,17 @@ class MKLDNNPostTrainingQuantStrategy(Strategy):
         if six.PY3:
             data = warmup_reader.__next__()
 
-        # TODO (Intel) Remove limits that MKLDNNPostTrainingQuantStrategy
-        # only support image classification
         num_images = len(data)
-        images = core.PaddleTensor()
-        images.name = "x"
-        images.shape = [num_images, ] + list(data[0][0].shape)
-        images.dtype = core.PaddleDType.FLOAT32
         image_data = [img.tolist() for (img, _) in data]
-        image_data = np.array(image_data).astype("float32")
+        image_data = np.array(image_data).astype("float32").reshape(
+            [num_images, ] + list(data[0][0].shape))
         image_data = image_data.ravel()
-        images.data = core.PaddleBuf(image_data.tolist())
+        images = core.PaddleTensor(image_data, "x")
+        images.shape = [num_images, ] + list(data[0][0].shape)
 
-        labels = core.PaddleTensor()
-        labels.name = "y"
-        labels.shape = [num_images, 1]
-        labels.dtype = core.PaddleDType.INT64
         label_data = [label for (_, label) in data]
-        labels.data = core.PaddleBuf(label_data)
+        labels = core.PaddleTensor(
+            np.array(label_data).astype("int64").reshape([num_images, 1]), "y")
 
         warmup_data = [images, labels]
 

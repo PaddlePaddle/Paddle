@@ -224,6 +224,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_content_ = false;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -305,6 +306,11 @@ void InMemoryDataFeed<T>::SetThreadId(int thread_id) {
 template <typename T>
 void InMemoryDataFeed<T>::SetThreadNum(int thread_num) {
   thread_num_ = thread_num;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetParseContent(bool parse_content) {
+  parse_content_ = parse_content;
 }
 
 template <typename T>
@@ -766,6 +772,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       pos += len + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
     }
+    if (parse_content_) {
+      int num = strtol(&str[pos], &endptr, 10);
+      CHECK(num == 1);  // NOLINT
+      pos = endptr - str + 1;
+      size_t len = 0;
+      while (str[pos + len] != ' ') {
+        ++len;
+      }
+      instance->content_ = std::string(str + pos, len);
+      pos += len + 1;
+      VLOG(3) << "content " << instance->content_;
+    }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
@@ -890,8 +908,14 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   std::vector<std::vector<size_t>> offset(use_slots_.size(),
                                           std::vector<size_t>{0});
   std::vector<bool> visit(use_slots_.size(), false);
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(ins_vec.size());
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
+    ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;

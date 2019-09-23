@@ -96,7 +96,8 @@ void EagerDeletionOpHandle::RunImpl() {
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];
-    if (var_info->IsSkipped() || !var_info->DecreaseRefCnt()) {
+    if (var_info->IsSkippedAllMemoryOptimization() ||
+        !var_info->DecreaseRefCnt()) {
       continue;
     }
 
