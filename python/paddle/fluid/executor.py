@@ -17,7 +17,6 @@ from __future__ import print_function
 import logging
 import os
 import multiprocessing
-import re
 import sys
 import warnings
 import numpy as np
