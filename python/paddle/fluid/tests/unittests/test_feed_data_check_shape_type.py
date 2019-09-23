@@ -34,10 +34,10 @@ class TestFeedData(unittest.TestCase):
     '''
 
     def setUp(self):
-        self.hidden_sizes = [50, 30, 20]
+        self.hidden_sizes = [25, 20, 15]
         self.base_batch_size = 10
         self.class_num = 10
-        self.iterations = 10
+        self.iterations = 5
 
     def _get_batch_size(self, use_cuda, use_parallel_executor):
         batch_size_times = 1
@@ -51,16 +51,11 @@ class TestFeedData(unittest.TestCase):
         in_data = fluid.data(name="data", dtype='float32', shape=in_size)
         label = fluid.data(name='label', dtype='int64', shape=label_size)
 
-        print("in_data need check feed: " + str(in_data.need_check_feed))
         hidden = in_data
-        # fluid.layers.Print(hidden)
         for hidden_size in hidden_sizes:
             hidden = fluid.layers.fc(hidden, size=hidden_size)
-            # fluid.layers.Print(hidden)
 
-        # fluid.layers.Print(hidden)
         predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
-        # fluid.layers.Print(predict_label)
         loss = fluid.layers.mean(
             fluid.layers.cross_entropy(
                 input=predict_label, label=label))
@@ -70,11 +65,9 @@ class TestFeedData(unittest.TestCase):
         return in_data, label, loss
 
     def test(self):
-        for use_cuda in [
-                False
-        ]:  # [True, False] if core.is_compiled_with_cuda() else [False]:
-            for use_parallel_executor in [False
-                                          ]:  #TODO, enable it [False, True]:
+        for use_cuda in [True, False] if core.is_compiled_with_cuda(
+        ) else [False]:
+            for use_parallel_executor in [False, True]:
                 print('Test Parameters:'),
                 print({
                     'use_cuda': use_cuda,
@@ -84,8 +77,9 @@ class TestFeedData(unittest.TestCase):
                                                       use_parallel_executor)
                 self._test_feed_data_contains_neg_one(use_cuda,
                                                       use_parallel_executor)
-                self._test_feed_data_shape_mismatch(use_cuda,
-                                                    use_parallel_executor)
+                with self.assertRaises(ValueError):
+                    self._test_feed_data_shape_mismatch(use_cuda,
+                                                        use_parallel_executor)
 
     def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
@@ -128,8 +122,6 @@ class TestFeedData(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             in_data, label, loss = self._simple_fc_net(
                 in_size, label_size, self.class_num, self.hidden_sizes)
-            print("in_data out of net need check feed " + str(
-                in_data.need_check_feed))
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import data
 import logging
 import os
 import multiprocessing
@@ -22,7 +23,6 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
-from .data import check_feed_shape_type
 from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
@@ -452,8 +452,6 @@ class Executor(object):
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
-                var = global_block.var(feed_var_name)
-                check_feed_shape_type(var, cur_feed)
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
@@ -500,8 +498,6 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
-                var = program.global_block().var(feed_name)
-                check_feed_shape_type(var, feed[feed_name])
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
@@ -651,6 +647,14 @@ class Executor(object):
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
+        if feed is not None:
+            global_block = program._program.global_block(
+            ) if compiled else program.global_block()
+            for feed_target_name in feed:
+                var = global_block.var(feed_target_name)
+                data.check_feed_shape_type(var, feed[feed_target_name])
+
         # For backward compatibility, run directly.
         if not compiled:
             return self._run_program(

@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+import executor
+import numpy as np
+
+from . import core
 from .framework import convert_np_dtype_to_dtype_
 from .layer_helper import LayerHelper
 
@@ -67,19 +70,18 @@ def check_feed_shape_type(var, feed):
            var(Variable): the Variable object
            feed(list|np.array): the feed value
     """
-    print(var.name + " need check feed: " + str(var.need_check_feed))
-    if var.need_check_feed:
-        numpy_feed = as_numpy(feed) if isinstance(
-            feed, core.LodTensorArray) else numpy.array(
+    if var.desc.need_check_feed():
+        numpy_feed = executor.as_numpy(feed) if isinstance(
+            feed, core.LoDTensorArray) else np.array(
                 feed, copy=False)
-        if not dimension_is_compatible_with(numpy_feed.shape, var.shape()):
+        if not dimension_is_compatible_with(numpy_feed.shape, var.shape):
             raise ValueError('Cannot feed value of shape %r for Variable %r, '
                              'which has shape %r' %
-                             (numpy_feed.shape, var.name(), var.shape()))
-        if not dtype_is_compatible_with(numpy_feed.dtype, var.dtype()):
+                             (numpy_feed.shape, var.name, var.shape))
+        if not dtype_is_compatible_with(numpy_feed.dtype, var.dtype):
             raise ValueError('Cannot feed value of type %r for Variable %r, '
                              'which has type %r' %
-                             (numpy_feed.dtype, var.name(), var.dtype()))
+                             (numpy_feed.dtype, var.name, var.dtype))
     return True
 
 
@@ -93,9 +95,10 @@ def dtype_is_compatible_with(first, second):
     Returns:
       Whether the two types are same
     """
-
-    first = convert_np_dtype_to_dtype_(first)
-    second = convert_np_dtype_to_dtype_(second)
+    if not isinstance(first, core.VarDesc.VarType):
+        first = convert_np_dtype_to_dtype_(first)
+    if not isinstance(second, core.VarDesc.VarType):
+        second = convert_np_dtype_to_dtype_(second)
     return first == second
 
 
