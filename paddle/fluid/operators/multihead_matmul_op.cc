@@ -77,8 +77,8 @@ class MultiHeadMatMulOp : public framework::OperatorWithKernel {
                       "Input(BiasQ) of MultiheadOp should not be null.");
     PADDLE_ENFORCE_EQ(context->HasInput("BiasQK"), true,
                       "Input(BiasQK) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of MatMulOp should not be null.");
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+                      "Output(Out) of MatMulOp should not be null.");
 
     auto dim_q = context->GetInputDim("Q");
     PADDLE_ENFORCE_GT(dim_q.size(), 2,
