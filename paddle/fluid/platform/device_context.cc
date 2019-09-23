@@ -308,7 +308,7 @@ bool CUDADeviceContext::tensor_core_available() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this);
+  return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

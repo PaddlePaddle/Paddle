@@ -154,13 +154,13 @@ def __bootstrap__():
     read_env_flags = [
         'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
         'eager_delete_scope', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
-        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
-        'memory_fraction_of_eager_deletion', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname', 'inner_op_parallelism', 'enable_parallel_graph',
-        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
-        'fuse_parameter_memory_size', 'tracer_profile_fname', 'dygraph_debug'
+        'paddle_num_threads', 'dist_threadpool_size', 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -177,6 +177,7 @@ def __bootstrap__():
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('rpc_retry_times')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
         read_env_flags.append('rpc_send_thread_num')
@@ -204,7 +205,8 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time'
+            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

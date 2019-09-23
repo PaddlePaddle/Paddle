@@ -21,6 +21,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 import multiprocessing
+import six
 import sys
 
 from six.moves.queue import Queue
@@ -390,11 +391,15 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     assert type(readers) is list and len(readers) > 0
 
     def _read_into_queue(reader, queue):
-        for sample in reader():
-            if sample is None:
-                raise ValueError("sample has None")
-            queue.put(sample)
-        queue.put(None)
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None")
+                queue.put(sample)
+            queue.put(None)
+        except:
+            queue.put("")
+            six.reraise(*sys.exc_info())
 
     def queue_reader():
         queue = multiprocessing.Queue(queue_size)
@@ -409,16 +414,23 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             sample = queue.get()
             if sample is None:
                 finish_num += 1
+            elif sample == "":
+                raise ValueError("multiprocess reader raises an exception")
             else:
                 yield sample
 
     def _read_into_pipe(reader, conn):
-        for sample in reader():
-            if sample is None:
-                raise ValueError("sample has None!")
-            conn.send(json.dumps(sample))
-        conn.send(json.dumps(None))
-        conn.close()
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None!")
+                conn.send(json.dumps(sample))
+            conn.send(json.dumps(None))
+            conn.close()
+        except:
+            conn.send(json.dumps(""))
+            conn.close()
+            six.reraise(*sys.exc_info())
 
     def pipe_reader():
         conns = []
@@ -442,6 +454,10 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                     finish_num += 1
                     conn.close()
                     conn_to_remove.append(conn)
+                elif sample == "":
+                    conn.close()
+                    conn_to_remove.append(conn)
+                    raise ValueError("multiprocess reader raises an exception")
                 else:
                     yield sample
 
