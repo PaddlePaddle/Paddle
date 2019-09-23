@@ -416,7 +416,7 @@ class Variable(object):
         stop_gradient (bool): True if the variable will stop to calculate its
             gradients when backward. Default: False.
         is_data (bool): True if the variable is an input data. Default: False
-        check_feed (bool): True if the variable is an input data and have
+        need_check_feed (bool): True if the variable is an input data and have
             to check the feed data shape and dtype. Default: False
 
     Notes:
@@ -446,7 +446,7 @@ class Variable(object):
                  error_clip=None,
                  stop_gradient=False,
                  is_data=False,
-                 check_feed=False,
+                 need_check_feed=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -534,6 +534,9 @@ class Variable(object):
                             "persistable is {2}. They are not matched".format(
                                 self.name, self.persistable, persistable))
 
+            if need_check_feed and is_new_var:
+                self.desc.set_need_check_feed(need_check_feed)
+
             if capacity is not None:
                 if is_new_var:
                     self.desc.set_capacity(capacity)
@@ -546,7 +549,7 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
-            self.check_feed = check_feed
+            self.need_check_feed = need_check_feed
 
     def detach(self):
         """
@@ -2117,7 +2120,7 @@ class Block(object):
                 lod_level=var.lod_level,
                 persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data,
-                check_feed=var.check_feed)
+                check_feed=var.need_check_feed)
         return ret_var
 
 
@@ -3697,8 +3700,8 @@ class Program(object):
         for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
-            if var.check_feed:
-                self.global_block().var(var.name).check_feed = True
+            if var.need_check_feed:
+                self.global_block().var(var.name).need_check_feed = True
 
     def list_vars(self):
         """

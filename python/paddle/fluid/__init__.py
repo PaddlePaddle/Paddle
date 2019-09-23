@@ -32,6 +32,7 @@ if os.path.exists(legacy_core):
         raise e
 
 # import all class inside framework into fluid module
+from .data import data
 from . import framework
 from .framework import *
 # import all class inside executor into fluid module
@@ -96,6 +97,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'input',
         'layers',
         'contrib',
+        'data',
         'dygraph',
         'transpiler',
         'nets',

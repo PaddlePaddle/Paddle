@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import core
-from framework import convert_np_dtype_to_dtype_
+from .framework import convert_np_dtype_to_dtype_
+from .layer_helper import LayerHelper
 
-__all__ = ['data']
+__all__ = ['data', 'check_feed_shape_type']
 
 
 def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
@@ -55,10 +56,10 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
         stop_gradient=True,
         lod_level=0,
         is_data=True,
-        check_feed=True)
+        need_check_feed=True)
 
 
-def var_check_feed(var, feed):
+def check_feed_shape_type(var, feed):
     """Returns True if the variable doesn't require feed check or it is
        compatible with the shape and dtype of thefeed value.
     
@@ -66,8 +67,8 @@ def var_check_feed(var, feed):
            var(Variable): the Variable object
            feed(list|np.array): the feed value
     """
-
-    if var.check_feed:
+    print(var.name + " need check feed: " + str(var.need_check_feed))
+    if var.need_check_feed:
         numpy_feed = as_numpy(feed) if isinstance(
             feed, core.LodTensorArray) else numpy.array(
                 feed, copy=False)

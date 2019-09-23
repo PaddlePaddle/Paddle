@@ -22,6 +22,7 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
+from .data import check_feed_shape_type
 from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
@@ -452,7 +453,7 @@ class Executor(object):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
                 var = global_block.var(feed_var_name)
-                var_check_feed(var, cur_feed)
+                check_feed_shape_type(var, cur_feed)
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
@@ -500,7 +501,7 @@ class Executor(object):
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
                 var = program.global_block().var(feed_name)
-                var_check_feed(var, feed[feed_name])
+                check_feed_shape_type(var, feed[feed_name])
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
