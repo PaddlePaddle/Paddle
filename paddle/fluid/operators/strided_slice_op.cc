@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_slice_op.h"
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <vector>
+#include "paddle/fluid/operators/slice_op.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +28,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
                       "Input (Input) of slice op should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
@@ -39,56 +41,55 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
 
-    PADDLE_ENFORCE_EQ(starts.size(), ends.size(),
-                      "starts and ends dim size must to be same");
-    PADDLE_ENFORCE_EQ(ends.size(), strides.size(),
-                      "ends and strides dim size must to be same");
-    PADDLE_ENFORCE_EQ(ends.size(), axes.size(),
-                      "axes, end and start dim size must to be same");
+    auto starts_size = starts.size();
+    auto ends_size = ends.size();
+    auto strides_size = strides.size();
 
+    if (ctx->HasInputs("StartsTensorList")) {
+      auto StartsTensorList = ctx->Inputs("StartsTensorList");
+      PADDLE_ENFORCE_GT(StartsTensorList.size(), 0,
+                        "StartsTensorList size can't be zero");
+      starts_size = StartsTensorList.size();
+    }
+    if (ctx->HasInputs("EndsTensorList")) {
+      auto EndsTensorList = ctx->Inputs("EndsTensorList");
+      PADDLE_ENFORCE_GT(EndsTensorList.size(), 0,
+                        "EndsTensorList size can't be zero");
+      ends_size = EndsTensorList.size();
+    }
+    if (ctx->HasInputs("StridesTensorList")) {
+      auto StridesTensorList = ctx->Inputs("StridesTensorList");
+      PADDLE_ENFORCE_GT(StridesTensorList.size(), 0,
+                        "StridesTensorList size can't be zero");
+      strides_size = StridesTensorList.size();
+    }
+
+    auto tensor_input = true;
+    if (ctx->HasInput("EndsTensor") == false) {
+      tensor_input = false;
+      PADDLE_ENFORCE_EQ(ends_size, axes.size(),
+                        "The size of ends must be equal to the size of axes.");
+    }
+    if (ctx->HasInput("StartsTensor") == false) {
+      tensor_input = false;
+      PADDLE_ENFORCE_EQ(
+          starts_size, axes.size(),
+          "The size of starts must be equal to the size of axes.");
+    }
+    if (ctx->HasInput("StridesTensor") == false) {
+      tensor_input = false;
+      PADDLE_ENFORCE_EQ(
+          strides_size, axes.size(),
+          "The size of strides must be equal to the size of axes.");
+    }
     // we need to analysis strided slice op is valid for
     // the parameter that we get from python front
-    int stride_index, start_index, end_index;
-    std::vector<int> out_dims_vector(in_dims.size());
-    for (int i = 0; i < in_dims.size(); i++) {
-      out_dims_vector[i] = in_dims[i];
-    }
-    for (size_t i = 0; i < starts.size(); i++) {
-      PADDLE_ENFORCE_NE(strides[i], 0, "stride must not to be zero");
-      int axes_index = axes[i];
-      start_index = starts[i];
-      end_index = ends[i];
-      stride_index = strides[i];
-      int axis_size = in_dims[axes_index];
-      if (axis_size < 0) {
-        continue;
-      }
-
-      if (start_index < 0) {
-        start_index = start_index + axis_size;
-      }
-      if (end_index < 0) {
-        end_index = end_index + axis_size;
-      }
-
-      if (stride_index < 0) {
-        start_index = start_index + 1;
-        end_index = end_index + 1;
-      }
-
-      bool zero_dim_condition =
-          ((stride_index < 0 && (start_index <= end_index)) ||
-           (stride_index > 0 && (start_index >= end_index)));
-      PADDLE_ENFORCE_EQ(zero_dim_condition, false,
-                        "starts and end must meet requirement in different "
-                        "stride conditiont");
-      int left = std::max(0, std::min(start_index, end_index));
-      int right = std::min(axis_size, std::max(start_index, end_index));
-      int step = std::abs(stride_index);
-      auto out_dims_index = (std::abs(right - left) + step - 1) / step;
-
-      out_dims_vector[axes_index] = out_dims_index;
+    std::vector<int> out_dims_vector(in_dims.size(), -1);
+    if (!tensor_input) {
+      StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
+                          out_dims_vector.data(), axes.size(), true);
     }
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
 
@@ -98,9 +99,21 @@ class StridedSliceOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
                                    ctx.Input<Tensor>("Input")->place());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+      return expected_kernel_type;
+    }
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -110,14 +123,57 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "Tensor of data to extract slices from.");
     AddOutput("Out", "Sliced data tensor.");
 
+    AddInput("StartsTensor",
+             "(Tensor<int32>, optional) If provided, slice will use this."
+             "It has the highest priority of StartsTensor, StartsTensorList "
+             "and attr(starts).")
+        .AsDispensable();
+    AddInput("EndsTensor",
+             "(Tensor<int32>, optional) If provided, slice will use this."
+             "It has the highest priority of EndsTensor, EndsTensorList and "
+             "attr(ends).")
+        .AsDispensable();
+    AddInput(
+        "StridesTensor",
+        "(Tensor<int32>, optional) If provided, slice will use this."
+        "It has the highest priority of StridesTensor, StridesTensorList and "
+        "attr(ends).")
+        .AsDispensable();
+    AddInput(
+        "StartsTensorList",
+        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
+        "The shape of the tensor in vector MUST BE [1]."
+        "It has higher priority compare with attr(starts).")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput(
+        "EndsTensorList",
+        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
+        "The shape of the tensor in vector MUST BE [1]."
+        "It has higher priority compare with attr(ends).")
+        .AsDuplicable()
+        .AsDispensable();
+    AddInput(
+        "StridesTensorList",
+        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
+        "The shape of the tensor in vector MUST BE [1]."
+        "It has higher priority compare with attr(ends).")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<std::vector<int>>(
         "axes", "(list<int> Axes stride from the start to the end)");
     AddAttr<std::vector<int>>(
-        "starts", "(list<int>)  start  that the tensor slice start.");
+        "starts", "(list<int>)  start  that the tensor slice start.")
+        .SetDefault({});
     AddAttr<std::vector<int>>("ends",
-                              "(list<int>) end that the tensor slice end");
+                              "(list<int>) end that the tensor slice end")
+        .SetDefault({});
     AddAttr<std::vector<int>>(
-        "strides", "(list<int> stride stride from the start to the end)");
+        "strides", "(list<int> stride stride from the start to the end)")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "infer_flags", "(list<int>) Flags of inferring dims in attributes.")
+        .SetDefault({});
     AddComment(R"DOC(
 Strided Slice Operator.
 Instead of calling this op directly most users will want to use the
@@ -133,7 +189,7 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       "Input(Out@GRAD) should not be null");
@@ -145,10 +201,22 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
         ctx.GetPlace());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+      return expected_kernel_type;
+    }
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -158,9 +226,15 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpDescMaker {
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* bind = new framework::OpDesc();
+    auto *bind = new framework::OpDesc();
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetInput("Input", Input("Input"));
+    bind->SetInput("StartsTensor", Input("StartsTensor"));
+    bind->SetInput("EndsTensor", Input("EndsTensor"));
+    bind->SetInput("StridesTensor", Input("StridesTensor"));
+    bind->SetInput("StartsTensorList", Input("StartsTensorList"));
+    bind->SetInput("EndsTensorList", Input("EndsTensorList"));
+    bind->SetInput("StridesTensorList", Input("StridesTensorList"));
     bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     bind->SetAttrMap(Attrs());
     bind->SetType("strided_slice_grad");
