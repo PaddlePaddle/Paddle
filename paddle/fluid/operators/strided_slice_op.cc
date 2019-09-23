@@ -121,7 +121,7 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input", "Tensor of data to extract slices from.");
-    AddOutput("Out", "Sliced data tensor.");
+    AddOutput("Out", "Strided Sliced data tensor.");
 
     AddInput("StartsTensor",
              "(Tensor<int32>, optional) If provided, slice will use this."
@@ -157,19 +157,19 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
         "StridesTensorList",
         "(vector<Tensor<int32>>, optional) If provided, slice will use this."
         "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(ends).")
+        "It has higher priority compare with attr(strides).")
         .AsDuplicable()
         .AsDispensable();
     AddAttr<std::vector<int>>(
-        "axes", "(list<int> Axes stride from the start to the end)");
-    AddAttr<std::vector<int>>(
-        "starts", "(list<int>)  start  that the tensor slice start.")
-        .SetDefault({});
+        "axes", "(list<int>) Axes that `starts` and `ends` apply to.")
+        AddAttr<std::vector<int>>(
+            "starts", "(list<int>) Start indices for the strided slice start.")
+            .SetDefault({});
     AddAttr<std::vector<int>>("ends",
-                              "(list<int>) end that the tensor slice end")
+                              "(list<int>) End indices the tensor slice end")
         .SetDefault({});
     AddAttr<std::vector<int>>(
-        "strides", "(list<int> stride stride from the start to the end)")
+        "strides", "(list<int> Stride step from the start to the end)")
         .SetDefault({});
     AddAttr<std::vector<int>>(
         "infer_flags", "(list<int>) Flags of inferring dims in attributes.")

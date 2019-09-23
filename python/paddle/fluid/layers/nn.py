@@ -10817,42 +10817,48 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides = [1, 1]
+                strides=[1, 1]
             Then:
-                result = [ [5, 6, 7] ]
+                result = [ [5, 6, 7], ]
         
         Case2:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [0, -1]
-                ends = [-1, 0]
-                strides = [1, -1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
             Then:
-                result = [ [4, 3, 2] ]
-    Atrgs:
-       input (Varibale): the input variable.
-       axes(List):axis we need to slice
-       starts (List): the start index in axis
-       ends (List): the end index in axis
-       strides (List): the stride length when we do slice operation
-    Returns
-       out(Variable): the result by strided_slice Op
-    
+                result = [ [2], ]
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
-            starts = [1, 0, 2]
-            ends = [3, 3, 4]
-            axes = [0, 1, 2]
-            strides= [1, 1, 1]
 
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides=[1, 1, 1]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
     """
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
