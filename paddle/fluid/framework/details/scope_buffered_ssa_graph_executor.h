@@ -72,6 +72,10 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+
+  std::vector<Variable*> tensor_array_vars_;
+
+  bool DropScopeOrNot() const;
 };
 }  // namespace details
 }  // namespace framework
