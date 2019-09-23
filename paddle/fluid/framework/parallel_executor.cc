@@ -565,21 +565,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
-    if (graph_num > 1) {
-      LOG(WARNING)
-          << "The number of graph should be only one, "
-             "but the current graph has "
-          << ir::GraphNum(*graph)
-          << " sub_graphs. If you want to see the nodes of the "
-             "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
-             "to specify the output dir. NOTES: if you not do training, "
-             "please don't pass loss_var_name.";
-    }
-  }
-
   std::unordered_map<Scope *, Scope *> scope_map;
   for (auto *scope : member_->local_scopes_) {
     auto &local_exec_scope = scope->NewScope();
