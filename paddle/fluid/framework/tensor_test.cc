@@ -38,14 +38,11 @@ TEST(Tensor, DataAssert) {
     src_tensor.data<double>();
   } catch (platform::EnforceNotMet err) {
     caught = true;
-    std::string msg =
-        "PaddleEnforceError. holder_ should not be null\nTensor holds no "
-        "memory. Call "
-        "Tensor::mutable_data first.";
-    const char* what = err.what();
-    for (size_t i = 0; i < msg.length(); ++i) {
-      ASSERT_EQ(what[i], msg[i]);
-    }
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
+                            "memory. Call "
+                            "Tensor::mutable_data first.") !=
+                std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -156,14 +153,11 @@ TEST(Tensor, ShareDataWith) {
       dst_tensor.ShareDataWith(src_tensor);
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
-      std::string msg =
-          "PaddleEnforceError. holder_ should not be null\nTensor holds no "
-          "memory. Call "
-          "Tensor::mutable_data first.";
-      const char* what = err.what();
-      for (size_t i = 0; i < msg.length(); ++i) {
-        ASSERT_EQ(what[i], msg[i]);
-      }
+      std::string ex_msg = err.what();
+      EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
+                              "memory. Call "
+                              "Tensor::mutable_data first.") !=
+                  std::string::npos);
     }
     ASSERT_TRUE(caught);
 
