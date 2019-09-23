@@ -220,6 +220,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mse_loss',
 ]
 
 kIgnoreIndex = -100
@@ -14215,3 +14216,40 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
                'scale': scale,
                'offset': offset})
     return out
+
+
+def mse_loss(input, label):
+    """
+    **Mean square error layer**
+
+    This layer accepts input predications and target label and returns the mean square error.
+
+    The loss can be described as:
+
+    .. math::
+        
+        Out = mean((X - Y)^2)
+
+    In the above equation:
+
+        * :math:`X`: Input predications, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+        input (Variable): Input tensor, has predictions.
+        label (Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the mean square error difference of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+            mse = fluid.layers.mse_loss(input=y_predict, label=y)
+
+    """
+    return reduce_mean(square_error_cost(input, label))
