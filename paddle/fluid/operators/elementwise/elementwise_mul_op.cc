@@ -48,11 +48,6 @@ struct SameDimsElemwiseMul<
   }
 };
 
-template struct SameDimsElemwiseMul<platform::CPUDeviceContext, float>;
-template struct SameDimsElemwiseMul<platform::CPUDeviceContext, double>;
-template struct SameDimsElemwiseMul<platform::CPUDeviceContext, int>;
-template struct SameDimsElemwiseMul<platform::CPUDeviceContext, int64_t>;
-
 class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;

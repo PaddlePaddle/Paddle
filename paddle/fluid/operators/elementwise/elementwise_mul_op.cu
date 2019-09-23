@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/float16.h"
 
-#define TILE_SIZE 512
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
@@ -33,31 +35,26 @@ struct SameDimsElemwiseMul<platform::CUDADeviceContext, T> {
   }
 };
 
+struct MulFp16Functor {
+  inline void operator()(const half* x, const half* y, half* z, int64_t size,
+                         const framework::ExecutionContext& ctx, dim3 gird_size,
+                         dim3 block_size) {
+    SameDimsElemwiseMulCUDAKernel<<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x, y, z, size);
+  }
+};
+
 template <>
 struct SameDimsElemwiseMul<platform::CUDADeviceContext, platform::float16> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    auto size = x->numel();
-    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-    dim3 block_size = dim3(TILE_SIZE, 1);
-    const half* x2 =
-        reinterpret_cast<const half*>(x->data<platform::float16>());
-    const half* y2 =
-        reinterpret_cast<const half*>(y->data<platform::float16>());
-    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-    SameDimsElemwiseMulCUDAKernel<<<
-        gird_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x2, y2, z2, size);
+    CommonSameDimsElemwise<MulFp16Functor> same_dims_elemwise_mul;
+    same_dims_elemwise_mul(ctx, x, y, z);
   }
 };
-
-template struct SameDimsElemwiseMul<platform::CUDADeviceContext, float>;
-template struct SameDimsElemwiseMul<platform::CUDADeviceContext, double>;
-template struct SameDimsElemwiseMul<platform::CUDADeviceContext, int>;
-template struct SameDimsElemwiseMul<platform::CUDADeviceContext, int64_t>;
-template struct SameDimsElemwiseMul<platform::CUDADeviceContext, plat::float16>;
 
 template <typename T>
 static __global__ void SimpleElemwiseMulGradCUDAKernel(const T* x, const T* y,

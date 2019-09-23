@@ -48,11 +48,6 @@ struct SameDimsElemwiseDiv<
   }
 };
 
-template struct SameDimsElemwiseDiv<platform::CPUDeviceContext, float>;
-template struct SameDimsElemwiseDiv<platform::CPUDeviceContext, double>;
-template struct SameDimsElemwiseDiv<platform::CPUDeviceContext, int>;
-template struct SameDimsElemwiseDiv<platform::CPUDeviceContext, int64_t>;
-
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }

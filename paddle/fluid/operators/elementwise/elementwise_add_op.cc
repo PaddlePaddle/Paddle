@@ -48,11 +48,6 @@ struct SameDimsElemwiseAdd<
   }
 };
 
-template struct SameDimsElemwiseAdd<platform::CPUDeviceContext, float>;
-template struct SameDimsElemwiseAdd<platform::CPUDeviceContext, double>;
-template struct SameDimsElemwiseAdd<platform::CPUDeviceContext, int>;
-template struct SameDimsElemwiseAdd<platform::CPUDeviceContext, int64_t>;
-
 class ElementwiseAddDoubleGradDescMaker
     : public framework::SingleGradOpDescMaker {
  public:

@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/float16.h"
 
-#define TILE_SIZE 512
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
@@ -36,31 +35,26 @@ struct SameDimsElemwiseDiv<platform::CUDADeviceContext, T> {
   }
 };
 
+struct DivFp16Functor {
+  inline void operator()(const half* x, const half* y, half* z, int64_t size,
+                         const framework::ExecutionContext& ctx, dim3 gird_size,
+                         dim3 block_size) {
+    SameDimsElemwiseDivCUDAKernel<<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x, y, z, size);
+  }
+};
+
 template <>
 struct SameDimsElemwiseDiv<platform::CUDADeviceContext, platform::float16> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    auto size = x->numel();
-    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-    dim3 block_size = dim3(TILE_SIZE, 1);
-    const half* x2 =
-        reinterpret_cast<const half*>(x->data<platform::float16>());
-    const half* y2 =
-        reinterpret_cast<const half*>(y->data<platform::float16>());
-    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
-    SameDimsElemwiseDivCUDAKernel<<<
-        gird_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x2, y2, z2, size);
+    CommonSameDimsElemwise<DivFp16Functor> same_dims_elemwise_div;
+    same_dims_elemwise_div(ctx, x, y, z);
   }
 };
-
-template struct SameDimsElemwiseDiv<platform::CUDADeviceContext, float>;
-template struct SameDimsElemwiseDiv<platform::CUDADeviceContext, double>;
-template struct SameDimsElemwiseDiv<platform::CUDADeviceContext, int>;
-template struct SameDimsElemwiseDiv<platform::CUDADeviceContext, int64_t>;
-template struct SameDimsElemwiseDiv<platform::CUDADeviceContext, plat::float16>;
 
 template <typename T>
 static __global__ void SimpleElemwiseDivGradCUDAKernel(const T* x, const T* y,
@@ -120,8 +114,6 @@ REGISTER_OP_CUDA_KERNEL(
     elementwise_div_grad_grad,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         float>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::float16>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         double>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
