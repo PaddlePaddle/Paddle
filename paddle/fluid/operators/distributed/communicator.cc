@@ -247,22 +247,25 @@ void Communicator::RecvNonIndependent() {
 }
 
 void Communicator::RecvAll() {
-  VLOG(1) << "parallel run recv graph";
+  VLOG(2) << "parallel run recv graph";
   if (!running_) return;
-  auto before_send = GetCurrentUS();
+  auto before_recv = GetCurrentUS();
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(recv_varname_to_ctx_.size());
   for (auto &iter : recv_varname_to_ctx_) {
     auto recv_task = [this, &iter] {
       auto &var_name = iter.first;
-      VLOG(1) << "recv var " << var_name;
+      VLOG(2) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
       if (!FLAGS_communicator_fake_rpc && !is_geo_sgd_) {
         recv_functor(iter.second, *recv_scope_);
       }
       // for geo-sgd
       if(!FLAGS_communicator_fake_rpc && is_geo_sgd_) {
+        auto before_parameter_recv = GetCurrentUS();
         recv_functor(iter.second, *pserver_scope_.get());
+        auto after_parameter_recv = GetCurrentUS();
+        VLOG(1) << "run parameter recv var "<< var_name << " use time " << after_parameter_recv - before_parameter_recv;
         RecvUpdateVars(var_name);
       }
     };
@@ -272,7 +275,7 @@ void Communicator::RecvAll() {
     task.wait();
   }
   auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_send;
+  VLOG(1) << "run recv graph use time " << after_recv - before_recv;
 }
 
 void Communicator::RecvThread() {
@@ -537,6 +540,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
   // trainer thread send sparse ids after batch training
   VLOG(4) << "Geo Sgd Send Sparse ids, shape: "<<sparse_var_names.size()
           <<" using scope: "<<&scope;
+  auto before_run_send_ = GetCurrentUS();
   // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
   for(size_t i = 1;i < sparse_var_tables.size();i++) {
@@ -560,11 +564,15 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     }
   }
   need_push_queue_->Push(ids_table);
+  auto after_run_send_ = GetCurrentUS();
+  VLOG(1) << "run GeoSgdSend use time "
+            << after_run_send_ -  before_run_send_;
   VLOG(4)<<"GeoSgd send complete";
 }
 
 std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
                                              const std::string &var_name) {
+  auto before_run_ids_merge_ = GetCurrentUS();
   std::unordered_set<int64_t> ids_set;
   VLOG(1)<<"Sparse ids merge name: "<<var_name;
   VLOG(1)<<"ids_send_vec Size: "<< ids_send_vec.size();
@@ -575,6 +583,9 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMa
       }
     }
   }
+  auto after_run_ids_merge_ = GetCurrentUS();
+  VLOG(1) << "run SparseIdsMerge use time "
+            << after_run_ids_merge_ -  before_run_ids_merge_;
   return ids_set;
 }
 
@@ -592,7 +603,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
   
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto dims = var_x_tensor.dims();
-  VLOG(1)<<"Var "<<var_name<<" Dim[0]: "<<dims[0]<<" Dim[1] "<<dims[1];
+  VLOG(2)<<"Var "<<var_name<<" Dim[0]: "<<dims[0]<<" Dim[1] "<<dims[1];
 
   // create temp var for sub
   auto *var_y_sub = old_scope_->Var(VarToDeltaVar(var_name));
@@ -632,7 +643,7 @@ void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unorder
   auto before_run_send_sparse = GetCurrentUS();
 
   auto ids_num = (long)ids_table.size();
-  VLOG(1) << "Ids nums is : "<<ids_num;
+  VLOG(2) << "Ids nums is : "<<ids_num;
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
