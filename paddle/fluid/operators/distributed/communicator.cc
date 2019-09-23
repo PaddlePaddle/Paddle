@@ -211,7 +211,7 @@ void Communicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
 
-    VLOG(3) << "run send graph use time "
+    VLOG(1) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     RecvNonIndependent();
   }
@@ -637,7 +637,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
 }
 
 void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table) {
-  VLOG(1) << "Geo-Sgd Communicator Send update Sparse Vars: "<< var_name;
+  VLOG(2) << "Geo-Sgd Communicator Send update Sparse Vars: "<< var_name;
   auto before_run_send_sparse = GetCurrentUS();
 
   auto ids_num = (long)ids_table.size();
