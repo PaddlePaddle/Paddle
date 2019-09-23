@@ -18,7 +18,17 @@ import sys
 
 from .layer_helper import LayerHelper
 from .layers.utils import *
+from . import core
+from .framework import Variable
 import numpy as np
+import os
+import six
+import multiprocessing
+from six.moves import zip, range, xrange
+import warnings
+from . import compiler
+from .. import compat as cpt
+from .trainer_factory import TrainerFactory
 
 __all__ = ['conv2d']
 
@@ -89,11 +99,10 @@ def conv2d(input,
         groups = 1
         assert num_filter_channels == num_channels
     else:
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        if num_channels // groups != num_filter_channels:
-            raise ValueError("num_filter_channels must equal to num_channels\
-                              divided by groups.")
+        #num_channels must be divisible by groups.
+        assert num_channels % groups == 0
+        # num_filter_channels must equal to num_channels divided by groups.
+        assert num_channels // groups == num_filter_channels
 
     stride = convert_to_list(stride, 2, 'stride')
     padding = convert_to_list(padding, 2, 'padding')
