@@ -134,13 +134,13 @@ void Communicator::SendThread() {
           auto &var_name = iter.first;
           auto send_task = [this, &var_name] {
             auto origin_var_name = DeltaVarToVar(var_name);
-            auto before_send = GetCurrentUS();
             if(var_list_[origin_var_name] == true) {
               auto ids_set = SparseIdsMerge(ids_send_vec_ , origin_var_name);
               SendUpdateSparseVars(origin_var_name,ids_set);
             } else {
               SendUpdateDenseVars(origin_var_name);
             }
+            auto before_send = GetCurrentUS();
             auto send_functor = distributed::ParameterSend<float>();   
             auto &ctx = send_varname_to_ctx_.at(var_name);
             // delta parameter is in delta scope
