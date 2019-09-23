@@ -118,6 +118,25 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.check_output()
 
 
+class TestOneHotOp_out_of_range(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot'
+        depth = 10
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
+
+        out = np.zeros(shape=(np.product(x.shape[:-1]),
+                              depth)).astype('float32')
+
+        self.inputs = {'X': (x, x_lod)}
+        self.attrs = {'depth': depth, 'allow_out_of_range': True}
+        self.outputs = {'Out': (out, x_lod)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestOneHotOp_exception(OpTest):
     def setUp(self):
         self.op_type = 'one_hot'

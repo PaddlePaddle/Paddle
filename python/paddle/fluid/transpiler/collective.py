@@ -134,6 +134,9 @@ class Collective(object):
         block = self.startup_program.global_block()
         ring_id = -1
         for param in block.iter_parameters():
+            if param.is_distributed:
+                continue
+
             ring_id = (ring_id + 1) % self.nrings
             block.append_op(
                 type='c_broadcast',
@@ -219,6 +222,9 @@ class GradAllReduce(Collective):
                 for i in range(0, len(op_role_var), 2):
                     param = block.vars[op_role_var[i]]
                     grad = block.vars[op_role_var[i + 1]]
+                    if param.is_distributed:
+                        continue
+
                     if offset == idx:
                         offset += 1
                         block._insert_op(
@@ -272,7 +278,12 @@ class LocalSGD(Collective):
         Collective._transpile_startup_program(self)
 
         block = self.startup_program.global_block()
+        non_dist_params = []
         for param in block.iter_parameters():
+            if not param.is_distributed:
+                non_dist_params.append(param)
+
+        for param in non_dist_params:
             snapshot = block.create_var(
                 name=self.snapshot_name(param.name),
                 shape=param.shape,
@@ -294,6 +305,9 @@ class LocalSGD(Collective):
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_update_op(op):
                 param = block.vars[op.input('Param')[0]]
+                if param.is_distributed:
+                    continue
+
                 snapshot = block.create_var(
                     name=self.snapshot_name(param.name),
                     shape=param.shape,

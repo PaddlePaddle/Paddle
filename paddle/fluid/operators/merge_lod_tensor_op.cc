@@ -28,9 +28,9 @@ class MergeLoDTensorOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+ protected:
+  void RunBase(const framework::Scope &scope,
+               const platform::Place &dev_place) const {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -125,6 +125,33 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       out_lod->insert(out_lod->begin(), x.lod()[i]);
     }
   }
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    RunBase(scope, dev_place);
+  }
+};
+
+class MergeLoDTensorInferOp : public MergeLoDTensorOp {
+ public:
+  MergeLoDTensorInferOp(const std::string &type,
+                        const framework::VariableNameMap &inputs,
+                        const framework::VariableNameMap &outputs,
+                        const framework::AttributeMap &attrs)
+      : MergeLoDTensorOp(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    RunBase(scope, dev_place);
+    framework::Variable *in_true_var = scope.FindVar(Input("InTrue"));
+    framework::Variable *in_false_var = scope.FindVar(Input("InFalse"));
+    in_true_var->Clear();
+    in_false_var->Clear();
+    in_true_var->GetMutable<framework::LoDTensor>();
+    in_false_var->GetMutable<framework::LoDTensor>();
+  }
 };
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -196,3 +223,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape, ops::MergeLoDTensorGradMaker);
+REGISTER_OPERATOR(merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
+                  ops::MergeLoDTensorOpProtoMaker,
+                  ops::MergeLoDTensorInferShape,
+                  paddle::framework::EmptyGradOpMaker);

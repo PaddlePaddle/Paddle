@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/string/string_helper.h"
+
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
 
 namespace paddle {
 namespace framework {
@@ -58,12 +64,99 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
 
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
+
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
+  scale_datanorm_ = desc.scale_datanorm();
+  dump_slot_ = desc.dump_slot();
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+  }
+  adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+}
+
+void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
+  writer_.Reset(queue);
+}
+
+void DownpourWorker::SetNeedDump(bool need_dump_field) {
+  need_dump_field_ = need_dump_field;
+}
+
+template <typename T>
+std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    return "access violation";
+  }
+  std::ostringstream os;
+  for (int64_t i = start; i < end; i++) {
+    os << ":" << tensor->data<T>()[i];
+  }
+  return os.str();
+}
+
+std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
+                                  int64_t end) {
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    return "access violation";
+  }
+  std::ostringstream os;
+  for (int64_t i = start; i < end; i++) {
+    os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
+  }
+  return os.str();
+}
+
+std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+  std::string out_val;
+  if (tensor->type() == proto::VarType::FP32) {
+    out_val = PrintLodTensorType<float>(tensor, start, end);
+  } else if (tensor->type() == proto::VarType::INT64) {
+    out_val = PrintLodTensorIntType(tensor, start, end);
+  } else if (tensor->type() == proto::VarType::FP64) {
+    out_val = PrintLodTensorType<double>(tensor, start, end);
+  } else {
+    out_val = "unsupported type";
+  }
+  return out_val;
+}
+
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+  auto& dims = tensor->dims();
+  if (tensor->lod().size() != 0) {
+    auto& lod = tensor->lod()[0];
+    return {lod[index] * dims[1], lod[index + 1] * dims[1]};
+  } else {
+    return {index * dims[1], (index + 1) * dims[1]};
+  }
+}
+
+bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
+  auto& dims = tensor->dims();
+  if (dims.size() != 2) return false;
+  if (tensor->lod().size() != 0) {
+    auto& lod = tensor->lod()[0];
+    if (lod.size() != batch_size + 1) {
+      return false;
+    }
+  } else {
+    if (dims[0] != batch_size) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -89,7 +182,12 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     VLOG(3) << "sparse_key_names_[" << i
             << "]: " << sparse_key_names_[table_id][i];
     Variable* fea_var = thread_scope_->FindVar(sparse_key_names_[table_id][i]);
+    if (fea_var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var "
+                             << sparse_key_names_[table_id][i] << " is null";
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
@@ -128,7 +226,11 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
     Variable* var = thread_scope_->FindVar(slot_name);
+    if (var == nullptr) {
+      continue;
+    }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
@@ -139,28 +241,128 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
+
+    bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
+                   adjust_ins_weight_config_.nid_slot() == emb_slot_name);
+    if (is_nid) {
+      nid_show_.clear();
+    }
+    int nid_ins_index = 0;
+
     for (int index = 0; index < len; ++index) {
       if (use_cvm_) {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data(),
                  sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+        }
         fea_idx++;
       } else {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
                  sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
           continue;
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+        }
         fea_idx++;
       }
     }
   }
+}
+
+void DownpourWorker::AdjustInsWeight() {
+#ifdef _LINUX
+  // check var and tensor not null
+  if (!adjust_ins_weight_config_.need_adjust()) {
+    VLOG(0) << "need_adjust=false, skip adjust ins weight";
+    return;
+  }
+  Variable* nid_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.nid_slot());
+  if (nid_var == nullptr) {
+    VLOG(0) << "nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* nid_tensor = nid_var->GetMutable<LoDTensor>();
+  if (nid_tensor == nullptr) {
+    VLOG(0) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  Variable* ins_weight_var =
+      thread_scope_->FindVar(adjust_ins_weight_config_.ins_weight_slot());
+  if (ins_weight_var == nullptr) {
+    VLOG(0) << "ins weight var " << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+  LoDTensor* ins_weight_tensor = ins_weight_var->GetMutable<LoDTensor>();
+  if (ins_weight_tensor == nullptr) {
+    VLOG(0) << "tensor of ins weight tensor "
+            << adjust_ins_weight_config_.ins_weight_slot()
+            << " is nullptr, skip adjust ins weight";
+    return;
+  }
+
+  float* ins_weights = ins_weight_tensor->data<float>();
+  size_t len = ins_weight_tensor->numel();  // len = batch size
+  // here we assume nid_show slot only has one feasign in each instance
+  CHECK(len == nid_show_.size()) << "ins_weight size should be equal to "
+                                 << "nid_show size, " << len << " vs "
+                                 << nid_show_.size();
+  float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
+  float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
+  int64_t nid_adjw_num = 0;
+  double nid_adjw_weight = 0.0;
+  size_t ins_index = 0;
+  for (int i = 0; i < len; ++i) {
+    float nid_show = nid_show_[i];
+    VLOG(3) << "nid_show " << nid_show;
+    if (nid_show < 0) {
+      VLOG(3) << "nid_show < 0, continue";
+      continue;
+    }
+    float ins_weight = 1.0;
+    if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
+      ins_weight = log(M_E +
+                       (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
+                           nid_adjw_ratio);
+      // count nid adjw insnum and weight
+      ++nid_adjw_num;
+      nid_adjw_weight += ins_weight;
+      // choose large ins weight
+      VLOG(3) << "ins weight new " << ins_weight << ", ins weight origin "
+              << ins_weights[ins_index];
+      if (ins_weight > ins_weights[ins_index]) {
+        VLOG(3) << "ins " << ins_index << " weight changes to " << ins_weight;
+        ins_weights[ins_index] = ins_weight;
+      }
+      ++ins_index;
+    }
+  }
+  VLOG(3) << "nid adjw info: total_adjw_num: " << nid_adjw_num
+          << ", avg_adjw_weight: " << nid_adjw_weight;
+#endif
 }
 
 void DownpourWorker::TrainFilesWithProfiler() {
@@ -191,6 +393,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double total_time = 0.0;
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
+  double adjust_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
   double push_sparse_time = 0.0;
@@ -232,6 +435,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
       timeline.Pause();
       fill_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
+      timeline.Start();
+      auto nid_iter = std::find(sparse_value_names_[tid].begin(),
+                                sparse_value_names_[tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
+      if (nid_iter != sparse_value_names_[tid].end()) {
+        AdjustInsWeight();
+      }
+      timeline.Pause();
+      adjust_ins_weight_time += timeline.ElapsedSec();
+      total_time += timeline.ElapsedSec();
     }
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
@@ -271,7 +484,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -285,7 +499,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -343,14 +558,41 @@ void DownpourWorker::TrainFilesWithProfiler() {
     if (thread_id_ == 0) {
       // should be configured here
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+        double op_sum_time = 0;
+        std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          if (op_to_time.find(op_name[i]) == op_to_time.end()) {
+            op_to_time[op_name[i]] = 0.0;
+          }
+          op_to_time[op_name[i]] += op_total_time[i];
+          op_sum_time += op_total_time[i];
         }
+        for (auto& i : op_to_time) {
+          fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+                  i.second / batch_cnt);
+        }
+        fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
+        fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
+        fprintf(stderr, "pull sparse time: %fs\n",
+                pull_sparse_time / batch_cnt);
+        fprintf(stderr, "fill sparse time: %fs\n",
+                fill_sparse_time / batch_cnt);
+        fprintf(stderr, "push sparse time: %fs\n",
+                push_sparse_time / batch_cnt);
+        fprintf(stderr, "push dense time: %fs\n", push_dense_time / batch_cnt);
+        fprintf(stderr, "collect label time: %fs\n",
+                collect_label_time / batch_cnt);
+        fprintf(stderr, "adjust ins weight time: %fs\n",
+                adjust_ins_weight_time / batch_cnt);
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+        fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
+        fprintf(stderr, "adjust ins weight time percent: %f\n",
+                adjust_ins_weight_time / total_time * 100);
         fprintf(stderr, "collect label time percent: %f\n",
                 collect_label_time / total_time * 100);
         fprintf(stderr, "fill sparse time percent: %f\n",
@@ -390,6 +632,12 @@ void DownpourWorker::TrainFiles() {
                                      &feature_values_[tid], table.fea_dim());
       CollectLabelInfo(i);
       FillSparseValue(i);
+      auto nid_iter = std::find(sparse_value_names_[tid].begin(),
+                                sparse_value_names_[tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
+      if (nid_iter != sparse_value_names_[tid].end()) {
+        AdjustInsWeight();
+      }
     }
     VLOG(3) << "fill sparse value for all sparse table done.";
 
@@ -423,7 +671,8 @@ void DownpourWorker::TrainFiles() {
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_);
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_);
       }
     }
 
@@ -433,9 +682,9 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_);
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
       }
-
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean
@@ -481,10 +730,51 @@ void DownpourWorker::TrainFiles() {
         pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
       }
     }
+    if (need_dump_field_) {
+      int batch_size = device_reader_->GetCurBatchSize();
+      std::vector<std::string> ars(batch_size);
+      for (auto& ar : ars) {
+        ar.clear();
+      }
+      auto& ins_id_vec = device_reader_->GetInsIdVec();
+      auto& ins_content_vec = device_reader_->GetInsContentVec();
+      for (size_t i = 0; i < ins_id_vec.size(); i++) {
+        ars[i] += ins_id_vec[i];
+        ars[i] = ars[i] + "\t" + ins_content_vec[i];
+      }
+      for (auto& field : dump_fields_) {
+        Variable* var = thread_scope_->FindVar(field);
+        if (var == nullptr) {
+          continue;
+        }
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        if (!CheckValidOutput(tensor, batch_size)) {
+          continue;
+        }
+        for (int i = 0; i < batch_size; ++i) {
+          auto output_dim = tensor->dims()[1];
+          std::string output_dimstr =
+              boost::lexical_cast<std::string>(output_dim);
+          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
+          auto bound = GetTensorBound(tensor, i);
+          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+        }
+      }
+      // #pragma omp parallel for
+      for (size_t i = 0; i < ars.size(); i++) {
+        if (ars[i].length() == 0) {
+          continue;
+        }
+        writer_ << ars[i];
+      }
+    }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+  }
+  if (need_dump_field_) {
+    writer_.Flush();
   }
 }
 

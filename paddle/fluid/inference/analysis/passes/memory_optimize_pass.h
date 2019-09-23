@@ -75,6 +75,7 @@ class MemoryOptimizePass : public AnalysisPass {
       int sort_kind) const;
 
   void CollectVarMemorySize(space_table_t *space_table) const;
+  void CollectVarMemorySize0(space_table_t *space_table) const;
 
   void CollectVarMemorySize(
       const std::unordered_map<std::string, size_t> &batch_var_ave_dim,

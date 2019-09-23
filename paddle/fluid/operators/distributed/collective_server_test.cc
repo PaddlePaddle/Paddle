@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdlib.h>
 #include <unistd.h>
+#include <memory>
 #include <string>
 #include <thread>  // NOLINT
 
@@ -98,6 +100,9 @@ void Gather(const std::vector<distributed::RemoteVar>& vars,
 }
 
 TEST(CollectiveServer, GPU) {
+  setenv("http_proxy", "", 1);
+  setenv("https_proxy", "", 1);
+
   platform::CUDAPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);

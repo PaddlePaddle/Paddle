@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils"""
+"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
 
 import os
 import sys
@@ -62,7 +62,7 @@ class HDFSClient(object):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
+        for k, v in configs.items():
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 

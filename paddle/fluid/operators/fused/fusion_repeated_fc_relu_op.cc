@@ -144,8 +144,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_repeated_fc_relu, ops::FusionRepeatedFCReluOp,
-                  ops::FusionRepeatedFCReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusionRepeatedFCReluOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_repeated_fc_relu,
                        ops::FusionRepeatedFCReluKernel<float>,

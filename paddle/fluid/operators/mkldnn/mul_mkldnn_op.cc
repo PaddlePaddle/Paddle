@@ -62,10 +62,10 @@ class MulPrimitiveFactory {
       return *mul_;
     }
 
-    auto src_desc = CreateMemDescriptor<XT>(&x_matrix, memory::format::nc);
+    auto src_desc = CreateMemDescriptor<XT>(&x_matrix, MKLDNNMemoryFormat::nc);
     x_input_ = CreateMemory<XT>(src_desc, &x_matrix);
     y_input_ = TransposeInputY(&y_matrix);
-    auto dst_desc = CreateMemDescriptor<OT>(output, memory::format::any);
+    auto dst_desc = CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
 
     mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, ctx);
     return *mul_;
@@ -77,14 +77,14 @@ class MulPrimitiveFactory {
                           const ExecutionContext &ctx) {
     Tensor x_tmp;
     Tensor data_matrix;
-    memory::format src_fmt = data->format();
-    memory::format dst_fmt;
+    MKLDNNMemoryFormat src_fmt = data->format();
+    MKLDNNMemoryFormat dst_fmt;
     auto src_mdesc = CreateMemDescriptor<T>(data, src_fmt);
 
     if ((data->dims().size() == 4 &&
-         src_fmt != (dst_fmt = memory::format::nchw)) ||
+         src_fmt != (dst_fmt = MKLDNNMemoryFormat::nchw)) ||
         (data->dims().size() == 5 &&
-         dst_fmt != (dst_fmt = memory::format::ncdhw))) {
+         src_fmt != (dst_fmt = MKLDNNMemoryFormat::ncdhw))) {
       auto dst_mdesc = CreateMemDescriptor<T>(data, dst_fmt);
       x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
 
@@ -92,7 +92,7 @@ class MulPrimitiveFactory {
               to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
-      x_tmp.set_format((memory::format)dst_mdesc.data.format);
+      x_tmp.set_format((MKLDNNMemoryFormat)dst_mdesc.data.format);
       data_matrix = framework::ReshapeToMatrix(x_tmp, num_col_dims);
     } else {
       data_matrix = framework::ReshapeToMatrix(*data, num_col_dims);
@@ -106,23 +106,23 @@ class MulPrimitiveFactory {
     x_input_->set_data_handle(to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
 
-    if (out->format() == memory::format::format_undef) {
+    if (out->format() == MKLDNNMemoryFormat::format_undef) {
       auto output_format = output_->get_primitive_desc().desc().data.format;
-      out->set_format((memory::format)output_format);
+      out->set_format((MKLDNNMemoryFormat)output_format);
     }
   }
 
   template <typename T>
   memory::desc CreateMemDescriptor(
-      const Tensor *tensor, memory::format format,
+      const Tensor *tensor, MKLDNNMemoryFormat format,
       memory::data_type type = platform::MKLDNNGetDataType<T>()) {
-    auto dims = framework::vectorize2int(tensor->dims());
+    auto dims = framework::vectorize<int>(tensor->dims());
     return platform::MKLDNNMemDesc(dims, type, format);
   }
 
   template <typename T>
   memory::desc CreateMemDescriptor(
-      const std::vector<int> &dims, memory::format format,
+      const std::vector<int> &dims, MKLDNNMemoryFormat format,
       memory::data_type type = platform::MKLDNNGetDataType<T>()) {
     return platform::MKLDNNMemDesc(dims, type, format);
   }
@@ -139,7 +139,7 @@ class MulPrimitiveFactory {
     auto buffer_size = dst_prim_desc.get_size();
 
     OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
-    output->set_format((memory::format)dst_prim_desc.desc().data.format);
+    output->set_format((MKLDNNMemoryFormat)dst_prim_desc.desc().data.format);
     return memory(dst_prim_desc, to_void_cast<OT>(output_data));
   }
 
@@ -156,10 +156,10 @@ class MulPrimitiveFactory {
   }
 
   memory TransposeInputY(const Tensor *input_y) {
-    auto dims = framework::vectorize2int(input_y->dims());
+    auto dims = framework::vectorize<int>(input_y->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
-    auto src_desc = CreateMemDescriptor<YT>(dims, memory::format::io);
-    auto dst_desc = CreateMemDescriptor<YT>(dims, memory::format::oi);
+    auto src_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::io);
+    auto dst_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::oi);
     return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 
@@ -207,6 +207,14 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
     auto scale_y = ctx.Attr<std::vector<float>>("scale_y");
 
+    // TODO(intel-minghui) : Remove the restriction that only supports Input(Y)
+    // as weights
+    bool enforce = std::is_same<YT, float>::value;
+    PADDLE_ENFORCE(
+        enforce == true,
+        "Input(Y) supposed to be fp32 data type since only fp32 data type is "
+        "supported in the current design of MKLDNN INT8.");
+
     auto x_matrix =
         this->template UpdateDataFormat<XT>(x_input, x_num_col_dims, ctx);
     auto y_matrix =
@@ -222,15 +230,15 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
       return *(this->mul_);
     }
 
-    auto src_desc =
-        this->template CreateMemDescriptor<XT>(&x_matrix, memory::format::nc);
+    auto src_desc = this->template CreateMemDescriptor<XT>(
+        &x_matrix, MKLDNNMemoryFormat::nc);
     this->x_input_ = this->template CreateMemory<XT>(src_desc, &x_matrix);
 
     const auto trans_y = this->TransposeInputY(&y_matrix);
     this->y_input_ = QuantInputY(trans_y, scale_y);
 
     auto dst_desc =
-        this->template CreateMemDescriptor<OT>(output, memory::format::any);
+        this->template CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
 
     this->mul_ = CreateMulPrimitive(*(this->x_input_), *(this->y_input_),
                                     dst_desc, output, ctx);
@@ -262,9 +270,9 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     auto y_dims = std::vector<int>(dims, dims + ndims);
 
     auto user_y_desc =
-        this->template CreateMemDescriptor<YT>(y_dims, memory::format::oi);
-    auto y_desc =
-        this->template CreateMemDescriptor<int8_t>(y_dims, memory::format::oi);
+        this->template CreateMemDescriptor<YT>(y_dims, MKLDNNMemoryFormat::oi);
+    auto y_desc = this->template CreateMemDescriptor<int8_t>(
+        y_dims, MKLDNNMemoryFormat::oi);
 
     return ReorderWithScale(user_y_desc, y_desc, input_y.get_data_handle(),
                             scale_y);
@@ -324,33 +332,17 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
   }
 };
 
-static std::string GetHash(const Tensor *input_x, const Tensor *input_y,
-                           const std::string &suffix) {
-  auto dim2str = [](const DDim &operand_dims) {
-    std::string str = "";
-    for (int i = 0; i < operand_dims.size(); ++i) {
-      str += std::to_string(operand_dims[i]) + "-";
-    }
-    return str;
-  };
-
-  std::string hash = std::to_string((unsigned)input_x->format()) +
-                     std::to_string((unsigned)input_x->type()) +
-                     dim2str(input_x->dims()) +
-                     std::to_string((unsigned)input_y->format()) +
-                     std::to_string((unsigned)input_y->type()) +
-                     dim2str(input_y->dims()) + suffix;
-
-  return hash;
-}
-
 /* OT: output data type */
 template <typename XT, typename YT, typename OT>
 std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine, bool enable_quant) {
-  const std::string key = GetHash(input_x, input_y, ctx.op().Output("Out"));
+  const std::string key = platform::CreateKey(
+      input_x->format(), input_x->type(),
+      framework::vectorize<int>(input_x->dims()), input_y->format(),
+      input_y->type(), framework::vectorize<int>(input_y->dims()),
+      ctx.op().Output("Out"));
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));
@@ -413,7 +405,8 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
       out->Resize(out_dims);
     }
     out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(out->format());
+    out->set_format(platform::MKLDNNFormatForSize(
+        out_dims.size(), mkldnn::memory::format::nchw));
   }
 };
 

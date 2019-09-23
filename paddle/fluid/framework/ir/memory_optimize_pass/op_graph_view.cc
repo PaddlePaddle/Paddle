@@ -66,6 +66,24 @@ const std::unordered_set<details::OpHandleBase *> &OpGraphView::PendingOps(
   return pending_ops_.at(op);
 }
 
+const std::unordered_set<details::OpHandleBase *> &OpGraphView::PrecedingOps(
+    details::OpHandleBase *op) const {
+  EnforceHasOp(op);
+  return preceding_ops_.at(op);
+}
+
+std::unordered_map<details::OpHandleBase *, size_t>
+OpGraphView::GetPrecedingDepNum() const {
+  std::unordered_map<details::OpHandleBase *, size_t> result;
+  result.reserve(preceding_ops_.size());
+  for (auto &pair : preceding_ops_) {
+    result.emplace(pair.first, pair.second.size());
+  }
+  return result;
+}
+
+size_t OpGraphView::OpNumber() const { return preceding_ops_.size(); }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

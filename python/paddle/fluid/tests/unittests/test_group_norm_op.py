@@ -24,7 +24,9 @@ from op_test import OpTest
 from testsuite import create_op
 
 
-def group_norm_naive(x, scale, bias, epsilon, groups):
+def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
+    if data_layout == "NHWC":
+        x = np.transpose(x, (0, 3, 1, 2))  # NHWC => NCHW
     N, C, H, W = x.shape
     G = groups
     x = x.reshape((N * G, -1))
@@ -33,6 +35,8 @@ def group_norm_naive(x, scale, bias, epsilon, groups):
     output = (x - mean) / np.sqrt(var + epsilon)
     output = output.reshape((N, C, H, W)) * scale.reshape(
         (-1, 1, 1)) + bias.reshape((-1, 1, 1))
+    if data_layout == "NHWC":
+        output = np.transpose(output, (0, 2, 3, 1))  # NCHW => NHWC
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
@@ -42,15 +46,18 @@ class TestGroupNormOp(OpTest):
         self.data_format = "NCHW"
         self.dtype = np.float32
         self.shape = (2, 4, 3, 3)
-        self.attrs = {'epsilon': 1e-5, 'groups': 2}
+        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
 
         input = np.random.random(self.shape).astype(self.dtype)
+        if self.data_format == "NHWC":
+            input = np.transpose(input, (0, 2, 3, 1))
         scale = np.random.random([self.shape[1]]).astype(self.dtype)
         bias = np.random.random([self.shape[1]]).astype(self.dtype)
         output, mean, var = group_norm_naive(
-            input, scale, bias, self.attrs['epsilon'], self.attrs['groups'])
+            input, scale, bias, self.attrs['epsilon'], self.attrs['groups'],
+            self.data_format)
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(input),
@@ -58,14 +65,20 @@ class TestGroupNormOp(OpTest):
             'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+        self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
         atol = 1e-4
+        inplace_atol = 1e-4
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=atol)
+        # add inplace_atol bacause group_norm doesn't ensure computational consistency
+        self.check_output_with_place(
+            place, atol=atol, inplace_atol=inplace_atol)
+
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=atol)
+            self.check_output_with_place(
+                place, atol=atol, inplace_atol=inplace_atol)
 
     def do_compare_between_place(self):
         if not core.is_compiled_with_cuda(): return
@@ -90,6 +103,7 @@ class TestGroupNormOp(OpTest):
         if self.compare_between_place:
             self.do_compare_between_place()
             return
+
         place = core.CPUPlace()
         self.check_grad_with_place(
             place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.01)
@@ -137,6 +151,86 @@ class TestGroupNormOpLargeData(TestGroupNormOp):
         self.shape = (2, 32, 64, 64)
         self.attrs['groups'] = 8
         self.compare_between_place = True
+
+
+class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 1
+        self.attrs['epsilon'] = 0.5
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['groups'] = 4
+        self.attrs['epsilon'] = 0.5
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.attrs['epsilon'] = 0.5
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 64, 32, 32)  # NCHW
+        self.attrs['groups'] = 8
+        self.data_format = "NHWC"
+        self.compare_between_place = True
+
+
+class TestGroupNormAPI_With_NHWC(OpTest):
+    def test_case1(self):
+        data1 = fluid.layers.data(
+            name='data1', shape=[3, 3, 4], dtype='float32')
+        out1 = fluid.layers.group_norm(
+            input=data1, groups=2, data_layout="NHWC")
+        data2 = fluid.layers.data(
+            name='data2', shape=[4, 3, 3], dtype='float32')
+        out2 = fluid.layers.group_norm(
+            input=data2, groups=2, data_layout="NCHW")
+
+        data1_np = np.random.random((2, 3, 3, 4)).astype("float32")
+        data2_np = np.random.random((2, 4, 3, 3)).astype("float32")
+        scale = np.array([1]).astype("float32")
+        bias = np.array([0]).astype("float32")
+
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        results = exe.run(fluid.default_main_program(),
+                          feed={"data1": data1_np,
+                                "data2": data2_np},
+                          fetch_list=[out1, out2],
+                          return_numpy=True)
+        expect_res1 = group_norm_naive(
+            data1_np, scale, bias, epsilon=1e-5, groups=2, data_layout="NHWC")
+        expect_res2 = group_norm_naive(
+            data2_np, scale, bias, epsilon=1e-5, groups=2, data_layout="NCHW")
+        self.assertTrue(np.allclose(results[0], expect_res1[0]))
+        self.assertTrue(np.allclose(results[1], expect_res2[0]))
+
+    # data_layout is not NHWC or NCHW
+    def test_case2(self):
+        data = fluid.layers.data(name='data', shape=[3, 3, 4], dtype="float32")
+        try:
+            out = fluid.layers.group_norm(
+                input=data, groups=2, data_layout="NDHW")
+        except:
+            pass
 
 
 if __name__ == '__main__':

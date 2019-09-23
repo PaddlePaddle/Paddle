@@ -66,6 +66,7 @@ class SplitPlugin : public PluginTensorRT {
   int axis_;
   int outer_rows_;
   int inner_cols_;
+  int axis_shape_;
   bool same_shape_;
   std::vector<int> output_length_;
   std::vector<int> segment_offsets_;

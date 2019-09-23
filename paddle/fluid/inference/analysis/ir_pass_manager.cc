@@ -64,6 +64,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+    } else if (pass_name == "cudnn_placement_pass") {
+      pass->Set("cudnn_enabled_op_types",
+                new std::unordered_set<std::string>());
 #ifdef PADDLE_WITH_MKLDNN
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
@@ -84,13 +87,15 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
 
-      bool enable_int8 = argument->tensorrt_precision_mode() ==
-                         AnalysisConfig::Precision::kInt8;
+      auto precision_mode = argument->tensorrt_precision_mode();
+      bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
 
       pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
+      pass->Set("precision_mode",
+                new AnalysisConfig::Precision(precision_mode));
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();

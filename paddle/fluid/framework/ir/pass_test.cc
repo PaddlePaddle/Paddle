@@ -99,7 +99,7 @@ TEST(PassTest, TestPassAttrCheck) {
   } catch (paddle::platform::EnforceNotMet e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("shouldn't has cycle") != exception.npos);
+  ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
 }
 
 }  // namespace ir

@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "Python.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
@@ -26,6 +27,14 @@
 
 namespace paddle {
 namespace pybind {
+
+namespace py = pybind11;
+
+static void RaiseStopIterationException() {
+  VLOG(2) << "Raise StopIteration Exception in Python";
+  py::gil_scoped_acquire guard;
+  throw py::stop_iteration();
+}
 
 class MultiDeviceFeedReader {
  public:
@@ -69,6 +78,7 @@ class MultiDeviceFeedReader {
     bool success = WaitFutures();
 
     if (!success) {
+      RaiseStopIterationException();
       return {};
     }
 
@@ -85,6 +95,7 @@ class MultiDeviceFeedReader {
   ResultList ReadNextList() {
     bool success = WaitFutures();
     if (!success) {
+      RaiseStopIterationException();
       return {};
     }
 
@@ -143,8 +154,6 @@ class MultiDeviceFeedReader {
   std::vector<std::future<bool>> futures_;
   std::vector<std::vector<framework::LoDTensor>> ret_;
 };
-
-namespace py = pybind11;
 
 void BindReader(py::module *module) {
   auto &m = *module;

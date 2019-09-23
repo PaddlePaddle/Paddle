@@ -31,7 +31,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Sgd Ops
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &sgd_ops, ir::Graph *graph) const {
@@ -42,7 +42,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
 
     int op_role = boost::get<int>(
         sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    VLOG(7) << "Insert sgd to graph ";
+    VLOG(6) << "Insert sgd to graph.";
     // Add fused scale
     OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
     Sgd_desc.SetType("sgd");
@@ -56,15 +56,11 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     // NOTE: multi_devices_pass requires that every op should have a role.
     Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    auto sgd_node = graph->CreateOpNode(&Sgd_desc);
-
-    InserInputAndOutputForOptOps(sgd_ops, sgd_node);
+    return graph->CreateOpNode(&Sgd_desc);
   }
 };
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_sgd_op_pass, paddle::framework::ir::FuseSgdOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_sgd_op_pass, paddle::framework::ir::FuseSgdOpPass);

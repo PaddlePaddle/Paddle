@@ -108,6 +108,8 @@ class OpHandleBase {
 
   ir::Node *Node() { return node_; }
 
+  const ir::Node *Node() const { return node_; }
+
   void SetLocalExecScopes(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 

@@ -208,6 +208,48 @@ class TestWith1x1(TestConv2dOp):
         self.groups = 3
 
 
+class TestWithDepthWise3x3(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [3, 4, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [8, f_c, 3, 3]
+
+    def init_dilation(self):
+        self.dilations = [2, 2]
+
+    def init_group(self):
+        self.groups = 4
+
+
+class TestWithDepthWise5x5(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 4, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [8, f_c, 5, 5]
+
+    def init_group(self):
+        self.groups = 4
+
+
+class TestWithDepthWise7x7(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 8, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [16, f_c, 7, 7]
+
+    def init_group(self):
+        self.groups = 8
+
+
 class TestWithDilation(TestConv2dOp):
     def init_test_case(self):
         self.pad = [0, 0]

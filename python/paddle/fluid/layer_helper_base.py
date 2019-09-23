@@ -177,19 +177,24 @@ class LayerHelperBase(object):
             elif dim == 0:
                 out_shape = [x.shape[0]] + [1] * (len(x.shape) - 1)
                 reshape = __reshape_op(x, shape=[x.shape[0], -1], block=block)
-                norm = __norm_op(reshape, dim=1, block=block)
+                norm = __norm_op(reshape, dim=[1], block=block)
                 __reshape_op(norm, out=out, shape=out_shape, block=block)
             elif dim == len(x.shape) - 1:
                 out_shape = [1] * (len(x.shape) - 1) + [x.shape[-1]]
                 reshape = __reshape_op(x, shape=[-1, x.shape[-1]], block=block)
-                norm = __norm_op(reshape, dim=0, block=block)
+                norm = __norm_op(reshape, dim=[0], block=block)
                 __reshape_op(norm, out=out, shape=out_shape, block=block)
             else:
                 perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
-                norm = __norm_op(transpose, dim=0, block=block)
-                __transpose_op(norm, perm, out=out, block=block)
+                out_shape = [transpose.shape[0]] + [1] * (len(transpose.shape) -
+                                                          1)
+                reshape = __reshape_op(
+                    transpose, shape=[transpose.shape[0], -1], block=block)
+                norm = __norm_op(reshape, dim=[1], block=block)
+                reshape2 = __reshape_op(norm, shape=out_shape, block=block)
+                __transpose_op(reshape2, perm, out=out, block=block)
             return out
 
         def __weight_normalize(g, v, dim):
@@ -240,6 +245,13 @@ class LayerHelperBase(object):
             dim=attr.dim,
             block=self.startup_program.global_block())
 
+        # keep g_param shape to be consistent with that in main_program
+        __reshape_op(
+            g_param,
+            g_param_shape,
+            out=g_param,
+            block=self.startup_program.global_block())
+
         # Add weight normalization to main_program
         g_param = self.main_program.global_block().create_parameter(
             dtype=dtype, shape=g_param_shape, **g_param_attr._to_kwargs())
@@ -254,7 +266,8 @@ class LayerHelperBase(object):
                          shape,
                          dtype,
                          is_bias=False,
-                         default_initializer=None):
+                         default_initializer=None,
+                         stop_gradient=False):
         """Create parameters for this layers.
 
            Args:
@@ -308,6 +321,7 @@ class LayerHelperBase(object):
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True))
         else:
             self.startup_program.global_block().create_parameter(

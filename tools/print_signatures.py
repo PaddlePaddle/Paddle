@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
+    ./print_signature  "paddle.fluid" > signature.txt
 """
 from __future__ import print_function
 

@@ -110,7 +110,7 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
-"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op" "sync_batch_norm_op" "deformable_conv_op" "dgc_op")
+"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op" "sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -191,9 +191,6 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(fake_quantize_abs_max);\n")
       elseif(${TARGET} STREQUAL "tensorrt_engine_op")
           message(STATUS "Pybind skips [tensorrt_engine_op], for this OP is only used in inference")
-      elseif(${TARGET} STREQUAL "fc")
-        # HACK: fc only have mkldnn and cpu, which would mismatch the cpu only condition
-        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()

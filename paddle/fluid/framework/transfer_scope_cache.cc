@@ -17,61 +17,12 @@
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_MKLDNN
-using transfer_data_cache_map = std::unordered_map<size_t, Scope*>;
-using transfer_scope_cache_map = std::unordered_set<Scope*>;
-static std::unordered_map<size_t, transfer_data_cache_map*>
-    static_transfer_data_caches;
-static std::unordered_map<size_t, transfer_scope_cache_map*>
-    static_transfer_scope_caches;
-#endif
-
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
-#ifdef PADDLE_WITH_MKLDNN
-  size_t sid = platform::get_cur_mkldnn_session_id();
-
-  // if there is specific mkldnn tid setting from user.
-  if (sid != platform::kMKLDNNSessionID_Default) {
-    sid = std::hash<std::thread::id>()(std::this_thread::get_id());
-
-    static std::mutex acquire_barrier;
-    std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
-
-    auto map_it = static_transfer_data_caches.find(sid);
-    if (map_it == static_transfer_data_caches.end()) {
-      auto* x = new transfer_data_cache_map;
-      static_transfer_data_caches[sid] = x;
-      return *x;
-    } else {
-      return *static_transfer_data_caches[sid];
-    }
-  }
-#endif
   thread_local auto* x = new std::unordered_map<size_t, Scope*>;
   return *x;
 }
 
 std::unordered_set<Scope*>& global_transfer_scope_cache() {
-#ifdef PADDLE_WITH_MKLDNN
-  size_t sid = platform::get_cur_mkldnn_session_id();
-
-  // if there is specific mkldnn session id setting from user.
-  if (sid != platform::kMKLDNNSessionID_Default) {
-    sid = std::hash<std::thread::id>()(std::this_thread::get_id());
-
-    static std::mutex acquire_barrier;
-    std::lock_guard<std::mutex> block_until_finish_this_job(acquire_barrier);
-
-    auto map_it = static_transfer_scope_caches.find(sid);
-    if (map_it == static_transfer_scope_caches.end()) {
-      auto* x = new transfer_scope_cache_map;
-      static_transfer_scope_caches[sid] = x;
-      return *x;
-    } else {
-      return *static_transfer_scope_caches[sid];
-    }
-  }
-#endif
   thread_local auto* x = new std::unordered_set<Scope*>;
   return *x;
 }

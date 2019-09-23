@@ -30,19 +30,25 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        samples_num = 64
-        delta = 1.0
-        self.inputs = {
-            'X': np.random.uniform(0, 1., (samples_num, 1)).astype('float32'),
-            'Y': np.random.uniform(0, 1., (samples_num, 1)).astype('float32'),
-        }
-        residual = self.inputs['Y'] - self.inputs['X']
+        self.samples_num = 64
+        self.delta = 1.0
+        self.init_input()
+        residual = self.inputs['Y'].reshape(
+            self.samples_num, 1) - self.inputs['X'].reshape(self.samples_num, 1)
         loss = np.vectorize(huber_loss_forward)(residual,
-                                                delta).astype('float32')
-        self.attrs = {'delta': delta}
+                                                self.delta).astype('float32')
+        self.attrs = {'delta': self.delta}
         self.outputs = {
             'Residual': residual,
-            'Out': loss.reshape((samples_num, 1))
+            'Out': loss.reshape((self.samples_num, 1))
+        }
+
+    def init_input(self):
+        self.inputs = {
+            'X': np.random.uniform(0, 1.,
+                                   (self.samples_num, 1)).astype('float32'),
+            'Y': np.random.uniform(0, 1.,
+                                   (self.samples_num, 1)).astype('float32'),
         }
 
     def test_check_output(self):
@@ -58,6 +64,15 @@ class TestHuberLossOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
+
+
+def TestHuberLossOp1(TestHuberLossOp):
+    def init_input(self):
+        self.inputs = {
+            'X': np.random.uniform(0, 1.,
+                                   (self.samples_num, 1)).astype('float32'),
+            'Y': np.random.uniform(0, 1., (self.samples_num)).astype('float32'),
+        }
 
 
 if __name__ == '__main__':

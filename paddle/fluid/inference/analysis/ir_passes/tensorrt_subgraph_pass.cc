@@ -102,7 +102,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // const framework::BlockDesc& main_block = program_desc->Block(0);
   framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
-  // An fake block desc.
+  // A fake block desc.
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
@@ -118,19 +118,26 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // Then, we will use the input_names_with_id and output_names_with_id to
-  // generate the eigine key.
+  // generate the engine key.
   // So, We use set instead of unordered_set here to ensure that the engine key
   // is unique.
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
   std::vector<std::string> params;
+  // if we delete fluid copy of params shared by more than 1 ops, there will be
+  // problem, so we filter them out.
+  std::vector<std::string> params_not_shared;
 
-  // The node->inputs containes input tensors and parameters.
+  // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {
       params.push_back(x->Name());
+    }
+    if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0 &&
+        x->outputs.size() <= 1) {
+      params_not_shared.push_back(x->Name());
     }
   }
 
@@ -149,6 +156,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph_var_map[node->Name()] = node;
     }
   }
+  auto precision_mode = Get<AnalysisConfig::Precision>("precision_mode");
+  bool enable_fp16 = false;
+  if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *Agent(node).subgraph();
@@ -198,6 +208,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
   SetAttr(op_desc->Proto(), "parameters", params);
 
+  // we record all inputs' shapes in attr to check if they are consistent
+  // with the real inputs' shapes retrieved from scope when trt runs.
+  for (auto *x : node->inputs) {
+    if (x->IsVar() && x->Var()) {
+      framework::VarDesc *var = x->Var();
+      SetAttr(op_desc->Proto(), var->Name() + "_shape", var->GetShape());
+    }
+  }
+
   auto use_static_engine = Get<bool>("use_static_engine");
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
@@ -216,6 +235,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
 
   SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
+  SetAttr(op_desc->Proto(), "enable_fp16", enable_fp16);
   SetAttr(op_desc->Proto(), "use_calib_mode", use_calib_mode);
   SetAttr(op_desc->Proto(), "engine_key", engine_key);
   SetAttr(op_desc->Proto(), "predictor_id", predictor_id);
@@ -237,14 +257,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     return;
   }
 
-  std::copy(params.begin(), params.end(),
+  std::copy(params_not_shared.begin(), params_not_shared.end(),
             std::back_inserter(*repetitive_params));
 
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  enable_int8, calibrator.get(), Get<int>("gpu_device_id"));
+                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"));
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

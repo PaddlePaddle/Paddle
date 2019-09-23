@@ -20,7 +20,6 @@
 #include <type_traits>
 
 #include "paddle/fluid/framework/array.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
