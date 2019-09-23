@@ -8012,13 +8012,18 @@ def image_resize(input,
                  resample='BILINEAR',
                  actual_shape=None,
                  align_corners=True,
-                 align_mode=1):
+                 align_mode=1,
+                 data_format='NCHW'):
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
-    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
-    on the last two/three dimensions(depth, hight and width).
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
+    or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
+    (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels), 
+    and the resizing only applies on the three dimensions(depth, hight and width).
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
+    future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
 
@@ -8134,11 +8139,8 @@ def image_resize(input,
 
 
     Args:
-        input (Variable): The input tensor of image resize layer,
-                          This is a 4-D tensor of the shape
-                          (num_batches, channels, in_h, in_w) or a
-                          5-D tensor of the shape
-                          (num_batches, channls, in_d, in_h, in_w).
+        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of image resize
                                     layer, the shape is (out_h, out_w) when
                                     input is a 4-D tensor and is
@@ -8147,6 +8149,13 @@ def image_resize(input,
         scale(float|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
+             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If 
+             a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
@@ -8171,12 +8180,16 @@ def image_resize(input,
                                Default: True
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
-                            src_idx = scale*dst_index .
+                            src_idx = scale*dst_index.
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels) for 4-D Tensor,
+                                    NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels) for 5-D Tensor.
+                                    Default: 'NCHW'.
 
     Returns:
-        Variable: The output is a 4-D tensor of the shape
-        (num_batches, channls, out_h, out_w) or a 5-D tensor of the shape
-        (num_batches, channels, out_d, out_h, out_w).
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
@@ -8191,6 +8204,7 @@ def image_resize(input,
         ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
+        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -8225,8 +8239,22 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
+    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 4-D input.")
+    elif len(input.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
+
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
+
+    if data_format == 'NCHW' or data_format == 'NCDHW':
+        data_layout = 'NCHW'
+    if data_format == 'NHWC' or data_format == 'NDHWC':
+        data_layout = 'NHWC'
 
     inputs = {"X": input}
     attrs = {
@@ -8235,7 +8263,8 @@ def image_resize(input,
         "out_w": 0,
         "interp_method": resample_type,
         "align_corners": align_corners,
-        "align_mode": align_mode
+        "align_mode": align_mode,
+        "data_layout": data_layout
     }
 
     if out_shape is not None:
@@ -8290,7 +8319,8 @@ def resize_bilinear(input,
                     name=None,
                     actual_shape=None,
                     align_corners=True,
-                    align_mode=1):
+                    align_mode=1,
+                    data_format='NCHW'):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8320,7 +8350,7 @@ def resize_bilinear(input,
             
             else:
               
-              scale_factor = float(in_size/out_size)     
+              scale_factor = float(in_size/out_size)
 
         Bilinear interpolation:
 
@@ -8333,16 +8363,12 @@ def resize_bilinear(input,
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
-
           else:
 
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-
-
 
     Args:
         input(${x_type}): input should be a 4-D tensor.
@@ -8352,10 +8378,16 @@ def resize_bilinear(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input height or width. At
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+            layer, the shape is (out_h, out_w).Default: None. If a list, each 
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8372,9 +8404,12 @@ def resize_bilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels). Default: 'NCHW'.
 
     Returns:
-        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8385,7 +8420,7 @@ def resize_bilinear(input,
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
-                        align_corners, align_mode)
+                        align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="trilinear_interp")
@@ -8395,7 +8430,8 @@ def resize_trilinear(input,
                      name=None,
                      actual_shape=None,
                      align_corners=True,
-                     align_mode=1):
+                     align_mode=1,
+                     data_format='NCDHW'):
     """
     Resize input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8429,6 +8465,7 @@ def resize_trilinear(input,
         Bilinear interpolation:
 
           if:
+
               align_corners = False , align_mode = 0
               
               input : (N,C,D_in,H_in,W_in)
@@ -8437,7 +8474,6 @@ def resize_trilinear(input,
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-
 
           else:
 
@@ -8448,8 +8484,6 @@ def resize_trilinear(input,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-
-
     Args:
         input(${x_type}): input should be a 4-D tensor.
 
@@ -8458,10 +8492,16 @@ def resize_trilinear(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input depth, height or width.
+        input(${x_type}): 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+            layer, the shape is (out_d, out_h, out_w). Default: None. If a list, 
+            each element can be  an integer or a Tensor Variable with shape: [1]. If 
+            a Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input depth, height or width.
              At least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8478,9 +8518,13 @@ def resize_trilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels).
+                                    Default: 'NCDHW'.
 
     Returns:
-        A 5-D tensor in shape (num_batches, channels, out_d, out_h, out_w)
+        A 5-D Tensor in shape of (num_batches, channels, out_d, out_h, out_w) or 
+        (num_batches, out_d, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8488,10 +8532,35 @@ def resize_trilinear(input,
             import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9,11], dtype="float32")
             out = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
+            input = fluid.layers.data(name="input", shape=[3, 6, 9, 11], dtype="float32")
+            # input.shape = [-1, 3, 6, 9, 11], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
+            # out0.shape = [-1, 3, 12, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.resize_trilinear(input, out_shape=[12, dim1, 4])
+            # out1.shape = [-1, 3, 12, -1, 4]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[3], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.resize_trilinear(input, out_shape=shape_tensor)
+            # out2.shape = [-1, 3, -1, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[3], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.resize_trilinear(input, out_shape=[4, 4, 8], actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4, 8]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.resize_trilinear(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1, -1]
     """
 
     return image_resize(input, out_shape, scale, name, 'TRILINEAR',
-                        actual_shape, align_corners, align_mode)
+                        actual_shape, align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -8500,12 +8569,12 @@ def resize_nearest(input,
                    scale=None,
                    name=None,
                    actual_shape=None,
-                   align_corners=True):
+                   align_corners=True,
+                   data_format='NCHW'):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimension(in height direction) and the 4th dimension(in width
-    direction) based on given output shape which is specified by actual_shape,
-    out_shape and scale in priority order.
+    height direction and the width direction based on given output shape 
+    which is specified by actual_shape, out_shape and scale in priority order.
 
     Example:
 
@@ -8514,13 +8583,11 @@ def resize_nearest(input,
         For scale:
           
             if align_corners = True && out_size > 1 :
-
               scale_factor = (in_size-1.0)/(out_size-1.0)
             
             else:
               
               scale_factor = float(in_size/out_size)
-            
           
         Nearest neighbor interpolation:
           
@@ -8554,10 +8621,16 @@ def resize_nearest(input,
                                     Default: None
 
         scale(float|None): The multiplier for the input height or width. At
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize nearest
+            layer, the shape is (out_h, out_w). Default: None. If a list, each 
+            element can be integer or a tensor Variable with shape: [1]. If a 
+            tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8573,9 +8646,13 @@ def resize_nearest(input,
                                 constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels).
+                                    Default: 'NCHW'.
 
     Returns:
-        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or 
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8583,10 +8660,43 @@ def resize_nearest(input,
             import paddle.fluid as fluid
             input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
             out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
+            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
+            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.resize_nearest(input, out_shape=[12, 12])
+            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.resize_nearest(input, out_shape=[12, dim1])
+            # out1.shape = [-1, 3, 12, -1]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="resize_shape", shape=[2], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.resize_nearest(input, out_shape=shape_tensor)
+            # out2.shape = [-1, 3, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.resize_nearest(input, out_shape=[4, 4], actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.resize_nearest(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1]
     """
 
-    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape,
-                        align_corners)
+    return image_resize(
+        input,
+        out_shape,
+        scale,
+        name,
+        'NEAREST',
+        actual_shape,
+        align_corners,
+        align_mode=1,
+        data_format=data_format)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
