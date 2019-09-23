@@ -990,6 +990,16 @@ class FC(layers.Layer):
         self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
 
+    # TODO(songyouwei): We should remove _w property
+    @property
+    def _w(self, i=0):
+        return self.__w[i]
+
+    @_w.setter
+    def _w(self, value, i=0):
+        assert isinstance(value, Parameter)
+        self.__w[i].set_value(value)
+
     @property
     def weight(self):
         return self.__w
