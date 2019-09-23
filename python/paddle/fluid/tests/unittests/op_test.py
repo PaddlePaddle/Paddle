@@ -391,6 +391,18 @@ class OpTest(unittest.TestCase):
                                            expect_outs,
                                            actual_outs,
                                            inplace_atol=None):
+        """Compare expect outs and actual outs of an tested op.
+
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            fetch_list (list): The outputs of tested op.
+            expect_outs (list): The expect outs of tested op.
+            actual_outs (list): The actual outs of tested op.
+            inplace_atol (float): The tolerable error, only set when tested op doesn't ensure computational consistency, like group_norm op.
+
+        Returns:
+            None.
+        """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
             if inplace_atol is not None:
@@ -414,14 +426,23 @@ class OpTest(unittest.TestCase):
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):
-        # create grad program
+        """Generate grad_program which contains the grad_op.
+
+        Args:
+            fwd_program (tuple): The program that contains grad_op_desc's corresponding forward op.
+            grad_op_desc (OpDesc): The OpDesc of grad op.
+            op_grad_to_var (dict): The relation of variables in grad op and its forward op. 
+
+        Returns:
+            grad_program (program): The program which contains the grad_op.
+        """
         grad_program = Program()
         grad_block = grad_program.global_block()
         new_op_desc = grad_block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
         grad_program._sync_with_cpp()
 
-        # create grad vars based on fwd vars (shape and dtype)
+        # Create grad vars based on fwd vars (shape and dtype)
         for arg in grad_op_desc.input_arg_names(
         ) + grad_op_desc.output_arg_names():
             fwd_var_name = op_grad_to_var.get(arg, None)
@@ -436,9 +457,10 @@ class OpTest(unittest.TestCase):
                 shape=fwd_var.shape,
                 type=fwd_var.type,
                 persistable=False)
-            # some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
+
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
             # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
-            # set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             if 0 in grad_var.shape:
                 grad_var.persistable = True
@@ -447,9 +469,21 @@ class OpTest(unittest.TestCase):
 
     def _construct_grad_feed_map_from_forward(self, place, fwd_res,
                                               grad_op_desc, op_grad_to_var):
-        # generate grad_feed_map for grad_program
-        # since we don`t really check gradient accuracy, but the consistency when using and not using inplace
-        # we use fwd outs (also inputs sometimes) as grad (fake) feeds
+        """Generate grad_feed_map for grad_program.
+
+        since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
+        we use fwd outs (also inputs sometimes) to construct grad inputs.
+
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
+                i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc)
+            grad_op_desc (OpDesc): The OpDesc of grad op.
+            op_grad_to_var (dict): The relation of variables in grad op and its fwd_op. 
+
+        Returns:
+            grad_feed_map (dict): The feed_map of grad_op.
+        """
         fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc = fwd_res
         p = core.Place()
         p.set_place(place)
@@ -472,20 +506,28 @@ class OpTest(unittest.TestCase):
                             grad_feed_map[arg] = fwd_outs[i]._copy(p)
         return grad_feed_map
 
-    def _get_need_run_ops(self, op_desc, father_op_desc=None):
-        """
-        Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
-        (1) op has infer_inplace
-        (2) op has infer_inplace in its descendants
+    def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
+        """Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
+        An op needs to run druing inplace check if,
+        (1) it has infer_inplace,
+        (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
+        
+        Args:
+            op_desc (OpDesc): The op_desc of current op. 
+            fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
+                Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
+            
+        Returns:
+            need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
         need_run_ops = []
         visited_ops = []
 
-        def _dfs_grad_op(op_desc, father_op_desc=None):
+        def _dfs_grad_op(op_desc, fwd_op_desc=None):
             visited_ops.append(op_desc.type())
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
             has_grad_op_maker = fluid.core.has_grad_op_maker(op_desc.type())
-            has_infer_inplace_in_descendants = False
+            has_infer_inplace_in_grad_descendants = False
             if not has_grad_op_maker:
                 has_infer_inplace_in_descendants = False
             else:
@@ -493,26 +535,39 @@ class OpTest(unittest.TestCase):
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     op_desc, set(), [])
                 if not grad_op_desc_list:
-                    has_infer_inplace_in_descendants = False
+                    has_infer_inplace_in_grad_descendants = False
                 else:
                     for i, grad_op_desc in enumerate(grad_op_desc_list):
                         if grad_op_desc.type(
                         ) not in visited_ops and _dfs_grad_op(
-                                grad_op_desc, father_op_desc=op_desc):
-                            has_infer_inplace_in_descendants = True
-            if has_infer_inplace or has_infer_inplace_in_descendants:
-                need_run_ops.append((op_desc, father_op_desc))
+                                grad_op_desc, fwd_op_desc=op_desc):
+                            has_infer_inplace_in_grad_descendants = True
+            if has_infer_inplace or has_infer_inplace_in_grad_descendants:
+                need_run_ops.append((op_desc, fwd_op_desc))
                 return True
             else:
                 return False
 
-        _dfs_grad_op(op_desc, father_op_desc=father_op_desc)
+        _dfs_grad_op(op_desc, fwd_op_desc=fwd_op_desc)
         return need_run_ops
 
     def _check_forward_inplace(self,
                                place,
                                no_check_set=None,
                                inplace_atol=None):
+        """Chech the inplace correctness of given op (self.op_type).
+        Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
+        
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
+            inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
+
+        Returns:
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
+                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+        """
+        # _calc_output() returns in the form tuple(outs, fetch_list, feed_map, program, op_desc) when for_inplace_test=True.
         expect_res = self._calc_output(
             place,
             no_check_set=no_check_set,
@@ -537,19 +592,29 @@ class OpTest(unittest.TestCase):
                           fwd_res,
                           grad_op_desc,
                           enable_inplace=None):
-        # get grad_op 
-        fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc = fwd_res
+        """Calculate grad_output for given grad_op_desc.
 
+        since we don`t really check gradient accuracy, but check the consistency when using and not using inplace,
+        we use fwd outs (also inputs sometimes) to construct grad inputs.
+
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
+                i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
+            grad_op_desc (OpDesc): The OpDesc of grad op.
+            enable_inplace (bool): Enable inplace or not.
+
+        Returns:
+            res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
+        """
+        fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc = fwd_res
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(fwd_op_desc,
                                                                   set(), [])
         grad_program = self._construct_grad_program_from_forward(
             fwd_program, grad_op_desc, op_grad_to_var)
-
         grad_feed_map = self._construct_grad_feed_map_from_forward(
             place, fwd_res, grad_op_desc, op_grad_to_var)
-
         grad_fetch_list = grad_op_desc.output_arg_names()
-
         exe = Executor(place)
         program = grad_program
         if enable_inplace is not None:
@@ -570,11 +635,27 @@ class OpTest(unittest.TestCase):
                             fwd_res,
                             grad_op_desc,
                             inplace_atol=None):
+        """Chech the inplace correctness of given grad_op_desc.
+
+        Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
+        It works like _check_forward_inplace, but the way to construct program and feed_map differs.
+        So we define a new function for grad, grad_grad, etc.
+
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
+                i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
+            grad_op_desc (OpDesc): The OpDesc of grad op.
+            inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
+
+        Returns:
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
+                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+        """
         expect_res = self._calc_grad_output(
             place, fwd_res, grad_op_desc, enable_inplace=False)
         actual_res = self._calc_grad_output(
             place, fwd_res, grad_op_desc, enable_inplace=True)
-        # compare expect_outs and actual_outs
         self._compare_expect_and_actual_outputs(
             place,
             expect_res[1],
@@ -587,6 +668,19 @@ class OpTest(unittest.TestCase):
                                         place,
                                         no_check_set=None,
                                         inplace_atol=None):
+        """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
+
+        (1) Get all ops need to run. (see conditions in _get_need_run_ops())
+        (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
+
+        Args:
+            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
+            inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
+
+        Returns:
+            None
+        """
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
 
@@ -597,11 +691,10 @@ class OpTest(unittest.TestCase):
 
         res = {}
         for op_desc, father_op_desc in reversed(need_run_ops):
-            # the first one is the 'root' forward op
+            # The first one is the forward op
             has_infer_inplace = fluid.core.has_infer_inplace(op_desc.type())
             if op_desc.type() == self.op_type:
                 if has_infer_inplace:
-                    print(op_desc.type())
                     res[op_desc] = self._check_forward_inplace(
                         place,
                         no_check_set=no_check_set,
@@ -611,7 +704,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set, for_inplace_test=True)
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
-                # skip use_mkldnn and use_ngraph currently
+                # skip op that use_mkldnn and use_ngraph currently
                 flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
                 attrs_use_mkldnn = hasattr(
                     self,
@@ -629,7 +722,6 @@ class OpTest(unittest.TestCase):
                     )
                     continue
                 if has_infer_inplace:
-                    print(op_desc.type())
                     fwd_res = res[father_op_desc]
                     res[op_desc] = self._check_grad_inplace(
                         place, fwd_res, op_desc, inplace_atol=inplace_atol)
@@ -747,6 +839,8 @@ class OpTest(unittest.TestCase):
         if inplace_atol is not None:
             warnings.warn(
                 "By default, inplace_atol should not be set, please check it")
+        # Check inplace for given op, its grad op, its grad_grad op, etc.
+        # No effect on original OpTest 
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
