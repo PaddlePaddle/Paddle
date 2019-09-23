@@ -307,7 +307,7 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  *       The allocator strategy is under development and the non-legacy
  *       allocator is not yet stable.
  */
-DEFINE_string(allocator_strategy, "naive_best_fit",
+DEFINE_string(allocator_strategy, "auto_growth",
               "The allocation strategy. naive_best_fit means the original best "
               "fit allocator of Fluid. "
               "auto_growth means the experimental auto-growth allocator. "
