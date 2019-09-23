@@ -1,4 +1,30 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +67,53 @@ def output_hist_diag(out):
     hist /= float(out.size)
     prob = 0.1 * np.ones((10))
     return hist, prob
+
+
+class TestUniformRandomOp_attr_tensorlist(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.new_shape = (1000, 784)
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype("int64") * ele))
+        self.inputs = {'ShapeTensor': shape_tensor}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOp_attr_tensor(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.inputs = {"Shape": np.array([1000, 784]).astype("int64")}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
 class TestUniformRandomOp(OpTest):
@@ -156,6 +229,22 @@ class TestUniformRandomOpApi(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+
+
+class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
+    def test_attr_tensor_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
+            ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2])
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(startup_program)
+            outs = exe.run(train_program, fetch_list=[ret])
 
 
 if __name__ == "__main__":

@@ -13,9 +13,44 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+
+inline std::vector<int64_t> get_new_data_from_shape_tensor(
+    const Tensor *new_data_tensor) {
+  std::vector<int64_t> vec_new_data;
+  auto *new_data = new_data_tensor->data<int64_t>();
+  framework::Tensor cpu_starts_tensor;
+  if (platform::is_gpu_place(new_data_tensor->place())) {
+    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    new_data = cpu_starts_tensor.data<int64_t>();
+  }
+  for (size_t i = 0; i < new_data_tensor->numel(); ++i)
+    vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
+  return vec_new_data;
+}
+
+inline std::vector<int64_t> get_new_shape_from_shape_tensorlist(
+    const std::vector<const Tensor *> &list_new_shape_tensor) {
+  std::vector<int64_t> vec_new_shape;
+  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
+    auto tensor = list_new_shape_tensor[i];
+    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                      "shape of dim tensor should be [1]");
+    if (platform::is_gpu_place(tensor->place())) {
+      framework::Tensor temp;
+      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+
+      vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
+    } else {
+      vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
+    }
+  }
+
+  return vec_new_shape;
+}
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
@@ -28,10 +63,33 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     auto out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
+      std::vector<int64_t> new_shape;
+      auto list_new_shape_tensor =
+          ctx.MultiInput<framework::Tensor>("ShapeTensor");
+      if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
+        if (ctx.HasInput("Shape")) {
+          auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
+          new_shape = get_new_data_from_shape_tensor(shape_tensor);
+        } else if (list_new_shape_tensor.size() > 0) {
+          new_shape =
+              get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
+        }
+        tensor->Resize(framework::make_ddim(new_shape));
+      }
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
+      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+      auto list_new_shape_tensor =
+          ctx.MultiInput<framework::Tensor>("ShapeTensor");
+      if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
+        if (ctx.HasInput("Shape")) {
+          auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
+          shape = get_new_data_from_shape_tensor(shape_tensor);
+        } else if (list_new_shape_tensor.size() > 0) {
+          shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
+        }
+      }
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
     } else {
@@ -80,17 +138,52 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"),
                       "uniform_random's min must less then max");
-    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
                       "diag_num must greater than or equal 0");
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
                       "diag_step must greater than or equal 0");
-    std::vector<int64_t> temp;
-    temp.reserve(shape.size());
-    for (auto dim : shape) {
-      temp.push_back(static_cast<int64_t>(dim));
+
+    if (ctx->HasInputs("ShapeTensor")) {
+      // top prority shape
+      auto inputs_name = ctx->Inputs("ShapeTensor");
+      PADDLE_ENFORCE_GT(
+          inputs_name.size(), 0,
+          "Input(ShapeTensor)'size of Op(uniform_random) can't be zero."
+          "Please check the Attr(shape)'s size of"
+          "Op(fluid.layers.uniform_random).)");
+      auto out_dims = std::vector<int>(inputs_name.size(), -1);
+      ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+
+      return;
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    if (ctx->HasInput("Shape") && shape.empty()) {
+      auto shape_dims = ctx->GetInputDim("Shape");
+      PADDLE_ENFORCE_EQ(
+          shape_dims.size(), 1,
+          "Input(ShapeTensor)' dimension size of Op(uniform_random) must be 1."
+          "Please check the Attr(shape)'s dimension size of"
+          "Op(fluid.layers.uniform_random).)");
+      int num_ele = 1;
+      for (int i = 0; i < shape_dims.size(); ++i) {
+        num_ele *= shape_dims[i];
+      }
+      auto vec_dims = std::vector<int64_t>(num_ele, -1);
+      auto out_dims = framework::make_ddim(vec_dims);
+      ctx->SetOutputDim("Out", out_dims);
+      return;
+    }
+
+    PADDLE_ENFORCE_EQ(shape.empty(), false,
+                      "if there is no ShapeTensor and no Input(Shape),the "
+                      "attr(shape) information must "
+                      "be set by Attr(shape).");
+    std::vector<int64_t> tensor_shape;
+    tensor_shape.reserve(shape.size());
+    for (auto dim : shape) {
+      tensor_shape.push_back(static_cast<int64_t>(dim));
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
   }
 
  protected:
@@ -100,18 +193,44 @@ class UniformRandomOp : public framework::OperatorWithKernel {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("Shape",
+             "(Tensor<int64_t>, optional). If provided, uniform_ranodom "
+             "according to "
+             "this given shape. That is to say it has a higher priority than "
+             "the shape attribute, while the shape attribute still should be "
+             "set correctly to gurantee shape inference in compile time.")
+        .AsDispensable();
+    AddInput("ShapeTensor",
+             "(vector<Tensor<int64_t>>, optional). If provided, uniform_random "
+             "will use this"
+             "The shape of the tensor in vector MUST BE [1]"
+             "it has the highest priority compare with Input(Shape) and "
+             "attr(shape).")
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
 This operator initializes a tensor with random values sampled from a
 uniform distribution. The random result is in set [min, max].
 
 )DOC");
-    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor");
+    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor")
+        .SetDefault({});
     AddAttr<float>("min", "Minimum value of uniform random. [default -1.0].")
         .SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random. [default 1.0].")
