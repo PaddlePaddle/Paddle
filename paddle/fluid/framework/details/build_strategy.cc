@@ -110,7 +110,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "mode.";
       strategy_.fuse_all_optimizer_ops_ = false;
       LOG_IF(WARNING, strategy_.fuse_all_reduce_ops_ == true)
-          << "fuse_all_optimizer_ops only work in Reducer mode.";
+          << "fuse_all_optimizer_ops only works under AllReduce "
+             "mode.";
       strategy_.fuse_all_reduce_ops_ = false;
     }
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
@@ -132,7 +133,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     if (strategy_.fuse_all_reduce_ops_ == true) {
       LOG_IF(WARNING, strategy_.async_mode_)
-          << "fuse_all_optimizer_ops only work in Reducer mode.";
+          << "Currently, fuse_all_reduce_ops doesn't work under "
+             "async mode.";
       strategy_.fuse_all_reduce_ops_ = !strategy_.async_mode_;
     }
   }
