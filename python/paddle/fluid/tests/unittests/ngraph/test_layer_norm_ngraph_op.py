@@ -15,16 +15,16 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_layer_norm_op import TestLayerNormdOp
+from test_layer_norm_op import TestLayerNormOp
 
 
-class TestLayerNormNGRAPHOp(TestLayerNormdOp):
+class TestLayerNormNGRAPHOp(TestLayerNormOp):
     def setUp(self):
         super(TestLayerNormNGRAPHOp, self).setUp()
         self.use_cudnn = False
 
 
-del TestLayerNormdOp
+del TestLayerNormOp
 
 if __name__ == "__main__":
     unittest.main()

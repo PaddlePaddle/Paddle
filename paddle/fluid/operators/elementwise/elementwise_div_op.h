@@ -148,20 +148,21 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
+    // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+    // dY = Out * dX * ddY / Y - dX * ddX / Y
+    // dOut = - dX * ddY
+    // To save memory, (1) dout can be used as 'tmp' tensor, (2) ddout can
+    // inplace ddx
+    Tensor tmp;
     if (dOut) {
-      // dOut = - dX * ddY
-      default_elementwise_mul<DeviceContext, T>(ctx, dX, &ddY_safe, dOut);
-      auto& place =
-          *ctx.template device_context<DeviceContext>().eigen_device();
-      auto dout = framework::EigenVector<T>::Flatten(*dOut);
-      dout.device(place) = static_cast<T>(-1) * dout;
+      tmp = *dOut;
+    } else {
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      tmp = ctx.AllocateTmpTensor<T, DeviceContext>(Out->dims(), dev_ctx);
     }
-
     if (dY) {
       // dX_div_Y = dX / Y;
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      Tensor dX_div_Y =
-          ctx.AllocateTmpTensor<T, DeviceContext>(Out->dims(), dev_ctx);
+      Tensor dX_div_Y = tmp;
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
           ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
 
@@ -179,14 +180,25 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
 
     if (ddOut) {
       // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
-      default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_safe, ddOut);
+      default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_safe, &tmp);
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          ctx, &ddX_safe, ddOut, 0, SubFunctor<T>(), ddOut);
+          ctx, &ddX_safe, &tmp, 0, SubFunctor<T>(), &tmp);
       ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, ddOut, Y, axis, DivFunctor<T>(), ddOut);
+          ctx, &tmp, Y, axis, DivFunctor<T>(), ddOut);
+    }
+
+    if (dOut) {
+      // dOut = - dX * ddY
+      default_elementwise_mul<DeviceContext, T>(ctx, dX, &ddY_safe, dOut);
+      auto& place =
+          *ctx.template device_context<DeviceContext>().eigen_device();
+      auto dout = framework::EigenVector<T>::Flatten(*dOut);
+      dout.device(place) = static_cast<T>(-1) * dout;
     }
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(ElementwiseDivDoubleGradOpInplace, {"DDX", "DDOut"});
 
 }  // namespace operators
 }  // namespace paddle
