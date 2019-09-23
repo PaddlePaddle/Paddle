@@ -37,7 +37,6 @@ class TestSaveModelWithoutVar(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        #output = exe.run(fluid.default_main_program(), feed={'data':np.ones([1,1], np.float32)}, fetch_list=[data_plus])
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
