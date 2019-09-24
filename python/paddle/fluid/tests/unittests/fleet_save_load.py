@@ -266,11 +266,11 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
         server_hadoop_configs = None
         trainer_hadoop_configs = dict()
         if args.hadoop_home != "":
-            hdfs_trainer_client = HDFSClient(args.hadoop_home,
+            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_home,
                                              trainer_hadoop_configs)
             server_hadoop_configs = {}
             server_hadoop_configs['127.0.0.1'] = {
-                'HADOOP_HOME': args.hadoop_home,
+                'HADOOP_HOME': 'python ' + args.hadoop_home,
                 'configs': trainer_hadoop_configs
             }
 
@@ -309,11 +309,11 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
         server_hadoop_configs = None
         trainer_hadoop_configs = dict()
         if args.hadoop_home != "":
-            hdfs_trainer_client = HDFSClient(args.hadoop_home,
+            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_home,
                                              trainer_hadoop_configs)
             server_hadoop_configs = {}
             server_hadoop_configs = {
-                'HADOOP_HOME': args.hadoop_home,
+                'HADOOP_HOME': 'python ' + args.hadoop_home,
                 'configs': trainer_hadoop_configs
             }
 

@@ -1811,8 +1811,12 @@ class DistributeTranspiler(object):
         if hadoop_config and endpoint and endpoint in hadoop_config:
             hadoop_commands = []
             if 'HADOOP_HOME' in hadoop_config[endpoint]:
-                hadoop_bin = '%s/bin/hadoop' % hadoop_config[endpoint][
-                    'HADOOP_HOME']
+                if hadoop_config[endpoint]['HADOOP_HOME'].endswith('.py'):
+                    hadoop_bin = hadoop_config[endpoint]['HADOOP_HOME']
+                else:
+                    hadoop_bin = '%s/bin/hadoop' % hadoop_config[endpoint][
+                        'HADOOP_HOME']
+                print(hadoop_bin)
             else:
                 hadoop_bin = 'hadoop'
             hadoop_commands.append(hadoop_bin)

@@ -24,15 +24,13 @@ import numpy as np
 
 from test_dist_fleet_base import TestFleetBase, RUN_STEP
 
-HADOOP_HOME = None
-
 
 class TestFleetSaveLoadDense2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
         self._test_mode = 0  # 0: local save/load  1: hadoop save/load
-        self.hadoop_home = HADOOP_HOME
+        self.hadoop_home = "./fake_local_hadoop.py"
 
     def check_with_place(self, model_file, check_error_log=False, need_envs={}):
         required_envs = {
@@ -89,23 +87,5 @@ class TestFleetSaveLoadDense2x2(TestFleetBase):
             "fleet_save_load.py", check_error_log=False, need_envs=need_envs)
 
 
-def _hadoop_build():
-    global HADOOP_HOME
-    HADOOP_HOME = tempfile.mkdtemp()
-    hadoop_build_cmd = "pip install pyinstaller && pyinstaller -n hadoop -F ./fake_local_hadoop.py --distpath {0}/bin --specpath {0} --workpath {0}/build".format(
-        HADOOP_HOME)
-    proc = subprocess.Popen(
-        hadoop_build_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True)
-    (output, errors) = proc.communicate()
-    print(output, errors)
-    ret = proc.returncode
-    return ret
-
-
 if __name__ == "__main__":
-    ret = _hadoop_build()
-    if ret == 0:
-        unittest.main()
+    unittest.main()

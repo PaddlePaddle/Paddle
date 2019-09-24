@@ -57,7 +57,10 @@ class HDFSClient(object):
 
     def __init__(self, hadoop_home, configs):
         self.pre_commands = []
-        hadoop_bin = '%s/bin/hadoop' % hadoop_home
+        if hadoop_home.endswith('.py'):
+            hadoop_bin = hadoop_home
+        else:
+            hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)
