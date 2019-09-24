@@ -339,7 +339,7 @@ paddle.fluid.layers.Switch.default (ArgSpec(args=['self'], varargs=None, keyword
 paddle.fluid.layers.increment (ArgSpec(args=['x', 'value', 'in_place'], varargs=None, keywords=None, defaults=(1.0, True)), ('document', 'f88b5787bb80ae6b8bf513a70dabbdc1'))
 paddle.fluid.layers.array_write (ArgSpec(args=['x', 'i', 'array'], varargs=None, keywords=None, defaults=(None,)), ('document', '3f913b5069ad40bd85d89b33e4aa5939'))
 paddle.fluid.layers.create_array (ArgSpec(args=['dtype'], varargs=None, keywords=None, defaults=None), ('document', '556de793fdf24d515f3fc91260e2c048'))
-paddle.fluid.layers.less_than (ArgSpec(args=['x', 'y', 'force_cpu', 'cond'], varargs=None, keywords=None, defaults=(None, None)), ('document', '04af32422c3a3d8f6040aeb406c82768'))
+paddle.fluid.layers.less_than (ArgSpec(args=['x', 'y', 'force_cpu', 'cond'], varargs=None, keywords=None, defaults=(None, None)), ('document', '0283e2341a4763de29a769b966b1dd1b'))
 paddle.fluid.layers.less_equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '7b6d952a9f6340a044cfb91c16aad842'))
 paddle.fluid.layers.greater_than (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '55710e2fafeda70cd1b53d7509712499'))
 paddle.fluid.layers.greater_equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '14bff27b2be5e60eaa30e41925265beb'))

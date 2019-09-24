@@ -1025,10 +1025,7 @@ def less_than(x, y, force_cpu=None, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_cpu is not None:
-        attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
+    attrs['force_cpu'] = False
 
     helper.append_op(
         type='less_than',
@@ -1067,8 +1064,7 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
+    attrs['force_cpu'] = False
 
     helper.append_op(
         type='less_equal',
@@ -1107,8 +1103,7 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
+    attrs['force_cpu'] = False
 
     helper.append_op(
         type='greater_than',
@@ -1148,8 +1143,7 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
+    attrs['force_cpu'] = False
 
     helper.append_op(
         type='greater_equal',

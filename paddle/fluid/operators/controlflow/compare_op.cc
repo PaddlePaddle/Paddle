@@ -56,11 +56,13 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "The start dimension index for broadcasting Y onto X. [default -1]")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    AddAttr<bool>("force_cpu",
-                  "Force fill output variable to cpu "
-                  "memory. Otherwise, fill output variable to the running "
-                  "device [default true].")
-        .SetDefault(true);
+    AddAttr<bool>(
+        "force_cpu",
+        "If true, the output variable is forced to be filled to cpu memory. If "
+        "false [default], the output variable is forced to be filled to the "
+        "running device. This attribute is deprecated and its value is always "
+        "false.")
+        .SetDefault(false);
     AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
                                      comment.equation));
     AddComment(string::Sprintf(R"DOC(
