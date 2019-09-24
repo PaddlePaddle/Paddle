@@ -347,7 +347,9 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = self._convert_scale2tensor(scale)
-                self._var_quant_scales[input_name] = (False, lod_tensor)
+                use_unsigned_int = False
+                self._var_quant_scales[input_name] = (use_unsigned_int,
+                                                      lod_tensor)
 
             if op.name() in self._fake_dequantize_types:
                 input_name = op.input("X")[0]
@@ -514,7 +516,8 @@ class FakeQAT2MkldnnINT8PerfPass(object):
 
                     lod_tensor = self._convert_scale2tensor(
                         scales.astype(np.float64))
-                    self._var_quant_scales[weight_var_name] = (False,
+                    use_unsigned_int = False
+                    self._var_quant_scales[weight_var_name] = (use_unsigned_int,
                                                                lod_tensor)
 
         _compute_var_scales(self._conv_ops, "Output", "Filter", axis=1)

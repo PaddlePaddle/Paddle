@@ -131,14 +131,14 @@ def cuda_places(device_ids=None):
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.
+    gpu places would be returned.  
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be
+    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
-
-    Args:
+    
+    Args: 
         device_ids (None|list(int)|tuple(int)): gpu device id list.
 
     Returns:
@@ -163,9 +163,9 @@ def cuda_places(device_ids=None):
 def cpu_places(device_count=None):
     """
     Create a list of :code:`fluid.CPUPlace` objects.
-
+    
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`.
+    be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
 
@@ -192,9 +192,9 @@ def cuda_pinned_places(device_count=None):
     Create a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`.
+    be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`.
+    be determined by :code:`multiprocessing.cpu_count()`. 
 
     Args:
         device_count (None|int): device number.
@@ -2707,7 +2707,7 @@ class IrGraph(object):
 
     def update_input_link(self, old_input_node, new_input_node, op_node):
         """
-        Update the input's link of an operator node.
+        Update the input's link of a operator node.
 
         Args:
             old_input_node(IrNode): the old input node of the giving op_node.
@@ -2911,8 +2911,7 @@ class IrGraph(object):
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, "Cannot find the target node ({}) in the giving set.".format(
-            node_name)
+        assert target_node is not None, "Cannot find the target node in the giving set."
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -3207,7 +3206,7 @@ class Program(object):
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
-        Notes:
+        Notes: 
         1. :code:`Program.clone()` method DOES NOT clone :code:`py_reader`.
         2. We recommend you to use :code:`clone(for_test=True)` before backward
            and optimization. E.g.
@@ -3897,21 +3896,21 @@ def default_main_program():
         ..  code-block:: python
 
             import paddle.fluid as fluid
-
+            
             # Sample Network:
             data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
+            
             conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
             bn1 = fluid.layers.batch_norm(conv1, act='relu')
             pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
             conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
             bn2 = fluid.layers.batch_norm(conv2, act='relu')
             pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
-
+            
             fc1 = fluid.layers.fc(pool2, size=50, act='relu')
             fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
-
+            
             loss = fluid.layers.cross_entropy(input=fc2, label=label)
             loss = fluid.layers.mean(loss)
             opt = fluid.optimizer.Momentum(
@@ -3919,7 +3918,7 @@ def default_main_program():
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
-
+            
             print(fluid.default_main_program().num_blocks)
             print(fluid.default_main_program().blocks[0].var('image'))
     """
@@ -3966,7 +3965,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
        .. code-block:: python
-
+       
          import paddle.fluid as fluid
 
          main_program = fluid.Program()
