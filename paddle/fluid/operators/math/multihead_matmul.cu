@@ -29,7 +29,11 @@ namespace math {
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350
     val += __shfl_xor_sync(FINAL_MASK, val, mask, warpSize);
+#else
+    val += __shfl_xor(val, mask, warpSize);
+#endif
   return val;
 }
 
@@ -55,7 +59,11 @@ __inline__ __device__ T blockReduceSum(T val) {
 template <typename T>
 __inline__ __device__ T warpReduceMax(T val) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350
     val = max(val, __shfl_xor_sync(FINAL_MASK, val, mask, warpSize));
+#else
+    val = max(val, __shfl_xor(val, mask, warpSize));
+#endif
   return val;
 }
 
