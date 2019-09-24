@@ -58,7 +58,7 @@ inline double GetCurrentUS() {
 }
 
 template <typename T>
-inline void VSUB(int n, const T *x, const T *y, T *z) const {
+inline void VSUB(int n, const T *x, const T *y, T *z) {
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] - y[i];
   }
@@ -757,7 +757,7 @@ void Communicator::SendUpdateSparseVars(
         float *z_val = z_value + y * row_numel;
 
         std::vector<float> row_delta(row_numel, 0);
-        VSUB(row_numel, x_val, y_val, row_delta.data());
+        VSUB<float>(row_numel, x_val, y_val, row_delta.data());
         blas.SCAL(row_numel, avg, row_delta.data());
         blas.VADD(row_numel, row_delta.data(), y_val, y_val);
         blas.VCOPY(row_numel, row_delta.data(), z_val);
