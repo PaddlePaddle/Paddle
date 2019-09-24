@@ -843,10 +843,12 @@ static void CheckTensorNANOrInf(const std::string& op_type,
                              "Operator %s output Tensor %s contains NAN",
                              op_type, name);
   } else {
-    PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                   "Operator %s output Tensor %s contains Inf", op_type, name);
-    PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                   "Operator %s output Tensor %s contains NAN", op_type, name);
+    PADDLE_ENFORCE_EQ(framework::TensorContainsInf(tensor), false,
+                      "Operator %s output Tensor %s contains Inf", op_type,
+                      name);
+    PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(tensor), false,
+                      "Operator %s output Tensor %s contains NAN", op_type,
+                      name);
   }
 }
 
