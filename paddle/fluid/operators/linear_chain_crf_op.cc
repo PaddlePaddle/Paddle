@@ -40,7 +40,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth."
-             "A  LoDTensor or Tensor with int64."");
+             "A  LoDTensor or Tensor with int64.");
     AddInput("length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
