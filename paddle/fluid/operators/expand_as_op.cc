@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -25,34 +25,19 @@ class ExpandAsOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("expand_tensor"), "Input(expand_tensor) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("expand_tensor"),
+                   "Input(expand_tensor) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto expand_tensor_dims = ctx->GetInputDim("expand_tensor");
-    PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()), expand_tensor_dims.size(),
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()),
+                      expand_tensor_dims.size(),
                       "The rank of input(expand_tensor) must be equal "
-                     "to the rank of Input(X).");
+                      "to the rank of Input(X).");
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
                       "The rank of Input(X) must not be greater than 6.");
     std::vector<int64_t> out_shape(x_dims.size());
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
-  }
-
-  protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "expand_tensor") {
-      return expected_kernel_type;
-    }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -68,10 +53,9 @@ class ExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
               "After expanding, size of each dimension of Output(Out) is equal "
               "to size of the corresponding dimension of Input(X) multiplying "
               "the corresponding value given by Attr(expand_times).");
-    AddInput("expand_tensor",
-                              "Expand tensor's shape for each dimension.");
+    AddInput("expand_tensor", "Expand tensor's shape for each dimension.");
     AddComment(R"DOC(
-Expand operator tiles the input by given times number. You should set times
+Expand as operator tiles the input by given times number. You should set times
 number for each dimension by providing tensor 'expend_tensor'. The rank of X
 should be in [1, 6]. Please note that size of 'expend_tensor' must be the same
 with X's rank. Following is a using case:
@@ -80,7 +64,7 @@ Input(X) is a 3-D tensor with shape [2, 3, 1]:
            [[1], [2], [3]],
            [[4], [5], [6]]
         ]
-expand_tensors'shape:  [1, 2, 2]
+expand_tensors'shape:  [2, 6, 2]
 Output(Out) is a 3-D tensor with shape [2, 6, 2]:
         [
             [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
@@ -113,23 +97,6 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "expand_tensor") {
-      return expected_kernel_type;
-    }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
 };
 
 class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
@@ -148,23 +115,22 @@ class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
     return op;
   }
 };
-    
-//DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandGradNoNeedBufVarsInferer, "X");
+
+// DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,ops::ExpandAsGradOpDescMaker);
+REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
+                  ops::ExpandAsGradOpDescMaker);
 REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp);
 REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>
-);
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_as_grad,
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>
-);
+    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>);
