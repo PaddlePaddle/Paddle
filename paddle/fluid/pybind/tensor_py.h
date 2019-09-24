@@ -99,17 +99,20 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
   }
   if (paddle::platform::is_cpu_place(place)) {
     std::memcpy(dst, array.data(), array.nbytes());
-#ifdef PADDLE_WITH_CUDA
-  } else if (paddle::platform::is_cuda_pinned_place(place)) {
-    std::memcpy(dst, array.data(), array.nbytes());
-  } else if (paddle::platform::is_gpu_place(place)) {
-    paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
-                                    cudaMemcpyHostToDevice);
+
   } else {
-    PADDLE_THROW(
-        "Incompatible place type: Tensor.set() supports CPUPlace, CUDAPlace "
-        "and CUDAPinnedPlace, but got %s!",
-        place);
+#ifdef PADDLE_WITH_CUDA
+    if (paddle::platform::is_cuda_pinned_place(place)) {
+      std::memcpy(dst, array.data(), array.nbytes());
+    } else if (paddle::platform::is_gpu_place(place)) {
+      paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
+                                      cudaMemcpyHostToDevice);
+    } else {
+      PADDLE_THROW(
+          "Incompatible place type: Tensor.set() supports CPUPlace, CUDAPlace "
+          "and CUDAPinnedPlace, but got %s!",
+          place);
+    }
 #else
     PADDLE_THROW("Not supported GPU, please compile WITH_GPU option");
 #endif
