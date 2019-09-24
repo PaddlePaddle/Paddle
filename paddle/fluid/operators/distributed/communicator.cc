@@ -793,7 +793,7 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
     auto &new_rows = var_z_slr->rows();
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
-    auto *z_value = new_value.data<float>();
+    auto *z_value = new_value->mutable_data<float>(var_z_slr.place());
 
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
             << new_rows.size();
