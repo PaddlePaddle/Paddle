@@ -202,14 +202,14 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        if not dimension_is_compatible_with(feed.shape, var.shape):
+        if not dimension_is_compatible_with(feed.shape(), var.shape):
             raise ValueError('Cannot feed value of shape %r for Variable %r, '
                              'which has shape %r' %
                              (feed.shape, var.name, var.shape))
-        if not dtype_is_compatible_with(feed.dtype, var.dtype):
+        if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             raise ValueError('Cannot feed value of type %r for Variable %r, '
                              'which has type %r' %
-                             (feed.dtype, var.name, var.dtype))
+                             (feed._dtype(), var.name, var.dtype))
     return True
 
 
