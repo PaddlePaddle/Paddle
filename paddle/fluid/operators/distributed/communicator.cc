@@ -716,10 +716,8 @@ void Communicator::SendUpdateSparseVars(
   auto rows = dims[0];
   auto row_numel = dims[1];
   VLOG(2) << "Sparse var dims[0]: " << rows << " dims[1]: " << row_numel;
-  float *x_mutable_data =
-      var_x_tensor.mutable_data<float>(var_x_tensor.place());
-  float *y_mutable_data =
-      var_y_tensor.mutable_data<float>(var_y_tensor.place());
+  float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
+  float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
@@ -728,8 +726,8 @@ void Communicator::SendUpdateSparseVars(
 
   // copy value
   auto *var_z_value = var_z_select_rows->mutable_value();
-  var_z_value->Resize({ids_num, row_numel});
-  auto *z_mutable_data = var_z_value->mutable_data<float>(var_x_tensor.place());
+  var_z_value->Resize({static_cast<int64_t>(ids_num), row_numel});
+  auto *z_value = var_z_value->mutable_data<float>(var_x_tensor.place());
 
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
@@ -745,31 +743,26 @@ void Communicator::SendUpdateSparseVars(
     int end = buts[x + 1];
     float avg = 1 / static_cast<float>(trainer_nums_);
 
-    fs.push_back(
-        framework::Async([&x_mutable_data, &y_mutable_data, &z_mutable_data,
-                          &new_rows, row_numel, start, end, avg]() {
-          auto x_value = x_mutable_data.data<float>();
-          auto y_value = y_mutable_data.data<float>();
-          auto z_value = z_mutable_data.data<float>();
+    fs.push_back(framework::Async([&x_value, &y_value, &z_value, &new_rows,
+                                   row_numel, start, end, avg]() {
+      auto cpu_ctx = paddle::platform::CPUDeviceContext();
+      auto blas =
+          math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
-          auto cpu_ctx = paddle::platform::CPUDeviceContext();
-          auto blas =
-              math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+      for (int y = start; y < end; y++) {
+        auto ids = new_rows[y];
 
-          for (int y = start; y < end; y++) {
-            auto ids = new_rows[y];
-            std::vector<float> row_diff(row_numel, 0);
-            VSUB(x_value, y_value, row_diff.data());
-            blas.SCAL(row_numel, avg, row_diff.data());
+        float *x_val = x_value + ids * row_numel;
+        float *y_val = y_value + ids * row_numel;
+        float *z_val = z_value + y * row_numel;
 
-            float *x_val = x_value + ids * row_numel;
-            float *y_val = y_value + ids * row_numel;
-            float *z_val = z_value + y * row_numel;
-
-            blas.VADD(row_numel, row_diff.data(), y_val, y_val);
-            blas.VCOPY(row_numel, row_diff.data(), z_val);
-          }
-        }));
+        std::vector<float> row_delta(row_numel, 0);
+        VSUB(row_numel, x_val, y_val, row_delta.data());
+        blas.SCAL(row_numel, avg, row_delta.data());
+        blas.VADD(row_numel, row_delta.data(), y_val, y_val);
+        blas.VCOPY(row_numel, row_delta.data(), z_val);
+      }
+    }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 
@@ -790,10 +783,8 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
-  float *x_mutable_data =
-      var_x_tensor.mutable_data<float>(var_x_tensor.place());
-  float *y_mutable_data =
-      var_y_tensor.mutable_data<float>(var_y_tensor.place());
+  float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
+  float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   if (var_list_[var_name] == true) {
     // sparse param
@@ -802,32 +793,30 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
     auto &new_rows = var_z_slr->rows();
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
-    auto *z_mutable_data = new_value.data<float>();
+    auto *z_value = new_value.data<float>();
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
             << new_rows.size();
     for (size_t i = 0; i < new_rows.size(); i++) {
       float diff = 0;
       VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
               << " before update Vars recv_scope: "
-              << x_mutable_data[new_rows[i] * row_numel]
-              << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
-              << " ;pserver_scope: " << z_mutable_data[i * row_numel];
+              << x_value[new_rows[i] * row_numel]
+              << " ;old_scope: " << y_value[new_rows[i] * row_numel]
+              << " ;pserver_scope: " << z_value[i * row_numel];
       for (int64_t j = 0; j < row_numel; j++) {
         if (j == 0) {
-          diff = z_mutable_data[i * row_numel + j] -
-                 y_mutable_data[new_rows[i] * row_numel + j];
+          diff =
+              z_value[i * row_numel + j] - y_value[new_rows[i] * row_numel + j];
         }
-        x_mutable_data[new_rows[i] * row_numel + j] +=
-            (z_mutable_data[i * row_numel + j] -
-             y_mutable_data[new_rows[i] * row_numel + j]);
-        y_mutable_data[new_rows[i] * row_numel + j] =
-            z_mutable_data[i * row_numel + j];
+        x_value[new_rows[i] * row_numel + j] +=
+            (z_value[i * row_numel + j] - y_value[new_rows[i] * row_numel + j]);
+        y_value[new_rows[i] * row_numel + j] = z_value[i * row_numel + j];
       }
       VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
               << " after update Vars recv_scope: "
-              << x_mutable_data[new_rows[i] * row_numel]
-              << " ;old_scope: " << y_mutable_data[new_rows[i] * row_numel]
-              << " ;pserver_scope: " << z_mutable_data[i * row_numel]
+              << x_value[new_rows[i] * row_numel]
+              << " ;old_scope: " << y_value[new_rows[i] * row_numel]
+              << " ;pserver_scope: " << z_value[i * row_numel]
               << " ;diff: " << diff;
     }
   } else {
