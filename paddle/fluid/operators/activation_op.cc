@@ -504,7 +504,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input of STanh operator."
-             " A LoDTensor or Tensor with type float32,float64.");
+             " A LoDTensor or Tensor with type float32, float64.");
     AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
     AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
         .SetDefault(2.0f / 3.0f);

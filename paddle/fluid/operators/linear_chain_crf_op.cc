@@ -29,7 +29,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "weight matrix for the linear chain CRF. When a Tensor input,"
              "A Tensor with shape [N x S x D], where N is batch number,"
              "S is max length of sequences, D is the total tag number."
-             "A LoDTensor or Tensor with type float32,float64.");
+             "A LoDTensor or Tensor with type float32, float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
@@ -64,7 +64,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
         "backward computation."
-        "A LoDTensor or Tensor with type float32,float64.")
+        "A LoDTensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
@@ -72,7 +72,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
         "will be reused in backward computation."
-        "A LoDTensor or Tensor with type float32,float64.")
+        "A LoDTensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -81,7 +81,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "tensor with shape [S x 1], where S is the sequence number in a "
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
         "The output is no longer a LoDTensor."
-        " A Tensor with type float32,float64.");
+        " A Tensor with type float32, float64.");
     AddComment(R"DOC(
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
