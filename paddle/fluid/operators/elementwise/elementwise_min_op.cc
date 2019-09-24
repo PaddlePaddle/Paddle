@@ -25,20 +25,25 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
   std::string GetName() const override { return "Min"; }
   std::string GetEquation() const override { return "Out = min(X, Y)"; }
 
-  void AddInputX() const override {
-      AddInput("X", "(Variable), The first tensor holding the elements to be compared.");
+  void AddInputX() override {
+    AddInput(
+        "X",
+        "(Variable), The first tensor holding the elements to be compared.");
   }
 
-  void AddInputY() const override {
-      AddInput("Y", "(Variable), The second tensor holding the elements to be compared.");
+  void AddInputY() override {
+    AddInput(
+        "Y",
+        "(Variable), The second tensor holding the elements to be compared.");
   }
 
   std::string GetOpFuntionality() const override {
-      return "Compare two tensors and returns a new tensor containing the element-wise minima.";
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise minima.";
   }
 
   void AddOpComment() override {
-      std::string doc = string::Sprintf(R"DOC(
+    std::string doc = string::Sprintf(R"DOC(
 %s
 
 Examples:
@@ -79,9 +84,10 @@ Examples:
                             fetch_list=[z.name])
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
 
-)DOC", GetCommentExamples());
+)DOC",
+                                      GetCommentExamples());
 
-      AddComment(doc);
+    AddComment(doc);
   };
 };
 

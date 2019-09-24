@@ -25,20 +25,25 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
   std::string GetName() const override { return "Max"; }
   std::string GetEquation() const override { return "Out = max(X, Y)"; }
 
-  void AddInputX() const override {
-      AddInput("X", "(Variable), The first tensor holding the elements to be compared.");
+  void AddInputX() override {
+    AddInput(
+        "X",
+        "(Variable), The first tensor holding the elements to be compared.");
   }
 
-  void AddInputY() const override {
-      AddInput("Y", "(Variable), The second tensor holding the elements to be compared.");
+  void AddInputY() override {
+    AddInput(
+        "Y",
+        "(Variable), The second tensor holding the elements to be compared.");
   }
 
   std::string GetOpFuntionality() const override {
-      return "Compare two tensors and returns a new tensor containing the element-wise maxima.";
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise maxima.";
   }
 
   void AddOpComment() override {
-      std::string doc = string::Sprintf(R"DOC(
+    std::string doc = string::Sprintf(R"DOC(
 %s
 
 Examples:
@@ -79,15 +84,11 @@ Examples:
                             fetch_list=[z.name])
         print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
 
-)DOC", GetCommentExamples());
+)DOC",
+                                      GetCommentExamples());
 
-      AddComment(doc);
+    AddComment(doc);
   };
-
-  void Make() final{
-
-      AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-  }
 };
 
 class ElementwiseMaxGradOpDescMaker : public framework::SingleGradOpDescMaker {

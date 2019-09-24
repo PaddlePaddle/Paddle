@@ -102,47 +102,46 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<int>("axis",
                  "(int, default -1). If X.dimension != Y.dimension,"
-                   "Y.dimension must be a subsequence of x.dimension. And axis is the start dimension index "
-                   "for broadcasting Y onto X. ")
-      .SetDefault(-1)
-      .EqualGreaterThan(-1);
+                 "Y.dimension must be a subsequence of x.dimension. And axis "
+                 "is the start dimension index "
+                 "for broadcasting Y onto X. ")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
-      .SetDefault(false);
+        .SetDefault(false);
     AddAttr<std::string>(
-      "x_data_format",
-      "(string, default NCHW) Only used in mkldnn"
+        "x_data_format",
+        "(string, default NCHW) Only used in mkldnn"
         "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
         "Defaults to \"\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
-      .SetDefault("");
+        .SetDefault("");
     AddAttr<std::string>(
-      "y_data_format",
-      "(string, default \"\") Only used in mkldnn"
+        "y_data_format",
+        "(string, default \"\") Only used in mkldnn"
         "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
         "Defaults to \"\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
-      .SetDefault("");
+        .SetDefault("");
 
-    AddComment();
+    AddOpComment();
   }
 
  protected:
-  virtual void AddInputX(){
+  virtual void AddInputX() {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
-  };
-  virtual void AddInputY(){
+  }
+  virtual void AddInputY() {
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-  };
-  virtual void AddOpOutput(){
-    AddOutput("Out", "A location into which the result is stored. It's dimension equals with x");
-  };
-  virtual void AddOpComment() {
-    AddComment(GetCommentExamples(GetName(), GetEquation()));
   }
+  virtual void AddOpOutput() {
+    AddOutput("Out",
+              "A location into which the result is stored. It's dimension "
+              "equals with x");
+  }
+  virtual void AddOpComment() { AddComment(GetCommentExamples()); }
 
-  virtual std::string GetOpFuntionality() const {
-    return "";
-  }
+  virtual std::string GetOpFuntionality() const { return ""; }
 
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
@@ -186,7 +185,8 @@ For example:
 
 The inputs $X$ and $Y$ can carry the different LoD information.
 But the output only shares the LoD information with the input $X$.
-)DOC", GetName(), GetEquation());
+)DOC",
+                           GetOpFuntionality(), GetName(), GetEquation());
   }
 };
 

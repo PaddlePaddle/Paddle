@@ -39,16 +39,13 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
   std::string GetName() const override { return "Pow"; }
   std::string GetEquation() const override { return "Out = X ^ Y"; }
 
-  void AddInputX() const override {
-    AddInput("X", "(Variable), The Base.");
-  }
+  void AddInputX() override { AddInput("X", "(Variable), The Base."); }
 
-  void AddInputY() const override {
-    AddInput("Y", "(Variable), The exponents.");
-  }
+  void AddInputY() override { AddInput("Y", "(Variable), The exponents."); }
 
   std::string GetOpFuntionality() const override {
-    return "First tensor elements raised to powers from the second tensor, element-wise.";
+    return "First tensor elements raised to powers from the second tensor, "
+           "element-wise.";
   }
 
   void AddOpComment() override {
@@ -75,7 +72,11 @@ Examples:
                             fetch_list=[z.name])
         print(z_value) #[2, 243, 16]
 
-)DOC", GetCommentExamples());
+)DOC",
+                                      GetCommentExamples());
+
+    AddComment(doc);
+  }
 };
 }  // namespace operators
 }  // namespace paddle
