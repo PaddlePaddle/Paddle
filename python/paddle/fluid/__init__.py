@@ -38,13 +38,13 @@ from .framework import *
 from . import executor
 from .executor import *
 
-from .data import data
-
 from . import data_feed_desc
 from .data_feed_desc import *
 
 from . import dataset
 from .dataset import *
+
+from .data import *
 
 from . import trainer_desc
 from . import inferencer
