@@ -580,11 +580,14 @@ class Executor(object):
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
         exe = program._executor
-        global_block = program._program.global_block()
+        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
+        # instead of program. We will add support for checking Vars in Graph
+        need_check_feed = program._program is not None
+        if need_check_feed:
+            global_block = program._program.global_block()
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
-                var = global_block.var(feed_name)
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
@@ -594,7 +597,9 @@ class Executor(object):
                         "The input({}) should be numpy.array, but not {}.".format(
                         feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
-                check_feed_shape_type(var, feed_tensor)
+                if need_check_feed:
+                    var = global_block.var(feed_name)
+                    check_feed_shape_type(var, feed_tensor)
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -611,7 +616,6 @@ class Executor(object):
                         "Each element of feed list should be a dict")
                 res_dict = dict()
                 for feed_name in each:
-                    var = global_block.var(feed_name)
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
@@ -620,7 +624,9 @@ class Executor(object):
                             feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
-                    check_feed_shape_type(var, tensor)
+                    if need_check_feed:
+                        var = global_block.var(feed_name)
+                        check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
