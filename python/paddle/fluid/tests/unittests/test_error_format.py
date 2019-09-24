@@ -92,16 +92,22 @@ class TestErrorMessageHintAugment(unittest.TestCase):
 
 class TestPaddleEnforceHandler(unittest.TestCase):
     def test_excepthook_replace_no_augment(self):
+        exception = None
         try:
             core.__unittest_throw_exception__()
-        except Exception:
+        except Exception as ex:
+            exception = ex
             sys.excepthook = error_format.paddle_enforce_handler
+        self.assertIsNotNone(exception)
 
     def test_excepthook_replace_augment(self):
+        exception = None
         try:
             _make_enforce_not_met_exception()
-        except Exception:
+        except Exception as ex:
+            exception = ex
             sys.excepthook = error_format.paddle_enforce_handler
+        self.assertIsNotNone(exception)
 
 
 if __name__ == "__main__":
