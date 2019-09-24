@@ -1077,5 +1077,76 @@ class TestPool3dAPI(OpTest):
             atol=1e-05)
 
 
+class TestPool3dAPI_Error(OpTest):
+    def test_api(self):
+        input_NDHWC = fluid.layers.data(
+            name="input_NDHWC",
+            shape=[2, 5, 5, 5, 3],
+            append_batch_size=False,
+            dtype="float32")
+        ksize = [3, 3, 3]
+
+        # cudnn value error
+        def run_1():
+            out_1 = fluid.layers.pool3d(
+                input=input_NDHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding=[1, 1, 1],
+                use_cudnn=[0],
+                data_format="NDHWC")
+
+        self.assertRaises(ValueError, run_1)
+
+        # data_format value error
+        def run_2():
+            out_2 = fluid.layers.pool3d(
+                input=input_NDHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding=[1, 1, 1],
+                use_cudnn=False,
+                data_format="NDHWCC")
+
+        self.assertRaises(ValueError, run_2)
+
+        # padding str value error
+        def run_3():
+            out_3 = fluid.layers.pool3d(
+                input=input_NDHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding="VALIDSAME",
+                use_cudnn=False,
+                data_format="NDHWC")
+
+        self.assertRaises(ValueError, run_3)
+
+        # padding str valid and ceil_mode value error
+        def run_4():
+            out_4 = fluid.layers.pool3d(
+                input=input_NDHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding="VALID",
+                use_cudnn=False,
+                ceil_mode=True,
+                data_format="NDHWC")
+
+        self.assertRaises(ValueError, run_4)
+
+        # padding with 8 ele. value error
+        def run_5():
+            out_5 = fluid.layers.pool3d(
+                input=input_NDHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1], [1, 1]],
+                use_cudnn=False,
+                data_format="NDHWC")
+
+        self.assertRaises(ValueError, run_5)
+
+
 if __name__ == '__main__':
     unittest.main()
