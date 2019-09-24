@@ -612,12 +612,9 @@ void Communicator::GeoSgdSend(const std::vector<std::string> &sparse_var_names,
     int *var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
     // insert ids which has not been record
     for (size_t j = 0; j < element_number; j++) {
-      if (ids_table->at(sparse_var_tables[i]).find(var_mutable_data[j]) ==
-          ids_table->at(sparse_var_tables[i]).end()) {
-        ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
-        VLOG(4) << "Sparse var " << sparse_var_tables[i] << " insert "
-                << var_mutable_data[j];
-      }
+      ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
+      VLOG(4) << "Sparse var " << sparse_var_tables[i] << " insert "
+              << var_mutable_data[j];
     }
   }
   need_push_queue_->Push(ids_table);
@@ -629,13 +626,12 @@ std::unordered_set<int64_t> Communicator::SparseIdsMerge(
     std::vector<SparseIdsMap> &ids_send_vec, const std::string &var_name) {
   auto before_run_ids_merge_ = GetCurrentUS();
   std::unordered_set<int64_t> ids_set;
+
   VLOG(2) << "Sparse ids merge name: " << var_name;
   VLOG(2) << "ids_send_vec Size: " << ids_send_vec.size();
-  for (auto table : ids_send_vec) {
-    for (auto ids : table[var_name]) {
-      if (ids_set.find(ids) == ids_set.end()) {
-        ids_set.insert(ids);
-      }
+  for (auto ids_map : ids_send_vec) {
+    for (auto id : ids_map[var_name]) {
+      ids_set.insert(id);
     }
   }
   auto after_run_ids_merge_ = GetCurrentUS();

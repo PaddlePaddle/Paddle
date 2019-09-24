@@ -16,9 +16,11 @@ limitations under the License. */
 
 #include <atomic>
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -156,13 +158,13 @@ inline void MergeVars(const std::string& var_name,
 }
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
-using SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>;
+using SparseIdsMap =
+    std::unordered_map<std::string, std::unordered_set<int64_t>>;
 
 class Communicator {
  public:
   Communicator(const RpcCtxMap& send_varname_to_ctx,
                const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope);
-  
 
   ~Communicator();
 
@@ -185,7 +187,7 @@ class Communicator {
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
-  
+
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> send_thread_{nullptr};
@@ -195,7 +197,7 @@ class Communicator {
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
-  
+
   // the following code is for initialize the commnunicator
  public:
   static void Init(const RpcCtxMap& send_varname_to_ctx,
@@ -212,50 +214,58 @@ class Communicator {
 
  private:
   static std::shared_ptr<Communicator> communicator_;
- 
+
  public:
   // for geo-sgd algorithm
-  static void GeoSgdInit(const paddle::framework::ProgramDesc& program, Scope* param_scope,
-                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
-                        int &trainers, int &geo_need_push_nums);
+  static void GeoSgdInit(
+      const paddle::framework::ProgramDesc& program, Scope* param_scope,
+      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
+          vars_info,
+      int& trainers, int& geo_need_push_nums);
 
   static void Init(const RpcCtxMap& send_varname_to_ctx,
                    const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope,
-                   int &trainers,int &geo_need_push_nums, std::unordered_map<std::string,bool> &var_list) {
-      if(communicator_ == nullptr) {
-        communicator_.reset(new Communicator(send_varname_to_ctx, recv_varname_to_ctx, 
-                                             recv_scope, trainers, geo_need_push_nums,var_list));
-      }
+                   int& trainers, int& geo_need_push_nums,
+                   std::unordered_map<std::string, bool>& var_list) {
+    if (communicator_ == nullptr) {
+      communicator_.reset(
+          new Communicator(send_varname_to_ctx, recv_varname_to_ctx, recv_scope,
+                           trainers, geo_need_push_nums, var_list));
+    }
   }
 
   Communicator(const RpcCtxMap& send_varname_to_ctx,
-               const RpcCtxMap& recv_varname_to_ctx,Scope* recv_scope,
-               int &trainers,int &geo_need_push_nums,std::unordered_map<std::string,bool> &var_list);
+               const RpcCtxMap& recv_varname_to_ctx, Scope* recv_scope,
+               int& trainers, int& geo_need_push_nums,
+               std::unordered_map<std::string, bool>& var_list);
 
-  void GeoSgdSend(const std::vector<std::string>& sparse_var_names, const std::vector<std::string>& sparse_var_tables,const framework::Scope& scope);
+  void GeoSgdSend(const std::vector<std::string>& sparse_var_names,
+                  const std::vector<std::string>& sparse_var_tables,
+                  const framework::Scope& scope);
 
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
-  std::unordered_set<int64_t> SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
-                                             const std::string &var_name);
-  
+  std::unordered_set<int64_t> SparseIdsMerge(
+      std::vector<SparseIdsMap>& ids_send_vec, const std::string& var_name);
+
   void SendUpdateDenseVars(const std::string& var_name);
-  void SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table);
+  void SendUpdateSparseVars(const std::string& var_name,
+                            std::unordered_set<int64_t>& ids_table);
   void RecvUpdateVars(const std::string& var_name);
 
-  void GeoSgdParamInit(framework::Scope *scope) {
-    for(auto &iter:var_list_){
+  void GeoSgdParamInit(framework::Scope* scope) {
+    for (auto& iter : var_list_) {
       auto var_name = iter.first;
       scope->Var(var_name);
     }
   }
 
-  void GeoSgdParamCopy(const framework::Scope &scope_x,
-                       const framework::Scope &scope_y,
+  void GeoSgdParamCopy(const framework::Scope& scope_x,
+                       const framework::Scope& scope_y,
                        const std::string var_name);
 
-  void GeoSgdSparseParamInit(const framework::Scope &scope_x,
-                             const framework::Scope &scope_y,
+  void GeoSgdSparseParamInit(const framework::Scope& scope_x,
+                             const framework::Scope& scope_y,
                              const std::string var_name);
 
   const std::string VarToDeltaVar(const std::string var_name) {
@@ -266,7 +276,7 @@ class Communicator {
 
   const std::string DeltaVarToVar(const std::string var_name) {
     std::string origin_name = var_name;
-    origin_name.erase(origin_name.find(".delta"),6);
+    origin_name.erase(origin_name.find(".delta"), 6);
     const std::string param_name = origin_name;
     return param_name;
   }
@@ -274,17 +284,19 @@ class Communicator {
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;
-  
   bool is_geo_sgd_ = false;
-  std::shared_ptr<Scope> delta_scope_; //parameter local delta: recv - old
-  std::shared_ptr<Scope> old_scope_; //parameter local, storage the param after last recv
-  std::shared_ptr<Scope> pserver_scope_; //parameter on pserver,gloabl scope
-  
+  std::shared_ptr<Scope> delta_scope_;  // parameter local delta: recv - old
+  std::shared_ptr<Scope>
+      old_scope_;  // parameter local, storage the param after last recv
+  std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
+
   std::atomic_uint have_push_{0};
-  
-  std::unordered_map<std::string,bool> var_list_; //if var is sparse, using selected rows, bool=true
-  
-  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>> need_push_queue_;
+
+  std::unordered_map<std::string, bool>
+      var_list_;  // if var is sparse, using selected rows, bool=true
+
+  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
+      need_push_queue_;
   std::vector<SparseIdsMap> ids_send_vec_;
 };
 
