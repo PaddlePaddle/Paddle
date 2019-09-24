@@ -24,8 +24,8 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
-from paddle.fluid.contrib.slim.quantization import TransformToMkldnnINT8Pass
+from paddle.fluid.contrib.slim.quantization import FakeQAT2MkldnnINT8KernelPass
+from paddle.fluid.contrib.slim.quantization import FakeQAT2MkldnnINT8PerfPass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -51,7 +51,8 @@ def parse_args():
     parser.add_argument(
         '--qat2',
         action='store_true',
-        help='If used, the QAT model is treated as a second generation model.')
+        help='If used, the QAT model is treated as a second generation model for performance optimization.'
+    )
     parser.add_argument(
         '--save_model',
         action='store_true',
@@ -181,15 +182,15 @@ class TestQatInt8Comparison(unittest.TestCase):
                 graph.draw('.', 'qat_orig', graph.all_op_nodes())
             if (transform_to_int8):
                 if (test_case_args.qat2):
-                    transform_to_mkldnn_int8_pass = TransformToMkldnnINT8Pass(
-                        scope=inference_scope,
-                        place=place,
-                        core=core,
-                        debug=self._debug)
+                    transform_to_mkldnn_int8_pass = FakeQAT2MkldnnINT8PerfPass(
+                        _scope=inference_scope,
+                        _place=place,
+                        _core=core,
+                        _debug=self._debug)
                     graph = transform_to_mkldnn_int8_pass.apply(graph)
                 else:
-                    mkldnn_int8_pass = TransformForMkldnnPass(
-                        scope=inference_scope, place=place)
+                    mkldnn_int8_pass = FakeQAT2MkldnnINT8KernelPass(
+                        _scope=inference_scope, _place=place)
                     graph = mkldnn_int8_pass.apply(graph)
 
             else:
@@ -315,7 +316,6 @@ class TestQatInt8Comparison(unittest.TestCase):
             batch_num,
             skip_batch_num,
             transform_to_int8=False)
-
         _logger.info('--- QAT INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size)

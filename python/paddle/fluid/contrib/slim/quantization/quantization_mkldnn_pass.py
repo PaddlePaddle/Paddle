@@ -17,10 +17,10 @@ from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
 
-__all__ = ['TransformForMkldnnPass', 'TransformToMkldnnINT8Pass']
+__all__ = ['FakeQAT2MkldnnINT8KernelPass', 'FakeQAT2MkldnnINT8PerfPass']
 
 
-class TransformForMkldnnPass(object):
+class FakeQAT2MkldnnINT8KernelPass(object):
     """
     Convert QuantizationFreezePass generated IrGraph to MKL-DNN supported INT8
     IrGraph. Following transformations did in this pass:
@@ -36,7 +36,7 @@ class TransformForMkldnnPass(object):
         4. Remove fake_dequantize_abs_max op
     """
 
-    def __init__(self, scope=None, place=None):
+    def __init__(self, _scope=None, _place=None):
         """
         Args:
             scope(fluid.Scope): scope is used to initialize the new parameters.
@@ -48,26 +48,26 @@ class TransformForMkldnnPass(object):
             # The original graph will be rewrite.
             import paddle.fluid as fluid
             from paddle.fluid.contrib.slim.quantization \
-                import TransformForMkldnnPass
+                import FakeQAT2MkldnnINT8KernelPass
             from paddle.fluid.framework import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
             place = fluid.CPUPlace()
-            mkldnn_pass = TransformForMkldnnPass(fluid.global_scope(),
+            mkldnn_pass = FakeQAT2MkldnnINT8KernelPass(fluid.global_scope(),
             place)
             mkldnn_pass.apply(graph)
         """
 
-        self._scope = scope
-        self._place = place
+        self._scope = _scope
+        self._place = _place
 
-        self.quantize_type = [
+        self._quantize_type = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max'
         ]
-        self.dequantize_type = ['fake_dequantize_max_abs']
-        self.quantize_dequantize_type = [
+        self._dequantize_type = ['fake_dequantize_max_abs']
+        self._quantize_dequantize_type = [
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
 
@@ -75,10 +75,10 @@ class TransformForMkldnnPass(object):
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
 
-        self.InScale = {}
-        self.max_range = {}
-        self.new_output = {}
-        self.s8_max = 127
+        self._in_scale = {}
+        self._max_range = {}
+        self._new_output = {}
+        self._s8_max = 127
 
     def apply(self, graph):
         """
@@ -95,26 +95,26 @@ class TransformForMkldnnPass(object):
         ops = graph.all_op_nodes()
 
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
-        # Collect the InScales and max_range to calculate the new scales for MKL-DNN
+        # Collect the _in_scales and _max_range to calculate the new scales for MKL-DNN
         # INT8 conv2d and mul
         for op_node in ops:
-            if op_node.name() in self.dequantize_type:
+            if op_node.name() in self._dequantize_type:
                 input_name = op_node.input("X")[0]
                 scale_name = op_node.input("Scale")[0]
-                self.InScale[input_name] = self._load_param(self._scope,
-                                                            scale_name)[0]
-                self.max_range[input_name] = op_node.op().attr("max_range")
-                self.new_output[input_name] = op_node.output("Out")[0]
+                self._in_scale[input_name] = self._load_param(self._scope,
+                                                              scale_name)[0]
+                self._max_range[input_name] = op_node.op().attr("max_range")
+                self._new_output[input_name] = op_node.output("Out")[0]
 
-            if op_node.name() in self.quantize_dequantize_type:
+            if op_node.name() in self._quantize_dequantize_type:
                 inputs = op_node.op().input_names()
                 attrs = op_node.op().attr_names()
                 input_name = op_node.input("X")[0]
                 scale_name = op_node.input("InScale")[0]
-                self.InScale[input_name] = self._load_param(self._scope,
-                                                            scale_name)[0]
-                #  self.max_range[input_name] = op_node.op().attr("max_range")
-                self.new_output[input_name] = op_node.output("Out")[0]
+                self._in_scale[input_name] = self._load_param(self._scope,
+                                                              scale_name)[0]
+                #  self._max_range[input_name] = op_node.op().attr("max_range")
+                self._new_output[input_name] = op_node.output("Out")[0]
 
         for op_node in ops:
             if op_node.name() in self._quantizable_ops:
@@ -124,9 +124,9 @@ class TransformForMkldnnPass(object):
                     self._transform_to_pool_mkldnn(graph, op_node)
                 else:
                     self._transform_to_mul_mkldnn(graph, op_node)
-            elif op_node.name() in self.quantize_type:
+            elif op_node.name() in self._quantize_type:
                 self._transform_to_quantize_mkldnn(graph, op_node)
-            elif op_node.name() in self.dequantize_type:
+            elif op_node.name() in self._dequantize_type:
                 self._remove_fake_dequantize_op(graph, op_node)
             self._remove_unused_var_nodes(graph)
         return graph
@@ -141,7 +141,7 @@ class TransformForMkldnnPass(object):
         # Convert int8 range weights to fp32 range weights
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(
-            np.multiply(weight, self.s8_max), self.max_range[output_name])
+            np.multiply(weight, self._s8_max), self._max_range[output_name])
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(op_node.inputs,
@@ -149,8 +149,8 @@ class TransformForMkldnnPass(object):
         weight_var_node = graph._find_node_by_name(op_node.inputs, weight_name)
 
         # Set fake_dequantize_abs_max's output as new output of conv2d
-        output_var_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   self.new_output[output_name])
+        output_var_node = graph._find_node_by_name(
+            graph.all_var_nodes(), self._new_output[output_name])
         attrs = {
             name: op_node.op().attr(name)
             for name in op_node.op().attr_names()
@@ -164,9 +164,9 @@ class TransformForMkldnnPass(object):
             outputs={'Output': output_var_node})
 
         # Based on the QAT's scales to calculate the scales of MKL-DNN INT8 conv2d
-        scale_in = self.s8_max / self.InScale[output_name]
+        scale_in = self._s8_max / self._in_scale[output_name]
         scale_w = []
-        scale_w = [self.max_range[output_name] / self.s8_max]
+        scale_w = [self._max_range[output_name] / self._s8_max]
 
         conv_op_node.set_attr("Scale_weights", scale_w)
         conv_op_node.set_attr("Scale_in", scale_in)
@@ -185,7 +185,7 @@ class TransformForMkldnnPass(object):
         # Convert int8 range weights to fp32 range weights
         weight = self._load_param(self._scope, weight_name)
         w_fp32 = np.divide(
-            np.multiply(weight, self.s8_max), self.max_range[output_name])
+            np.multiply(weight, self._s8_max), self._max_range[output_name])
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(op_node.inputs,
@@ -193,8 +193,8 @@ class TransformForMkldnnPass(object):
         weight_var_node = graph._find_node_by_name(op_node.inputs, weight_name)
 
         # Set fake_dequantize_abs_max's output as new output of mul
-        output_var_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   self.new_output[output_name])
+        output_var_node = graph._find_node_by_name(
+            graph.all_var_nodes(), self._new_output[output_name])
         attrs = {
             name: op_node.op().attr(name)
             for name in op_node.op().attr_names()
@@ -208,9 +208,9 @@ class TransformForMkldnnPass(object):
             outputs={'Out': output_var_node})
 
         # Based on the QAT's scales to calculate MKL-DNN INT8 mul's scales
-        scale_in = self.s8_max / self.InScale[output_name]
+        scale_in = self._s8_max / self._in_scale[output_name]
         scale_w = []
-        scale_w = [self.max_range[output_name] / self.s8_max]
+        scale_w = [self._max_range[output_name] / self._s8_max]
 
         mul_op_node.set_attr("scale_y", scale_w)
         mul_op_node.set_attr("scale_x", scale_in)
@@ -230,7 +230,7 @@ class TransformForMkldnnPass(object):
                                                   op_node.input("X")[0])
         output_var_node = graph._find_node_by_name(op_node.outputs,
                                                    op_node.output("Out")[0])
-        scale_in = self.s8_max / self._load_param(
+        scale_in = self._s8_max / self._load_param(
             self._scope, op_node.input("InScale")[0])[0]
         quant_op_node = graph.create_op_node(
             op_type='quantize',
@@ -276,7 +276,7 @@ class TransformForMkldnnPass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
 
-class TransformToMkldnnINT8Pass(object):
+class FakeQAT2MkldnnINT8PerfPass(object):
     """
     Transform a QAT model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
@@ -290,29 +290,30 @@ class TransformToMkldnnINT8Pass(object):
             passes (`cpu_quantize_pass`, `cpu_quantize_squash_pass`).
     """
 
-    def __init__(self, scope=None, place=None, core=None, debug=False):
-        self._scope = scope
-        self._place = place
-        self._core = core
-        self._debug = debug
-        self.quantize_types = [
+    def __init__(self, _scope=None, _place=None, _core=None, _debug=False):
+        self._scope = _scope
+        self._place = _place
+        self._core = _core
+        self._debug = _debug
+        self._quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_range_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
-        self.fake_quantize_types = [
+        self._fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
-        self.fake_dequantize_types = ['fake_dequantize_max_abs']
+        self._fake_dequantize_types = ['fake_dequantize_max_abs']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._pool_ops = ['pool2d']
         self._mul_ops = ['mul']
         self._fc_ops = ['fc']
-        self.WeightScales = {}
-        self.VarQuantScales = {}
-        self.max_range = {}
-        self.s8_max = 127
+        self._weight_scales = {}
+        # Collect the Input and Output sclaes from Fake QAT models
+        self._var_quant_scales = {}
+        self._max_range = {}
+        self._s8_max = 127
 
     def apply(self, graph):
         assert isinstance(graph,
@@ -335,7 +336,7 @@ class TransformToMkldnnINT8Pass(object):
 
     def _gather_scales(self, graph):
         for op in graph.all_op_nodes():
-            if op.name() in self.quantize_types:
+            if op.name() in self._quantize_types:
                 bit_length = op.op().attr("bit_length")
                 assert bit_length == 8, 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
                     bit_length)
@@ -346,12 +347,12 @@ class TransformToMkldnnINT8Pass(object):
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = self._convert_scale2tensor(scale)
-                self.VarQuantScales[input_name] = (False, lod_tensor)
+                self._var_quant_scales[input_name] = (False, lod_tensor)
 
-            if op.name() in self.fake_dequantize_types:
+            if op.name() in self._fake_dequantize_types:
                 input_name = op.input("X")[0]
-                max_range = op.op().attr("max_range")
-                self.WeightScales[input_name] = max_range
+                _max_range = op.op().attr("max_range")
+                self._weight_scales[input_name] = _max_range
         return graph
 
     def _update_pooling_scales(self, graph):
@@ -359,9 +360,9 @@ class TransformToMkldnnINT8Pass(object):
             if op.name() in self._pool_ops:
                 input_name = op.input("X")[0]
                 output_name = op.output("Out")[0]
-                if input_name in self.VarQuantScales:
-                    self.VarQuantScales[output_name] = self.VarQuantScales[
-                        input_name]
+                if input_name in self._var_quant_scales:
+                    self._var_quant_scales[
+                        output_name] = self._var_quant_scales[input_name]
         return graph
 
     def _load_param(self, scope, param_name):
@@ -369,16 +370,14 @@ class TransformToMkldnnINT8Pass(object):
 
     def _remove_fake_ops(self, graph):
         for op in graph.all_op_nodes():
-            if op.name() in self.fake_quantize_types:
+            if op.name() in self._fake_quantize_types:
                 op_out = graph._find_node_by_name(op.outputs,
                                                   op.output("Out")[0])
-                next_op = op_out.outputs[0]
                 self._remove_fake_quantize(graph, op)
 
         for op in graph.all_op_nodes():
-            if op.name() in self.fake_dequantize_types:
+            if op.name() in self._fake_dequantize_types:
                 op_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
-                prev_op = op_in.inputs[0]
                 self._remove_fake_dequantize(graph, op)
         return graph
 
@@ -433,18 +432,18 @@ class TransformToMkldnnINT8Pass(object):
         weight_name = op_node.input("Filter")[0]
         output_name = op_node.output("Output")[0]
         # Convert int8 range weights to fp32 range weights
-        scales = self.WeightScales[output_name]
+        scales = self._weight_scales[output_name]
         weight = self._load_param(self._scope, weight_name)
-        w_fp32 = np.divide(np.multiply(weight, self.s8_max), scales)
+        w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
 
     def _dequantize_mul_weights(self, graph, op_node):
         weight_name = op_node.input("Y")[0]
         output_name = op_node.output("Out")[0]
-        scales = self.WeightScales[output_name]
+        scales = self._weight_scales[output_name]
         weight = self._load_param(self._scope, weight_name)
-        w_fp32 = np.divide(np.multiply(weight, self.s8_max), scales)
+        w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
 
@@ -515,7 +514,8 @@ class TransformToMkldnnINT8Pass(object):
 
                     lod_tensor = self._convert_scale2tensor(
                         scales.astype(np.float64))
-                    self.VarQuantScales[weight_var_name] = (False, lod_tensor)
+                    self._var_quant_scales[weight_var_name] = (False,
+                                                               lod_tensor)
 
         _compute_var_scales(self._conv_ops, "Output", "Filter", axis=1)
         _compute_var_scales(self._fc_ops, "Out", "W", axis=0)
@@ -543,6 +543,7 @@ class TransformToMkldnnINT8Pass(object):
                        graph.all_op_nodes())
 
         graph = self._apply_pass(graph, 'cpu_quantize_pass',
-                                 ['quant_var_scales'], [self.VarQuantScales])
+                                 ['quant_var_scales'],
+                                 [self._var_quant_scales])
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
         return graph

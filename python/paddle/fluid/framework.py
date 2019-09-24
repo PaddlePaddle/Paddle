@@ -2734,7 +2734,7 @@ class IrGraph(object):
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
         self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
