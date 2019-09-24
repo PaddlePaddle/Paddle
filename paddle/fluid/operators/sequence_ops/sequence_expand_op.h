@@ -92,6 +92,13 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
 
+    PADDLE_ENFORCE_EQ(x_lod.empty(), false,
+                      "Input(X) Tensor of SequenceExpandOp does not contain "
+                      "LoD information.");
+    PADDLE_ENFORCE_EQ(y_lod.empty(), false,
+                      "Input(Y) Tensor of SequenceExpandOp does not contain "
+                      "LoD information.");
+
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 
     out->mutable_data<T>(context.GetPlace());
