@@ -3207,6 +3207,7 @@ class RecomputeOptimizer(Optimizer):
 
         Examples:
             .. code-block:: python
+
                 import paddle.fluid as fluid
                 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -3214,8 +3215,7 @@ class RecomputeOptimizer(Optimizer):
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
                     cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
                     sum_cost = fluid.layers.reduce_mean(cost)
-                    return sum_cost, fc_1, prediction
-                
+                    return sum_cost, fc_1, prediction                
                 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -3235,6 +3235,7 @@ class RecomputeOptimizer(Optimizer):
                     cost, startup_program=None, params_grads=params_grads)
                 
                 print("Finished apply_optimize")
+
         """
 
         return self._optimizer.apply_optimize(
