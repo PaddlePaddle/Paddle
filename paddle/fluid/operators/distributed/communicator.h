@@ -159,7 +159,7 @@ inline void MergeVars(const std::string& var_name,
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 using SparseIdsMap =
-    std::unordered_map<std::string, std::unordered_set<int64_t>>;
+    std::unordered_map<std::string, std::vector<int64_t>>;
 
 class Communicator {
  public:
@@ -246,7 +246,7 @@ class Communicator {
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
   std::unordered_set<int64_t> SparseIdsMerge(
-      std::vector<SparseIdsMap>& ids_send_vec, const std::string& var_name);
+      std::vector<std::shared_ptr<SparseIdsMap>>& ids_send_vec, const std::string& var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
@@ -297,7 +297,7 @@ class Communicator {
 
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
-  std::vector<SparseIdsMap> ids_send_vec_;
+  std::vector<std::shared_ptr<SparseIdsMap>> ids_send_vec_;
 };
 
 }  // namespace distributed
