@@ -10032,12 +10032,8 @@ def pad2d(input,
 
     helper = LayerHelper('pad2d', **locals())
 
-    if mode not in [
-            'reflect',
-            'edge',
-            'constant',
-    ]:
-        raise ValueError('mode should be one of constant, reflect, edge.')
+    assert mode in ['reflect', 'edge', 'constant'
+                    ], "mode should be one of constant, reflect, edge."
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
