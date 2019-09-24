@@ -651,9 +651,15 @@ class Executor(object):
         if feed is not None:
             global_block = program._program.global_block(
             ) if compiled else program.global_block()
-            for feed_target_name in feed:
-                var = global_block.var(feed_target_name)
-                data.check_feed_shape_type(var, feed[feed_target_name])
+            # feed can be dict or list of dict
+            for feed_obj in feed:
+                if isinstance(feed_obj, dict):
+                    for feed_target_name in feed_obj:
+                        var = global_block.var(feed_target_name)
+                        data.check_feed_shape_type(var, feed[feed_target_name])
+                else:
+                    var = global_block.var(feed_target_name)
+                    data.check_feed_shape_type(var, feed[feed_target_name])
 
         # For backward compatibility, run directly.
         if not compiled:
