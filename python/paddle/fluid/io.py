@@ -1096,6 +1096,7 @@ def save_inference_model(dirname,
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
+        paddle.fluid.core.save_op_compatible_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(main_program.desc.serialize_to_string())
     else:

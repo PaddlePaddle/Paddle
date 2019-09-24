@@ -701,6 +701,8 @@ function(proto_library TARGET_NAME)
   set(proto_srcs)
   set(proto_hdrs)
   paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
+  # Ignore the const qualifiers error in google/protobuf/map.h, version 3.1.0
+  set_source_files_properties(${proto_srcs} ${proto_hdrs} PROPERTIES COMPILE_FLAGS "-Wno-error")
   cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
 endfunction()
 

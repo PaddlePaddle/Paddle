@@ -60,6 +60,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 
+#include "paddle/fluid/framework/op_compatible_info.h"
+
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -170,6 +172,12 @@ PYBIND11_MODULE(core_noavx, m) {
   BindException(&m);
 
   m.def("set_num_threads", &platform::SetNumThreads);
+
+  m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
+    framework::OpCompatibleMap op_compatible_map;
+    op_compatible_map.InitOpCompatibleMap();
+    return op_compatible_map.Save(desc.OpCompatibleMap());
+  });
 
   m.def(
       "_append_python_callable_object_and_return_id",

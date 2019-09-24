@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/version.h"
 #include <algorithm>
+#include <sstream>
 
 namespace paddle {
 namespace framework {
@@ -32,5 +33,16 @@ bool IsTensorVersionSupported(uint32_t version) {
                    kSupportedTensorVersion + num_supported,
                    version) != kSupportedTensorVersion + num_supported;
 }
+
+std::string VersionString(const int64_t version) {
+  std::stringstream buffer;
+  const int major = version / MAJOR_COEFF;
+  const int minor = (version - major * MAJOR_COEFF) / MINOR_COEFF;
+  const int patch =
+      (version - major * MAJOR_COEFF - minor * MINOR_COEFF) / PATCH_COEFF;
+  buffer << major << "." << minor << "." << patch;
+  return buffer.str();
+}
+
 }  // namespace framework
 }  // namespace paddle

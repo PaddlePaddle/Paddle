@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -142,6 +143,7 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
+    CheckOperatorCompatible();
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -896,6 +898,33 @@ bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
+}
+
+bool AnalysisPredictor::CheckOperatorCompatible() {
+  if (!inference_program_) {
+    LOG(FATAL) << "Inference program version check failed because the program "
+                  "does not exist.";
+    return false;
+  }
+  bool res = true;
+  op_compatible_map_.Load(*inference_program_->OpCompatibleMap());
+  int64_t version = inference_program_->Version();
+  for (size_t i = 0; i < inference_program_->Size(); ++i) {
+    const auto &block = inference_program_->Block(i);
+    for (const auto *op : block.AllOps()) {
+      const std::string type = op->Type();
+      auto compatible_type = op_compatible_map_.IsRequireMiniVersion(
+          type, framework::VersionString(version));
+      if (compatible_type != framework::OpCompatibleType::compatible) {
+        LOG(WARNING) << "The version " << version << " of operator " << type
+                     << " is not compatible ("
+                     << static_cast<int>(compatible_type)
+                     << "), and the inference result may have a difference.";
+        res = false;
+      }
+    }
+  }
+  return res;
 }
 
 // Add SaveOptimModel

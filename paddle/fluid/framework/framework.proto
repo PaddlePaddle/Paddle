@@ -16,6 +16,8 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
+import "compatible.proto";
+
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.
 //
@@ -183,6 +185,6 @@ message BlockDesc {
 // way to distinguish them. Maybe ID or name?
 message ProgramDesc {
   repeated BlockDesc blocks = 1;
-
   optional Version version = 2;
+  optional OpCompatibleMap op_compatible_map = 3;
 }

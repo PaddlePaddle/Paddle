@@ -57,6 +57,8 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
+  proto::OpCompatibleMap *OpCompatibleMap();
+
   int64_t Version() const;
 
   // The output variable of feed_op is referenced as feed_target.
