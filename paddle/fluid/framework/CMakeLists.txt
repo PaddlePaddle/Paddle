@@ -202,7 +202,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
@@ -222,6 +222,9 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info string_helper glog)
 
 # Get the current working branch
 execute_process(

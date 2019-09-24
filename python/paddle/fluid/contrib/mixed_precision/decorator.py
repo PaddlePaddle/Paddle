@@ -18,6 +18,7 @@ from ... import layers
 from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 
 __all__ = ["decorate"]
@@ -124,15 +125,17 @@ class OptimizerWithMixedPrecison(object):
         """
         rewrite_program(self._train_program, self._amp_lists)
         scaled_loss = loss * self._loss_scaling
-        self._param_grads = self._optimizer.backward(
+        self._params_grads = self._optimizer.backward(
             scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
-        scaled_params_grad = []
-        for p, g in self._param_grads:
-            scaled_g = g / self._loss_scaling
-            scaled_params_grad.append([p, scaled_g])
+        update_role_var_grad(self._train_program, self._params_grads)
+        scaled_params_grads = []
+        for p, g in self._params_grads:
+            with self._train_program._optimized_guard([p, g]):
+                scaled_g = g / self._loss_scaling
+                scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grad, scaled_loss
+        return scaled_params_grads, scaled_loss
 
     def apply_gradients(self, scaled_params_grads):
         """
@@ -209,7 +212,7 @@ def decorate(optimizer,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
              decr_ratio=0.8,
-             use_dynamic_loss_scaling=False):
+             use_dynamic_loss_scaling=True):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 

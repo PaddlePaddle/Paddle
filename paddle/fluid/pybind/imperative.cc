@@ -230,13 +230,11 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, const std::string &name,
               framework::proto::VarType::Type type,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, bool stop_gradient,
-              bool persistable) {
+              const std::vector<int> &dims, bool persistable) {
              new (&self) imperative::VarBase(name);
              self.SetPersistable(persistable);
              self.SetType(type);
              self.SetDataType(dtype);
-             self.SetStopGradient(stop_gradient);
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
                    self.MutableVar()->GetMutable<framework::LoDTensor>();
@@ -302,8 +300,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property("stop_gradient", &imperative::VarBase::StopGradient,
-                    &imperative::VarBase::SetStopGradient);
+      .def_property("stop_gradient",
+                    &imperative::VarBase::OverridedStopGradient,
+                    &imperative::VarBase::SetOverridedStopGradient);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
