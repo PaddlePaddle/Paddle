@@ -194,7 +194,7 @@ def check_feed_shape_type(var, feed):
     
     Args:
         var (Variable): the Variable object
-        feed (list|np.array|LoDTensor): the feeded value
+        feed (LoDTensor): the feeded value, which must be a LoDTensor
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
     Raises:
@@ -202,8 +202,6 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        if isinstance(feed, list):
-            feed = np.asarray(feed)
         if not dimension_is_compatible_with(feed.shape, var.shape):
             raise ValueError('Cannot feed value of shape %r for Variable %r, '
                              'which has shape %r' %
@@ -537,6 +535,8 @@ class Executor(object):
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
+                var = global_block.var(feed_target_name)
+                check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -586,7 +586,6 @@ class Executor(object):
             for feed_name in feed:
                 var = global_block.var(feed_name)
                 feed_tensor = feed[feed_name]
-                check_feed_shape_type(var, feed_tensor)
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
@@ -595,6 +594,7 @@ class Executor(object):
                         "The input({}) should be numpy.array, but not {}.".format(
                         feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
+                check_feed_shape_type(var, feed_tensor)
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -613,7 +613,6 @@ class Executor(object):
                 for feed_name in each:
                     var = global_block.var(feed_name)
                     tensor = each[feed_name]
-                    check_feed_shape_type(var, tensor)
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
                         assert isinstance(each[feed_name], np.ndarray), \
@@ -621,6 +620,7 @@ class Executor(object):
                             feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
+                    check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
@@ -782,11 +782,6 @@ class Executor(object):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
-
-        global_block = program.global_block()
-        for feed_target_name in feed:
-            var = global_block.var(feed_target_name)
-            check_feed_shape_type(var, feed[feed_target_name])
 
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
