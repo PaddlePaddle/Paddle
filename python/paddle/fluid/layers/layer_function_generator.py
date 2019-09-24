@@ -61,7 +61,7 @@ def escape_math(text):
                                     _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
 
-def _generate_doc_string_(op_proto, additional_args_lines=None):
+def _generate_doc_string_(op_proto, additional_args_lines=None, skip_attrs_set=None):
     """
     Generate docstring by OpProto
 
@@ -93,6 +93,11 @@ def _generate_doc_string_(op_proto, additional_args_lines=None):
     skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")
+
+    if skip_args:
+        for t in skip_args:
+        skip_attrs.add(t)
+
     for each_attr in op_proto.attrs:
         if each_attr.name in skip_attrs:
             continue

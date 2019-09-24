@@ -24,6 +24,65 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Min"; }
   std::string GetEquation() const override { return "Out = min(X, Y)"; }
+
+  void AddInputX() const override {
+      AddInput("X", "(Variable), The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() const override {
+      AddInput("Y", "(Variable), The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+      return "Compare two tensors and returns a new tensor containing the element-wise minima.";
+  }
+
+  void AddOpComment() override {
+      std::string doc = string::Sprintf(R"DOC(
+%s
+
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value) #[1, 3, 2]
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
+
+)DOC", GetCommentExamples());
+
+      AddComment(doc);
+  };
 };
 
 class ElementwiseMinGradOpDescMaker : public framework::SingleGradOpDescMaker {

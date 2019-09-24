@@ -11696,20 +11696,21 @@ for func in [
         elementwise_max,
         elementwise_pow,
         elementwise_min,
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
             "act (basestring|None): Activation applied to the output.",
-            "name (basestring|None): Name of the output."
+            "name (basestring|None): Name of the output.",
+        skip_attrs_set={"x_data_format", "y_data_format"}
         ])
 
 for func in [
-        elementwise_add,
-        elementwise_div,
-        elementwise_sub,
-        elementwise_mul,
         elementwise_mod,
         elementwise_floordiv,
 ]:
