@@ -31,6 +31,18 @@ import math
 import paddle.fluid.layers as layers
 
 
+class MLP(fluid.Layer):
+    def __init__(self, name_scope):
+        super(MLP, self).__init__(name_scope)
+        self._fc1 = FC(self.full_name(), 10)
+        self._fc2 = FC(self.full_name(), 10)
+
+    def forward(self, inputs):
+        y = self._fc1(inputs)
+        y = self._fc2(y)
+        return y
+
+
 class TestGetLearnignRate(unittest.TestCase):
     def test_get_learning_rate(self):
         with fluid.dygraph.guard():
@@ -87,3 +99,7 @@ class TestGetLearnignRate(unittest.TestCase):
                                           staircase))
                 if batch_id == 2:
                     break
+
+
+if __name__ == '__main__':
+    unittest.main()
