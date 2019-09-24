@@ -202,15 +202,16 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        numpy_feed = np.array(feed, copy=False)
-        if not dimension_is_compatible_with(numpy_feed.shape, var.shape):
+        if isinstance(feed, list):
+            feed = np.asarray(feed)
+        if not dimension_is_compatible_with(feed.shape, var.shape):
             raise ValueError('Cannot feed value of shape %r for Variable %r, '
                              'which has shape %r' %
-                             (numpy_feed.shape, var.name, var.shape))
-        if not dtype_is_compatible_with(numpy_feed.dtype, var.dtype):
+                             (feed.shape, var.name, var.shape))
+        if not dtype_is_compatible_with(feed.dtype, var.dtype):
             raise ValueError('Cannot feed value of type %r for Variable %r, '
                              'which has type %r' %
-                             (numpy_feed.dtype, var.name, var.dtype))
+                             (feed.dtype, var.name, var.dtype))
     return True
 
 
