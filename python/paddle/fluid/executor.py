@@ -586,7 +586,7 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 var = global_block.var(feed_name)
-                data.check_feed_shape_type(var, feed[feed_name])
+                check_feed_shape_type(var, feed[feed_name])
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
@@ -613,7 +613,7 @@ class Executor(object):
                 res_dict = dict()
                 for feed_name in each:
                     var = global_block.var(feed_name)
-                    data.check_feed_shape_type(var, feed[feed_name])
+                    check_feed_shape_type(var, feed[feed_name])
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
@@ -787,7 +787,7 @@ class Executor(object):
         global_block = program.global_block()
         for feed_target_name in feed:
             var = global_block.var(feed_target_name)
-            data.check_feed_shape_type(var, feed[feed_target_name])
+            check_feed_shape_type(var, feed[feed_target_name])
 
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
