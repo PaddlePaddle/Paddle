@@ -26,8 +26,11 @@ def nearest_neighbor_interp_np(X,
                                out_w,
                                out_size=None,
                                actual_shape=None,
-                               align_corners=True):
+                               align_corners=True,
+                               data_layout='NCHW'):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
+    if data_layout == "NHWC":
+        X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:
         out_h = out_size[0]
         out_w = out_size[1]
@@ -63,6 +66,9 @@ def nearest_neighbor_interp_np(X,
                 in_j = int(ratio_w * j)
                 out[:, :, i, j] = X[:, :, in_i, in_j]
 
+    if data_layout == "NHWC":
+        out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+
     return out.astype(X.dtype)
 
 
@@ -70,20 +76,28 @@ class TestNearestInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
+        self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
 
+        if self.data_layout == "NCHW":
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
         if self.scale > 0:
-            out_h = int(self.input_shape[2] * self.scale)
-            out_w = int(self.input_shape[3] * self.scale)
+            out_h = int(in_h * self.scale)
+            out_w = int(in_w * self.scale)
         else:
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w,
-                                               self.out_size, self.actual_shape,
-                                               self.align_corners)
+        output_np = nearest_neighbor_interp_np(
+            input_np, out_h, out_w, self.out_size, self.actual_shape,
+            self.align_corners, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -95,6 +109,7 @@ class TestNearestInterpOp(OpTest):
             'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
+            'data_layout': self.data_layout
         }
         self.outputs = {'Out': output_np}
 
@@ -196,6 +211,18 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.scale = 0.
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
+
+
+class TestNearestNeighborInterpDataLayout(TestNearestInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 4, 4, 5]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.
+        self.out_size = np.array([3, 8]).astype("int32")
+        self.align_corners = True
+        self.data_layout = "NHWC"
 
 
 class TestNearestInterpOpUint8(OpTest):
@@ -399,6 +426,7 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
 class TestNearestAPI(OpTest):
     def test_case(self):
         x = fluid.layers.data(name="x", shape=[3, 6, 6], dtype="float32")
+        y = fluid.layers.data(name="y", shape=[6, 6, 3], dtype="float32")
 
         dim = fluid.layers.data(
             name="dim", shape=[1], dtype="int32", append_batch_size=False)
@@ -418,7 +446,8 @@ class TestNearestAPI(OpTest):
             dtype="float32",
             append_batch_size=False)
 
-        out1 = fluid.layers.resize_nearest(x, out_shape=[12, 12])
+        out1 = fluid.layers.resize_nearest(
+            y, out_shape=[12, 12], data_format='NHWC')
         out2 = fluid.layers.resize_nearest(x, out_shape=[12, dim])
         out3 = fluid.layers.resize_nearest(x, out_shape=shape_tensor)
         out4 = fluid.layers.resize_nearest(
@@ -436,6 +465,7 @@ class TestNearestAPI(OpTest):
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,
+                              "y": np.transpose(x_data, (0, 2, 3, 1)),
                               "dim": dim_data,
                               "shape_tensor": shape_data,
                               "actual_size": actual_size_data,
@@ -446,8 +476,20 @@ class TestNearestAPI(OpTest):
 
         expect_res = nearest_neighbor_interp_np(
             x_data, out_h=12, out_w=12, align_corners=True)
-        for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+        self.assertTrue(
+            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+        for i in range(len(results) - 1):
+            self.assertTrue(np.allclose(results[i + 1], expect_res))
+
+    def test_exception(self):
+        # for 4-D input, data_format can only be NCHW or NHWC
+        input = fluid.layers.data(
+            name="input", shape=[3, 6, 6], dtype="float32")
+        try:
+            out = fluid.layers.resize_nearest(
+                input, out_shape=[4, 8], data_format='NDHWC')
+        except:
+            pass
 
 
 if __name__ == "__main__":

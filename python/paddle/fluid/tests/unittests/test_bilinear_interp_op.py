@@ -27,8 +27,11 @@ def bilinear_interp_np(input,
                        out_size=None,
                        actual_shape=None,
                        align_corners=True,
-                       align_mode=0):
+                       align_mode=0,
+                       data_layout='NCHW'):
     """bilinear interpolation implement in shape [N, C, H, W]"""
+    if data_layout == "NHWC":
+        input = np.transpose(input, (0, 3, 1, 2))  # NHWC => NCHW
     if out_size is not None:
         out_h = out_size[0]
         out_w = out_size[1]
@@ -83,6 +86,10 @@ def bilinear_interp_np(input,
                                         w1lambda*input[:, :, h, w+wid]) + \
                 h1lambda*(w2lambda*input[:, :, h+hid, w] +
                           w1lambda*input[:, :, h+hid, w+wid])
+
+    if data_layout == "NHWC":
+        out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
+
     return out.astype(input.dtype)
 
 
@@ -90,20 +97,28 @@ class TestBilinearInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
+        self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
 
+        if self.data_layout == "NCHW":
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
         if self.scale > 0:
-            out_h = int(self.input_shape[2] * self.scale)
-            out_w = int(self.input_shape[3] * self.scale)
+            out_h = int(in_h * self.scale)
+            out_w = int(in_w * self.scale)
         else:
             out_h = self.out_h
             out_w = self.out_w
 
         output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
                                        self.actual_shape, self.align_corners,
-                                       self.align_mode)
+                                       self.align_mode, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -116,7 +131,8 @@ class TestBilinearInterpOp(OpTest):
             'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
-            'align_mode': self.align_mode
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout
         }
         self.outputs = {'Out': output_np}
 
@@ -227,6 +243,19 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+
+
+class TestBilinearInterpDataLayout(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 4, 4, 3]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = "NHWC"
 
 
 class TestBilinearInterpOpUint8(OpTest):
