@@ -658,8 +658,9 @@ class Executor(object):
                         var = global_block.var(feed_target_name)
                         data.check_feed_shape_type(var, feed[feed_target_name])
                 else:
-                    var = global_block.var(feed_target_name)
-                    data.check_feed_shape_type(var, feed[feed_target_name])
+                    # feed_obj is name of feed targets
+                    var = global_block.var(feed_obj)
+                    data.check_feed_shape_type(var, feed[feed_obj])
 
         # For backward compatibility, run directly.
         if not compiled:
