@@ -11519,14 +11519,185 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
 
 
 def elementwise_max(x, y, axis=-1, act=None, name=None):
+    """
+    Element-wise maximum of array elements.
+
+    Compare two tensors and returns a new tensor containing the element-wise maxima.
+
+    Args:
+        x,y(Variable): The tensors holding the elements to be compared. 
+            If x.dimension != y.dimension, y.dimension must be a subsequence of x.dimension.
+
+        act(basestring|None): The activation name, such as 'relu'.
+
+        name(basestring|None): The output's name.
+
+    Returns:
+        out(Variable): A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]),
+                    "y": np.array([1, 5, 2])
+                }
+
+            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_max(x, y)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) #[2, 5, 4]
+
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+
+            x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+            z = fluid.layers.elementwise_max(x, y, axis=1)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
+
+    """
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
 def elementwise_min(x, y, axis=-1, act=None, name=None):
+    """
+    Element-wise minimum of array elements.
+
+    Compare two tensors and returns a new tensor containing the element-wise minima.
+
+    Args:
+        x,y(Variable): The tensors holding the elements to be compared. \
+            If x.dimension != y.dimension, y.dimension must be a subsequence of x.dimension.
+
+        act(basestring|None): The activation name, such as 'relu'.
+
+        name(basestring|None): The output's name.
+
+    Returns:
+        out(Variable): A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]),
+                    "y": np.array([1, 5, 2])
+                }
+
+            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_max(x, y)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) #[1, 3, 2]
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+
+            x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+            z = fluid.layers.elementwise_max(x, y, axis=1)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
+    """
+    First tensor elements raised to powers from tensor array, element-wise.
+
+    Raise each base in x to the positionally-corresponding power in y.
+
+    Args:
+        x(Variable): The Base
+
+        y(Variable): The exponents. If x.dimension != y.dimension, 
+            y.dimension must be a subsequence of x.dimension.
+
+        act(basestring|None): The activation name, such as 'relu'.
+
+        name(basestring|None): The output's name.
+
+    Returns:
+        out(Variable): A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]),
+                    "y": np.array([1, 5, 2])
+                }
+
+            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_pow(x, y)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) #[2, 243, 16]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -11543,9 +11714,6 @@ for func in [
         elementwise_div,
         elementwise_sub,
         elementwise_mul,
-        elementwise_max,
-        elementwise_min,
-        elementwise_pow,
         elementwise_mod,
         elementwise_floordiv,
 ]:
