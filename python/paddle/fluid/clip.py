@@ -345,11 +345,11 @@ def set_gradient_clip(clip, param_list=None, program=None):
     Args:
         clip(BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
                 which describes the type and detailed attributes of required gradient clip.
-        param_list(list(Variable)): Parameters that require gradient clip.
+        param_list(list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
-                When it's None, all parameters in the program will be included.
-        program(Program): The program where parameters are.
-                Will be the default main program when assigned with None.
+                Default None, meaning that all parameters in the program will be included.
+        program(Program, optional): The program where parameters are located.
+                Default None, meaning that using :ref:`api_fluid_default_main_program` .
 
     Returns:
         None
