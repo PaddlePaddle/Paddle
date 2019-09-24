@@ -86,7 +86,7 @@ template <typename TargetT, ::anakin::Precision PrecisionT>
 PBlock<TargetT>* pblock_from_var(const framework::Variable& var,
                                  AnakinEngine<TargetT, PrecisionT>* engine) {
   auto tensor = tensor_from_var(var, platform::CPUPlace());
-  auto shape = framework::vectorize2int(tensor->dims());
+  auto shape = framework::vectorize<int>(tensor->dims());
   return pblock_from_tensor<TargetT, PrecisionT>(*tensor, shape, engine);
 }
 

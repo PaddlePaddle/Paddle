@@ -17,8 +17,8 @@ from ... import default_startup_program
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
-from .fp16_utils import create_master_params_grads, master_param_to_train_param
 from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 
 __all__ = ["decorate"]
@@ -125,22 +125,25 @@ class OptimizerWithMixedPrecison(object):
         """
         rewrite_program(self._train_program, self._amp_lists)
         scaled_loss = loss * self._loss_scaling
-        self._param_grads = self._optimizer.backward(
+        self._params_grads = self._optimizer.backward(
             scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
-        master_params_grads = create_master_params_grads(
-            self._param_grads, self._train_program, self._startup_prog,
-            self._loss_scaling)
+        update_role_var_grad(self._train_program, self._params_grads)
+        scaled_params_grads = []
+        for p, g in self._params_grads:
+            with self._train_program._optimized_guard([p, g]):
+                scaled_g = g / self._loss_scaling
+                scaled_params_grads.append([p, scaled_g])
 
-        return master_params_grads, scaled_loss
+        return scaled_params_grads, scaled_loss
 
-    def apply_gradients(self, master_params_grads):
+    def apply_gradients(self, scaled_params_grads):
         """
-        Update master parameters by their gradients, and cast to parameters
-        in float16.
+        Check scaled gradients to determine whether to update loss scaling and update 
+        parameters by their scaled gradients, 
   
         Args:
-            master_params_grads (list): A list of master params and grads.
+            scaled_params_grads (list): A list of params and scaled grads.
     
         Returns:
             A list of optimize operators.
@@ -148,7 +151,7 @@ class OptimizerWithMixedPrecison(object):
 
         if self._use_dynamic_loss_scaling:
 
-            grads = [layers.reduce_sum(g) for [_, g] in master_params_grads]
+            grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
             all_grads = layers.concat(grads)
             all_grads_sum = layers.reduce_sum(all_grads)
             is_overall_finite = layers.isfinite(all_grads_sum)
@@ -165,30 +168,41 @@ class OptimizerWithMixedPrecison(object):
                 with switch.case(is_overall_finite):
                     pass
                 with switch.default():
-                    for _, g in master_params_grads:
+                    for _, g in scaled_params_grads:
                         layers.assign(layers.zeros_like(g), g)
 
-        optimize_ops = self._optimizer.apply_gradients(master_params_grads)
-        master_param_to_train_param(master_params_grads, self._param_grads,
-                                    self._train_program)
+        optimize_ops = self._optimizer.apply_gradients(scaled_params_grads)
 
         return optimize_ops
 
-    def minimize(self, loss):
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
         """
         Perform optimization by minimizing the given loss.
 
         Args:
             loss (Variable): The loss Variable.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
 
         Returns:
             The scaled loss by scaling factor, the list of optimize ops, and a
-            list of master parameters and gradients.
+            list of scaled parameters and gradients.
         """
-        master_params_grads, scaled_loss = self.backward(loss)
-        optimize_ops = self.apply_gradients(master_params_grads)
+        scaled_params_grads, scaled_loss = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
 
-        return scaled_loss, optimize_ops, master_params_grads
+        optimize_ops = self.apply_gradients(scaled_params_grads)
+
+        return optimize_ops, scaled_params_grads
 
 
 def decorate(optimizer,
@@ -198,7 +212,7 @@ def decorate(optimizer,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
              decr_ratio=0.8,
-             use_dynamic_loss_scaling=False):
+             use_dynamic_loss_scaling=True):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
@@ -230,7 +244,8 @@ def decorate(optimizer,
             mp_optimizer = fluid.contrib.mixed_precision.decorate(
 	              optimizer=optimizer, init_loss_scaling=8.0)
 	
-            scaled_loss, _, _ = mp_optimizer.minimize(loss)
+            ops, param_grads = mp_optimizer.minimize(loss)
+            scaled_loss = mp_optimizer.get_loss_scaling()
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()

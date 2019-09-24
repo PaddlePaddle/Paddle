@@ -86,9 +86,10 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
-        PADDLE_ENFORCE(cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
-        PADDLE_ENFORCE(cudaMemsetAsync(mask_data, 0,
-                                       x_numel * sizeof(*mask_data), stream));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
+        PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemsetAsync(
+            mask_data, 0, x_numel * sizeof(*mask_data), stream));
         return;
       }
 

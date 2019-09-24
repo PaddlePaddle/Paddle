@@ -103,7 +103,7 @@ class TestSoftmaxOp5(TestSoftmaxOp):
         return 2
 
 
-class TestSoftmaxOp5(TestSoftmaxOp):
+class TestSoftmaxOp6(TestSoftmaxOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
 

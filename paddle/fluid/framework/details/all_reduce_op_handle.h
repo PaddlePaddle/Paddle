@@ -61,9 +61,17 @@ class AllReduceOpHandle : public OpHandleBase {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  void RunAllReduceFuncs(
+  void NCCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
 #endif
+
+  void AllReduceImpl(const std::vector<VarHandle *> &in_var_handles,
+                     const std::vector<VarHandle *> &out_var_handles);
+
+  void AllReduceFunc(std::vector<const void *> lod_tensor_data,
+                     const framework::proto::VarType::Type &dtype,
+                     int64_t numel, const std::vector<platform::Place> &places,
+                     const std::vector<std::string> &out_var_handles);
 };
 
 }  // namespace details

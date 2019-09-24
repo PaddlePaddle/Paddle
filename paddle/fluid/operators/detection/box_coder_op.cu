@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/box_coder_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -174,10 +174,8 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     int grid = (row * col + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
 
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(device_ctx);
     int bytes = var_size * sizeof(float);
-    auto dev_var = allocator.Allocate(bytes);
+    auto dev_var = memory::Alloc(device_ctx, bytes);
     float* dev_var_data = reinterpret_cast<float*>(dev_var->ptr());
     auto cplace = platform::CPUPlace();
     const auto gplace = boost::get<platform::CUDAPlace>(context.GetPlace());

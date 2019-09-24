@@ -181,7 +181,7 @@ void Communicator::SendThread() {
 }
 
 void Communicator::RecvNonIndependent() {
-  if (!FLAGS_communicator_independent_recv_thread) {
+  if (FLAGS_communicator_independent_recv_thread) {
     return;
   }
 

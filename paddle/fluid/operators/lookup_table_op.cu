@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -32,12 +31,12 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(
+    PADDLE_ENFORCE(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N, id);
-    PADDLE_ASSERT_MSG(
+    PADDLE_ENFORCE(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
@@ -67,12 +66,12 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT_MSG(
+    PADDLE_ENFORCE(
         id >= 0,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
         N, id);
-    PADDLE_ASSERT_MSG(
+    PADDLE_ENFORCE(
         id < N,
         "Variable value (input) of OP(fluid.layers.embedding) "
         "expected >= 0 and < %ld, but got %ld. Please check input value.",
