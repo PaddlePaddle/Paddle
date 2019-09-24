@@ -212,10 +212,6 @@ static __global__ void GradComputeDX(const T *dy,
   }
   __syncthreads();
 
-  // printf("dy_sum_val[%d] = %f\n", c, dy_sum_val);
-  // printf("dy_x_sub_mean_sum_val[%d] = %f\n", c, dy_x_sub_mean_sum_val);
-  // printf("inv_var_val[%d] = %f\n", c, inv_var_val);
-
   for (int i = beg_idx; i < end_idx; i += BlockDim) {
     dx[i] =
         (static_cast<BatchNormParamType<T>>(dy[i]) -
