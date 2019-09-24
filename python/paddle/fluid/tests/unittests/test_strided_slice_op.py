@@ -361,6 +361,47 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
+class TestStridedSliceOp_listTensor_Tensor(OpTest):
+    def setUp(self):
+        self.config()
+        ends_tensor = []
+        for index, ele in enumerate(self.ends):
+            ends_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+        self.op_type = "strided_slice"
+
+        self.inputs = {
+            'Input': self.input,
+            "StartsTensor": np.array(
+                self.starts, dtype="int32"),
+            "EndsTensorList": ends_tensor
+        }
+        self.outputs = {'Out': self.output}
+        self.attrs = {
+            'axes': self.axes,
+            #'starts': self.starts,
+            #'ends': self.ends,
+            'strides': self.strides,
+            'infer_flags': self.infer_flags,
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.starts = [1, 0, 2]
+        self.ends = [2, 3, 4]
+        self.axes = [0, 1, 2]
+        self.strides = [1, 1, 1]
+        self.infer_flags = [-1, -1, -1]
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
+
 class TestStridedSliceOp_strides_Tensor(OpTest):
     def setUp(self):
         self.op_type = "strided_slice"
@@ -403,7 +444,7 @@ class TestSliceAPI(OpTest):
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
         starts = fluid.layers.data(
-            name='starts', shape=[1, 3], append_batch_size=False)
+            name='starts', shape=[3], append_batch_size=False)
         ends = fluid.layers.data(
             name='ends', shape=[3], append_batch_size=False)
         strides = fluid.layers.data(

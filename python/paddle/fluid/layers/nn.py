@@ -10868,7 +10868,7 @@ def strided_slice(input, axes, starts, ends, strides):
             "Input ends must be an Variable, python list or tuple.")
     if not isinstance(strides, (list, tuple, Variable)):
         raise ValueError(
-            "Input ends must be an Variable, python list or tuple.")
+            "Input strides must be an Variable, python list or tuple.")
 
     helper = LayerHelper('strided_slice', **locals())
 

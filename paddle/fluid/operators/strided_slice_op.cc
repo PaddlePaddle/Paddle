@@ -66,20 +66,21 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       strides_size = StridesTensorList.size();
     }
 
-    auto tensor_input = true;
+    auto tensor_input = false;
+    if (ctx->HasInput("EndsTensor") || ctx->HasInput("StartsTensor") ||
+        ctx->HasInput("StridesTensor")) {
+      tensor_input = true;
+    }
     if (ctx->HasInput("EndsTensor") == false) {
-      tensor_input = false;
       PADDLE_ENFORCE_EQ(ends_size, axes.size(),
                         "The size of ends must be equal to the size of axes.");
     }
     if (ctx->HasInput("StartsTensor") == false) {
-      tensor_input = false;
       PADDLE_ENFORCE_EQ(
           starts_size, axes.size(),
           "The size of starts must be equal to the size of axes.");
     }
     if (ctx->HasInput("StridesTensor") == false) {
-      tensor_input = false;
       PADDLE_ENFORCE_EQ(
           strides_size, axes.size(),
           "The size of strides must be equal to the size of axes.");
@@ -88,6 +89,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // the parameter that we get from python front
     std::vector<int> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
+      VLOG(0) << "tensor input";
       StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                           out_dims_vector.data(), axes.size(), true);
     }
@@ -106,10 +108,12 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
+        var_name == "StridesTensor") {
       return expected_kernel_type;
     }
-    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StridesTensorList") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
