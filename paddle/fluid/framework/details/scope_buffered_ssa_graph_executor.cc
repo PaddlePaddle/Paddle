@@ -74,7 +74,8 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   }
 
   ++drop_scope_counter_;
-  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_ ||
+      DropScopeOrNot()) {
     DropLocalExeScopes();
   }
 
@@ -91,6 +92,19 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   } else {
     return fetch_data;
   }
+}
+
+bool ScopeBufferedSSAGraphExecutor::DropScopeOrNot() const {
+  for (auto &var : tensor_array_vars_) {
+    auto tensor_array = var->GetMutable<LoDTensorArray>();
+    for (LoDTensor &tensor : *tensor_array) {
+      if (tensor.IsInitialized()) {
+        return true;
+      }
+    }
+    tensor_array->clear();
+  }
+  return false;
 }
 
 void ScopeBufferedSSAGraphExecutor::InitVariables() {
@@ -165,6 +179,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
         tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);
+        if (info.type_ == proto::VarType::LOD_TENSOR_ARRAY) {
+          tensor_array_vars_.emplace_back(tmp_var);
+        }
       }
     }
   }
