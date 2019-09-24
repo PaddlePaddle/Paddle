@@ -70,7 +70,6 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
             #[array([0.6666667], dtype=float32)]
     """
-
     helper = LayerHelper("accuracy", **locals())
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
