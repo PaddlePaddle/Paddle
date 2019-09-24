@@ -101,5 +101,18 @@ class TestGetLearnignRate(unittest.TestCase):
                     break
 
 
+class TestGetLearnignRateRaise(unittest.TestCase):
+    def test_get_learning_rate(self):
+        train_data = np.array([[1.0], [2.0], [3.0], [4.0]]).astype('float32')
+        y_true = np.array([[2.0], [4.0], [6.0], [8.0]]).astype('float32')
+        x = fluid.layers.data(name="x", shape=[1], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[1], dtype='float32')
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
+        self.assertRaises(TypeError, optimizer.learning_rate)
+
+
 if __name__ == '__main__':
     unittest.main()

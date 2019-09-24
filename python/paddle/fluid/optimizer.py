@@ -180,7 +180,11 @@ class Optimizer(object):
             raise TypeError("load can only be used under DyGraph mode")
 
     def learning_rate(self, program=None):
-        return self._global_learning_rate(program).numpy()
+        if framework.in_dygraph_mode():
+            return self._global_learning_rate(program).numpy()
+        else:
+            raise TypeError(
+                "learning_rate() can only be used under DyGraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
