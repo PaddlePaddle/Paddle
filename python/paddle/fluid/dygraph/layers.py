@@ -214,22 +214,10 @@ class Layer(core.Layer):
         elif name in self._sub_layers:
             return self._sub_layers[name]
         else:
-            if name in self.__dir__():
-                return object.__getattribute__(self, name)
-            else:
-                return None
+            return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
-        if value is None:
-            params = self.__dict__.get('_parameters', None)
-            if params is not None and name in params:
-                # del existing param
-                del params[name]
-            else:
-                # regular assignment
-                object.__setattr__(self, name, None)
-        elif isinstance(value, framework.Parameter) and not isinstance(
-                getattr(type(self), name, None), property):
+        if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
@@ -247,7 +235,6 @@ class Layer(core.Layer):
                     "super(YourLayer, self).__init__() should be called first")
             layers[name] = value
         else:
-            # params is None or name not in params; is property; is not a Layer
             object.__setattr__(self, name, value)
 
     def __delattr__(self, name):

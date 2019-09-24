@@ -24,7 +24,6 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import logging
-from six.moves import UserList
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
@@ -214,27 +213,9 @@ class Conv2D(layers.Layer):
     def weight(self):
         return self._filter_param
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._filter_param, Variable)
-        self._filter_param.set_value(value)
-
     @property
     def bias(self):
         return self._bias_param
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias_param = None
-        else:
-            if self._bias_param is None:
-                self._bias_param = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=list([self._num_filters]),
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias_param.set_value(value)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -444,27 +425,9 @@ class Conv3D(layers.Layer):
     def weight(self):
         return self._filter_param
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._filter_param, Variable)
-        self._filter_param.set_value(value)
-
     @property
     def bias(self):
         return self._bias_param
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias_param = None
-        else:
-            if self._bias_param is None:
-                self._bias_param = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=[self._num_filters],
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias_param.set_value(value)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -698,27 +661,9 @@ class Conv3DTranspose(layers.Layer):
     def weight(self):
         return self._img_filter
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._img_filter, Variable)
-        self._img_filter.set_value(value)
-
     @property
     def bias(self):
         return self._bias_param
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias_param = None
-        else:
-            if self._bias_param is None:
-                self._bias_param = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=[self._num_filters],
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias_param.set_value(value)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -978,13 +923,7 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-
-        class param_list(UserList):
-            def __setitem__(self, key, value):
-                assert isinstance(self[key], Variable)
-                self[key].set_value(value)
-
-        self.__w = param_list()
+        self.__w = list()
 
     def _build_once(self, input):
         i = 0
@@ -1022,24 +961,14 @@ class FC(layers.Layer):
 
     @property
     def weight(self):
-        return self.__w
+        if len(self.__w) > 1:
+            return self.__w
+        else:
+            return self.__w[0]
 
     @property
     def bias(self):
         return self._b
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._b = None
-        else:
-            if self._b is None:
-                self._b = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=list([self._size]),
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._b.set_value(value)
 
     def forward(self, input):
         mul_results = list()
@@ -1378,11 +1307,6 @@ class Embedding(layers.Layer):
     def weight(self):
         return self._w
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._w, Variable)
-        self._w.set_value(value)
-
     def forward(self, input):
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -1682,27 +1606,9 @@ class GRUUnit(layers.Layer):
     def weight(self):
         return self._weight
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._weight, Variable)
-        self._weight.set_value(value)
-
     @property
     def bias(self):
         return self._bias
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias = None
-        else:
-            if self._bias is None:
-                self._bias = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=self._bias_size,
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias.set_value(value)
 
     def forward(self, input, hidden):
         inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
@@ -1940,27 +1846,9 @@ class NCE(layers.Layer):
     def weight(self):
         return self._w
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._w, Variable)
-        self._w.set_value(value)
-
     @property
     def bias(self):
         return self._b
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._b = None
-        else:
-            if self._b is None:
-                self._b = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=self._bias_size,
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._b.set_value(value)
 
     def forward(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
@@ -2054,11 +1942,6 @@ class PRelu(layers.Layer):
     @property
     def weight(self):
         return self._alpha
-
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._alpha, Variable)
-        self._alpha.set_value(value)
 
     def forward(self, input):
 
@@ -2159,27 +2042,9 @@ class BilinearTensorProduct(layers.Layer):
     def weight(self):
         return self._w
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._w, Variable)
-        self._w.set_value(value)
-
     @property
     def bias(self):
         return self._bias_param
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias_param = None
-        else:
-            if self._bias_param is None:
-                self._bias_param = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=self._bias_size,
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias_param.set_value(value)
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
@@ -2412,27 +2277,9 @@ class Conv2DTranspose(layers.Layer):
     def weight(self):
         return self._img_filter
 
-    @weight.setter
-    def weight(self, value):
-        assert isinstance(self._img_filter, Variable)
-        self._img_filter.set_value(value)
-
     @property
     def bias(self):
         return self._bias_param
-
-    @bias.setter
-    def bias(self, value):
-        if value is None:
-            self._bias_param = None
-        else:
-            if self._bias_param is None:
-                self._bias_param = self.create_parameter(
-                    attr=self._bias_attr,
-                    shape=list([self._num_filters]),
-                    dtype=self._dtype,
-                    is_bias=True)
-            self._bias_param.set_value(value)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -2920,6 +2767,14 @@ class TreeConv(layers.Layer):
             shape=w_shape,
             dtype=self._dtype,
             is_bias=False)
+
+    @property
+    def weight(self):
+        return self.W
+
+    @property
+    def bias(self):
+        return self._bias_param
 
     def forward(self, nodes_vector, edge_set):
 
