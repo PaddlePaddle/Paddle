@@ -89,7 +89,6 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     // the parameter that we get from python front
     std::vector<int> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
-      VLOG(0) << "tensor input";
       StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                           out_dims_vector.data(), axes.size(), true);
     }
