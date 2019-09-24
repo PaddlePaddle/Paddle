@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace operators {

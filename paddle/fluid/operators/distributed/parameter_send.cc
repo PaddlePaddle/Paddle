@@ -28,6 +28,7 @@
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
