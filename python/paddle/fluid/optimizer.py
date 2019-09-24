@@ -1699,29 +1699,26 @@ class DecayedAdagradOptimizer(Optimizer):
 
 class AdadeltaOptimizer(Optimizer):
     """
-    **Adadelta Optimizer**
+    **NOTES: This API does not support sparse parameter optimization.**
 
-    Simple Adadelta optimizer with average squared grad state and
-    average squared update state.
-    The details of adadelta please refer to this
+    Adadelta Optimizer. Please refer to this for details:
     `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
     <https://arxiv.org/abs/1212.5701>`_.
 
-    ..  math::
+    .. math::
 
-        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2
+        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2\\
 
-        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }
+        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }\\
 
         E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
 
     Args:
-        learning_rate(float): global learning rate
-        rho(float): rho in equation
-        epsilon(float): epsilon in equation
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        learning_rate(float|Variable): global learning rate.
+        epsilon(float): a small float number for numeric stability. Default 1.0e-6.
+        rho(float): a floating point value indicating the decay rate.
+        regularization(WeightDecayRegularizer, optional): A Regularizer, such as fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no regularization.
+        name(str, optional): A optional name prefix for debugging. Default None.
 
     Examples:
         .. code-block:: python
@@ -1734,9 +1731,6 @@ class AdadeltaOptimizer(Optimizer):
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
             _, params_grads = optimizer.minimize(cost)
-
-    Notes:
-       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
