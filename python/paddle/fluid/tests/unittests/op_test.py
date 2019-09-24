@@ -703,10 +703,10 @@ class OpTest(unittest.TestCase):
                                 check_dygraph=True,
                                 inplace_atol=None):
         if check_dygraph:
-            print("-----LOGGING----- check_dygraph")
+            #print("-----LOGGING----- check_dygraph")
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
-        print("-----LOGGING----- check_static")
+        #print("-----LOGGING----- check_static")
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -824,7 +824,7 @@ class OpTest(unittest.TestCase):
         if inplace_atol is not None:
             warnings.warn(
                 "By default, inplace_atol should not be set, please check it")
-        print("-----LOGGING----- check_inplace")
+        #print("-----LOGGING----- check_inplace")
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -858,7 +858,7 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None):
         places = self._get_places()
         for place in places:
-            print("-----LOGGING----- check_output", place)
+            #print("-----LOGGING----- check_output", place)
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)
 
@@ -897,7 +897,7 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None,
-                   check_dygraph=True):
+                   check_dygraph=False):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
@@ -914,7 +914,7 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None,
-                              check_dygraph=True):
+                              check_dygraph=False):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
