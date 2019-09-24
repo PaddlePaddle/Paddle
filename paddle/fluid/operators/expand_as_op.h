@@ -25,23 +25,23 @@ limitations under the License. */
 
 #define MAX_RANK_SUPPORTED 6
 
-#define EXPAND_TEMPLATE(z, n, data) \
+#define EXPAND_AS_TEMPLATE(z, n, data) \
   case n + 1: {                     \
     ExpandAs<n + 1>(context);         \
     break;                          \
   }
-#define REP_EXPAND_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_TEMPLATE, ~)
+#define REP_EXPAND_AS_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_TEMPLATE, ~)
 #define COND(n)                                               \
   BOOST_PP_GREATER_EQUAL(BOOST_PP_DIV(n, MAX_RANK_SUPPORTED), \
                          BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_GRAD_CASE(n)                                        \
+#define EXPAND_AS_GRAD_CASE(n)                                        \
   case n: {                                                        \
-    ExpandBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
+    ExpandAsBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
     break;                                                         \
   }
-#define EXPAND_GRAD_TEMPLATE(z, n, data) \
-  BOOST_PP_IF(COND(n), EXPAND_GRAD_CASE(n), )
-#define REP_EXPAND_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_GRAD_TEMPLATE, ~)
+#define EXPAND_AS_GRAD_TEMPLATE(z, n, data) \
+  BOOST_PP_IF(COND(n), EXPAND_AS_GRAD_CASE(n), )
+#define REP_EXPAND_AS_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_GRAD_TEMPLATE, ~)
 
 namespace paddle {
 namespace operators {
@@ -60,7 +60,7 @@ class ExpandAsKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     switch (rank) {
-      REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED)
+      REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
         PADDLE_ENFORCE(false,
                        "Only support tensor with rank being between 1 and 6.");
@@ -70,22 +70,17 @@ class ExpandAsKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void ExpandAs(const framework::ExecutionContext& context) const {
-    VLOG(2)<<"ExpandAs 1111";
     auto* in0 = context.Input<Tensor>("X");
     auto in_dims = in0->dims();
     auto* expand_tensor = context.Input<Tensor>("expand_tensor");
-
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     int bcast_dims_remainder = 0;
-    VLOG(2)<<"ExpandAs 2222";
     auto x_dims = in0->dims();
     auto y_dims = expand_tensor->dims();
-    VLOG(2)<<"ExpandAs 3333";
     for (int i = 0; i < y_dims.size(); ++i) {
       bcast_dims[i] = y_dims[i]/x_dims[i];
       bcast_dims_remainder += y_dims[i]%x_dims[i];
-      VLOG(2)<<"bcast_dims"<<bcast_dims[i];
     }
    PADDLE_ENFORCE_EQ(
           bcast_dims_remainder, 0,
@@ -115,7 +110,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     auto y_dims = expand_tensor->dims();
     std::vector<int> bcast_dims;
     for (int i = 0; i < y_dims.size(); ++i) {
-        bcast_dims[i] = y_dims[i]/x_dims[i];
+        bcast_dims.push_back(y_dims[i]/x_dims[i]);
     }
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
@@ -133,7 +128,6 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-
     int dims = reshape_dims_vec.size() * MAX_RANK_SUPPORTED +
                reduce_dims_vec.size() - MAX_RANK_SUPPORTED - 1;
     // no need reduce, just copy
@@ -145,7 +139,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                             out0);
     } else {
       switch (dims) {
-        REP_EXPAND_GRAD_TEMPLATE(72)
+        REP_EXPAND_AS_GRAD_TEMPLATE(72)
         default:
           PADDLE_ENFORCE(
               false, "Only support tensor with rank being between 1 and 6.");
@@ -155,7 +149,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
 
  protected:
   template <int Dims>
-  void ExpandBackward(const framework::ExecutionContext& context,
+  void ExpandAsBackward(const framework::ExecutionContext& context,
                       const std::vector<int>& reshape_dims_vec,
                       const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = Dims / MAX_RANK_SUPPORTED + 1;
@@ -168,7 +162,6 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                       "reduce dimensions.");
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto x = EigenVector<T>::Flatten(*(context.Input<Tensor>("X")));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims / MAX_RANK_SUPPORTED + 1> reshape_dims;
@@ -182,7 +175,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     x_grad.device(
         *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
+        out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x_grad.dimensions());
   }
 };
 
