@@ -11518,22 +11518,17 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
+@templatedoc()
 def elementwise_max(x, y, axis=-1, act=None, name=None):
     """
-    Element-wise maximum of array elements.
-
-    Compare two tensors and returns a new tensor containing the element-wise maxima.
+    ${comment}
 
     Args:
-        x,y(Variable): The tensors holding the elements to be compared. 
-            If x.dimension != y.dimension, y.dimension must be a subsequence of x.dimension.
-
-        act(basestring|None): The activation name, such as 'relu'.
-
-        name(basestring|None): The output's name.
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
 
     Returns:
-        out(Variable): A location into which the result is stored. It's dimension equals with x.
+        out(${out_type}): ${out_comment}
 
     Examples:
 
@@ -11587,22 +11582,17 @@ def elementwise_max(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
+@templatedoc()
 def elementwise_min(x, y, axis=-1, act=None, name=None):
     """
-    Element-wise minimum of array elements.
-
-    Compare two tensors and returns a new tensor containing the element-wise minima.
+    ${comment}
 
     Args:
-        x,y(Variable): The tensors holding the elements to be compared. \
-            If x.dimension != y.dimension, y.dimension must be a subsequence of x.dimension.
-
-        act(basestring|None): The activation name, such as 'relu'.
-
-        name(basestring|None): The output's name.
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
 
     Returns:
-        out(Variable): A location into which the result is stored. It's dimension equals with x.
+        out(${out_type}): ${out_comment}
 
     Examples:
 
@@ -11655,24 +11645,17 @@ def elementwise_min(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
+@templatedoc()
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
     """
-    First tensor elements raised to powers from tensor array, element-wise.
-
-    Raise each base in x to the positionally-corresponding power in y.
+    ${comment}
 
     Args:
-        x(Variable): The Base
-
-        y(Variable): The exponents. If x.dimension != y.dimension, 
-            y.dimension must be a subsequence of x.dimension.
-
-        act(basestring|None): The activation name, such as 'relu'.
-
-        name(basestring|None): The output's name.
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
 
     Returns:
-        out(Variable): A location into which the result is stored. It's dimension equals with x.
+        out(${out_type}): ${out_comment}
 
     Examples:
         ..  code-block:: python
@@ -11708,6 +11691,19 @@ def elementwise_mod(x, y, axis=-1, act=None, name=None):
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
+
+for func in [
+        elementwise_max,
+        elementwise_pow,
+        elementwise_min,
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "act (basestring|None): Activation applied to the output.",
+            "name (basestring|None): Name of the output."
+        ])
 
 for func in [
         elementwise_add,
