@@ -28,10 +28,13 @@ struct Layers {
  public:
   const ProgramDesc& main_program() { return program_; }
 
-  VarDesc* data(std::string name) { return lod_tensor(name); }
+  VarDesc* data(std::string name, std::vector<int64_t> shape = {},
+                bool is_persistable = false) {
+    return lod_tensor(name, shape, is_persistable);
+  }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
-                  bool use_cudnn) {
+                  bool use_cudnn = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
@@ -76,8 +79,27 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
-  VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
-    return binary_op("mul", x, y, out);
+  VarDesc* fc(VarDesc* input, VarDesc* w, VarDesc* bias,
+              int in_num_col_dims = 1, std::string activation_type = "") {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("fc");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("W", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("in_num_col_dims", in_num_col_dims);
+    op->SetAttr("activation_type", activation_type);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
+               int x_num_col_dims = 1) {
+    AttributeMap attrs;
+    attrs["x_num_col_dims"] = 1;
+    return binary_op("mul", x, y, out, &attrs);
   }
 
   VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
@@ -115,10 +137,38 @@ struct Layers {
     return out;
   }
 
+  std::vector<VarDesc*> layer_norm(VarDesc* x, VarDesc* scale = nullptr,
+                                   VarDesc* bias = nullptr) {
+    VarDesc* y = lod_tensor(unique_name());
+    VarDesc* mean = lod_tensor(unique_name());
+    VarDesc* variance = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("layer_norm");
+    op->SetInput("X", {x->Name()});
+    if (scale) {
+      op->SetInput("Scale", {scale->Name()});
+    }
+    if (bias) {
+      op->SetInput("Bias", {bias->Name()});
+    }
+    op->SetOutput("Y", {y->Name()});
+    op->SetOutput("Mean", {mean->Name()});
+    op->SetOutput("Variance", {variance->Name()});
+    op->SetAttr("epsilon", static_cast<float>(1E-05));
+    op->SetAttr("begin_norm_axis", static_cast<int>(1));
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    std::vector<VarDesc*> outs = {y, mean, variance};
+    return outs;
+  }
+
  private:
-  VarDesc* lod_tensor(std::string name) {
+  VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
+                      bool is_persistable = false) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetShape(shape);
+    var->SetPersistable(is_persistable);
     return var;
   }
 
@@ -136,7 +186,8 @@ struct Layers {
   }
 
   VarDesc* binary_op(std::string type, VarDesc* x, VarDesc* y,
-                     VarDesc* out = nullptr) {
+                     VarDesc* out = nullptr,
+                     const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -145,6 +196,11 @@ struct Layers {
     op->SetInput("X", {x->Name()});
     op->SetInput("Y", {y->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;

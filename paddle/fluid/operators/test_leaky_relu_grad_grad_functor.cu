@@ -22,5 +22,10 @@ TEST(leaky_relu_grad_grad, test_gpu) {
       TestLeakyReluGradGradMain<float>({32, 64}, platform::CUDAPlace(0), 0.15));
 }
 
+TEST(leaky_relu_grad_grad, test_gpu_zero_alpha) {
+  ASSERT_TRUE(
+      TestLeakyReluGradGradMain<float>({32, 64}, platform::CUDAPlace(0), 0.0));
+}
+
 }  // namespace operators
 }  // namespace paddle

@@ -36,6 +36,7 @@ from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -43,7 +44,8 @@ __all__ = [
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
     'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer'
+    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
+    'RecomputeOptimizer'
 ]
 
 
@@ -491,6 +493,10 @@ class Optimizer(object):
             else:
                 assert (isinstance(callbacks, list))
             program = loss.block.program
+            assert len(loss.shape) == 1 and loss.shape[0] == 1, \
+                "The loss.shape should be (1L,), but the current loss.shape is {}. " \
+                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                    loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                no_grad_set, callbacks)
@@ -2971,6 +2977,298 @@ class PipelineOptimizer(object):
             "sync_steps": self._sync_steps,
             "param_need_sync": param_need_sync
         }
+
+
+class RecomputeOptimizer(Optimizer):
+    """
+    Recompute Optimizer Wrapper
+
+    Normally, a training step contains three sub-steps: first, run forward
+    Operators to calculate the loss; second, run backward Operators to 
+    calculate gradient of the parameters; third, apply optimization method
+    to update the value of the parameters.
+
+    In the forward computation process, all variables that are needed by 
+    backward computation process will be kept in memory, which occupy a great
+    amount of memory when the network becomes very deep.
+
+    Recompute split the network to k segments. In each segment, It will 
+    recompute the forward Operators, before running backward operators. It is
+    very helpful for saving memory.
+ 
+    The Variables that separate a network to segments are called as checkpoints,
+    and users should set it manually. The usage is very simple:
+
+    Args:
+        optimizer (Optimizer): The optimizer that is applied to parameters.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            def gen_data():
+                return {"x": np.random.random(size=(32, 32)).astype('float32'),
+                "y": np.random.randint(2, size=(32, 1)).astype('int64')}
+            def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                print(input_x)
+                fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                sum_cost = fluid.layers.reduce_mean(cost)
+                return sum_cost, fc_1, prediction
+            input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+            input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            cost, fc_1, pred = mlp(input_x, input_y)
+
+            sgd = fluid.optimizer.Adam(learning_rate=0.01)
+            sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+            sgd._set_checkpoints([fc_1, pred])
+            sgd.minimize(cost)
+
+            print("Finished optimize")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            step = 10
+
+            for i in range(step):
+                cost_val = exe.run(feed=gen_data(),
+                       program=fluid.default_main_program(),
+                       fetch_list=[cost.name])
+                print("step=%d cost=%f" % (i, cost_val[0]))
+
+    """
+
+    def __init__(self, optimizer):
+        self._optimizer = optimizer
+        self._checkpoints = None
+
+    def _set_checkpoints(self, checkpoints):
+        self._checkpoints = checkpoints
+
+    def load(self, stat_dict):
+        """
+        load function is not supported by Recompute Optimizer for now.
+        :return: None
+
+        Args:
+            stat_dict: the dict load by load_persistable method
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.compat as cpt
+                
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+                
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+                
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
+                try:
+                    stat_dict = {}
+                    sgd.load(stat_dict)
+                except NotImplementedError as e:
+                    print(cpt.get_exception_message(e))
+        """
+        raise NotImplementedError(
+            "load function is not supported by Recompute Optimizer for now")
+
+    def apply_gradients(self, params_grads):
+        """
+        call apply_gradients function of self._optimizer.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.fluid.framework as framework
+
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+
+
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+
+                program = cost.block.program
+                with framework.program_guard(program, None):
+                    optimize_ops = sgd.apply_gradients(params_grads)
+
+                print("Finished apply gradients")
+        """
+
+        return self._optimizer.apply_gradients(params_grads=params_grads)
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None,
+                 checkpoints=None):
+        """
+        call append_backward with checkpoints.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+            checkpoints (list): list of Variables as checkpoints
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+    
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+    
+    
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+    
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+                print("Finished backward")
+        """
+
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        self._dtype = loss.dtype
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                checkpoints=self._checkpoints)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        call the apply_optimize function of self._optimizer
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+                
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+                
+                
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+                
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+                
+                optimize_ops = sgd.apply_optimize(
+                    cost, startup_program=None, params_grads=params_grads)
+                
+                print("Finished apply_optimize")
+        """
+
+        return self._optimizer.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+
+        assert (isinstance(loss, Variable)), "The loss should be an Variable."
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set,
+            checkpoints=self._checkpoints)
+
+        if grad_clip:
+            # TODO(guru4elephant): should add grad_clip for static graph
+            pass
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+        return optimize_ops, params_grads
 
 
 class LookaheadOptimizer(object):
