@@ -80,8 +80,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "likelihood of each training sample in a mini-batch. This is a 2-D "
         "tensor with shape [S x 1], where S is the sequence number in a "
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
-        "The output is no longer a LoDTensor."
-        " A Tensor with type float32, float64.");
+        "A Tensor with type float32, float64.");
     AddComment(R"DOC(
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
