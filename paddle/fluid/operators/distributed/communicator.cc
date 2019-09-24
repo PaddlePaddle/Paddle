@@ -595,7 +595,7 @@ void Communicator::GeoSgdSend(const std::vector<std::string> &sparse_var_names,
 
   VLOG(4) << "Geo Sgd Send Sparse ids, shape: " << sparse_var_names.size()
           << " using scope: " << &scope;
-  auto before_run_send_ = GetCurrentUS();
+
   // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
   for (size_t i = 1; i < sparse_var_tables.size(); i++) {
