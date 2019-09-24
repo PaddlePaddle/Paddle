@@ -70,6 +70,13 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
   CHECK_EQ(sizeof(T) * 8, dl_tensor.dtype.bits);
 
   CHECK_EQ(GetDLDataTypeCode<T>(), dl_tensor.dtype.code);
+
+  ::DLManagedTensor *dl_managed_tensor = dlpack_tensor.toDLManagedTensor();
+  CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+  for (auto i = 0; i < dims.size(); ++i) {
+    CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
+  }
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
 }
 
 template <typename T>
