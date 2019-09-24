@@ -16,7 +16,7 @@ from __future__ import print_function
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
 
-__all__ = ['one_hot']
+__all__ = ['one_hot', 'embedding']
 
 
 def one_hot(input, depth, allow_out_of_range=False):
@@ -40,7 +40,7 @@ def one_hot(input, depth, allow_out_of_range=False):
 
             import paddle.fluid as fluid
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            one_hot_label = fluid.input.one_hot(input=label, depth=10)
+            one_hot_label = fluid.one_hot(input=label, depth=10)
     """
     helper = LayerHelper("one_hot_v2", **locals())
 
@@ -65,3 +65,73 @@ def one_hot(input, depth, allow_out_of_range=False):
         outputs={'Out': one_hot_out},
         stop_gradient=True)
     return one_hot_out
+
+
+def embedding(input,
+              size,
+              is_sparse=False,
+              is_distributed=False,
+              padding_idx=None,
+              param_attr=None,
+              dtype='float32'):
+    """
+    **Embedding Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    a lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    All the input variables are passed in as local variables to the LayerHelper
+    constructor.
+
+    Args:
+        input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
+        size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        is_distributed(bool): Whether to run lookup table from remote parameter server.
+        padding_idx(int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        param_attr(ParamAttr): Parameters for this layer.
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
+
+    Returns:
+        Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          # [batch_size, 20]  ->  [batch_size, 20, 64]
+          data = fluid.layers.data(name='sequence', shape=[20], dtype='int64')
+          emb = fluid.embedding(input=data, size=[128, 64])    
+    """
+
+    helper = LayerHelper('embedding', **locals())
+    remote_prefetch = is_sparse and (not is_distributed)
+    if remote_prefetch:
+        assert is_sparse is True and is_distributed is False
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
+    tmp = helper.create_variable_for_type_inference(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
+    helper.append_op(
+        type='lookup_table_v2',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': tmp},
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
+            'padding_idx': padding_idx
+        })
+    return tmp
