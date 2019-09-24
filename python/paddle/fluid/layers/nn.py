@@ -14122,52 +14122,46 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This layer creates the sharded index for input. This layers is used in
-    model- and data- parallel mixed training generally, in which the index
-    data (usually the label) should be recaculated in each trainer according
-    to 
-
-    .. math::
+    This function recomputes the `input` indices according to the offset of the
+    shard. The length of the indices is evenly divided into N shards, and if
+    the `shard_id` matches the shard with the input index inside, the index is
+    recomputed on the basis of the shard offset, elsewise it is set to
+    `ignore_value`. The detail is as follows:
+    :: 
         
-        assert index_num % nshards == 0
+        shard_size = (index_num + nshards - 1) // nshards
+        y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-        shard_size = index_num / nshards
-
-        y = x % shard_size if x / shard_size == shard_id else ignore_value
-
-    We take the distributed one-hot representation to show what this layer is
-    used for. The distributed one-hot representation is seperated into multiple
-    shards, and each shard is filling zeros except the one with the index
-    inside. In order to create these sharded representation in each trainer,
-    the original index should be recalculated (i.e. sharded) before.
+    NOTE: If the length of indices cannot be evely divided by the shard number,
+    the size of the last shard will be less than the calculated `shard_size`
 
     Examples:
+    ::
     
-        X is a Tensor of integer values:
+        Input:
           X.shape = [4, 1]
           X.data = [[1], [6], [12], [19]]
+          index_num = 20
+          nshards = 2
+          ignore_value = -1
         
-        suppose index_num = 20 and nshards = 2, then we get shard_size = 10
-        
-        if shard_id == 0, we get the Out:
+        if shard_id == 0, we get:
           Out.shape = [4, 1]
           Out.data = [[1], [6], [-1], [-1]]
         
-        if shard_id == 1, we get the Out:
+        if shard_id == 1, we get:
           Out.shape = [4, 1]
           Out.data = [[-1], [-1], [2], [9]]
     
-        the default `ignore_value` -1 is used in this example.
-    
     Args:
-        input(Variable): Input indices, last dimension must be 1.
-        index_num(scalar): An interger defining the range of the index.
-        nshards(scalar): The number of shards
-        shard_id(scalar): The index of the current shard
-        ignore_value(scalar): An ingeter value out of sharded index range
+        - **input** (Variable): Input indices, last dimension must be 1.
+        - **index_num** (scalar): An interger defining the range of the index.
+        - **nshards** (scalar): The number of shards
+        - **shard_id** (scalar): The index of the current shard
+        - **ignore_value** (scalar): An ingeter value out of sharded index range
 
     Returns:
-        Variable: The shard index of input.
+        Variable: The sharded index of input.
 
     Examples:
         .. code-block:: python
