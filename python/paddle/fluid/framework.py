@@ -1833,6 +1833,11 @@ class Block(object):
                 init_ops = []
                 for op in block.ops:
                     if var.name in op.output_arg_names:
+                        #In startup_program, "c_broadcast" and "c_sync_comm_stream"
+                        #are treated as initialization ops that cause error. 
+                        #Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
+                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                            continue
                         init_ops.append(op)
                 return init_ops
 
