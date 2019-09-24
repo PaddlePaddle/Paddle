@@ -400,55 +400,9 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-#ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>, py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>, py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>, py::arg("array"), py::arg("place"), R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
@@ -468,7 +422,7 @@ PYBIND11_MODULE(core_noavx, m) {
                 t = fluid.LoDTensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
-#endif
+
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
 

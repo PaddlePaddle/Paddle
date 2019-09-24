@@ -66,6 +66,57 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 }
 
 template <typename T>
+void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
+                          T place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+  self->Resize(framework::make_ddim(dims));
+  void *dst = nullptr;
+  if (py::isinstance<py::array_t<bool>>(array)) {
+    dst = self->mutable_data<bool>(place);
+  } else if (py::isinstance<py::array_t<float>>(array)) {
+    dst = self->mutable_data<float>(place);
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    dst = self->mutable_data<double>(place);
+  } else if (py::isinstance<py::array_t<int8_t>>(array)) {
+    dst = self->mutable_data<int8_t>(place);
+  } else if (py::isinstance<py::array_t<int>>(array)) {
+    dst = self->mutable_data<int>(place);
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    dst = self->mutable_data<int64_t>(place);
+  } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
+    dst = self->mutable_data<uint8_t>(place);
+  } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
+    dst = self->mutable_data<paddle::platform::float16>(place);
+  } else {
+    PADDLE_THROW(
+        "Incompatible data type: tensor.set() supports bool, float32, float64, "
+        "int8, int32, int64, uint8 and uint16, but got %s!",
+        array.dtype());
+  }
+  if (paddle::platform::is_cpu_place(place)) {
+    std::memcpy(dst, array.data(), array.nbytes());
+#ifdef PADDLE_WITH_CUDA
+  } else if (paddle::platform::is_cuda_pinned_place(place)) {
+    std::memcpy(dst, array.data(), array.nbytes());
+  } else if (paddle::platform::is_gpu_place(place)) {
+    paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
+                                    cudaMemcpyHostToDevice);
+  } else {
+    PADDLE_THROW(
+        "Incompatible place type: Tensor.set() supports CPUPlace, CUDAPlace "
+        "and CUDAPinnedPlace, but got %s!",
+        place);
+#else
+    PADDLE_THROW("Not supported GPU, please compile WITH_GPU option");
+#endif
+  }
+}
+
+template <typename T>
 void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
