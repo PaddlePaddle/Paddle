@@ -189,7 +189,6 @@ void Communicator::SendThread() {
             if (var_list_[origin_var_name] == true) {
               //auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
               VLOG(1) << "Before send update var name: " << origin_var_name;
-              size_t prepare = 1 - curr_idx_.load();
               SendUpdateSparseVars(origin_var_name, send_ids_map_->at(var_name));
             } else {
               VLOG(1) << "Before send update var name: " << origin_var_name;
