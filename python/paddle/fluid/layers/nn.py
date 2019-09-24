@@ -14021,11 +14021,11 @@ def deformable_roi_pooling(input,
     """
     Deformable ROI Pooling Layer
   
-    Performs deformable region-of-interest pooling on inputs.  described
+    Performs deformable region-of-interest pooling on inputs. As described
     in `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_, it will get offset for each bin after 
     roi pooling so that pooling at correct region. Batch_size will change to the number of region bounding boxes after deformable_roi_pooling.
   
-    The operation has four steps:
+    The operation has three steps:
     
     1. Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height.
   
@@ -14053,7 +14053,7 @@ def deformable_roi_pooling(input,
                          Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value is int32. (eg.number of input channels 
                           is k1 * k2 * (C + 1), which k1 and k2 are group width and height and C+1 is number of output
-                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
+                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group). Default: [1, 1].
         pooled_height (int): The pooled output height which value type is int32. Default: 1.
         pooled_width (int): The pooled output width which value type is int32. Default: 1.
         part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, and values always equal to pooled_height \
@@ -14064,8 +14064,8 @@ def deformable_roi_pooling(input,
                                    If value is True, input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
         name (str|None): Name of layer. Default: None.
     Returns:
-        Variable: Output of deformable roi pooling.  If position_sensitive is False, input dimension equals to output dimension. If position_sensitive is True, \
-                  input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
+        Variable: Output of deformable roi pooling is that, if position sensitive is False, input dimension equals to output dimension. If position sensitive is True,\
+                  input dimension should be the result of output dimension divided by pooled height and pooled width.
 
     Examples:
       .. code-block:: python
