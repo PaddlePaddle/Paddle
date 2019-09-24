@@ -142,6 +142,7 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
+    CheckProgramVersion();
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -741,6 +742,32 @@ bool AnalysisPredictor::LoadParameters() {
   VLOG(3) << "get " << scope_->LocalVarNames().size() << " vars after load";
 
   return true;
+}
+
+bool AnalysisPredictor::CheckProgramVersion() const {
+  if (!inference_program_) {
+    LOG(ERROR) << "Inference program version check failed because the program "
+                  "does not exist.";
+    return false;
+  }
+  bool res = true;
+  int64_t version = inference_program_->Version();
+  for (size_t i = 0; i < inference_program_->Size(); ++i) {
+    const auto &block = inference_program_->Block(i);
+    for (const auto *op : block.AllOps()) {
+      const std::string type = op->Type();
+      auto compatible_type =
+          op_compatible_map_.IsRequireMiniVersion(type, version);
+      if (compatible_type != framework::OpCompatibleType::compatible) {
+        LOG(WARNING) << "The version " << version << " of operator " << type
+                     << " is not compatible ("
+                     << static_cast<int>(compatible_type)
+                     << "), and the inference result may have a difference.";
+        res = false;
+      }
+    }
+  }
+  return res;
 }
 
 #if PADDLE_WITH_TENSORRT

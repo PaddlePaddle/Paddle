@@ -21,58 +21,23 @@
 namespace paddle {
 namespace framework {
 
-inline std::vector<int> ConvertStr2Int(const std::string& str_text) {
-  auto vec_text = string::split_string<std::string>(str_text, ".");
-  PADDLE_ENFORCE((vec_text.size() == 2 || vec_text.size() == 3),
-                 "Input[%s] is not a right version format [1.6 or 1.6.0]",
-                 str_text);
-
-  std::vector<int> vec_res;
-  vec_res.reserve(3);
-  for (auto& val : vec_text) {
-    vec_res.emplace_back(atoi(val.c_str()));
-  }
-
-  if (vec_res.size() == 2) {
-    vec_res.emplace_back(0);
-  }
-
-  return vec_res;
-}
-
 /* first version >= second version return true */
-
-inline bool CompareVersion(const std::string& str_first,
-                           const std::string& str_second) {
-  auto vec_first_version = ConvertStr2Int(str_first);
-  auto vec_second_version = ConvertStr2Int(str_second);
-
-  // first version id
-  PADDLE_ENFORCE_EQ(
-      vec_first_version.size(), vec_second_version.size(),
-      "version information size not equal, first is [%d] second is [%d]",
-      vec_first_version.size(), vec_second_version.size());
-
-  for (size_t i = 0; i < vec_first_version.size() - 1; ++i) {
-    if (vec_first_version[i] != vec_second_version[i]) {
-      return vec_first_version[i] > vec_second_version[i];
-    }
-  }
-  return vec_first_version[2] >= vec_second_version[2];
+inline bool CompareVersion(const int64_t first, const int64_t second) {
+  return first >= second;
 }
 
 void OpCompatibleMap::InitOpCompatibleMap() {
-  op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["sequence_pad"] = {1006000, OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["sequence_unpad"] = {1006000, OpCompatibleType::DEFIN_NOT};
 
-  op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
-  op_compatible_map_["slice"] = {"1.6.0", OpCompatibleType::possible};
-  op_compatible_map_["expand"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["reshape2"] = {1006000, OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["slice"] = {1006000, OpCompatibleType::possible};
+  op_compatible_map_["expand"] = {1006000, OpCompatibleType::possible};
 
-  op_compatible_map_["layer_norm"] = {"1.6.0", OpCompatibleType::bug_fix};
+  op_compatible_map_["layer_norm"] = {1006000, OpCompatibleType::bug_fix};
 }
 
-CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) {
+CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) const {
   auto it = op_compatible_map_.find(op_name);
   if (it != op_compatible_map_.end()) {
     return it->second;
@@ -82,17 +47,17 @@ CompatibleInfo OpCompatibleMap::GetOpCompatibleInfo(std::string op_name) {
 }
 
 OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
-    std::string op_name, std::string str_current_version) {
+    std::string op_name, const int64_t current_version) const {
   auto it = op_compatible_map_.find(op_name);
   if (it != op_compatible_map_.end()) {
-    if (CompareVersion(str_current_version, it->second.required_version_)) {
+    if (CompareVersion(current_version, it->second.GetRequiredVersion())) {
       return OpCompatibleType::compatible;
     } else {
-      return it->second.compatible_type_;
+      return it->second.GetOpCompatibleType();
     }
 
   } else {
-    if (CompareVersion(str_current_version, default_required_version_)) {
+    if (CompareVersion(current_version, default_required_version_)) {
       return OpCompatibleType::compatible;
     } else {
       return OpCompatibleType::DEFIN_NOT;

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <map>
 #include <string>
-
-#pragma once
+#include "paddle/fluid/framework/version.h"
 
 namespace paddle {
 namespace framework {
@@ -29,40 +30,50 @@ enum class OpCompatibleType {
 };
 
 struct CompatibleInfo {
-  CompatibleInfo(std::string required_version, OpCompatibleType compatible_type)
+  CompatibleInfo(const int64_t required_version,
+                 OpCompatibleType compatible_type)
       : required_version_(required_version),
         compatible_type_(compatible_type) {}
   CompatibleInfo() {}
+  int64_t GetRequiredVersion() const;
+  const OpCompatibleType& GetOpCompatibleType() const;
 
   // op required version, previous version not support
-  std::string required_version_;
+  int64_t required_version_;
   OpCompatibleType compatible_type_;
 };
 
+inline int64_t CompatibleInfo::GetRequiredVersion() const {
+  return required_version_;
+}
+
+inline const OpCompatibleType& CompatibleInfo::GetOpCompatibleType() const {
+  return compatible_type_;
+}
+
 class OpCompatibleMap {
  public:
-  OpCompatibleMap() : default_required_version_("1.5.0") {}
+  OpCompatibleMap() : default_required_version_(1005000) {}
   void InitOpCompatibleMap();
 
-  CompatibleInfo GetOpCompatibleInfo(std::string op_name);
+  CompatibleInfo GetOpCompatibleInfo(std::string op_name) const;
 
   /* IsRequireMiniVersion
    *  return type OpCompatibleType */
 
   OpCompatibleType IsRequireMiniVersion(std::string op_name,
-                                        std::string current_version);
+                                        const int64_t current_version) const;
 
-  void SerializeToStr(std::string& str) {} /* NOLINT */
+  void SerializeToStr(std::string& str) const {} /* NOLINT */
   void UnSerialize(const std::string& str) {}
 
-  const std::string& GetDefaultRequiredVersion() {
+  int64_t GetDefaultRequiredVersion() const {
     return default_required_version_;
   }
 
  private:
   std::map<std::string, CompatibleInfo> op_compatible_map_;
-
-  std::string default_required_version_;
+  int64_t default_required_version_;
 };
 
 }  // namespace framework

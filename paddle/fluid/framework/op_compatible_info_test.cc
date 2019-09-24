@@ -23,35 +23,34 @@ TEST(test_op_compatible_info, test_op_compatible) {
   auto comp_map = OpCompatibleMap();
   comp_map.InitOpCompatibleMap();
 
-  auto default_req_version = comp_map.GetDefaultRequiredVersion();
+  ASSERT_TRUE(comp_map.GetDefaultRequiredVersion());
+  ASSERT_TRUE(
+      comp_map.GetOpCompatibleInfo("sequence_pad").GetRequiredVersion());
+  ASSERT_TRUE(comp_map.GetOpCompatibleInfo("reshape").GetRequiredVersion());
+  ASSERT_TRUE(comp_map.GetOpCompatibleInfo("layer_norm").GetRequiredVersion());
+  ASSERT_TRUE(comp_map.GetOpCompatibleInfo("layer_xx").GetRequiredVersion());
 
-  auto seq_pad = comp_map.GetOpCompatibleInfo("sequence_pad");
-  auto reshape = comp_map.GetOpCompatibleInfo("reshape");
-  auto layer_norm = comp_map.GetOpCompatibleInfo("layer_norm");
-
-  auto deafult_info = comp_map.GetOpCompatibleInfo("layer_xx");
-
-  auto comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", "1.5.0");
+  auto comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", 1005000);
   ASSERT_EQ(comp_1, OpCompatibleType::DEFIN_NOT);
-  auto comp_2 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.0");
+  auto comp_2 = comp_map.IsRequireMiniVersion("sequence_pad", 1006000);
   ASSERT_EQ(comp_2, OpCompatibleType::compatible);
-  auto comp_3 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.1");
+  auto comp_3 = comp_map.IsRequireMiniVersion("sequence_pad", 1006001);
   ASSERT_EQ(comp_3, OpCompatibleType::compatible);
-  auto comp_6 = comp_map.IsRequireMiniVersion("sequence_pad", "1.7.0");
+  auto comp_6 = comp_map.IsRequireMiniVersion("sequence_pad", 1007000);
   ASSERT_EQ(comp_6, OpCompatibleType::compatible);
-  auto comp_7 = comp_map.IsRequireMiniVersion("sequence_pad", "0.7.0");
+  auto comp_7 = comp_map.IsRequireMiniVersion("sequence_pad", 0007000);
   ASSERT_EQ(comp_7, OpCompatibleType::DEFIN_NOT);
-  auto comp_8 = comp_map.IsRequireMiniVersion("sequence_pad", "2.0.0");
+  auto comp_8 = comp_map.IsRequireMiniVersion("sequence_pad", 2000000);
   ASSERT_EQ(comp_8, OpCompatibleType::compatible);
 
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "2.0.0"),
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", 2000000),
             OpCompatibleType::compatible);
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "0.7.0"),
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", 0007000),
             OpCompatibleType::DEFIN_NOT);
 
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "0.7.0"),
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", 0007000),
             OpCompatibleType::possible);
-  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "1.6.0"),
+  ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", 1006000),
             OpCompatibleType::compatible);
 }
 }  // namespace framework
