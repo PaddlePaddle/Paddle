@@ -553,8 +553,8 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     // sparse_var_tables first(i=0) element is "FLAG_GEO_SGD_SPARSE_PARAMETER", skip it
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()){
       // create empty set for new sparse var
-      ids_table->insert(std::pair<std::string,std::set<int64_t>>
-                          (sparse_var_tables[i],std::set<int64_t>{}));
+      ids_table->insert(std::pair<std::string,std::unordered_set<int64_t>>
+                          (sparse_var_tables[i],std::unordered_set<int64_t>{}));
     }
     auto *var = scope.FindVar(sparse_var_names[i - 1]);
     auto var_tensor = var->Get<framework::LoDTensor>();
@@ -562,11 +562,8 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
     int* var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
     // insert ids which has not been record
     for(size_t j = 0; j < element_number; j++) {
-      if(ids_table->at(sparse_var_tables[i]).find(var_mutable_data[j]) == 
-                                    ids_table->at(sparse_var_tables[i]).end()) {
-        ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
-        VLOG(4)<<"Sparse var "<<sparse_var_tables[i] <<" insert " <<var_mutable_data[j];
-      }
+      ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
+      VLOG(4)<<"Sparse var "<<sparse_var_tables[i] <<" insert " <<var_mutable_data[j];
     }
   }
   need_push_queue_->Push(ids_table);
@@ -576,14 +573,16 @@ void Communicator::GeoSgdSend(const std::vector<std::string>& sparse_var_names,
   VLOG(4)<<"GeoSgd send complete";
 }
 
-std::set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
+std::unordered_set<int64_t> Communicator::SparseIdsMerge(std::vector<SparseIdsMap> &ids_send_vec, 
                                              const std::string &var_name) {
   auto before_run_ids_merge_ = GetCurrentUS();
-  std::set<int64_t> ids_set = ids_send_vec.front()[var_name];
+  std::unordered_set<int64_t> ids_set;
   VLOG(2)<<"Sparse ids merge name: "<<var_name;
   VLOG(2)<<"ids_send_vec Size: "<< ids_send_vec.size();
-  for (size_t i = 1; i<ids_send_vec.size(); i++) {
-    ids_set = MergeSet(ids_set , ids_send_vec[i][var_name]);
+  for (auto ids_map : ids_send_vec) {
+    for (auto id : ids_map[var_name]) {
+      ids_set.insert(id);
+    }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
   VLOG(1) << "run SparseIdsMerge use time "
@@ -640,7 +639,7 @@ void Communicator::SendUpdateDenseVars(const std::string& var_name) {
             << after_run_send_dense -  before_run_send_dense;
 }
 
-void Communicator::SendUpdateSparseVars(const std::string& var_name,std::set<int64_t> &ids_table) {
+void Communicator::SendUpdateSparseVars(const std::string& var_name,std::unordered_set<int64_t> &ids_table) {
   VLOG(2) << "Geo-Sgd Communicator Send update Sparse Vars: "<< var_name;
   auto before_run_send_sparse = GetCurrentUS();
 
