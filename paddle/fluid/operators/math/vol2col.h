@@ -17,11 +17,16 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+using DataLayout = framework::DataLayout;
+using ColFormat = paddle::operators::math::ColFormat;
+
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of
  *        seven dimensions in the Vol2ColFunctor calculation,
@@ -42,7 +47,7 @@ namespace math {
  * \param paddings     padding data.
  * \param 3-dimension  [d_pad, h_pad, w_pad].
  *
- * The shape of colData is:
+ * If the template argument Format is kOCF, the shape of colData is:
  * [input_channels, filter_depth, filter_height, filter_width, output_depth,
  * output_height, output_width]
  * So, it is easy to reshape into a convolution matrix for convolution
@@ -61,27 +66,45 @@ namespace math {
  *      output_height,
  *      output_width]
  *
+ * If the template argument Format is kOCF, the shape of colData is:
+ * [output_depth, output_height, output_width, input_channels, filter_depth,
+ * filter_height, filter_width]
+ * So, it is easy to reshape into a sequence matrix for rnn calculation.
+ * The shape of sequence matrix is [seq_length, step_size], where the seq_length
+ * is equal output_depth * output_height * output_width, and the step_size is
+ * equal
+ * input_channels * filter_depth * filter_height * filter_width.
+ *
+ * Reshape:
+ *     shape of colData             shape of sequence matrix
+ *     [output_depth,
+ *      output_height,
+ *      output_width,
+ *      input_channels,    ======>    [seqLength, stepSize]
+ *      filter_depth,
+ *      filter_height,
+ *      filter_width]
  * \note The caller needs to ensure that volShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
-template <typename DeviceContext, typename T>
+template <ColFormat Format, typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* col) const;
+                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
-template <typename DeviceContext, typename T>
+template <ColFormat Format, typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* vol) const;
+                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 }  // namespace math

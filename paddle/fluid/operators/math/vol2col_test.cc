@@ -78,7 +78,9 @@ void testVol2col() {
                               output_depth, output_height, output_width},
                              *place);
 
-  paddle::operators::math::Vol2ColFunctor<DeviceContext, float> vol2col;
+  paddle::operators::math::Vol2ColFunctor<
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
+      vol2col;
   vol2col(*context, input, dilations, strides, paddings, &output);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
@@ -103,7 +105,9 @@ void testVol2col() {
     TensorCopySync(input_tmp, *place, &input);
   }
 
-  paddle::operators::math::Col2VolFunctor<DeviceContext, float> col2vol;
+  paddle::operators::math::Col2VolFunctor<
+      paddle::operators::math::ColFormat::kCFO, DeviceContext, float>
+      col2vol;
   col2vol(*context, output, dilations, strides, paddings, &input);
 
   float* in_ptr;

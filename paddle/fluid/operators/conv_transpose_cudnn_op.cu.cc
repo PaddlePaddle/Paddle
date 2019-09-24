@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/conv_transpose_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -28,6 +29,26 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 
 static constexpr size_t kConvCUDNNWorkspaceLimitBytes = 1024 * 1024 * 1024;
+
+template <typename T, int D>
+static void DataTranspose(const framework::ExecutionContext& ctx,
+                          const Tensor* input, Tensor* output,
+                          const std::vector<int>& axis, int flag = 0) {
+  auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  math::Transpose<platform::CUDADeviceContext, T, D> transpose;
+  auto in_dims = input->dims();
+  std::vector<int64_t> input_transpose_vec;
+  for (size_t i = 0; i < axis.size(); ++i) {
+    if (flag == 0)
+      input_transpose_vec.push_back(in_dims[axis[i]]);
+    else
+      input_transpose_vec.push_back(in_dims[i]);
+  }
+  framework::DDim input_transpose_dims(
+      framework::make_ddim(input_transpose_vec));
+  output->mutable_data<T>(input_transpose_dims, ctx.GetPlace());
+  transpose(dev_ctx, *input, output, axis);
+}
 
 template <typename T>
 class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
@@ -45,10 +66,38 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const paddle::operators::DataLayout data_layout =
+        (data_layout_str == "NCHW" ? DataLayout::kNCHW : DataLayout::kNHWC);
 
     const T* input_data = input->data<T>();
+    Tensor input_transpose;
+    std::vector<int> input_vec = framework::vectorize<int>(input->dims());
+    std::vector<int> output_vec = framework::vectorize<int>(output->dims());
+    if (data_layout == DataLayout::kNHWC && strides.size() == 2U) {
+      std::vector<int> axis = {0, 3, 1, 2};
+      for (size_t i = 0; i < axis.size(); ++i) {
+        input_vec[i] = input->dims()[axis[i]];
+        output_vec[i] = output->dims()[axis[i]];
+      }
+      DataTranspose<T, 4>(ctx, input, &input_transpose, axis);
+      input_data = input_transpose.data<T>();
+    }
+    if (data_layout == DataLayout::kNHWC && strides.size() == 3U) {
+      std::vector<int> axis = {0, 4, 1, 2, 3};
+      for (size_t i = 0; i < axis.size(); ++i) {
+        input_vec[i] = input->dims()[axis[i]];
+        output_vec[i] = output->dims()[axis[i]];
+      }
+      DataTranspose<T, 5>(ctx, input, &input_transpose, axis);
+      input_data = input_transpose.data<T>();
+    }
+
     const T* filter_data = filter->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    Tensor output_NCHW;
+    output_NCHW.ShareDataWith(*output);
+    output_NCHW.Resize(framework::make_ddim(output_vec));
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
@@ -63,11 +112,11 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
 
     // (N, M, H, W) or (N, M, D, H, W)
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(input->dims()), groups);
+    cudnnTensorDescriptor_t cudnn_input_desc =
+        input_desc.descriptor<T>(layout, input_vec, groups);
     // (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(output->dims()), groups);
+    cudnnTensorDescriptor_t cudnn_output_desc =
+        output_desc.descriptor<T>(layout, output_vec, groups);
     // (M, C, K_h, K_w) or (M, C, K_d, K_h, K_w)
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize<int>(filter->dims()), groups);
@@ -114,6 +163,18 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
+
+    Tensor output_transpose;
+    if (data_layout == DataLayout::kNHWC && strides.size() == 2U) {
+      std::vector<int> axis = {0, 2, 3, 1};
+      DataTranspose<T, 4>(ctx, &output_NCHW, &output_transpose, axis);
+      *output = output_transpose;
+    }
+    if (data_layout == DataLayout::kNHWC && strides.size() == 3U) {
+      std::vector<int> axis = {0, 2, 3, 4, 1};
+      DataTranspose<T, 5>(ctx, &output_NCHW, &output_transpose, axis);
+      *output = output_transpose;
+    }
   }
 };
 
@@ -128,8 +189,6 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
-    const T* input_data = input->data<T>();
-    const T* output_grad_data = output_grad->data<T>();
     const T* filter_data = filter->data<T>();
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -138,6 +197,39 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const paddle::operators::DataLayout data_layout =
+        (data_layout_str == "NCHW" ? DataLayout::kNCHW : DataLayout::kNHWC);
+
+    const T* input_data = input->data<T>();
+    const T* output_grad_data = output_grad->data<T>();
+    Tensor input_transpose;
+    Tensor output_grad_transpose;
+    std::vector<int> input_vec = framework::vectorize<int>(input->dims());
+    std::vector<int> output_vec =
+        framework::vectorize<int>(output_grad->dims());
+    if (data_layout == DataLayout::kNHWC && strides.size() == 2U) {
+      std::vector<int> axis = {0, 3, 1, 2};
+      for (size_t i = 0; i < axis.size(); ++i) {
+        input_vec[i] = input->dims()[axis[i]];
+        output_vec[i] = output_grad->dims()[axis[i]];
+      }
+      DataTranspose<T, 4>(ctx, input, &input_transpose, axis);
+      DataTranspose<T, 4>(ctx, output_grad, &output_grad_transpose, axis);
+      input_data = input_transpose.data<T>();
+      output_grad_data = output_grad_transpose.data<T>();
+    }
+    if (data_layout == DataLayout::kNHWC && strides.size() == 3U) {
+      std::vector<int> axis = {0, 4, 1, 2, 3};
+      for (size_t i = 0; i < axis.size(); ++i) {
+        input_vec[i] = input->dims()[axis[i]];
+        output_vec[i] = output_grad->dims()[axis[i]];
+      }
+      DataTranspose<T, 5>(ctx, input, &input_transpose, axis);
+      DataTranspose<T, 5>(ctx, output_grad, &output_grad_transpose, axis);
+      input_data = input_transpose.data<T>();
+      output_grad_data = output_grad_transpose.data<T>();
+    }
 
     // ------------------- cudnn descriptors ---------------------
     ScopedTensorDescriptor input_desc;
@@ -147,11 +239,11 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     // Input: (N, M, H, W) or (N, M, D, H, W)
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(input->dims()), groups);
+    cudnnTensorDescriptor_t cudnn_input_desc =
+        input_desc.descriptor<T>(layout, input_vec, groups);
     // Output: (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(output_grad->dims()), groups);
+    cudnnTensorDescriptor_t cudnn_output_desc =
+        output_desc.descriptor<T>(layout, output_vec, groups);
     // Filter (M, C, K_h, K_w) or (M, C, K_d K_h, K_w)
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize<int>(filter->dims()), groups);
@@ -211,6 +303,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+      Tensor input_grad_NCHW;
+      input_grad_NCHW.ShareDataWith(*input_grad);
+      input_grad_NCHW.Resize(framework::make_ddim(input_vec));
       // Because beta is zero, it is unnecessary to reset input_grad.
       for (int g = 0; g < groups; g++) {
         auto cudnn_func = [&](void* cudnn_workspace) {
@@ -222,6 +317,18 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               input_grad_data + input_offset * g));
         };
         workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+      }
+
+      Tensor input_grad_transpose;
+      if (data_layout == DataLayout::kNHWC && strides.size() == 2U) {
+        std::vector<int> axis = {0, 2, 3, 1};
+        DataTranspose<T, 4>(ctx, &input_grad_NCHW, &input_grad_transpose, axis);
+        *input_grad = input_grad_transpose;
+      }
+      if (data_layout == DataLayout::kNHWC && strides.size() == 3U) {
+        std::vector<int> axis = {0, 2, 3, 4, 1};
+        DataTranspose<T, 5>(ctx, &input_grad_NCHW, &input_grad_transpose, axis);
+        *input_grad = input_grad_transpose;
       }
     }
 

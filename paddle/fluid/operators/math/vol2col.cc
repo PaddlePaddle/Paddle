@@ -26,14 +26,14 @@ namespace math {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Vol2ColFunctor<platform::CPUDeviceContext, T> {
+class Vol2ColFunctor<ColFormat::kCFO, platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* col) const {
+                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const DataLayout data_layout) const {
     PADDLE_ENFORCE(vol.dims().size() == 4);
     PADDLE_ENFORCE(col->dims().size() == 7);
 
@@ -112,14 +112,14 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Col2VolFunctor<platform::CPUDeviceContext, T> {
+class Col2VolFunctor<ColFormat::kCFO, platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* vol) const {
+                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const DataLayout data_layout) const {
     PADDLE_ENFORCE(vol->dims().size() == 4);
     PADDLE_ENFORCE(col.dims().size() == 7);
 
@@ -191,10 +191,213 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class Vol2ColFunctor<platform::CPUDeviceContext, float>;
-template class Vol2ColFunctor<platform::CPUDeviceContext, double>;
-template class Col2VolFunctor<platform::CPUDeviceContext, float>;
-template class Col2VolFunctor<platform::CPUDeviceContext, double>;
+template class Vol2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                              platform::CPUDeviceContext, float>;
+template class Vol2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                              platform::CPUDeviceContext, double>;
+template class Col2VolFunctor<paddle::operators::math::ColFormat::kCFO,
+                              platform::CPUDeviceContext, float>;
+template class Col2VolFunctor<paddle::operators::math::ColFormat::kCFO,
+                              platform::CPUDeviceContext, double>;
+
+/*
+ * im = [input_channels, input_depth, input_height, input_width]
+ * col = [output_depth, output_height, output_width,
+ *        input_channels, filter_depth, filter_height, filter_width]
+ */
+template <class T>
+class Vol2ColFunctor<ColFormat::kOCF, platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& vol,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const DataLayout data_layout) const {
+    PADDLE_ENFORCE(vol.dims().size() == 4);
+    PADDLE_ENFORCE(col->dims().size() == 7);
+
+    int input_channels =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[0] : vol.dims()[3]);
+    int input_depth =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[1] : vol.dims()[0]);
+    int input_height =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[2] : vol.dims()[1]);
+    int input_width =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[3] : vol.dims()[2]);
+    int filter_depth = col->dims()[4];
+    int filter_height = col->dims()[5];
+    int filter_width = col->dims()[6];
+    int output_depth = col->dims()[0];
+    int output_height = col->dims()[1];
+    int output_width = col->dims()[2];
+    int channels_col =
+        input_channels * filter_depth * filter_height * filter_width;
+
+    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+                       ((dilations[0] * (filter_depth - 1) + 1))) /
+                              strides[0] +
+                          1,
+                      output_depth,
+                      "input_depth and output_depth are "
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                       ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
+                          1,
+                      output_height,
+                      "input_height and output_height are "
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                       ((dilations[2] * (filter_width - 1) + 1))) /
+                              strides[2] +
+                          1,
+                      output_width,
+                      "input_width and output_width are "
+                      "mismatching.");
+
+    const T* vol_data = vol.data<T>();
+    T* col_data = col->data<T>();
+
+    for (int d = 0; d < output_depth; ++d) {
+      for (int h = 0; h < output_height; ++h) {
+        for (int w = 0; w < output_width; ++w) {
+          for (int c = 0; c < channels_col; ++c) {
+            int w_offset = c % filter_width;
+            int h_offset = (c / filter_width) % filter_height;
+            int d_offset = (c / filter_width / filter_height) % filter_depth;
+            int c_in = c / filter_width / filter_height / filter_depth;
+            int d_pad = d * strides[0] - paddings[0] + d_offset * dilations[0];
+            int h_pad = h * strides[1] - paddings[1] + h_offset * dilations[1];
+            int w_pad = w * strides[2] - paddings[2] + w_offset * dilations[2];
+            int col_idx =
+                ((d * output_height + h) * output_width + w) * channels_col + c;
+            int vol_idx;
+            if (data_layout == DataLayout::kNCHW) {
+              vol_idx = ((c_in * input_depth + d_pad) * input_height + h_pad) *
+                            input_width +
+                        w_pad;
+            } else {
+              vol_idx = ((d_pad * input_height + h_pad) * input_width + w_pad) *
+                            input_channels +
+                        c_in;
+            }
+            col_data[col_idx] =
+                (h_pad < 0 || h_pad >= input_height || w_pad < 0 ||
+                 w_pad >= input_width || d_pad < 0 || d_pad >= input_depth)
+                    ? static_cast<T>(0)
+                    : vol_data[vol_idx];
+          }
+        }
+      }
+    }
+  }
+};
+
+/*
+ * vol = [input_channels,input_depth, input_height, input_width]
+ * col =
+ *   [output_depth, output_height, output_width,
+ *   input_channels, filter_depth, filter_height, filter_width]
+ */
+template <class T>
+class Col2VolFunctor<ColFormat::kOCF, platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& col,
+                  const std::vector<int>& dilations,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const DataLayout data_layout) const {
+    PADDLE_ENFORCE(vol->dims().size() == 4);
+    PADDLE_ENFORCE(col.dims().size() == 7);
+
+    int input_channels =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[0] : vol->dims()[3]);
+    int input_depth =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[1] : vol->dims()[0]);
+    int input_height =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[2] : vol->dims()[1]);
+    int input_width =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[3] : vol->dims()[2]);
+    int filter_depth = col.dims()[4];
+    int filter_height = col.dims()[5];
+    int filter_width = col.dims()[6];
+    int output_depth = col.dims()[0];
+    int output_height = col.dims()[1];
+    int output_width = col.dims()[2];
+    int channels_col =
+        input_channels * filter_depth * filter_height * filter_width;
+
+    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+                       ((dilations[0] * (filter_depth - 1) + 1))) /
+                              strides[0] +
+                          1,
+                      output_depth,
+                      "input_depth and output_depth are "
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                       ((dilations[1] * (filter_height - 1) + 1))) /
+                              strides[1] +
+                          1,
+                      output_height,
+                      "input_height and output_height are "
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                       ((dilations[2] * (filter_width - 1) + 1))) /
+                              strides[2] +
+                          1,
+                      output_width,
+                      "input_width and output_width are "
+                      "mismatching.");
+    T* vol_data = vol->data<T>();
+    const T* col_data = col.data<T>();
+
+    for (int d = 0; d < output_depth; ++d) {
+      for (int h = 0; h < output_height; ++h) {
+        for (int w = 0; w < output_width; ++w) {
+          for (int c = 0; c < channels_col; ++c) {
+            int w_offset = c % filter_width;
+            int h_offset = (c / filter_width) % filter_height;
+            int d_offset = (c / filter_width / filter_height) % filter_depth;
+            int cIm = c / filter_width / filter_height / filter_depth;
+            int d_pad = d * strides[0] - paddings[0] + d_offset * dilations[0];
+            int h_pad = h * strides[1] - paddings[1] + h_offset * dilations[1];
+            int w_pad = w * strides[2] - paddings[2] + w_offset * dilations[2];
+
+            int vol_idx, col_idx;
+            if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
+                w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
+              if (data_layout == DataLayout::kNCHW) {
+                vol_idx = ((cIm * input_depth + d_pad) * input_height + h_pad) *
+                              input_width +
+                          w_pad;
+              } else {
+                vol_idx =
+                    ((d_pad * input_height + h_pad) * input_width + w_pad) *
+                        input_channels +
+                    cIm;
+              }
+              col_idx =
+                  ((d * output_height + h) * output_width + w) * channels_col +
+                  c;
+              vol_data[vol_idx] += col_data[col_idx];
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+template class Vol2ColFunctor<ColFormat::kOCF, platform::CPUDeviceContext,
+                              float>;
+template class Vol2ColFunctor<ColFormat::kOCF, platform::CPUDeviceContext,
+                              double>;
+template class Col2VolFunctor<ColFormat::kOCF, platform::CPUDeviceContext,
+                              float>;
+template class Col2VolFunctor<ColFormat::kOCF, platform::CPUDeviceContext,
+                              double>;
 
 }  // namespace math
 }  // namespace operators
