@@ -18,7 +18,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline std::vector<int64_t> get_new_data_from_shape_tensor(
+std::vector<int64_t> get_new_data_from_shape_tensor(
     const Tensor *new_data_tensor) {
   std::vector<int64_t> vec_new_data;
   auto *new_data = new_data_tensor->data<int64_t>();
@@ -32,7 +32,7 @@ inline std::vector<int64_t> get_new_data_from_shape_tensor(
   return vec_new_data;
 }
 
-inline std::vector<int64_t> get_new_shape_from_shape_tensorlist(
+std::vector<int64_t> get_new_shape_from_shape_tensorlist(
     const std::vector<const Tensor *> &list_new_shape_tensor) {
   std::vector<int64_t> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
@@ -61,37 +61,28 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     framework::Tensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-      std::vector<int64_t> new_shape;
-      auto list_new_shape_tensor =
-          ctx.MultiInput<framework::Tensor>("ShapeTensor");
-      if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
-        if (ctx.HasInput("Shape")) {
-          auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
-          new_shape = get_new_data_from_shape_tensor(shape_tensor);
-        } else if (list_new_shape_tensor.size() > 0) {
-          new_shape =
-              get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
-        }
-        tensor->Resize(framework::make_ddim(new_shape));
+    std::vector<int64_t> new_shape;
+    auto list_new_shape_tensor =
+        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
+      if (ctx.HasInput("Shape")) {
+        auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
+        new_shape = get_new_data_from_shape_tensor(shape_tensor);
+      } else if (list_new_shape_tensor.size() > 0) {
+        new_shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
       }
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    }
+
+    if (out_var->IsType<framework::SelectedRows>()) {
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-      auto list_new_shape_tensor =
-          ctx.MultiInput<framework::Tensor>("ShapeTensor");
-      if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
-        if (ctx.HasInput("Shape")) {
-          auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
-          shape = get_new_data_from_shape_tensor(shape_tensor);
-        } else if (list_new_shape_tensor.size() > 0) {
-          shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
-        }
-      }
+      if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
+    } else if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"
