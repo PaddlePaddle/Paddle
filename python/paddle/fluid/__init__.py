@@ -188,6 +188,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_min_send_grad_num_before_recv')
         read_env_flags.append('communicator_thread_pool_size')
         read_env_flags.append('communicator_max_merge_var_num')
+        read_env_flags.append('communicator_merge_sparse_bucket')
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
         read_env_flags.append('communicator_merge_sparse_grad')
