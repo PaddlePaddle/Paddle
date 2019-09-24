@@ -14051,9 +14051,9 @@ def deformable_roi_pooling(input,
                          If value is True, no offset will be added in operation. Default: False.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width), which value type is float32.
                          Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-        group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value is int32. (eg.number of input channels 
+        group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value type is int32. (eg.number of input channels 
                           is k1 * k2 * (C + 1), which k1 and k2 are group width and height and C+1 is number of output
-                          chanels. eg.(4, 6), which 4 is height of group and 6 is width of group). Default: [1, 1].
+                          chanels.) eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
         pooled_height (int): The pooled output height which value type is int32. Default: 1.
         pooled_width (int): The pooled output width which value type is int32. Default: 1.
         part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, and values always equal to pooled_height \
