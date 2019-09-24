@@ -459,12 +459,13 @@ class Variable(object):
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
+            self.stop_gradient_ = kwargs.get("stop_gradient", True)
             if not self._ivar:
                 self._ivar = core.VarBase(
                     name, type
                     if type else core.VarDesc.VarType.LOD_TENSOR, dtype
                     if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [], stop_gradient, True
+                    list(shape) if shape else [], True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -1854,6 +1855,7 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):
