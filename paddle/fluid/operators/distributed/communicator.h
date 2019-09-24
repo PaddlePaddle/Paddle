@@ -301,6 +301,7 @@ class Communicator {
 
   std::vector<std::shared_ptr<SparseIdsMap>> sparse_ids_buffers_;
   std::atomic_size_t curr_idx_;
+  SparseIdsMap *send_ids_map_;
 };
 
 }  // namespace distributed

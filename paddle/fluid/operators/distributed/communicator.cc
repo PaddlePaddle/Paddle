@@ -170,9 +170,10 @@ void Communicator::SendThread() {
         need_push_.store(0);
         size_t prepare = curr_idx_.load();
         SparseIdsMap *ids_send = sparse_ids_buffers_[prepare].get();
+        send_ids_map_ = ids_send;
         curr_idx_ = 1 - prepare;
-        while(sparse_ids_buffers_[prepare].use_count>1) {
-          VLOG(1)<<"use count "<<sparse_ids_buffers_[prepare].use_count;
+        while(sparse_ids_buffers_[prepare].use_count()>1) {
+          VLOG(1)<<"use count "<< sparse_ids_buffers_[prepare].use_count();
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         auto after_run_training = GetCurrentUS();
@@ -189,8 +190,7 @@ void Communicator::SendThread() {
               //auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
               VLOG(1) << "Before send update var name: " << origin_var_name;
               size_t prepare = 1 - curr_idx_.load();
-              SparseIdsMap *ids_send = sparse_ids_buffers_[prepare].get();
-              SendUpdateSparseVars(origin_var_name, ids_send->at(var_name));
+              SendUpdateSparseVars(origin_var_name, send_ids_map_->at(var_name));
             } else {
               VLOG(1) << "Before send update var name: " << origin_var_name;
               SendUpdateDenseVars(origin_var_name);
