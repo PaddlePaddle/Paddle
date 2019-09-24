@@ -37,18 +37,23 @@ class MaxSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::Tensor* output, framework::Tensor* index) {
+                  framework::LoDTensor* output, framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
-    PADDLE_ENFORCE_GT(in_dims.size(), 1);
-    PADDLE_ENFORCE_GT(out_dims.size(), 1);
+    PADDLE_ENFORCE_GT(in_dims.size(), 1,
+                      "The rank of input shall be greater than 1.");
+    PADDLE_ENFORCE_GT(out_dims.size(), 1,
+                      "The rank of output shall be greater than 1.");
     for (int64_t i = 1; i < in_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i]);
+      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i],
+                        "The dimension of input and output shall be same.");
     }
-    PADDLE_ENFORCE_EQ(idx_dims, out_dims);
+    PADDLE_ENFORCE_EQ(idx_dims, out_dims,
+                      "The dimension of index and output shall be same.");
 
-    auto starts = input.lod()[0];
+    auto lod_level = input.lod().size();
+    auto starts = input.lod()[lod_level - 1];
     const T* in_data = input.data<T>();
     T* out_data = output->data<T>();
     int* max_index = index->data<int>();
@@ -85,16 +90,20 @@ class MaxSeqPoolFunctor<T, true> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::Tensor* output, framework::Tensor* index) {
+                  framework::LoDTensor* output, framework::Tensor* index) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
-    PADDLE_ENFORCE_GT(in_dims.size(), 1);
-    PADDLE_ENFORCE_GT(out_dims.size(), 1);
+    PADDLE_ENFORCE_GT(in_dims.size(), 1,
+                      "The rank of input shall be greater than 1.");
+    PADDLE_ENFORCE_GT(out_dims.size(), 1,
+                      "The rank of output shall be greater than 1.");
     for (int64_t i = 1; i < in_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i]);
+      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i],
+                        "The dimension of input and output shall be same.");
     }
 
-    auto starts = input.lod()[0];
+    auto lod_level = input.lod().size();
+    auto starts = input.lod()[lod_level - 1];
     const T* in_data = input.data<T>();
     T* out_data = output->data<T>();
 
@@ -123,18 +132,23 @@ template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& out_grad,
+                  const framework::LoDTensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad) {
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
     auto idx_dims = index.dims();
-    PADDLE_ENFORCE_GT(og_dims.size(), 1);
-    PADDLE_ENFORCE_GT(ig_dims.size(), 1);
+    PADDLE_ENFORCE_GT(og_dims.size(), 1,
+                      "The rank of output@Grad shall be greater than 1.");
+    PADDLE_ENFORCE_GT(ig_dims.size(), 1,
+                      "The rank of input@Grad shall be greater than 1.");
     for (int64_t i = 1; i < og_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(og_dims[i], ig_dims[i]);
+      PADDLE_ENFORCE_EQ(
+          og_dims[i], ig_dims[i],
+          "The dimension of input@Grad and output@Grad shall be same.");
     }
-    PADDLE_ENFORCE_EQ(idx_dims, og_dims);
+    PADDLE_ENFORCE_EQ(idx_dims, og_dims,
+                      "The dimension of index and output@Grad shall be same.");
 
     const T* og_data = out_grad.data<T>();
     const int* max_index = index.data<int>();
@@ -159,14 +173,15 @@ class LastSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::Tensor* output) {
+                  framework::LoDTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
 
     // Calculate the size of each item in sequence
     int64_t item_size = input.numel() / input.dims()[0];
-    auto lod = input.lod()[0];
+    auto lod_level = input.lod().size();
+    auto lod = input.lod()[lod_level - 1];
     int seq_num = static_cast<int>(lod.size()) - 1;
     for (int i = 0; i < seq_num; ++i) {
       // Calculate the length of each sequence
@@ -191,14 +206,15 @@ class FirstSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::Tensor* output) {
+                  framework::LoDTensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
 
     // Calculate the size of each item in sequence
     int64_t item_size = input.numel() / input.dims()[0];
-    auto lod = input.lod()[0];
+    auto lod_level = input.lod().size();
+    auto lod = input.lod()[lod_level - 1];
     int seq_num = static_cast<int>(lod.size()) - 1;
     for (int i = 0; i < seq_num; ++i) {
       // Calculate the length of each sequence
@@ -222,12 +238,15 @@ template <typename T>
 class SumSeqPoolGradFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& out_grad,
+                  const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad) {
-    auto lod = in_grad->lod()[0];
+    auto lod_level = in_grad->lod().size();
+    auto lod = in_grad->lod()[lod_level - 1];
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
     int64_t in_w = in_grad->numel() / in_grad->dims()[0];
-    PADDLE_ENFORCE(in_w == out_w);
+    PADDLE_ENFORCE_EQ(
+        in_w, out_w,
+        "The feature size of input@Grad and output@Grad shall be same.");
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
@@ -250,8 +269,9 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
   /* max pool has index output */
   void operator()(const platform::CPUDeviceContext& context,
                   const std::string pooltype, T pad_value,
-                  const framework::LoDTensor& input, framework::Tensor* output,
-                  bool is_test, framework::Tensor* index = nullptr) {
+                  const framework::LoDTensor& input,
+                  framework::LoDTensor* output, bool is_test,
+                  framework::Tensor* index = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
         math::MaxSeqPoolFunctor<T, true> max_pool;
@@ -272,11 +292,13 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       first_pool(context, input, pad_value, output);
       return;
     }
-
-    auto lod = input.lod()[0];
+    auto lod_level = input.lod().size();
+    auto lod = input.lod()[lod_level - 1];
     if (pooltype == "SUM") {
       auto place = context.GetPlace();
-      PADDLE_ENFORCE(platform::is_cpu_place(place));
+      PADDLE_ENFORCE_EQ(
+          platform::is_cpu_place(place), true,
+          "Sequence_pool should run on CPU Device when pooltype is SUM");
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
       jit::seq_pool_attr_t attr(
@@ -330,7 +352,8 @@ template <typename T>
 class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::string pooltype, const framework::Tensor& out_grad,
+                  const std::string pooltype,
+                  const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
                   const framework::Tensor* index = nullptr) {
@@ -352,7 +375,8 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       return;
     }
 
-    auto lod = in_grad->lod()[0];
+    auto lod_level = in_grad->lod().size();
+    auto lod = in_grad->lod()[lod_level - 1];
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       if (lod[i] == lod[i + 1]) continue;
