@@ -820,7 +820,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually sends all of the gradients over time.
 
     To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
@@ -831,11 +831,11 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
 
-        2. Call momentum to optimize on the cost.
+        2. Call momentum to optimize the cost.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-            Can be a float value or a Variable with one float value as data element.
+        learning_rate (float|Variable): The learning rate used to update parameters. \
+            It can be a float value or a Variable with one float value as a data element.
         momentum (float): Momentum factor.
         rampup_begin_step (int): The beginning step from which gradient compression is implemented.
         rampup_step (int): Time steps used in sparsity warm-up periods. Default is 1.
@@ -843,9 +843,9 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. \
                 And when reach sparsity array ends, it will use 0.999 then and after.
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
-            Default is [0.999]. For example, if the sparity is [0.99, 0.999], \
+            Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
-        use_nesterov (bool): Enables Nesterov momentum. True means use nesterov. Default is False.
+        use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
         num_trainers (int, optional): The number of training nodes. Optional, default is None.
         regularization (WeightDecayRegularizer, optional): A Regularizer, such as \
