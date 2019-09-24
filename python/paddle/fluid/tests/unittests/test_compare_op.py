@@ -17,6 +17,8 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def create_test_class(op_type, typename, callback):
@@ -31,6 +33,14 @@ def create_test_class(op_type, typename, callback):
 
         def test_output(self):
             self.check_output()
+
+        def test_errors(self):
+            with program_guard(Program(), Program()):
+                # The input x and y of compare_op must be Variable.
+                x = fluid.layers.data(name='x', shape=[1], dtype="float32")
+                y = fluid.create_lod_tensor(
+                    numpy.array([[-1]]), [[1]], fluid.CPUPlace())
+                self.assertRaises(TypeError, op_type, x, y)
 
     cls_name = "{0}_{1}".format(op_type, typename)
     Cls.__name__ = cls_name
