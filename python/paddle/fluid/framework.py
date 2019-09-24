@@ -28,6 +28,7 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
+import logging
 from .. import compat as cpt
 from .proto import framework_pb2
 
@@ -593,13 +594,13 @@ class Variable(object):
         """
         **Notes: This API is ONLY avaliable in Dygraph mode**
 
-        Returns a numpy array shows the value of current :ref:
+        Returns a numpy array shows the value of current :ref:`api_guide_Variable`
 
         Returns:
-            Variable: The detached Variable.
+            ndarray: The numpy value of current Variable.
 
         Returns type:
-            Variable(Tensor| :ref:`api_fluid_LoDTensor` ) dtype is same as current Variable
+            ndarray dtype is same as current Variable
 
         Examples:
             .. code-block:: python
@@ -618,7 +619,10 @@ class Variable(object):
 
         """
 
-        assert self._ivar is not None, "%s is Empty, Please use fluid.dygraph.guard() as context " % self.name
+        if self._ivar is None:
+            raise ValueError(
+                "%s is Empty, Please use fluid.dygraph.guard() as context " %
+                self.name)
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
@@ -639,19 +643,21 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+                import paddle.fluid as fluid
+                import numpy as np
 
-            x = np.ones([2, 2], np.float32)
-            with fluid.dygraph.guard():
-                inputs2 = []
-                for _ in range(10):
-                    inputs2.append(fluid.dygraph.base.to_variable(x).stop_gradient=False)
-                ret2 = fluid.layers.sums(inputs2)
-                loss2 = fluid.layers.reduce_sum(ret2)
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
-                loss2.backward(backward_strategy)
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    inputs2 = []
+                    for _ in range(10):
+                        tmp = fluid.dygraph.base.to_variable(x)
+                        tmp.stop_gradient=False
+                        inputs2.append(tmp)
+                    ret2 = fluid.layers.sums(inputs2)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
 
         """
         if in_dygraph_mode():
@@ -660,7 +666,10 @@ class Variable(object):
                 backward_strategy = BackwardStrategy()
                 backward_strategy.sort_sum_gradient = False
 
-            assert self._ivar is not None, "%s is Empty, Please use fluid.dygraph.guard() as context " % self.name
+            if self._ivar is None:
+                raise ValueError(
+                    "%s is Empty, Please use fluid.dygraph.guard() as context "
+                    % self.name)
             self._ivar._run_backward(backward_strategy, _dygraph_tracer())
         else:
             raise ValueError(
@@ -680,25 +689,32 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+                import paddle.fluid as fluid
+                import numpy as np
 
-            x = np.ones([2, 2], np.float32)
-            with fluid.dygraph.guard():
-                inputs2 = []
-                for _ in range(10):
-                    inputs2.append(fluid.dygraph.base.to_variable(x).stop_gradient=False)
-                ret2 = fluid.layers.sums(inputs2)
-                loss2 = fluid.layers.reduce_sum(ret2)
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
-                loss2.backward(backward_strategy)
-                print(loss2.gradient())
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    inputs2 = []
+                    for _ in range(10):
+                        tmp = fluid.dygraph.base.to_variable(x)
+                        tmp.stop_gradient=False
+                        inputs2.append(tmp)
+                    ret2 = fluid.layers.sums(inputs2)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
+                    print(loss2.gradient())
 
         """
-        assert self._ivar is not None, "%s is Empty, Please use fluid.dygraph.guard() as context " % self.name
-        assert self._ivar._grad_ivar(
-        ) is not None, "%s has no grad, Please set Variable.stop_gradient=False, to make sure it has gradient " % self.name
+        if self._ivar is None:
+            raise ValueError(
+                "%s is Empty, Please use fluid.dygraph.guard() as context " %
+                self.name)
+        if self._ivar._grad_ivar is None:
+            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
+                       "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
+                       "stop_gradient=False, to make sure it has gradient " % self.name)
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
@@ -716,25 +732,34 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+                import paddle.fluid as fluid
+                import numpy as np
 
-            x = np.ones([2, 2], np.float32)
-            with fluid.dygraph.guard():
-                inputs2 = []
-                for _ in range(10):
-                    inputs2.append(fluid.dygraph.base.to_variable(x).stop_gradient=False)
-                ret2 = fluid.layers.sums(inputs2)
-                loss2 = fluid.layers.reduce_sum(ret2)
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
-                loss2.backward(backward_strategy)
-                print(loss2.gradient())
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    inputs2 = []
+                    for _ in range(10):
+                        tmp = fluid.dygraph.base.to_variable(x)
+                        tmp.stop_gradient=False
+                        inputs2.append(tmp)
+                    ret2 = fluid.layers.sums(inputs2)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
+                    print(loss2.gradient())
+                    loss2.clear_gradient()
+                    print("After clear {}".format(loss2.gradient()))
 
         """
-        assert self._ivar is not None, "%s is Empty, Please use fluid.dygraph.guard() as context " % self.name
-        assert self._ivar._grad_ivar(
-        ) is not None, "%s has no grad has no grad, Please set Variable.stop_gradient=False, to make sure it has gradient " % self.name
+        if self._ivar is None:
+            raise ValueError(
+                "%s is Empty, Please use fluid.dygraph.guard() as context " %
+                self.name)
+        if self._ivar._grad_ivar is None:
+            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
+                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
+                             "stop_gradient=False, to make sure it has gradient " % self.name)
         self._ivar._clear_gradient()
 
     def __str__(self):
@@ -758,12 +783,15 @@ class Variable(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+
                 cur_program = fluid.Program()
                 cur_block = cur_program.current_block()
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
                                                     dtype='float32')
-                new_variable.to_string(True)
+                print(new_variable.to_string(True))
+                print("\n=============with detail===============\n")
+                print(new_variable.to_string(True, True))
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
@@ -783,8 +811,9 @@ class Variable(object):
         if with_details:
             additional_attr = ("error_clip", "stop_gradient")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (
-                    attr_name, six.binary_type(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name,
+                                         cpt.to_text(getattr(self, attr_name)))
+
         return res_str
 
     __repr__ = __str__
@@ -813,7 +842,9 @@ class Variable(object):
     @persistable.setter
     def persistable(self, p):
         if in_dygraph_mode():
-            return self._ivar.persistable
+            logging.warn(
+                "There will be no use to set persistable in Dygraph Mode, since "
+                "you can just do it by hold it as normal Python variable")
         else:
             self.desc.set_persistable(p)
 
@@ -3997,8 +4028,8 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "gradient_clip_attr", "do_model_average")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (
-                    attr_name, six.binary_type(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name,
+                                         cpt.to_text(getattr(self, attr_name)))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str

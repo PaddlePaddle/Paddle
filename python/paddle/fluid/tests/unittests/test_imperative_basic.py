@@ -252,6 +252,14 @@ class TestImperative(unittest.TestCase):
             except Exception as e:
                 assert type(e) == AssertionError
 
+    def test_set_persistable(self):
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            new_var = fluid.dygraph.base.to_variable(x)
+            self.assertFalse(new_var.persistable)
+            new_var.persistable = True
+            self.assertFalse(new_var.persistable)
+
     def test_layer(self):
         with fluid.dygraph.guard():
             cl = core.Layer()
