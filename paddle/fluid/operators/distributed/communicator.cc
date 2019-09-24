@@ -791,9 +791,10 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
     auto *var_z = pserver_scope_.get()->FindVar(var_name);
     auto var_z_slr = var_z->GetMutable<framework::SelectedRows>();
     auto &new_rows = var_z_slr->rows();
-    auto &new_value = var_z_slr->value();
-    int64_t row_numel = new_value.numel() / new_rows.size();
-    auto *z_value = new_value->mutable_data<float>(var_z_slr.place());
+
+    auto *new_value = var_z_slr->mutable_value();
+    auto row_numel = new_value->numel() / new_rows.size();
+    auto *z_value = new_value->mutable_data<float>(var_x_tensor.place());
 
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
             << new_rows.size();
