@@ -185,9 +185,8 @@ void Communicator::SendThread() {
 
             auto &ctx = send_varname_to_ctx_.at(var_name);
             // delta parameter is in delta scope
-            if (!FLAGS_communicator_fake_rpc) {
-              send_functor(ctx, *delta_scope_.get(), true);
-            }
+            send_functor(ctx, *delta_scope_.get(), true);
+
             auto after_send = GetCurrentUS();
             VLOG(1) << "send " << var_name << " use time "
                     << after_send - before_send;
