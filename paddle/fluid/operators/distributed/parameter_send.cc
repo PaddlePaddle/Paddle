@@ -57,7 +57,7 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
       for (int i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
         for (int x = 0; x < multi_parts; x++) {
           auto table =
-              string::Sprintf("%s_%d", rpc_ctx.splited_var_names[i], x);
+              string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_var_names[i], x);
           table_pairs.push_back(std::make_pair(rpc_ctx.epmap[i], table));
         }
       }

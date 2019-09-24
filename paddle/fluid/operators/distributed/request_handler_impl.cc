@@ -60,6 +60,19 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
+
+      string::Piece part_piece("@PIECE");
+      string::Piece var_name_piece = string::Piece(varname);
+
+      if (string::Contains(var_name_piece, part_piece)) {
+        auto varname_splits = paddle::string::Split(varname, '@');
+        PADDLE_ENFORCE_EQ(varname_splits.size(), 3);
+
+        auto piece_varname = varname;
+        varname = varname_splits[0];
+        scope->Rename(piece_varname, varname);
+      }
+
       if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(varname)) {
         auto& grad_slr =
             scope->FindVar(varname)->Get<framework::SelectedRows>();
@@ -116,8 +129,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      VLOG(1)<<"Table name empty? "<<table_name.empty();
-      VLOG(1)<<"AsyncSparseParamUpdateRecorder "<<varname<<" exist " <<AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname);
+      VLOG(1) << "Table name empty? " << table_name.empty();
+      VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
+              << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
+                     varname);
       if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
         std::vector<int64_t> updated_rows;
