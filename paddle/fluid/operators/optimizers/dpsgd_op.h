@@ -80,10 +80,17 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     float mu = 0.0;
     float U1, U2;
     unsigned seed = (unsigned int)(time(NULL));
+    std::minstd_rand engine;
+    engine.seed(seed);
+    std::uniform_real_distribution<T> dist(0.0, 1.0);
     do {
       // srand((unsigned int)(time(NULL)));
-      U1 = rand_r(&seed) * (1.0 / RAND_MAX);
-      U2 = rand_r(&seed) * (1.0 / RAND_MAX);
+      // U1 = (rand() * 1.0) / RAND_MAX;
+      // U2 = (rand() * 1.0) / RAND_MAX;
+      // U1 = rand_rr(&seed) * (1.0 / RAND_MAX);
+      // U2 = rand_rr(&seed) * (1.0 / RAND_MAX);
+      U1 = dist(engine);
+      U2 = dist(engine);
       V1 = 2 * U1 - 1;
       V2 = 2 * U2 - 1;
       S = V1 * V1 + V2 * V2;
