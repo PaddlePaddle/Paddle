@@ -702,7 +702,7 @@ void Communicator::SendUpdateSparseVars(
   auto before_run_send_sparse = GetCurrentUS();
 
   auto ids_num = ids_table.size();
-  VLOG(2) << "Ids nums is : " << ids_num;
+  VLOG(1) << "Sparse Ids nums is : " << ids_num;
   auto *var_x = recv_scope_->FindVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
@@ -880,7 +880,7 @@ void Communicator::GeoSgdSparseParamInit(const framework::Scope &scope_x,
   auto dims = var_x_tensor.dims();
   auto rows = dims[0];
   auto row_numel = dims[1];
-  VLOG(1) << "Sparse var dims[0]: " << rows << " dims[1]: " << row_numel;
+  VLOG(2) << "Sparse var dims[0]: " << rows << " dims[1]: " << row_numel;
 
   var_y_select_rows->set_height(rows);
   std::vector<int64_t> new_rows{};
