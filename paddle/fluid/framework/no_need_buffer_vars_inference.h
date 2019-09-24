@@ -45,15 +45,16 @@ class NoNeedBufferVarsInference {
   const AttributeMap &attrs_;
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)               \
-  class class_type : public ::paddle::framework::NoNeedBufferVarsInference { \
-   public:                                                                   \
-    using ::paddle::framework::NoNeedBufferVarsInference::                   \
-        NoNeedBufferVarsInference;                                           \
-                                                                             \
-    std::unordered_set<std::string> operator()() const override {            \
-      return {__VA_ARGS__};                                                  \
-    }                                                                        \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)  \
+  class class_type final                                        \
+      : public ::paddle::framework::NoNeedBufferVarsInference { \
+   public:                                                      \
+    using ::paddle::framework::NoNeedBufferVarsInference::      \
+        NoNeedBufferVarsInference;                              \
+                                                                \
+    std::unordered_set<std::string> operator()() const final {  \
+      return {__VA_ARGS__};                                     \
+    }                                                           \
   }
 
 }  // namespace framework

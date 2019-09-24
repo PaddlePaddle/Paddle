@@ -217,6 +217,13 @@ def save_vars(executor,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
+        # give warning when there is no var in model
+        if len(list(vars)) == 0:
+            warnings.warn(
+                "no variable in your model, please ensure there are any variables in your model to save"
+            )
+            return None
+
         save_program = Program()
         save_block = save_program.global_block()
 
@@ -1030,6 +1037,15 @@ def save_inference_model(dirname,
             raise ValueError("'target_vars' should be a list of Variable.")
 
     main_program = _get_valid_program(main_program)
+
+    # remind user to set auc_states to zeros if the program contains auc op 
+    all_ops = main_program.global_block().ops
+    for op in all_ops:
+        if op.type == 'auc':
+            warnings.warn(
+                "please ensure that you have set the auc states to zeros before saving inference model"
+            )
+            break
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.

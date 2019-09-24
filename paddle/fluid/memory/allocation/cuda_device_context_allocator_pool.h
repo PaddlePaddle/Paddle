@@ -24,6 +24,13 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+/**
+ * CUDADeviceContextAllocatorPool is a singletion stores mapping from
+ * CUDAPlace(s) to std::shared_ptr<CUDADeviceContextAllocator>. When a
+ * CUDADeviceContext's compute stream isn't default stream, it can call this
+ * class to allocate GPU memory which will be released by a callback after
+ * stream execution.
+ */
 class CUDADeviceContextAllocatorPool {
  public:
   static CUDADeviceContextAllocatorPool &Instance();

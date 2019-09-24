@@ -28,7 +28,7 @@ strategies:
         sensitivities_file: 'mobilenet_acc_top1_sensitive.data'
         metric_name: 'acc_top1'
 compressor:
-    epoch: 2
+    epoch: 1
     checkpoint_path: './checkpoints_pruning/'
     strategies:
         - sensitive_pruning_strategy
