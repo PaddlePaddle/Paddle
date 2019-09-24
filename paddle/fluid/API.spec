@@ -1052,6 +1052,7 @@ paddle.fluid.DataFeeder.__init__ (ArgSpec(args=['self', 'feed_list', 'place', 'p
 paddle.fluid.DataFeeder.decorate_reader (ArgSpec(args=['self', 'reader', 'multi_devices', 'num_places', 'drop_last'], varargs=None, keywords=None, defaults=(None, True)), ('document', 'a0ed5ce816b5d603cb595aacb922335a'))
 paddle.fluid.DataFeeder.feed (ArgSpec(args=['self', 'iterable'], varargs=None, keywords=None, defaults=None), ('document', 'ce65fe1d81dcd7067d5092a5667f35cc'))
 paddle.fluid.DataFeeder.feed_parallel (ArgSpec(args=['self', 'iterable', 'num_places'], varargs=None, keywords=None, defaults=(None,)), ('document', '334c6af750941a4397a2dd2ea8a4d76f'))
+paddle.fluid.clip.set_gradient_clip (ArgSpec(args=['clip', 'param_list', 'program'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e418461f1d0e6ace47eb5e0011aaf206'))
 paddle.fluid.clip.ErrorClipByValue ('paddle.fluid.clip.ErrorClipByValue', ('document', 'e6f815a03be88dee2537707d9e6b9209'))
 paddle.fluid.clip.ErrorClipByValue.__init__ (ArgSpec(args=['self', 'max', 'min'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.clip.GradientClipByValue ('paddle.fluid.clip.GradientClipByValue', ('document', 'b7a22f687269cae0c338ef3866322db7'))
