@@ -23,14 +23,14 @@ INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY "https://github.com/PaddlePaddle/Fleet"
-    GIT_TAG "2d04dc3800cdd0601f1b65d547dabcc60b0cf9dc"
+    URL "http://fleet.bj.bcebos.com/collective.tgz"
+    URL_MD5  "015d565156c3de4e30fe25473f47e7a9"
     SOURCE_DIR "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND cd collective && make -j
+    BUILD_COMMAND make -j
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
-        && cp ${DGC_SOURCES_DIR}/collective/build/lib/libdgc.a ${DGC_LIBRARIES}
-        && cp ${DGC_SOURCES_DIR}/collective/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
+        && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
+        && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
 )
 
