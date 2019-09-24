@@ -15,12 +15,10 @@
 from __future__ import print_function
 
 import numpy
-import os
-import paddle
-import paddle.compat as cpt
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import error_format
+import sys
 import unittest
 
 _normal_traceback_str = "" \
@@ -36,6 +34,31 @@ _invalid_traceback_str = "" \
     "PaddleEnfroceError: Expected x_mat_dims[1] == y_mat_dims[0], but received x_mat_dims[1]:13 != y_mat_dims[0]:12.\n" \
     "First matrix's width must be equal with second matrix's height. at [/work/paddle/paddle/fluid/operators/mul_op.cc:66]\n" \
       "[[{{operator mul}}]]"
+
+
+def _make_enforce_not_met_exception():
+    place = fluid.CPUPlace()
+    exe = fluid.Executor(place)
+    x = fluid.layers.data(name='X', shape=[12], dtype='float32')
+    y = fluid.layers.data(name='Y', shape=[1], dtype='float32')
+    y_ = fluid.layers.fc(input=x, size=1, act=None)
+    loss = fluid.layers.square_error_cost(input=y_, label=y)
+    avg_loss = fluid.layers.mean(loss)
+    fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
+
+    exe.run(fluid.default_startup_program())
+    x = numpy.random.random(size=(10, 13)).astype('float32')
+    y = numpy.random.random(size=(10, 1)).astype('float32')
+    loss_data, = exe._run_impl(
+        program=fluid.default_main_program(),
+        feed={'X': x,
+              'Y': y},
+        fetch_list=[avg_loss.name],
+        feed_var_name='feed',
+        fetch_var_name='fetch',
+        scope=None,
+        return_numpy=True,
+        use_program_cache=False)
 
 
 class TestErrorMessageHintAugment(unittest.TestCase):
@@ -65,6 +88,20 @@ class TestErrorMessageHintAugment(unittest.TestCase):
         ex_msg_no_frame = _invalid_traceback_str
         augment_str = "[[operator mul error]]"
         self.augment_result_check(ex_msg_no_frame, augment_str)
+
+
+class TestPaddleEnforceHandler(unittest.TestCase):
+    def test_excepthook_replace_no_augment(self):
+        try:
+            core.__unittest_throw_exception__()
+        except Exception:
+            sys.excepthook = error_format.paddle_enforce_handler
+
+    def test_excepthook_replace_augment(self):
+        try:
+            _make_enforce_not_met_exception()
+        except Exception:
+            sys.excepthook = error_format.paddle_enforce_handler
 
 
 if __name__ == "__main__":
