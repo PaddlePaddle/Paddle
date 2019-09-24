@@ -2199,7 +2199,6 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
-
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     The input of the softmax operator is a tensor of any rank. The output tensor
@@ -2227,7 +2226,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
 
     Args:
-        input (Variable): The input variable. A LoDTensor or Tensor with type float32, float64.
+        input (Variable): The input variable. A LoDTensor or Tensor with type 
+        float32, float64.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stablity, set use_cudnn to \
             False by default. Default: False
@@ -2258,7 +2258,6 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             print(output)
             #array([0.22595254, 0.39276356, 0.38128382], dtype=float32)]
     """
-
     helper = LayerHelper('softmax', **locals())
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
