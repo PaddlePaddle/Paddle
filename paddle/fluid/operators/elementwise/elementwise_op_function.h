@@ -851,24 +851,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   }
 }
 
-template <typename Functor>
-struct CommonSameDimsElemwise {
-  inline void operator()(const framework::ExecutionContext &ctx,
-                         const framework::Tensor *x, const framework::Tensor *y,
-                         framework::Tensor *z) const {
-    auto size = x->numel();
-    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-    dim3 block_size = dim3(TILE_SIZE, 1);
-    const half *x2 =
-        reinterpret_cast<const half *>(x->data<platform::float16>());
-    const half *y2 =
-        reinterpret_cast<const half *>(y->data<platform::float16>());
-    half *z2 = reinterpret_cast<half *>(z->data<platform::float16>());
-    Functor functor;
-    functor(x2, y2, z2, size, ctx, gird_size, block_size);
-  }
-};
-
 // FusedElemwiseAndAct
 // --- forward
 template <typename T, typename CompoundFunctor, bool KeepIntermediateOut>
