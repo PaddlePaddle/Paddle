@@ -22,8 +22,6 @@ from paddle.fluid.executor import Executor
 
 class TestLoadVarsShapeCheck(unittest.TestCase):
     def test_shape_check(self):
-        print("11")
-
         program_1 = fluid.Program()
         startup_program_1 = fluid.Program()
 
@@ -34,11 +32,8 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         exe = Executor(place)
         exe.run(startup_program_1)
 
-        for var in program_1.list_vars():
-            print(var.name)
-
         fluid.io.save_params(exe, "./model_temp", main_program=program_1)
-        fluid.io.load_params(exe, "./model_temp", main_program=program_)
+        fluid.io.load_params(exe, "./model_temp", main_program=program_1)
         self.assertTrue(True)
 
 

@@ -690,12 +690,11 @@ def load_vars(executor,
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, earch_var.name + "MUST in var list"
             orig_shape = orig_para_shape.get(each_var.name)
-            print(each_var.name, orig_shape, new_shape)
             if new_shape != orig_shape:
                 raise RuntimeError(
-                    "Parameter: [ {} ] shape not match, Program need parameter with shape: {} "
-                    "But loaded parameter with shape: {}".format(
-                        each_var.name, orig_shape, new_shape))
+                    "Shape not matching: the Program requires a parameter with a shape of ({}), "
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
+                    format(orig_shape, each_var.name, new_shape))
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
