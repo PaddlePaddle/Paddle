@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/elementwise/elementwise.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/float16.h"
@@ -35,24 +34,23 @@ struct SameDimsElemwiseAdd<platform::CUDADeviceContext, T> {
   }
 };
 
-struct AddFp16Functor {
-  inline void operator()(const half* x, const half* y, half* z, int64_t size,
-                         const framework::ExecutionContext& ctx, dim3 gird_size,
-                         dim3 block_size) {
-    SameDimsElemwiseAddCUDAKernel<<<
-        gird_size, block_size, 0,
-        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
-        x, y, z, size);
-  }
-};
-
 template <>
 struct SameDimsElemwiseAdd<platform::CUDADeviceContext, platform::float16> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
-    CommonSameDimsElemwise<AddFp16Functor> same_dims_elemwise_add;
-    same_dims_elemwise_add(ctx, x, y, z);
+    auto size = x->numel();
+    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
+    dim3 block_size = dim3(TILE_SIZE, 1);
+    const half* x2 =
+        reinterpret_cast<const half*>(x->data<platform::float16>());
+    const half* y2 =
+        reinterpret_cast<const half*>(y->data<platform::float16>());
+    half* z2 = reinterpret_cast<half*>(z->data<platform::float16>());
+    SameDimsElemwiseAddCUDAKernel<<<
+        gird_size, block_size, 0,
+        ctx.template device_context<platform::CUDADeviceContext>().stream()>>>(
+        x2, y2, z2, size);
   }
 };
 
