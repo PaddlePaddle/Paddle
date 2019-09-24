@@ -610,13 +610,17 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray))
-        if list(value.shape) != list(self.shape):
-            raise ValueError(
-                "The shape of the new value must be the same as that of the original Variable."
-            )
-        from .layers import assign
-        assign(value, self)
+        if in_dygraph_mode():
+            assert isinstance(value, (Variable, np.ndarray))
+            if list(value.shape) != list(self.shape):
+                raise ValueError(
+                    "The shape of the new value must be the same as that of the original Variable."
+                )
+            from .layers import assign
+            assign(value, self)
+        else:
+            raise Exception(
+                "Variable.set_value() is only avaliable in DyGraph mode.")
 
     def __set__(self, instance, value):
         self.set_value(value)
@@ -914,7 +918,7 @@ class Variable(object):
             if self.shape[axis] < 0:
                 return self._cloneVar(True)
             index = int(item)
-            if (index > 0 and index >= self.shape[axis])\
+            if (index > 0 and index >= self.shape[axis]) \
                     or (index < 0 and (index + self.shape[axis]) < 0):
                 raise IndexError("invalid index")
             return self._sliceVar([axis], [index], [index + 1])
@@ -2512,10 +2516,10 @@ class IrOpNode(IrNode):
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and \
-            all(isinstance(v, Block) for v in val):
+                all(isinstance(v, Block) for v in val):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
-            isinstance(val, core.ProgramDesc):
+                isinstance(val, core.ProgramDesc):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -2738,8 +2742,8 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
-        self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -2856,7 +2860,7 @@ class IrGraph(object):
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                            + ' -o ' + pdf_save_path, shell=True)
+                                          + ' -o ' + pdf_save_path, shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
