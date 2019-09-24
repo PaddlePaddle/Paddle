@@ -494,9 +494,12 @@ class Executor(object):
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
         exe = program._executor
+        global_block = program._program.global_block()
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
+                var = global_block.var(feed_name)
+                data.check_feed_shape_type(var, feed[feed_name])
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
@@ -522,6 +525,8 @@ class Executor(object):
                         "Each element of feed list should be a dict")
                 res_dict = dict()
                 for feed_name in each:
+                    var = global_block.var(feed_name)
+                    data.check_feed_shape_type(var, feed[feed_name])
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
@@ -648,20 +653,6 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        if feed is not None:
-            global_block = program._program.global_block(
-            ) if compiled else program.global_block()
-            # feed can be dict or list of dict
-            for feed_obj in feed:
-                if isinstance(feed_obj, dict):
-                    for feed_target_name in feed_obj:
-                        var = global_block.var(feed_target_name)
-                        data.check_feed_shape_type(var, feed[feed_target_name])
-                else:
-                    # feed_obj is name of feed targets
-                    var = global_block.var(feed_obj)
-                    data.check_feed_shape_type(var, feed[feed_obj])
-
         # For backward compatibility, run directly.
         if not compiled:
             return self._run_program(
@@ -705,6 +696,11 @@ class Executor(object):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
                 % (type(program)))
+
+        global_block = program.global_block()
+        for feed_target_name in feed:
+            var = global_block.var(feed_target_name)
+            data.check_feed_shape_type(var, feed[feed_target_name])
 
         if use_program_cache:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
