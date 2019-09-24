@@ -19,12 +19,14 @@ from . import core
 from .framework import convert_np_dtype_to_dtype_
 from .layer_helper import LayerHelper
 
-__all__ = ['data', 'check_feed_shape_type']
+__all__ = ['data']
 
 
 def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     """
-    This function takes in the input and based on whether data has
+    **Data Layer**
+
+    This function takes in the input and based on whether the data has
     to be returned back as a minibatch, it creates the global variable by using
     the helper functions. The global variables can be accessed by all the
     following operators in the graph.
@@ -32,14 +34,15 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     All the input variables of this function are passed in as local variables
     to the LayerHelper constructor.
 
+    Note: Unlike `paddle.fluid.layers.data` which set shape at compile time but
+       not check the shape of feeded data, this `paddle.fluid.data` checks the
+       shape of data feeded by Executor/ParallelExecutor during run time.
+
     Args:
-       name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
-                    True and there is no -1 inside :code:`shape`, it should be 
-                    considered as the shape of the each sample. Otherwise, it
-                    should be considered as the shape of the batched data.  
-       dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
-       type(VarType): The output type. By default it is LOD_TENSOR.
+       name (None|str): The name/alias of the variable
+       shape (list|tuple): List|Tuple of integers declaring the shape.
+       dtype (np.dtype|VarType|str): The type of the data: float32, int64, etc.
+       type (VarType): The output type. Default: LOD_TENSOR.
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -49,6 +52,7 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
 
           import paddle.fluid as fluid
           data = fluid.data(name='x', shape=[784], dtype='float32')
+
     """
     helper = LayerHelper('data', **locals())
     return helper.create_global_variable(
@@ -63,12 +67,24 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
 
 
 def check_feed_shape_type(var, feed):
-    """Returns True if the variable doesn't require feed check or it is
-       compatible with the shape and dtype of thefeed value.
+    """
+    Returns True if the variable doesn't require feed check or it is compatible
+    with the shape and have same dtype as the feeded value.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
     
-       Args:
-           var(Variable): the Variable object
-           feed(list|np.array): the feed value
+    Args:
+        var (Variable): the Variable object
+        feed (list|np.array): the feeded value
+    Returns:
+        True if the shape and dtype of variable is compatible with the feed value
+    Raises:
+        ValueError: if the shape or dtype of the variable is not compatible with
+            the feed value
     """
     if var.desc.need_check_feed():
         numpy_feed = executor.as_numpy(feed) if isinstance(
@@ -86,14 +102,15 @@ def check_feed_shape_type(var, feed):
 
 
 def dtype_is_compatible_with(first, second):
-    """Returns True if the first dtype can be compatible the second one.
-       Currently, we require the two dtype's have to be same.
+    """
+    Returns True if the first dtype can be compatible the second one.
+    Currently, we require the two dtype's have to be same.
       
     Args:
-      dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
+        dtype (np.dtype|VarType|str): The type of data : float32, int64, etc.
     
     Returns:
-      Whether the two types are same
+        True if the two types are same.
     """
     if not isinstance(first, core.VarDesc.VarType):
         first = convert_np_dtype_to_dtype_(first)
@@ -103,22 +120,23 @@ def dtype_is_compatible_with(first, second):
 
 
 def dimension_is_compatible_with(first, second):
-    """Returns True if the two dimensions are compatible.
+    """
+    Returns True if the two dimensions are compatible.
 
-       A dimension is compatible with the other if and only if:
-       1. The length of the dimensions are same.
-       2. Each non-negative number of the two dimentions are same.
-       3. For negative number or 'None' in a dimention, it means unknown so it
-          is compatible with any number.
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
 
     Args:
-      first(list/tuple): integers representing shape. "None" or negative
-        number means unknown.
-      second(list/tuple): integers representing shape. "None" or negative
-        number means unknown.
+        first (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
+        second (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
 
     Returns:
-       True if the two dimensions are compatible.
+        True if the two dimensions are compatible.
     """
 
     dim_len = len(first)
