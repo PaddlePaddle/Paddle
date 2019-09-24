@@ -107,33 +107,13 @@ struct EnforceNotMet : public std::exception {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
       err_str_ = GetTraceBackString(e.what(), file, line);
-      SaveErrorInformation(err_str_);
     }
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {
-    SaveErrorInformation(err_str_);
-  }
+      : err_str_(GetTraceBackString(str, file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  static void SaveErrorInformation(const std::string& err) {
-    const std::string output_file_name{"paddle_err_info"};
-    std::stringstream ss;
-    ss << output_file_name;
-    std::time_t t = std::time(nullptr);
-    std::tm* tm = std::localtime(&t);
-    char mbstr[100];
-    std::strftime(mbstr, sizeof(mbstr), "%F-%H-%M-%S", tm);
-    ss << "_" << mbstr << ".log";
-    std::ofstream err_file(ss.str(), std::ofstream::out);
-    if (err_file.is_open()) {
-      err_file << err;
-      err_file.close();
-    }
-  }
 };
 
 struct EOFException : public std::exception {
@@ -289,6 +269,19 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
+#if defined(__CUDA_ARCH__)
+// For cuda, the assertions can affect performance and it is therefore
+// recommended to disable them in production code
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                   \
+  do {                                                                 \
+    if (!(_IS_NOT_ERROR)) {                                            \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
+      asm("trap;");                                                    \
+    }                                                                  \
+  } while (0)
+#else
 #define PADDLE_ENFORCE(COND, ...)                                         \
   do {                                                                    \
     auto __cond__ = (COND);                                               \
@@ -302,6 +295,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
       }                                                                   \
     }                                                                     \
   } while (0)
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \

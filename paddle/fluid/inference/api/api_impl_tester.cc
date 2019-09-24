@@ -48,7 +48,7 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
   } else {
     LOG(FATAL) << "unsupported type.";
   }
-  pt.shape = framework::vectorize2int(t->dims());
+  pt.shape = framework::vectorize<int>(t->dims());
   return pt;
 }
 

@@ -37,7 +37,7 @@
 #endif
 
 DEFINE_int64(
-    gpu_allocator_retry_time, 100,
+    gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
 

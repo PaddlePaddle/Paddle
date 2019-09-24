@@ -89,6 +89,17 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
       dot.AddNode(node_id, attr, node_id);
     } else if (n->IsVar()) {
+      if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
+        bool is_first = true;
+        for (int64_t length : n->Var()->GetShape()) {
+          if (is_first) {
+            node_id += "\n" + std::to_string(length);
+            is_first = false;
+          } else {
+            node_id += "," + std::to_string(length);
+          }
+        }
+      }
       decltype(op_attrs)* attr;
       if (marked_nodes.count(n)) {
         attr = &marked_var_attrs;

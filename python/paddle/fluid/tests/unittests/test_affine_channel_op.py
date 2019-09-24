@@ -109,8 +109,8 @@ class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
 
 class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
     def init_test_case(self):
-        self.shape = [64, 32, 32, 512]
-        self.C = 512
+        self.shape = [64, 32, 32, 128]
+        self.C = 128
         self.layout = 'NHWC'
 
 
