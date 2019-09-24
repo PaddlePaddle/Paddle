@@ -157,6 +157,7 @@ __all__ = [
     'unique',
     'unique_with_counts',
     'expand',
+    'expand_as',
     'sequence_concat',
     'scale',
     'elementwise_add',
@@ -2246,7 +2247,6 @@ def sequence_softmax(input, use_cudnn=False, name=None):
         outputs={"Out": softmax_out},
         attrs={"use_cudnn": use_cudnn})
     return softmax_out
-
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
@@ -11648,6 +11648,78 @@ def expand(x, expand_times, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+
+def expand_as(x, expand_tensor, name=None):
+    """
+    expand_as operator tiles to the input by given expand tensor. You should set expand tensor
+    for each dimension by providing tensor 'expand_tensor'. The rank of X
+    should be in [1, 6]. Please note that size of 'expand_tensor' must be the same
+    with X's rank. Following is a using case:
+
+
+    .. code-block:: text
+
+        Input(X) is a 3-D tensor with shape [2, 3, 1]:
+
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+
+        expand_tensor's shape:  [2, 6, 2] 
+
+        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+                
+
+    Args:
+        x (Variable): A Tensor with dtype float64, float32, int32.
+        A tensor with rank in [1, 6].
+        expand_tensor (Variable): A Tensor with dtype float64, float32, int32.
+        expand_tensor for expanding to Input(X). Only use expand_tensor'shape.
+
+    Returns:
+        Variable: A Tensor with dtype float64, float32, int32. 
+        After expanding, size of each dimension of Output(Out) is equal to the size 
+        of the corresponding dimension of expand_tensor multiplying the corresponding
+        value given by expand_tensor.
+
+
+    Examples:
+        .. code-block:: python
+          
+        import paddle.fluid as fluid
+        import numpy as np
+
+        data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
+        expand_tensor = fluid.layers.data(
+          name="expand_tensor", shape=[-1,20], dtype='float64')
+        result = fluid.layers.expand_as(x=data, expand_tensor=expand_tensor) 
+        use_cuda = False
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        x = np.random.rand(3,10)
+        y = np.random.rand(3,20)
+        output= exe.run(feed={"data":x,"expand_tensor":y},fetch_list=[result.name])
+        print(output[0].shape)
+        #(3,20)
+
+    """
+
+    helper = LayerHelper('expand_as', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': x,'expand_tensor':expand_tensor}
+    helper.append_op(
+        type='expand_as', inputs=inputs, outputs={'Out': out})
     return out
 
 

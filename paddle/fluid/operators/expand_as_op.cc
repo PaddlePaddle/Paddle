@@ -27,34 +27,32 @@ class ExpandAsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("expand_tensor"), "Input(expand_tensor) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
-
-
     auto x_dims = ctx->GetInputDim("X");
     auto expand_tensor_dims = ctx->GetInputDim("expand_tensor");
     PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()), expand_tensor_dims.size(),
-                      "The number of Attr(expand_times)'s value must be equal "
+                      "The rank of input(expand_tensor) must be equal "
                      "to the rank of Input(X).");
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
                       "The rank of Input(X) must not be greater than 6.");
-
     std::vector<int64_t> out_shape(x_dims.size());
-   /*for (size_t i = 0; i < expand_tensor_dims; ++i) {
-      PADDLE_ENFORCE_GE(expand_tensor_dims[i], 1,
-                      "Each value of Attr(expand_tensor) should not be "
-                     "less than 1.");
-       out_shape[i] = expand_tensor_dims[i];
-    }
-*/
-
-    // set the first dim to -1 in compile time
-    if (!ctx->IsRuntime() && x_dims[0] < 0) {
-      out_shape[0] = x_dims[0];
-    }
-
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
-    if (out_shape[0] == x_dims[0]) {
-      ctx->ShareLoD("X", "Out");
+  }
+
+  protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "expand_tensor") {
+      return expected_kernel_type;
     }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -71,18 +69,18 @@ class ExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
               "to size of the corresponding dimension of Input(X) multiplying "
               "the corresponding value given by Attr(expand_times).");
     AddInput("expand_tensor",
-                              "Expand times number for each dimension.");
+                              "Expand tensor's shape for each dimension.");
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
-number for each dimension by providing attribute 'expand_times'. The rank of X
-should be in [1, 6]. Please note that size of 'expand_times' must be the same
+number for each dimension by providing tensor 'expend_tensor'. The rank of X
+should be in [1, 6]. Please note that size of 'expend_tensor' must be the same
 with X's rank. Following is a using case:
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
         [
            [[1], [2], [3]],
            [[4], [5], [6]]
         ]
-Attr(expand_times):  [1, 2, 2]
+expand_tensors'shape:  [1, 2, 2]
 Output(Out) is a 3-D tensor with shape [2, 6, 2]:
         [
             [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
@@ -103,24 +101,34 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-
-    Tensor expand_tensor = ctx->Attrs().Get<Tensor>("expand_tensor");
-
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    //size_t start_pos = 0u;
     if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
           "The first dimension size of Input(Out@GRAD) should be "
           "equal to the crroresponding dimension size of Input(X)");
-      //start_pos = 1u;
     }
     auto x_grad_name = framework::GradVarName("X");
-
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
+  }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "expand_tensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -133,23 +141,27 @@ class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("expand_as_grad");
     op->SetInput("X", Input("X"));
+    op->SetInput("expand_tensor", Input("expand_tensor"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());
     return op;
   }
 };
+    
+//DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
-                  ops::ExpandAsGradOpDescMaker);
+REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,ops::ExpandAsGradOpDescMaker);
 REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp);
 REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>
 );
 REGISTER_OP_CPU_KERNEL(
     expand_as_grad,
