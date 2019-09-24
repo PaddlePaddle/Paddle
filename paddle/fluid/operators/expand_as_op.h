@@ -26,22 +26,23 @@ limitations under the License. */
 #define MAX_RANK_SUPPORTED 6
 
 #define EXPAND_AS_TEMPLATE(z, n, data) \
-  case n + 1: {                     \
-    ExpandAs<n + 1>(context);         \
-    break;                          \
+  case n + 1: {                        \
+    ExpandAs<n + 1>(context);          \
+    break;                             \
   }
 #define REP_EXPAND_AS_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_TEMPLATE, ~)
 #define COND(n)                                               \
   BOOST_PP_GREATER_EQUAL(BOOST_PP_DIV(n, MAX_RANK_SUPPORTED), \
                          BOOST_PP_MOD(n, MAX_RANK_SUPPORTED))
-#define EXPAND_AS_GRAD_CASE(n)                                        \
-  case n: {                                                        \
+#define EXPAND_AS_GRAD_CASE(n)                                       \
+  case n: {                                                          \
     ExpandAsBackward<n>(context, reshape_dims_vec, reduce_dims_vec); \
-    break;                                                         \
+    break;                                                           \
   }
 #define EXPAND_AS_GRAD_TEMPLATE(z, n, data) \
   BOOST_PP_IF(COND(n), EXPAND_AS_GRAD_CASE(n), )
-#define REP_EXPAND_AS_GRAD_TEMPLATE(n) BOOST_PP_REPEAT(n, EXPAND_AS_GRAD_TEMPLATE, ~)
+#define REP_EXPAND_AS_GRAD_TEMPLATE(n) \
+  BOOST_PP_REPEAT(n, EXPAND_AS_GRAD_TEMPLATE, ~)
 
 namespace paddle {
 namespace operators {
@@ -79,12 +80,12 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto x_dims = in0->dims();
     auto y_dims = expand_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
-      bcast_dims[i] = y_dims[i]/x_dims[i];
-      bcast_dims_remainder += y_dims[i]%x_dims[i];
+      bcast_dims[i] = y_dims[i] / x_dims[i];
+      bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
-   PADDLE_ENFORCE_EQ(
-          bcast_dims_remainder, 0,
-          "X(input) could not be broadcast together with remapped shape(expand tensor's shape)");
+    PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
+                      "X(input) could not be broadcast together with remapped "
+                      "shape(expand tensor's shape)");
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
       out_dims[i] *= bcast_dims[i];
@@ -110,7 +111,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     auto y_dims = expand_tensor->dims();
     std::vector<int> bcast_dims;
     for (int i = 0; i < y_dims.size(); ++i) {
-        bcast_dims.push_back(y_dims[i]/x_dims[i]);
+      bcast_dims.push_back(y_dims[i] / x_dims[i]);
     }
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;
@@ -150,8 +151,8 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
  protected:
   template <int Dims>
   void ExpandAsBackward(const framework::ExecutionContext& context,
-                      const std::vector<int>& reshape_dims_vec,
-                      const std::vector<int>& reduce_dims_vec) const {
+                        const std::vector<int>& reshape_dims_vec,
+                        const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = Dims / MAX_RANK_SUPPORTED + 1;
     size_t reduce_size = Dims % MAX_RANK_SUPPORTED + 1;
     PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
@@ -175,7 +176,9 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     x_grad.device(
         *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x_grad.dimensions());
+        out_grad.reshape(reshape_dims)
+            .sum(reduce_dims)
+            .reshape(x_grad.dimensions());
   }
 };
 
