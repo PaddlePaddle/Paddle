@@ -458,13 +458,14 @@ class GeneratorLoader(DataLoaderBase):
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
-                            if type(item) == np.ndarray:
-                                assert item.dtype != np.object, (
+                            if type(item
+                                    ) == np.ndarray and item.dtype == np.object:
+                                raise TypeError((
                                     "ndarray with dtype of numpy.object"
                                     "is not supported, please assign a specific dtype. If you are "
                                     "passing a nested list with different lengths of elements, please "
                                     "use 'fluid.create_lod_tensor' to covert it to a LoD-Tensor. "
-                                    "Data : {0}").format(item)
+                                    "Data : {0}").format(item))
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp
