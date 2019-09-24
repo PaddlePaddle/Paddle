@@ -26,18 +26,19 @@ class MaskedSelectOpKernel : public framework::OpKernel<T> {
     auto* mask = ctx.Input<framework::Tensor>("mask") auto* output =
         ctx.Output<framework::Tensor>("Out");
 
-    input.flatten_to_1d(input->numel());
+    // input.flatten_to_1d(input->numel());
     const T* input_data = input->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    const* mask_data = mask->data<bool>();
 
-    auto input_dims = input->dims();
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
     int j = 0;
     for (sized_t i = 0; i < input->numel(); i++) {
-      if (mask[i] == 1) {
-        out_data[j] = input_data[i];
-        j++;
-      }
+      if
+        mask_data[i] {
+          out_data[j] = input_data[i];
+          j++;
+        }
     }
   }
 };
@@ -50,16 +51,20 @@ class MaskedSelectGradOpKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("input"));
-    auto* mask = ctx.Input<framework::Tensor>("mask") int j = 0;
-    mask.flatten_to_1d(mask->numel());
+    auto* mask = ctx.Input<framework::Tensor>("mask");
+
+    int j = 0;
+    // mask.flatten_to_1d(mask->numel());
+    T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+    const T* output_grad_data = output_grad->data<T>();
     const* mask_data = mask->data<bool>();
 
     for (sized_t i = 0; i < mask->numel(); i++) {
       if (mask_data[i]) {
-        input_grad[i] == output_grad[j];
+        input_grad_data[i] == output_grad_data[j];
         j++;
       } else {
-        input_grad[i] == 0;
+        input_grad_data[i] == 0;
       }
     }
   }
