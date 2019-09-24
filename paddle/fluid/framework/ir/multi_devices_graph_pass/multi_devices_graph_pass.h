@@ -123,7 +123,7 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                           const std::string &g_name) const override {}
 
   bool NeedCollectiveForGrad(const std::string &grad_name,
-                             std::vector<ir::Node *> ops) const {
+                             std::vector<ir::Node *> ops) const override {
     return false;
   }
 

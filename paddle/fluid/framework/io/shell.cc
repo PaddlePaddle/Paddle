@@ -119,16 +119,12 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
   close(parent_end);
 
   if (child_end != child_std_end) {
-    if (dup2(child_end, child_std_end) != child_std_end) {
-      return -1;
-    }
+    PCHECK(dup2(child_end, child_std_end) == child_std_end);
     close(child_end);
   }
 
   close_open_fds_internal();
-  if (execl("/bin/bash", "bash", "-c", real_cmd, NULL) < 0) {
-    return -1;
-  }
+  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
   exit(127);
 #endif
 }

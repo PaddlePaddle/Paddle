@@ -71,7 +71,7 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     return grad_x, d_scale, d_bias
 
 
-class TestLayerNormdOp(unittest.TestCase):
+class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
 
