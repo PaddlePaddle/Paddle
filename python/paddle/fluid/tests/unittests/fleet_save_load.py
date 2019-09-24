@@ -265,12 +265,12 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
         hdfs_trainer_client = None
         server_hadoop_configs = None
         trainer_hadoop_configs = dict()
-        if args.hadoop_home != "":
-            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_home,
+        if args.hadoop_path != "":
+            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_path,
                                              trainer_hadoop_configs)
             server_hadoop_configs = {}
             server_hadoop_configs['127.0.0.1'] = {
-                'HADOOP_HOME': 'python ' + args.hadoop_home,
+                'HADOOP_BIN': 'python ' + args.hadoop_path,
                 'configs': trainer_hadoop_configs
             }
 
@@ -308,12 +308,12 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
         hdfs_trainer_client = None
         server_hadoop_configs = None
         trainer_hadoop_configs = dict()
-        if args.hadoop_home != "":
-            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_home,
+        if args.hadoop_path != "":
+            hdfs_trainer_client = HDFSClient('python ' + args.hadoop_path,
                                              trainer_hadoop_configs)
             server_hadoop_configs = {}
             server_hadoop_configs = {
-                'HADOOP_HOME': 'python ' + args.hadoop_home,
+                'HADOOP_BIN': 'python ' + args.hadoop_path,
                 'configs': trainer_hadoop_configs
             }
 
@@ -331,9 +331,6 @@ class TestFleetSaveLoad2x2(FleetDistRunnerBase):
         out = self.do_training(fleet)
 
     def do_training(self, fleet):
-        with open('/tmp/trainer_' + str(fleet.worker_index()) + '.train',
-                  'w') as f:
-            f.write(str(fleet.main_program))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fleet.startup_program)

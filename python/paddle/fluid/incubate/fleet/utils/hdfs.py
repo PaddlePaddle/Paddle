@@ -55,12 +55,8 @@ class HDFSClient(object):
         files = client.lsr("/user/com/train-25/models")
     """
 
-    def __init__(self, hadoop_home, configs):
+    def __init__(self, hadoop_bin, configs):
         self.pre_commands = []
-        if hadoop_home.endswith('.py'):
-            hadoop_bin = hadoop_home
-        else:
-            hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)

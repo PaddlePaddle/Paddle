@@ -30,7 +30,7 @@ class TestFleetSaveLoadDense2x2(TestFleetBase):
         self._sync_mode = True
         self._enforce_place = "CPU"
         self._test_mode = 0  # 0: local save/load  1: hadoop save/load
-        self.hadoop_home = "./fake_local_hadoop.py"
+        self.hadoop_path = "./fake_local_hadoop.py"
 
     def check_with_place(self, model_file, check_error_log=False, need_envs={}):
         required_envs = {
@@ -65,6 +65,14 @@ class TestFleetSaveLoadDense2x2(TestFleetBase):
         cluster_env["MODEL_DIR"] = model_dir
         cluster_env.update(required_envs)
         tr0_var, tr1_var = self._run_cluster(model_file, cluster_env)
+
+        if model_dir.startswith('hdfs:'):
+            model_dir = tempfile.gettempdir(
+            ) + '/fake_hadoop_repos/user/simnet_bow/'
+        cmd = 'ls ' + model_dir + ' | wc -l'
+        cmd_exec = os.popen(cmd)
+        self.assertEqual(cmd_exec.read().strip(), '6')
+        cmd_exec.close()
 
     def test_fleet_local_save(self):
         need_envs = {
