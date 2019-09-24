@@ -194,7 +194,7 @@ def check_feed_shape_type(var, feed):
     
     Args:
         var (Variable): the Variable object
-        feed (list|np.array): the feeded value
+        feed (list|np.array|LoDTensor): the feeded value
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
     Raises:
@@ -202,9 +202,7 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        numpy_feed = as_numpy(feed) if isinstance(
-            feed, core.LoDTensorArray) else np.array(
-                feed, copy=False)
+        numpy_feed = np.array(feed, copy=False)
         if not dimension_is_compatible_with(numpy_feed.shape, var.shape):
             raise ValueError('Cannot feed value of shape %r for Variable %r, '
                              'which has shape %r' %
@@ -586,8 +584,8 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 var = global_block.var(feed_name)
-                check_feed_shape_type(var, feed[feed_name])
                 feed_tensor = feed[feed_name]
+                check_feed_shape_type(var, feed_tensor)
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
@@ -613,8 +611,8 @@ class Executor(object):
                 res_dict = dict()
                 for feed_name in each:
                     var = global_block.var(feed_name)
-                    check_feed_shape_type(var, feed[feed_name])
                     tensor = each[feed_name]
+                    check_feed_shape_type(var, tensor)
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
                         assert isinstance(each[feed_name], np.ndarray), \
