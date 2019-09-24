@@ -838,7 +838,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor.
         rampup_begin_step (int): The beginning step from which gradient compression is implemented.
-        rampup_step (int): How long steps used in sparsity warm-up periods. Default is 1.
+        rampup_step (int): Time steps used in sparsity warm-up periods. Default is 1.
             For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100, \
                 it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. \
                 And when reach sparsity array ends, it will use 0.999 then and after.
