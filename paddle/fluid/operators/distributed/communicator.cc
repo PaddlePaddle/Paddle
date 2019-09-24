@@ -794,31 +794,41 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
     auto &new_value = var_z_slr->value();
     int64_t row_numel = new_value.numel() / new_rows.size();
     auto *z_value = new_value.data<float>();
+
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
             << new_rows.size();
-    for (size_t i = 0; i < new_rows.size(); i++) {
-      float diff = 0;
-      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
-              << " before update Vars recv_scope: "
-              << x_value[new_rows[i] * row_numel]
-              << " ;old_scope: " << y_value[new_rows[i] * row_numel]
-              << " ;pserver_scope: " << z_value[i * row_numel];
-      for (int64_t j = 0; j < row_numel; j++) {
-        if (j == 0) {
-          diff =
-              z_value[i * row_numel + j] - y_value[new_rows[i] * row_numel + j];
+
+    std::vector<int> buts =
+        bucket(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);
+
+    std::vector<std::future<void>> fs;
+
+    for (int x = 0; x < buts.size() - 1; x++) {
+      int start = buts[x];
+      int end = buts[x + 1];
+
+      fs.push_back(framework::Async([&x_value, &y_value, &z_value, &new_rows,
+                                     row_numel, start, end]() {
+        auto cpu_ctx = paddle::platform::CPUDeviceContext();
+        auto blas =
+            math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+
+        for (int y = start; y < end; y++) {
+          std::vector<float> row_delta(row_numel, 0);
+
+          auto ids = new_rows[y];
+
+          float *x_val = x_value + ids * row_numel;
+          float *y_val = y_value + ids * row_numel;
+          float *z_val = z_value + y * row_numel;
+
+          VSUB(row_numel, z_val, y_val, row_delta.data());
+          blas.VADD(row_numel, row_delta.data(), x_val, x_val);
+          blas.VCOPY(row_numel, z_val, y_val);
         }
-        x_value[new_rows[i] * row_numel + j] +=
-            (z_value[i * row_numel + j] - y_value[new_rows[i] * row_numel + j]);
-        y_value[new_rows[i] * row_numel + j] = z_value[i * row_numel + j];
-      }
-      VLOG(2) << "Geo-Sgd Recv " << new_rows[i]
-              << " after update Vars recv_scope: "
-              << x_value[new_rows[i] * row_numel]
-              << " ;old_scope: " << y_value[new_rows[i] * row_numel]
-              << " ;pserver_scope: " << z_value[i * row_numel]
-              << " ;diff: " << diff;
+      }));
     }
+    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
   } else {
     // dense param
     auto *var_y_sub = old_scope_->Var(VarToDeltaVar(var_name));
