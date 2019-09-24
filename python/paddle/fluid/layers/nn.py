@@ -11667,10 +11667,6 @@ for func in [
         elementwise_max,
         elementwise_pow,
         elementwise_min,
-        elementwise_add,
-        elementwise_div,
-        elementwise_sub,
-        elementwise_mul,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -11685,6 +11681,10 @@ for func in [
 for func in [
         elementwise_mod,
         elementwise_floordiv,
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
