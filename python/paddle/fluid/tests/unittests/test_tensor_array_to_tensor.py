@@ -199,7 +199,6 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             scope = core.Scope()
-            place = core.CUDAPlace()
             executor = fluid.Executor(place)
             self.run_check(executor, scope)
 
