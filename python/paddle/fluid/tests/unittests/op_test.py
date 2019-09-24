@@ -1054,6 +1054,7 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=False):
+        check_dygraph = False  ##delete
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
