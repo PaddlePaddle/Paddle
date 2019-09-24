@@ -26,30 +26,44 @@ class TestQuantizationStrategy(unittest.TestCase):
     """
 
     def test_compression(self):
+        self.quan("./quantization/compress.yaml")
+        self.quan("./quantization/compress_1.yaml")
+
+    def quan(self, config_file):
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
         image_shape = [1, 28, 28]
-        image = fluid.layers.data(
-            name='image', shape=image_shape, dtype='float32')
-        image.stop_gradient = False
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        out = MobileNet(name='quan').net(input=image, class_dim=class_dim)
-        acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-        acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
-        val_program = fluid.default_main_program().clone(for_test=False)
 
-        cost = fluid.layers.cross_entropy(input=out, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+
+        with fluid.program_guard(train_program, startup_program):
+            with fluid.unique_name.guard():
+                image = fluid.layers.data(
+                    name='image', shape=image_shape, dtype='float32')
+                image.stop_gradient = False
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+                out = MobileNet(name='quan').net(input=image,
+                                                 class_dim=class_dim)
+                print("out: {}".format(out.name))
+                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
+                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                cost = fluid.layers.cross_entropy(input=out, label=label)
+                avg_cost = fluid.layers.mean(x=cost)
+
+        val_program = train_program.clone(for_test=False)
 
         optimizer = fluid.optimizer.Momentum(
             momentum=0.9,
             learning_rate=0.01,
             regularization=fluid.regularizer.L2Decay(4e-5))
 
+        scope = fluid.Scope()
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe.run(startup_program, scope=scope)
 
         val_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
@@ -64,8 +78,8 @@ class TestQuantizationStrategy(unittest.TestCase):
 
         com_pass = Compressor(
             place,
-            fluid.global_scope(),
-            fluid.default_main_program(),
+            scope,
+            train_program,
             train_reader=train_reader,
             train_feed_list=train_feed_list,
             train_fetch_list=train_fetch_list,
@@ -74,7 +88,7 @@ class TestQuantizationStrategy(unittest.TestCase):
             eval_feed_list=val_feed_list,
             eval_fetch_list=val_fetch_list,
             train_optimizer=optimizer)
-        com_pass.config('./quantization/compress.yaml')
+        com_pass.config(config_file)
         eval_graph = com_pass.run()
 
 
