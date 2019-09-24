@@ -21,6 +21,9 @@ import six
 import logging
 from functools import reduce
 
+import paddle
+import paddle.reader
+from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
@@ -32,10 +35,12 @@ from .reader import *
 from . import core
 from .. import compat as cpt
 
+batch = paddle.batch
+
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model'
-] + reader.__all__
+    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -104,6 +109,20 @@ def _clone_var_in_block_(block, var):
             dtype=var.dtype,
             type=var.type,
             persistable=True)
+
+
+def _get_valid_program(main_program):
+    if main_program is None:
+        main_program = default_main_program()
+    elif isinstance(main_program, CompiledProgram):
+        main_program = main_program._program
+        if main_program is None:
+            raise TypeError("program should be as Program type or None")
+        warnings.warn(
+            "The input is a CompiledProgram, this is not recommended.")
+    if not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
+    return main_program
 
 
 def save_vars(executor,
@@ -188,13 +207,9 @@ def save_vars(executor,
             # saved in the same file named 'var_file' in the path "./my_paddle_vars".
     """
     save_dirname = os.path.normpath(dirname)
+    main_program = _get_valid_program(main_program)
 
     if vars is None:
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
-
         save_vars(
             executor,
             main_program=main_program,
@@ -202,13 +217,15 @@ def save_vars(executor,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
+        # give warning when there is no var in model
+        if len(list(vars)) == 0:
+            warnings.warn(
+                "no variable in your model, please ensure there are any variables in your model to save"
+            )
+            return None
+
         save_program = Program()
         save_block = save_program.global_block()
-
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
 
         save_var_map = {}
         for each_var in vars:
@@ -217,13 +234,13 @@ def save_vars(executor,
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
+                save_file_path = os.path.join(save_dirname, new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={
-                        'file_path': os.path.join(save_dirname, new_var.name)
-                    })
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -511,11 +528,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             fluid.io.save_persistables(executor=exe, dirname=param_path,
                                        main_program=prog)
     """
-
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
-
     else:
         save_vars(
             executor,
@@ -1021,18 +1036,16 @@ def save_inference_model(dirname,
                 all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
-    if main_program is None:
-        main_program = default_main_program()
-        if main_program._is_mem_optimized:
-            warnings.warn(
-                "save_inference_model must put before you call memory_optimize. \
-                                            the memory_optimize will modify the original program, \
-                                            is not suitable for saving inference model \
-                                            we save the original program as inference model.",
-                RuntimeWarning)
+    main_program = _get_valid_program(main_program)
 
-    elif not isinstance(main_program, Program):
-        raise TypeError("program should be as Program type or None")
+    # remind user to set auc_states to zeros if the program contains auc op 
+    all_ops = main_program.global_block().ops
+    for op in all_ops:
+        if op.type == 'auc':
+            warnings.warn(
+                "please ensure that you have set the auc states to zeros before saving inference model"
+            )
+            break
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -1083,7 +1096,7 @@ def save_inference_model(dirname,
 
         main_program.desc.flush()
 
-        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._prune(feeded_var_names, target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 

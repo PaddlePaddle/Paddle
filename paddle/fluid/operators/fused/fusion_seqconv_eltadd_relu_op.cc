@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>  // for min, max
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 
 namespace paddle {
 namespace operators {
@@ -209,9 +209,9 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       }
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    math::FCCompute<DeviceContext, T>(blas, x_dims[0], w_dims[1], w_dims[0],
-                                      col_data, w_data, y_data, b_data, true);
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, x_dims[0], w_dims[1], w_dims[0], col_data, w_data, y_data,
+       b_data, true);
   }
 };
 
@@ -220,8 +220,7 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_seqconv_eltadd_relu, ops::FusionSeqConvEltAddReluOp,
-                  ops::FusionSeqConvEltAddReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusionSeqConvEltAddReluOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,
                        ops::FusionSeqConvEltAddReluKernel<float>,

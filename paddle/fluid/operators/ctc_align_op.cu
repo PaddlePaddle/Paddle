@@ -46,7 +46,7 @@ template <typename T>
 __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
                                              const T* tokens, const int blank,
                                              const int merge_repeated,
-                                             const int padding_num,
+                                             const int padding_value,
                                              const int64_t batch_size,
                                              T* output) {
   int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -62,7 +62,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
     prev_token = tokens[i];
   }
   for (int i = output_idx; i < ind * num_token + num_token; i++) {
-    output[i] = padding_num;
+    output[i] = padding_value;
   }
 }
 
@@ -82,13 +82,13 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 
     // tensor input which has no lod
     if (input->lod().empty()) {
-      const int padding_num = ctx.Attr<int>("padding_num");
+      const int padding_value = ctx.Attr<int>("padding_value");
       auto input_dims = input->dims();
       T* output_data = output->mutable_data<T>({input_dims[0], input_dims[1]},
                                                ctx.GetPlace());
       PaddingMergeAndDelCudaKernel<
           T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
-          input_dims[1], tokens, blank, merge_repeated, padding_num,
+          input_dims[1], tokens, blank, merge_repeated, padding_value,
           input_dims[0], output_data);
     } else {
       const size_t level = 0;

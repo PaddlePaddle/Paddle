@@ -63,7 +63,7 @@ if(WITH_GPU)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -123,7 +123,7 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -202,7 +202,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
@@ -222,6 +222,9 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info string_helper glog)
 
 # Get the current working branch
 execute_process(

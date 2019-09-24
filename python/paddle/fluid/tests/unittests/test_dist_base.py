@@ -38,7 +38,14 @@ RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
 
-def my_print(class_name, log_str):
+def print_to_out(out_losses):
+    if six.PY2:
+        print(pickle.dumps(out_losses))
+    else:
+        sys.stdout.buffer.write(pickle.dumps(out_losses))
+
+
+def print_to_err(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
     if six.PY2:
@@ -99,9 +106,9 @@ class TestDistRunnerBase(object):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
-        my_print(type(self).__name__, "run pserver startup program done.")
+        print_to_err(type(self).__name__, "run pserver startup program done.")
         exe.run(pserver_prog)
-        my_print(type(self).__name__, "run pserver main program done.")
+        print_to_err(type(self).__name__, "run pserver main program done.")
 
     def run_gpu_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2"
@@ -115,10 +122,14 @@ class TestDistRunnerBase(object):
         dist_strategy.exec_strategy = exec_strategy
         dist_strategy.fuse_memory_size = 1  #MB
         dist_strategy.fuse_laryer_size = 1
+        if args.use_local_sgd:
+            dist_strategy.use_local_sgd = True
+        if args.ut4grad_allreduce:
+            dist_strategy._ut4grad_allreduce = True
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        my_print("gpu_fleet", "fleet.node_num:")
+        print_to_err("gpu_fleet", "fleet.node_num:")
         #"fleet.node_id:", fleet.node_id(),
         #"fleet.trainer_num:", fleet.worker_num())
 
@@ -154,15 +165,15 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
-        my_print(type(self).__name__, "begin to train on trainer")
+        print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
-            my_print(type(self).__name__, "run step %d finished" % i)
-        my_print(type(self).__name__, "trainer run finished")
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
 
         if six.PY2:
             print(pickle.dumps(out_losses))
@@ -182,7 +193,7 @@ class TestDistRunnerBase(object):
                 self.get_model(batch_size=args.batch_size)
 
         if args.update_method == "pserver":
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "begin to run transpile on trainer with pserver mode")
             t = self.get_transpiler(args.trainer_id,
@@ -190,7 +201,7 @@ class TestDistRunnerBase(object):
                                     args.endpoints, args.trainers,
                                     args.sync_mode, args.dc_asgd)
             trainer_prog = t.get_trainer_program()
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "get trainer program done with pserver mode.")
         elif args.update_method == "nccl2" or args.update_method == "nccl2_reduce_layer":
@@ -201,7 +212,7 @@ class TestDistRunnerBase(object):
             if args.use_hallreduce:
                 config.use_hierarchical_allreduce = True
                 config.hierarchical_allreduce_inter_nranks = args.hallreduce_inter_nranks
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode")
             nccl2_t = fluid.DistributeTranspiler(config=config)
@@ -211,16 +222,16 @@ class TestDistRunnerBase(object):
                 startup_program=fluid.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint)
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "get trainer program done. with nccl2 mode")
             trainer_prog = fluid.default_main_program()
         else:
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "do nothing about main program, just use it")
             trainer_prog = fluid.default_main_program()
-            my_print(type(self).__name__, "use main program done.")
+            print_to_err(type(self).__name__, "use main program done.")
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -230,7 +241,7 @@ class TestDistRunnerBase(object):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        my_print(type(self).__name__, "run worker startup program done.")
+        print_to_err(type(self).__name__, "run worker startup program done.")
 
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1
@@ -262,12 +273,12 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
-        my_print(type(self).__name__, "begin to compile with data parallel")
+        print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
             build_strategy=build_stra,
             exec_strategy=exec_strategy)
-        my_print(type(self).__name__, "program compiled with data parallel")
+        print_to_err(type(self).__name__, "program compiled with data parallel")
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -288,20 +299,17 @@ class TestDistRunnerBase(object):
             else:
                 return origin_batch
 
-        my_print(type(self).__name__, "begin to train on trainer")
+        print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
         for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(binary,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
             out_losses.append(loss[0])
-            my_print(type(self).__name__, "run step %d finished" % i)
-        my_print(type(self).__name__, "trainer run finished")
+            print_to_err(type(self).__name__, "run step %d finished" % i)
+        print_to_err(type(self).__name__, "trainer run finished")
 
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
+        print_to_out(out_losses)
 
 
 class TestParallelDyGraphRunnerBase(object):
@@ -344,23 +352,23 @@ class TestParallelDyGraphRunnerBase(object):
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
                 strategy.current_endpoint = args.current_endpoint
-                my_print(
+                print_to_err(
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2")
                 dygraph.parallel.prepare_context(strategy)
                 model = dygraph.parallel.DataParallel(model, strategy)
-                my_print(type(self).__name__, "model built in dygraph")
+                print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = []
-            my_print(type(self).__name__, "begin to run dygraph training")
+            print_to_err(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
                 data = _get_data(data)
                 if step_id == RUN_STEP:
                     break
                 loss = self.run_one_loop(model, opt, data)
                 if step_id % 10 == 0:
-                    my_print(
+                    print_to_err(
                         type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss))
+                        "loss at step %d: %f" % (step_id, loss.numpy()))
                 out_losses.append(loss.numpy())
 
                 # FIXME(Yancey1989): scale the loss inplace
@@ -373,7 +381,7 @@ class TestParallelDyGraphRunnerBase(object):
 
                 opt.minimize(loss)
                 model.clear_gradients()
-            my_print(type(self).__name__, pickle.dumps(out_losses))
+        print_to_out(out_losses)
 
 
 def runtime_main(test_class):
@@ -392,6 +400,8 @@ def runtime_main(test_class):
     parser.add_argument('--enable_backward_deps', action='store_true')
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--gpu_fleet_api', action='store_true')
+    parser.add_argument('--use_local_sgd', action='store_true')
+    parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -474,6 +484,8 @@ class TestDistBase(unittest.TestCase):
         self._nccl_comm_num = 1
         self._enable_backward_deps = False
         self._gpu_fleet_api = False
+        self._use_local_sgd = False
+        self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._setup_config()
         self._after_setup_config()
@@ -483,7 +495,7 @@ class TestDistBase(unittest.TestCase):
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
                 s.bind(('', 0))
-                my_print(
+                print_to_err(
                     type(self).__name__, "socket name: %s" % s.getsockname()[1])
                 return s.getsockname()[1]
 
@@ -495,7 +507,14 @@ class TestDistBase(unittest.TestCase):
 
     def start_pserver(self, model_file, check_error_log, required_envs):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
+        ps_cmd = "%s"
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            required_envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
+            ps_cmd += " -m coverage run --branch -p"
+
+        ps_cmd += " %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
+
         ps0_cmd = ps_cmd % \
                   (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
                    self._trainers)
@@ -512,13 +531,13 @@ class TestDistBase(unittest.TestCase):
         ps0_pipe = open("/tmp/ps0_err.log", "wb")
         ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
-        my_print(type(self).__name__, "going to start pserver process 0")
+        print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
             env=required_envs)
-        my_print(type(self).__name__, "going to start pserver process 1")
+        print_to_err(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -534,8 +553,14 @@ class TestDistBase(unittest.TestCase):
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1):
 
-        cmd = "%s %s --role trainer --lr %f" % (self._python_interp, model,
-                                                self._lr)
+        cmd = self._python_interp
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
+            cmd += " -m coverage run --branch -p"
+
+        cmd += " %s --role trainer --lr %f" % (model, self._lr)
+
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
         if batch_merge_repeat > 1:
@@ -587,7 +612,14 @@ class TestDistBase(unittest.TestCase):
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
+        tr_cmd = "%s"
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
+            tr_cmd += " -m coverage run --branch -p"
+
+        tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
+
         tr0_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
                    0, ps0_ep, self._trainers, self._lr)
@@ -621,13 +653,13 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
-        my_print(type(self).__name__, "going to start trainer process 0")
+        print_to_err(type(self).__name__, "going to start trainer process 0")
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
             env=env0)
-        my_print(type(self).__name__, "going to start trainer process 1")
+        print_to_err(type(self).__name__, "going to start trainer process 1")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -663,7 +695,13 @@ class TestDistBase(unittest.TestCase):
     def _get_nccl2_trainer_cmd(self, model, ep, update_method, trainer_id,
                                trainer_num):
         env = {}
-        tr_cmd = "%s -u %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+        tr_cmd = "%s -u"
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd += " -m coverage run --branch -p"
+
+        tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
+
         tr_cmd = tr_cmd % \
                   (self._python_interp, model, self._ps_endpoints,
                    trainer_id, ep, update_method, self._lr)
@@ -701,6 +739,13 @@ class TestDistBase(unittest.TestCase):
 
         if self._gpu_fleet_api:
             tr_cmd += " --gpu_fleet_api"
+            if self._use_local_sgd:
+                tr_cmd += " --use_local_sgd"
+            if self._ut4grad_allreduce:
+                tr_cmd += " --ut4grad_allreduce"
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
 
         return tr_cmd, env
 
@@ -732,7 +777,7 @@ class TestDistBase(unittest.TestCase):
 
             tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
 
-            my_print(
+            print_to_err(
                 type(self).__name__,
                 "going to start process {} with nccl2".format(i))
             tr_proc = subprocess.Popen(

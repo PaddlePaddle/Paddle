@@ -24,6 +24,7 @@ from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import ConvertToInt8Pass
 from paddle.fluid.contrib.slim.quantization import TransformForMobilePass
+from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -66,19 +67,22 @@ def residual_block(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    fc = fluid.layers.fc(input=hidden, size=10)
+    pool = fluid.layers.pool2d(
+        input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+    fc = fluid.layers.fc(input=pool, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = fluid.layers.mean(loss)
     return loss
 
 
-def conv_net(img, label):
+def conv_net(img, label, quant_skip_pattern):
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
         pool_size=2,
         pool_stride=2,
+        pool_type='max',
         act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
@@ -87,8 +91,11 @@ def conv_net(img, label):
         num_filters=50,
         pool_size=2,
         pool_stride=2,
+        pool_type='avg',
         act="relu")
-    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
+    with fluid.name_scope(quant_skip_pattern):
+        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = fluid.layers.mean(loss)
     return avg_loss
@@ -107,7 +114,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             'mul_grad': ['X', 'Y']
         }
 
-    def check_program(self, transform_pass, program):
+    def check_program(self, program):
         quantized_ops = set()
         for block in program.blocks:
             for op in block.ops:
@@ -127,7 +134,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
                             arg_name.endswith('.quantized.dequantized'))
                         self.assertTrue(arg_name in quantized_ops)
 
-    def linear_fc_quant(self, activation_quant_type, for_ci=False):
+    def linear_fc_quant(self, activation_quant_type, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -135,7 +142,6 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
@@ -150,7 +156,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             graph.draw('.', 'quantize_fc_' + activation_quant_type,
                        marked_nodes)
         program = graph.to_program()
-        self.check_program(transform_pass, program)
+        self.check_program(program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         if not for_ci:
             val_marked_nodes = set()
@@ -169,7 +175,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
     def test_linear_fc_quant_moving_average_abs_max(self):
         self.linear_fc_quant('moving_average_abs_max', for_ci=True)
 
-    def residual_block_quant(self, activation_quant_type, for_ci=False):
+    def residual_block_quant(self, activation_quant_type, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -177,7 +183,6 @@ class TestQuantizationTransformPass(unittest.TestCase):
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
@@ -192,7 +197,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
             graph.draw('.', 'quantize_residual_' + activation_quant_type,
                        marked_nodes)
         program = graph.to_program()
-        self.check_program(transform_pass, program)
+        self.check_program(program)
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         if not for_ci:
             val_marked_nodes = set()
@@ -218,7 +223,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
                      seed,
                      activation_quant_type,
                      weight_quant_type='abs_max',
-                     for_ci=False):
+                     for_ci=True,
+                     quant_skip_pattern='skip_quant'):
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
@@ -228,7 +234,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
                         name='image', shape=[1, 28, 28], dtype='float32')
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64')
-                    loss = conv_net(img, label)
+                    loss = conv_net(img, label, quant_skip_pattern)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.001)
                         opt.minimize(loss)
@@ -255,7 +261,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
             scope=scope,
             place=place,
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type)
+            weight_quantize_type=weight_quant_type,
+            skip_pattern=quant_skip_pattern)
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
@@ -480,6 +487,66 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True)
+
+
+class TestAddQuantDequantPass(unittest.TestCase):
+    def setUp(self):
+        self._target_ops = {'elementwise_add', 'pool2d'}
+        self._target_grad_ops = {'elementwise_add_grad', 'pool2d_grad'}
+
+    def check_graph(self, graph):
+        ops = graph.all_op_nodes()
+
+        for op_node in ops:
+            if op_node.name() in self._target_ops:
+                in_nodes_all_not_persistable = True
+                for input_name in op_node.input_arg_names():
+                    in_node = graph._find_node_by_name(op_node.inputs,
+                                                       input_name)
+                    in_nodes_all_not_persistable = (
+                        in_nodes_all_not_persistable and
+                        not in_node.persistable())
+                if not in_nodes_all_not_persistable:
+                    continue
+
+                if op_node.op().has_attr("pooling_type") and \
+                    op_node.op().attr("pooling_type") == 'max':
+                    continue
+
+                input_names = op_node.input_arg_names()
+                for input_name in input_names:
+                    self.assertTrue(input_name.endswith('.quant_dequant'))
+
+    def residual_block_quant(self, for_ci=True):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            loss = residual_block(1)
+            opt = fluid.optimizer.Adam(learning_rate=0.001)
+            opt.minimize(loss)
+        place = fluid.CPUPlace()
+        graph = IrGraph(core.Graph(main.desc), for_test=False)
+        add_quant_dequant_pass = AddQuantDequantPass(
+            scope=fluid.global_scope(), place=place)
+        add_quant_dequant_pass.apply(graph)
+        if not for_ci:
+            marked_nodes = set()
+            for op in graph.all_op_nodes():
+                if op.name().find('quant') > -1:
+                    marked_nodes.add(op)
+            graph.draw('.', 'add_quant_dequant_graph', marked_nodes)
+        self.check_graph(graph)
+        program = graph.to_program()
+        val_graph = IrGraph(core.Graph(program.desc), for_test=False)
+        if not for_ci:
+            val_marked_nodes = set()
+            for op in val_graph.all_op_nodes():
+                if op.name().find('quant') > -1:
+                    val_marked_nodes.add(op)
+            val_graph.draw('.', 'val_add_quant_dequant_graph', val_marked_nodes)
+
+    def test_residual_block(self):
+        self.residual_block_quant(for_ci=True)
 
 
 if __name__ == '__main__':

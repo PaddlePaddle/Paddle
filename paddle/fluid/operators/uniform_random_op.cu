@@ -23,16 +23,29 @@ template <typename T>
 struct UniformGenerator {
   T min_, max_;
   unsigned int seed_;
-
-  __host__ __device__ UniformGenerator(T min, T max, int seed)
-      : min_(min), max_(max), seed_(seed) {}
+  T diag_val_;
+  unsigned int diag_num_;
+  unsigned int diag_step_;
+  __host__ __device__ UniformGenerator(T min, T max, int seed, int diag_num,
+                                       int diag_step, T diag_val)
+      : min_(min),
+        max_(max),
+        seed_(seed),
+        diag_num_(diag_num),
+        diag_step_(diag_step),
+        diag_val_(diag_val) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
     rng.discard(n);
-    return dist(rng);
+    T out = dist(rng);
+    unsigned int remainder = n % (diag_step_ + 1);
+    if (remainder == 0 && diag_num_ > n / (diag_step_ + 1)) {
+      out = diag_val_;
+    }
+    return out;
   }
 };
 
@@ -64,11 +77,17 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     }
     T min = static_cast<T>(context.Attr<float>("min"));
     T max = static_cast<T>(context.Attr<float>("max"));
+    unsigned int diag_num =
+        static_cast<unsigned int>(context.Attr<int>("diag_num"));
+    unsigned int diag_step =
+        static_cast<unsigned int>(context.Attr<int>("diag_step"));
+    T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      UniformGenerator<T>(min, max, seed));
+    thrust::transform(
+        index_sequence_begin, index_sequence_begin + size,
+        thrust::device_ptr<T>(data),
+        UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val));
   }
 };
 

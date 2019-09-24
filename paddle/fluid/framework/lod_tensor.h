@@ -32,12 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-
-namespace recordio {
-class Writer;
-class Scanner;
-}
-
 namespace framework {
 
 /*
@@ -215,14 +209,6 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
-
-extern void WriteToRecordIO(recordio::Writer* writer,
-                            const std::vector<LoDTensor>& tensor,
-                            const platform::DeviceContext& dev_ctx);
-
-extern bool ReadFromRecordIO(recordio::Scanner* scanner,
-                             const platform::DeviceContext& dev_ctx,
-                             std::vector<LoDTensor>* result_ptr);
 
 /*
  * Convert between length-based LoD and offset-based LoD.
