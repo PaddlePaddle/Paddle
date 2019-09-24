@@ -45,21 +45,12 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def _dygraph_not_support_(func):
-    def __impl__(*args, **kwargs):
-        assert not framework.in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
-        return func(*args, **kwargs)
-
-    return __impl__
-
-
 def _no_grad_(func):
     """
     This Decorator will avoid the func being decorated creating backward network in dygraph mode
 
-    Args:
-        func: the func don't need grad
+    Parameter:
+        - **func** (python func): the func don't need grad
 
     Examples:
 
@@ -92,7 +83,6 @@ def _no_grad_(func):
 no_grad = wrap_decorator(_no_grad_)
 # for fluidDoc
 no_grad.__doc__ = _no_grad_.__doc__
-_not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
