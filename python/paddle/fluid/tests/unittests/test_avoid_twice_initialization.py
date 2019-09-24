@@ -18,8 +18,8 @@ import unittest
 import paddle.fluid as fluid
 
 
-class Test_Avoid_Broadcast(unittest.TestCase):
-    def test_avoid_broadcast(self):
+class TestAvoidTwiceInitialization(unittest.TestCase):
+    def test_avoid_twice_initialization(self):
         cur_program = fluid.Program()
         cur_block = cur_program.current_block()
         var = cur_block.create_parameter(
