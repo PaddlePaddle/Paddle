@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 class TestGatherTreeOp(OpTest):
     def setUp(self):
         self.op_type = "gather_tree"
-        max_length, batch_size, beam_size = 3, 2, 2
+        max_length, batch_size, beam_size = 5, 2, 2
         ids = np.random.randint(
             0, high=10, size=(max_length, batch_size, beam_size))
         parents = np.random.randint(

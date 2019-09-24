@@ -211,49 +211,85 @@ def concat(input, axis=0, name=None):
     return out
 
 
-def tensor_array_to_tensor(input, axis=1, name=None):
+def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     """
-    This function concatenates the input LodTensorArray along the axis mentioned
-    and returns that as the output.
+    This function concatenates or stacks all tensors in the input LoDTensorArray
+    along the axis mentioned and returns that as the output.
 
-    A simple example as below:
+    For Example:
 
     .. code-block:: text
 
-        Given:
+        Case 1:
 
-        input.data = {[[0.6, 0.1, 0.3],
-                       [0.5, 0.3, 0.2]],
-                      [[1.3],
-                       [1.8]],
-                      [[2.3, 2.1],
-                       [2.5, 2.4]]}
+            Given:
 
-        axis = 1
+                input.data = {[[0.6, 0.1, 0.3],
+                               [0.5, 0.3, 0.2]],
+                              [[1.3],
+                               [1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
 
-        Then:
+                axis = 1, use_stack = False
 
-        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
-                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+            Then:
 
-        output_index.data = [3, 1, 2]
+                output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                               [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+                output_index.data = [3, 1, 2]
+
+        Case 2:
+
+            Given:
+
+                input.data = {[[0.6, 0.1],
+                               [0.5, 0.3]],
+                              [[0.3, 1.3],
+                               [0.2, 1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = True
+
+            Then:
+
+                output.data = [[[0.6, 0.1]
+                                [0.3, 1.3]
+                                [2.3, 2.1],
+                               [[0.5, 0.3]
+                                [0.2, 1.8]
+                                [2.5, 2.4]]]
+
+                output_index.data = [2, 2, 2]
 
     Args:
-        input(list): Input LodTensorArray
-        axis(int): Integer axis along which the tensors will be concatenated
+        input(Variable): A LodTensorArray variable.
+        axis(int): The axis along which the tensors in attr::`input` will be
+            concatenated or stacked.
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
+        use_stack(bool): Act as concat_op or stack_op. For stack mode, all
+            tensors in the tensor array must have the same shape.
 
     Returns:
-        Variable: Output variable of the concatenation
-        Variable: The input LodTensorArray items' dims along the axis
+        Variable: The concatenated or stacked tensor variable.
+        Variable: A 1-D tensor variable with int32 data type. The data in this \
+            tensor contains all input including tensors' sizes along the axis.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import numpy as np
+            x0 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
+            x1 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
+            i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+            array = fluid.layers.create_array(dtype='float32')
+            fluid.layers.array_write(x0, i, array)
+            fluid.layers.array_write(x1, i + 1, array)
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -263,7 +299,8 @@ def tensor_array_to_tensor(input, axis=1, name=None):
         inputs={'X': input},
         outputs={'Out': [out],
                  'OutIndex': [out_index]},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'use_stack': use_stack})
     return out, out_index
 
 
