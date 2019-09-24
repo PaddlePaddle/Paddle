@@ -184,7 +184,7 @@ void Communicator::SendThread() {
             auto before_send = GetCurrentUS();
             auto &ctx = send_varname_to_ctx_.at(var_name);
             // delta parameter is in delta scope
-            send_functor(ctx, *delta_scope_.get(), true);
+            send_functor(ctx, *delta_scope_.get(), true, 2);
 
             auto after_send = GetCurrentUS();
             VLOG(1) << "send " << var_name << " use time "
@@ -231,7 +231,7 @@ void Communicator::SendThread() {
             auto send_functor = distributed::ParameterSend<float>();
             auto &ctx = send_varname_to_ctx_.at(var_name);
             if (!FLAGS_communicator_fake_rpc) {
-              send_functor(ctx, *send_scope_, true);
+              send_functor(ctx, *send_scope_, true, 1);
             }
             auto after_send = GetCurrentUS();
             VLOG(3) << "send " << var_name << " use time "
@@ -350,7 +350,7 @@ void Communicator::Send(const std::string &var_name,
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
     if (!FLAGS_communicator_fake_rpc) {
-      send_functor(ctx, scope, true);
+      send_functor(ctx, scope, true, 1);
     }
   } else {
     auto tmp_grad_var = std::make_shared<Variable>();
@@ -716,16 +716,12 @@ void Communicator::SendUpdateSparseVars(
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
   auto dims = var_x_tensor.dims();
-  auto rows = dims[0];
   auto row_numel = dims[1];
-  VLOG(2) << "Sparse var dims[0]: " << rows << " dims[1]: " << row_numel;
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_z = delta_scope_->Var(VarToDeltaVar(var_name));
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
-
-  var_z_select_rows->set_height(rows);
 
   // copy value
   auto *var_z_value = var_z_select_rows->mutable_value();
@@ -735,6 +731,7 @@ void Communicator::SendUpdateSparseVars(
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
   var_z_select_rows->set_rows(new_rows);
+  var_z_select_rows->set_height(new_rows.size());
 
   std::vector<int> buts =
       bucket(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);

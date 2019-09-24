@@ -51,7 +51,7 @@ class SendOp : public framework::OperatorBase {
         auto send_functor = distributed::ParameterSend<float>();
         auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
                                                height_sections, trainer_id);
-        send_functor(rpc_ctx, scope, true);
+        send_functor(rpc_ctx, scope, true, 1);
       } else {
         if(send_varnames.front() == "FLAG_GEO_SGD_SPARSE_PARAMETER") {
           // for geo sgd, send ids which sparse parameter update needed
