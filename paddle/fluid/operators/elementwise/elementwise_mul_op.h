@@ -99,6 +99,7 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
 }
 
+#ifdef PADDLE_WITH_CUDA
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -108,6 +109,7 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy);
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {

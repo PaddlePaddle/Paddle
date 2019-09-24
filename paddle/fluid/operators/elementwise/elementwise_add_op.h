@@ -108,6 +108,8 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
   default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
 
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
     std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
@@ -116,6 +118,7 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
                      const framework::Tensor *out,
                      const framework::Tensor *dout, framework::Tensor *dx,
                      framework::Tensor *dy);
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {

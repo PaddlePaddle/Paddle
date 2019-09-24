@@ -79,6 +79,7 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
       ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }
 
+#ifdef PADDLE_WITH_CUDA
 // cuda definition
 template <typename DeviceContext, typename T>
 typename std::enable_if<
@@ -88,6 +89,7 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy);
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
