@@ -183,10 +183,8 @@ For example:
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
-The inputs $X$ and $Y$ can carry the different LoD information.
-But the output only shares the LoD information with the input $X$.
 )DOC",
-                           GetOpFuntionality(), GetName(), GetEquation());
+                           GetName(), GetOpFuntionality(), GetEquation());
   }
 };
 

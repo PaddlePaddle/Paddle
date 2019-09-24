@@ -11518,167 +11518,138 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-@templatedoc()
 def elementwise_max(x, y, axis=-1, act=None, name=None):
     """
-    ${comment}
+Examples:
 
-    Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+    .. code-block:: python
 
-    Returns:
-        out(${out_type}): ${out_comment}
+        import paddle.fluid as fluid
+        import numpy as np
 
-    Examples:
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
 
-        .. code-block:: python
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
 
-            import paddle.fluid as fluid
-            import numpy as np
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
 
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]),
-                    "y": np.array([1, 5, 2])
-                }
-
-            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 5, 4]
+        print(z_value) #[2, 5, 4]
 
 
-        .. code-block:: python
+    .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy as np
+        import paddle.fluid as fluid
+        import numpy as np
 
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
 
-            x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y, axis=1)
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
 
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
 
-            print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
+        print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
 
     """
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-@templatedoc()
 def elementwise_min(x, y, axis=-1, act=None, name=None):
     """
-    ${comment}
+Examples:
 
-    Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+    ..  code-block:: python
 
-    Returns:
-        out(${out_type}): ${out_comment}
+        import paddle.fluid as fluid
+        import numpy as np
 
-    Examples:
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
 
-        ..  code-block:: python
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
 
-            import paddle.fluid as fluid
-            import numpy as np
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
 
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]),
-                    "y": np.array([1, 5, 2])
-                }
+        print(z_value) #[1, 3, 2]
 
-            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y)
+    ..  code-block:: python
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
+        import paddle.fluid as fluid
+        import numpy as np
 
-            print(z_value) #[1, 3, 2]
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
 
-        ..  code-block:: python
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
 
-            import paddle.fluid as fluid
-            import numpy as np
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
 
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
 
-            x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y, axis=1)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
+        print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
-@templatedoc()
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
     """
-    ${comment}
+Examples:
 
-    Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+    ..  code-block:: python
 
-    Returns:
-        out(${out_type}): ${out_comment}
+        import paddle.fluid as fluid
+        import numpy as np
 
-    Examples:
-        ..  code-block:: python
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
 
-            import paddle.fluid as fluid
-            import numpy as np
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_pow(x, y)
 
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]),
-                    "y": np.array([1, 5, 2])
-                }
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
 
-            x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-            y = fluid.layers.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_pow(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 243, 16]
+        print(z_value) #[2, 243, 16]
     """
 
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
@@ -11706,9 +11677,10 @@ for func in [
         op_proto,
         additional_args_lines=[
             "act (basestring|None): Activation applied to the output.",
-            "name (basestring|None): Name of the output.",
-        skip_attrs_set={"x_data_format", "y_data_format"}
-        ])
+            "name (basestring|None): Name of the output."
+        ],
+        skip_attrs_set={"x_data_format", "y_data_format"}) + """\n""" + str(
+            func.__doc__)
 
 for func in [
         elementwise_mod,
