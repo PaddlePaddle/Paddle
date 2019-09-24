@@ -1113,7 +1113,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
-    Array of LoDTensor.
+    LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
         .. code-block:: python
@@ -1142,6 +1142,12 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
+              
+             Args:
+                   tensor (LoDTensor): The LoDTensor to be appended.
+
+             Returns:
+                   Void.
 
              Examples:
                  .. code-block:: python
