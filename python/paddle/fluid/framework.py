@@ -1238,7 +1238,7 @@ class Operator(object):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
-                                    "The type of %s in operator %s should be "
+                                    "The type of '%s' in operator %s should be "
                                     "one of [basestring(), str, Varibale] in python2, "
                                     "or one of [str, bytes, Variable] in python3."
                                     "but received : " % (in_proto.name, type),
