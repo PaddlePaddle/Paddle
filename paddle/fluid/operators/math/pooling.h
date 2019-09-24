@@ -84,12 +84,11 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
 /*
  * \brief Getting pooling results, and calculating gradient.
  *
- * In pool2d, all tensors are in NCHW or NHWC format. Where N is batch size, C
- * is the
- * number of channels, H and W is the height and width of feature.
- * In pool3d, all tensors are in NCDHW or NDHWC format. Where N is batch size, C
- * is the
- * number of channels, D, H and W is the depth, height and width of feature.
+ * In pool2d, all Tensors are in NCHW or NHWC format. Where N is batch size, C
+ * is the number of channels, H and W is the height and width of feature.
+ * In pool3d, all Tensors are in NCDHW or NDHWC format. Where N is batch size, C
+ * is the number of channels, D, H and W is the depth, height and width of
+ * feature.
  *
  * In max pooling, it is possible that the pooling region has multiple maximum
  * elements. In this case, we should compute the gradient of the first maximum

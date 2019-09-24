@@ -22,7 +22,7 @@ namespace operators {
 namespace math {
 
 /*
-* tensors are in NCHW or NHWC format.
+* Tensors are in NCHW or NHWC format.
 * Ksize, strides are two elements. These two elements represent height
 * and width, respectively.
 * Paddings are four elements. These four elements represent height_up,
@@ -437,7 +437,7 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 };
 
 /*
-* tensors are in NCHW or NHWC format.
+* Tensors are in NCHW or NHWC format.
 * Ksize, strides are two elements. These two elements represent height
 * and width, respectively.
 * Paddings are four elements. These four elements represent height_up,
@@ -633,7 +633,7 @@ template class Pool2dGradFunctor<platform::CPUDeviceContext,
                                  double>;
 
 /*
-* tensors are in NCDHW or NDHWC format.
+* Tensors are in NCDHW or NDHWC format.
 * Ksize, strides, paddings are three elements. These three elements represent
 * depth, height and width, respectively.
 * Paddings are six elements. These six elements represent depth_forth,
@@ -896,7 +896,7 @@ class Pool3dFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 };
 
 /*
-* tensors are in NCDHW or NDHWC format.
+* Tensors are in NCDHW or NDHWC format.
 * Ksize, strides, paddings are three elements. These three elements represent
 * depth, height and width, respectively.
 * Paddings are six elements. These six elements represent depth_forth,
@@ -1172,7 +1172,7 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
 };
 
 /*
-* tensors are in NCDHW or NDHWC format.
+* Tensors are in NCDHW or NDHWC format.
 * Ksize, strides, paddings are three elements. These three elements represent
 * depth, height and width, respectively.
 * Paddings are six elements. These six elements represent depth_forth,
