@@ -321,7 +321,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         ]
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.allclose(np.array(tensor), np_array, atol=atol)
 
     def ref_forward_backward(self, x, y_grad, scale, bias, mean, variance,
                              epsilon, momentum, shape, data_layout):
@@ -465,7 +465,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
 class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_global_stats = False
-        self.data_formats = ["NCHW"]
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
