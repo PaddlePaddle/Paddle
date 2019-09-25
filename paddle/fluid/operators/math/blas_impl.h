@@ -496,11 +496,9 @@ template <typename T>
 void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
                                             T *z) const {
 #ifdef PADDLE_WITH_MKLML
-  // VLOG(5) << "====into PADDLE_WITH_MKLML =>CBlas<T>::VDIV ===";
   CBlas<T>::VDIV(n, x, y, z);
 #else
   // try to find if openblas support vdiv
-  // VLOG(5) << "====into divide each===";
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] / y[i];
   }

@@ -12,14 +12,14 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
-#define PADDLE_CUDA_FP16
+#ifdef PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
 #endif
 

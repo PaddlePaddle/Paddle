@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_primitives.h"
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 #endif
-#define TILE_SIZE 512
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
