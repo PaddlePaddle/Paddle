@@ -28,7 +28,8 @@ bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
   }
   std::vector<paddle::PaddleTensor> out;
   if (predictor->predictor->Run(in, &out, batch_size)) {
-    out_size = &out.size();
+    int osize = out.size();
+    out_size = &osize;
     for (int i = 0; i < out.size(); ++i) {
       output_data[i].tensor = out[i];
     }
@@ -83,15 +84,17 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
-  PD_ZeroCopyTensor ret;
-  ret.tensor = predictor->predictor->GetInputTensor(std::string(name)).get();
+  PD_ZeroCopyTensor* ret;
+  ret->tensor =
+      *(predictor->predictor->GetInputTensor(std::string(name)).get());
   return ret;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
-  PD_ZeroCopyTensor ret;
-  ret.tensor = predictor->predictor->GetOutputTensor(std::string(name)).get();
+  PD_ZeroCopyTensor* ret;
+  ret->tensor =
+      *(predictor->predictor->GetOutputTensor(std::string(name)).get());
   return ret;
 }
 
