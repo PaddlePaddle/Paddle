@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import unittest
-
+import os
+import shutil
 import numpy as np
 import paddle as paddle
 import paddle.fluid as fluid
@@ -32,7 +33,9 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         exe = Executor(place)
         exe.run(startup_program_1)
 
-        fluid.io.save_params(exe, "./model_temp", main_program=program_1)
+        self.model_path = "./model_temp"
+
+        fluid.io.save_params(exe, self.model_path, main_program=program_1)
 
     def test_shape_check_load(self):
         program_1 = fluid.Program()
@@ -46,11 +49,15 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         exe.run(startup_program_1)
 
         try:
-            fluid.io.load_params(exe, "./model_temp", main_program=program_1)
+            fluid.io.load_params(exe, self.model_path, main_program=program_1)
         except RuntimeError, e:
             self.assertTrue(e.message.startswith("Shape not matching"))
         except:
             self.assertTrue(False)
+
+    def tearDown(self):
+        if os.path.exists(self.model_path):
+            shutil.rmtree(self.model_path)
 
 
 if __name__ == "__main__":
