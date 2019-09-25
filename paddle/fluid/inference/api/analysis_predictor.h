@@ -91,11 +91,6 @@ class AnalysisPredictor : public PaddlePredictor {
   void SaveOptimModel(const std::string &dir);
 
  protected:
-  // For memory optimization.
-  bool need_collect_var_shapes_for_memory_optim();
-  void CollectVarShapes();
-  void SerializeBatchVarShapes(const std::string &path);
-
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   bool CreateExecutor();

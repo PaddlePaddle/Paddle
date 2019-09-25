@@ -61,6 +61,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
  private:
   void InitVariables();
 
+  bool DropScopeOrNot() const;
+
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
   std::unique_ptr<SSAGraphExecutor> underlying_executor_;
@@ -71,8 +73,11 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<std::vector<std::pair<Variable*, proto::VarType::Type>>>
       tmp_var_infos_;
 
+  std::vector<Variable*> tensor_array_vars_;
+
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+
   ScopeBufferedMonitor scope_monitor_;
 };
 }  // namespace details
