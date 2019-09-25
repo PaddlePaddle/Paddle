@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -171,6 +172,28 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("from_dlpack", [](py::capsule *dltensor) {
+    DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
+        PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+    PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
+    DLTensor dl = dmt->dl_tensor;
+    Tensor tensor;
+
+    auto cpu_place = new paddle::platform::CPUPlace();
+    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
+    if (dl.ctx.device_type == kDLCPU) {
+      paddle::framework::TensorFromDLPack(dl, cpu_ctx, &tensor);
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (dl.ctx.device_type == kDLGPU) {
+      auto gpu_place = new paddle::platform::CUDAPlace();
+      paddle::platform::CUDADeviceContext gpu_ctx(*gpu_place);
+      paddle::framework::TensorFromDLPack(dl, gpu_ctx, &tensor);
+    }
+#endif
+    return tensor;
+  });
+
   m.def(
       "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
@@ -263,6 +286,27 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("to_dlpack",
+           [](Tensor &self) {
+             DLPackTensor dlpack_tensor(self, 1);
+             DLManagedTensor *dmt = dlpack_tensor.toDLManagedTensor();
+             auto capsule = py::capsule(
+                 static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
+                   if (ptr) {
+                     auto dltensor = new DLManagedTensor;
+                     try {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "used_dltensor"));
+                       return;
+                     } catch (...) {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "dltensor"));
+                     }
+                     dltensor->deleter(dltensor);
+                   }
+                 });
+             return capsule;
+           })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
