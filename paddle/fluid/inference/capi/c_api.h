@@ -31,7 +31,7 @@ extern "C" {
 // PaddleBuf
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 
-enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8 };
+enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
 enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
 
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_NewPaddleBuf();
