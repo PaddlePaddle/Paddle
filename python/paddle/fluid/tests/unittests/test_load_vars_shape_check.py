@@ -21,7 +21,7 @@ from paddle.fluid.executor import Executor
 
 
 class TestLoadVarsShapeCheck(unittest.TestCase):
-    def test_shape_check_save(self):
+    def setUp(self):
         program_1 = fluid.Program()
         startup_program_1 = fluid.Program()
 
