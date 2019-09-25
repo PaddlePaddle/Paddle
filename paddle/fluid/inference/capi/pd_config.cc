@@ -75,7 +75,7 @@ const char* PD_ParamsFile(PD_AnalysisConfig* config) {
 }
 
 void PD_EnableUseGpu(PD_AnalysisConfig* config,
-                     uint64_t memory_pool_init_size_mb, int device_id = 0) {
+                     uint64_t memory_pool_init_size_mb, int device_id) {
   config->config.EnableUseGpu(memory_pool_init_size_mb, device_id);
 }
 
@@ -123,12 +123,10 @@ bool PD_SpecifyInputName(PD_AnalysisConfig* config) {
   return config->config.specify_input_name();
 }
 
-void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
-                             int workspace_size = 1 << 20,
-                             int max_batch_size = 1, int min_subgraph_size = 3,
-                             Precision precision = Precision::kFloat32,
-                             bool use_static = false,
-                             bool use_calib_mode = true) {
+void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
+                             int max_batch_size, int min_subgraph_size,
+                             Precision precision, bool use_static,
+                             bool use_calib_mode) {
   config->config.EnableTensorRtEngine(workspace_size, max_batch_size,
                                       min_subgraph_size, precision, use_static,
                                       use_calib_mode);
