@@ -119,12 +119,12 @@ const char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
 }
 
 void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_Place place,
-                               int device = -1) {
+                               int device) {
   tensor->tensor.SetPlace(ConvertToPlace(place), device);
 }
 
 PD_DataType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
-  return ConvertToPaddleDType(tensor->tensor.type());
+  return ConvertToPDDataType(tensor->tensor.type());
 }
 
 }  // extern "C"

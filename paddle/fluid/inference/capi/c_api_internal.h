@@ -79,7 +79,12 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
       return PD_PaddleDType::INT64;
     case PD_UINT8:
       return PD_PaddleDType::UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      return -1;
   }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return -1;
 }
 
 paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
@@ -90,5 +95,28 @@ paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
       return PD_PaddlePlace::kCPU;
     case PD_GPU:
       return PD_PaddlePlace::kGPU;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_PaddlePlace::kUNK;
   }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return PD_PaddlePlace::kUNK;
+}
+
+paddle::PaddleDType ConvertToPDDataType(PD_PaddleDType dtype) {
+  switch (dtype) {
+    case FLOAT32:
+      return PD_DataType::PD_FLOAT32;
+    case INT32:
+      return PD_DataType::PD_INT32;
+    case INT64:
+      return PD_DataType::PD_INT64;
+    case UINT8:
+      return PD_DataType::PD_UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return -1;
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
+  return -1;
 }

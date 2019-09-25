@@ -79,7 +79,7 @@ PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorMutableData(
     PD_ZeroCopyTensor* tensor, PD_Place place);
 
 PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor,
-                                                      PD_Place* place,
+                                                      PD_Place place,
                                                       int* size);
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyToCPU(
