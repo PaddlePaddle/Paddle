@@ -285,6 +285,18 @@ class AsyncCommunicator : public Communicator {
   void SendThread();
   void RecvThread();
 
+  void Send(const std::vector<std::string> &sparse_var_names,
+                    const std::vector<std::string> &sparse_var_tables,
+                    const framework::Scope &scope) override {}
+  
+  void InitImpl(const paddle::framework::ProgramDesc& program, 
+                        Scope* param_scope,
+                        std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
+                        int &trainers, 
+                        int &geo_need_push_nums) override {}
+  
+  
+
  private:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -321,6 +333,14 @@ class GeoSgdCommunicator : public Communicator {
             const framework::Scope &scope) override;
 
   void Recv() override;
+
+  void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                const RpcCtxMap& recv_varname_to_ctx,
+                Scope* recv_scope) override {}
+
+  void InitImpl(const paddle::framework::ProgramDesc& program,
+                Scope* recv_scope) override {}
+
  private:
   void SendThread();
   void RecvAll();

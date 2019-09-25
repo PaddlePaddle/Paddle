@@ -846,7 +846,6 @@ void GeoSgdCommunicator::RecvAll() {
       VLOG(1) << "run parameter recv var " << var_name << " use time "
               << after_parameter_recv - before_parameter_recv;
       RecvUpdateVars(var_name);
-      
     };
     task_futures.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
   }
