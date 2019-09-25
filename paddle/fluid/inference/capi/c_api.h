@@ -55,7 +55,7 @@ PADDLE_CAPI_EXPORT extern void PD_PaddleBufAssign(PD_PaddleBuf* buf_des,
 // PaddleTensor
 typedef struct PD_Tensor PD_Tensor;
 
-enum PD_PaddleDType;
+// enum PD_PaddleDType;
 
 PADDLE_CAPI_EXPORT extern PD_Tensor* PD_NewPaddleTensor();
 
@@ -65,7 +65,7 @@ PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorName(PD_Tensor* tensor,
                                                       char* name);
 
 PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorDType(PD_Tensor* tensor,
-                                                       PD_PaddleDType dtype);
+                                                       PD_DataType dtype);
 
 PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorData(PD_Tensor* tensor,
                                                       PD_PaddleBuf* buf);
@@ -103,7 +103,7 @@ PADDLE_CAPI_EXPORT extern char* PD_ZeroCopyTensorName(
 PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyTensorPlace(
     PD_ZeroCopyTensor* tensor, PD_PaddlePlace place, int device = -1);
 
-PADDLE_CAPI_EXPORT extern PD_PaddleDType PD_ZeroCopyTensorType(
+PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
     PD_ZeroCopyTensor* tensor);
 
 // AnalysisPredictor

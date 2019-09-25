@@ -33,8 +33,8 @@ void PD_SetPaddleTensorName(PD_Tensor* tensor, char* name) {
   tensor->tensor.name = std::string(name);
 }
 
-void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_PaddleDType dtype) {
-  tensor->tensor.dtype = dtype;
+void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_DataType dtype) {
+  tensor->tensor.dtype = ConvertToPaddleDType(dtype);
 }
 
 void PD_SetPaddleTensorData(PD_Tensor* tensor, PD_PaddleBuf* buf) {
@@ -98,8 +98,8 @@ void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_PaddlePlace place,
   tensor->tensor.SetPlace(place, device);
 }
 
-PD_PaddleDType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
-  return tensor->tensor.type();
+PD_DataType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
+  return ConvertToPaddleDType(tensor->tensor.type());
 }
 
 }  // extern "C"
