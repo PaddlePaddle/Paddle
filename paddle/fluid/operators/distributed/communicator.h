@@ -203,18 +203,6 @@ class Communicator {
     return communicator_.get();
   }
 
-  // Init is called by InitInstance.
-  template <typename T>
-  static void InitWithRpcCtx(const RpcCtxMap& send_varname_to_ctx,
-                             const RpcCtxMap& recv_varname_to_ctx,
-                             Scope* recv_scope) {
-    if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
-      communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
-                              recv_scope);
-    }
-  }
-
   template <typename T>
   static Communicator* InitInstance(
       const paddle::framework::ProgramDesc& program, Scope* recv_scope) {
@@ -232,6 +220,18 @@ class Communicator {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>, 
                    program, training_scope, vars_info, trainers, geo_need_push_nums);
     return communicator_.get();
+  }
+
+  // Init is called by InitInstance.
+  template <typename T>
+  static void InitWithRpcCtx(const RpcCtxMap& send_varname_to_ctx,
+                             const RpcCtxMap& recv_varname_to_ctx,
+                             Scope* recv_scope) {
+    if (communicator_.get() == nullptr) {
+      communicator_.reset(new T());
+      communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
+                              recv_scope);
+    }
   }
 
   template <typename T>
@@ -295,8 +295,6 @@ class AsyncCommunicator : public Communicator {
                         int &trainers, 
                         int &geo_need_push_nums) override {}
   
-  
-
  private:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
