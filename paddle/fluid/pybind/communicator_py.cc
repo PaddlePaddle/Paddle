@@ -27,7 +27,7 @@ namespace py = pybind11;
 using paddle::framework::ProgramDesc;
 using paddle::operators::distributed::Communicator;
 using paddle::operators::distributed::AsyncCommunicator;
-using paddle::operators::distributed::GeoSgDCommunicator;
+using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::framework::Scope;
 
 namespace paddle {
