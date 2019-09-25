@@ -89,7 +89,7 @@ int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
 }
 
 char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
-  return tensor->tensor.name().data();
+  return tensor->tensor.name().c_str();
 }
 
 void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_Place place,

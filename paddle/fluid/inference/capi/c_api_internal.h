@@ -76,9 +76,9 @@ struct PD_MaxInputShape {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
   switch (dtype) {
     case PD_FLOAT32:
-      return PD_PaddleDType::Float32;
+      return PD_PaddleDType::FLOAT32;
     case PD_INT32:
-      return PD_PaddleDType::Int32;
+      return PD_PaddleDType::INT32;
     case PD_INT64:
       return PD_PaddleDType::INT64;
     case PD_UINT8:

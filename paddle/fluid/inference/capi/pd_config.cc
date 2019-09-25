@@ -63,15 +63,15 @@ void PD_SetOptimCacheDir(PD_AnalysisConfig* config, const char* opt_cache_dir) {
 }
 
 char* PD_ModelDir(PD_AnalysisConfig* config) {
-  return config->config.model_dir().data();
+  return config->config.model_dir().c_str();
 }
 
 char* PD_ProgFile(PD_AnalysisConfig* config) {
-  return config->config.prog_file().data();
+  return config->config.prog_file().c_str();
 }
 
 char* PD_ParamsFile(PD_AnalysisConfig* config) {
-  return config->config.params_file().data();
+  return config->config.params_file().c_str();
 }
 
 void PD_EnableUseGpu(PD_AnalysisConfig* config,
