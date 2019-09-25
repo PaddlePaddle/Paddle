@@ -720,6 +720,7 @@ void Communicator::SendUpdateSparseVars(
 
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
+  var_z_select_rows->set_rows(new_rows);
   var_z_select_rows->set_height(new_rows.size());
 
   std::vector<int> buts =
@@ -775,24 +776,16 @@ void Communicator::RecvUpdateVars(const std::string &var_name) {
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
   
-  auto var_list = pserver_scope_->LocalVarNames();
-  for (auto var:var_list){
-    VLOG(1)<<"Pserver scope have var: "<<var;
-  }
-
   if (var_list_[var_name] == true) {
     // sparse param
     auto *var_z = pserver_scope_.get()->FindVar(var_name);
-    if(var_z == nullptr) {
-      VLOG(1)<<"NOT FIND SPARSE VAR IN PSERVER SCOPE";
-    }
+
     auto var_z_slr = var_z->GetMutable<framework::SelectedRows>();
     auto &new_rows = var_z_slr->rows();
-    VLOG(1)<< "new rows size: "<< new_rows.size();
-
+    
     auto *new_value = var_z_slr->mutable_value();
     auto row_numel = new_value->numel() / new_rows.size();
-    VLOG(1) << "new row numel "<<row_numel;
+    
     auto *z_value = new_value->mutable_data<float>(var_x_tensor.place());
 
     VLOG(1) << "Geo-Sgd Recv Sparse var " << var_name << " row size "
