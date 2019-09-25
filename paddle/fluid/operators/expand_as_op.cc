@@ -25,14 +25,14 @@ class ExpandAsOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("expand_tensor"),
-                   "Input(expand_tensor) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("target_tensor"),
+                   "Input(target_tensor) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
     auto x_dims = ctx->GetInputDim("X");
-    auto expand_tensor_dims = ctx->GetInputDim("expand_tensor");
+    auto target_tensor_dims = ctx->GetInputDim("target_tensor");
     PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()),
-                      expand_tensor_dims.size(),
-                      "The rank of input(expand_tensor) must be equal "
+                      target_tensor_dims.size(),
+                      "The rank of input(target_tensor) must be equal "
                       "to the rank of Input(X).");
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
                       "The rank of Input(X) must not be greater than 6.");
@@ -53,7 +53,7 @@ class ExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
               "After expanding, size of each dimension of Output(Out) is equal "
               "to size of the corresponding dimension of Input(X) multiplying "
               "the corresponding value given by Attr(expand_times).");
-    AddInput("expand_tensor", "Expand tensor's shape for each dimension.");
+    AddInput("target_tensor", "Expand tensor's shape for each dimension.");
     AddComment(R"DOC(
 Expand as operator tiles the input by given times number. You should set times
 number for each dimension by providing tensor 'expend_tensor'. The rank of X
@@ -64,7 +64,7 @@ Input(X) is a 3-D tensor with shape [2, 3, 1]:
            [[1], [2], [3]],
            [[4], [5], [6]]
         ]
-expand_tensors'shape:  [2, 6, 2]
+target_tensors'shape:  [2, 6, 2]
 Output(Out) is a 3-D tensor with shape [2, 6, 2]:
         [
             [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
@@ -85,13 +85,6 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
                    "Input(Out@GRAD) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    if (!ctx->IsRuntime() && x_dims[0] < 0) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[0], out_dims[0],
-          "The first dimension size of Input(Out@GRAD) should be "
-          "equal to the crroresponding dimension size of Input(X)");
-    }
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
@@ -108,7 +101,7 @@ class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("expand_as_grad");
     op->SetInput("X", Input("X"));
-    op->SetInput("expand_tensor", Input("expand_tensor"));
+    op->SetInput("target_tensor", Input("target_tensor"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetAttrMap(Attrs());

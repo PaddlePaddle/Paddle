@@ -73,13 +73,14 @@ class ExpandAsKernel : public framework::OpKernel<T> {
   void ExpandAs(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<Tensor>("X");
     auto in_dims = in0->dims();
-    auto* expand_tensor = context.Input<Tensor>("expand_tensor");
+    auto* target_tensor = context.Input<Tensor>("target_tensor");
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     int bcast_dims_remainder = 0;
     auto x_dims = in0->dims();
-    auto y_dims = expand_tensor->dims();
+    auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
+      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) should not have 0 dim");
       bcast_dims[i] = y_dims[i] / x_dims[i];
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
@@ -106,9 +107,9 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto* expand_tensor = context.Input<Tensor>("expand_tensor");
+    auto* target_tensor = context.Input<Tensor>("target_tensor");
     auto x_dims = in0->dims();
-    auto y_dims = expand_tensor->dims();
+    auto y_dims = target_tensor->dims();
     std::vector<int> bcast_dims;
     for (int i = 0; i < y_dims.size(); ++i) {
       bcast_dims.push_back(y_dims[i] / x_dims[i]);
