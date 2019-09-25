@@ -203,7 +203,8 @@ message OpCompatibleMap {
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
 message ProgramDesc {
+  reserved 2;
   repeated BlockDesc blocks = 1;
-  optional Version version = 2;
+  optional Version version = 4;
   optional OpCompatibleMap op_compatible_map = 3;
 }

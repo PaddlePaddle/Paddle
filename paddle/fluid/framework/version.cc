@@ -24,11 +24,8 @@ bool IsProgramVersionSupported(int64_t version) {
 }
 
 bool IsTensorVersionSupported(uint32_t version) {
-  static int num_supported =
-      sizeof(kSupportedTensorVersion) / sizeof(kSupportedTensorVersion[0]);
-  return std::find(kSupportedTensorVersion,
-                   kSupportedTensorVersion + num_supported,
-                   version) != kSupportedTensorVersion + num_supported;
+  /* Not yet implemented. */
+  return true;
 }
 
 std::string VersionString(const int64_t version) {
