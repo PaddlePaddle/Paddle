@@ -912,10 +912,10 @@ bool AnalysisPredictor::CheckOperatorCompatible() {
   }
   bool res = true;
   op_compatible_map_.Load(*inference_program_->OpCompatibleMap());
-  const auto &version = framework::VersionString(inference_program_->Version());
-  LOG(INFO) << "MODEL VERSION: " << version;
-  LOG(INFO) << "PREDICTOR VERSION: "
-            << framework::VersionString(framework::kCurProgramVersion);
+  const auto &version = framework::VersionString(framework::kCurProgramVersion);
+  LOG(INFO) << "MODEL VERSION: "
+            << framework::VersionString(inference_program_->Version());
+  LOG(INFO) << "PREDICTOR VERSION: " << version;
   std::set<std::string> op_types;
   for (size_t i = 0; i < inference_program_->Size(); ++i) {
     const auto &block = inference_program_->Block(i);
