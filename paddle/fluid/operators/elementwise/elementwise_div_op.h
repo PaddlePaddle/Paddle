@@ -198,7 +198,5 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseDivDoubleGradOpInplace, {"DDX", "DDOut"});
-
 }  // namespace operators
 }  // namespace paddle

@@ -69,6 +69,12 @@ class ElementwiseDivDoubleGradDescMaker
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(ElementwiseDivOpInplace, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDivGradOpInplace,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDivDoubleGradOpInplace, {"DDX", "DDOut"});
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -76,10 +82,12 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseDivGradOpDescMaker);
+                  ops::ElementwiseDivGradOpDescMaker,
+                  ops::ElementwiseDivOpInplace);
 
 REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseDivDoubleGradDescMaker);
+                  ops::ElementwiseDivDoubleGradDescMaker,
+                  ops::ElementwiseDivGradOpInplace);
 REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
                   ops::ElementwiseDivDoubleGradOpInplace);
 
