@@ -9145,7 +9145,7 @@ def scatter_nd_add(ref, index, updates, name=None):
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
-                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:]
+                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:].
         name (str|None): The output variable name. If set None, the layer will be named automatically.
 
     Returns:

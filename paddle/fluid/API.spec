@@ -203,7 +203,7 @@ paddle.fluid.layers.resize_nearest (ArgSpec(args=['input', 'out_shape', 'scale',
 paddle.fluid.layers.gather (ArgSpec(args=['input', 'index', 'overwrite'], varargs=None, keywords=None, defaults=(True,)), ('document', 'f985c9b66e3aec96fa753a8eb44c991c'))
 paddle.fluid.layers.gather_nd (ArgSpec(args=['input', 'index', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '7092e3da56bc91dd7b0cb967cfff101a'))
 paddle.fluid.layers.scatter (ArgSpec(args=['input', 'index', 'updates', 'name', 'overwrite'], varargs=None, keywords=None, defaults=(None, True)), ('document', '69b22affd4a6326502af166f04c095ab'))
-paddle.fluid.layers.scatter_nd_add (ArgSpec(args=['ref', 'index', 'updates', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ad2971a091a70a8c6a3170570afbef3f'))
+paddle.fluid.layers.scatter_nd_add (ArgSpec(args=['ref', 'index', 'updates', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'b797ea7aa9e7d5c0e54b208d3bde0db6'))
 paddle.fluid.layers.scatter_nd (ArgSpec(args=['index', 'updates', 'shape', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '15feefb05913d8bd14fbc586cd4c603c'))
 paddle.fluid.layers.sequence_scatter (ArgSpec(args=['input', 'index', 'updates', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'abe3f714120117a5a3d3e639853932bf'))
 paddle.fluid.layers.random_crop (ArgSpec(args=['x', 'shape', 'seed'], varargs=None, keywords=None, defaults=(None,)), ('document', '042af0b8abea96b40c22f6e70d99e042'))
