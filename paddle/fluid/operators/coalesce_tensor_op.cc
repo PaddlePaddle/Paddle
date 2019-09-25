@@ -164,7 +164,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
-    AddAttr<int>("dtype", "input data type");
+    AddAttr<int>("dtype", "The output data type.");
     AddAttr<bool>("copy_data", "Whether to copy the Input value to Output.")
         .SetDefault(false);
     AddAttr<bool>("set_constant",

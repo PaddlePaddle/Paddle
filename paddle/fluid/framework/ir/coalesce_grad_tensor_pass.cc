@@ -492,7 +492,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
-    op_desc->SetAttr("dtype", dtype);
+    op_desc->SetAttr("dtype", static_cast<int>(dtype));
   }
 };
 }  // namespace ir
