@@ -45,7 +45,6 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         exe = Executor(place)
         exe.run(startup_program_1)
 
-        #fluid.io.save_params(exe, "./model_temp", main_program=program_1)
         try:
             fluid.io.load_params(exe, "./model_temp", main_program=program_1)
         except RuntimeError, e:
