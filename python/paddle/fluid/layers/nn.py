@@ -11396,57 +11396,148 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides = [1, 1]
+                strides=[1, 1]
             Then:
-                result = [ [5, 6, 7] ]
+                result = [ [5, 6, 7], ]
         
         Case2:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [0, -1]
-                ends = [-1, 0]
-                strides = [1, -1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
             Then:
-                result = [ [4, 3, 2] ]
-    Atrgs:
-       input (Varibale): the input variable.
-       axes(List):axis we need to slice
-       starts (List): the start index in axis
-       ends (List): the end index in axis
-       strides (List): the stride length when we do slice operation
-    Returns
-       out(Variable): the result by strided_slice Op
-    
+                result = [ [2], ]
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
-            starts = [1, 0, 2]
-            ends = [3, 3, 4]
-            axes = [0, 1, 2]
-            strides= [1, 1, 1]
 
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
-    """
-    helper = LayerHelper('strided_slice', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides=[1, 1, 1]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
 
-    helper.append_op(
-        type='strided_slice',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+    """
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple.")
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple.")
+    if not isinstance(strides, (list, tuple, Variable)):
+        raise ValueError(
+            "Input strides must be an Variable, python list or tuple.")
+
+    helper = LayerHelper('strided_slice', **locals())
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if in_dygraph_mode():
+        inputs = {'Input': input}
+        attrs = {
             'axes': axes,
             'starts': starts,
             'ends': ends,
-            'strides': strides
-        })
+            'strides': strides,
+            'infer_flags': infer_flags
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if not contain_var(starts):
+                attrs['starts'] = starts
+            else:
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if not contain_var(ends):
+                attrs['ends'] = ends
+            else:
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+        # strides
+        if isinstance(strides, Variable):
+            strides.stop_gradient = True
+            inputs['StridesTensor'] = strides
+        elif isinstance(strides, (list, tuple)):
+            attrs['strides'] = []
+            if not contain_var(strides):
+                attrs['strides'] = strides
+            else:
+                inputs['StridesTensorList'] = get_new_list_tensor(strides)
+                for i, dim in enumerate(strides):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
+        attrs['infer_flags'] = infer_flags
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
 
     return out
 
