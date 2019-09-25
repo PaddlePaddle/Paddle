@@ -1730,7 +1730,11 @@ class AdadeltaOptimizer(Optimizer):
             cost = fluid.layers.reduce_mean(fc)
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
-            _, params_grads = optimizer.minimize(cost)
+
+            # optimizer_ops is a list of optimizer operators to update parameters
+            # params_grads is a list of (param, param_grad), where param is each
+            # parameter and param_grad is the gradient variable of param.
+            optimizer_ops, params_grads = optimizer.minimize(cost)
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
