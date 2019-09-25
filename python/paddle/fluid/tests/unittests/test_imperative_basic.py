@@ -216,17 +216,17 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.numpy()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
             try:
                 new_variable.backward()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
             try:
                 new_variable.clear_gradient()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
     def test_empty_grad(self):
         with fluid.dygraph.guard():
@@ -235,12 +235,12 @@ class TestImperative(unittest.TestCase):
             try:
                 new_var.gradient()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
             try:
                 new_var.clear_gradient()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
         with fluid.dygraph.guard():
             cur_program = fluid.Program()
@@ -250,7 +250,7 @@ class TestImperative(unittest.TestCase):
             try:
                 new_variable.gradient()
             except Exception as e:
-                assert type(e) == AssertionError
+                assert type(e) == ValueError
 
     def test_set_persistable(self):
         with fluid.dygraph.guard():

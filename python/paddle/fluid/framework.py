@@ -623,6 +623,9 @@ class Variable(object):
             raise ValueError(
                 "%s is Empty, Please use fluid.dygraph.guard() as context " %
                 self.name)
+        if not self._ivar.value().get_tensor()._is_initialized():
+            raise ValueError("%s is Empty, Please check if it has no data in" %
+                             self.name)
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
@@ -711,10 +714,14 @@ class Variable(object):
             raise ValueError(
                 "%s is Empty, Please use fluid.dygraph.guard() as context " %
                 self.name)
-        if self._ivar._grad_ivar is None:
+        if self._ivar._grad_ivar() is None:
             raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
-                       "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
-                       "stop_gradient=False, to make sure it has gradient " % self.name)
+                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
+                             "stop_gradient=False, to make sure it has gradient " % self.name)
+        if not self._ivar._grad_ivar().value().get_tensor()._is_initialized():
+            raise ValueError(
+                "%s's Grad is Empty, Please check if it has no data in" %
+                self.name)
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
@@ -756,10 +763,6 @@ class Variable(object):
             raise ValueError(
                 "%s is Empty, Please use fluid.dygraph.guard() as context " %
                 self.name)
-        if self._ivar._grad_ivar is None:
-            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
-                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
-                             "stop_gradient=False, to make sure it has gradient " % self.name)
         self._ivar._clear_gradient()
 
     def __str__(self):
@@ -3067,9 +3070,7 @@ class IrGraph(object):
 
 class Program(object):
     """
-    Python Program. Beneath it is a ProgramDesc, which is used for
-    create c++ Program. A program is a self-contained programing
-    language like container. It has at least one :ref:`api_guide_Block`, when the
+    Create Python Program.  It has at least one :ref:`api_guide_Variable_en`, when the
     control flow op like conditional_block, while :ref:`api_fluid_layers_While` is included,
     it will contain nested block.
 
@@ -3334,10 +3335,10 @@ class Program(object):
         **Notes**:
             **1.** :code:`Program.clone()` **method DOES NOT clone** :code:`py_reader`.
             **2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize`.**
-            **3. We recommend you to use** :code:`clone(for_test=True)` **before backward and optimization. E.g.**
-            **4. This API has no effect in Dygraph Mode**
+            **3. This API has no effect in Dygraph Mode**
 
-        Create a new, duplicated program.
+        Create a new Program with forward content of original one when ``for_test=True``.
+        Create a new Program as the same as original one when ``for_test=False``
 
 
         Some operators, e.g., :ref:`cn_api_fluid_layers_batch_norm` , behave differently between
@@ -3355,6 +3356,7 @@ class Program(object):
         .. code-block:: python
 
             test_program = fluid.default_main_program().clone(for_test=True)
+            # Here we use clone before Momentum
             optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
             optimizer.minimize()
 
@@ -3362,13 +3364,13 @@ class Program(object):
             - **for_test** (bool) - True if change the :code:`is_test` attribute of
                 operators to :code:`True`.
 
-        Returns: Program: The new, duplicated Program object.
+        Returns:   A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
 
         Return type: Program
 
         Examples:
 
-        Notes: The Program Descs' order maybe different after :code:`clone` and
+        Notes: The Program's order maybe different after :code:`clone` and
         this will not affect your training or testing progress. In the following
         example we give you an simple method :code:`print_prog(program)` to
         print Program Descs inorder to make sure you have same print result
@@ -3706,8 +3708,13 @@ class Program(object):
 
                 prog = fluid.default_main_program()
                 random_seed = prog.random_seed
+                x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+
+                # Here we need to set random seed before we use fluid.layers.dropout
                 print(random_seed)
                 prog.random_seed = 1
+                z_var = fluid.layers.dropout(x_var, 0.7)
+
                 print(prog.random_seed)
         """
         return self._seed
