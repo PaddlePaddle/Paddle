@@ -136,14 +136,14 @@ class DistributeTranspilerConfig(object):
 
     .. py:attribute:: slice_var_up (bool)
 
-          Whether to do Tensor slice for pservers, default is True.
+          Whether to do Tensor slice for parameter servers, default is True.
 
     .. py:attribute:: split_method (PSDispatcher)
 
-          Methods of dispatching parameters for pserver,
+          Methods of dispatching parameters for server,
           :ref:`api_fluid_transpiler_RoundRobin` or
           :ref:`api_fluid_transpiler_HashName` can be used and default is RoundRobin.
-          Try to choose the best method to balance loads for pservers.
+          Try to choose the best method to balance loads for parameter servers.
 
     .. py:attribute:: min_block_size (int)
 
@@ -151,7 +151,10 @@ class DistributeTranspilerConfig(object):
 
           According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
           We can use bandwidth effiently when data size is larger than 2MB.If you
-          want to change it, please be sure you have read the slice_variable function.
+          want to change it, please be sure you have read the slice_variable function. You can find
+          the definition of slice_variable in
+          https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/transpiler/distribute_transpiler.py
+          .
 
     Examples:
         .. code-block:: python
