@@ -244,8 +244,7 @@ struct AnalysisConfig {
   /** Turn on memory optimize
    * NOTE still in development, will release latter.
    */
-  void EnableMemoryOptim(bool static_optim = false,
-                         bool force_update_static_cache = false);
+  void EnableMemoryOptim();
   /** Tell whether the memory optimization is activated. */
   bool enable_memory_optim() const;
 
@@ -309,8 +308,6 @@ struct AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool static_memory_optim_{false};
-  bool static_memory_optim_force_update_{false};
 
   bool use_ngraph_{false};
   bool use_mkldnn_{false};
