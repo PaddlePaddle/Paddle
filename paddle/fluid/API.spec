@@ -1015,7 +1015,7 @@ paddle.fluid.optimizer.LookaheadOptimizer.minimize (ArgSpec(args=['self', 'loss'
 paddle.fluid.optimizer.RecomputeOptimizer ('paddle.fluid.optimizer.RecomputeOptimizer', ('document', '05769ba1182270f808f85488a50c8caa'))
 paddle.fluid.optimizer.RecomputeOptimizer.__init__ (ArgSpec(args=['self', 'optimizer'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RecomputeOptimizer.apply_gradients (ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '7838e157ec5ff4f835f814adf3a2b9cc'))
-paddle.fluid.optimizer.RecomputeOptimizer.apply_optimize (ArgSpec(args=['self', 'loss', 'startup_program', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', 'ec8dfa14fcd958d7c196f3d1a0ce6fa7'))
+paddle.fluid.optimizer.RecomputeOptimizer.apply_optimize (ArgSpec(args=['self', 'loss', 'startup_program', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '89c5348bfd78ad21f90b1da4af4b3cd1'))
 paddle.fluid.optimizer.RecomputeOptimizer.backward (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'callbacks', 'checkpoints'], varargs=None, keywords=None, defaults=(None, None, None, None, None)), ('document', 'a26b3dbb0f63ee81d847d92e9fb942dc'))
 paddle.fluid.optimizer.RecomputeOptimizer.get_opti_var_name_list (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RecomputeOptimizer.load (ArgSpec(args=['self', 'stat_dict'], varargs=None, keywords=None, defaults=None), ('document', '7b2b8ae72011bc4decb67e97623f2c56'))
