@@ -173,7 +173,7 @@ class TestCUDNNLstmOp(OpTest):
     def test_output_with_place(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def test_grad_with_place(self):
         if core.is_compiled_with_cuda():
@@ -182,7 +182,8 @@ class TestCUDNNLstmOp(OpTest):
                 place,
                 set(['Input', 'W', 'InitH', 'InitC']),
                 ['Out', 'last_h', 'last_c'],
-                max_relative_error=0.02)
+                max_relative_error=0.02,
+                check_dygraph=False)
 
     def has_cuda(self):
         return core.is_compiled_with_cuda()
