@@ -106,7 +106,7 @@ int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
   std::vector<int> ret_shape;
   ret_shape = tensor->tensor.shape();
   int s = ret_shape.size();
-  int* shapes;
+  int* shapes = nullptr;
   for (int i = 0; i < s; ++i) {
     shapes[i] = ret_shape[i];
   }

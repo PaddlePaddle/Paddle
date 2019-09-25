@@ -41,7 +41,7 @@ char** PD_GetPredictorInputNames(PD_Predictor* predictor) {
   std::vector<std::string> ret_names;
   ret_names = predictor->predictor->GetInputNames();
   int size = ret_names.size();
-  char** names;
+  char** names = nullptr;
   for (int i = 0; i < size; ++i) {
     std::snprintf(names[i], ret_names[i].length() + 1, "%s",
                   ret_names[i].c_str());
@@ -53,7 +53,7 @@ InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
                                                int* size) {
   std::map<std::string, std::vector<int64_t>> input_tensor_shape =
       predictor->predictor->GetInputTensorShape();
-  InTensorShape* ret_in_tensor_shape;
+  InTensorShape* ret_in_tensor_shape = nullptr;
   int i = 0;
   for (auto item : input_tensor_shape) {
     std::snprintf(ret_in_tensor_shape[i].name, item.first.length() + 1, "%s",
@@ -73,7 +73,7 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
   std::vector<std::string> ret_names;
   ret_names = predictor->predictor->GetOutputNames();
   int size = ret_names.size();
-  char** names;
+  char** names = nullptr;
   for (int i = 0; i < size; ++i) {
     std::snprintf(names[i], ret_names[i].length() + 1, "%s",
                   ret_names[i].c_str());
@@ -83,7 +83,7 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
-  PD_ZeroCopyTensor* ret;
+  PD_ZeroCopyTensor* ret = nullptr;
   ret->tensor =
       *(predictor->predictor->GetInputTensor(std::string(name)).get());
   return ret;
@@ -91,7 +91,7 @@ PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
-  PD_ZeroCopyTensor* ret;
+  PD_ZeroCopyTensor* ret = nullptr;
   ret->tensor =
       *(predictor->predictor->GetOutputTensor(std::string(name)).get());
   return ret;
