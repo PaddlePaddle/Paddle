@@ -73,6 +73,16 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
   return table_pairs;
 }  // namespace distributed
 
+
+template<typename T>
+inline std::string to_string(const std::vector<T> &vec) {
+  std::stringstream ss;
+  for (const auto &c : vec) {
+    ss << c << " ";
+  }
+  return ss.str();
+}
+
 template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
@@ -111,7 +121,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       size_t row_offset = 0;
       for (auto i = 0; i < out_num; ++i) {
         framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
-                                     ->GetMutable<framework::LoDTensor>();
+            ->GetMutable<framework::LoDTensor>();
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
         row_offset += outs_dims[i][0];
       }
@@ -144,6 +154,17 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     auto table_pairs = GetMultiFieldRpcContext(rpc_ctx, scope, multi_parts);
 
+    std::stringstream ss;
+
+    ss << "varname: " << rpc_ctx.var_name << " size: " << table_pairs.size() << " ";
+
+    for (size_t i = 0; i < table_pairs.size(); i++) {
+      ss << "ep: " << table_pairs[i].first << " tabname: " << table_pairs[i].second << "  ";
+    }
+
+    VLOG(1) << ss.str();
+
+
     outs_rows_idx.resize(table_pairs.size());
     outs_dense_idx.resize(table_pairs.size());
 
@@ -172,7 +193,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     for (int ctx = 0; ctx < rpc_ctx.splited_var_names.size(); ctx++) {
       for (int part = 0; part < multi_parts; part++) {
         auto out_idx = ctx * multi_parts + part;
-        auto rows_idx = outs_rows_idx[ctx];
+        auto rows_idx = outs_rows_idx[out_idx];
 
         auto dims = send_slr.GetCompleteDims();
         dims[0] = rows_idx.size();
@@ -190,7 +211,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
             if (platform::is_cpu_place(place)) {
               memory::Copy(platform::CPUPlace(), dst + j * row_numel,
                            platform::CPUPlace(),
-                           src + outs_dense_idx[i][j] * row_numel,
+                           src + outs_dense_idx[out_idx][j] * row_numel,
                            sizeof(T) * row_numel);
             } else {
               PADDLE_THROW("do not support GPU now");
@@ -202,53 +223,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       }
     }
 
-    //    for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
-    //      auto rows_idx = outs_rows_idx[i];
-    //      outs[i]->set_height(rpc_ctx.height_sections[i]);
-    //      auto dims = send_slr.GetCompleteDims();
-    //      dims[0] = rows_idx.size();
-    //      outs[i]->mutable_rows()->clear();
-    //      outs[i]->mutable_value()->mutable_data<T>(dims, send_slr.place());
-    //      if (rows_idx.size() > 0) {
-    //        for (auto idx : rows_idx) {
-    //          outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
-    //        }
-    //        auto dst = outs[i]->mutable_value()->mutable_data<T>(place);
-    //        for (size_t j = 0; j < rows_idx.size(); j++) {
-    //          if (platform::is_cpu_place(place)) {
-    //            memory::Copy(
-    //                platform::CPUPlace(), dst + j * row_numel,
-    //                platform::CPUPlace(), src + outs_dense_idx[i][j] *
-    //                row_numel, sizeof(T) * row_numel);
-    //          } else {
-    //            PADDLE_THROW("do not support GPU now");
-    //            /*
-    //            #ifdef PADDLE_WITH_CUDA
-    //                        auto stream = ctx.cuda_device_context().stream();
-    //                        memory::Copy(platform::CUDAPlace(), dst + j *
-    //                        row_numel,
-    //                                     platform::CUDAPlace(),
-    //                                     src + outs_dense_idx[i][j] *
-    //                                     row_numel, sizeof(T) * row_numel,
-    //                                     stream);
-    //            #else
-    //                        PADDLE_THROW("Paddle is not compiled with GPU");
-    //            #endif
-    //            */
-    //          }
-    //        }
-    //      }
-    //      PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
-    //                        "rows should has the same size with tensor dim
-    //                        0");
-    //    }
-
     for (size_t i = 0; i < table_pairs.size(); i++) {
       auto &send_var_name = table_pairs[i].second;
-      VLOG(4) << "send var name: " << send_var_name;
       auto &endpoint = table_pairs[i].first;
-      VLOG(4) << "send var endpoint: " << endpoint;
-
       auto need_send = NeedSend(*local_scope.get(), send_var_name);
 
       VLOG(4) << "send var name: " << send_var_name
@@ -256,7 +233,22 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
               << "need send: " << need_send;
 
       if (need_send) {
-        VLOG(4) << "sending " << send_var_name << " to " << endpoint;
+
+        auto* var = local_scope->FindVar(send_var_name);
+
+        auto rows = to_string<int64_t>(var->Get<framework::SelectedRows>().rows());
+        auto &value = var->Get<framework::SelectedRows>().value();
+        auto *z_value = value.data<float>();
+
+        std::stringstream ss;
+        ss << "\n";
+        for(int x=0; x< value.numel(); x++) {
+          ss << z_value[x] << " ";
+        }
+
+        VLOG(4) << "sending " << send_var_name << " to " << endpoint << " with " <<
+                " rows: " << rows << " values: " << ss.str();
+
         rets.push_back(rpc_client->AsyncSendVar(
             endpoint, cpu_ctx, *local_scope.get(), send_var_name));
         VLOG(4) << "send var " << send_var_name << " async handle done";
