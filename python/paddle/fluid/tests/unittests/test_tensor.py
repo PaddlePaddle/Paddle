@@ -171,7 +171,6 @@ class TestTensor(unittest.TestCase):
         var = scope.var("test_tensor")
 
         tensor = var.get_tensor()
-
         tensor._set_dims([0, 1])
         tensor._alloc_float(place)
 
@@ -255,6 +254,21 @@ class TestTensor(unittest.TestCase):
             tensor.set(tensor_array, core.CUDAPlace(0))
             print(tensor)
             self.assertTrue(isinstance(str(tensor), str))
+
+    def test_tensor_poiter(self):
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+        place = core.CPUPlace()
+        tensor = var.get_tensor()
+        dtype = core.VarDesc.VarType.FP32
+        self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
+            place = core.CUDAPinnedPlace()
+            self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
 
 
 if __name__ == '__main__':
