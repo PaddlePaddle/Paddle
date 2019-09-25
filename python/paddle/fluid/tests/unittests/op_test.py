@@ -408,7 +408,7 @@ class OpTest(unittest.TestCase):
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
-                    if self.attrs[attrs_name] != None:
+                    if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
             #print("-------------LOG------------- ", attrs_outputs, " ", self.attrs)
             block.append_op(
@@ -1252,7 +1252,7 @@ class OpTest(unittest.TestCase):
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
-                    if self.attrs[attrs_name] != None:
+                    if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
             block.append_op(
                 type=self.op_type,
