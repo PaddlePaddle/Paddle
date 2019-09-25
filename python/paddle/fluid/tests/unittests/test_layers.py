@@ -704,7 +704,6 @@ class TestLayer(LayerTest):
 
     def test_prelu(self):
         inp_np = np.ones([5, 200, 100, 100]).astype('float32')
-
         with self.static_graph():
             data_t = layers.data(
                 name="input",
