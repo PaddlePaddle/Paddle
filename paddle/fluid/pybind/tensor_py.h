@@ -30,8 +30,78 @@ limitations under the License. */
 
 namespace py = pybind11;
 
+namespace pybind11 {
+namespace detail {
+
+// Note: use same enum number of float16 in numpy.
+// import numpy as np;
+// print np.dtype(np.float16).num
+constexpr int NPY_FLOAT16_ = 23;
+
+// Note: Since float16 is not a builtin type in C++, we
+// paddle::platform::float16 as numpy.float16.
+template <>
+struct npy_format_descriptor<paddle::platform::float16> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+  static std::string format() {
+    // Note: "e" represents float16.
+    // Details https://docs.python.org/3/library/struct.html#format-characters.
+    return "e";
+  }
+  static PYBIND11_DESCR name() { return _("float16"); }
+};
+
+}  // namespace detail
+}  // namespace pybind11
+
 namespace paddle {
 namespace pybind {
+
+namespace details {
+
+template <typename T>
+struct ValidDTypeToPyArrayChecker {
+  static constexpr bool kValue = false;
+};
+
+#define DECLARE_VALID_DTYPE_TO_PY_ARRAY(type) \
+  template <>                                 \
+  struct ValidDTypeToPyArrayChecker<type> {   \
+    static constexpr bool kValue = true;      \
+  }
+
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
+
+inline std::string TensorDTypeToPyDTypeStr(
+    framework::proto::VarType::Type type) {
+#define TENSOR_DTYPE_TO_PY_DTYPE(T, proto_type)                             \
+  if (type == proto_type) {                                                 \
+    if (std::is_same<T, platform::float16>::value) {                        \
+      return "e";                                                           \
+    } else {                                                                \
+      constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
+      PADDLE_ENFORCE_EQ(kIsValidDType, true,                                \
+                        "This type of tensor cannot be expose to Python");  \
+      return py::format_descriptor<T>::format();                            \
+    }                                                                       \
+  }
+
+  _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
+#undef TENSOR_DTYPE_TO_PY_DTYPE
+  PADDLE_THROW("Unsupported data type %d", static_cast<int>(type));
+}
+
+}  // namespace details
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
@@ -75,25 +145,29 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
   }
   self->Resize(framework::make_ddim(dims));
   void *dst = nullptr;
-  if (py::isinstance<py::array_t<bool>>(array)) {
-    dst = self->mutable_data<bool>(place);
-  } else if (py::isinstance<py::array_t<float>>(array)) {
+  constexpr int style = pybind11::array::c_style | pybind11::array::forcecast;
+
+  if (py::isinstance<py::array_t<float, style>>(array)) {
     dst = self->mutable_data<float>(place);
-  } else if (py::isinstance<py::array_t<double>>(array)) {
-    dst = self->mutable_data<double>(place);
-  } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    dst = self->mutable_data<int8_t>(place);
-  } else if (py::isinstance<py::array_t<int>>(array)) {
+  } else if (py::isinstance<py::array_t<int, style>>(array)) {
     dst = self->mutable_data<int>(place);
-  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+  } else if (py::isinstance<py::array_t<int64_t, style>>(array)) {
     dst = self->mutable_data<int64_t>(place);
-  } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
+  } else if (py::isinstance<py::array_t<double, style>>(array)) {
+    dst = self->mutable_data<double>(place);
+  } else if (py::isinstance<py::array_t<int8_t, style>>(array)) {
+    dst = self->mutable_data<int8_t>(place);
+  } else if (py::isinstance<py::array_t<uint8_t, style>>(array)) {
     dst = self->mutable_data<uint8_t>(place);
-  } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
+  } else if (py::isinstance<py::array_t<paddle::platform::float16, style>>(
+                 array)) {
     dst = self->mutable_data<paddle::platform::float16>(place);
+  } else if (py::isinstance<py::array_t<bool, style>>(array)) {
+    dst = self->mutable_data<bool>(place);
   } else {
     PADDLE_THROW(
-        "Incompatible data type: tensor.set() supports bool, float32, float64, "
+        "Incompatible data or style type: tensor.set() supports bool, float32, "
+        "float64, "
         "int8, int32, int64, uint8 and uint16, but got %s!",
         array.dtype());
   }
@@ -150,7 +224,6 @@ inline void PyCPUTensorSetFromArray(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-
   self->Resize(framework::make_ddim(dims));
   auto *dst = self->mutable_data<platform::float16>(place);
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
@@ -415,7 +488,6 @@ void PyCUDATensorSetFromArray(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-
   self->Resize(framework::make_ddim(dims));
   auto *dst = self->mutable_data<T>(place);
   paddle::platform::GpuMemcpySync(dst, array.data(), sizeof(T) * array.size(),
@@ -481,49 +553,6 @@ inline void PyCUDAPinnedTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 #endif
-
-namespace details {
-
-template <typename T>
-struct ValidDTypeToPyArrayChecker {
-  static constexpr bool kValue = false;
-};
-
-#define DECLARE_VALID_DTYPE_TO_PY_ARRAY(type) \
-  template <>                                 \
-  struct ValidDTypeToPyArrayChecker<type> {   \
-    static constexpr bool kValue = true;      \
-  }
-
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(int8_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
-
-inline std::string TensorDTypeToPyDTypeStr(
-    framework::proto::VarType::Type type) {
-#define TENSOR_DTYPE_TO_PY_DTYPE(T, proto_type)                             \
-  if (type == proto_type) {                                                 \
-    if (std::is_same<T, platform::float16>::value) {                        \
-      return "e";                                                           \
-    } else {                                                                \
-      constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
-      PADDLE_ENFORCE(kIsValidDType,                                         \
-                     "This type of tensor cannot be expose to Python");     \
-      return py::format_descriptor<T>::format();                            \
-    }                                                                       \
-  }
-
-  _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
-#undef TENSOR_DTYPE_TO_PY_DTYPE
-  PADDLE_THROW("Unsupported data type %d", static_cast<int>(type));
-}
-
-}  // namespace details
 
 inline py::array TensorToPyArray(const framework::Tensor &tensor) {
   if (!tensor.IsInitialized()) {
