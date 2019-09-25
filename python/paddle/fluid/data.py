@@ -24,8 +24,8 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     """
     **Data Layer**
 
-    This function creates a variable on global scope. The global variables can
-    be accessed by all the following operators in the graph.
+    This function creates a variable on the global scope. The global variables
+    can be accessed by all the following operators in the graph.
 
     Note: 
        Using `paddle.fluid.layers.data` is deprecated. It will be removed in
@@ -59,6 +59,7 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
           # Users can feed data of any batch size into y. 
           # But size of each data sample has to be [3, 224, 224]
           y = fluid.data(name='y', shape=[-1, 3, 224, 224], dtype='float32')
+
     """
     helper = LayerHelper('data', **locals())
     return helper.create_global_variable(
