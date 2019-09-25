@@ -169,42 +169,79 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     auto place = platform::CPUPlace();
 
-    for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
-      auto rows_idx = outs_rows_idx[i];
-      outs[i]->set_height(rpc_ctx.height_sections[i]);
-      auto dims = send_slr.GetCompleteDims();
-      dims[0] = rows_idx.size();
-      outs[i]->mutable_rows()->clear();
-      outs[i]->mutable_value()->mutable_data<T>(dims, send_slr.place());
-      if (rows_idx.size() > 0) {
-        for (auto idx : rows_idx) {
-          outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
-        }
-        auto dst = outs[i]->mutable_value()->mutable_data<T>(place);
-        for (size_t j = 0; j < rows_idx.size(); j++) {
-          if (platform::is_cpu_place(place)) {
-            memory::Copy(
-                platform::CPUPlace(), dst + j * row_numel, platform::CPUPlace(),
-                src + outs_dense_idx[i][j] * row_numel, sizeof(T) * row_numel);
-          } else {
-            PADDLE_THROW("do not support GPU now");
-            /*
-            #ifdef PADDLE_WITH_CUDA
-                        auto stream = ctx.cuda_device_context().stream();
-                        memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
-                                     platform::CUDAPlace(),
-                                     src + outs_dense_idx[i][j] * row_numel,
-                                     sizeof(T) * row_numel, stream);
-            #else
-                        PADDLE_THROW("Paddle is not compiled with GPU");
-            #endif
-            */
+    for (int ctx = 0; ctx < rpc_ctx.splited_var_names.size(); ctx++) {
+      for (int part = 0; part < multi_parts; part++) {
+        auto out_idx = ctx * multi_parts + part;
+        auto rows_idx = outs_rows_idx[ctx];
+
+        auto dims = send_slr.GetCompleteDims();
+        dims[0] = rows_idx.size();
+
+        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->mutable_rows()->clear();
+        outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
+
+        if (rows_idx.size() > 0) {
+          for (auto idx : rows_idx) {
+            outs[out_idx]->mutable_rows()->push_back(idx - abs_sections[ctx]);
+          }
+          auto dst = outs[out_idx]->mutable_value()->mutable_data<T>(place);
+          for (size_t j = 0; j < rows_idx.size(); j++) {
+            if (platform::is_cpu_place(place)) {
+              memory::Copy(platform::CPUPlace(), dst + j * row_numel,
+                           platform::CPUPlace(),
+                           src + outs_dense_idx[i][j] * row_numel,
+                           sizeof(T) * row_numel);
+            } else {
+              PADDLE_THROW("do not support GPU now");
+            }
           }
         }
+        PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
+                          "rows should has the same size with tensor dim 0");
       }
-      PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
-                        "rows should has the same size with tensor dim 0");
     }
+
+    //    for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
+    //      auto rows_idx = outs_rows_idx[i];
+    //      outs[i]->set_height(rpc_ctx.height_sections[i]);
+    //      auto dims = send_slr.GetCompleteDims();
+    //      dims[0] = rows_idx.size();
+    //      outs[i]->mutable_rows()->clear();
+    //      outs[i]->mutable_value()->mutable_data<T>(dims, send_slr.place());
+    //      if (rows_idx.size() > 0) {
+    //        for (auto idx : rows_idx) {
+    //          outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
+    //        }
+    //        auto dst = outs[i]->mutable_value()->mutable_data<T>(place);
+    //        for (size_t j = 0; j < rows_idx.size(); j++) {
+    //          if (platform::is_cpu_place(place)) {
+    //            memory::Copy(
+    //                platform::CPUPlace(), dst + j * row_numel,
+    //                platform::CPUPlace(), src + outs_dense_idx[i][j] *
+    //                row_numel, sizeof(T) * row_numel);
+    //          } else {
+    //            PADDLE_THROW("do not support GPU now");
+    //            /*
+    //            #ifdef PADDLE_WITH_CUDA
+    //                        auto stream = ctx.cuda_device_context().stream();
+    //                        memory::Copy(platform::CUDAPlace(), dst + j *
+    //                        row_numel,
+    //                                     platform::CUDAPlace(),
+    //                                     src + outs_dense_idx[i][j] *
+    //                                     row_numel, sizeof(T) * row_numel,
+    //                                     stream);
+    //            #else
+    //                        PADDLE_THROW("Paddle is not compiled with GPU");
+    //            #endif
+    //            */
+    //          }
+    //        }
+    //      }
+    //      PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
+    //                        "rows should has the same size with tensor dim
+    //                        0");
+    //    }
 
     for (size_t i = 0; i < table_pairs.size(); i++) {
       auto &send_var_name = table_pairs[i].second;
