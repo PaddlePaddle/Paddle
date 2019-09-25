@@ -744,6 +744,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             inp_np = np.random.randn(3, 3).astype("float32")
+            inp = base.to_variable(inp_np)
             mode = 'channel'
             prelu1 = nn.PRelu(
                 'prelu1',
@@ -753,14 +754,14 @@ class TestLayer(LayerTest):
                 'prelu2',
                 mode=mode,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
-            dy_rlt1 = prelu1(base.to_variable(inp_np))
-            dy_rlt2 = prelu2(base.to_variable(inp_np))
+            dy_rlt1 = prelu1(inp)
+            dy_rlt2 = prelu2(inp)
             self.assertFalse(
                 np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy()))
             self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
             prelu2.weight.set_value(prelu1.weight.numpy())
-            dy_rlt1 = prelu1(base.to_variable(inp_np))
-            dy_rlt2 = prelu2(base.to_variable(inp_np))
+            dy_rlt1 = prelu1(inp)
+            dy_rlt2 = prelu2(inp)
             self.assertTrue(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
 
             prelu2.weight = prelu1.weight
