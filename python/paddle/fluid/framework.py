@@ -3739,8 +3739,8 @@ class Program(object):
         for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
-            if var.need_check_feed:
-                self.global_block().var(var.name).need_check_feed = True
+            if var.desc.need_check_feed():
+                self.global_block().var(var.name).desc.set_need_check_feed(True)
 
     def list_vars(self):
         """

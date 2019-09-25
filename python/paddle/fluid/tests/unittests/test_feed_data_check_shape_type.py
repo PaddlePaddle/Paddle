@@ -109,7 +109,7 @@ class TestFeedData(unittest.TestCase):
         feed_in_data = np.random.uniform(size=in_size).astype(np.float32)
         label_size = [batch_size, 1]
         feed_label = np.random.randint(
-            low=0, high=self.class_num, size=label_size)
+            low=0, high=self.class_num, size=label_size).astype(np.int64)
         self._feed_data_in_executor(in_size, label_size, feed_in_data,
                                     feed_label, use_cuda, use_parallel_executor)
 
