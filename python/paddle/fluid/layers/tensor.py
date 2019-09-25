@@ -1014,7 +1014,7 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
         .. code-block:: python
 
           import paddle.fluid as fluid
- 	      data = fluid.layers.eye(3, dtype='int32')
+          data = fluid.layers.eye(3, dtype='int32')
           # [[1, 0, 0]
           #  [0, 1, 0]
           #  [0, 0, 1]]
