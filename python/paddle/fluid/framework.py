@@ -550,7 +550,6 @@ class Variable(object):
             self.op = None
             self._stop_gradient = stop_gradient
             self.is_data = is_data
-            self.need_check_feed = need_check_feed
 
     def detach(self):
         """
@@ -2117,7 +2116,7 @@ class Block(object):
                 type=var.type,
                 persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data,
-                check_feed=var.check_feed)
+                need_check_feed=var.desc.need_check_feed())
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -2127,7 +2126,7 @@ class Block(object):
                 lod_level=var.lod_level,
                 persistable=True if force_persistable else var.persistable,
                 is_data=var.is_data,
-                check_feed=var.need_check_feed)
+                need_check_feed=var.desc.need_check_feed())
         return ret_var
 
 

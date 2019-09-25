@@ -134,7 +134,7 @@ def dtype_is_compatible_with(first, second):
     Currently, we require the two dtype's have to be same.
       
     Args:
-        dtype (np.dtype|VarType|str): The type of data : float32, int64, etc.
+        dtype (np.dtype|VarType|str): The type of data: float32, int64, etc.
     
     Returns:
         True if the two types are same.
