@@ -198,6 +198,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       starts_indices[axis] = 0;
       ends_indices[axis] = out_dims[axis];
       strides_indices[axis] = 1;
+      reverse_axis[axis] = false;
     }
     for (size_t axis = 0; axis < axes.size(); axis++) {
       int axis_index = axes[axis];
