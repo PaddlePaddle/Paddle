@@ -144,7 +144,7 @@ class TestLayer(LayerTest):
         self.assertTrue(np.array_equal(static_ret, static_ret2))
         self.assertTrue(np.array_equal(static_ret, dy_ret.numpy()))
 
-        with fluid.dygraph.guard():
+        with self.dynamic_graph():
             custom_weight = np.random.randn(1024, 4).astype("float32")
             weight_attr1 = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
@@ -165,7 +165,7 @@ class TestLayer(LayerTest):
 
             fc1_weight_updated = fc1.weight.numpy()
 
-        with fluid.dygraph.guard():
+        with self.dynamic_graph():
             weight_attr2 = fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform())
             fc2 = fluid.dygraph.FC("fc2",
