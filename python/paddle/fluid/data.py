@@ -24,23 +24,24 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     """
     **Data Layer**
 
-    This function takes in the input and based on whether the data has
-    to be returned back as a minibatch, it creates the global variable by using
-    the helper functions. The global variables can be accessed by all the
-    following operators in the graph.
+    This function creates a variable on global scope. The global variables can
+    be accessed by all the following operators in the graph.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
-
-    Note: Unlike `paddle.fluid.layers.data` which set shape at compile time but
-       not check the shape of feeded data, this `paddle.fluid.data` checks the
+    Note: 
+       Using `paddle.fluid.layers.data` is deprecated. It will be removed in
+       a future version. 
+       
+       The `paddle.fluid.layers.data` set shape at compile time but does NOT
+       check the shape of feeded data, this `paddle.fluid.data` checks the
        shape of data feeded by Executor/ParallelExecutor during run time.
 
     Args:
-       name (None|str): The name/alias of the variable
+       name (str): The name/alias of the variable
        shape (list|tuple): List|Tuple of integers declaring the shape.
-       dtype (np.dtype|VarType|str): The type of the data: float32, int64, etc.
-       type (VarType): The output type. Default: LOD_TENSOR.
+       dtype (np.dtype|VarType|str): The type of the data. Supported dtype:
+           float16, float32, float64, int8, int16, int32, int64, uint8, bool.
+       type (VarType): The output type. Supported type: VarType.LOD_TENSOR, 
+           VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR.
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -49,8 +50,15 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='x', shape=[784], dtype='float32')
 
+          # Creates a variable with fixed size [1, 2, 3]
+          # Usercan only feed data of the same shape to x
+          x = fluid.data(name='x', shape=[1, 2, 3], dtype='int64')
+
+          # Creates a variable with changable batch size -1.
+          # Users can feed data of any batch size into y. 
+          # But size of each data sample has to be [3, 224, 224]
+          y = fluid.data(name='y', shape=[-1, 3, 224, 224], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
     return helper.create_global_variable(
