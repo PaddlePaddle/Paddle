@@ -19,33 +19,30 @@ import numpy as np
 from op_test import OpTest
 
 
-def bcast(x, expand_tensor):
-    x_dims=x.shape
-    y_dims=expand_tensor.shape
-    bcast_dims=[]
+def bcast(x, target_tensor):
+    x_dims = x.shape
+    y_dims = target_tensor.shape
+    bcast_dims = []
     for i in range(len(x_dims)):
-        bcast_dims.append(int(y_dims[i]/x_dims[i]))
-    bcast_dims=np.array(bcast_dims).astype("int64")
+        bcast_dims.append(int(y_dims[i] / x_dims[i]))
+    bcast_dims = np.array(bcast_dims).astype("int64")
     return bcast_dims
 
 
 class TestExpandAsOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x=np.random.rand(12).astype("float64")
-        expand_tensor=np.random.rand(24).astype("float64")
-        self.inputs = {
-            'X': x,
-            'expand_tensor': expand_tensor
-        }
+        x = np.random.rand(12).astype("float64")
+        target_tensor = np.random.rand(24).astype("float64")
+        self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
-        bcast_dims=bcast(x, expand_tensor)
+        bcast_dims = bcast(x, target_tensor)
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
     def test_check_output(self):
         self.check_output()
- 
+
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
@@ -53,14 +50,11 @@ class TestExpandAsOpRank1(OpTest):
 class TestExpandAsOpRank2(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x=np.random.rand(2,3).astype("float64")
-        expand_tensor=np.random.rand(4,6).astype("float64")
-        self.inputs = {
-            'X': x,
-            'expand_tensor': expand_tensor
-        }
+        x = np.random.rand(2, 3).astype("float64")
+        target_tensor = np.random.rand(4, 6).astype("float64")
+        self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
-        bcast_dims=bcast(x, expand_tensor)
+        bcast_dims = bcast(x, target_tensor)
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
@@ -74,14 +68,11 @@ class TestExpandAsOpRank2(OpTest):
 class TestExpandAsOpRank3(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x=np.random.rand(2,3,3).astype("float64")
-        expand_tensor=np.random.rand(4,6,6).astype("float64")
-        self.inputs = {
-            'X': x,
-            'expand_tensor': expand_tensor
-        }
+        x = np.random.rand(2, 3, 3).astype("float64")
+        target_tensor = np.random.rand(4, 6, 6).astype("float64")
+        self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
-        bcast_dims=bcast(x, expand_tensor)
+        bcast_dims = bcast(x, target_tensor)
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
@@ -95,14 +86,11 @@ class TestExpandAsOpRank3(OpTest):
 class TestExpandAsOpRank4(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x=np.random.rand(2,3,3,16).astype("float64")
-        expand_tensor=np.random.rand(4,6,6,32).astype("float64")
-        self.inputs = {
-            'X': x,
-            'expand_tensor': expand_tensor
-        }
+        x = np.random.rand(2, 3, 3, 16).astype("float64")
+        target_tensor = np.random.rand(4, 6, 6, 32).astype("float64")
+        self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
-        bcast_dims=bcast(x, expand_tensor)
+        bcast_dims = bcast(x, target_tensor)
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
 
@@ -111,6 +99,7 @@ class TestExpandAsOpRank4(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 if __name__ == "__main__":
     unittest.main()
