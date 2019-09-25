@@ -451,6 +451,17 @@ class GeneratorLoader(DataLoaderBase):
             assert not self._iterable, "reset() cannot be called when DataLoader is iterable"
             self._reset()
 
+    @classmethod
+    def _check_input_array(cls, item):
+        arr = np.array(item)
+        if arr.dtype == np.object:
+            raise TypeError((
+                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "this means the input data contains nested lists with different lengths. "
+                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
+                " to locate the data causes this issue.\n\t* Please consider using "
+                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
+
     def _start(self):
         def __thread_main__():
             try:
@@ -458,15 +469,7 @@ class GeneratorLoader(DataLoaderBase):
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
-                            arr = np.array(item)
-                            if arr.dtype == np.object:
-                                raise TypeError((
-                                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                                    "this means the input data contains nested lists with different lengths. "
-                                    "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                                    " to locate the data causes this issue.\n\t* Please consider using "
-                                    "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
-                                ))
+                            self._check_input_array(item)
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp
