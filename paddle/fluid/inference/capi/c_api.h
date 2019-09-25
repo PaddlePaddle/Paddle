@@ -90,7 +90,7 @@ PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor,
                                                       PD_PaddlePlace* place,
                                                       int* size);
 
-typedef enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8 };
+enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8 };
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyToCPU(
     PD_ZeroCopyTensor* tensor, void* data, PD_DataType data_type);
@@ -140,13 +140,10 @@ PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(PD_Predictor* predictor);
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
     PD_Predictor* predictor);
 
-PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
-    const PD_AnalysisConfig config);
-
 // AnalysisConfig
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 
-PADDLE_CAPI_EXPORT extern enum Precision { kFloat32 = 0, kInt8, kHalf };
+enum Precision { kFloat32 = 0, kInt8, kHalf };
 
 PADDLE_CAPI_EXPORT extern PD_AnalysisConfig* PD_NewAnalysisConfig();
 
@@ -277,6 +274,9 @@ PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(PD_AnalysisConfig* config);
 PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
+    const PD_AnalysisConfig config);
 
 #ifdef __cplusplus
 }  // extern "C"

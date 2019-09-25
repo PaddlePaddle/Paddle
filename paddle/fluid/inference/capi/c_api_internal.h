@@ -35,27 +35,33 @@ struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };
 
-typedef struct PD_AnalysisConfig {
+struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
 } PD_AnalysisConfig;
 
-typedef struct InTensorShape {
+struct InTensorShape {
   char* name;
   int* tensor_shape;
   int shape_size;
 } InTensorShape;
 
-typedef struct PD_ZeroCopyTensor {
+struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
 } PD_ZeroCopyTensor;
 
-typedef struct PD_Tensor { paddle::PaddleTensor tensor; } PD_Tensor;
+struct PD_Tensor {
+  paddle::PaddleTensor tensor;
+} PD_Tensor;
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+struct PD_PaddleBuf {
+  paddle::PaddleBuf buf;
+} PD_PaddleBuf;
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+struct PD_PaddleBuf {
+  paddle::PaddleBuf buf;
+} PD_PaddleBuf;
 
-typedef struct PD_MaxInputShape {
+struct PD_MaxInputShape {
   char* name;
   int* shape;
   int shape_size;
