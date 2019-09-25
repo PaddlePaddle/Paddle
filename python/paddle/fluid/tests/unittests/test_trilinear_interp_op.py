@@ -28,8 +28,11 @@ def trilinear_interp_np(input,
                         out_size=None,
                         actual_shape=None,
                         align_corners=True,
-                        align_mode=0):
+                        align_mode=0,
+                        data_layout='NCDHW'):
     """trilinear interpolation implement in shape [N, C, D, H, W]"""
+    if data_layout == "NDHWC":
+        input = np.transpose(input, (0, 4, 1, 2, 3))  # NDHWC => NCDHW
     if out_size is not None:
         out_d = out_size[0]
         out_h = out_size[1]
@@ -114,6 +117,9 @@ def trilinear_interp_np(input,
                               w1lambda * input[:, :, d+did, h, w+wid]) + \
                     h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] + \
                               w1lambda * input[:, :, d+did, h+hid, w+wid]))
+    if data_layout == "NDHWC":
+        out = np.transpose(out, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
+
     return out.astype(input.dtype)
 
 
@@ -121,28 +127,42 @@ class TestTrilinearInterpOp(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
+        self.data_layout = 'NCDHW'
         self.init_test_case()
         self.op_type = "trilinear_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
 
+        if self.data_layout == "NCDHW":
+            in_d = self.input_shape[2]
+            in_h = self.input_shape[3]
+            in_w = self.input_shape[4]
+        else:
+            in_d = self.input_shape[1]
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+
         if self.scale > 0:
-            out_d = int(self.input_shape[2] * self.scale)
-            out_h = int(self.input_shape[3] * self.scale)
-            out_w = int(self.input_shape[4] * self.scale)
+            out_d = int(in_d * self.scale)
+            out_h = int(in_h * self.scale)
+            out_w = int(in_w * self.scale)
         else:
             out_d = self.out_d
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w,
-                                        self.out_size, self.actual_shape,
-                                        self.align_corners, self.align_mode)
+        output_np = trilinear_interp_np(
+            input_np, out_d, out_h, out_w, self.out_size, self.actual_shape,
+            self.align_corners, self.align_mode, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-
+        # c++ end treat NCDHW the same way as NCHW
+        if self.data_layout == 'NCDHW':
+            data_layout = 'NCHW'
+        else:
+            data_layout = 'NHWC'
         self.attrs = {
             'out_d': self.out_d,
             'out_h': self.out_h,
@@ -150,7 +170,8 @@ class TestTrilinearInterpOp(OpTest):
             'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
-            'align_mode': self.align_mode
+            'align_mode': self.align_mode,
+            'data_layout': data_layout
         }
         self.outputs = {'Out': output_np}
 
@@ -282,6 +303,20 @@ class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
         self.out_size = np.array([33, 19, 7]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+
+
+class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'trilinear'
+        self.input_shape = [2, 4, 4, 4, 3]
+        self.out_d = 2
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.
+        self.out_size = np.array([3, 3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+        self.data_layout = "NDHWC"
 
 
 class TestTrilinearInterpOpUint8(OpTest):
@@ -536,6 +571,7 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 class TestTrilinearInterpAPI(OpTest):
     def test_case(self):
         x = fluid.layers.data(name="x", shape=[3, 6, 9, 4], dtype="float32")
+        y = fluid.layers.data(name="y", shape=[6, 9, 4, 3], dtype="float32")
 
         dim = fluid.layers.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.layers.data(
@@ -554,7 +590,8 @@ class TestTrilinearInterpAPI(OpTest):
             dtype="float32",
             append_batch_size=False)
 
-        out1 = fluid.layers.resize_trilinear(x, out_shape=[12, 18, 8])
+        out1 = fluid.layers.resize_trilinear(
+            y, out_shape=[12, 18, 8], data_format='NDHWC')
         out2 = fluid.layers.resize_trilinear(x, out_shape=[12, dim, 8])
         out3 = fluid.layers.resize_trilinear(x, out_shape=shape_tensor)
         out4 = fluid.layers.resize_trilinear(
@@ -572,6 +609,7 @@ class TestTrilinearInterpAPI(OpTest):
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,
+                              "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
                               "dim": dim_data,
                               "shape_tensor": shape_data,
                               "actual_size": actual_size_data,
@@ -582,8 +620,20 @@ class TestTrilinearInterpAPI(OpTest):
 
         expect_res = trilinear_interp_np(
             x_data, out_d=12, out_h=18, out_w=8, align_mode=1)
-        for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+        self.assertTrue(
+            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 4, 1))))
+        for i in range(len(results) - 1):
+            self.assertTrue(np.allclose(results[i + 1], expect_res))
+
+    def test_exception(self):
+        input = fluid.layers.data(
+            name="input", shape=[3, 6, 9, 4], dtype="float32")
+        try:
+            # for 5-D input, data_format only can be NCDHW or NDHWC
+            out = fluid.layers.resize_trilinear(
+                input, out_shape=[4, 8, 4], data_format='NHWC')
+        except:
+            pass
 
 
 if __name__ == "__main__":

@@ -186,8 +186,7 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseMulDoubleGradOpInplace, {"DDX", "DDOut"},
-                           {"X", framework::GradVarName("X")},
-                           {"Y", framework::GradVarName("Y")});
+DECLARE_INPLACE_OP_INFERER(ElementwiseMulDoubleGradOpInplace, {"DDX", "DDOut"});
+
 }  // namespace operators
 }  // namespace paddle

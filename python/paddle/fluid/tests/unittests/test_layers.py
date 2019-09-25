@@ -876,7 +876,7 @@ class TestLayer(LayerTest):
                 dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.tree_conv(
+            ret = fluid.contrib.layers.tree_conv(
                 nodes_vector=NodesVector,
                 edge_set=EdgeSet,
                 output_size=6,
@@ -2046,6 +2046,14 @@ class TestBook(LayerTest):
             out = layers.pixel_shuffle(x, upscale_factor=3)
             return (out)
 
+    def make_mse_loss(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[1], dtype="float32")
+            y = self._get_data(name="Y", shape=[1], dtype="float32")
+            out = layers.mse_loss(input=x, label=y)
+            return (out)
+
     def make_square_error_cost(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2168,7 +2176,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[10, 5], dtype='float32')
-            length = layers.data(name='length', shape=[1], dtype='int64')
+            length = layers.data(name='length', shape=[], dtype='int64')
             return (layers.sequence_unpad(x=x, length=length))
 
     def test_sequence_softmax(self):

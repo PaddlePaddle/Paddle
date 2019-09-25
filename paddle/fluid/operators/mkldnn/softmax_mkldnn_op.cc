@@ -66,8 +66,6 @@ class SoftmaxMKLDNNHandler
     auto diff_softmax_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            data_softmax_md, axis);
     this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
                                              axis);
   }
