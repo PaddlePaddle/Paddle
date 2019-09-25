@@ -52,7 +52,7 @@ class MaskedSelectOPCUDAKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<framework::Tensor>("Out");
 
     const T* input_data = input->data<T>();
-    const* mask_data = mask->data<bool>();
+    auto* mask_data = mask->data<bool>();
 
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
@@ -89,12 +89,12 @@ class MaskedSelectGradOPCUDAKernel : public framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("input"));
-    auto* mask = ctx.Input<framework::Tensor>("mask")
+    auto* mask = ctx.Input<framework::Tensor>("mask");
 
-                     int blocks = NumBlocks(mask->numel());
+    int blocks = NumBlocks(mask->numel());
     int threads = kNumCUDAThreads;
 
-    const* mask_data = mask->data<bool>();
+    auto* mask_data = mask->data<bool>();
     const* output_grad_data = output_grad->data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 

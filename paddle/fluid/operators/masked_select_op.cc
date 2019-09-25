@@ -31,69 +31,23 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
     auto mask_dims = ctx->GetInputDim("mask");
 
     PADDLE_ENFORCE(input_dims.size() == mask_dims.size(),
-                   "The input size and the mask size must be equal.")
+                   "The input size and the mask size must be equal.");
     for (size_t i = 0; i < input_dims.size(); i++) {
       PADDLE_ENFORCE(input_dims[i] == mask_dims[i],
-                     "The input shape and the mask shape must be equal.")
+                     "The input shape and the mask shape must be equal.");
     }
-    std::vector<int64_t> out_dims(2);
-    out_dims[0] = input_dim[0] int d = 0;
-    if (!ctx->IsRunTime()) {
-      d = 1;
-    } else {
-      framework::Variable* mask_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("mask"));
-      mask_var.flatten_to_1d(mask_var->numel()) auto* mask_data =
-          mask_var->data<bool>()
-          // batch size?
-          for (size_t i = 0; i < mask_var->numel(); i++) {
-        if
-          mask_data[i] == 1 : d++;
-      }
-    }
-    out_dims[1] = d ctx->SetOutputDim("Out", framework::make_ddim(out_dims))
-
-    /*
-    int input_dims_size = input_dims.size();
-    int mask_dims_size = mask_dims.size();
-
-    int output_dims_size = (input_dims_size >= mask_dims_size) ? input_dims_size
-    : mask_dims_size;
-    //int broad_input_dims[output_dims_size];
-    //int broad_mask_dims[output_dims_size];
-    //int output_dims[output_dims_size]
-    std::vector<int64_t> broad_input_dims(output_dims_size);
-    std::vector<int64_t> broad_mask_dims(output_dims_size);
-    std::vector<int64_t> output_dims(output_dims_size);
-
-    for (size_t i=0; i< output_dims_size; i++){
-            if(i<output_dims_size-input_dims_size){
-                    broad_input_dims[i] = 1;
-            }else{
-                    broad_input_dims[i] = input_dims[i]
-            }
-    }
-
-    for (size_t i=0; i<output_dims_size; i++){
-            if(i<output_dims_size-mask_dims_size){
-                    broad_mask_dims[i] = 1;
-            }else{
-                    broad_input_dims[i] = mask_dims[i]
-            }
-    }
-
-    for (size_t i=output_dims_size; i>0; i--){
-            PADDLE_ENFORCE(broad_input_dims[i]==broad_mask_dims[i] ||
-                            broad_input_dims[i]==1|| broad_mask_dims[i]==1,
-                            "The input and mask tensor must be braodcastable.")
-    }
-    for (size_t i=0; i<output_dims_size; i++){
-            output_dims[i] = (broad_input_dims[i]>=broad_mask_dims[i]) ?
-                    broad_input_dims[i] : broad_mask_dims[i]
-    }
-
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims))
-    */
+    
+    std::vector<int64_t> out_dims(1);
+    //out_dims[0] = input_dims[0];
+    //out_dims[1] = 1;
+    out_dims[0] = -1;
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+  }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("input"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -142,15 +96,21 @@ class MaskedSelectGradOp : public framework::OperatorWithKernel {
                    "Input(Out@Grad) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("input")),
                    "Output(input@Grad) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("mask")),
-                   "Output(mask@Grad) should not be null");
+    //PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("mask")),
+    //               "Output(mask@Grad) should not be null");
 
     auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     // check dim??
 
     ctx->SetOutputDim(framework::GradVarName("input"), do_dims);
-    ctx->SetOutputDim(framework::GradVarName("mask"), do_dims);
+    //ctx->SetOutputDim(framework::GradVarName("mask"), do_dims);
+  }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("input"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
