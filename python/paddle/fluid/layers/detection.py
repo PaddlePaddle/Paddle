@@ -1329,7 +1329,7 @@ def ssd_loss(location,
 
       5.1 Compute confidence loss.
 
-      5.1 Compute localization loss.
+      5.2 Compute localization loss.
 
       5.3 Compute the overall weighted loss.
 
