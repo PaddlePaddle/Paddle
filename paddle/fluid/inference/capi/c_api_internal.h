@@ -15,6 +15,9 @@
 #pragma once
 
 #include <memory>
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 template <PD_DataType DType>
 struct GetDataType;
@@ -31,32 +34,48 @@ DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
 
 #undef DECLARE_PD_DTYPE_CONVERTOR
 
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
+
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };
 
-typedef struct PD_AnalysisConfig {
+struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
-} PD_AnalysisConfig;
+};
 
-typedef struct InTensorShape {
+struct InTensorShape {
   char* name;
   int* tensor_shape;
   int shape_size;
-} InTensorShape;
+};
 
-typedef struct PD_ZeroCopyTensor {
+struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
-} PD_ZeroCopyTensor;
+};
 
-typedef struct PD_Tensor { paddle::PaddleTensor tensor; } PD_Tensor;
+struct PD_Tensor {
+  paddle::PaddleTensor tensor;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+struct PD_PaddleBuf {
+  paddle::PaddleBuf buf;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
-
-typedef struct PD_MaxInputShape {
+struct PD_MaxInputShape {
   char* name;
   int* shape;
   int shape_size;
-} PD_MaxInputShape;
+};
+
+namespace paddle {
+paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
+
+paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
+
+PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
+
+PD_ACPrecision ConvertToACPrecision(Precision dtype);
+}

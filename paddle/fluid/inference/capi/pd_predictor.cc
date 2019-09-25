@@ -13,37 +13,59 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPlace;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
+
 extern "C" {
 
-bool PD_PredictorRun(PD_Predictor* predictor, const PD_Tensor* inputs,
-                     PD_Tensor* output_data, int batch_size = -1) {
-  return predictor->predictor->Run(inputs, output_data, batch_size);
+bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
+                     PD_Tensor* output_data, int** out_size, int batch_size) {
+  std::vector<paddle::PaddleTensor> in;
+  for (int i = 0; i < in_size; ++i) {
+    in.emplace_back(inputs->tensor);
+  }
+  std::vector<paddle::PaddleTensor> out;
+  if (predictor->predictor->Run(in, &out, batch_size)) {
+    int osize = out.size();
+    for (int i = 0; i < osize; ++i) {
+      output_data[i].tensor = out[i];
+    }
+    *out_size = &osize;
+    return true;
+  }
+  return false;
 }
 
-char** PD_GetPredictorInputNames(PD_Predictor* predictor) {
+char** PD_GetPredictorInputNames(PD_Predictor* predictor, int** in_size) {
   std::vector<std::string> ret_names;
   ret_names = predictor->predictor->GetInputNames();
   int size = ret_names.size();
-  char** names;
+  *in_size = &size;
+  char** names = new char*[size];
   for (int i = 0; i < size; ++i) {
-    names[i] = ret_names[i].data();
+    std::snprintf(names[i], ret_names[i].length() + 1, "%s",
+                  ret_names[i].c_str());
   }
   return names;
 }
 
 InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
-                                               int* size) {
-  std::unordered_map<std::string, std::vector<int64_t>> input_tensor_shape =
+                                               int** size) {
+  std::map<std::string, std::vector<int64_t>> input_tensor_shape =
       predictor->predictor->GetInputTensorShape();
-  InTensorShape* ret_in_tensor_shape;
+  InTensorShape* ret_in_tensor_shape =
+      new InTensorShape[input_tensor_shape.size()];
   int i = 0;
   for (auto item : input_tensor_shape) {
-    ret_in_tensor_shape[i].name = item.first.data();
+    std::snprintf(ret_in_tensor_shape[i].name, item.first.length() + 1, "%s",
+                  item.first.c_str());
     std::vector<int64_t> tmp_shape = item.second;
     ret_in_tensor_shape[i].shape_size = tmp_shape.size();
     for (int j = 0; j < tmp_shape.size(); ++j) {
@@ -51,7 +73,7 @@ InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
     }
     ++i;
   }
-  size = &i;
+  *size = &i;
   return ret_in_tensor_shape;
 }
 
@@ -59,28 +81,35 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
   std::vector<std::string> ret_names;
   ret_names = predictor->predictor->GetOutputNames();
   int size = ret_names.size();
-  char** names;
+  char** names = new char*[size];
   for (int i = 0; i < size; ++i) {
-    names[i] = ret_names[i].data();
+    std::snprintf(names[i], ret_names[i].length() + 1, "%s",
+                  ret_names[i].c_str());
   }
   return names;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
-  return predictor->predictor->GetInputTensor(std::string(name)).get();
+  PD_ZeroCopyTensor* ret = nullptr;
+  ret->tensor =
+      *(predictor->predictor->GetInputTensor(std::string(name)).get());
+  return ret;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
-  return predictor->predictor->GetOutputTensor(std::string(name)).get();
+  PD_ZeroCopyTensor* ret = nullptr;
+  ret->tensor =
+      *(predictor->predictor->GetOutputTensor(std::string(name)).get());
+  return ret;
 }
 
 bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
   return predictor->predictor->ZeroCopyRun();
 }
 
-void* PD_DeletePredictor(PD_Predictor* predictor) {
+void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
     delete predictor;
     predictor = nullptr;

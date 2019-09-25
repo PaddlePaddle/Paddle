@@ -14,11 +14,17 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
+
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPlace;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
 
 extern "C" {
 
@@ -32,7 +38,7 @@ void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
 }
 
 void PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
-                 const char* params_path = NULL) {
+                 const char* params_path) {
   PADDLE_ENFORCE(model_dir != nullptr,
                  "Input(model_dir) of PD_SetModel should not be null.");
   if (!params_path) {
@@ -61,26 +67,26 @@ void PD_SetOptimCacheDir(PD_AnalysisConfig* config, const char* opt_cache_dir) {
   config->config.SetOptimCacheDir(std::string(opt_cache_dir));
 }
 
-char* PD_ModelDir(PD_AnalysisConfig* config) {
-  return config->config.model_dir().data();
+const char* PD_ModelDir(PD_AnalysisConfig* config) {
+  return config->config.model_dir().c_str();
 }
 
-char* PD_ProgFile(PD_AnalysisConfig* config) {
-  return config->config.prog_file().data();
+const char* PD_ProgFile(PD_AnalysisConfig* config) {
+  return config->config.prog_file().c_str();
 }
 
-char* PD_ParamsFile(PD_AnalysisConfig* config) {
-  return config->config.params_file().data();
+const char* PD_ParamsFile(PD_AnalysisConfig* config) {
+  return config->config.params_file().c_str();
 }
 
 void PD_EnableUseGpu(PD_AnalysisConfig* config,
-                     uint64_t memory_pool_init_size_mb, int device_id = 0) {
+                     uint64_t memory_pool_init_size_mb, int device_id) {
   config->config.EnableUseGpu(memory_pool_init_size_mb, device_id);
 }
 
 void PD_DisableGpu(PD_AnalysisConfig* config) { config->config.DisableGpu(); }
 
-bool PD_UseGpu(PD_AnalysisConfig* config) { config->config.use_gpu(); }
+bool PD_UseGpu(PD_AnalysisConfig* config) { return config->config.use_gpu(); }
 
 int PD_GpuDeviceId(PD_AnalysisConfig* config) {
   return config->config.gpu_device_id();
@@ -100,13 +106,13 @@ bool PD_CudnnEnabled(PD_AnalysisConfig* config) {
   return config->config.cudnn_enabled();
 }
 
-void PD_SwitchIrOptim(PD_AnalysisConfig* config, int x = true) {
+void PD_SwitchIrOptim(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrOptim(x);
 }
 
 bool PD_IrOptim(PD_AnalysisConfig* config) { return config->config.ir_optim(); }
 
-void PD_SwitchUseFeedFetchOps(PD_AnalysisConfig* config, int x = true) {
+void PD_SwitchUseFeedFetchOps(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchUseFeedFetchOps(x);
 }
 
@@ -114,7 +120,7 @@ bool PD_UseFeedFetchOpsEnabled(PD_AnalysisConfig* config) {
   return config->config.use_feed_fetch_ops_enabled();
 }
 
-void PD_SwitchSpecifyInputNames(PD_AnalysisConfig* config, bool x = true) {
+void PD_SwitchSpecifyInputNames(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchSpecifyInputNames(x);
 }
 
@@ -122,31 +128,26 @@ bool PD_SpecifyInputName(PD_AnalysisConfig* config) {
   return config->config.specify_input_name();
 }
 
-void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
-                             int workspace_size = 1 << 20,
-                             int max_batch_size = 1, int min_subgraph_size = 3,
-                             Precision precision = Precision::kFloat32,
-                             bool use_static = false,
-                             bool use_calib_mode = true) {
-  config->config.EnableTensorRtEngine(workspace_size, max_batch_size,
-                                      min_subgraph_size, precision, use_static,
-                                      use_calib_mode);
+void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
+                             int max_batch_size, int min_subgraph_size,
+                             Precision precision, bool use_static,
+                             bool use_calib_mode) {
+  config->config.EnableTensorRtEngine(
+      workspace_size, max_batch_size, min_subgraph_size,
+      paddle::ConvertToACPrecision(precision), use_static, use_calib_mode);
 }
 
 bool PD_TensorrtEngineEnabled(PD_AnalysisConfig* config) {
   return config->config.tensorrt_engine_enabled();
 }
 
-void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size = 1,
-                           PD_MaxInputShape* max_input_shape = NULL,
-                           int max_input_shape_size = 0,
-                           int min_subgraph_size = 6,
-                           Precision precision = Precision::kFloat32,
-                           bool auto_config_layout = false,
-                           char** passes_filter = NULL,
-                           int passes_filter_size = 0, char** ops_filter = NULL,
-                           int ops_filter_size = 0) {
-  std::unordered_map<std::string, std::vector<int>> mis;
+void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size,
+                           PD_MaxInputShape* max_input_shape,
+                           int max_input_shape_size, int min_subgraph_size,
+                           Precision precision, bool auto_config_layout,
+                           char** passes_filter, int passes_filter_size,
+                           char** ops_filter, int ops_filter_size) {
+  std::map<std::string, std::vector<int>> mis;
   if (max_input_shape) {
     for (int i = 0; i < max_input_shape_size; ++i) {
       std::vector<int> tmp_shape;
@@ -166,14 +167,15 @@ void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size = 1,
   }
 
   config->config.EnableAnakinEngine(max_batch_size, mis, min_subgraph_size,
-                                    precision, auto_config_layout, pf, of);
+                                    paddle::ConvertToACPrecision(precision),
+                                    auto_config_layout, pf, of);
 }
 
 bool PD_AnakinEngineEnabled(PD_AnalysisConfig* config) {
   return config->config.anakin_engine_enabled();
 }
 
-void PD_SwitchIrDebug(PD_AnalysisConfig* config, int x = true) {
+void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrDebug(x);
 }
 
@@ -225,9 +227,9 @@ bool PD_ModelFromMemory(PD_AnalysisConfig* config) {
   return config->config.model_from_memory();
 }
 
-void PD_EnableMemoryOptim(PD_AnalysisConfig* config, bool static_optim = false,
-                          bool force_update_static_cache = false) {
-  config->config.enable_memory_optim(static_optim, force_update_static_cache);
+void PD_EnableMemoryOptim(PD_AnalysisConfig* config, bool static_optim,
+                          bool force_update_static_cache) {
+  config->config.EnableMemoryOptim(static_optim, force_update_static_cache);
 }
 
 bool PD_MemoryOptimEnabled(PD_AnalysisConfig* config) {
