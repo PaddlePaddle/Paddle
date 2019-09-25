@@ -20,8 +20,8 @@
 
 extern "C" {
 
-bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
-                     PD_Tensor* output_data, int* out_size, int batch_size) {
+int PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
+                    PD_Tensor* output_data, int batch_size) {
   std::vector<paddle::PaddleTensor> in;
   for (int i = 0; i < in_size; ++i) {
     in.emplace_back(inputs->tensor);
@@ -29,13 +29,12 @@ bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
   std::vector<paddle::PaddleTensor> out;
   if (predictor->predictor->Run(in, &out, batch_size)) {
     int osize = out.size();
-    out_size = &osize;
-    for (int i = 0; i < out.size(); ++i) {
+    for (int i = 0; i < osize; ++i) {
       output_data[i].tensor = out[i];
     }
-    return true;
+    return osize;
   }
-  return false;
+  return -1;
 }
 
 char** PD_GetPredictorInputNames(PD_Predictor* predictor) {
@@ -66,7 +65,7 @@ InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
     }
     ++i;
   }
-  size = &i;
+  // size = &i;
   return ret_in_tensor_shape;
 }
 

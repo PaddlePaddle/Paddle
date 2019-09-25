@@ -103,11 +103,10 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
 // AnalysisPredictor
 typedef struct PD_Predictor PD_Predictor;
 
-PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
-                                               PD_Tensor* inputs, int in_size,
-                                               PD_Tensor* output_data,
-                                               int* out_size,
-                                               int batch_size = -1);
+PADDLE_CAPI_EXPORT extern int PD_PredictorRun(PD_Predictor* predictor,
+                                              PD_Tensor* inputs, int in_size,
+                                              PD_Tensor* output_data,
+                                              int batch_size = -1);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
     PD_Predictor* predictor);

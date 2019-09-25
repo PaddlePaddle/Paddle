@@ -110,7 +110,7 @@ int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
   for (int i = 0; i < s; ++i) {
     shapes[i] = ret_shape[i];
   }
-  size = &s;
+  // size = &s;
   return shapes;
 }
 
