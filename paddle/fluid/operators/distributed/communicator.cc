@@ -587,7 +587,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(const std::string &var_name,
     int end = buts[x + 1];
     float avg = 1 / static_cast<float>(trainer_nums_);
 
-    fs.push_back(framework::Async([&x_value, &y_value, &z_value, &new_rows,
+    fs.push_back(paddle::framework::Async([&x_value, &y_value, &z_value, &new_rows,
                                    row_numel, start, end, avg]() {
       auto cpu_ctx = paddle::platform::CPUDeviceContext();
       auto blas =
@@ -645,7 +645,7 @@ void GeoSgdCommunicator::RecvUpdateVars(const std::string &var_name) {
       int start = buts[x];
       int end = buts[x + 1];
 
-      fs.push_back(framework::Async([&x_value, &y_value, &z_value, &new_rows,
+      fs.push_back(paddle::framework::Async([&x_value, &y_value, &z_value, &new_rows,
                                      row_numel, start, end]() {
         auto cpu_ctx = paddle::platform::CPUDeviceContext();
         auto blas =
