@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
+#define TILE_SIZE 512
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -26,8 +28,6 @@ limitations under the License. */
 #if CUDA_VERSION < 9000
 #define __h2div h2div
 #endif
-
-#define TILE_SIZE 512
 
 namespace paddle {
 namespace operators {
