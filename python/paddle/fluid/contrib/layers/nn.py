@@ -25,8 +25,12 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 
 __all__ = [
-    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
-    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool'
+    'fused_elemwise_activation',
+    'sequence_topk_avg_pooling',
+    'var_conv_2d',
+    'match_matrix_tensor',
+    'tree_conv',
+    'fused_embedding_seq_pool',
 ]
 
 
@@ -108,18 +112,18 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with
-    padding. Besides, input.dims[1] should be 1.
+    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
-
+            
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
-            input is a lodTensor:
+            input is a lodTensor: 
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
-
+            
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
@@ -160,7 +164,7 @@ def var_conv_2d(input,
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
             row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
             col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = contrib.var_conv_2d(input=x_lod_tensor,
+            out = contrib.var_conv_2d(input=x_lod_tensor, 
                                      row=row_lod_tensor,
                                      col=col_lod_tensor,
                                      input_channel=3,
@@ -222,9 +226,9 @@ def match_matrix_tensor(x,
     Given a query A of length `n` and a title B of length `m`, the input shape are respectively
     [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
     it will generate a learnable parameter matrix W with shape [h, 3, h].
-    Then the semantic matching matrix of query A and title B is calculated by
-    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W`
-    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided,
+    Then the semantic matching matrix of query A and title B is calculated by 
+    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
+    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
     the corresponding activation function will be applied to output matrix.
     The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
 
@@ -296,9 +300,9 @@ def match_matrix_tensor(x,
 def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
     """
     The :attr:`topks` is a list with incremental values in this function. For each topk,
-    it will average the topk features as an output feature for each channel of every
-    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height
-    and width information for :attr:`input` tensor. If feature size of input sequence is less
+    it will average the topk features as an output feature for each channel of every 
+    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
+    and width information for :attr:`input` tensor. If feature size of input sequence is less 
     than topk, it will padding 0 at the back.
 
     .. code-block:: text
@@ -307,7 +311,7 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
 
-            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i]
+            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i] 
                 input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
                 input.dims = [116, 1]   # where 116 = 60 + 56
 
@@ -370,9 +374,9 @@ def tree_conv(nodes_vector,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """
+    """ 
     ${comment}
-
+    		
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -436,16 +440,14 @@ def fused_embedding_seq_pool(input,
     """
     **Embedding Sequence pool**
 
-    This layer is used to lookup and pool embeddings of IDs, provided by :attr:`input`, in
-    a lookup table. The result of this lookup is the embedding of each ID in the :attr:`input`.
-    The combiner type is mentioned in the Args.
+    This layer is the fusion of lookup table and sequence_pool.
 
     Args:
-        input (Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+        input (Variable): Input is a Tensor<int64> Variable, which contains the IDs' information.
             The value of the input IDs should satisfy :math:`0<= id < size[0]`.
-        size (tuple|list): The shape of the look up table parameter. It should
+        size (tuple|list): The shape of the lookup_table parameter. It should
             have two elements which indicate the size of the dictionary of
-            embeddings and the size of each embedding vector respectively.
+            embedding and the size of each embedding vector respectively.
         is_sparse (bool): The flag indicating whether to use sparse update.
             Default: False.
         padding_idx (int|long|None): It will output all-zero padding data whenever
