@@ -296,28 +296,6 @@ function build_base() {
     make install -j ${parallel_number}
 }
 
-function build_train_lib() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ============================================
-    Building in train_lib ...
-    ============================================
-EOF
-    if [ "$SYSTEM" == "Linux" ];then
-      parallel_number=`nproc`
-    else
-      parallel_number=8
-    fi
-    if [ "$1" != "" ]; then
-      parallel_number=$1
-    fi
-    make clean
-    make -j ${parallel_number}
-    make install -j ${parallel_number}
-    make -j ${parallel_number} fluid_lib_dist
-}
-
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
