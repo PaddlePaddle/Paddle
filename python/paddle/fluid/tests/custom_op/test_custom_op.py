@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Test
+"""
 
 import os
 import sys
@@ -42,7 +45,8 @@ def scope_prog_guard():
     scope = fluid.core.Scope()
     with fluid.scope_guard(scope):
         with fluid.program_guard(prog, startup_prog):
-            yield
+            with fluid.unique_name.guard():
+                yield
 
 
 def linear_fc(data, label, use_custom_relu):
@@ -52,10 +56,10 @@ def linear_fc(data, label, use_custom_relu):
     hidden = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=hidden, label=label)
     loss = fluid.layers.mean(loss)
-    return loss
+    return loss, hidden
 
 
-def custom_op_test(use_gpu=True, use_custom_relu=True):
+def custom_op_test(use_gpu=True, use_custom_relu=True, save_model_path=None):
     with scope_prog_guard():
         np.random.seed(0)
         fluid.default_startup_program().random_seed = 10
@@ -64,7 +68,9 @@ def custom_op_test(use_gpu=True, use_custom_relu=True):
         data = fluid.layers.data(
             name='data', shape=[1, 28, 28], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        loss = linear_fc(data, label, use_custom_relu)
+        loss, pred = linear_fc(data, label, use_custom_relu)
+
+        infer_prog = fluid.default_main_program().clone(for_test=True)
 
         optimizer = fluid.optimizer.Momentum(learning_rate=0.1, momentum=0.9)
         optimizer.minimize(loss)
@@ -87,6 +93,15 @@ def custom_op_test(use_gpu=True, use_custom_relu=True):
                             fetch_list=[loss])
             if i == num:
                 break
+
+        if save_model_path is not None:
+            fluid.io.save_inference_model(
+                save_model_path, ['data'], [pred],
+                exe,
+                infer_prog,
+                model_filename='__model__',
+                params_filename='__params__')
+
         return outs
 
 
@@ -96,8 +111,8 @@ class CustomOpTest(unittest.TestCase):
         os.environ['CPU_NUM'] = str(2)
 
     def test_cpu(self):
-        actual = custom_op_test(False, True)
-        expect = custom_op_test(False, False)
+        actual = custom_op_test(False, True, "model_relu2")
+        expect = custom_op_test(False, False, "model_relu")
         self.assertEqual(actual.all(), expect.all())
 
     def test_gpu(self):

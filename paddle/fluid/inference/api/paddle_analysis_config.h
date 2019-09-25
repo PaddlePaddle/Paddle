@@ -252,6 +252,16 @@ struct AnalysisConfig {
   PassStrategy* pass_builder() const;
   void PartiallyRelease();
 
+  /** Set Custom Op lib path.
+   */
+  void SetCustomOpLib(const std::string& op_lib_dir) {
+    custom_op_lib_ = op_lib_dir;
+  }
+
+  /** Return custom Op lib path.
+   */
+  const std::string& CustomOpLib() { return custom_op_lib_; }
+
  protected:
   // Update the config.
   void Update();
@@ -332,6 +342,7 @@ struct AnalysisConfig {
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+  std::string custom_op_lib_;
 };
 
 }  // namespace paddle

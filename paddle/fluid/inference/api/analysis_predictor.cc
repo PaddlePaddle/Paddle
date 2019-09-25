@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
@@ -93,6 +94,11 @@ bool AnalysisPredictor::Init(
   if (!PrepareScope(parent_scope)) {
     return false;
   }
+
+  if (!config_.CustomOpLib().empty()) {
+    paddle::framework::LoadOpLib(config_.CustomOpLib());
+  }
+
   if (!CreateExecutor()) {
     return false;
   }

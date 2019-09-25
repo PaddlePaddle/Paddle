@@ -39,7 +39,7 @@ T *DynLoad(void *handle, std::string name) {
   return func;
 }
 
-void LoadOpLib(const std::string &dso_name) {
+inline void LoadOpLib(const std::string &dso_name) {
   void *handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpInfoMap &get_op_info_t();

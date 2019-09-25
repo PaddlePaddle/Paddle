@@ -138,6 +138,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(cpu_math_library_num_threads_);
 
   CP_MEMBER(serialized_info_cache_);
+  CP_MEMBER(custom_op_lib_);
 
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
