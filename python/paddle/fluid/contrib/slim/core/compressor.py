@@ -20,6 +20,7 @@ from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
 from ....log_helper import get_logger
+from ....reader import PyReader
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -185,10 +186,14 @@ class Context(object):
         s_time = time.time()
         reader = self.eval_reader
         if sampled_rate:
+            assert (not isinstance(reader, Variable))
+            if isinstance(reader, PyReader):
+                assert reader._iterable
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
 
-        if isinstance(reader, Variable):
+        if isinstance(reader, Variable) or (isinstance(reader, PyReader) and
+                                            (not reader._iterable)):
             reader.start()
             try:
                 while True:
@@ -472,7 +477,9 @@ class Compressor(object):
                 context.optimize_graph.program).with_data_parallel(
                     loss_name=context.optimize_graph.out_nodes['loss'])
 
-        if isinstance(context.train_reader, Variable):
+        if isinstance(context.train_reader, Variable) or (
+                isinstance(context.train_reader,
+                           PyReader) and (not context.train_reader._iterable)):
             context.train_reader.start()
             try:
                 while True:
