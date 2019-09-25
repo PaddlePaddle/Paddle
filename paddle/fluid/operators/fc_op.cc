@@ -31,7 +31,6 @@ class FCOp : public framework::OperatorWithKernel {
                       "W(Input) of Fully Connected should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
-
     auto w_dims = ctx->GetInputDim("W");
     if ((w_dims[0] - 4) % 128 == 0 && (w_dims[1] - 4) % 128 == 0)
       w_dims = framework::DDim{w_dims[0] - 4, w_dims[1] - 4};

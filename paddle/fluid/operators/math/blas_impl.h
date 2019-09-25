@@ -727,7 +727,6 @@ void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
   int NN = N;
   int KK = K;
   if (N % 128 == 0 && K % 128 == 0) {
-    // if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0) {
     NN = N + 4;
     KK = K + 4;
   }

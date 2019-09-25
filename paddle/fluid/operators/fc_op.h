@@ -54,8 +54,6 @@ class FCOpKernel : public framework::OpKernel<T> {
 
     auto w_dims = w->dims();
     if ((w->dims()[0] - 4) % 128 == 0 && (w->dims()[1] - 4) % 128 == 0)
-      // if( (w->dims()[0] - 4)%128 ==0 && (w->dims()[1] - 4)%128 ==0 &&
-      // input->dims()[0] %128 ==0 )
       w_dims = framework::DDim{w->dims()[0] - 4, w->dims()[1] - 4};
 
     std::vector<int64_t> output_dims;
