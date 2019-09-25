@@ -1047,7 +1047,7 @@ class OpTest(unittest.TestCase):
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
                                        in_place, max_relative_error,
-                                       user_defined_grads)
+                                       user_defined_grads, check_dygraph)
 
     def check_grad_with_place(self,
                               place,
