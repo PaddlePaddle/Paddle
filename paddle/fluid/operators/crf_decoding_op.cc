@@ -38,7 +38,7 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "Label",
         "(Tensor<int64_t>/LoDTensor<int64_t>). The ground truth with shape "
-        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+        "[N x 1] (for LoDTensor) or [B x S x 1] (for Tensor). This input is "
         "optional. "
         "See more details in the operator's comments.")
         .AsDispensable();
@@ -126,8 +126,17 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
-                        "The Input(Label) should be a 2-D tensor");
+      if (ctx->HasInput("Length")) {
+        PADDLE_ENFORCE_EQ(
+            label_dims.size(), 3UL,
+            "The Input(Label) should be a 3-D tensor in padding mode.");
+        PADDLE_ENFORCE_EQ(
+            label_dims[-1], 1,
+            "The last dimension of Input(Label) should be fixed to 1.");
+      } else {
+        PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                          "The Input(Label) should be a 2-D tensor.");
+      }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
