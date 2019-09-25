@@ -28,8 +28,8 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     can be accessed by all the following operators in the graph.
 
     Note: 
-       Using `paddle.fluid.layers.data` is deprecated. It will be removed in
-       a future version. 
+       `paddle.fluid.layers.data` is deprecated. It will be removed in a future
+       version. Please use this `paddle.fluid.data`. 
        
        The `paddle.fluid.layers.data` set shape at compile time but does NOT
        check the shape of feeded data, this `paddle.fluid.data` checks the
@@ -52,12 +52,12 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
           import paddle.fluid as fluid
 
           # Creates a variable with fixed size [1, 2, 3]
-          # Usercan only feed data of the same shape to x
+          # User can only feed data of the same shape to x
           x = fluid.data(name='x', shape=[1, 2, 3], dtype='int64')
 
           # Creates a variable with changable batch size -1.
-          # Users can feed data of any batch size into y. 
-          # But size of each data sample has to be [3, 224, 224]
+          # Users can feed data of any batch size into y, 
+          # but size of each data sample has to be [3, 224, 224]
           y = fluid.data(name='y', shape=[-1, 3, 224, 224], dtype='float32')
 
     """
