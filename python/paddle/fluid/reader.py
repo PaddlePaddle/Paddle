@@ -458,14 +458,15 @@ class GeneratorLoader(DataLoaderBase):
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
-                            if type(item
-                                    ) == np.ndarray and item.dtype == np.object:
+                            arr = np.array(item)
+                            if arr.dtype == np.object:
                                 raise TypeError((
-                                    "ndarray with dtype of numpy.object"
-                                    "is not supported, please assign a specific dtype. If you are "
-                                    "passing a nested list with different lengths of elements, please "
-                                    "use 'fluid.create_lod_tensor' to covert it to a LoD-Tensor. "
-                                    "Data : {0}").format(item))
+                                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                                    "this means the input data contains nested lists with different lengths. "
+                                    "\n\t* Check the reader function passed to 'decorate_batch_generator'"
+                                    " to locate the data causes this issue.\n\t* Please consider using "
+                                    "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                                ))
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp
