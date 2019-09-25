@@ -15,6 +15,9 @@
 #pragma once
 
 #include <memory>
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 template <PD_DataType DType>
 struct GetDataType;
@@ -31,32 +34,106 @@ DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
 
 #undef DECLARE_PD_DTYPE_CONVERTOR
 
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
+
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };
 
-typedef struct PD_AnalysisConfig {
+struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
-} PD_AnalysisConfig;
+};
 
-typedef struct InTensorShape {
+struct InTensorShape {
   char* name;
   int* tensor_shape;
   int shape_size;
-} InTensorShape;
+};
 
-typedef struct PD_ZeroCopyTensor {
+struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
-} PD_ZeroCopyTensor;
+};
 
-typedef struct PD_Tensor { paddle::PaddleTensor tensor; } PD_Tensor;
+struct PD_Tensor {
+  paddle::PaddleTensor tensor;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+struct PD_PaddleBuf {
+  paddle::PaddleBuf buf;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
-
-typedef struct PD_MaxInputShape {
+struct PD_MaxInputShape {
   char* name;
   int* shape;
   int shape_size;
-} PD_MaxInputShape;
+};
+
+paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
+  switch (dtype) {
+    case PD_FLOAT32:
+      return PD_PaddleDType::FLOAT32;
+    case PD_INT32:
+      return PD_PaddleDType::INT32;
+    case PD_INT64:
+      return PD_PaddleDType::INT64;
+    case PD_UINT8:
+      return PD_PaddleDType::UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      return PD_PaddleDType::FLOAT32;
+  }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return PD_PaddleDType::FLOAT32;
+}
+
+paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
+  switch (dtype) {
+    case PD_UNK:
+      return PD_PaddlePlace::kUNK;
+    case PD_CPU:
+      return PD_PaddlePlace::kCPU;
+    case PD_GPU:
+      return PD_PaddlePlace::kGPU;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_PaddlePlace::kUNK;
+  }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return PD_PaddlePlace::kUNK;
+}
+
+PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
+  switch (dtype) {
+    case PD_PaddleDType::FLOAT32:
+      return PD_DataType::PD_FLOAT32;
+    case PD_PaddleDType::INT32:
+      return PD_DataType::PD_INT32;
+    case PD_PaddleDType::INT64:
+      return PD_DataType::PD_INT64;
+    case PD_PaddleDType::UINT8:
+      return PD_DataType::PD_UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_DataType::PD_UNKDTYPE;
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
+  return PD_DataType::PD_UNKDTYPE;
+}
+
+PD_ACPrecision ConvertToACPrecision(Precision dtype) {
+  switch (dtype) {
+    case Precision::kFloat32:
+      return PD_ACPrecision::kFloat32;
+    case Precision::kInt8:
+      return PD_ACPrecision::kInt8;
+    case Precision::kHalf:
+      return PD_ACPrecision::kHalf;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_ACPrecision::kFloat32;
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
+  return PD_ACPrecision::kFloat32;
+}

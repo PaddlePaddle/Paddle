@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/capi/c_api.h"
 #include <algorithm>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
@@ -42,8 +41,4 @@ bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) { return buf->buf.empty(); }
 void* PD_PaddleBufData(PD_PaddleBuf* buf) { return buf->buf.data(); }
 
 size_t PD_PaddleBufLength(PD_PaddleBuf* buf) { return buf->buf.length(); }
-
-void PD_PaddleBufAssign(PD_PaddleBuf* buf_des, PD_PaddleBuf* buf_ori) {
-  buf_des->buf = buf_ori->buf;
-}
 }  // extern "C"
