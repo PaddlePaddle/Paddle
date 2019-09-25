@@ -37,14 +37,10 @@ class RankLossOp : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Label");
     auto left_dims = ctx->GetInputDim("Left");
     auto right_dims = ctx->GetInputDim("Right");
-
-    PADDLE_ENFORCE_EQ(label_dims[0], left_dims[0],
-                      "The first dimension of Input(Label) and Input(Left) "
-                      "must have the same value.");
-    PADDLE_ENFORCE_EQ(label_dims[0], right_dims[0],
-                      "The first dimension of Input(Label) and Input(Right) "
-                      "must have the same value.");
     // check label_dims valid
+    PADDLE_ENFORCE_GE(label_dims.size(), 1,
+                      "The dimension size of Input(Label) must be greater than "
+                      "or equal to 1.");
     PADDLE_ENFORCE_LE(
         label_dims.size(), 2,
         "The dimension size of Input(Label) must be less than or equal to 2.");
@@ -53,6 +49,9 @@ class RankLossOp : public framework::OperatorWithKernel {
                         "The last dimension of Input(Label) must be 1.");
     }
     // check left_dims valid
+    PADDLE_ENFORCE_GE(left_dims.size(), 1,
+                      "The dimension size of Input(Left) must be greater than "
+                      "or equal to 1.");
     PADDLE_ENFORCE_LE(
         left_dims.size(), 2,
         "The dimension size of Input(Left) must be less than or equal to 2.");
@@ -61,6 +60,9 @@ class RankLossOp : public framework::OperatorWithKernel {
                         "The last dimension of Input(Left) must be 1.");
     }
     // check right_dims valid
+    PADDLE_ENFORCE_GE(right_dims.size(), 1,
+                      "The dimension size of Input(Right) must be greater than "
+                      "or equal to 1.");
     PADDLE_ENFORCE_LE(
         right_dims.size(), 2,
         "The dimension size of Input(Right) must be less than or equal to 2.");
@@ -68,6 +70,12 @@ class RankLossOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(right_dims[1], 1,
                         "The last dimension of Input(Right) must be 1.");
     }
+    PADDLE_ENFORCE_EQ(label_dims[0], left_dims[0],
+                      "The first dimension of Input(Label) and Input(Left) "
+                      "must have the same value.");
+    PADDLE_ENFORCE_EQ(label_dims[0], right_dims[0],
+                      "The first dimension of Input(Label) and Input(Right) "
+                      "must have the same value.");
     ctx->SetOutputDim("Out", label_dims);
   }
 };
