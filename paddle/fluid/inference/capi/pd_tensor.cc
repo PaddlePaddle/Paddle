@@ -37,15 +37,11 @@ void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_DataType dtype) {
 }
 
 void PD_SetPaddleTensorData(PD_Tensor* tensor, PD_PaddleBuf* buf) {
-  tensor->tensor.data = buf;
+  tensor->tensor.data = buf->buf;
 }
 
 void PD_SetPaddleTensorShape(PD_Tensor* tensor, int* shape, int size) {
-  std::vector<int> tensor_shape;
-  for (int i = 0; i < size; ++i) {
-    tensor_shape.emplace_back(shape[i]);
-  }
-  tensor->tensor.shape = tensor_shape;
+  tensor->tensor.shape.assign(shape, shape + size);
 }
 
 void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
@@ -58,21 +54,52 @@ void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor, PD_Place place) {
   return tensor->tensor.mutable_data<void*>(ConvertToPlace(place));
 }
 
-void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place* place,
+void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place place,
                             int* size) {
-  return tensor->tensor.data<void*>(ConvertToPlace(place), size);
+  paddle::PaddlePlace p = ConvertToPlace(place);
+  return tensor->tensor.data<void*>(&p, size);
 }
 
 void PD_ZeroCopyTensorCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
                                 PD_DataType data_type) {
-  tensor->tensor.copy_to_cpu(
-      static_cast<GetDataType<data_type>::RealType*>(data));
+  switch (data_type) {
+    case PD_FLOAT32:
+      tensor->tensor.copy_to_cpu(static_cast<float*>(data));
+      break;
+    case PD_INT32:
+      tensor->tensor.copy_to_cpu(static_cast<int32_t*>(data));
+      break;
+    case PD_INT64:
+      tensor->tensor.copy_to_cpu(static_cast<int64_t*>(data));
+      break;
+    case PD_UINT8:
+      tensor->tensor.copy_to_cpu(static_cast<uint8_t*>(data));
+      break;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      break;
+  }
 }
 
 void PD_ZeroCopyTensorCopyFromCpu(PD_ZeroCopyTensor* tensor, void* data,
                                   PD_DataType data_type) {
-  tensor->tensor.copy_from_cpu(
-      static_cast<GetDataType<data_type>::RealType*>(data));
+  switch (data_type) {
+    case PD_FLOAT32:
+      tensor->tensor.copy_from_cpu(static_cast<float*>(data));
+      break;
+    case PD_INT32:
+      tensor->tensor.copy_from_cpu(static_cast<int32_t*>(data));
+      break;
+    case PD_INT64:
+      tensor->tensor.copy_from_cpu(static_cast<int64_t*>(data));
+      break;
+    case PD_UINT8:
+      tensor->tensor.copy_from_cpu(static_cast<uint8_t*>(data));
+      break;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      break;
+  }
 }
 
 int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
