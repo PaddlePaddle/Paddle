@@ -4588,7 +4588,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             import paddle.fluid as fluid
             import numpy
 
-            x = fluid.layers.data(name='y', shape=[10, 5],
+            x = fluid.layers.data(name='x', shape=[10, 5],
                              dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(
                 input=numpy.array([0.0], dtype=numpy.float32))
@@ -4637,7 +4637,7 @@ def sequence_unpad(x, length, name=None):
 	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
-	    length.data = [[2], [3], [4]],
+	    length.data = [2, 3, 4],
 
 	after unpadding, the output Variable will be:
 
@@ -4659,9 +4659,15 @@ def sequence_unpad(x, length, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
-            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
-            out = fluid.layers.sequence_unpad(x=x, length=len)
+            import numpy
+
+            # pad data
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
+            pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            
+            # upad data
+            unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
     assert not in_dygraph_mode(), (
