@@ -16,8 +16,6 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
-import "compatible.proto";
-
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.
 //
@@ -176,6 +174,27 @@ message BlockDesc {
   repeated VarDesc vars = 3;
   repeated OpDesc ops = 4;
   optional int32 forward_block_idx = 5 [ default = -1 ];
+}
+
+message CompatibleInfo {
+  enum Type {
+    COMPATIBLE = 0;
+    DEFINITELY_NOT = 1;
+    POSSIBLE = 2;
+    BUG_FIX = 3;
+    PRECISION_CHANGE = 4;
+  }
+  required string version = 1;
+  required Type type = 2;
+}
+
+message OpCompatibleMap {
+  message OpCompatiblePair {
+    required string op_name = 1;
+    required CompatibleInfo compatible_info = 2;
+  }
+  repeated OpCompatiblePair pair = 1;
+  optional string default_required_version = 2;
 }
 
 // Please refer to

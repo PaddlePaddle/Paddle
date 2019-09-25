@@ -26,7 +26,7 @@ add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
 #ddim lib
-proto_library(framework_proto SRCS framework.proto compatible.proto)
+proto_library(framework_proto SRCS framework.proto)
 proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
@@ -139,7 +139,7 @@ cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto compatible.proto)
+py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
 py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
@@ -224,7 +224,7 @@ cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
 cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
-cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info string_helper glog)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
 # Get the current working branch
 execute_process(

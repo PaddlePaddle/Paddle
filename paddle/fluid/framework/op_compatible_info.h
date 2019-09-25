@@ -53,8 +53,8 @@ class OpCompatibleMap {
   OpCompatibleType IsRequireMiniVersion(std::string op_name,
                                         std::string current_version) const;
 
-  void Save(proto::OpCompatibleMap* desc) const;
-  void Load(const proto::OpCompatibleMap& desc);
+  bool Save(proto::OpCompatibleMap* desc) const;
+  bool Load(const proto::OpCompatibleMap& desc);
 
   const std::string& GetDefaultRequiredVersion() const {
     return default_required_version_;

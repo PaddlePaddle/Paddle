@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
@@ -59,8 +60,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
-
-#include "paddle/fluid/framework/op_compatible_info.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"

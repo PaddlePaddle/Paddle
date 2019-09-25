@@ -19,11 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 bool IsProgramVersionSupported(int64_t version) {
-  static int num_supported =
-      sizeof(kSupportedProgramVersion) / sizeof(kSupportedProgramVersion[0]);
-  return std::find(kSupportedProgramVersion,
-                   kSupportedProgramVersion + num_supported,
-                   version) != kSupportedProgramVersion + num_supported;
+  /* Not yet implemented. */
+  return true;
 }
 
 bool IsTensorVersionSupported(uint32_t version) {

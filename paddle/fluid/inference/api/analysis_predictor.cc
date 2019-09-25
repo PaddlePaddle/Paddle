@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -143,7 +144,10 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
-    CheckOperatorCompatible();
+    if (!CheckOperatorCompatible()) {
+      LOG(WARNING) << "WARNING: Results may be DIFF! "
+                      "Using same versions between model and lib.";
+    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -908,20 +912,24 @@ bool AnalysisPredictor::CheckOperatorCompatible() {
   }
   bool res = true;
   op_compatible_map_.Load(*inference_program_->OpCompatibleMap());
-  int64_t version = inference_program_->Version();
+  const auto &version = framework::VersionString(inference_program_->Version());
+  LOG(INFO) << "MODEL VERSION: " << version;
+  LOG(INFO) << "PREDICTOR VERSION: "
+            << framework::VersionString(framework::kCurProgramVersion);
+  std::set<std::string> op_types;
   for (size_t i = 0; i < inference_program_->Size(); ++i) {
     const auto &block = inference_program_->Block(i);
     for (const auto *op : block.AllOps()) {
-      const std::string type = op->Type();
-      auto compatible_type = op_compatible_map_.IsRequireMiniVersion(
-          type, framework::VersionString(version));
-      if (compatible_type != framework::OpCompatibleType::compatible) {
-        LOG(WARNING) << "The version " << version << " of operator " << type
-                     << " is not compatible ("
-                     << static_cast<int>(compatible_type)
-                     << "), and the inference result may have a difference.";
-        res = false;
-      }
+      op_types.insert(op->Type());
+    }
+  }
+  for (const auto type : op_types) {
+    auto compatible_type =
+        op_compatible_map_.IsRequireMiniVersion(type, version);
+    if (compatible_type != framework::OpCompatibleType::compatible) {
+      LOG(WARNING) << " - Version incompatible ("
+                   << static_cast<int>(compatible_type) << ") " << type;
+      res = false;
     }
   }
   return res;

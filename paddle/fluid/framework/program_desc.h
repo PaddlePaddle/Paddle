@@ -61,6 +61,8 @@ class ProgramDesc {
 
   int64_t Version() const;
 
+  void SetVersion(const int64_t version);
+
   // The output variable of feed_op is referenced as feed_target.
   // This function is used to collect the output variable's name of all
   // feed_ops.
