@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/distributed/geo_communicator.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 
 #include <gflags/gflags.h>
 #include <paddle/fluid/framework/program_desc.h>

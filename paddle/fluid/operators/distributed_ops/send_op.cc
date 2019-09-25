@@ -47,19 +47,10 @@ class SendOp : public framework::OperatorBase {
     auto height_sections = Attr<std::vector<int64_t>>("sections");
 
     if (send_varnames.size() > 0) {
-      if (distributed::Communicator::GetInstance() == nullptr) {
-        auto send_functor = distributed::ParameterSend<float>();
-        auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                               height_sections, trainer_id);
-        send_functor(rpc_ctx, scope, true);
+      if(ins.size() > 1){
+        distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
       } else {
-        if(send_varnames.front() == "FLAG_GEO_SGD_SPARSE_PARAMETER") {
-          // for geo sgd, send ids which sparse parameter update needed
-          distributed::Communicator::GetInstance()->GeoSgdSend(ins, send_varnames, scope);
-        } else {
-          PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-          distributed::Communicator::GetInstance()->Send(ins[0], scope);
-        }
+        distributed::Communicator::GetInstance()->Send(ins[0], scope);
       }
     } else {
       platform::DeviceContextPool& pool =
