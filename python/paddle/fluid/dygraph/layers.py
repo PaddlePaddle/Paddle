@@ -24,7 +24,6 @@ from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-from ..dygraph import base
 
 __all__ = ['Layer']
 
@@ -227,6 +226,9 @@ class Layer(core.Layer):
                 tensor = var.get_tensor()
                 tensor.set(self._loaddict_holder[value.name].numpy(),
                            framework._current_expected_place())
+            if name in params:
+                # remove unused param in tracer
+                framework._dygraph_tracer()._vars.pop(params[name].name, None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)

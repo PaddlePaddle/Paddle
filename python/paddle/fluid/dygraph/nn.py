@@ -213,9 +213,17 @@ class Conv2D(layers.Layer):
     def weight(self):
         return self._filter_param
 
+    @weight.setter
+    def weight(self, value):
+        self._filter_param = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -425,9 +433,17 @@ class Conv3D(layers.Layer):
     def weight(self):
         return self._filter_param
 
+    @weight.setter
+    def weight(self, value):
+        self._filter_param = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -661,9 +677,17 @@ class Conv3DTranspose(layers.Layer):
     def weight(self):
         return self._img_filter
 
+    @weight.setter
+    def weight(self, value):
+        self._img_filter = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -966,9 +990,18 @@ class FC(layers.Layer):
         else:
             return self.__w[0]
 
+    @weight.setter
+    def weight(self, value):
+        if len(self.__w) == 1:
+            self.__w[0] = value
+
     @property
     def bias(self):
         return self._b
+
+    @bias.setter
+    def bias(self, value):
+        self._b = value
 
     def forward(self, input):
         mul_results = list()
@@ -1307,6 +1340,10 @@ class Embedding(layers.Layer):
     def weight(self):
         return self._w
 
+    @weight.setter
+    def weight(self, value):
+        self._w = value
+
     def forward(self, input):
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -1606,9 +1643,17 @@ class GRUUnit(layers.Layer):
     def weight(self):
         return self._weight
 
+    @weight.setter
+    def weight(self, value):
+        self._weight = value
+
     @property
     def bias(self):
         return self._bias
+
+    @bias.setter
+    def bias(self, value):
+        self._bias = value
 
     def forward(self, input, hidden):
         inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self._weight}
@@ -1846,9 +1891,17 @@ class NCE(layers.Layer):
     def weight(self):
         return self._w
 
+    @weight.setter
+    def weight(self, value):
+        self._w = value
+
     @property
     def bias(self):
         return self._b
+
+    @bias.setter
+    def bias(self, value):
+        self._b = value
 
     def forward(self, input, label, sample_weight=None):
         assert isinstance(input, Variable)
@@ -1942,6 +1995,10 @@ class PRelu(layers.Layer):
     @property
     def weight(self):
         return self._alpha
+
+    @weight.setter
+    def weight(self, value):
+        self._alpha = value
 
     def forward(self, input):
 
@@ -2042,9 +2099,17 @@ class BilinearTensorProduct(layers.Layer):
     def weight(self):
         return self._w
 
+    @weight.setter
+    def weight(self, value):
+        self._w = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self._w}
@@ -2277,9 +2342,17 @@ class Conv2DTranspose(layers.Layer):
     def weight(self):
         return self._img_filter
 
+    @weight.setter
+    def weight(self, value):
+        self._img_filter = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -2772,9 +2845,17 @@ class TreeConv(layers.Layer):
     def weight(self):
         return self.W
 
+    @weight.setter
+    def weight(self, value):
+        self.W = value
+
     @property
     def bias(self):
         return self._bias_param
+
+    @bias.setter
+    def bias(self, value):
+        self._bias_param = value
 
     def forward(self, nodes_vector, edge_set):
 
