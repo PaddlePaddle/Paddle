@@ -26,6 +26,8 @@ namespace py = pybind11;
 
 using paddle::framework::ProgramDesc;
 using paddle::operators::distributed::Communicator;
+using paddle::operators::distributed::AsyncCommunicator;
+using paddle::operators::distributed::GeoSgDCommunicator;
 using paddle::framework::Scope;
 
 namespace paddle {
@@ -37,14 +39,14 @@ void BindCommunicator(py::module* m) {
                                                           "DistCommunicator")
       .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
         VLOG(0) << "using communicator";
-        Communicator::Init(program, param_scope);
+        Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
         return Communicator::GetInstantcePtr();
       }))
       .def(py::init([](const ProgramDesc& program, Scope* param_scope,
                       std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info,
                       int &trainers,int &geo_need_push_nums){
         VLOG(0) << "using geo sgd communicator";
-        Communicator::GeoSgdInit(program, param_scope,vars_info,trainers,geo_need_push_nums);
+        Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,vars_info,trainers,geo_need_push_nums);
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
