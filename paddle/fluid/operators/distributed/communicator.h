@@ -165,8 +165,6 @@ class Communicator {
   virtual void Stop() = 0;
   virtual bool IsRunning() { return running_; }
 
-  virtual void Send() = 0;
-
   virtual void Send(const std::string& var_name,
                     const framework::Scope& scope) = 0;
 
