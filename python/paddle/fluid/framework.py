@@ -2425,6 +2425,20 @@ class IrOpNode(IrNode):
             "The node operator description cannot be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
+    def rename_output(self, old_output_name, new_output_name):
+        """
+        Rename the output of this node.
+
+        Args:
+            old_output_name(str): the old output name.
+            new_output_name(str): the new output name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
+        ), old_output_name, new_output_name))
+        self.node.op()._rename_output(old_output_name, new_output_name)
+
     def input(self, name):
         """
         Get the argument name list by the parameter name for input.
@@ -2717,6 +2731,24 @@ class IrGraph(object):
         new_input_node.append_output(op_node)
         op_node.append_input(new_input_node)
         op_node.rename_input(old_input_node.name(), new_input_node.name())
+
+    def update_output_link(self, old_output_node, new_output_node, op_node):
+        """
+        Update the output's link of an operator node.
+
+        Args:
+            old_output_node(IrNode): the old output node of the giving op_node.
+            new_output_node(IrNode): the new output node of the giving op_node.
+            op_node(IrOpNode): the operator node that is needed to update input's link.
+        """
+        assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
+        self.graph.nodes() and op_node.node in self.graph.nodes(), \
+        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+        old_output_node.remove_input(op_node)
+        op_node.remove_output(old_output_node)
+        new_output_node.append_input(op_node)
+        op_node.append_output(new_output_node)
+        op_node.rename_output(old_output_node.name(), new_output_node.name())
 
     def link_to(self, node_in, node_out):
         """
