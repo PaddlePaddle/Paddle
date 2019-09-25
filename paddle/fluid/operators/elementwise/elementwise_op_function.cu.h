@@ -23,6 +23,10 @@ limitations under the License. */
 #include <cuda_fp16.h>
 #endif
 
+#if CUDA_VERSION < 9000
+#define __h2div h2div
+#endif
+
 #define TILE_SIZE 512
 
 namespace paddle {
@@ -64,12 +68,13 @@ inline DEVICE half2 half2_add(const half2& a, const half2& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hadd2(a, b);
 #else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x + fb.x;
-  fo.y = fa.y + fb.y;
-  return __float22half2_rn(fo);
+  float a1 = __low2float(a);
+  float a2 = __high2float(a);
+  float b1 = __low2float(b);
+  float b2 = __high2float(b);
+  float r1 = a1 + b1;
+  float r2 = a2 + b2;
+  return __floats2half2_rn(r1, r2);
 #endif
 }
 
@@ -77,12 +82,13 @@ inline DEVICE half2 half2_sub(const half2& a, const half2& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hsub2(a, b);
 #else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x - fb.x;
-  fo.y = fa.y - fb.y;
-  return __float22half2_rn(fo);
+  float a1 = __low2float(a);
+  float a2 = __high2float(a);
+  float b1 = __low2float(b);
+  float b2 = __high2float(b);
+  float r1 = a1 - b1;
+  float r2 = a2 - b2;
+  return __floats2half2_rn(r1, r2);
 #endif
 }
 
@@ -90,12 +96,13 @@ inline DEVICE half2 half2_mul(const half2& a, const half2& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hmul2(a, b);
 #else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x * fb.x;
-  fo.y = fa.y * fb.y;
-  return __float22half2_rn(fo);
+  float a1 = __low2float(a);
+  float a2 = __high2float(a);
+  float b1 = __low2float(b);
+  float b2 = __high2float(b);
+  float r1 = a1 * b1;
+  float r2 = a2 * b2;
+  return __floats2half2_rn(r1, r2);
 #endif
 }
 
@@ -103,12 +110,13 @@ inline DEVICE half2 half2_div(const half2& a, const half2& b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __h2div(a, b);
 #else
-  float2 fa, fb, fo;
-  fa = __half22float2(a);
-  fb = __half22float2(b);
-  fo.x = fa.x / fb.x;
-  fo.y = fa.y / fb.y;
-  return __float22half2_rn(fo);
+  float a1 = __low2float(a);
+  float a2 = __high2float(a);
+  float b1 = __low2float(b);
+  float b2 = __high2float(b);
+  float r1 = a1 / b1;
+  float r2 = a2 / b2;
+  return __floats2half2_rn(r1, r2);
 #endif
 }
 
