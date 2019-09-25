@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdio.h>
+
 #if defined(_WIN32)
 #ifdef PADDLE_ON_INFERENCE
 #define PADDLE_CAPI_EXPORT __declspec(dllexport)
