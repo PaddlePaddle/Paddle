@@ -130,13 +130,19 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
+    A configuration class that provide support for distributed jobs.
+    Some important parameters are explained as follows:
+
+
     .. py:attribute:: slice_var_up (bool)
 
-          Do Tensor slice for pservers, default is True.
+          Whether to do Tensor slice for pservers, default is True.
 
     .. py:attribute:: split_method (PSDispatcher)
 
-          RoundRobin or HashName can be used.
+          Methods of dispatching parameters for pserver,
+          :ref:`api_fluid_transpiler_RoundRobin` or
+          :ref:`api_fluid_transpiler_HashName` can be used.
           Try to choose the best method to balance loads for pservers.
 
     .. py:attribute:: min_block_size (int)
@@ -150,8 +156,13 @@ class DistributeTranspilerConfig(object):
     Examples:
         .. code-block:: python
 
+            from paddle.fluid.transpiler.ps_dispatcher import RoundRobin
+            import paddle.fluid as fluid
+
             config = fluid.DistributeTranspilerConfig()
             config.slice_var_up = True
+            config.split_method = RoundRobin
+            config.min_block_size = 81920
     """
 
     slice_var_up = True
