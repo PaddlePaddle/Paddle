@@ -178,3 +178,5 @@ list(REMOVE_ITEM TEST_OPS qat_int8_comparison.py)
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+
+set_tests_properties(test_quantization_pass PROPERTIES LABELS "RUN_TYPE=DIST")
