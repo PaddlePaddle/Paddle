@@ -63,10 +63,6 @@ struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
 };
 
-struct PD_PaddleBuf {
-  paddle::PaddleBuf buf;
-};
-
 struct PD_MaxInputShape {
   char* name;
   int* shape;
