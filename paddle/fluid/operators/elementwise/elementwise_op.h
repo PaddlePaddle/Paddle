@@ -136,7 +136,8 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
   virtual void AddOpOutput() {
     AddOutput("Out",
-              "A location into which the result is stored. It's dimension "
+              "N-dimension tensor. A location into which the result is stored. "
+              "It's dimension "
               "equals with x");
   }
   virtual void AddOpComment() { AddComment(GetCommentExamples()); }
@@ -148,7 +149,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
 
   std::string GetCommentExamples() const {
     return string::Sprintf(R"DOC(
-Elementwise %s tensor elements.
+Elementwise %s Operator.
 
 %s
 
