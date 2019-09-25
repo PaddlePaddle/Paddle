@@ -162,7 +162,9 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_type", &pd::VarDesc::SetType)
       .def("serialize_to_string", SerializeMessage<pd::VarDesc>)
       .def("persistable", &pd::VarDesc::Persistable)
-      .def("set_persistable", &pd::VarDesc::SetPersistable);
+      .def("set_persistable", &pd::VarDesc::SetPersistable)
+      .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
+      .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
 
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)

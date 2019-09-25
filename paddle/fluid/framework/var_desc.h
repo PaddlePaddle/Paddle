@@ -110,6 +110,12 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  bool NeedCheckFeed() const { return desc_.need_check_feed(); }
+
+  void SetNeedCheckFeed(bool need_check_feed) {
+    desc_.set_need_check_feed(need_check_feed);
+  }
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
