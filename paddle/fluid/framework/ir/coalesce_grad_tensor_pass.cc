@@ -276,7 +276,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
 
       auto dtype =
-          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().first);
+          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().second);
       VLOG(10) << out.str()
                << ", group size:" << group_params_grads->at(i).size()
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
@@ -465,28 +465,34 @@ class CoalesceGradTensorPass : public ir::Pass {
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());
     params_name.reserve(params_grads.size());
+
+    auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
     for (auto &p_g : params_grads) {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
+      auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
+      PADDLE_ENFORCE_EQ(next_dtype, dtype);
     }
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
     ProgramDesc &program_desc =
         result->Get<details::ProgramDescs>(details::kProgramDescs).back();
     auto *global_block = program_desc.MutableBlock(0);
-    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
+    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
                               global_block);
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
                                  const std::vector<std::string> &grads_name,
                                  const std::string &fused_var_name,
+                                 const proto::VarType::Type &dtype,
                                  BlockDesc *global_block) const {
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
+    op_desc->SetAttr("dtype", dtype);
   }
 };
 }  // namespace ir
