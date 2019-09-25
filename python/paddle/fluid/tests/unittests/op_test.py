@@ -411,12 +411,17 @@ class OpTest(unittest.TestCase):
                                     persistable=False,
                                     stop_gradient=False)
                             outputs[name].append(v)
-
+                attrs_outputs = {}
+                if hasattr(self, "attrs"):
+                    for attrs_name in self.attrs:
+                        if self.attrs[attrs_name] != None:
+                            attrs_outputs[attrs_name] = self.attrs[attrs_name]
+                #print("-------------LOG------------- ", attrs_outputs, " ", self.attrs)
                 block.append_op(
                     type=self.op_type,
                     inputs=inputs,
                     outputs=outputs,
-                    attrs=self.attrs if hasattr(self, "attrs") else None)
+                    attrs=attrs_outputs if hasattr(self, "attrs") else None)
                 return outputs
             except core.EnforceNotMet as ex:
                 exception = ex
@@ -1036,7 +1041,7 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None,
-                   check_dygraph=False):
+                   check_dygraph=True):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
@@ -1053,8 +1058,8 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None,
-                              check_dygraph=False):
-        check_dygraph = False  ##delete
+                              check_dygraph=True):
+        #check_dygraph = False  ##delete
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1134,10 +1139,12 @@ class OpTest(unittest.TestCase):
                     for (name, np_value) in self.inputs[name]:
                         if isinstance(np_value, tuple):
                             v = self._create_var_from_numpy(np_value[0])
+                            v.stop_gradient = False
                             v._ivar.value().get_tensor(
                             ).set_recursive_sequence_lengths(np_value[1])
                         else:
                             v = self._create_var_from_numpy(np_value)
+                            v.stop_gradient = False
                         var_list.append(v)
                         inputs_grad_dict[name] = v
                     inputs[slot_name] = var_list
@@ -1148,21 +1155,25 @@ class OpTest(unittest.TestCase):
                         for name, np_value in self.inputs[name]:
                             if isinstance(np_value, tuple):
                                 v = self._create_var_from_numpy(np_value[0])
+                                v.stop_gradient = False
                                 v._ivar.value().get_tensor(
                                 ).set_recursive_sequence_lengths(np_value[1])
                             else:
                                 v = self._create_var_from_numpy(np_value)
+                                v.stop_gradient = False
                             inputs[slot_name].append(v)
                             inputs_grad_dict[name] = v
                     else:
                         if isinstance(self.inputs[name], tuple):
                             v = self._create_var_from_numpy(self.inputs[name][
                                 0])
+                            v.stop_gradient = False
                             v._ivar.value().get_tensor(
                             ).set_recursive_sequence_lengths(self.inputs[name][
                                 1])
                         else:
                             v = self._create_var_from_numpy(self.inputs[name])
+                            v.stop_gradient = False
                         inputs[name].append(v)
                         inputs_grad_dict[name] = v
             # prepare output variable
@@ -1243,11 +1254,16 @@ class OpTest(unittest.TestCase):
                                 stop_gradient=False)
                         outputs[name].append(v)
 
+            attrs_outputs = {}
+            if hasattr(self, "attrs"):
+                for attrs_name in self.attrs:
+                    if self.attrs[attrs_name] != None:
+                        attrs_outputs[attrs_name] = self.attrs[attrs_name]
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
-                attrs=self.attrs if hasattr(self, "attrs") else None)
+                attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
             if len(outputs) == 1:
                 loss = block.create_var(
@@ -1299,12 +1315,15 @@ class OpTest(unittest.TestCase):
                     inputs={"X": loss_sum},
                     outputs={"Out": loss},
                     attrs={'scale': 1.0 / float(len(avg_sum))})
+            #print("mean ", loss)
             loss.backward()
 
             #print("backward?")
             fetch_list_grad = []
             for inputs_to_check_name in inputs_to_check:
                 #print(inputs_to_check_name, " iiiiiiiiiiiiiiiiii")
+                #print("1212 ", inputs_grad_dict[inputs_to_check_name]._ivar._grad_ivar())
+                #print("1212222 ", type(inputs_grad_dict[inputs_to_check_name]._ivar)._grad_ivar())
                 a = (np.array(inputs_grad_dict[inputs_to_check_name]
                               ._ivar._grad_ivar().value().get_tensor()))
                 fetch_list_grad.append(a)
