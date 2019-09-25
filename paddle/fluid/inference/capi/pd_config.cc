@@ -81,7 +81,7 @@ void PD_EnableUseGpu(PD_AnalysisConfig* config,
 
 void PD_DisableGpu(PD_AnalysisConfig* config) { config->config.DisableGpu(); }
 
-bool PD_UseGpu(PD_AnalysisConfig* config) { config->config.use_gpu(); }
+bool PD_UseGpu(PD_AnalysisConfig* config) { return config->config.use_gpu(); }
 
 int PD_GpuDeviceId(PD_AnalysisConfig* config) {
   return config->config.gpu_device_id();
@@ -127,9 +127,9 @@ void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
                              int max_batch_size, int min_subgraph_size,
                              Precision precision, bool use_static,
                              bool use_calib_mode) {
-  config->config.EnableTensorRtEngine(workspace_size, max_batch_size,
-                                      min_subgraph_size, precision, use_static,
-                                      use_calib_mode);
+  config->config.EnableTensorRtEngine(
+      workspace_size, max_batch_size, min_subgraph_size,
+      ConvertToACPrecision(precision), use_static, use_calib_mode);
 }
 
 bool PD_TensorrtEngineEnabled(PD_AnalysisConfig* config) {
@@ -162,7 +162,8 @@ void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size,
   }
 
   config->config.EnableAnakinEngine(max_batch_size, mis, min_subgraph_size,
-                                    precision, auto_config_layout, pf, of);
+                                    ConvertToACPrecision(precision),
+                                    auto_config_layout, pf, of);
 }
 
 bool PD_AnakinEngineEnabled(PD_AnalysisConfig* config) {
@@ -223,7 +224,7 @@ bool PD_ModelFromMemory(PD_AnalysisConfig* config) {
 
 void PD_EnableMemoryOptim(PD_AnalysisConfig* config, bool static_optim,
                           bool force_update_static_cache) {
-  config->config.enable_memory_optim(static_optim, force_update_static_cache);
+  config->config.EnableMemoryOptim(static_optim, force_update_static_cache);
 }
 
 bool PD_MemoryOptimEnabled(PD_AnalysisConfig* config) {

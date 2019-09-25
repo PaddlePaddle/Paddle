@@ -36,6 +36,7 @@ DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
 
 using PD_PaddleDType = paddle::PaddleDType;
 using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
@@ -119,4 +120,18 @@ PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
   }
   PADDLE_ENFORCE(false, "Unsupport place.");
   return PD_DataType::PD_UNKDTYPE;
+}
+
+PD_ACPrecision ConvertToACPrecision(Precision dtype) {
+  switch (dtype) {
+    case Precision::kFloat32:
+      return PD_ACPrecision::kFloat32;
+    case Precision::kInt8:
+      return PD_ACPrecision::kInt8;
+    case Precision::kHalf:
+      return PD_ACPrecision::kHalf;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
 }
