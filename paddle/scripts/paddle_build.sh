@@ -977,7 +977,7 @@ function test_fluid_lib_train() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
-    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-OFF}
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
     ./clean.sh
 }
 
@@ -1073,6 +1073,7 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
+        test_fluid_lib_train
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1092,9 +1093,8 @@ function main() {
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
-        build_train_lib ${parallel_number}
+        build ${parallel_number}
         parallel_test
-        test_fluid_lib_train
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
