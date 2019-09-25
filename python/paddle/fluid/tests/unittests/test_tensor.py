@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy
+import numbers
 
 
 class TestTensor(unittest.TestCase):
@@ -262,13 +263,18 @@ class TestTensor(unittest.TestCase):
         place = core.CPUPlace()
         tensor = var.get_tensor()
         dtype = core.VarDesc.VarType.FP32
-        self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
+        self.assertTrue(
+            isinstance(tensor._mutable_data(place, dtype), numbers.Integral))
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
             place = core.CUDAPinnedPlace()
-            self.assertTrue(isinstance(tensor._mutable_data(place, dtype), int))
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
 
 
 if __name__ == '__main__':
