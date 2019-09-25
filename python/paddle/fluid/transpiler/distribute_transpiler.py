@@ -142,12 +142,12 @@ class DistributeTranspilerConfig(object):
 
           Methods of dispatching parameters for pserver,
           :ref:`api_fluid_transpiler_RoundRobin` or
-          :ref:`api_fluid_transpiler_HashName` can be used.
+          :ref:`api_fluid_transpiler_HashName` can be used and default is RoundRobin.
           Try to choose the best method to balance loads for pservers.
 
     .. py:attribute:: min_block_size (int)
 
-          Minimum number of splitted elements in block.
+          Minimum number of splitted elements in block, default is 8192.
 
           According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
           We can use bandwidth effiently when data size is larger than 2MB.If you
