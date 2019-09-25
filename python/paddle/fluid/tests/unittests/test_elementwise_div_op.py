@@ -167,30 +167,5 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
 
 
-class ElementwiseDivOpInt(OpTest):
-    def setUp(self):
-        self.op_type = "elementwise_div"
-        self.dtype = np.int64
-        self.init_dtype()
-        """ Warning
-        CPU gradient check error!
-        'X': np.random.random((32,84)).astype("float32"),
-        'Y': np.random.random((32,84)).astype("float32")
-        """
-        self.inputs = {
-            'X': np.random.uniform(100, 200, [13, 17]).astype(self.dtype),
-            'Y': np.random.uniform(1, 10, [13, 17]).astype(self.dtype)
-        }
-        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
-
-        print(self.outputs)
-
-    def test_check_output(self):
-        self.check_output()
-
-    def init_dtype(self):
-        pass
-
-
 if __name__ == '__main__':
     unittest.main()

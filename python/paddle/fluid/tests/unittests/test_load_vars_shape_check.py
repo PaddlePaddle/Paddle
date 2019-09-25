@@ -23,6 +23,9 @@ from paddle.fluid.executor import Executor
 
 class TestLoadVarsShapeCheck(unittest.TestCase):
     def setUp(self):
+        self.model_path = "./model_temp/"
+
+    def test_shape_check_save_load(self):
         program_1 = fluid.Program()
         startup_program_1 = fluid.Program()
 
@@ -33,27 +36,8 @@ class TestLoadVarsShapeCheck(unittest.TestCase):
         exe = Executor(place)
         exe.run(startup_program_1)
 
-        self.model_path = "./model_temp"
-
         fluid.io.save_params(exe, self.model_path, main_program=program_1)
-
-    def test_shape_check_load(self):
-        program_1 = fluid.Program()
-        startup_program_1 = fluid.Program()
-
-        with fluid.program_guard(program_1, startup_program_1):
-            input = fluid.layers.data(name="x", shape=[-1, 10], dtype='float32')
-            out = fluid.layers.fc(input, 10)
-        place = fluid.CPUPlace()
-        exe = Executor(place)
-        exe.run(startup_program_1)
-
-        try:
-            fluid.io.load_params(exe, self.model_path, main_program=program_1)
-        except RuntimeError, e:
-            self.assertTrue(e.message.startswith("Shape not matching"))
-        except:
-            self.assertTrue(False)
+        fluid.io.load_params(exe, self.model_path, main_program=program_1)
 
     def tearDown(self):
         if os.path.exists(self.model_path):
