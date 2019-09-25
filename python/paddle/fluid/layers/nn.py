@@ -13644,7 +13644,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
     Now, this OP is used in CTR project to remove or dispose show and click value in :attr:`input`.
 
-    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (D is `2 + embedding dim` ).
+    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (N is batch size. D is `2 + embedding dim` ).
     Show and click at first two dims of embedding vector D.
     If :attr:`use_cvm` is True, it will caculate :math:`log(show)` and :math:`log(click)` , and output shape is :math:`[N, D]` .
     If :attr:`use_cvm` is False, it will remove show and click from :attr:`input` , and output shape is :math:`[N, D - 2]` .
@@ -13652,7 +13652,9 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
     Args:
         input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        A Tensor with type float32, float64.
         cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
+        A Tensor with type float32, float64.
         use_cvm  (bool):  Use show_click or not. if use, the output dim is the same as input.
                           if not use, the output dim is `input dim - 2` (remove show and click)
 

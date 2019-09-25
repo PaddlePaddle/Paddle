@@ -92,7 +92,7 @@ class DataFeedDesc(object):
 
     def set_batch_size(self, batch_size):
         """
-        Set :attr:`batch_size` in DataFeedDesc. :attr:`batch_size` can be changed during training.
+        Set :attr:`batch_size` in :ref:`api_fluid_DataFeedDesc` . :attr:`batch_size` can be changed during training.
 
         Example:
             .. code-block:: python
@@ -123,7 +123,7 @@ class DataFeedDesc(object):
             batch_size (int): The number of batch size.
 
         Returns:
-            None
+            None.
 
         """
         self.proto_desc.batch_size = batch_size
@@ -131,6 +131,7 @@ class DataFeedDesc(object):
     def set_dense_slots(self, dense_slots_name):
         """
         Set slots in :attr:`dense_slots_name` as dense slots. **Note: In default, all slots are sparse slots.**
+ 
         Features for a dense slot will be fed into a Tensor, while those for a
         sparse slot will be fed into a LoDTensor.
 
