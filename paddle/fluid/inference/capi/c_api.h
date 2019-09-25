@@ -14,10 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/api/paddle_api.h"
-#include "paddle/fluid/platform/enforce.h"
-
 #if defined(_WIN32)
 #ifdef PADDLE_ON_INFERENCE
 #define PADDLE_CAPI_EXPORT __declspec(dllexport)
@@ -57,7 +53,7 @@ PADDLE_CAPI_EXPORT extern void PD_PaddleBufAssign(PD_PaddleBuf* buf_des,
 // PaddleTensor
 typedef struct PD_Tensor PD_Tensor;
 
-typedef enum paddle::PaddleDType PD_PaddleDType;
+enum PD_PaddleDType;
 
 PADDLE_CAPI_EXPORT extern PD_Tensor* PD_NewPaddleTensor();
 
@@ -78,7 +74,7 @@ PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorShape(PD_Tensor* tensor,
 // ZeroCopyTensor
 typedef struct PD_ZeroCopyTensor PD_ZeroCopyTensor;
 
-typedef enum paddle::PaddlePlace PD_PaddlePlace;
+// typedef enum paddle::PaddlePlace PD_PaddlePlace;
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorReshape(
     PD_ZeroCopyTensor* tensor, int* shape, int size);

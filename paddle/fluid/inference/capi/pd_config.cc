@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
 
 extern "C" {
 

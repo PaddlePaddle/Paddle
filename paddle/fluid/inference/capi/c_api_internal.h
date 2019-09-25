@@ -15,6 +15,9 @@
 #pragma once
 
 #include <memory>
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 template <PD_DataType DType>
 struct GetDataType;
@@ -31,6 +34,9 @@ DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
 
 #undef DECLARE_PD_DTYPE_CONVERTOR
 
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };
@@ -44,6 +50,8 @@ struct InTensorShape {
   int* tensor_shape;
   int shape_size;
 } InTensorShape;
+
+// paddle::PaddleDType
 
 struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
