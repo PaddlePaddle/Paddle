@@ -469,9 +469,8 @@ class FakeQAT2MkldnnINT8PerfPass(object):
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
         ir_pass = core.get_pass(pass_name)
         cpp_graph = graph.graph
-        if cpp_graph.has('__param_scope__'):
-            cpp_graph.erase('__param_scope__')
-        cpp_graph.set_not_owned('__param_scope__', self._scope)
+        if not cpp_graph.has('__param_scope__'):
+            cpp_graph.set_not_owned('__param_scope__', self._scope)
         if attrs:
             assert attr_values and len(attrs) == len(
                 attr_values
@@ -479,7 +478,6 @@ class FakeQAT2MkldnnINT8PerfPass(object):
             for attr, value in zip(attrs, attr_values):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
-        graph = IrGraph(cpp_graph, for_test=True)
         if self._debug:
             graph.draw('.', 'qat_fp32_{}'.format(pass_name),
                        graph.all_op_nodes())
@@ -540,7 +538,6 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         ir_pass.set('quantize_excluded_op_ids',
                     self._find_avg_pooling_ids(graph))
         ir_pass.apply(cpp_graph)
-        graph = IrGraph(cpp_graph, for_test=True)
         if self._debug:
             graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
                        graph.all_op_nodes())
