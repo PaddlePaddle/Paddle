@@ -153,14 +153,29 @@ void Communicator::SendThread() {
     auto before_run_send_graph = GetCurrentUS();
 
     if (is_geo_sgd_) {
+      /*
       if (ids_send_vec_.size() < geo_need_push_nums_) {
         VLOG(3) << "ids_send_queue_ Size: " << ids_send_vec_.size();
+        
         if (need_push_queue_->Size() > 0) {
           ids_send_vec_.push_back(need_push_queue_->Pop());
           VLOG(3) << "ids_send_queue pushed";
         }
+        
       }
-      if (ids_send_vec_.size() >= geo_need_push_nums_) {
+      */
+      auto need_push = need_push_.load();
+      if (need_push >= geo_need_push_nums_) {
+        VLOG(1)<<"Need push nums: "<<need_push;
+        need_push_.store(0);
+        size_t prepare = curr_idx_.load();
+        SparseIdsMap *ids_send = sparse_ids_buffers_[prepare].get();
+        send_ids_map_ = ids_send;
+        curr_idx_ = 1 - prepare;
+        while(sparse_ids_buffers_[prepare].use_count()>1) {
+          VLOG(1)<<"use count "<< sparse_ids_buffers_[prepare].use_count();
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
         auto after_run_training = GetCurrentUS();
         VLOG(1) << "run Training use time "
                 << after_run_training - before_run_training;
@@ -170,12 +185,11 @@ void Communicator::SendThread() {
         for (auto &iter : send_varname_to_ctx_) {
           auto &var_name = iter.first;
           auto send_task = [this, &var_name] {
-            auto origin_var_name = DeltaVarToVar(var_name);
-
+            auto origin_var_name = DeltaVarToVar(var_name);  
             if (var_list_[origin_var_name] == true) {
-              auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
+              //auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
               VLOG(1) << "Before send update var name: " << origin_var_name;
-              SendUpdateSparseVars(origin_var_name, ids_set);
+              SendUpdateSparseVars(origin_var_name, send_ids_map_->at(var_name));
             } else {
               VLOG(1) << "Before send update var name: " << origin_var_name;
               SendUpdateDenseVars(origin_var_name);
@@ -269,7 +283,9 @@ void Communicator::RecvNonIndependent() {
   if (is_geo_sgd_) {
     auto push_nums = have_push_.load();
     if (push_nums >= send_varname_to_ctx_.size()) {
-      ids_send_vec_.clear();
+      //ids_send_vec_.clear();
+      size_t prepare = 1 - curr_idx_.load();
+      sparse_ids_buffers_[prepare]->clear();
       RecvAll();
       have_push_.store(0);
     }
@@ -502,9 +518,11 @@ Communicator::Communicator(const RpcCtxMap &send_varname_to_ctx,
   is_geo_sgd_ = true;
   FLAGS_communicator_independent_recv_thread = false;
   VLOG(1) << "geo sgd push nums: " << geo_need_push_nums;
-  need_push_queue_ =
-      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
-          geo_need_push_nums);
+  //need_push_queue_ =std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(geo_need_push_nums);
+
+  for (size_t i=0; i<2; i++) {
+    sparse_ids_buffers_.push_back(std::make_shared<SparseIdsMap>());
+  }
 
   delta_scope_.reset(new Scope());
 
@@ -595,14 +613,16 @@ void Communicator::GeoSgdSend(const std::vector<std::string> &sparse_var_names,
           << " using scope: " << &scope;
 
   // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
-  std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  //std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  size_t prepare = curr_idx_.load();
+  SparseIdsMap *ids_table =  sparse_ids_buffers_[prepare].get();
   for (size_t i = 1; i < sparse_var_tables.size(); i++) {
     // sparse_var_tables first(i=0) element is "FLAG_GEO_SGD_SPARSE_PARAMETER",
     // skip it
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
-      ids_table->insert(std::pair<std::string, std::vector<int64_t>>(
-          sparse_var_tables[i], std::vector<int64_t>{}));
+      ids_table->insert(std::pair<std::string, std::unordered_set<int64_t>>(
+          sparse_var_tables[i], std::unordered_set<int64_t>{}));
     }
     auto *var = scope.FindVar(sparse_var_names[i - 1]);
     auto var_tensor = var->Get<framework::LoDTensor>();
@@ -610,12 +630,13 @@ void Communicator::GeoSgdSend(const std::vector<std::string> &sparse_var_names,
     int *var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
     // insert ids which has not been record
     for (size_t j = 0; j < element_number; j++) {
-      ids_table->at(sparse_var_tables[i]).push_back(var_mutable_data[j]);
+      ids_table->at(sparse_var_tables[i]).insert(var_mutable_data[j]);
       VLOG(4) << "Sparse var " << sparse_var_tables[i] << " insert "
               << var_mutable_data[j];
     }
   }
-  need_push_queue_->Push(ids_table);
+  need_push_.fetch_add(1, std::memory_order_relaxed);
+  //need_push_queue_->Push(ids_table);
 
   VLOG(4) << "GeoSgd send complete";
 }

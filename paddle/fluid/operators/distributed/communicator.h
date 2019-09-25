@@ -159,7 +159,7 @@ inline void MergeVars(const std::string& var_name,
 
 using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 using SparseIdsMap =
-    std::unordered_map<std::string, std::vector<int64_t>>;
+    std::unordered_map<std::string, std::unordered_set<int64_t>>;
 
 class Communicator {
  public:
@@ -290,14 +290,18 @@ class Communicator {
       old_scope_;  // parameter local, storage the param after last recv
   std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
 
+  std::atomic_uint need_push_{0};
   std::atomic_uint have_push_{0};
 
   std::unordered_map<std::string, bool>
       var_list_;  // if var is sparse, using selected rows, bool=true
 
-  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
-      need_push_queue_;
+  //std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>> need_push_queue_;
   std::vector<std::shared_ptr<SparseIdsMap>> ids_send_vec_;
+
+  std::vector<std::shared_ptr<SparseIdsMap>> sparse_ids_buffers_;
+  std::atomic_size_t curr_idx_{0};
+  SparseIdsMap *send_ids_map_;
 };
 
 }  // namespace distributed
