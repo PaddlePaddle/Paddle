@@ -242,6 +242,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_alloc_double",
+           [](Tensor &self, paddle::platform::CPUPlace &place) {
+             self.mutable_data<double>(place);
+           })
       .def("_alloc_int",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
@@ -1198,6 +1202,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
+  using VarQuantScale =
+      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
@@ -1212,6 +1219,20 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::unordered_set<std::string> set) {
+             self.Set(name, new std::unordered_set<std::string>(set));
+           })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::unordered_set<int> set) {
+             self.Set(name, new std::unordered_set<int>(set));
+           })
+      .def("set",
+           [](ir::Pass &self, const std::string &name, VarQuantScale scales) {
+             self.Set(name, new VarQuantScale(scales));
+           })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
         self.Apply(graph.get());
