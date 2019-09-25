@@ -39,6 +39,12 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
@@ -54,6 +60,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
 
   // recv all vars to local scope
+  auto before_rpc_recv = GetCurrentUS();
   if (recv_var->IsType<framework::LoDTensor>() ||
       recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
@@ -79,7 +86,9 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   } else {
     PADDLE_THROW("unsupported var type to recv!");
   }
-
+  auto after_rpc_recv = GetCurrentUS();
+  VLOG(1)<<"Parameter recv var "<<rpc_ctx.var_name
+         <<" using time "<< after_rpc_recv - before_rpc_recv;
   // concat recved tensor into one var
   if (recv_var->IsType<framework::LoDTensor>()) {
     size_t output_offset = 0;
