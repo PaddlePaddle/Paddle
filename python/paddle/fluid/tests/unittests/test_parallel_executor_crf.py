@@ -178,8 +178,7 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in range(10):
                 cur_batch = next(data)
-                print(
-                    exe.run(train_cp,
+                print(exe.run(train_cp,
                             feed=feeder.feed(cur_batch),
                             fetch_list=[avg_cost.name])[0])
 
