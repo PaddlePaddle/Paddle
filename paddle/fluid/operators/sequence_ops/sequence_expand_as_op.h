@@ -75,9 +75,6 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     auto *y = context.Input<framework::LoDTensor>("Y");
     auto *out = context.Output<framework::LoDTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(x->lod().empty(), false,
-                      "Input(X) Tensor of SequenceExpandAsOp does not contain "
-                      "LoD information.");
     PADDLE_ENFORCE_EQ(y->lod().empty(), false,
                       "Input(Y) Tensor of SequenceExpandAsOp does not contain "
                       "LoD information.");
