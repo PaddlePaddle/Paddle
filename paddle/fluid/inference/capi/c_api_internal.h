@@ -51,8 +51,6 @@ struct InTensorShape {
   int shape_size;
 } InTensorShape;
 
-// paddle::PaddleDType
-
 struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
 } PD_ZeroCopyTensor;
@@ -74,3 +72,16 @@ struct PD_MaxInputShape {
   int* shape;
   int shape_size;
 } PD_MaxInputShape;
+
+paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
+  switch (dtype) {
+    case PD_FLOAT32:
+      return PD_PaddleDType::Float32;
+    case PD_INT32:
+      return PD_PaddleDType::Int32;
+    case PD_INT64:
+      return PD_PaddleDType::INT64;
+    case PD_UINT8:
+      return PD_PaddleDType::UINT8;
+  }
+}
