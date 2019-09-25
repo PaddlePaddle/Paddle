@@ -14930,22 +14930,23 @@ def mse_loss(input, label):
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
     This operator initializes a variable with random values sampled from a
-    uniform distribution. The random result is in set [min, max].
+    uniform distribution. The random result is in set [min, max).
 
     Examples:
     ::
     
         Input:
-          X.shape = [4, 1]
+          X.shape = [1, 2]
         
         Output:
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int64,
+        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
                                      and if the shape type is list or tuple, its elements can be an integer
-                                     or a tensor with the shape [1]. If the shape type is Variable,it ia a 1D tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): The data type of the output tensor, such as float32, float64 etc.
+                                     or a tensor with the shape [1], the data type of the tensor is int64. 
+                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of the output tensor, such as float32, float64.
                                                   Default: float32.
         min (float): Minimum value of uniform random, It's a closed interval. Default -1.0.
         max (float): Maximun value of uniform random, It's an open interval. Default 1.0.
@@ -14958,9 +14959,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
                 and whose dimension is determined by the shape parameter.
     Return type: Variable
 
-    Throw exception：
-        ValueError：The shape type should be list or tuple or Variable.
-
+    Throw exception:
+        TypeError: The shape type should be list or tupple or variable.
+    
     Examples:
         .. code-block:: python
 
@@ -14982,7 +14983,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     """
     if not (isinstance(shape, (list, tuple, Variable))):
-        raise ValueError("Input shape must be a python list,Variable or tuple.")
+        raise TypeError("Input shape must be a python list,Variable or tuple.")
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
