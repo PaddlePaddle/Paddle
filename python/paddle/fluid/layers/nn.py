@@ -34,6 +34,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..dygraph import layers
+from ..data_feeder import convert_dtype
 
 __all__ = [
     'fc',
@@ -208,7 +209,6 @@ __all__ = [
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
-    'tree_conv',
     'npair_loss',
     'pixel_shuffle',
     'fsp_matrix',
@@ -221,6 +221,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mse_loss',
 ]
 
 kIgnoreIndex = -100
@@ -2249,6 +2250,15 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
     """
     helper = LayerHelper('softmax', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in softmax must be Variable, but received %s" %
+            (type(input)))
+    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in softmax must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -4588,7 +4598,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             import paddle.fluid as fluid
             import numpy
 
-            x = fluid.layers.data(name='y', shape=[10, 5],
+            x = fluid.layers.data(name='x', shape=[10, 5],
                              dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(
                 input=numpy.array([0.0], dtype=numpy.float32))
@@ -4637,7 +4647,7 @@ def sequence_unpad(x, length, name=None):
 	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
-	    length.data = [[2], [3], [4]],
+	    length.data = [2, 3, 4],
 
 	after unpadding, the output Variable will be:
 
@@ -4659,9 +4669,15 @@ def sequence_unpad(x, length, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
-            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
-            out = fluid.layers.sequence_unpad(x=x, length=len)
+            import numpy
+
+            # pad data
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
+            pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            
+            # upad data
+            unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
     assert not in_dygraph_mode(), (
@@ -5835,7 +5851,11 @@ def edit_distance(input,
     return edit_distance_out, sequence_num
 
 
-def ctc_greedy_decoder(input, blank, name=None):
+def ctc_greedy_decoder(input,
+                       blank,
+                       input_length=None,
+                       padding_value=0,
+                       name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
 
@@ -5849,6 +5869,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     .. code-block:: text
 
         Given:
+        for lod mode:
 
         input.data = [[0.6, 0.1, 0.3, 0.1],
                       [0.3, 0.2, 0.4, 0.1],
@@ -5877,45 +5898,106 @@ def ctc_greedy_decoder(input, blank, name=None):
 
         output.lod = [[2, 1]]
 
+        for padding mode:
+
+         input.data = [[[0.6, 0.1, 0.3, 0.1],
+                        [0.3, 0.2, 0.4, 0.1],
+                        [0.1, 0.5, 0.1, 0.3],
+                        [0.5, 0.1, 0.3, 0.1]],
+
+                       [[0.5, 0.1, 0.3, 0.1],
+                        [0.2, 0.2, 0.2, 0.4],
+                        [0.2, 0.2, 0.1, 0.5],
+                        [0.5, 0.1, 0.3, 0.1]]]
+
+        input_length.data = [[4], [4]]
+        input.shape = [2, 4, 4]
+
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]], for input.data[4:8] is [[0], [3], [3], [0]], shape is [2,4,1]
+        step2: Change the argmax result to use padding mode, then argmax result is 
+                [[0, 2, 1, 0], [0, 3, 3, 0]], shape is [2, 4], lod is [], input_length is [[4], [4]]
+        step3: Apply ctc_align to padding argmax result, padding_value is 0
+
+        Finally:
+        output.data = [[2, 1, 0, 0],
+                       [3, 0, 0, 0]]
+        output_length.data = [[2], [1]]
+
+
+
 
     Args:
 
         input(Variable): (LoDTensor<float>), the probabilities of
-                         variable-length sequences, which is a 2-D Tensor with
-                         LoD information. It's shape is [Lp, num_classes + 1],
+                         variable-length sequences. When in lod mode, it is a 2-D Tensor with
+                         LoD information. It's shape is [Lp, num_classes + 1] 
                          where Lp is the sum of all input sequences' length and
-                         num_classes is the true number of classes. (not
-                         including the blank label).
+                         num_classes is the true number of classes. When in padding mode,
+                         it is a 3-D Tensor with padding, It's shape is [batch_size, N, num_classes + 1].
+                         (not including the blank label).
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in thehalf-opened
                     interval [0, num_classes + 1).
-        name (str): The name of this layer. It is optional.
+        input_length(Variable, optional): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
+                                 is None.
+        padding_value(int): padding value.
+        name (str, optional): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
+        output(Variable): For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
                   'Lp' is the sum if all output sequences' length. If all the sequences \
                   in result were empty, the result LoDTensor will be [-1] with  \
-                  LoD [[]] and dims [1, 1].
+                  LoD [[]] and dims [1, 1]. For padding mode, CTC greedy decode result is a 2-D tensor \
+                  with shape [batch_size, N], output length's shape is [batch_size, 1] which is length \
+                  of every sequence in output.
+        output_length(Variable, optional): length of each sequence of output for padding mode.
 
     Examples:
         .. code-block:: python
 
+            # for lod mode
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
+
+            # for padding mode
+            x_pad = fluid.layers.data(name='x_pad', shape=[4,8], dtype='float32')
+            x_pad_len = fluid.layers.data(name='x_pad_len', shape=[1], dtype='int64')
+            out, out_len = fluid.layers.ctc_greedy_decoder(input=x_pad, blank=0,
+                            input_length=x_pad_len)
+
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_variable_for_type_inference(dtype="int64")
-    helper.append_op(
-        type="ctc_align",
-        inputs={"Input": [topk_indices]},
-        outputs={"Output": [ctc_out]},
-        attrs={"merge_repeated": True,
-               "blank": blank})
-    return ctc_out
+
+    if input_length is None:
+        helper.append_op(
+            type="ctc_align",
+            inputs={"Input": [topk_indices]},
+            outputs={"Output": [ctc_out]},
+            attrs={"merge_repeated": True,
+                   "blank": blank})
+        return ctc_out
+    else:
+        ctc_out_len = helper.create_variable_for_type_inference(dtype="int64")
+        ctc_input = squeeze(topk_indices, [2])
+
+        helper.append_op(
+            type="ctc_align",
+            inputs={"Input": [ctc_input],
+                    "InputLength": [input_length]},
+            outputs={"Output": [ctc_out],
+                     "OutputLength": [ctc_out_len]},
+            attrs={
+                "merge_repeated": True,
+                "blank": blank,
+                "padding_value": padding_value
+            })
+        return ctc_out, ctc_out_len
 
 
 def warpctc(input,
@@ -8019,15 +8101,17 @@ def image_resize(input,
                  resample='BILINEAR',
                  actual_shape=None,
                  align_corners=True,
-                 align_mode=1):
+                 align_mode=1,
+                 data_format='NCHW'):
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w)
-    or (num_batches, channels, in_d, in_h, in_w), and the resizing only applies 
-    on the last two/three dimensions(depth, hight and width).
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
+    or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
+    (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels), 
+    and the resizing only applies on the three dimensions(depth, hight and width).
 
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the 
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
     future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
@@ -8144,16 +8228,13 @@ def image_resize(input,
 
 
     Args:
-        input (Variable): The input tensor of image resize layer,
-                          This is a 4-D tensor of the shape
-                          (num_batches, channels, in_h, in_w) or a
-                          5-D tensor of the shape
-                          (num_batches, channls, in_d, in_h, in_w).
+        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D tensor and is
-             (out_d, out_h, out_w) when input is a 5-D tensor. Default: None. If 
-             a list, each element can be an integer or a tensor Variable of shape: [1].
-             If a tesnosr Variable, its dimensions size should be a 1.
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
+             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If 
+             a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set.
              And :attr:`out_shape` has a higher priority than :attr:`scale`.
@@ -8181,12 +8262,16 @@ def image_resize(input,
                                Default: True
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
-                            src_idx = scale*dst_index .
+                            src_idx = scale*dst_index.
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels) for 4-D Tensor,
+                                    NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels) for 5-D Tensor.
+                                    Default: 'NCHW'.
 
     Returns:
-        Variable: The output is a 4-D tensor of the shape
-        (num_batches, channls, out_h, out_w) or a 5-D tensor of the shape
-        (num_batches, channels, out_d, out_h, out_w).
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
@@ -8201,6 +8286,7 @@ def image_resize(input,
         ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
+        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -8259,8 +8345,22 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
+    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 4-D input.")
+    elif len(input.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
+
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
+
+    if data_format == 'NCHW' or data_format == 'NCDHW':
+        data_layout = 'NCHW'
+    if data_format == 'NHWC' or data_format == 'NDHWC':
+        data_layout = 'NHWC'
 
     inputs = {"X": input}
     attrs = {
@@ -8269,7 +8369,8 @@ def image_resize(input,
         "out_w": -1,
         "interp_method": resample_type,
         "align_corners": align_corners,
-        "align_mode": align_mode
+        "align_mode": align_mode,
+        "data_layout": data_layout
     }
 
     if out_shape is not None:
@@ -8368,7 +8469,8 @@ def resize_bilinear(input,
                     name=None,
                     actual_shape=None,
                     align_corners=True,
-                    align_mode=1):
+                    align_mode=1,
+                    data_format='NCHW'):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8401,7 +8503,7 @@ def resize_bilinear(input,
             
             else:
               
-              scale_factor = float(in_size/out_size)     
+              scale_factor = float(in_size/out_size)
 
         Bilinear interpolation:
 
@@ -8414,31 +8516,24 @@ def resize_bilinear(input,
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
-
           else:
 
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-
-
     Args:
-        input(${x_type}): input should be a 4-D tensor of shape 
-                          (num_batches, channels, in_h, in_w).
-
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
             layer, the shape is (out_h, out_w).Default: None. If a list, each 
-            element can be an integer or a tensor Variable with shape: [1]. If a 
-            tensor Variable, its dimension size should be 1.
-
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8455,9 +8550,12 @@ def resize_bilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels). Default: 'NCHW'.
 
     Returns:
-        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8491,7 +8589,7 @@ def resize_bilinear(input,
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
-                        align_corners, align_mode)
+                        align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="trilinear_interp")
@@ -8501,7 +8599,8 @@ def resize_trilinear(input,
                      name=None,
                      actual_shape=None,
                      align_corners=True,
-                     align_mode=1):
+                     align_mode=1,
+                     data_format='NCDHW'):
     """
     Resize input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -8538,6 +8637,7 @@ def resize_trilinear(input,
         Bilinear interpolation:
 
           if:
+
               align_corners = False , align_mode = 0
               
               input : (N,C,D_in,H_in,W_in)
@@ -8546,7 +8646,6 @@ def resize_trilinear(input,
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-
 
           else:
 
@@ -8557,22 +8656,17 @@ def resize_trilinear(input,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-
-
     Args:
-        input(${x_type}): input should be a 5-D tensor of shape 
-                          (num_batches, channls, in_d, in_h, in_w).
-
+        input(${x_type}): 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
             layer, the shape is (out_d, out_h, out_w). Default: None. If a list, 
-            each element can be  an integer or a tensor Variable with shape: [1]. If 
-            a tensor Variable, its dimension size should be 1.
-
+            each element can be  an integer or a Tensor Variable with shape: [1]. If 
+            a Tensor Variable, its dimension size should be 1.
         scale(float|Variable|None): The multiplier for the input depth, height or width.
              At least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8589,9 +8683,13 @@ def resize_trilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels).
+                                    Default: 'NCDHW'.
 
     Returns:
-        A 5-D tensor in shape (num_batches, channels, out_d, out_h, out_w)
+        A 5-D Tensor in shape of (num_batches, channels, out_d, out_h, out_w) or 
+        (num_batches, out_d, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8622,11 +8720,10 @@ def resize_trilinear(input,
             scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
             out4 = fluid.layers.resize_trilinear(input, scale=scale_tensor)
             # out4.shape = [-1, 3, -1, -1, -1]
-
     """
 
     return image_resize(input, out_shape, scale, name, 'TRILINEAR',
-                        actual_shape, align_corners, align_mode)
+                        actual_shape, align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="nearest_interp")
@@ -8635,12 +8732,12 @@ def resize_nearest(input,
                    scale=None,
                    name=None,
                    actual_shape=None,
-                   align_corners=True):
+                   align_corners=True,
+                   data_format='NCHW'):
     """
     Resize input by performing nearest neighbor interpolation in both the
-    3rd dimension(in height direction) and the 4th dimension(in width
-    direction) based on given output shape which is specified by actual_shape,
-    out_shape and scale in priority order.
+    height direction and the width direction based on given output shape 
+    which is specified by actual_shape, out_shape and scale in priority order.
 
     **Warning:** the parameter :attr:`actual_shape` will be deprecated in the 
     future and only use :attr:`out_shape` instead.
@@ -8652,13 +8749,11 @@ def resize_nearest(input,
         For scale:
           
             if align_corners = True && out_size > 1 :
-
               scale_factor = (in_size-1.0)/(out_size-1.0)
             
             else:
               
               scale_factor = float(in_size/out_size)
-            
           
         Nearest neighbor interpolation:
           
@@ -8685,19 +8780,16 @@ def resize_nearest(input,
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
-        input(${x_type}): input should be a 4-D tensor of shape 
-                          (num_batches, channls, in_h, in_w).
-
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize nearest
             layer, the shape is (out_h, out_w). Default: None. If a list, each 
             element can be integer or a tensor Variable with shape: [1]. If a 
             tensor Variable, its dimension size should be 1.
-
         scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8713,9 +8805,13 @@ def resize_nearest(input,
                                 errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels).
+                                    Default: 'NCHW'.
 
     Returns:
-        A 4-D tensor in shape of (num_batches, channels, out_h, out_w)
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or 
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
@@ -8746,11 +8842,18 @@ def resize_nearest(input,
             scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
             out4 = fluid.layers.resize_nearest(input, scale=scale_tensor)
             # out4.shape = [-1, 3, -1, -1]
-
     """
 
-    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape,
-                        align_corners)
+    return image_resize(
+        input,
+        out_shape,
+        scale,
+        name,
+        'NEAREST',
+        actual_shape,
+        align_corners,
+        align_mode=1,
+        data_format=data_format)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
@@ -13272,75 +13375,6 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     return loss
 
 
-@templatedoc()
-def tree_conv(nodes_vector,
-              edge_set,
-              output_size,
-              num_filters=1,
-              max_depth=2,
-              act='tanh',
-              param_attr=None,
-              bias_attr=None,
-              name=None):
-    """ 
-    ${comment}
-    		
-    Args:
-        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
-        edge_set(${edge_set_type}): ${edge_set_comment}
-        output_size(int): output feature width
-        num_filters(int): number of filters, Default 1
-        max_depth(int): max depth of filters, Default 2
-        act(str): activation function, Default tanh
-        param_attr(ParamAttr): the parameter attribute for the filters, Default None
-        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
-        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
-
-    Returns:
-        out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          # 10 for max_node_size of dataset, 5 for vector width
-          nodes_vector = fluid.layers.data(name='vectors', shape=[10, 5], dtype='float32')
-          # 10 for max_node_size of dataset, 2 for every edge has two nodes
-          # edges must be directional
-          edge_set = fluid.layers.data(name='edge_set', shape=[10, 2], dtype='float32')
-          # the shape of output will be [10, 6, 1],
-          # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
-          out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-          # After reshape, output tensor could be nodes_vector for next tree convolution
-          out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
-          out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-          # also output tensor could be pooling(the pooling in paper called global pooling)
-          pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
-    """
-    helper = LayerHelper("tree_conv", **locals())
-    dtype = helper.input_dtype('nodes_vector')
-    feature_size = nodes_vector.shape[2]
-    W_shape = [feature_size, 3, output_size, num_filters]
-    W = helper.create_parameter(
-        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
-    if name == None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
-    helper.append_op(
-        type='tree_conv',
-        inputs={'NodesVector': nodes_vector,
-                'EdgeSet': edge_set,
-                'Filter': W},
-        outputs={'Out': out, },
-        attrs={'max_depth': max_depth})
-    if helper.bias_attr:
-        pre_activation = helper.append_bias_op(out)
-    else:
-        pre_activation = out
-    return helper.append_activation(pre_activation)
-
-
 from .ops import square
 from .control_flow import equal
 
@@ -14170,52 +14204,46 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This layer creates the sharded index for input. This layers is used in
-    model- and data- parallel mixed training generally, in which the index
-    data (usually the label) should be recaculated in each trainer according
-    to 
-
-    .. math::
+    This function recomputes the `input` indices according to the offset of the
+    shard. The length of the indices is evenly divided into N shards, and if
+    the `shard_id` matches the shard with the input index inside, the index is
+    recomputed on the basis of the shard offset, elsewise it is set to
+    `ignore_value`. The detail is as follows:
+    :: 
         
-        assert index_num % nshards == 0
+        shard_size = (index_num + nshards - 1) // nshards
+        y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-        shard_size = index_num / nshards
-
-        y = x % shard_size if x / shard_size == shard_id else ignore_value
-
-    We take the distributed one-hot representation to show what this layer is
-    used for. The distributed one-hot representation is seperated into multiple
-    shards, and each shard is filling zeros except the one with the index
-    inside. In order to create these sharded representation in each trainer,
-    the original index should be recalculated (i.e. sharded) before.
+    NOTE: If the length of indices cannot be evely divided by the shard number,
+    the size of the last shard will be less than the calculated `shard_size`
 
     Examples:
+    ::
     
-        X is a Tensor of integer values:
+        Input:
           X.shape = [4, 1]
           X.data = [[1], [6], [12], [19]]
+          index_num = 20
+          nshards = 2
+          ignore_value = -1
         
-        suppose index_num = 20 and nshards = 2, then we get shard_size = 10
-        
-        if shard_id == 0, we get the Out:
+        if shard_id == 0, we get:
           Out.shape = [4, 1]
           Out.data = [[1], [6], [-1], [-1]]
         
-        if shard_id == 1, we get the Out:
+        if shard_id == 1, we get:
           Out.shape = [4, 1]
           Out.data = [[-1], [-1], [2], [9]]
     
-        the default `ignore_value` -1 is used in this example.
-    
     Args:
-        input(Variable): Input indices, last dimension must be 1.
-        index_num(scalar): An interger defining the range of the index.
-        nshards(scalar): The number of shards
-        shard_id(scalar): The index of the current shard
-        ignore_value(scalar): An ingeter value out of sharded index range
+        - **input** (Variable): Input indices, last dimension must be 1.
+        - **index_num** (scalar): An interger defining the range of the index.
+        - **nshards** (scalar): The number of shards
+        - **shard_id** (scalar): The index of the current shard
+        - **ignore_value** (scalar): An ingeter value out of sharded index range
 
     Returns:
-        Variable: The shard index of input.
+        Variable: The sharded index of input.
 
     Examples:
         .. code-block:: python
@@ -14285,3 +14313,40 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
                'scale': scale,
                'offset': offset})
     return out
+
+
+def mse_loss(input, label):
+    """
+    **Mean square error layer**
+
+    This layer accepts input predications and target label and returns the mean square error.
+
+    The loss can be described as:
+
+    .. math::
+        
+        Out = mean((X - Y)^2)
+
+    In the above equation:
+
+        * :math:`X`: Input predications, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+        input (Variable): Input tensor, has predictions.
+        label (Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the mean square error difference of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+            mse = fluid.layers.mse_loss(input=y_predict, label=y)
+
+    """
+    return reduce_mean(square_error_cost(input, label))
