@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
@@ -88,7 +87,7 @@ int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
   return shapes;
 }
 
-char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
+const char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
   return tensor->tensor.name().c_str();
 }
 

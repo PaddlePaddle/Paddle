@@ -13,17 +13,29 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
 extern "C" {
 
-bool PD_PredictorRun(PD_Predictor* predictor, const PD_Tensor* inputs,
-                     PD_Tensor* output_data, int batch_size = -1) {
-  return predictor->predictor->Run(&inputs->tensor, &output_data->tensor,
-                                   batch_size);
+bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int* in_size,
+                     PD_Tensor* output_data, int* out_size,
+                     int batch_size = -1) {
+  std::vector<paddle::PaddleTensor> in;
+  for (int i = 0; i < in_size; ++i) {
+    in.emplace_back(inputs->tensor);
+  }
+  std::vector<paddle::PaddleTensor> out;
+  if (predictor->predictor->Run(in, &out, batch_size)) {
+    out_size = &out.size();
+    for (int i = 0; i < out_size; ++i) {
+      output_data[i] = out[i];
+    }
+    return true;
+  }
+  return false;
 }
 
 char** PD_GetPredictorInputNames(PD_Predictor* predictor) {
@@ -32,19 +44,21 @@ char** PD_GetPredictorInputNames(PD_Predictor* predictor) {
   int size = ret_names.size();
   char** names;
   for (int i = 0; i < size; ++i) {
-    names[i] = ret_names[i].c_str();
+    std::snprintf(name[i], ret_names[i].length() + 1, "%s",
+                  ret_names[i].c_str());
   }
   return names;
 }
 
 InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
                                                int* size) {
-  std::unordered_map<std::string, std::vector<int64_t>> input_tensor_shape =
+  std::map<std::string, std::vector<int64_t>> input_tensor_shape =
       predictor->predictor->GetInputTensorShape();
   InTensorShape* ret_in_tensor_shape;
   int i = 0;
   for (auto item : input_tensor_shape) {
-    ret_in_tensor_shape[i].name = item.first.c_str();
+    std::snprintf(ret_in_tensor_shape[i].name, item.first.length() + 1, "%s",
+                  item.first.c_str());
     std::vector<int64_t> tmp_shape = item.second;
     ret_in_tensor_shape[i].shape_size = tmp_shape.size();
     for (int j = 0; j < tmp_shape.size(); ++j) {
@@ -62,7 +76,8 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
   int size = ret_names.size();
   char** names;
   for (int i = 0; i < size; ++i) {
-    names[i] = ret_names[i].c_str();
+    std::snprintf(names[i], ret_names[i].length() + 1, "%s",
+                  ret_names[i].c_str());
   }
   return names;
 }

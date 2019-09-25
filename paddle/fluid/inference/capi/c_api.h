@@ -98,7 +98,7 @@ PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyFromCpu(
 PADDLE_CAPI_EXPORT
 extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size);
 
-PADDLE_CAPI_EXPORT extern char* PD_ZeroCopyTensorName(
+PADDLE_CAPI_EXPORT extern const char* PD_ZeroCopyTensorName(
     PD_ZeroCopyTensor* tensor);
 
 PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyTensorPlace(
@@ -111,8 +111,9 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
 typedef struct PD_Predictor PD_Predictor;
 
 PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
-                                               const PD_Tensor* inputs,
+                                               PD_Tensor* inputs, int in_size,
                                                PD_Tensor* output_data,
+                                               int out_size,
                                                int batch_size = -1);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
@@ -160,11 +161,11 @@ PADDLE_CAPI_EXPORT extern void PD_SetParamsFile(PD_AnalysisConfig* config,
 PADDLE_CAPI_EXPORT extern void PD_SetOptimCacheDir(PD_AnalysisConfig* config,
                                                    const char* opt_cache_dir);
 
-PADDLE_CAPI_EXPORT extern char* PD_ModelDir(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ModelDir(PD_AnalysisConfig* config);
 
-PADDLE_CAPI_EXPORT extern char* PD_ProgFile(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ProgFile(PD_AnalysisConfig* config);
 
-PADDLE_CAPI_EXPORT extern char* PD_ParamsFile(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ParamsFile(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(
     PD_AnalysisConfig* config, uint64_t memory_pool_init_size_mb,

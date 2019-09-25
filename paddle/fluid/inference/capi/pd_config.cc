@@ -14,9 +14,9 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
@@ -62,15 +62,15 @@ void PD_SetOptimCacheDir(PD_AnalysisConfig* config, const char* opt_cache_dir) {
   config->config.SetOptimCacheDir(std::string(opt_cache_dir));
 }
 
-char* PD_ModelDir(PD_AnalysisConfig* config) {
+const char* PD_ModelDir(PD_AnalysisConfig* config) {
   return config->config.model_dir().c_str();
 }
 
-char* PD_ProgFile(PD_AnalysisConfig* config) {
+const char* PD_ProgFile(PD_AnalysisConfig* config) {
   return config->config.prog_file().c_str();
 }
 
-char* PD_ParamsFile(PD_AnalysisConfig* config) {
+const char* PD_ParamsFile(PD_AnalysisConfig* config) {
   return config->config.params_file().c_str();
 }
 
@@ -147,7 +147,7 @@ void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size = 1,
                            char** passes_filter = NULL,
                            int passes_filter_size = 0, char** ops_filter = NULL,
                            int ops_filter_size = 0) {
-  std::unordered_map<std::string, std::vector<int>> mis;
+  std::map<std::string, std::vector<int>> mis;
   if (max_input_shape) {
     for (int i = 0; i < max_input_shape_size; ++i) {
       std::vector<int> tmp_shape;
