@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/framework/threadpool.h"
 
 DECLARE_int32(communicator_max_merge_var_num);
 DECLARE_int32(communicator_send_queue_size);
