@@ -132,6 +132,8 @@ PD_ACPrecision ConvertToACPrecision(Precision dtype) {
       return PD_ACPrecision::kHalf;
     default:
       PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_ACPrecision::kFloat32;
   }
   PADDLE_ENFORCE(false, "Unsupport place.");
+  return PD_ACPrecision::kFloat32;
 }

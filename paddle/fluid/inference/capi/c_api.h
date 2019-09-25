@@ -106,7 +106,7 @@ typedef struct PD_Predictor PD_Predictor;
 PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
                                                PD_Tensor* inputs, int in_size,
                                                PD_Tensor* output_data,
-                                               int out_size,
+                                               int* out_size,
                                                int batch_size = -1);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
