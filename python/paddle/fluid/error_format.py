@@ -160,17 +160,10 @@ def paddle_enforce_handler(ex_type, ex_val, ex_traceback):
             six.reraise(*sys.exc_info())
 
     """
-    ex_msg = str(cpt.to_text(ex_val))
-    ex_msg_augment = _hint_augment(ex_msg)
-    split_str = "PaddleEnforceError."
-    if split_str in ex_msg_augment:
-        ex_msg_list = ex_msg_augment.split(split_str)
-        # print C++ stack and python stack
-        print(ex_msg_list[0])
-        # print error messgae
-        print("----------------------")
-        print("Error Message Summary:")
-        print("----------------------")
-        print("Error:%s" % ex_msg_list[1])
-    else:
-        print(ex_msg_augment)
+    ex_msg_list = _hint_augment(str(cpt.to_text(ex_val))).split(
+        "PaddleEnforceError.")
+    print(ex_msg_list[0])
+    if len(ex_msg_list) > 0:
+        print(
+            "----------------------\nError Message Summary:\n----------------------\nError:%s"
+            % ex_msg_list[1])

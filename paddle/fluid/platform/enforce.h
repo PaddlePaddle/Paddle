@@ -104,8 +104,8 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #else
   sout << "Windows not support stack backtrace yet.";
 #endif
-  sout << string::Sprintf("%s at [%s:%d]", std::forward<StrType>(what), file,
-                          line)
+  sout << string::Sprintf("PaddleEnforceError. %s at [%s:%d]",
+                          std::forward<StrType>(what), file, line)
        << std::endl;
   return sout.str();
 }
@@ -348,18 +348,18 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
  *    PADDLE_ENFORCE_EQ(a, b);
  *
  *    will raise an expression described as follows:
- *    "PaddleEnforceError. Expected input a == b, but received a(1) != b(2)."
+ *    "Expected input a == b, but received a(1) != b(2)."
  *      with detailed stack information.
  *
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                                 \
-  do {                                                                      \
-    if (UNLIKELY(nullptr == (__VAL))) {                                     \
-      PADDLE_THROW("PaddleEnforceError. " #__VAL " should not be null\n%s", \
-                   ::paddle::string::Sprintf(__VA_ARGS__));                 \
-    }                                                                       \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
+  do {                                                      \
+    if (UNLIKELY(nullptr == (__VAL))) {                     \
+      PADDLE_THROW(#__VAL " should not be null\n%s",        \
+                   ::paddle::string::Sprintf(__VA_ARGS__)); \
+    }                                                       \
   } while (0)
 
 namespace details {
@@ -455,8 +455,8 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("PaddleEnforceError. Expected %s " #__CMP                   \
-                   " %s, but received %s " #__INV_CMP " %s.\n%s",              \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
+                   " %s.\n%s",                                                 \
                    #__VAL1, #__VAL2,                                           \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
                        __kCanToString__>::Convert(#__VAL1, __val1),            \
@@ -479,32 +479,32 @@ struct BinaryCompareMessageConverter<false> {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
-#define __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL1, __VAL2, __CMP, \
-                                           __INV_CMP, ...)               \
-  do {                                                                   \
-    auto __val1 = (__VAL1);                                              \
-    auto __val2 = (__VAL2);                                              \
-    if (!__CTX->IsRuntime()) {                                           \
-      if (__val1 == -1 || __val2 == -1) {                                \
-        break;                                                           \
-      }                                                                  \
-    }                                                                    \
-    using __TYPE1__ = decltype(__val1);                                  \
-    using __TYPE2__ = decltype(__val2);                                  \
-    using __COMMON_TYPE1__ =                                             \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;  \
-    using __COMMON_TYPE2__ =                                             \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;  \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(  \
-        static_cast<__COMMON_TYPE2__>(__val2));                          \
-    if (UNLIKELY(!__is_not_error)) {                                     \
-      PADDLE_THROW("PaddleEnforceError. Expected %s " #__CMP             \
-                   " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s",  \
-                   #__VAL1, #__VAL2, #__VAL1,                            \
-                   ::paddle::string::to_string(__val1), #__VAL2,         \
-                   ::paddle::string::to_string(__val2),                  \
-                   ::paddle::string::Sprintf(__VA_ARGS__));              \
-    }                                                                    \
+#define __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL1, __VAL2, __CMP,       \
+                                           __INV_CMP, ...)                     \
+  do {                                                                         \
+    auto __val1 = (__VAL1);                                                    \
+    auto __val2 = (__VAL2);                                                    \
+    if (!__CTX->IsRuntime()) {                                                 \
+      if (__val1 == -1 || __val2 == -1) {                                      \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+    using __TYPE1__ = decltype(__val1);                                        \
+    using __TYPE2__ = decltype(__val2);                                        \
+    using __COMMON_TYPE1__ =                                                   \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
+    using __COMMON_TYPE2__ =                                                   \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
+        static_cast<__COMMON_TYPE2__>(__val2));                                \
+    if (UNLIKELY(!__is_not_error)) {                                           \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s:%s " #__INV_CMP \
+                   " %s:%s.\n%s",                                              \
+                   #__VAL1, #__VAL2, #__VAL1,                                  \
+                   ::paddle::string::to_string(__val1), #__VAL2,               \
+                   ::paddle::string::to_string(__val2),                        \
+                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
+    }                                                                          \
   } while (0)
 
 #define PADDLE_INFERSHAPE_ENFORCE_EQ(__CTX, __VAL0, __VAL1, ...) \
