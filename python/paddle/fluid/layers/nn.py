@@ -2332,22 +2332,26 @@ def conv2d(input,
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
+    Note:
+        padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
+
     Args:
         input (Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size 
+            is a tuple, it must contain two integers, (filter_size_height, 
+            filter_size_width). Otherwise, filter_size_height = filter_\
+            size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise,
+            padding_height = padding_width =  padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise,
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -2511,18 +2515,19 @@ def conv3d(input,
         input (Variable): The input image with [N, C, D, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_depth, filter_size_height, 
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv3d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -3350,6 +3355,10 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum)
+        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
+        moving_mean and moving_var is global mean and global variance.
+
 
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
@@ -3537,15 +3546,6 @@ def instance_norm(input,
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
-
-
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
-    They are global (or running) statistics. (It usually got from the
-    pre-trained model.)
-    The training and testing (or inference) have the same behavior:
-
-    ..  math::
 
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
@@ -4124,23 +4124,23 @@ def conv2d_transpose(input,
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). None if use
+            tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size.
+            it must contain two integers, (filter_size_height, filter_size_width).
+            Otherwise, filter_size_height = filter_size_width = filter_size. None if 
+            use output size to calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise, 
+            padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise, 
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -4318,18 +4318,19 @@ def conv3d_transpose(input,
             tuple, it must contain three integers, (image_D, image_H, image_W). This
             parameter only works when filter_size is None.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
+            it must contain three integers, (filter_size_depth, filter_size_height, \
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size. None if use output size to
             calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -10112,6 +10113,10 @@ def pad2d(input,
     """
 
     helper = LayerHelper('pad2d', **locals())
+
+    assert mode in ['reflect', 'edge', 'constant'
+                    ], "mode should be one of constant, reflect, edge."
+
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
     inputs = {'X': input}
@@ -11391,57 +11396,148 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides = [1, 1]
+                strides=[1, 1]
             Then:
-                result = [ [5, 6, 7] ]
+                result = [ [5, 6, 7], ]
         
         Case2:
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [0, -1]
-                ends = [-1, 0]
-                strides = [1, -1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
             Then:
-                result = [ [4, 3, 2] ]
-    Atrgs:
-       input (Varibale): the input variable.
-       axes(List):axis we need to slice
-       starts (List): the start index in axis
-       ends (List): the end index in axis
-       strides (List): the stride length when we do slice operation
-    Returns
-       out(Variable): the result by strided_slice Op
-    
+                result = [ [2], ]
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
-            starts = [1, 0, 2]
-            ends = [3, 3, 4]
-            axes = [0, 1, 2]
-            strides= [1, 1, 1]
 
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
-    """
-    helper = LayerHelper('strided_slice', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides=[1, 1, 1]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
 
-    helper.append_op(
-        type='strided_slice',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+    """
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple.")
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple.")
+    if not isinstance(strides, (list, tuple, Variable)):
+        raise ValueError(
+            "Input strides must be an Variable, python list or tuple.")
+
+    helper = LayerHelper('strided_slice', **locals())
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if in_dygraph_mode():
+        inputs = {'Input': input}
+        attrs = {
             'axes': axes,
             'starts': starts,
             'ends': ends,
-            'strides': strides
-        })
+            'strides': strides,
+            'infer_flags': infer_flags
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if not contain_var(starts):
+                attrs['starts'] = starts
+            else:
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if not contain_var(ends):
+                attrs['ends'] = ends
+            else:
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+        # strides
+        if isinstance(strides, Variable):
+            strides.stop_gradient = True
+            inputs['StridesTensor'] = strides
+        elif isinstance(strides, (list, tuple)):
+            attrs['strides'] = []
+            if not contain_var(strides):
+                attrs['strides'] = strides
+            else:
+                inputs['StridesTensorList'] = get_new_list_tensor(strides)
+                for i, dim in enumerate(strides):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
+        attrs['infer_flags'] = infer_flags
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
 
     return out
 
