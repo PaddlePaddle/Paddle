@@ -33,7 +33,8 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
-             "operator. See more details in the operator's comments.");
+             "operator. See more details in the operator's comments."
+             "");
     AddInput("Label",
              "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "

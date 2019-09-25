@@ -1505,6 +1505,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #        [ 10.004011],
             #        [ 5.86721  ]], dtype=float32)]
 
+
+
             #you can use find_var to get transition parameter.
             transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
             print(transition)
