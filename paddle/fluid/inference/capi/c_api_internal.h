@@ -15,48 +15,50 @@
 #pragma once
 
 #include <memory>
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
-template <PD_DataType DType>
-struct GetDataType;
-#define DECLARE_PD_DTYPE_CONVERTOR(PD_DATA_TYPE, REAL_TYPE) \
-  template <>                                               \
-  struct GetDataType<PD_DATA_TYPE> {                        \
-    using RealType = REAL_TYPE;                             \
-  }
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
-DECLARE_PD_DTYPE_CONVERTOR(PD_FLOAT32, float);
-DECLARE_PD_DTYPE_CONVERTOR(PD_INT32, int32_t);
-DECLARE_PD_DTYPE_CONVERTOR(PD_INT64, int64_t);
-DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
-
-#undef DECLARE_PD_DTYPE_CONVERTOR
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };
 
-typedef struct PD_AnalysisConfig {
+struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
-} PD_AnalysisConfig;
+};
 
-typedef struct InTensorShape {
+struct InTensorShape {
   char* name;
   int* tensor_shape;
   int shape_size;
-} InTensorShape;
+};
 
-typedef struct PD_ZeroCopyTensor {
-  paddle::ZeroCopyTensor tensor;
-} PD_ZeroCopyTensor;
+struct PD_ZeroCopyTensor {
+  paddle::ZeroCopyTensor* tensor;
+};
 
-typedef struct PD_Tensor { paddle::PaddleTensor tensor; } PD_Tensor;
+struct PD_Tensor {
+  paddle::PaddleTensor tensor;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+struct PD_PaddleBuf {
+  paddle::PaddleBuf buf;
+};
 
-typedef struct PD_PaddleBuf { paddle::PaddleBuf buf; } PD_PaddleBuf;
+namespace paddle {
+paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 
-typedef struct PD_MaxInputShape {
-  char* name;
-  int* shape;
-  int shape_size;
-} PD_MaxInputShape;
+paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
+
+PD_DataType ConvertToPDDataType(paddle::PD_PaddleDType dtype);
+
+PD_ACPrecision ConvertToACPrecision(paddle::Precision dtype);
+}
