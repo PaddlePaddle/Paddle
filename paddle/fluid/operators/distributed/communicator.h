@@ -1,11 +1,8 @@
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -246,7 +243,7 @@ class Communicator {
  private:
   void GeoSgdStart(const std::string& var_name, const framework::Scope& scope);
   std::unordered_set<int64_t> SparseIdsMerge(
-      std::vector<std::shared_ptr<SparseIdsMap>>& ids_send_vec, const std::string& var_name);
+      std::vector<SparseIdsMap>& ids_send_vec, const std::string& var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
@@ -290,18 +287,14 @@ class Communicator {
       old_scope_;  // parameter local, storage the param after last recv
   std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
 
-  std::atomic_uint need_push_{0};
   std::atomic_uint have_push_{0};
 
   std::unordered_map<std::string, bool>
       var_list_;  // if var is sparse, using selected rows, bool=true
 
-  //std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>> need_push_queue_;
-  std::vector<std::shared_ptr<SparseIdsMap>> ids_send_vec_;
-
-  std::vector<std::shared_ptr<SparseIdsMap>> sparse_ids_buffers_;
-  std::atomic_size_t curr_idx_{0};
-  SparseIdsMap *send_ids_map_;
+  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
+      need_push_queue_;
+  std::vector<SparseIdsMap> ids_send_vec_;
 };
 
 }  // namespace distributed
