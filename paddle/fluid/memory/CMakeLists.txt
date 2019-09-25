@@ -17,8 +17,6 @@ cc_library(memory
         memcpy)
 
 if (WITH_GPU)
-    add_dependencies(malloc cuda_device_context_allocator_pool)
-    target_link_libraries(malloc cuda_device_context_allocator_pool)
     nv_test(malloc_test
             SRCS malloc_test.cu
             DEPS device_context malloc)
