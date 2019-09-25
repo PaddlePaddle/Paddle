@@ -228,7 +228,9 @@ class Layer(core.Layer):
                            framework._current_expected_place())
             if name in params:
                 # remove unused param in tracer
-                framework._dygraph_tracer()._vars.pop(params[name].name, None)
+                if framework._dygraph_tracer_ is not None:
+                    framework._dygraph_tracer_._vars.pop(params[name].name,
+                                                         None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
