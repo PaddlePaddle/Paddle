@@ -43,35 +43,35 @@ struct PD_Predictor {
 
 struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
-} PD_AnalysisConfig;
+};
 
 struct InTensorShape {
   char* name;
   int* tensor_shape;
   int shape_size;
-} InTensorShape;
+};
 
 struct PD_ZeroCopyTensor {
   paddle::ZeroCopyTensor tensor;
-} PD_ZeroCopyTensor;
+};
 
 struct PD_Tensor {
   paddle::PaddleTensor tensor;
-} PD_Tensor;
+};
 
 struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
-} PD_PaddleBuf;
+};
 
 struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
-} PD_PaddleBuf;
+};
 
 struct PD_MaxInputShape {
   char* name;
   int* shape;
   int shape_size;
-} PD_MaxInputShape;
+};
 
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
   switch (dtype) {
@@ -83,5 +83,16 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
       return PD_PaddleDType::INT64;
     case PD_UINT8:
       return PD_PaddleDType::UINT8;
+  }
+}
+
+paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
+  switch (dtype) {
+    case PD_UNK:
+      return PD_PaddlePlace::kUNK;
+    case PD_CPU:
+      return PD_PaddlePlace::kCPU;
+    case PD_GPU:
+      return PD_PaddlePlace::kGPU;
   }
 }

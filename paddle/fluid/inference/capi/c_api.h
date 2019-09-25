@@ -32,6 +32,7 @@ extern "C" {
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 
 enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8 };
+enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
 
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_NewPaddleBuf();
 
@@ -76,16 +77,16 @@ PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorShape(PD_Tensor* tensor,
 // ZeroCopyTensor
 typedef struct PD_ZeroCopyTensor PD_ZeroCopyTensor;
 
-enum PD_PaddlePlace;
+// enum PD_PaddlePlace;
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorReshape(
     PD_ZeroCopyTensor* tensor, int* shape, int size);
 
 PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorMutableData(
-    PD_ZeroCopyTensor* tensor, PD_PaddlePlace place);
+    PD_ZeroCopyTensor* tensor, PD_Place place);
 
 PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor,
-                                                      PD_PaddlePlace* place,
+                                                      PD_Place* place,
                                                       int* size);
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyToCPU(
@@ -101,7 +102,7 @@ PADDLE_CAPI_EXPORT extern char* PD_ZeroCopyTensorName(
     PD_ZeroCopyTensor* tensor);
 
 PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyTensorPlace(
-    PD_ZeroCopyTensor* tensor, PD_PaddlePlace place, int device = -1);
+    PD_ZeroCopyTensor* tensor, PD_Place place, int device = -1);
 
 PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
     PD_ZeroCopyTensor* tensor);

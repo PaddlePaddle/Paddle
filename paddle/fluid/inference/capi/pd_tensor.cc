@@ -55,14 +55,13 @@ void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
   tensor->tensor.Reshape(new_shape);
 }
 
-void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor,
-                                   PD_PaddlePlace place) {
-  return tensor->tensor.mutable_data<void*>(place);
+void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor, PD_Place place) {
+  return tensor->tensor.mutable_data<void*>(ConvertToPlace(place));
 }
 
-void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_PaddlePlace* place,
+void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place* place,
                             int* size) {
-  return tensor->tensor.data<void*>(place, size);
+  return tensor->tensor.data<void*>(ConvertToPlace(place), size);
 }
 
 void PD_ZeroCopyTensorCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
@@ -93,9 +92,9 @@ char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
   return tensor->tensor.name().data();
 }
 
-void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_PaddlePlace place,
+void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_Place place,
                                int device = -1) {
-  tensor->tensor.SetPlace(place, device);
+  tensor->tensor.SetPlace(ConvertToPlace(place), device);
 }
 
 PD_DataType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
