@@ -175,7 +175,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
-    return op_compatible_map.Save(desc.OpCompatibleMap());
+    return op_compatible_map.ConvertToProto(desc.OpCompatibleMap());
   });
 
   m.def(

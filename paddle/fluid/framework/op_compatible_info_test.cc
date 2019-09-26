@@ -28,8 +28,8 @@ TEST(test_op_compatible_info, test_op_compatible) {
   // Ensure save-load consistency.
   auto program_desc = ProgramDesc();
   proto::OpCompatibleMap* proto_map = program_desc.OpCompatibleMap();
-  comp_map.Save(proto_map);
-  comp_map.Load(*proto_map);
+  comp_map.ConvertToProto(proto_map);
+  comp_map.ReadFromProto(*proto_map);
 
   ASSERT_NE(comp_map.GetDefaultRequiredVersion(), std::string());
   ASSERT_NE(comp_map.GetOpCompatibleInfo("sequence_pad").required_version_,

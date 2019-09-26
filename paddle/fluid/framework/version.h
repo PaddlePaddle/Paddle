@@ -48,11 +48,12 @@ constexpr uint32_t kCurTensorVersion = 0;
 // and supported by current codes.
 constexpr uint32_t kSupportedTensorVersion[] = {0};
 
+// WARNING: DO NOT use this interface, it may be discarded.
 bool IsProgramVersionSupported(int64_t version);
-
+// WARNING: DO NOT use this interface, it may be discarded.
 bool IsTensorVersionSupported(uint32_t version);
 
-std::string VersionString(const int64_t version);
+std::string DumpVersion(const int64_t version);
 
 }  // namespace framework
 }  // namespace paddle

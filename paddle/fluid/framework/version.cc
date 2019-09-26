@@ -18,17 +18,26 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 bool IsProgramVersionSupported(int64_t version) {
-  /* Not yet implemented. */
+  /* So far, all old versions of Tensor are supported in the
+   * new version. The compatibility judgment cannot be made only
+   * by the version number. Please do not use this interface,
+   * it may be discarded because backward compatibility.
+  */
   return true;
 }
 
 bool IsTensorVersionSupported(uint32_t version) {
-  /* Not yet implemented. */
+  /* So far, all old versions of Tensor are supported in the
+   * new version. The compatibility judgment cannot be made only
+   * by the version number. Please do not use this interface,
+   * it may be discarded because backward compatibility.
+  */
   return true;
 }
 
-std::string VersionString(const int64_t version) {
+std::string DumpVersion(const int64_t version) {
   std::stringstream buffer;
   const int major = version / MAJOR_COEFF;
   const int minor = (version - major * MAJOR_COEFF) / MINOR_COEFF;

@@ -101,7 +101,7 @@ OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
   }
 }
 
-bool OpCompatibleMap::Save(proto::OpCompatibleMap* desc) const {
+bool OpCompatibleMap::ConvertToProto(proto::OpCompatibleMap* desc) const {
   desc->Clear();
   desc->set_default_required_version(default_required_version_);
   for (auto pair : op_compatible_map_) {
@@ -116,7 +116,7 @@ bool OpCompatibleMap::Save(proto::OpCompatibleMap* desc) const {
   return true;
 }
 
-bool OpCompatibleMap::Load(const proto::OpCompatibleMap& desc) {
+bool OpCompatibleMap::ReadFromProto(const proto::OpCompatibleMap& desc) {
   std::string version = desc.default_required_version();
   if (version.empty()) {
     LOG(INFO) << "The default operator required version is missing."
