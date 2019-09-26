@@ -53,7 +53,7 @@ struct InTensorShape {
 };
 
 struct PD_ZeroCopyTensor {
-  paddle::ZeroCopyTensor tensor;
+  paddle::ZeroCopyTensor* tensor;
 };
 
 struct PD_Tensor {
