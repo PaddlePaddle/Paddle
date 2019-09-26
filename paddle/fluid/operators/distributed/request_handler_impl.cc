@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace operators {
@@ -60,13 +61,26 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(varname)) {
+
+      std::string run_varname = varname;
+
+      string::Piece part_piece("@PIECE");
+      string::Piece var_name_piece = string::Piece(varname);
+
+      if (string::Contains(var_name_piece, part_piece)) {
+        auto varname_splits = paddle::string::Split(varname, '@');
+        PADDLE_ENFORCE_EQ(varname_splits.size(), 3);
+        run_varname = varname_splits[0];
+        scope->Rename(varname, run_varname);
+      }
+
+      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
         auto& grad_slr =
-            scope->FindVar(varname)->Get<framework::SelectedRows>();
-        AsyncSparseParamUpdateRecorder::GetInstance()->Update(varname,
+            scope->FindVar(run_varname)->Get<framework::SelectedRows>();
+        AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
                                                               grad_slr.rows());
       }
-      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
+      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
       return true;
     } else {  // sync
@@ -116,8 +130,10 @@ bool RequestGetHandler::Handle(const std::string& varname,
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
-      VLOG(1)<<"Table name empty? "<<table_name.empty();
-      VLOG(1)<<"AsyncSparseParamUpdateRecorder "<<varname<<" exist " <<AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname);
+      VLOG(1) << "Table name empty? " << table_name.empty();
+      VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
+              << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
+                     varname);
       if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
         std::vector<int64_t> updated_rows;

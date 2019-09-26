@@ -10,7 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/communicator.h"
-
 #include <gflags/gflags.h>
 #include <paddle/fluid/framework/program_desc.h>
 #include <chrono>  // NOLINT
@@ -227,7 +226,7 @@ void AsyncCommunicator::SendThread() {
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
           if (!FLAGS_communicator_fake_rpc) {
-            send_functor(ctx, *send_scope_, true);
+            send_functor(ctx, *send_scope_, true, 1);
           }
           auto after_send = GetCurrentUS();
           VLOG(3) << "send " << var_name << " use time "
@@ -250,7 +249,6 @@ void AsyncCommunicator::SendThread() {
   }
   VLOG(0) << "communicator stopped, send thread exit";
 }
-
 
 void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
@@ -278,7 +276,7 @@ void AsyncCommunicator::Send(const std::string &var_name,
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
     if (!FLAGS_communicator_fake_rpc) {
-      send_functor(ctx, scope, true);
+      send_functor(ctx, scope, true, 1);
     }
   } else {
     auto tmp_grad_var = std::make_shared<Variable>();
@@ -381,7 +379,7 @@ void GeoSgdCommunicator::InitImpl(
     const paddle::framework::ProgramDesc &program, Scope *training_scope,
     std::map<std::string, std::map<std::string, std::vector<std::string>>>
         &vars_info,
-    int &trainers, int &geo_need_push_nums) {
+    const int &trainers, const int &geo_need_push_nums) {
   training_scope_ = std::move(training_scope);
   trainer_nums_ = std::move(trainers);
   geo_need_push_nums_ = std::move(geo_need_push_nums);
@@ -566,7 +564,7 @@ void GeoSgdCommunicator::SendThread() {
           auto before_send = GetCurrentUS();
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
-          send_functor(ctx, *delta_scope_.get(), true);
+          send_functor(ctx, *delta_scope_.get(), true, 2);
 
           auto after_send = GetCurrentUS();
           VLOG(1) << "send " << var_name << " use time "
@@ -622,7 +620,8 @@ void GeoSgdCommunicator::RecvAll() {
 }
 
 std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
-    std::vector<SparseIdsMap> &ids_send_vec, const std::string &var_name) {
+    const std::vector<SparseIdsMap> &ids_send_vec,
+    const std::string &var_name) {
   auto before_run_ids_merge_ = GetCurrentUS();
   std::unordered_set<int64_t> ids_set;
   for (auto ids_map : ids_send_vec) {
@@ -690,7 +689,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
 }
 
 void GeoSgdCommunicator::SendUpdateSparseVars(
-    const std::string &var_name, std::unordered_set<int64_t> &ids_table) {
+    const std::string &var_name, const std::unordered_set<int64_t> &ids_table) {
   // calc var_delata = (var_training - var_old)/trainer_nums
   // calc var_old += var_delta
   auto before_run_send_sparse = GetCurrentUS();

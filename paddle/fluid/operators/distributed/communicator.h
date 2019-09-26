@@ -11,15 +11,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <atomic>
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <ThreadPool.h>
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -186,7 +187,7 @@ class Communicator {
       const paddle::framework::ProgramDesc& program, Scope* param_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      int& trainers, int& geo_need_push_nums) = 0;
+      const int& trainers, const int& geo_need_push_nums) = 0;
 
   static Communicator* GetInstance() { return communicator_.get(); }
 
@@ -216,7 +217,7 @@ class Communicator {
       const paddle::framework::ProgramDesc& program, Scope* training_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      int& trainers, int& geo_need_push_nums) {
+      const int& trainers, const int& geo_need_push_nums) {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>,
                    program, training_scope, std::ref(vars_info),
                    std::ref(trainers), std::ref(geo_need_push_nums));
@@ -249,7 +250,7 @@ class Communicator {
       const paddle::framework::ProgramDesc& program, Scope* training_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      int& trainers, int& geo_need_push_nums) {
+      const int& trainers, const int& geo_need_push_nums) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T());
       communicator_->InitImpl(program, training_scope, std::ref(vars_info),
@@ -296,7 +297,7 @@ class AsyncCommunicator : public Communicator {
       const paddle::framework::ProgramDesc& program, Scope* param_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      int& trainers, int& geo_need_push_nums) override {}
+      const int& trainers, const int& geo_need_push_nums) override {}
 
  private:
   std::unordered_map<std::string,
@@ -321,7 +322,7 @@ class GeoSgdCommunicator : public Communicator {
       const paddle::framework::ProgramDesc& program, Scope* training_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      int& trainers, int& geo_need_push_nums) override;
+      const int& trainers, const int& geo_need_push_nums) override;
 
   void Start() override;
   void Stop() override;
@@ -346,11 +347,12 @@ class GeoSgdCommunicator : public Communicator {
   void SendThread();
   void RecvAll();
   std::unordered_set<int64_t> SparseIdsMerge(
-      std::vector<SparseIdsMap>& ids_send_vec, const std::string& var_name);
+      const std::vector<SparseIdsMap>& ids_send_vec,
+      const std::string& var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
-                            std::unordered_set<int64_t>& ids_table);
+                            const std::unordered_set<int64_t>& ids_table);
   void RecvUpdateVars(const std::string& var_name);
 
   void GeoSgdDenseParamInit(framework::Scope* scope_x,
