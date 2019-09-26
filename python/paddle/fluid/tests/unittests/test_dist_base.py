@@ -102,7 +102,8 @@ class TestDistRunnerBase(object):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, args.dc_asgd, args.hogwild)
+                                args.trainers, args.sync_mode, args.dc_asgd,
+                                args.hogwild)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
