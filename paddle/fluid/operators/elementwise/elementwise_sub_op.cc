@@ -69,7 +69,7 @@ class ElementwiseSubDoubleGradDescMaker
 
 namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub);
+REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 REGISTER_OPERATOR(elementwise_sub_grad, ops::ElementwiseOpExplicitGrad,
                   ops::ElementwiseGradOpInplace,

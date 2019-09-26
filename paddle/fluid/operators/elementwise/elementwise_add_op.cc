@@ -67,7 +67,7 @@ class ElementwiseAddDoubleGradDescMaker
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add);
+REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
 

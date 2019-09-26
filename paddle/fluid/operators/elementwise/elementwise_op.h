@@ -413,9 +413,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
                     ::paddle::operators::ElementwiseGradOpInplace,  \
                     ::paddle::operators::ElementwiseGradNoBufVarsInference)
 
-#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type)         \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,    \
-                    __ElemwiseOp##op_type##Maker__,                 \
-                    ::paddle::operators::ElementwiseOpInferVarType, \
-                    op_type##GradMaker,                             \
+#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name)    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    ::paddle::operators::Elementwise##op_name##OpMaker, \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    op_type##GradMaker,                                 \
                     ::paddle::operators::ElementwiseOpInplace);
