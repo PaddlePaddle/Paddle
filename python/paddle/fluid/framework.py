@@ -3440,7 +3440,8 @@ class Program(object):
     def _prune_with_input(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
-        :code:`targets`.
+        :code:`targets`. Prune operators and variables which are needed 
+        to generate feeded_var 
 
         Notes: This is a very low level API. Users should not use this API
         directly. This API is in flux and not stable.
