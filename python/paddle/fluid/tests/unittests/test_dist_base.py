@@ -100,10 +100,15 @@ class TestDistRunnerBase(object):
         self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
-        t = self.get_transpiler(args.trainer_id,
-                                fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, args.dc_asgd,
-                                args.hogwild)
+
+        t = self.get_transpiler(
+            trainer_id=args.trainer_id,
+            main_program=fluid.default_main_program(),
+            pserver_endpoints=args.endpoints,
+            trainers=args.trainers,
+            sync_mode=args.sync_mode,
+            dc_asgd=args.dc_asgd,
+            hogwild_mode=args.hogwild)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -125,7 +130,7 @@ class TestDistRunnerBase(object):
 
         dist_strategy = DistributedStrategy()
         dist_strategy.exec_strategy = exec_strategy
-        dist_strategy.fuse_memory_size = 1  #MB
+        dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
         if args.use_local_sgd:
             dist_strategy.use_local_sgd = True
@@ -135,11 +140,11 @@ class TestDistRunnerBase(object):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print_to_err("gpu_fleet", "fleet.node_num:")
-        #"fleet.node_id:", fleet.node_id(),
-        #"fleet.trainer_num:", fleet.worker_num())
+        # "fleet.node_id:", fleet.node_id(),
+        # "fleet.trainer_num:", fleet.worker_num())
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-                self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+            self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
@@ -201,10 +206,15 @@ class TestDistRunnerBase(object):
             print_to_err(
                 type(self).__name__,
                 "begin to run transpile on trainer with pserver mode")
-            t = self.get_transpiler(args.trainer_id,
-                                    fluid.default_main_program(),
-                                    args.endpoints, args.trainers,
-                                    args.sync_mode, args.dc_asgd, args.hogwild)
+            t = self.get_transpiler(
+                trainer_id=args.trainer_id,
+                main_program=fluid.default_main_program(),
+                pserver_endpoints=args.endpoints,
+                trainers=args.trainers,
+                sync_mode=args.sync_mode,
+                dc_asgd=args.dc_asgd,
+                hogwild_mode=args.hogwild)
+
             trainer_prog = t.get_trainer_program()
             print_to_err(
                 type(self).__name__,
@@ -419,7 +429,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
-    parser.add_argument('--hogwild', action='store_false')
+    parser.add_argument('--hogwild', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -716,8 +726,8 @@ class TestDistBase(unittest.TestCase):
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
         tr_cmd = tr_cmd % \
-                  (self._python_interp, model, self._ps_endpoints,
-                   trainer_id, ep, update_method, self._lr)
+                 (self._python_interp, model, self._ps_endpoints,
+                  trainer_id, ep, update_method, self._lr)
 
         if self._use_reduce:
             tr_cmd += " --use_reduce"
@@ -838,9 +848,9 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_losses\
+        local_losses \
             = self._run_local(model_file, required_envs,
-                                check_error_log)
+                              check_error_log)
         if self._nccl2_mode:
             if self._nccl2_reduce_layer:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
