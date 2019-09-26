@@ -81,7 +81,7 @@ endif()
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)
         get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-        target_link_libraries(device_context ${cuda_modules})
+        target_link_libraries(device_context ${cuda_modules} dlpack)
     endif(WITH_GPU AND NOT WITH_DSO)
 endif(WIN32)
 
