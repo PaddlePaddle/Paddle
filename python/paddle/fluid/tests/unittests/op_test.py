@@ -188,25 +188,19 @@ class OpTest(unittest.TestCase):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value[0]), place)
+                        tensor.set(np_value[0], place)
                         tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value), place)
+                        tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name][
-                            0]), place)
+                    tensor.set(self.inputs[var_name][0], place)
                     tensor.set_recursive_sequence_lengths(self.inputs[var_name][
                         1])
                 else:
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name]),
-                        place)
+                    tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
