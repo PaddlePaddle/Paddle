@@ -29,14 +29,14 @@ const char* GetModelPath(std::string a) {
   return (a + "/" + "mobilenet").c_str();
 }
 
-TEST(TensorRT_mobilenet, compare) {
+/*TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  compare(model_dir, /* use_tensorrt */ true);
+  compare(model_dir, true);
   // Open it when need.
-  // profile(model_dir, /* use_analysis */ true, FLAGS_use_tensorrt);
-}
+  // profile(model_dir, true, FLAGS_use_tensorrt);
+}*/
 
-TEST(AnalysisPredictor, use_gpu) {
+TEST(PD_AnalysisPredictor, use_gpu) {
   std::string a = FLAGS_infer_model;
   const char* model_dir = GetModelPath(a);
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
