@@ -1097,7 +1097,7 @@ def save_inference_model(dirname,
         main_program.desc.flush()
 
         main_program = main_program._prune_with_input(
-            targets=target_vars, feeded_var_names=feeded_var_names)
+            feeded_var_names=feeded_var_names, targets=target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
