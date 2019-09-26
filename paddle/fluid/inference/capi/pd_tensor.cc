@@ -60,8 +60,8 @@ void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place place,
   return tensor->tensor.data<void*>(&p, size);
 }
 
-void PD_ZeroCopyTensorCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
-                                PD_DataType data_type) {
+void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
+                      PD_DataType data_type) {
   switch (data_type) {
     case PD_FLOAT32:
       tensor->tensor.copy_to_cpu(static_cast<float*>(data));
@@ -81,8 +81,8 @@ void PD_ZeroCopyTensorCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
   }
 }
 
-void PD_ZeroCopyTensorCopyFromCpu(PD_ZeroCopyTensor* tensor, void* data,
-                                  PD_DataType data_type) {
+void PD_ZeroCopyFromCpu(PD_ZeroCopyTensor* tensor, void* data,
+                        PD_DataType data_type) {
   switch (data_type) {
     case PD_FLOAT32:
       tensor->tensor.copy_from_cpu(static_cast<float*>(data));
@@ -102,7 +102,7 @@ void PD_ZeroCopyTensorCopyFromCpu(PD_ZeroCopyTensor* tensor, void* data,
   }
 }
 
-int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
+int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int** size) {
   std::vector<int> ret_shape;
   ret_shape = tensor->tensor.shape();
   int s = ret_shape.size();
@@ -110,7 +110,7 @@ int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size) {
   for (int i = 0; i < s; ++i) {
     shapes[i] = ret_shape[i];
   }
-  // size = &s;
+  *size = &s;
   return shapes;
 }
 

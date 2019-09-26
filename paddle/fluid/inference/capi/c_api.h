@@ -86,17 +86,13 @@ PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor,
                                                       PD_Place place,
                                                       int* size);
 
-PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyToCPU(
-    PD_ZeroCopyTensor* tensor, void* data, PD_DataType data_type);
+PADDLE_CAPI_EXPORT extern void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor,
+                                                void* data,
+                                                PD_DataType data_type);
 
-PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyFromCpu(
-    PD_ZeroCopyTensor* tensor, void* data, PD_DataType data_type);
-
-// PADDLE_CAPI_EXPORT extern void PD_ZeroCopyToCPU(
-//    PD_ZeroCopyTensor *tensor, void *data, PD_DataType dtype);
-
-// PADDLE_CAPI_EXPORT extern void PD_ZeroCopyFromCPU(
-//    PD_ZeroCopyTensor *tensor, void *data, PD_DataType dtype);
+PADDLE_CAPI_EXPORT extern void PD_ZeroCopyFromCpu(PD_ZeroCopyTensor* tensor,
+                                                  void* data,
+                                                  PD_DataType data_type);
 
 PADDLE_CAPI_EXPORT
 extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size);
@@ -113,13 +109,13 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
 // AnalysisPredictor
 typedef struct PD_Predictor PD_Predictor;
 
-PADDLE_CAPI_EXPORT extern int PD_PredictorRun(PD_Predictor* predictor,
-                                              PD_Tensor* inputs, int in_size,
-                                              PD_Tensor* output_data,
-                                              int batch_size = -1);
+PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
+                                               PD_Tensor* inputs, int in_size,
+                                               PD_Tensor* output_data,
+                                               int** out_size, int batch_size);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
-    PD_Predictor* predictor);
+    PD_Predictor* predictor, int** in_size);
 
 typedef struct InTensorShape InTensorShape;
 
