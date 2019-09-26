@@ -41,4 +41,73 @@ bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) { return buf->buf.empty(); }
 void* PD_PaddleBufData(PD_PaddleBuf* buf) { return buf->buf.data(); }
 
 size_t PD_PaddleBufLength(PD_PaddleBuf* buf) { return buf->buf.length(); }
+
+paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
+  switch (dtype) {
+    case PD_FLOAT32:
+      return PD_PaddleDType::FLOAT32;
+    case PD_INT32:
+      return PD_PaddleDType::INT32;
+    case PD_INT64:
+      return PD_PaddleDType::INT64;
+    case PD_UINT8:
+      return PD_PaddleDType::UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      return PD_PaddleDType::FLOAT32;
+  }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return PD_PaddleDType::FLOAT32;
+}
+
+paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
+  switch (dtype) {
+    case PD_UNK:
+      return PD_PaddlePlace::kUNK;
+    case PD_CPU:
+      return PD_PaddlePlace::kCPU;
+    case PD_GPU:
+      return PD_PaddlePlace::kGPU;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_PaddlePlace::kUNK;
+  }
+  PADDLE_ENFORCE(false, "Unsupport dtype.");
+  return PD_PaddlePlace::kUNK;
+}
+
+PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
+  switch (dtype) {
+    case PD_PaddleDType::FLOAT32:
+      return PD_DataType::PD_FLOAT32;
+    case PD_PaddleDType::INT32:
+      return PD_DataType::PD_INT32;
+    case PD_PaddleDType::INT64:
+      return PD_DataType::PD_INT64;
+    case PD_PaddleDType::UINT8:
+      return PD_DataType::PD_UINT8;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_DataType::PD_UNKDTYPE;
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
+  return PD_DataType::PD_UNKDTYPE;
+}
+
+PD_ACPrecision ConvertToACPrecision(Precision dtype) {
+  switch (dtype) {
+    case Precision::kFloat32:
+      return PD_ACPrecision::kFloat32;
+    case Precision::kInt8:
+      return PD_ACPrecision::kInt8;
+    case Precision::kHalf:
+      return PD_ACPrecision::kHalf;
+    default:
+      PADDLE_ENFORCE(false, "Unsupport place.");
+      return PD_ACPrecision::kFloat32;
+  }
+  PADDLE_ENFORCE(false, "Unsupport place.");
+  return PD_ACPrecision::kFloat32;
+}
+
 }  // extern "C"
