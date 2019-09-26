@@ -95,7 +95,7 @@ PADDLE_CAPI_EXPORT extern void PD_ZeroCopyFromCpu(PD_ZeroCopyTensor* tensor,
                                                   PD_DataType data_type);
 
 PADDLE_CAPI_EXPORT
-extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size);
+extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int** size);
 
 PADDLE_CAPI_EXPORT extern const char* PD_ZeroCopyTensorName(
     PD_ZeroCopyTensor* tensor);
@@ -120,7 +120,7 @@ PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
 typedef struct InTensorShape InTensorShape;
 
 PADDLE_CAPI_EXPORT extern InTensorShape* PD_GetPredictorInputTensorShape(
-    PD_Predictor* predictor, int* size);
+    PD_Predictor* predictor, int** size);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorOutputNames(
     PD_Predictor* predictor);
