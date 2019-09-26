@@ -37,7 +37,7 @@
 #endif
 
 DEFINE_int64(
-    gpu_allocator_retry_time, 0,
+    gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
 
@@ -80,6 +80,12 @@ class AllocatorFacadePrivate {
       }
     }
     InitZeroSizeAllocators();
+
+    if (FLAGS_gpu_allocator_retry_time > 0) {
+      WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
+    }
+
+    CheckAllocThreadSafe();
   }
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
@@ -118,6 +124,8 @@ class AllocatorFacadePrivate {
    public:
     explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
 
+    bool IsAllocThreadSafe() const override { return true; }
+
    protected:
     Allocation* AllocateImpl(size_t size) override {
       return new Allocation(nullptr, 0, place_);
@@ -142,6 +150,25 @@ class AllocatorFacadePrivate {
 
     for (auto& p : places) {
       zero_size_allocators_[p] = std::make_shared<ZeroSizeAllocator>(p);
+    }
+  }
+
+  void CheckAllocThreadSafe() const {
+    for (auto& pair : allocators_) {
+      PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(), true);
+    }
+
+    for (auto& pair : zero_size_allocators_) {
+      PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(), true);
+    }
+  }
+
+  void WrapCUDARetryAllocator(size_t retry_time) {
+    PADDLE_ENFORCE_GT(retry_time, 0, "Retry time must be larger than 0");
+    for (auto& pair : allocators_) {
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
     }
   }
 

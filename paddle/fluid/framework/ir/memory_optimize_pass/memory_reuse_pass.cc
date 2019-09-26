@@ -36,6 +36,11 @@ void MemoryReusePass::ApplyImpl(Graph *graph) const {
   reused_out_var_names_.resize(all_vars_->size());
   var_descs_.resize(all_vars_->size());
 
+  pinned_var_set_ = nullptr;
+  if (graph->Has(details::kPinnedVars)) {
+    pinned_var_set_ = &graph->Get<details::PinnedVars>(details::kPinnedVars);
+  }
+
   // Collect the existing ShareTensorBufferOpHandles.
   // This is because (1) we want to reuse the existing
   // ShareTensorBufferOpHandles to avoid inserting too many ops;
@@ -195,7 +200,7 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
 
   const VarDesc *in_var_desc = GetVarDesc(in_var);
 
-  if (in_var_desc->Persistable()) {
+  if (IsPinnedVar(*in_var_desc)) {
     return false;
   }
 
@@ -244,7 +249,7 @@ bool MemoryReusePass::IsOutVarReusable(
   }
 
   const VarDesc *out_var_desc = GetVarDesc(out_var);
-  if (out_var_desc->Persistable()) {
+  if (IsPinnedVar(*out_var_desc)) {
     return false;
   }
 
@@ -259,6 +264,11 @@ bool MemoryReusePass::IsOutVarReusable(
   }
 
   return true;
+}
+
+bool MemoryReusePass::IsPinnedVar(const VarDesc &var_desc) const {
+  return var_desc.Persistable() ||
+         (pinned_var_set_ && pinned_var_set_->count(var_desc.Name()));
 }
 
 /**

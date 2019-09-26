@@ -251,6 +251,7 @@ void AsyncCommunicator::SendThread() {
   VLOG(0) << "communicator stopped, send thread exit";
 }
 
+
 void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {

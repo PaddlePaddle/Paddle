@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 def stable_softmax(x):
@@ -74,6 +76,18 @@ class TestSoftmaxOp(OpTest):
             self.check_grad(["X"], "Out", max_relative_error=0.01)
 
 
+class TestSoftmaxOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.softmax, x1)
+            # The input dtype of softmax_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.softmax, x2)
+
+
 class TestSoftmaxOp2(TestSoftmaxOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
@@ -103,7 +117,7 @@ class TestSoftmaxOp5(TestSoftmaxOp):
         return 2
 
 
-class TestSoftmaxOp5(TestSoftmaxOp):
+class TestSoftmaxOp6(TestSoftmaxOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
 

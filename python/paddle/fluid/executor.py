@@ -22,7 +22,7 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
-from .framework import Program, default_main_program, Variable
+from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
 from .. import compat as cpt
@@ -126,6 +126,91 @@ def as_numpy(tensor):
         return np.array(tensor)
     else:
         return None
+
+
+def dtype_is_compatible_with(first, second):
+    """
+    Returns True if the first dtype can be compatible the second one.
+    Currently, we require the two dtype's have to be same.
+      
+    Args:
+        dtype (np.dtype|VarType|str): The type of data: float32, int64, etc.
+    
+    Returns:
+        True if the two types are same.
+    """
+    if not isinstance(first, core.VarDesc.VarType):
+        first = convert_np_dtype_to_dtype_(first)
+    if not isinstance(second, core.VarDesc.VarType):
+        second = convert_np_dtype_to_dtype_(second)
+    return first == second
+
+
+def dimension_is_compatible_with(first, second):
+    """
+    Returns True if the two dimensions are compatible.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
+
+    Args:
+        first (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
+        second (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
+
+    Returns:
+        True if the two dimensions are compatible.
+    """
+
+    dim_len = len(first)
+    if dim_len != len(second):
+        return False
+
+    for i in range(dim_len):
+        if first[i] is None or first[i] < 0:
+            continue
+        if second[i] is None or second[i] < 0:
+            continue
+        if first[i] != second[i]:
+            return False
+
+    return True
+
+
+def check_feed_shape_type(var, feed):
+    """
+    Returns True if the variable doesn't require feed check or it is compatible
+    with the shape and have same dtype as the feeded value.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
+    
+    Args:
+        var (Variable): the Variable object
+        feed (LoDTensor): the feeded value, which must be a LoDTensor
+    Returns:
+        True if the shape and dtype of variable is compatible with the feed value
+    Raises:
+        ValueError: if the shape or dtype of the variable is not compatible with
+            the feed value
+    """
+    if var.desc.need_check_feed():
+        if not dimension_is_compatible_with(feed.shape(), var.shape):
+            raise ValueError('Cannot feed value of shape %r for Variable %r, '
+                             'which has shape %r' %
+                             (feed.shape, var.name, var.shape))
+        if not dtype_is_compatible_with(feed._dtype(), var.dtype):
+            raise ValueError('Cannot feed value of type %r for Variable %r, '
+                             'which has type %r' %
+                             (feed._dtype(), var.name, var.dtype))
+    return True
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -443,12 +528,15 @@ class Executor(object):
 
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
-        for op in program.global_block().ops:
+        global_block = program.global_block()
+        for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
+                var = global_block.var(feed_target_name)
+                check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -492,15 +580,26 @@ class Executor(object):
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
         exe = program._executor
+        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
+        # instead of program. We will add support for checking Vars in Graph
+        need_check_feed = program._program is not None
+        if need_check_feed:
+            global_block = program._program.global_block()
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
+                    # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
+                    assert isinstance( feed[feed_name], np.ndarray ), \
+                        "The input({}) should be numpy.array, but not {}.".format(
+                        feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
+                if need_check_feed:
+                    var = global_block.var(feed_name)
+                    check_feed_shape_type(var, feed_tensor)
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -520,19 +619,21 @@ class Executor(object):
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
+                        assert isinstance(each[feed_name], np.ndarray), \
+                            "The input({}) should be numpy.array, but not {}.".format(
+                            feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
+                    if need_check_feed:
+                        var = global_block.var(feed_name)
+                        check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names)._move_to_list()
-
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
+        return as_numpy(tensors) if return_numpy else tensors
 
     def run(self,
             program=None,
@@ -611,7 +712,7 @@ class Executor(object):
                 use_program_cache=use_program_cache)
         except Exception as e:
             if not isinstance(e, core.EOFException):
-                print("An exception was thrown!\n {}".format(str(e)))
+                print("!!!A non-EOF exception is thrown.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
@@ -619,11 +720,15 @@ class Executor(object):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
+        use_default_main_program = program is None
         if program is None:
             program = default_main_program()
-        if isinstance(program,Program) and \
+        if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
-            warnings.warn("The current program is empty.")
+            error_info = "The current program is empty."
+            if use_default_main_program:
+                error_info += " Maybe you should pass the Program or the CompiledProgram manually."
+            warnings.warn(error_info)
 
         if scope is None:
             scope = global_scope()
@@ -639,6 +744,7 @@ class Executor(object):
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
         # For backward compatibility, run directly.
         if not compiled:
             return self._run_program(
@@ -797,7 +903,6 @@ class Executor(object):
                     program.program._fleet_opt)
             trainer._set_program(program.program)
 
-        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -883,9 +988,11 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None
 
@@ -967,8 +1074,10 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None

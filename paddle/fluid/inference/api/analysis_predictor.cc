@@ -52,8 +52,6 @@
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
-DECLARE_bool(profile);
-
 namespace paddle {
 
 using inference::Singleton;
@@ -79,12 +77,14 @@ bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+  if (config_.with_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else {
+    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
+                 "generated.";
   }
 
   // no matter with or without MKLDNN
@@ -241,11 +241,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
-  // Collect variable shapes for memory optimization.
-  if (need_collect_var_shapes_for_memory_optim()) {
-    CollectVarShapes();
-  }
-
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
   // All the containers in the scope will be hold in inference, but the
@@ -390,9 +385,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
-  argument_.SetStaticMemoryOptimForceUpdate(
-      config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
   argument_.SetUseAnakin(config_.anakin_engine_enabled());
@@ -472,7 +464,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
   config_.PartiallyRelease();
-  LOG(INFO) << "== optimize end ==";
+  LOG(INFO) << "======= optimize end =======";
 }
 
 template <>
@@ -498,7 +490,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     }
 
     if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
+      flags.push_back("dummy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
@@ -574,6 +566,18 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
     input_names.push_back(item.second);
   }
   return input_names;
+}
+
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetInputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> input_shapes;
+  std::vector<std::string> names = GetInputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    input_shapes[name] = var->GetShape();
+  }
+  return input_shapes;
 }
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
@@ -792,7 +796,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     SaveTrtCalibToDisk();
   }
 #endif
-  if (FLAGS_profile) {
+  if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
@@ -806,13 +810,6 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
-
-  // TODO(Superjomn) deduce the directory path.
-  std::string out_path = inference::analysis::GetMemoryCachePath(
-      config_.model_dir(), config_.prog_file());
-  if (need_collect_var_shapes_for_memory_optim()) {
-    SerializeBatchVarShapes(out_path);
-  }
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -820,66 +817,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
   return std::unique_ptr<PaddlePredictor>(x);
-}
-
-void AnalysisPredictor::CollectVarShapes() {
-  VLOG(4) << "Collecting var shapes";
-  if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
-  std::map<std::string, std::vector<int>> var_shapes;
-  for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
-    auto *var = sub_scope_->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var);
-    if (var->Type() == framework::VarTypeTrait<framework::LoDTensor>::kId ||
-        var->Type() == framework::VarTypeTrait<framework::Tensor>::kId) {
-      auto &tensor = var->Get<framework::LoDTensor>();
-      auto shape = framework::vectorize(tensor.dims());
-      var_shapes[var_name].assign(shape.begin(), shape.end());
-    }
-  }
-  batch_var_shapes_.push_back(var_shapes);
-  LOG_FIRST_N(INFO, 1) << "Collected " << batch_var_shapes_.size()
-                       << " batch of var shapes for analysis";
-}
-
-void AnalysisPredictor::SerializeBatchVarShapes(const std::string &path) {
-  LOG(INFO) << "serialize batch var shapes to " << path;
-  std::ofstream file(path);
-  if (!file.is_open()) {
-    LOG(ERROR) << "failed to serialize the var shapes to " << path;
-    return;
-  }
-
-  // The sirialized data format:
-  // <tensor_name>:dim0,dim1,dim2,;
-  for (auto &batch : batch_var_shapes_) {
-    for (auto &ele : batch) {
-      file << ele.first << ":";
-      for (size_t i = 0; i < ele.second.size() - 1; i++) {
-        file << ele.second[i] << ",";
-      }
-      file << ele.second.back() << ";";
-    }
-    file << "\n";
-  }
-}
-
-bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
-  if (need_collect_var_shapes_ >= 0) return need_collect_var_shapes_;
-  bool need = false;
-  // check if the cache exists
-  if (!config_.enable_memory_optim()) {
-    need = false;
-  } else if (config_.static_memory_optim_ &&
-             !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
-                 config_.model_dir(), config_.prog_file()))) {
-    need = true;
-  } else if (config_.static_memory_optim_ &&
-             config_.static_memory_optim_force_update_) {
-    need = true;
-  }
-
-  need_collect_var_shapes_ = need ? 1 : 0;
-  return need;
 }
 
 std::string AnalysisPredictor::GetSerializedProgram() const {

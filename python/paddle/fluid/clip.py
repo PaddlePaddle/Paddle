@@ -24,6 +24,7 @@ from . import core
 from .dygraph.base import _not_support
 
 __all__ = [
+    'set_gradient_clip',
     'ErrorClipByValue',
     'GradientClipByValue',
     'GradientClipByNorm',
@@ -343,12 +344,59 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
     Args:
         clip(BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
+                for example :ref:`api_fluid_clip_GradientClipByGlobalNorm` ,
                 which describes the type and detailed attributes of required gradient clip.
-        param_list(list(Variable)): Parameters that require gradient clip.
+        param_list(list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
-                When it's None, all parameters in the program will be included.
-        program(Program): The program where parameters are.
-                Will be the default main program when assigned with None.
+                Default None, meaning that all parameters in the program will be included.
+        program(Program, optional): The program where parameters are located.
+                Default None, meaning that using :ref:`api_fluid_default_main_program` .
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+
+            def network():
+                image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+                param_attr1 = fluid.ParamAttr("fc1_param")
+                fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
+                param_attr2 = fluid.ParamAttr("fc2_param")
+                fc2 = fluid.layers.fc(fc1, size=10, param_attr=param_attr2)
+                loss = fluid.layers.reduce_mean(fc2)
+                return loss
+
+
+            # network 1: clip all parameter gradient
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+
+            # network 2: clip parameter gradient by name
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    param_list=["fc1_param", "fc2_param"])
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+
+            # network 3: clip parameter gradient by var
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                param_var1 = fluid.default_main_program().global_block().var("fc1_param")
+                param_var2 = fluid.default_main_program().global_block().var("fc2_param")
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    param_list=[param_var1, param_var2])
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
     """
     if not isinstance(clip, BaseGradientClipAttr):
         raise TypeError(

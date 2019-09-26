@@ -265,6 +265,8 @@ class FlListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 void FlSignalHandler::StopAndExit(int signal_num) {
   // Do not use VLOG here for the device for printing maybe already released.
   // exit will release interal allocated resoureces.
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+  remove(file_path.c_str());
   exit(0);
 }
 
