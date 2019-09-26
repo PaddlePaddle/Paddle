@@ -30,9 +30,9 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        self.samples_num = 64
         self.delta = 1.0
         self.init_input()
+        shape = self.set_shape()
         residual = self.inputs['Y'] - self.inputs['X']
         loss = np.vectorize(huber_loss_forward)(residual,
                                                 self.delta).astype('float32')
