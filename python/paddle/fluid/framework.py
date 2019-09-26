@@ -617,10 +617,12 @@ class Variable(object):
                 raise ValueError(
                     "The shape of the new value must be the same as that of the original Variable."
                 )
-            from .layers import assign
-            assign(value, self)
+            self_tensor = self._ivar.value().get_tensor()
+            if isinstance(value, Variable):
+                value = value._ivar.value().get_tensor().__array__()
+            self_tensor.set(value, _current_expected_place())
         else:
-            raise Exception(
+            raise ValueError(
                 "Variable.set_value() is only avaliable in DyGraph mode.")
 
     def backward(self, backward_strategy=None):
