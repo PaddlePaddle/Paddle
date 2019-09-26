@@ -81,12 +81,13 @@ class TestSeqAvgPool(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support lod in dygraph mode
         # Remove MaxIndex after check_grad is refined.
         out = self.outputs['Out']
         if isinstance(out, tuple): out = out[0]
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSeqAvgPoolLen0(TestSeqAvgPool):
@@ -299,7 +300,9 @@ class TestSeqSqrtPool2D(TestSeqAvgPool2D):
             out = out[0]
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
-        self.check_grad(["X"], "Out", max_relative_error=0.06)
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_grad(
+            ["X"], "Out", max_relative_error=0.06, check_dygraph=False)
 
 
 class TestSeqSqrtPool2DLen0(TestSeqSqrtPool2D):

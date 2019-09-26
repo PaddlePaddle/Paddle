@@ -1038,7 +1038,7 @@ class OpTest(unittest.TestCase):
                    check_dygraph=True):
         places = self._get_places()
         for place in places:
-            check_dygraph = False  ##delete
+            #check_dygraph = False  ##delete
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
                                        in_place, max_relative_error,
@@ -1054,7 +1054,7 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
-        check_dygraph = False  ##delete
+        #check_dygraph = False  ##delete
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1097,13 +1097,17 @@ class OpTest(unittest.TestCase):
 
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(inputs_to_check, place,
-                                                  no_grad_set)
+                                                  output_names, no_grad_set)
             #print(dygraph_grad)
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
 
-    def _get_dygraph_grad(self, inputs_to_check, place, no_grad_set=None):
+    def _get_dygraph_grad(self,
+                          inputs_to_check,
+                          place,
+                          output_names,
+                          no_grad_set=None):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1181,12 +1185,10 @@ class OpTest(unittest.TestCase):
                         continue
                     else:
                         assert output.intermediate, "{} not found".format(name)
-                        '''
-                            v = block.create_var(
-                                dtype='float32',
-                                type=core.VarDesc.VarType.LOD_TENSOR)
-                            outputs[name].append(v)
-                            '''
+                        v = block.create_var(
+                            dtype='float32',
+                            type=core.VarDesc.VarType.LOD_TENSOR)
+                        outputs[name].append(v)
                     continue
                 if output.duplicable:
                     assert isinstance(
@@ -1260,25 +1262,30 @@ class OpTest(unittest.TestCase):
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
-            if len(outputs) == 1:
-                #print("---------LOG--------- outputs = 1")
+            outputs_valid = {}
+            for output_name in output_names:
+                outputs_valid[output_name] = outputs[output_name]
+
+            if len(outputs_valid) == 1:
+                #print("---------LOG--------- outputs_valid = 1")
                 loss = block.create_var(
                     dtype=self.dtype,
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     persistable=False,
                     stop_gradient=False,
                     shape=[1])
-                for outputs_key in outputs:
-                    #print("outputs_key ", outputs_key, " ", outputs[outputs_key])
+                for outputs_valid_key in outputs_valid:
+                    #print("outputs_valid_key ", outputs_valid_key, " ", outputs_valid[outputs_valid_key])
                     block.append_op(
                         type="mean",
-                        inputs={"X": outputs[outputs_key]},
+                        inputs={"X": outputs_valid[outputs_valid_key]},
                         outputs={"Out": [loss]},
                         attrs=None)
             else:
-                #print("---------LOG--------- outputs = 2")
+                #print("---------LOG--------- outputs_valid = 2")
                 avg_sum = []
-                for cur_loss in outputs:
+                for cur_loss in outputs_valid:
+                    #print("---------LOG--------- dygraph ", cur_loss)
                     cur_avg_loss = block.create_var(
                         dtype=self.dtype,
                         type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1286,7 +1293,7 @@ class OpTest(unittest.TestCase):
                         stop_gradient=False)
                     block.append_op(
                         type="mean",
-                        inputs={"X": outputs[cur_loss]},
+                        inputs={"X": outputs_valid[cur_loss]},
                         outputs={"Out": [cur_avg_loss]},
                         attrs=None)
                     avg_sum.append(cur_avg_loss)

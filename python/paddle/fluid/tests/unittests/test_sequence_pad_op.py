@@ -72,10 +72,12 @@ class TestSequencePadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSequencePadOp2(TestSequencePadOp):
