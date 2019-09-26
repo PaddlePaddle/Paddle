@@ -33,7 +33,7 @@ void PD_SetPaddleTensorName(PD_Tensor* tensor, char* name) {
 }
 
 void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_DataType dtype) {
-  tensor->tensor.dtype = ConvertToPaddleDType(dtype);
+  tensor->tensor.dtype = paddle::ConvertToPaddleDType(dtype);
 }
 
 void PD_SetPaddleTensorData(PD_Tensor* tensor, PD_PaddleBuf* buf) {
@@ -51,12 +51,12 @@ void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
 }
 
 void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor, PD_Place place) {
-  return tensor->tensor.mutable_data<void*>(ConvertToPlace(place));
+  return tensor->tensor.mutable_data<void*>(paddle::ConvertToPlace(place));
 }
 
 void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place place,
                             int* size) {
-  paddle::PaddlePlace p = ConvertToPlace(place);
+  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
   return tensor->tensor.data<void*>(&p, size);
 }
 
@@ -120,11 +120,11 @@ const char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
 
 void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_Place place,
                                int device) {
-  tensor->tensor.SetPlace(ConvertToPlace(place), device);
+  tensor->tensor.SetPlace(paddle::ConvertToPlace(place), device);
 }
 
 PD_DataType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
-  return ConvertToPDDataType(tensor->tensor.type());
+  return paddle::ConvertToPDDataType(tensor->tensor.type());
 }
 
 }  // extern "C"

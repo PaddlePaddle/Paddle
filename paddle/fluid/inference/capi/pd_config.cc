@@ -129,7 +129,7 @@ void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
                              bool use_calib_mode) {
   config->config.EnableTensorRtEngine(
       workspace_size, max_batch_size, min_subgraph_size,
-      ConvertToACPrecision(precision), use_static, use_calib_mode);
+      paddle::ConvertToACPrecision(precision), use_static, use_calib_mode);
 }
 
 bool PD_TensorrtEngineEnabled(PD_AnalysisConfig* config) {
@@ -162,7 +162,7 @@ void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size,
   }
 
   config->config.EnableAnakinEngine(max_batch_size, mis, min_subgraph_size,
-                                    ConvertToACPrecision(precision),
+                                    paddle::ConvertToACPrecision(precision),
                                     auto_config_layout, pf, of);
 }
 
