@@ -244,15 +244,19 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+
+#set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor data_feed_proto)
 if(WIN32)
   sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 else(WIN32)
   cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 endif(WIN32)
 
+cc_library(load_op_lib SRCS load_op_lib.cc DEPS ${FLUID_FRAMEWORK_MODULES})
+
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    SHARED SRCS load_op_lib.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)

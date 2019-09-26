@@ -20,7 +20,7 @@ endif(APPLE)
 
 set(inference_deps ${analysis_deps}
   paddle_inference_api paddle_fluid_api
-  analysis pass naive_executor
+  analysis pass naive_executor load_op_lib
   ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
