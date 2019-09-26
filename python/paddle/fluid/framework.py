@@ -3396,7 +3396,7 @@ class Program(object):
         Args:
             targets(list|Variable|Operator): A list of variables or operators
                 need to be pruned
-            feeded_var_names(list|string|None): A list of variable names from where
+            feeded_var_names(list|str|None): A list of variable names from where
                 pruning start
 
         Returns:
