@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import print_function
+"""
+Steps to transpile trainer:
+1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
+2. create delta variable in global scope which used to send
+3. add send op to send sparse ids to communicator
+
+Steps to transpile pserver:
+1. create new program for parameter server.
+2. create params variables that assigned to current server instance.
+3. create a sub-block in the server side program
+4. append sum ops that should run on current server instance.
+5. add listen_and_serv op
+"""
 import sys
 import collections
 import six
@@ -26,13 +38,51 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler,DistributeTranspilerConfig,slice_variable,same_or_split_var
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var
 
-RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+)
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 PRINT_LOG = False
 
+
 class GeoSgdTranspiler(DistributeTranspiler):
+    """
+    **GeoSgdTranspiler**
+
+    Convert the fluid program to distributed data-parallelism programs.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_loss = fluid.layers.mean(cost)
+
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_loss)
+
+            # for pserver mode
+            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+            current_endpoint = "192.168.0.1:6174"
+            trainer_id = 0
+            trainers = 4
+            role = "PSERVER"
+            t = fluid.DistributeTranspiler()
+            t.transpile(
+                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
+            if role == "PSERVER":
+                 pserver_program = t.get_pserver_program(current_endpoint)
+                 pserver_startup_program = t.get_startup_program(current_endpoint,
+                                                                pserver_program)
+            elif role == "TRAINER":
+                 trainer_program = t.get_trainer_program()
+    """
+
     def __init__(self, config=None):
         if config is not None:
             self.config = config
@@ -131,7 +181,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
         for op in self.origin_program.global_block().ops:
             if op.type == "lookup_table":
                 op._set_attr('remote_prefetch', False)
-                for input_var_name, sparse_var_name in zip(op.input("Ids"), op.input("W")):
+                for input_var_name, sparse_var_name in zip(
+                        op.input("Ids"), op.input("W")):
                     if sparse_var_name in self.sparse_var_list:
                         input_var = program.global_block().var(input_var_name)
                         self.sparse_var.append(input_var)
@@ -144,12 +195,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
             type="send",
             inputs={"X": self.sparse_var},
             outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": self.sparse_tables}
-        )
+            attrs={"send_varnames": self.sparse_tables})
 
         # add param_init flag in trainer startup program
-        self.trainer_startup_program = self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
+        self.trainer_startup_program = self._get_trainer_startup_program(
+            recv_vars=recv_vars, eplist=eplist)
         for delta_var in self.delta_vars_list:
             self.trainer_startup_program.global_block().create_var(
                 name=delta_var.name,
@@ -165,9 +215,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             type="send",
             inputs={"X": [param_init]},
             outputs={"Out": dummy_output},
-            attrs={
-                "send_varnames": [param_init.name]}
-        )
+            attrs={"send_varnames": [param_init.name]})
 
     def _get_vars_info(self):
         return self.vars_info
@@ -211,7 +259,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
             delta_var_name = "%s.delta" % (param.name)
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
-                sparse_grad_to_param.append( ":".join([delta_var_name,param.name]))
+                sparse_grad_to_param.append(":".join(
+                    [delta_var_name, param.name]))
             else:
                 delta_type = param.type
             delta_var = pserver_block.create_var(
@@ -223,10 +272,10 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
             per_opt_block.append_op(
                 type="sum",
-                inputs={"X": [param,delta_var]},
-                outputs={"Out": param}
-            )
-            param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
+                inputs={"X": [param, delta_var]},
+                outputs={"Out": param})
+            param_to_block_id.append(delta_var_name + ":" + str(
+                per_opt_block.idx))
 
         attrs = {
             "optimize_blocks": optimize_block,
@@ -295,7 +344,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
             self.vars_info[origin_name] = collections.OrderedDict()
             self.vars_info[origin_name]["var_names"] = []
             vars_section = self._get_splited_var_sections(splited_vars)
-            self.vars_info[origin_name]["sections"] = [str(i) for i in vars_section]
+            self.vars_info[origin_name]["sections"] = [
+                str(i) for i in vars_section
+            ]
             self.vars_info[origin_name]["epmap"] = []
             self.vars_info[origin_name]["is_sparse"] = []
             # todo: add var shape(may be no need,because recv scope have)
@@ -316,7 +367,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
             self.delta_vars_list.append(delta_var)
 
             for splited_var in splited_vars:
-                is_slice, block_id, offset = self._get_slice_var_info(splited_var)
+                is_slice, block_id, offset = self._get_slice_var_info(
+                    splited_var)
                 self.vars_overview.add_distributed_var(
                     origin_var=origin_var,
                     slice_var=splited_var,
@@ -327,7 +379,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 self.split_to_origin_mapping[splited_var.name] = origin_name
                 if origin_name in self.sparse_var_list:
                     self.sparse_var_splited_list.append(splited_var.name)
-                self.vars_info[origin_name]["var_names"].append(splited_var.name)
+                self.vars_info[origin_name]["var_names"].append(
+                    splited_var.name)
                 if len(splited_vars) != 1:
                     self.origin_program.global_block().create_var(
                         name=".".join([splited_var.name, "delta"]),
