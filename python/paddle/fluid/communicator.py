@@ -51,7 +51,7 @@ class Communicator(object):
         if vars_info and trainers and geo_sgd_need_push_nums:
             # for geo sgd
             self.communicator_ = core.DistCommunicator(program.desc, global_scope(), 
-                                                       vars_info,trainers, geo_sgd_need_push_nums)
+                                                       vars_info, trainers, geo_sgd_need_push_nums)
         else:
             self.communicator_ = core.DistCommunicator(program.desc, global_scope())
 
