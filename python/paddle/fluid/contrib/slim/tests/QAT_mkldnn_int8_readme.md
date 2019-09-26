@@ -1,12 +1,12 @@
 # SLIM Quantization-aware training (QAT) on INT8 MKL-DNN
 
-This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to an INT8 MKL-DNN runnable model which has almost the same accuracy as QAT on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. We provide the accuracy results compared with fake QAT accuracy by running the QAT trained model with MKL-DNN int8 kernel on above 7 models.
+This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to an INT8 MKL-DNN runnable model which has almost the same accuracy as QAT on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. We provide the accuracy results compared with fake QAT accuracy by running the QAT trained model with MKL-DNN int8 kernel on above 7 models. Besides, in QAT 2.0, we provide the performance optimization based on fake QAT model with the minor accuracy drop. MKL-DNN INT8 quantization can be only got the performance gain in AVX512 series CPU servers.
 
 ## 0. Prerequisite
-You need to install at least PaddlePaddle-1.5 python package `pip install paddlepaddle==1.5`.
+You need to install at least PaddlePaddle-1.6 python package `pip install paddlepaddle==1.6`.
 
 ## 1. How to generate INT8 MKL-DNN QAT model
-You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `FakeQAT2MkldnnINT8KernelPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.5, this pass only supports `conv2d` and `depthwise_conv2d` with channel-wise quantization for weights.
+You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `FakeQAT2MkldnnINT8KernelPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.6, this pass supports `conv2d`, `depthwise_conv2d` and `mul` ops with channel-wise quantization for weights.Besides, we provided a new pass named `FakeQAT2MkldnnINT8PerfPass` which will help users get the QAT INT8 model run with MKL-DNN INT8 with the optimized performance.
 
 ```python
     import paddle.fluid as fluid
@@ -18,15 +18,22 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
     graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
     place = fluid.CPUPlace()
     # Convert the IrGraph to MKL-DNN supported INT8 IrGraph by using
+    # Option 1
     # FakeQAT2MkldnnINT8KernelPass
     mkldnn_pass = FakeQAT2MkldnnINT8KernelPass(fluid.global_scope(), place)
     # Apply FakeQAT2MkldnnINT8KernelPass to IrGraph
     mkldnn_pass.apply(graph)
+    # Option 2
+    # FakeQAT2MkldnnINT8PerfPass
+    mkldnn_pass = FakeQAT2MkldnnINT8PerfPass(fluid.global_scope(), place, fluid.core, False)
+    # Apply FakeQAT2MkldnnINT8PerfPass to IrGraph
+    mkldnn_pass.apply(graph)
+
 ```
 
 ## 2. Accuracy benchmark
 
->**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
+>**I. QAT1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
 | Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff   | MKL-DNN INT8 Top5 Accuracy | Top5 Diff  |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------: | :------------------------: | :--------: |
@@ -40,7 +47,21 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 
 Notes:
 
-* MKL-DNN and MKL are required.
+* MKL-DNN and MKL are required. AVX512 CPU server is required.
+
+>**II. QAT2 Accuracy on Intel(R) Xeon(R) Gold 6248**
+
+| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff  | MKL-DNN INT8 Top5 Accuracy | Top5 Diff |
+| :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------:| :------------------------: | :--------:|
+| ResNet50     |         76.55%         |          93.04%        |           76.31%          |     0.24%   |           92.99%           |   0.12%   |
+| MobileNet-V1 |         70.83%         |          89.56%        |           70.52%          |    -0.25%   |           89.42%           |   0.12%  |
+
+>**III. QAT2 Python Performance on Intel(R) Xeon(R) Gold 6248**
+
+| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
+| :-----------:| :------------:             | :------------:            | :------------:  |
+| ResNet50     |    5.97                    |   50.79                   |   8.51          |
+| MobileNet-V1 |    17.16                   |   166.19                  |   9.68          |
 
 ## 3. How to reproduce the results
 Three steps to reproduce the above-mentioned accuracy results, and we take ResNet50 benchmark as an example:
@@ -57,20 +78,31 @@ You can run the following commands to download ResNet50 model.
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
 export MODEL_NAME=ResNet50
+# QAT 1.0
 wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${MODEL_NAME}_qat_model.tar.gz
+# QAT 2.0
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT_models/${MODEL_NAME}_qat_perf.tar.gz
 mkdir -p ${MODEL_NAME}
 tar -xvf ${MODEL_NAME}_qat_model.tar.gz -C ${MODEL_NAME}
 ```
 
 To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
-
 ```text
+QAT 1.0
 MODEL_NAME=ResNet50, ResNet101, GoogleNet, MobileNetV1, MobileNetV2, VGG16, VGG19
+QAT 2.0
+MODEL_NAME=ResNet50, MobileNet
 ```
 * ### Commands to reproduce benchmark
 You can run `qat_int8_comparison.py` with the following arguments to reproduce the accuracy result on ResNet50.
+>*QAT 1.0*
 
 ```bash
 OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}/model --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.001
+```
+>*QAT 2.0*
+
+```bash
+OMP_NUM_THREADS=1 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}/float --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --batch_num=50000 --acc_diff_threshold=0.01 --qat2
 ```
 > Notes: The above commands will cost maybe several hours in the prediction stage (include int8 prediction and fp32 prediction) since there have 50000 pictures need to be predicted in `int8_full_val.bin`. User can set `OMP_NUM_THREADS` to the max number of physical cores of the used server to accelerate the process.
