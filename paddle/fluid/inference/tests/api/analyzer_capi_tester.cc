@@ -39,13 +39,13 @@ TEST(TensorRT_mobilenet, compare) {
 TEST(AnalysisPredictor, use_gpu) {
   std::string a = FLAGS_infer_model;
   const char* model_dir = GetModelPath(a);
-  PD_AnalysisConfig config;
-  PD_SetModel(&config, model_dir);
-  PD_DisableGpu(&config);
-  PD_SetCpuMathLibraryNumThreads(&config, 10);
-  PD_SwitchUseFeedFetchOps(&config, false);
-  PD_SwitchSpecifyInputNames(&config, true);
-  PD_SwitchIrDebug(&config, true);
+  PD_AnalysisConfig* config = PD_NewAnalysisConfig();
+  PD_SetModel(config, model_dir);
+  PD_DisableGpu(config);
+  PD_SetCpuMathLibraryNumThreads(config, 10);
+  PD_SwitchUseFeedFetchOps(config, false);
+  PD_SwitchSpecifyInputNames(config, true);
+  PD_SwitchIrDebug(config, true);
 
   int batch_size = 1;
   int channels = 3;
@@ -53,7 +53,7 @@ TEST(AnalysisPredictor, use_gpu) {
   int width = 224;
   float input[batch_size * channels * height * width] = {0};
   int shape[4] = {batch_size, channels, height, width};
-  PD_Predictor* predictor = PD_CreatePaddlePredictor(&config);
+  PD_Predictor* predictor = PD_CreatePaddlePredictor(config);
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
   PD_ZeroCopyTensor** tensor = NULL;
