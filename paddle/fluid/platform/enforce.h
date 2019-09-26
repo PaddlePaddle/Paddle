@@ -104,7 +104,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 #else
   sout << "Windows not support stack backtrace yet.";
 #endif
-  sout << string::Sprintf("PaddleEnforceError. %s at [%s:%d]",
+  sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
                           std::forward<StrType>(what), file, line)
        << std::endl;
   return sout.str();

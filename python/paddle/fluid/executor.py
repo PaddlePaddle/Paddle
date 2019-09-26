@@ -25,7 +25,6 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 from . import compiler
-from . import error_format
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 
@@ -616,8 +615,6 @@ class Executor(object):
             if not isinstance(e, core.EOFException):
                 warnings.warn(
                     "The following exception is not an EOF exception.")
-            if isinstance(e, core.EnforceNotMet):
-                sys.excepthook = error_format.paddle_enforce_handler
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
