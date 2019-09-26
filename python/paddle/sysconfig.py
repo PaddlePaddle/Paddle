@@ -36,7 +36,7 @@ def get_include():
 
 def get_lib():
     """
-    Get the directory containing the libfluid_framework.
+    Get the directory containing the libpaddle_framework.
     Returns:
       The directory as string.
 
