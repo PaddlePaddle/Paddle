@@ -25,7 +25,9 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-const char* GetModelPath(string a) { return (a + "/" + "mobilenet").c_str(); }
+const char* GetModelPath(std::string a) {
+  return (a + "/" + "mobilenet").c_str();
+}
 
 TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
@@ -35,14 +37,15 @@ TEST(TensorRT_mobilenet, compare) {
 }
 
 TEST(AnalysisPredictor, use_gpu) {
-  const char* model_dir = GetModelPath(FLAGS_infer_model);
-  PD_AnalysisConfig* config = NULL;
-  PD_SetModel(config, model_dirname);
-  PD_DisableGpu(config);
-  PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
-  PD_SwitchSpecifyInputNames(config, true);
-  PD_SwitchIrDebug(config, true);
+  std::string a = FLAGS_infer_model;
+  const char* model_dir = GetModelPath(a);
+  PD_AnalysisConfig config;
+  PD_SetModel(&config, model_dir);
+  PD_DisableGpu(&config);
+  PD_SetCpuMathLibraryNumThreads(&config, 10);
+  PD_SwitchUseFeedFetchOps(&config, false);
+  PD_SwitchSpecifyInputNames(&config, true);
+  PD_SwitchIrDebug(&config, true);
 
   int batch_size = 1;
   int channels = 3;
@@ -50,7 +53,7 @@ TEST(AnalysisPredictor, use_gpu) {
   int width = 224;
   float input[batch_size * channels * height * width] = {0};
   int shape[4] = {batch_size, channels, height, width};
-  PD_Predictor* predictor = PD_CreatePaddlePredictor(config);
+  PD_Predictor* predictor = PD_CreatePaddlePredictor(&config);
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
   PD_ZeroCopyTensor** tensor = NULL;
