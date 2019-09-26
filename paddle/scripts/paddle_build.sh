@@ -574,15 +574,18 @@ function card_test() {
         done
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                echo "ctest -I $i,,$NUM_PROC -R \"($testcases)\" -V &"
                 ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
             else
+                echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" &"
                 env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                echo "ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
                 ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
             else
-                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
                 env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
             fi
         fi
@@ -653,8 +656,8 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        card_test "$single_card_tests" 1    # run cases with single GPU
-        card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        #card_test "$single_card_tests" 1    # run cases with single GPU
+        #card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
