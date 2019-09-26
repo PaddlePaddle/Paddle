@@ -218,7 +218,7 @@ class Communicator {
                                     int &trainers,
                                     int &geo_need_push_nums) {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>, 
-                   program, training_scope, vars_info, trainers, geo_need_push_nums);
+                   program, training_scope, std::ref(vars_info), std::ref(trainers), std::ref(geo_need_push_nums));
     return communicator_.get();
   }
 
