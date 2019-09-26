@@ -400,9 +400,12 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>, py::arg("array"), py::arg("place"))
-      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>, py::arg("array"), py::arg("place"))
-      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>, py::arg("array"), py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           py::arg("array"), py::arg("place"), R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
