@@ -14936,7 +14936,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     ::
     
         Input:
-          X.shape = [1, 2]
+          shape = [1, 2]
         
         Output:
           result=[[0.8505902, 0.8397286]]
