@@ -32,23 +32,16 @@ class HuberLossOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    int rank = x_dims.size();
 
-    if (rank == y_dims.size()) {
-      PADDLE_ENFORCE_EQ(y_dims[rank - 1], 1U,
-                        "The last dimension of Input(Y) should be equal to 1.");
-    } else {
-      PADDLE_ENFORCE_EQ(rank, y_dims.size() + 1,
-                        "The rank of Input(X) should be equal to "
-                        "the rank of Input(Y) plus 1.");
-    }
+    PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
+                      "The rank of Input(X) should be equal to "
+                      "the rank of Input(Y).");
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(y_dims, 0, rank - 1),
-                        "The Input(X) and Input(Label) should have the same "
-                        "shape except the last dimension.");
+      PADDLE_ENFORCE_EQ(
+          x_dims, y_dims,
+          "The Input(X) and Input(Label) should have the same shape.");
     }
 
     auto out_dims = y_dims;
