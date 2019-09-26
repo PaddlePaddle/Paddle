@@ -29,6 +29,8 @@ void* GetCublasDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
+void* GetNVRTCDsoHandle();
+void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();

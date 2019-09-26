@@ -32,10 +32,19 @@ class PSLib(Fleet):
         self._fleet_ptr = None
         self._main_programs = []
         self._scopes = []
+        self._client2client_request_timeout_ms = 500000
+        self._client2client_connect_timeout_ms = 10000
+        self._client2client_max_retry = 3
 
     def init(self, role_maker=None):
         super(PSLib, self).init(MPISymetricRoleMaker())
         self._fleet_ptr = fluid.core.Fleet()
+
+    def _set_client_communication_config(self, request_timeout_ms,
+                                         connect_timeout_ms, max_retry):
+        self._client2client_request_timeout_ms = request_timeout_ms
+        self._client2client_connect_timeout_ms = connect_timeout_ms
+        self._client2client_max_retry = max_retry
 
     def init_worker(self):
         """
@@ -72,6 +81,10 @@ class PSLib(Fleet):
             info = self._fleet_ptr.get_clients_info()
             all_info = self._role_maker._worker_gather(info[0])
             self._fleet_ptr.gather_clients(all_info)
+            self._fleet_ptr.set_client2client_config(
+                self._client2client_request_timeout_ms,
+                self._client2client_connect_timeout_ms,
+                self._client2client_max_retry)
             self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
@@ -347,6 +360,21 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
+    def clear_model(self):
+        """
+        clear_model() will be called by user. It will clear sparse model.
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_model()
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_model()
+        self._role_maker._barrier_worker()
+
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
@@ -385,6 +413,7 @@ class PSLib(Fleet):
                   fout.write(my_program.desc.serialize_to_string())
 
         """
+        self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
         scope = kwargs.get("scope", None)
         model_proto_file = kwargs.get("model_proto_file", None)
@@ -558,7 +587,7 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-
+        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

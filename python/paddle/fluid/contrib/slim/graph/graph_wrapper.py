@@ -35,6 +35,7 @@ OPTIMIZER_OPS = [
     'adagrad',
     'adam',
     'adamax',
+    'dpsgd',
     'decayed_adagrad',
     'adadelta',
     'rmsprop',
@@ -205,11 +206,13 @@ class GraphWrapper(object):
         super(GraphWrapper, self).__init__()
         self.program = Program() if program is None else program
         self.persistables = {}
+        self.teacher_persistables = {}
         for var in self.program.list_vars():
             if var.persistable:
                 self.persistables[var.name] = var
         self.compiled_graph = None
         in_nodes = [] if in_nodes is None else in_nodes
+        out_nodes = [] if out_nodes is None else out_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
@@ -306,6 +309,8 @@ class GraphWrapper(object):
             graph(GraphWrapper): The graph to be merged by current graph.
         """
         for var in graph.program.list_vars():
+            if var.persistable:
+                self.teacher_persistables[var.name] = var
             new_var = self.program.global_block()._clone_variable(
                 var, force_persistable=False)
             new_var.stop_gradient = var.stop_gradient
@@ -407,6 +412,8 @@ class GraphWrapper(object):
                 target_name = graph.out_nodes['loss']
             elif 'cost' in graph.out_nodes:
                 target_name = graph.out_nodes['cost']
+            else:
+                return None
             target = graph.var(target_name)._var
             # The learning rate variable may be created in other program.
             # Update information in optimizer to make
@@ -466,6 +473,54 @@ class GraphWrapper(object):
 
         return flops
 
+    def save_model(self, path, exe):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+        """
+        out_vars = [
+            self.var(var_name)._var for var_name in self.out_nodes.values()
+        ]
+        in_vars = list(self.in_nodes.values())
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            model_filename="__model__",
+            params_filename="__params__",
+            main_program=self.program.clone(),
+            export_for_deployment=True)
+
+    def save_infer_model(self, path, exe, in_out, program_only=False):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+            in_out(tuple|list): in_out[0] is a list of input nodes' names
+            and in_out[1] is a list of output nodes' names.
+            program_only(bool): Whether to save program only.
+        """
+        out_vars = [self.var(var_name)._var for var_name in in_out[1]]
+        in_vars = list(in_out[0])
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            model_filename="__model__.infer",
+            params_filename="__params__",
+            program_only=program_only,
+            main_program=self.program.clone(),
+            export_for_deployment=True)
+
     def save_persistables(self, path, exe):
         """
         Save all the persistable variables into file.
@@ -479,7 +534,7 @@ class GraphWrapper(object):
                 self.persistables[var.name] = var
         persistables = []
         for var in self.persistables:
-            if 'reader' not in var and 'double_buffer' not in var:
+            if 'reader' not in var and 'double_buffer' not in var and var not in self.teacher_persistables:
                 persistables.append(self.persistables[var])
 
         io.save_vars(exe.exe, path, vars=persistables)
@@ -522,5 +577,6 @@ class GraphWrapper(object):
 
     def update_groups_of_conv(self):
         for op in self.ops():
-            if op.type() == 'depthwise_conv2d':
+            if op.type() == 'depthwise_conv2d' or op.type(
+            ) == 'depthwise_conv2d_grad':
                 op.set_attr('groups', op.inputs('Filter')[0].shape()[0])

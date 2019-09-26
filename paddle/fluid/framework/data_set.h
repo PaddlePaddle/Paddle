@@ -58,6 +58,9 @@ class Dataset {
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
   // set channel num
   virtual void SetChannelNum(int channel_num) = 0;
+  // set parse ins id
+  virtual void SetParseInsId(bool parse_ins_id) = 0;
+  virtual void SetParseContent(bool parse_content) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
@@ -96,7 +99,7 @@ class Dataset {
   // local shuffle data
   virtual void LocalShuffle() = 0;
   // global shuffle data
-  virtual void GlobalShuffle() = 0;
+  virtual void GlobalShuffle(int thread_num = -1) = 0;
   // for slots shuffle
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
@@ -111,6 +114,17 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
+  // create preload readers
+  virtual void CreatePreLoadReaders() = 0;
+  // destroy preload readers after prelaod done
+  virtual void DestroyPreLoadReaders() = 0;
+  // set preload thread num
+  virtual void SetPreLoadThreadNum(int thread_num) = 0;
+  // seperate train thread and dataset thread
+  virtual void DynamicAdjustChannelNum(int channel_num) = 0;
+  virtual void DynamicAdjustReadersNum(int thread_num) = 0;
+  // set fleet send sleep seconds
+  virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -133,6 +147,8 @@ class DatasetImpl : public Dataset {
                              const std::string& fs_ugi);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
   virtual void SetChannelNum(int channel_num);
+  virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseContent(bool parse_content);
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins);
@@ -141,6 +157,7 @@ class DatasetImpl : public Dataset {
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
+  virtual Channel<T> GetInputChannel() { return input_channel_; }
   virtual int64_t GetFleetSendBatchSize() { return fleet_send_batch_size_; }
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
@@ -157,7 +174,7 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle();
+  virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result) {}
@@ -166,11 +183,18 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
+  virtual void CreatePreLoadReaders();
+  virtual void DestroyPreLoadReaders();
+  virtual void SetPreLoadThreadNum(int thread_num);
+  virtual void DynamicAdjustChannelNum(int channel_num);
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void SetFleetSendSleepSeconds(int seconds);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
@@ -193,11 +217,16 @@ class DatasetImpl : public Dataset {
   int64_t fleet_send_sleep_seconds_;
   std::vector<std::thread> preload_threads_;
   bool merge_by_insid_;
+  bool parse_ins_id_;
+  bool parse_content_;
   bool erase_duplicate_feas_;
   bool keep_unmerged_ins_;
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
+  int preload_thread_num_;
+  std::mutex global_index_mutex_;
+  int64_t global_index_ = 0;
 };
 
 // use std::vector<MultiSlotType> or Record as data type

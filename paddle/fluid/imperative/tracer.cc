@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,282 +11,244 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/imperative/tracer.h"
-
-#include <memory>
-#include <set>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
-#include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
 
-void CreateGradOp(const framework::OpDesc& op_desc,
-                  const std::unordered_set<std::string>& no_grad_set,
-                  const std::vector<framework::BlockDesc*>& grad_sub_block,
-                  std::vector<framework::OpDesc*>* grad_op_descs,
-                  std::unordered_map<std::string, std::string>* grad_to_var) {
-  PADDLE_ENFORCE(grad_op_descs->empty());
-  const framework::OpInfo& op_info =
-      framework::OpInfoMap::Instance().Get(op_desc.Type());
-  if (!op_info.grad_op_maker_) return;
-
-  std::vector<std::unique_ptr<framework::OpDesc>> descs =
-      op_info.GradOpMaker()(op_desc, no_grad_set, grad_to_var, grad_sub_block);
-  for (auto& desc : descs) {
-    grad_op_descs->emplace_back(desc.release());
+static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
+    const framework::OpInfo& op_info, const framework::OpDesc& op_desc,
+    const std::unordered_set<std::string>& no_grad_set,
+    const std::vector<framework::BlockDesc*>& grad_sub_block,
+    std::unordered_map<std::string, std::string>* grad_to_var) {
+  if (op_info.grad_op_maker_) {
+    return op_info.grad_op_maker_(op_desc, no_grad_set, grad_to_var,
+                                  grad_sub_block);
+  } else {
+    return {};
   }
 }
 
-void CreateNoBuffuerGrad(std::shared_ptr<imperative::VarBase> var,
-                         platform::DeviceContext* dev_ctx) {
-  PADDLE_ENFORCE_NOT_NULL(var, "Could not get valid var base");
-  PADDLE_ENFORCE_NOT_NULL(dev_ctx,
-                          "Could not get valid device from forward op");
-
-  if (var->grads_ == nullptr) {
-    auto& var_t = var->var_->Get<framework::LoDTensor>();
-    var->grads_ = std::shared_ptr<imperative::VarBase>(
-        new VarBase(var->GradName(), framework::proto::VarType::FP32,
-                    framework::vectorize(var_t.dims()), dev_ctx->GetPlace(),
-                    var->IsStopGradient(), false, false));
+static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
+  for (const auto& name_pair : outs) {
+    for (const auto& vb : name_pair.second) {
+      VLOG(6) << "Set output: " << vb->Name() << "'s OverridedStopGradient as "
+              << generate_grad;
+      vb->InnerSetOverridedStopGradient(generate_grad);
+    }
   }
 }
 
-platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs) {
-  platform::Place result = place;
-  for (const auto& it : inputs) {
-    for (const std::shared_ptr<imperative::VarBase>& var : it.second) {
-      platform::Place tmp_place =
-          var->var_->Get<framework::LoDTensor>().place();
-      if (!platform::is_same_place(tmp_place, result)) {
-        PADDLE_THROW(
-            "Input variable should keep in the same place: %s, but get place: "
-            "%s of input %s instead",
-            result, tmp_place, it.first);
-      }
-    }
-  }
+void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const platform::Place& place, bool trace_backward) {
+  platform::RecordEvent event(type);
+  VLOG(1) << "Trace Op: " << type;
+  size_t op_id = GenerateUniqueId();
+  auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  op->Run(ins, outs);
 
-  return result;
+  if (ComputeRequiredGrad(ins, outs, trace_backward)) {
+    TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
+                                        op->OutputNameMap(), op->Attrs()),
+                  ins, outs);
+  } else {
+    VLOG(3) << "No Grad to track for Op: " << type;
+  }
 }
 
-framework::VariableNameMap CreateInputVarNameMap(
-    const OpBase* op, const VarBasePtrMap& varbase_map) {
-  framework::VariableNameMap result;
+bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
+                                 const NameVarBaseMap& outs,
+                                 bool trace_backward) {
+  if (!trace_backward) return false;
 
-  auto& info_map = framework::OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(op->Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) {
-    return result;
-  }
-
-  for (auto& in : op_info->Proto().inputs()) {
-    auto it = varbase_map.find(in.name());
-    if (it == varbase_map.end()) {
-      PADDLE_ENFORCE(in.dispensable());
-      result[in.name()] = {};
-    } else {
-      auto var_vector = it->second;
-      std::vector<std::string> args;
-      args.reserve(var_vector.size());
-      for (std::shared_ptr<imperative::VarBase> var_base : var_vector) {
-        args.emplace_back(var_base->Name());
+  for (const auto& name_pair : ins) {
+    for (const auto& var_base : name_pair.second) {
+      if (!var_base->OverridedStopGradient()) {
+        VLOG(6) << "Find out input: " << var_base->Name()
+                << "'s GeneratedGrad is True";
+        PassStopGradient(outs, var_base->OverridedStopGradient());
+        return true;
       }
-      result[in.name()] = args;
     }
   }
-  return result;
+  return false;
 }
 
-framework::VariableNameMap CreateOutputVarNameMap(
-    const OpBase* op, const VarBasePtrMap& varbase_map) {
-  framework::VariableNameMap result;
+void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
+                           const framework::OpDesc& fwd_op_desc,
+                           const NameVarBaseMap& ins,
+                           const NameVarBaseMap& outs) {
+  // grad_to_var is a map of framework::GradVarName(in_var_name/out_var_name) ->
+  // in_var_name/out_var_name
+  std::unordered_map<std::string, std::string> grad_to_var;
 
-  auto& info_map = framework::OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(op->Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) {
-    return result;
+  // Get grad_op_desc using fwd_op_desc
+  std::vector<std::unique_ptr<framework::OpDesc>> grad_op_descs_ =
+      CreateGradOpDescs(fwd_op->Info(), fwd_op_desc, {}, {}, &grad_to_var);
+
+  // Create grad_ops using grad_op_descs
+
+  size_t grad_op_num = grad_op_descs_.size();
+
+  VLOG(3) << "Create " << grad_op_num << " grad op desc(s) to op "
+          << fwd_op->Type();
+
+  if (grad_op_num == 0) {
+    return;
   }
-
-  for (auto& out : op_info->Proto().outputs()) {
-    auto it = varbase_map.find(out.name());
-    if (it == varbase_map.end()) {
-      PADDLE_ENFORCE(out.dispensable());
-      result[out.name()] = {};
-    } else {
-      auto var_vector = it->second;
-      std::vector<std::string> args;
-      args.reserve(var_vector.size());
-      for (const std::shared_ptr<imperative::VarBase>& var_base : var_vector) {
-        args.emplace_back(var_base->Name());
-      }
-      result[out.name()] = args;
-    }
-  }
-  return result;
-}
-
-Tracer::Tracer(framework::BlockDesc* root_block) : root_block_(root_block) {}
-
-void Tracer::Trace(OpBase* op, const VarBasePtrMap& inputs,
-                   VarBasePtrMap* outputs, framework::AttributeMap attrs_map,
-                   const platform::Place expected_place,
-                   const bool stop_gradient) {
-  platform::RecordEvent record_event(op->type_);
-  framework::VariableValueMap invars_map;
-  framework::VariableValueMap outvars_map;
-
-  // Construct input_vars_map and output_vars_map
-  std::map<std::string, std::shared_ptr<imperative::VarBase>> current_vars_map;
-  for (auto it : inputs) {
-    auto& invars = invars_map[it.first];
-    invars.reserve(it.second.size());
-    for (std::shared_ptr<imperative::VarBase> inp : it.second) {
-      PADDLE_ENFORCE_NOT_NULL(inp->var_, "op %s input %s nullptr", op->Type(),
-                              inp->Name());
-
-      invars.emplace_back(inp->var_.get());
-      if (!stop_gradient) {
-        current_vars_map[inp->Name()] = inp;
-      }
-      VLOG(3) << "input var name: " << inp->Name()
-              << " inited: " << inp->var_->IsInitialized()
-              << " stop_grad: " << inp->IsStopGradient();
-    }
-    op->TrackPreOp(it.first, it.second);
-  }
-
-  for (const auto& it : *outputs) {
-    auto& outvars = outvars_map[it.first];
-    const std::vector<std::shared_ptr<imperative::VarBase>>& outputs_tmp =
-        it.second;
-    outvars.reserve(outputs_tmp.size());
-    for (size_t i = 0U; i < outputs_tmp.size(); ++i) {
-      // Add weak_ptr to track outputs
-      op->outputs_ref.emplace_back(outputs_tmp[i]);
-      std::shared_ptr<imperative::VarBase> out = outputs_tmp[i];
-      outvars.emplace_back(out->var_.get());
-      out->TrackPreOp(op, it.first, i, stop_gradient);
-      if (!stop_gradient) {
-        current_vars_map[out->Name()] = out;
-      }
-
-      VLOG(3) << "output var name: " << out->Name()
-              << " inited: " << out->var_->IsInitialized()
-              << " stop_grad: " << out->IsStopGradient();
+  // Build a map to record var_name -> std::shared_ptr<VarBase>*,
+  // so that we can find suitable var in grad op descs
+  std::unordered_map<std::string, const std::shared_ptr<VarBase>*> name_to_var;
+  for (auto& pair : ins) {
+    for (auto& var : pair.second) {
+      auto& var_ptr = name_to_var[var->Name()];
+      PADDLE_ENFORCE_EQ(var_ptr == nullptr || var_ptr->get() == var.get(), true,
+                        "There are different variables with same name %s",
+                        var->Name());
+      var_ptr = &var;
     }
   }
 
-  // Check attrs and create op
-  framework::VariableNameMap invars_name_map =
-      CreateInputVarNameMap(op, inputs);
-  framework::VariableNameMap outvars_name_map =
-      CreateOutputVarNameMap(op, *outputs);
-
-  auto& info = framework::OpInfoMap::Instance().Get(op->Type());
-  if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs_map);
+  for (auto& pair : outs) {
+    for (auto& var : pair.second) {
+      auto& var_ptr = name_to_var[var->Name()];
+      PADDLE_ENFORCE_EQ(var_ptr == nullptr || var_ptr->get() == var.get(), true,
+                        "There are different variables with same name %s",
+                        var->Name());
+      var_ptr = &var;
+    }
   }
 
-  std::unique_ptr<framework::OperatorBase> op_base =
-      framework::OpRegistry::CreateOp(op->Type(), invars_name_map,
-                                      outvars_name_map, attrs_map);
+  // Build backward ins and outs
 
-  if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext infer_var_type_ctx(&inputs, outputs, &attrs_map);
-    info.infer_var_type_(&infer_var_type_ctx);
-  }
+  for (size_t i = 0; i < grad_op_num; i++) {
+    // Step1: build grad op and add them to engine
 
-  // TODO(minqiyang): Support infer var type in imperative mode
-  // Run forward op
-  VLOG(3) << "tracer running " << op->Type();
-  framework::RuntimeContext ctx(invars_map, outvars_map);
+    // Use trace id to decide the order of gradient sum in sorted sum mode
+    size_t trace_id = fwd_op->id();
+    std::shared_ptr<OpBase> grad_op =
+        OpBase::Create(trace_id, (*(grad_op_descs_[i].get())), fwd_op->place());
 
-  // TODO(panyx0718): Cache p.
-  framework::OperatorWithKernel* op_kernel =
-      dynamic_cast<framework::OperatorWithKernel*>(op_base.get());
-  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+    // this OpBase* is just used to manage op's life time
+    engine_->InsertOp(grad_op.get(), grad_op);
 
-  framework::Scope scope;
-  op->place_ = GetExpectedPlace(expected_place, inputs);
+    std::unordered_set<OpBase*> visited_preceding_ops;
+    // Step2 : prepare grad_in vars and bind them with grad_op,
+    // set inputs' grad_op as current grad_op
+    for (const auto& grad_ins : grad_op_descs_[i]->Inputs()) {
+      if (grad_ins.second.empty()) continue;
+      auto& bwd_in = (*grad_op->GetMutableInsMap())[grad_ins.first];
+      bwd_in.reserve(grad_ins.second.size());
 
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, *op_kernel, op->place_);
-  prepared_op.op.RuntimeInferShape(scope, op->place_, ctx);
-  prepared_op.func(
-      framework::ExecutionContext(prepared_op.op, scope, *prepared_op.dev_ctx,
-                                  prepared_op.ctx, prepared_op.kernel_configs));
+      for (auto& grad_in_var_name : grad_ins.second) {
+        auto iter = grad_to_var.find(grad_in_var_name);
 
-  if (!stop_gradient) {
-    VLOG(5) << "start construct backward op";
+        if (iter != grad_to_var.end()) {
+          // If it is a grad var, find its coresponding forward var
+          auto& fwd_var_name = iter->second;
+          auto fwd_var_iter = name_to_var.find(fwd_var_name);
+          PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                            "Cannot find forward variable named %s",
+                            fwd_var_name);
+          const auto& tmp = (*(fwd_var_iter->second))->GradVarBase();
+          PADDLE_ENFORCE_NOT_NULL(
+              tmp.get(),
+              "Grad of %s should "
+              "not be NULL when we Track_Backward Input of %s",
+              (*(fwd_var_iter->second))->Name(), grad_op->Type());
+          // Create grad_in's dim in tensor for Grad Dependency compute
+          auto* tensor = tmp->MutableVar()->GetMutable<framework::LoDTensor>();
+          tensor->Resize((*(fwd_var_iter->second))
+                             ->Var()
+                             .Get<framework::LoDTensor>()
+                             .dims());
+          // Add Grad Op for grad_in
+          tmp->AddGradOps(grad_op);
+          VLOG(3) << "Add Grad Op " << grad_op->Type() << " for :"
+                  << (*(fwd_var_iter->second))->GradVarBase()->Name();
+          // Add Grad var input to engine set
+          engine_->InsertGradVar(tmp.get());
+          VLOG(3) << "Add Grad: " << tmp->Name() << " in to Engine";
+          bwd_in.emplace_back((*(fwd_var_iter->second))->GradVarBase());
+        } else {
+          // If it is a forward var, just add it
+          auto fwd_var_iter = name_to_var.find(grad_in_var_name);
+          PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                            "Cannot find forward variable named %s",
+                            grad_in_var_name);
+          bwd_in.emplace_back(*(fwd_var_iter->second));
+        }
+        VLOG(3) << "Set backward input from fwd var" << grad_ins.first << " of "
+                << grad_op->Type() << " to be "
+                << (bwd_in.back() ? bwd_in.back()->Name() : "nullptr");
+      }
+    }
 
-    // construct grad op descs
-    op->attrs_ = attrs_map;
-    std::unique_ptr<framework::OpDesc> fwd_op_desc(new framework::OpDesc(
-        op->Type(), invars_name_map, outvars_name_map, attrs_map));
-    std::unique_ptr<std::unordered_map<std::string, std::string>> grad_to_var(
-        new std::unordered_map<std::string, std::string>());
-    // NOTE(minqiyang): We don't support control flow op in imperative now
-    // Add grad_block_ when we want to support it
-    CreateGradOp(*fwd_op_desc, {}, {}, &op->grad_op_descs_, grad_to_var.get());
+    // Step3: prepare grad_out vars and using their grad_ops to set current
+    // grad_op's preceding op
+    for (auto& grad_outs : grad_op_descs_[i]->Outputs()) {
+      if (grad_outs.second.empty()) continue;
+      auto& bwd_out = (*grad_op->GetMutableOutsMap())[grad_outs.first];
+      bwd_out.reserve(grad_outs.second.size());
 
-    VLOG(5) << "create grad op desc: " << op->grad_op_descs_[0]->Type();
+      for (auto& grad_out_var_name : grad_outs.second) {
+        auto iter = grad_to_var.find(grad_out_var_name);
+        PADDLE_ENFORCE_EQ(iter != grad_to_var.end(), true,
+                          "Cannot find output of input grad %s in op %s",
+                          grad_out_var_name, fwd_op->Type());
+        auto fwd_var_iter = name_to_var.find(iter->second);
+        PADDLE_ENFORCE_EQ(fwd_var_iter != name_to_var.end(), true,
+                          "Cannot find forward variable named %s",
+                          iter->second);
+        const auto& tmp = (*(fwd_var_iter->second))->GradVarBase();
 
-    const size_t grad_op_count = op->grad_op_descs_.size();
+        PADDLE_ENFORCE_NOT_NULL(tmp.get(),
+                                "Grad output: %s of op: %s should not be NULL",
+                                (tmp->Name(), grad_op->Type()));
 
-    op->grad_input_vars_.resize(grad_op_count);
-    op->grad_output_vars_.resize(grad_op_count);
-
-    for (size_t i = 0; i < grad_op_count; ++i) {
-      framework::OpDesc* grad_op_desc = op->grad_op_descs_[i];
-      for (auto it : grad_op_desc->Inputs()) {
-        auto& grad_in_vars = op->grad_input_vars_[i][it.first];
-        grad_in_vars.reserve(it.second.size());
-        for (const std::string& grad_invar : it.second) {
-          auto var_it = grad_to_var->find(grad_invar);
-          if (var_it == grad_to_var->end()) {
-            auto fwd_var_it = current_vars_map.find(grad_invar);
-            PADDLE_ENFORCE(fwd_var_it != current_vars_map.end());
-            // Forward inputs or outputs.
-            grad_in_vars.emplace_back(fwd_var_it->second);
-          } else {
-            std::shared_ptr<imperative::VarBase> var =
-                current_vars_map[var_it->second];
-            CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
-            // Douts.
-            var->grads_->SetPreOp(var->PreOp());
-            grad_in_vars.emplace_back(var->grads_);
+        if ((!tmp->OverridedStopGradient()) || (grad_outs.second.size() > 1)) {
+          VLOG(3) << "Set backward output " << grad_outs.first << " of "
+                  << grad_op->Type() << " to be " << tmp->Name()
+                  << ". Its Overrided Stop_Gradient is: False";
+          bwd_out.emplace_back(tmp);
+          auto grad_pending_ops =
+              (*(fwd_var_iter->second))->GradVarBase()->GradOps();
+          if (VLOG_IS_ON(3) && !grad_pending_ops.empty()) {
+            VLOG(3) << "Add grad_pending Op of :"
+                    << (*(fwd_var_iter->second))->GradVarBase()->Name()
+                    << " It's grad_pending Op are: ";
+            for (const auto& op : grad_pending_ops) {
+              VLOG(3) << op->Type();
+            }
           }
-        }
-      }
-
-      for (auto it : grad_op_desc->Outputs()) {
-        auto& grad_out_vars = op->grad_output_vars_[i][it.first];
-        for (const std::string& grad_outvar : it.second) {
-          auto var_it = grad_to_var->find(grad_outvar);
-          PADDLE_ENFORCE(var_it != grad_to_var->end(),
-                         "Could not found the grad op output var, should this "
-                         "operator %s's stop gradient be True",
-                         op->Type());
-
-          std::shared_ptr<imperative::VarBase> var =
-              current_vars_map[var_it->second];
-          CreateNoBuffuerGrad(var, prepared_op.GetDeviceContext());
-          var->grads_->SetPreOp(var->PreOp());
-          grad_out_vars.push_back(var->grads_);
-          VLOG(3) << "grads output var name: " << var->name_;
+          if (!grad_pending_ops.empty()) {
+            for (const auto& op : grad_pending_ops) {
+              PADDLE_ENFORCE_NOT_NULL(op,
+                                      "No nullptr should be grad_pending op");
+              if (visited_preceding_ops.count(op) == 0) {
+                visited_preceding_ops.insert(op);
+                grad_op->InsertGradPendingOps(op);
+              }
+            }
+          } else {
+            VLOG(5) << "Hit leaf VarBase"
+                    << (*(fwd_var_iter->second))->GradVarBase()->Name();
+          }
+        } else {
+          VLOG(3) << "Skip backward output " << grad_outs.first << " of "
+                  << grad_op->Type() << " Named: " << tmp->Name()
+                  << ", since its Overrided Stop_Gradient is: True";
         }
       }
     }
+    // To ensure numeric stability as static graph
+    grad_op->SortGradPendingOps();
   }
 }
+
 }  // namespace imperative
 }  // namespace paddle

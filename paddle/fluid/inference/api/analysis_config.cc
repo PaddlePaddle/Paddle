@@ -94,14 +94,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
-  // Gpu related.
+  // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cudnn_);
   CP_MEMBER(device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
-  CP_MEMBER(static_memory_optim_);
-  CP_MEMBER(static_memory_optim_force_update_);
   // TensorRT related.
   CP_MEMBER(use_tensorrt_);
   CP_MEMBER(tensorrt_workspace_size_);
@@ -129,6 +128,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_passes_filter_);
   CP_MEMBER(anakin_ops_filter_);
 
+  // profile related.
+  CP_MEMBER(with_profile_);
+
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
@@ -148,6 +150,17 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   }
 
 #undef CP_MEMBER
+
+  Update();
+}
+
+void AnalysisConfig::EnableCUDNN() {
+#ifdef PADDLE_WITH_CUDA
+  use_cudnn_ = use_gpu_;
+#else
+  LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
+  use_cudnn_ = false;
+#endif
 
   Update();
 }
@@ -261,6 +274,15 @@ void AnalysisConfig::Update() {
       pass_builder()->AppendPass(pass);
     }
   }
+  if (use_gpu() && use_cudnn_) {
+#ifdef PADDLE_WITH_CUDA
+    if (!enable_ir_optim_) {
+      LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
+    } else {
+      pass_builder()->EnableCUDNN();
+    }
+#endif
+  }
 
   if (use_ngraph_) {
     if (!enable_ir_optim_) {
@@ -347,8 +369,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
 
   ss << enable_memory_optim_;
-  ss << static_memory_optim_;
-  ss << static_memory_optim_force_update_;
 
   ss << use_ngraph_;
 
@@ -359,6 +379,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_mkldnn_quantizer_;
   ss << model_from_memory_;
+
+  ss << with_profile_;
 
   ss << enable_ir_optim_;
   ss << use_feed_fetch_ops_;
@@ -394,12 +416,8 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void AnalysisConfig::EnableMemoryOptim(bool static_optim,
-                                       bool force_update_static_cache) {
+void AnalysisConfig::EnableMemoryOptim() {
   enable_memory_optim_ = true;
-  static_memory_optim_ = static_optim;
-  static_memory_optim_force_update_ = force_update_static_cache;
-
   Update();
 }
 
@@ -434,6 +452,12 @@ void AnalysisConfig::SwitchIrDebug(int x) {
   ir_debug_ = x;
   Update();
 }
+
+void AnalysisConfig::EnableProfile() {
+  with_profile_ = true;
+  Update();
+}
+
 void AnalysisConfig::EnableAnakinEngine(
     int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
     int min_subgraph_size, AnalysisConfig::Precision precision_mode,

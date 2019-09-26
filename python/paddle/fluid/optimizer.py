@@ -36,14 +36,17 @@ from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
+from .. import compat as cpt
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'LarsMomentum',
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
+    'Ftrl', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
+    'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
+    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
+    'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
     'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer'
+    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
+    'RecomputeOptimizer'
 ]
 
 
@@ -360,8 +363,9 @@ class Optimizer(object):
         global_block = framework.default_main_program().global_block()
         start = len(global_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
-        self._create_accumulators(global_block,
-                                  [p[0] for p in parameters_and_grads])
+        self._create_accumulators(
+            global_block,
+            [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
         optimize_ops = []
@@ -463,6 +467,8 @@ class Optimizer(object):
         Examples:
             See examples in `apply_gradients`.
         """
+        no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
             if parameter_list is not None:
@@ -488,6 +494,10 @@ class Optimizer(object):
             else:
                 assert (isinstance(callbacks, list))
             program = loss.block.program
+            assert len(loss.shape) == 1 and loss.shape[0] == 1, \
+                "The loss.shape should be (1L,), but the current loss.shape is {}. " \
+                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                    loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                no_grad_set, callbacks)
@@ -562,6 +572,23 @@ class Optimizer(object):
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
+    def _get_no_grad_set(self, loss, no_grad_set=None):
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif isinstance(no_grad_set, set) or isinstance(
+                no_grad_set, list) or isinstance(no_grad_set, tuple):
+            no_grad_set = set(no_grad_set)
+        else:
+            assert "no_grad_set should be a set, but the passed type is {}".format(
+                type(no_grad_set))
+        parameters = loss.block.program.global_block().all_parameters()
+        param_no_trainable = set(
+            [param.name for param in parameters if param.trainable is False])
+        # If the parameter is no trainable, it should not have a gradient.
+        no_grad_set.update(param_no_trainable)
+
+        return no_grad_set
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
@@ -587,6 +614,7 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
+        assert isinstance(loss, Variable), "The loss should be an Variable."
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -599,9 +627,6 @@ class Optimizer(object):
 
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
-
-        if framework.in_dygraph_mode():
-            framework._dygraph_tracer()._clear_ops()
 
         return optimize_ops, params_grads
 
@@ -1404,7 +1429,7 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in param_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope("optimizer"):
@@ -1567,7 +1592,7 @@ class AdamaxOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
-            if grad is None:
+            if grad is None or param.trainable is False:
                 continue
             with param.block.program._optimized_guard(
                 [param, grad]), name_scope('adamx'):
@@ -1579,6 +1604,85 @@ class AdamaxOptimizer(Optimizer):
                     outputs={"Out": beta1_pow_acc},
                     attrs={"scale": self._beta1},
                     stop_gradient=True)
+
+
+class DpsgdOptimizer(Optimizer):
+    """
+    We implement the Dpsgd optimizer according to CCS16 paper -
+    Deep Learning with Differential Privacy.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy
+
+          # First create the Executor.
+          place = fluid.CPUPlace() # fluid.CUDAPlace(0)
+          exe = fluid.Executor(place)
+
+          train_program = fluid.Program()
+          startup_program = fluid.Program()
+          with fluid.program_guard(train_program, startup_program):
+              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              hidden = fluid.layers.fc(input=data, size=10)
+              loss = fluid.layers.mean(hidden)
+              optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+              optimizer.minimize(loss)
+
+          # Run the startup program once and only once.
+          exe.run(startup_program)
+
+          x = numpy.random.random(size=(10, 1)).astype('float32')
+          outs = exe.run(program=train_program,
+                        feed={'X': x},
+                         fetch_list=[loss.name])
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        clip (float): clipping threshold
+        batch_size (float): batch size.
+        sigma (float): for gaussian noise.
+    Notes:
+       Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
+    """
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 clip=0.9,
+                 batch_size=0.999,
+                 sigma=1e-8):
+        assert learning_rate is not None
+        assert clip is not None
+        assert batch_size is not None
+        assert sigma is not None
+        super(DpsgdOptimizer, self).__init__(learning_rate=learning_rate)
+        self.type = "dpsgd"
+        self._clip = clip
+        self._batch_size = batch_size
+        self._sigma = sigma
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        # create the dpsgd optimize op
+        dpsgd_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0]},
+            attrs={
+                "clip": self._clip,
+                "batch_size": self._batch_size,
+                "sigma": self._sigma
+            },
+            stop_gradient=True)
+
+        return dpsgd_op
 
 
 class DecayedAdagradOptimizer(Optimizer):
@@ -1675,39 +1779,42 @@ class DecayedAdagradOptimizer(Optimizer):
 
 class AdadeltaOptimizer(Optimizer):
     """
-    **Adadelta Optimizer**
+    **NOTES: This API does not support sparse parameter optimization.**
 
-    Simple Adadelta optimizer with average squared grad state and
-    average squared update state.
-    The details of adadelta please refer to this
+    Adadelta Optimizer. Please refer to this for details:
     `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
-    <http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf>`_.
+    <https://arxiv.org/abs/1212.5701>`_.
 
-    ..  math::
+    .. math::
 
-        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2 \\\\
-        learning\\_rate &= sqrt( ( E(dx_{t-1}^2) + \\epsilon ) / ( \\
-                          E(g_t^2) + \\epsilon ) ) \\\\
-        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
+        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2\\
+
+        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }\\
+
+        E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
 
     Args:
-        learning_rate(float): global learning rate
-        rho(float): rho in equation
-        epsilon(float): epsilon in equation
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        learning_rate(float|Variable): global learning rate.
+        epsilon(float): a small float number for numeric stability. Default 1.0e-6.
+        rho(float): a floating point value indicating the decay rate.
+        regularization(WeightDecayRegularizer, optional): A Regularizer, such as fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no regularization.
+        name(str, optional): A optional name prefix for debugging. Default None.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+
+            image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+            fc = fluid.layers.fc(image, size=10)
+            cost = fluid.layers.reduce_mean(fc)
             optimizer = fluid.optimizer.Adadelta(
                 learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
-            _, params_grads = optimizer.minimize(cost)
 
-    Notes:
-       Currently, AdadeltaOptimizer doesn't support sparse parameter optimization.
+            # optimizer_ops is a list of optimizer operators to update parameters
+            # params_grads is a list of (param, param_grad), where param is each
+            # parameter and param_grad is the gradient variable of param.
+            optimizer_ops, params_grads = optimizer.minimize(cost)
     """
 
     _avg_squared_grad_acc_str = "_avg_squared_grad"
@@ -2234,6 +2341,7 @@ Momentum = MomentumOptimizer
 Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
+Dpsgd = DpsgdOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
@@ -2953,3 +3061,448 @@ class PipelineOptimizer(object):
             "sync_steps": self._sync_steps,
             "param_need_sync": param_need_sync
         }
+
+
+class RecomputeOptimizer(Optimizer):
+    """
+    Recompute Optimizer Wrapper
+
+    Normally, a training step contains three sub-steps: first, run forward
+    Operators to calculate the loss; second, run backward Operators to 
+    calculate gradient of the parameters; third, apply optimization method
+    to update the value of the parameters.
+
+    In the forward computation process, all variables that are needed by 
+    backward computation process will be kept in memory, which occupy a great
+    amount of memory when the network becomes very deep.
+
+    Recompute split the network to k segments. In each segment, It will 
+    recompute the forward Operators, before running backward operators. It is
+    very helpful for saving memory.
+ 
+    The Variables that separate a network to segments are called as checkpoints,
+    and users should set it manually. The usage is very simple:
+
+    Args:
+        optimizer (Optimizer): The optimizer that is applied to parameters.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            def gen_data():
+                return {"x": np.random.random(size=(32, 32)).astype('float32'),
+                "y": np.random.randint(2, size=(32, 1)).astype('int64')}
+            def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                print(input_x)
+                fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                sum_cost = fluid.layers.reduce_mean(cost)
+                return sum_cost, fc_1, prediction
+            input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+            input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            cost, fc_1, pred = mlp(input_x, input_y)
+
+            sgd = fluid.optimizer.Adam(learning_rate=0.01)
+            sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+            sgd._set_checkpoints([fc_1, pred])
+            sgd.minimize(cost)
+
+            print("Finished optimize")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            step = 10
+
+            for i in range(step):
+                cost_val = exe.run(feed=gen_data(),
+                       program=fluid.default_main_program(),
+                       fetch_list=[cost.name])
+                print("step=%d cost=%f" % (i, cost_val[0]))
+
+    """
+
+    def __init__(self, optimizer):
+        self._optimizer = optimizer
+        self._checkpoints = None
+
+    def _set_checkpoints(self, checkpoints):
+        self._checkpoints = checkpoints
+
+    def load(self, stat_dict):
+        """
+        load function is not supported by Recompute Optimizer for now.
+        :return: None
+
+        Args:
+            stat_dict: the dict load by load_persistable method
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.compat as cpt
+                
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+                
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+                
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
+                try:
+                    stat_dict = {}
+                    sgd.load(stat_dict)
+                except NotImplementedError as e:
+                    print(cpt.get_exception_message(e))
+        """
+        raise NotImplementedError(
+            "load function is not supported by Recompute Optimizer for now")
+
+    def apply_gradients(self, params_grads):
+        """
+        call apply_gradients function of self._optimizer.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import paddle.fluid.framework as framework
+
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+
+
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+
+                program = cost.block.program
+                with framework.program_guard(program, None):
+                    optimize_ops = sgd.apply_gradients(params_grads)
+
+                print("Finished apply gradients")
+        """
+
+        return self._optimizer.apply_gradients(params_grads=params_grads)
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None,
+                 checkpoints=None):
+        """
+        call append_backward with checkpoints.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+            checkpoints (list): list of Variables as checkpoints
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+    
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+    
+    
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+    
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+                print("Finished backward")
+        """
+
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        self._dtype = loss.dtype
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            params_grads = append_backward(
+                loss,
+                parameter_list,
+                no_grad_set,
+                checkpoints=self._checkpoints)
+        return params_grads
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        call the apply_optimize function of self._optimizer
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+                
+                def mlp(input_x, input_y, hid_dim=128, label_dim=2):
+                    fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
+                    prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
+                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+                    sum_cost = fluid.layers.reduce_mean(cost)
+                    return sum_cost, fc_1, prediction
+                
+                
+                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                cost, fc_1, pred = mlp(input_x, input_y)
+                print("Finished FF")
+                
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                params_grads = sgd.backward(
+                    cost,
+                    startup_program=None,
+                    parameter_list=None,
+                    no_grad_set=None,
+                    checkpoints=[fc_1, pred])
+                
+                optimize_ops = sgd.apply_optimize(
+                    cost, startup_program=None, params_grads=params_grads)
+                
+                print("Finished apply_optimize")
+        """
+
+        return self._optimizer.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+
+        assert (isinstance(loss, Variable)), "The loss should be an Variable."
+        assert (self._checkpoints is not None
+                ), "You should call _set_checkpoints first"
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support recompute")
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set,
+            checkpoints=self._checkpoints)
+
+        if grad_clip:
+            # TODO(guru4elephant): should add grad_clip for static graph
+            pass
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+        return optimize_ops, params_grads
+
+
+class LookaheadOptimizer(object):
+    """
+    This implements the Lookahead optimizer of the
+    paper : https://arxiv.org/abs/1907.08610.
+
+    Lookahead keeps two sets of params: the fast_params and
+    the slow_params. inner_optimizer update fast_params every 
+    training step. Lookahead updates the slow_params and fast_params 
+    every k training steps as follows:
+
+    .. math::
+        
+        slow\_param_t &= slow\_param_{t-1} + \\alpha * (fast\_param_{t-1} - slow\_param_{t-1})
+	
+	fast\_param_t &=  slow\_param_t
+
+    Args:
+        inner_optimizer (Optimizer): The optimizer that update fast params step by step. 
+        alpha (float): The learning rate of Lookahead.
+        k (int): The slow params is updated every k steps.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+	    x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+	    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+	    y = fluid.layers.fc(input=[x], size=2, act="softmax")
+	    loss = fluid.layers.cross_entropy(input=y, label=label)
+	    loss = fluid.layers.mean(x=loss)
+	    sgd = fluid.optimizer.SGD(learning_rate=0.01)
+	    optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
+                                            alpha=0.5,
+                                            k=5)
+	    optimizer.minimize(loss)
+	    main_program = fluid.default_main_program()
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    feeder = fluid.DataFeeder(feed_list=[x, label], place=place)
+
+	    step = 0
+            while(step < 10):
+                step += 1
+		exe.run(fluid.default_main_program(),
+            	feed=feeder.feed(batch_data))
+
+    """
+
+    def __init__(self, inner_optimizer, alpha=0.5, k=5):
+
+        assert (inner_optimizer is not None), "inner optimizer can not be None"
+        assert (
+            0.0 <= alpha <= 1.0
+        ), "alpha should be larger or equal to 0.0, and less or equal than 1.0"
+        assert (isinstance(k, int) and k > 0), "k should be a positive integer"
+
+        self.inner_optimizer = inner_optimizer
+        self.alpha = alpha
+        self.k = k
+        self.type = "lookahead"
+
+    def minimize(self, loss, startup_program=None):
+
+        # Apply inner optimizer to the main_program
+        mini_out = self.inner_optimizer.minimize(
+            loss, startup_program=startup_program)
+
+        # Get startup_program and main_program
+        if startup_program is None:
+            startup_program = default_startup_program()
+        main_block = loss.block
+
+        # add some vars to the main_program
+        params = [param.name for param in main_block.all_parameters()]
+        param_to_slow = {}
+        for param in params:
+            fast_var = main_block.var(param)
+            assert (fast_var is not None)
+            slow_var = main_block.create_var(
+                name=param + "@SLOW",
+                shape=fast_var.shape,
+                dtype=fast_var.dtype,
+                persistable=True)
+            param_to_slow[param] = slow_var
+
+        # add some vars to the startup_program
+        startup_block = startup_program.global_block()
+        for param in params:
+            fast_var = startup_block.var(param)
+            assert (fast_var is not None)
+            slow_var = startup_block.create_var(
+                name=param + "@SLOW",
+                shape=fast_var.shape,
+                dtype=fast_var.dtype,
+                persistable=True)
+
+            startup_block.append_op(
+                type="assign",
+                inputs={"X": fast_var},
+                outputs={"Out": slow_var})
+
+        # Add Var k to main prog and startup prog
+        k = layers.create_global_var(
+            name="lookahead_k",
+            shape=[1],
+            value=int(self.k),
+            dtype='int32',
+            persistable=True)
+
+        # Add Var alpha to main prog and startup prog
+        alpha = layers.create_global_var(
+            name="lookahead_alpha",
+            shape=[1],
+            value=float(self.alpha),
+            dtype='float32',
+            persistable=True)
+
+        # Add Var step
+        step = layers.create_global_var(
+            name="lookahead_step",
+            shape=[1],
+            value=int(0),
+            dtype='int32',
+            persistable=True)
+        layers.increment(x=step, value=1.0, in_place=True)
+
+        # lookahead
+        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+
+        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+
+        mod = layers.elementwise_mod(step, k)
+        with layers.control_flow.Switch() as switch:
+            with switch.case(mod == zero_var):
+                for param_name in params:
+                    fast_var = main_block.var(param_name)
+                    slow_var = param_to_slow[param_name]
+                    tmp_var = layers.elementwise_add(
+                        layers.elementwise_mul(fast_var, alpha),
+                        layers.elementwise_mul(
+                            slow_var, layers.elementwise_sub(one_var, alpha)))
+                    layers.assign(input=tmp_var, output=slow_var)
+                    layers.assign(input=tmp_var, output=fast_var)
+            with switch.default():
+                pass
+        return mini_out

@@ -25,20 +25,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// StepScopes manages scopes inside RNN.
-//    StepScopes::CurScope() get the current scope
-//    StepScopes::ExScope() get the ex-scope, or scope in previous time step.
-//    StepScopes::Next() move to next time step.
+// StepScopes manages the scopes inside Recurrent Op.
 //
 // if is_train = False, then
-//   there are two scopes for the RNN and just support forward.
+//   there are two scopes for the RNN and just support forward
 // else
 //   the len(scopes) == seq_len
 //
 // if is_backward = True, then
-//   reversely access scopes
+//   reversely access scopes, delete useless ex-scope
 // else
-//   access scopes from begin to end.
+//   access scopes from beginning to end
 class StepScopes {
  public:
   StepScopes(const platform::DeviceContext &dev_ctx,
@@ -46,11 +43,19 @@ class StepScopes {
              std::vector<framework::Scope *> *scopes, bool is_train,
              size_t seq_len, bool is_backward = false);
 
+  // Get the current scope
   framework::Scope &CurScope();
 
+  // Get the ex-scope, which is the scope in previous time step
   framework::Scope &ExScope();
 
-  void Next();
+  // Move to next time step when forwarding
+  void ForwardNext();
+
+  // Delete ex-scope after using it, then move to next time step when
+  // backwarding
+  void BackwardNext(const platform::DeviceContext &dev_ctx,
+                    framework::Scope *parent_scope);
 
  private:
   framework::Scope &GetScope(size_t scope_id) const;
@@ -154,7 +159,7 @@ class RecurrentBase : public framework::OperatorBase {
     if (is_backward && src_var == nullptr) {
       return;
     }
-    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
@@ -173,9 +178,9 @@ class RecurrentBase : public framework::OperatorBase {
       return;
     }
     auto *src_var = src_scope.FindVar(src_var_name);
-    PADDLE_ENFORCE(src_var != nullptr, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE(dst_var != nullptr, "%s is not found.", dst_var_name);
+    PADDLE_ENFORCE_NOT_NULL(dst_var, "%s is not found.", dst_var_name);
     auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
     callback(src_tensor, dst_tensor);
   }

@@ -18,8 +18,6 @@ from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduc
 
 
 class TestResnetWithReduceGPU(TestResnetWithReduceBase):
-    # TODO(zcd): temporally disable reduce_and_allreduce test because of the random failure.
-    @unittest.skip("should fix this later.")
     def test_seresnext_with_reduce(self):
         self._compare_reduce_and_allreduce(use_cuda=True, delta2=1e-2)
 

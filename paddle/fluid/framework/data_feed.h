@@ -105,10 +105,18 @@ class DataFeed {
   virtual void SetThreadNum(int thread_num) {}
   // This function will do nothing at default
   virtual void SetParseInsId(bool parse_ins_id) {}
+  virtual void SetParseContent(bool parse_content) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual const std::vector<std::string>& GetInsIdVec() const {
+    return ins_id_vec_;
+  }
+  virtual const std::vector<std::string>& GetInsContentVec() const {
+    return ins_content_vec_;
+  }
+  virtual int GetCurBatchSize() { return batch_size_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW("This function(LoadIntoMemory) is not implemented.");
   }
@@ -164,6 +172,8 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  std::vector<std::string> ins_id_vec_;
+  std::vector<std::string> ins_content_vec_;
   platform::Place place_;
 };
 
@@ -222,6 +232,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
   virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseContent(bool parse_content);
   virtual void LoadIntoMemory();
 
  protected:
@@ -232,6 +243,7 @@ class InMemoryDataFeed : public DataFeed {
   int thread_id_;
   int thread_num_;
   bool parse_ins_id_;
+  bool parse_content_;
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
@@ -426,6 +438,7 @@ struct Record {
   std::vector<FeatureItem> uint64_feasigns_;
   std::vector<FeatureItem> float_feasigns_;
   std::string ins_id_;
+  std::string content_;
 };
 
 struct RecordCandidate {
