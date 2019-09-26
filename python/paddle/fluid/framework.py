@@ -4079,6 +4079,13 @@ def load_op_library(lib_filename):
 
     Args:
         lib_filename (str): name of dynamic library.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle.fluid as fluid
+        fluid.load_op_library('custom_op.so')
+
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
