@@ -2199,7 +2199,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[10, 5], dtype='float32')
-            length = layers.data(name='length', shape=[1], dtype='int64')
+            length = layers.data(name='length', shape=[], dtype='int64')
             return (layers.sequence_unpad(x=x, length=length))
 
     def test_sequence_softmax(self):

@@ -184,5 +184,12 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             test_with_place(place, [2, 3, 4, 5])
 
 
+class TestInstanceNormOpTrainingCase1(TestInstanceNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
+
+
 if __name__ == '__main__':
     unittest.main()

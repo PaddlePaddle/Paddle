@@ -456,6 +456,7 @@ class Variable(object):
                  error_clip=None,
                  stop_gradient=False,
                  is_data=False,
+                 need_check_feed=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -543,6 +544,9 @@ class Variable(object):
                             "The previous persistable is {1}; the new "
                             "persistable is {2}. They are not matched".format(
                                 self.name, self.persistable, persistable))
+
+            if need_check_feed and is_new_var:
+                self.desc.set_need_check_feed(need_check_feed)
 
             if capacity is not None:
                 if is_new_var:
@@ -2010,6 +2014,11 @@ class Block(object):
                 init_ops = []
                 for op in block.ops:
                     if var.name in op.output_arg_names:
+                        # In startup_program, "c_broadcast" and "c_sync_comm_stream"
+                        # are treated as initialization ops that cause error. 
+                        # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
+                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                            continue
                         init_ops.append(op)
                 return init_ops
 
@@ -2281,7 +2290,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                need_check_feed=var.desc.need_check_feed())
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -2290,7 +2300,8 @@ class Block(object):
                 type=var.type,
                 lod_level=var.lod_level,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                need_check_feed=var.desc.need_check_feed())
         return ret_var
 
 
@@ -2593,6 +2604,20 @@ class IrOpNode(IrNode):
             "The node operator description cannot be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
+    def rename_output(self, old_output_name, new_output_name):
+        """
+        Rename the output of this node.
+
+        Args:
+            old_output_name(str): the old output name.
+            new_output_name(str): the new output name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
+        ), old_output_name, new_output_name))
+        self.node.op()._rename_output(old_output_name, new_output_name)
+
     def input(self, name):
         """
         Get the argument name list by the parameter name for input.
@@ -2885,6 +2910,24 @@ class IrGraph(object):
         new_input_node.append_output(op_node)
         op_node.append_input(new_input_node)
         op_node.rename_input(old_input_node.name(), new_input_node.name())
+
+    def update_output_link(self, old_output_node, new_output_node, op_node):
+        """
+        Update the output's link of an operator node.
+
+        Args:
+            old_output_node(IrNode): the old output node of the giving op_node.
+            new_output_node(IrNode): the new output node of the giving op_node.
+            op_node(IrOpNode): the operator node that is needed to update input's link.
+        """
+        assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
+        self.graph.nodes() and op_node.node in self.graph.nodes(), \
+        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+        old_output_node.remove_input(op_node)
+        op_node.remove_output(old_output_node)
+        new_output_node.append_input(op_node)
+        op_node.append_output(new_output_node)
+        op_node.rename_output(old_output_node.name(), new_output_node.name())
 
     def link_to(self, node_in, node_out):
         """
@@ -3935,6 +3978,8 @@ class Program(object):
         for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
+            if var.desc.need_check_feed():
+                self.global_block().var(var.name).desc.set_need_check_feed(True)
 
     @dygraph_not_support
     def list_vars(self):
