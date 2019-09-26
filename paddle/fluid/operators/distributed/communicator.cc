@@ -402,7 +402,7 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc& program,
           << FLAGS_communicator_merge_sparse_grad;
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
-  VLOG(0) << "communicator_merge_sparse_bucket"
+  VLOG(0) << "communicator_merge_sparse_bucket "
           << FLAGS_communicator_merge_sparse_bucket;
 
   //process var info from transpiler
@@ -572,7 +572,7 @@ void GeoSgdCommunicator::SendThread() {
         have_push_.fetch_add(1, std::memory_order_relaxed);
       }
     auto after_run_send_graph = GetCurrentUS();
-    VLOG(1) << "run send graph use time "
+    VLOG(2) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     Recv();
   }
