@@ -275,7 +275,7 @@ PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
-    const PD_AnalysisConfig* config)
+    const PD_AnalysisConfig* config);
 
 #ifdef __cplusplus
 }  // extern "C"
