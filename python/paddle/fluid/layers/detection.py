@@ -2600,7 +2600,7 @@ def box_clip(input, im_info, name=None):
         Variable:
 
         output(Variable): The cliped tensor with data type float32 or float64. 
-            The shape is same as input.
+        The shape is same as input.
 
         
     Examples:
