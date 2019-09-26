@@ -70,6 +70,7 @@ struct PD_MaxInputShape {
   int shape_size;
 };
 
+namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 
 paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
@@ -77,3 +78,4 @@ paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
 PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
 
 PD_ACPrecision ConvertToACPrecision(Precision dtype);
+}
