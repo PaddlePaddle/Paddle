@@ -120,10 +120,18 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
+    PADDLE_ENFORCE_EQ(cudaGetLastError(), cudaErrorMemoryAllocation);
+    size_t avail = 0, total = 0;
+    cudaMemGetInfo(&avail, &total);
 
-    size_t avail, total;
-    platform::GpuMemoryUsage(&avail, &total);
+    // NOTE(zjl): cudaMemGetInfo may return cudaErrorMemoryAllocation
+    // when available memory is too small. We reset the
+    // error flag of CUDA to prevent error.
+    result = cudaGetLastError();
+    PADDLE_ENFORCE_EQ(
+        result == cudaSuccess || result == cudaErrorMemoryAllocation, true,
+        "Unexpected CUDA error raised, error code is %d",
+        static_cast<int>(result));
 
     PADDLE_THROW_BAD_ALLOC(
         "\n\nOut of memory error on GPU %d. "
