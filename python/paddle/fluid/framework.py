@@ -3385,7 +3385,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, targets, feeded_var_names=None):
+    def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3396,15 +3396,65 @@ class Program(object):
         Args:
             targets(list|Variable|Operator): A list of variables or operators
                 need to be pruned
-            feeded_var_names(list|str|None): A list of variable names from where
-                pruning start, default value is None
 
         Returns:
             Program:  A new, pruned program.
-
         """
-        if feeded_var_names is None:
-            feeded_var_names = []
+
+        if not isinstance(targets, list):
+            targets = [targets]
+
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    # After transpiler processing, the op that output this
+                    # variable maybe has been changed, so t.op is not reliable
+                    # and we need to find the current op that generate this
+                    # variable here.
+                    t.op = None
+                    global_block = self.global_block()
+                    for idx, op in enumerate(global_block.ops):
+                        if t.name in op.output_arg_names:
+                            t.op = op
+                            break
+
+                    t = t.op
+                    if t is None:
+                        raise ValueError(
+                            "The target variable must have an "
+                            "associated operator that generates it.")
+                else:
+                    raise ValueError("All targets of prune() can only be "
+                                     "Variable or Operator.")
+
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, set(), targets_idx)
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
+        res._sync_with_cpp()
+        return res
+
+    def _prune_with_input(self, feeded_var_names, targets):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`targets`.
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. This API is in flux and not stable.
+
+        Args:
+            feeded_var_names(list|str): A list of variable names from where
+                pruning start. If it is set as [], this API works just like _prune()
+            targets(list|Variable|Operator): A list of variables or operators
+                need to be pruned
+
+        Returns:
+            Program:  A new, pruned program.
+        """
+
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
