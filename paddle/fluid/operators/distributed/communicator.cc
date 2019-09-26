@@ -441,6 +441,7 @@ void GeoSgdCommunicator::InitImpl(
   }
 
   send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  recv_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   need_push_queue_ =
       std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
           geo_need_push_nums);
@@ -610,7 +611,7 @@ void GeoSgdCommunicator::RecvAll() {
               << after_parameter_recv - before_parameter_recv;
       RecvUpdateVars(var_name);
     };
-    task_futures.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
+    task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
   for (auto &task : task_futures) {
     task.wait();

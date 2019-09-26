@@ -396,6 +396,7 @@ class GeoSgdCommunicator : public Communicator {
   std::vector<SparseIdsMap> ids_send_vec_;
 
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
+  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};
 };
 
