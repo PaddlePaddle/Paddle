@@ -155,6 +155,7 @@ class Test_Detach(unittest.TestCase):
         try:
             y_detach = y.detach()
         except Exception as e:
+            # Here is to check
             assert type(e) == AssertionError
             assert str(
                 e
