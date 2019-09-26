@@ -20,6 +20,7 @@ limitations under the License. */
 #include <stdio.h>
 
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
