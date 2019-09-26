@@ -126,13 +126,13 @@ void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
 }
 
 void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor, PD_Place place) {
-  return tensor->tensor.mutable_data<void>(paddle::ConvertToPlace(place));
+  return tensor->tensor.mutable_data(paddle::ConvertToPlace(place));
 }
 
 void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place place,
                             int* size) {
   paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor.data<void>(&p, size);
+  return tensor->tensor.data(&p, size);
 }
 
 void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
