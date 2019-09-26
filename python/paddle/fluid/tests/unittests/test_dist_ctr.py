@@ -29,7 +29,6 @@ def skip_ci(func):
     return __func__
 
 
-@skip_ci
 class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -39,7 +38,6 @@ class TestDistCTR2x2(TestDistBase):
         self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
 
 
-@skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -52,6 +50,17 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
             delta=1e-7,
             check_error_log=True,
             need_envs=need_envs)
+
+
+class TestDistCTR2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._hogwild_mode = True
+        self._enforce_place = "CPU"
+
+    def test_dist_ctr(self):
+        self.check_with_place("dist_ctr.py", delta=100, check_error_log=False)
+
 
 
 if __name__ == "__main__":

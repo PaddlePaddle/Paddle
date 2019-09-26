@@ -75,11 +75,14 @@ class TestDistRunnerBase(object):
                        sync_mode,
                        dc_asgd=False,
                        current_endpoint=None,
-                       nccl_comm_num=1):
+                       nccl_comm_num=1,
+                       hogwild_mode=False):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
+        config.runtime_split_send_recv = hogwild_mode
+
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
@@ -98,7 +101,7 @@ class TestDistRunnerBase(object):
         # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, args.dc_asgd)
+                                args.trainers, args.sync_mode, args.dc_asgd, args.hogwild)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -199,7 +202,7 @@ class TestDistRunnerBase(object):
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
                                     args.endpoints, args.trainers,
-                                    args.sync_mode, args.dc_asgd)
+                                    args.sync_mode, args.dc_asgd, args.hogwild)
             trainer_prog = t.get_trainer_program()
             print_to_err(
                 type(self).__name__,
@@ -250,6 +253,9 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
+
+        if args.hogwild:
+            build_stra.async_mode = True
 
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
@@ -411,6 +417,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
+    parser.add_argument('--hogwild', action='store_false')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -467,6 +474,7 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
+        self._hogwild_mode = False
         self._enforce_place = None
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
@@ -630,6 +638,9 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
+        if self._hogwild_mode:
+            tr0_cmd += " --hogwild"
+            tr1_cmd += " --hogwild"
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
