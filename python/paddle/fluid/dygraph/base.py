@@ -147,6 +147,7 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
+@framework.dygraph_only
 def to_variable(value, block=None, name=None):
     """
     This function will create a variable from ndarray

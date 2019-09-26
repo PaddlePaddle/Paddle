@@ -155,8 +155,10 @@ class Test_Detach(unittest.TestCase):
         try:
             y_detach = y.detach()
         except Exception as e:
-            assert type(e) == AttributeError
-            assert str(e) == 'static graph model DO NOT supprt detach'
+            assert type(e) == AssertionError
+            assert str(
+                e
+            ) == 'We Only support detach in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode'
 
 
 if __name__ == '__main__':

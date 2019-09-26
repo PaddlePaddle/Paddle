@@ -36,9 +36,17 @@ from . import core
 from . import unique_name
 
 __all__ = [
-    'Program', 'default_startup_program', 'default_main_program',
-    'program_guard', 'name_scope', 'cuda_places', 'cpu_places',
-    'cuda_pinned_places', 'in_dygraph_mode', 'is_compiled_with_cuda', 'Variable'
+    'Program',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'name_scope',
+    'cuda_places',
+    'cpu_places',
+    'cuda_pinned_places',
+    'in_dygraph_mode',
+    'is_compiled_with_cuda',
+    'Variable',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -400,7 +408,7 @@ class Variable(object):
     """
     **Notes:**
         **The constructor of Variable should not be invoked directly.**
-        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data util being feed.**
+        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
         **In Dygraph Mode: Please use** `fluid.dygraph.to_variable()` **to create a dygraph variable with real data**
 
     In Fluid, every input and output of an operator is a variable. In most
@@ -634,14 +642,12 @@ class Variable(object):
         """
         **Notes: This API is ONLY avaliable in Dygraph mode**
 
-        Run Backward of current Graph which start from current Variable
+        Run backward of current Graph which starts from current Variable
 
         Parameter:
             - **backward_strategy** : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to Run Backward
 
         Returns:  None
-
-        Returns type: NoneType
 
         Examples:
             .. code-block:: python
@@ -730,11 +736,9 @@ class Variable(object):
         """
         **Notes: This API is ONLY avaliable in Dygraph mode**
 
-        Clear  (Set to Zero) the Gradient of Current Variable
+        Clear  (set to zero) the Gradient of Current Variable
 
         Returns:  None
-
-        Returns type: NoneType
 
         Examples:
             .. code-block:: python
@@ -781,6 +785,9 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Returns Type:
+            str
 
         Examples:
             .. code-block:: python
@@ -3070,7 +3077,7 @@ class IrGraph(object):
 
 class Program(object):
     """
-    Create Python Program.  It has at least one :ref:`api_guide_Variable_en`, when the
+    Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
     control flow op like conditional_block, while :ref:`api_fluid_layers_While` is included,
     it will contain nested block.
 
