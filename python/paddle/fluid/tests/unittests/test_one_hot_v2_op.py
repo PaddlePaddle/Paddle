@@ -191,12 +191,12 @@ class TestOneHotOpApi(unittest.TestCase):
         label = np.array([np.random.randint(0, depth - 1)
                           for i in range(6)]).reshape([6, 1])
         with fluid.dygraph.guard():
-            one_hot_label = fluid.input.one_hot(
+            one_hot_label = fluid.one_hot(
                 input=fluid.dygraph.to_variable(label), depth=depth)
 
     def _run(self, depth):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-        one_hot_label = fluid.input.one_hot(input=label, depth=depth)
+        one_hot_label = fluid.one_hot(input=label, depth=depth)
 
         place = fluid.CPUPlace()
         label_data = np.array([np.random.randint(0, 10 - 1)

@@ -25,22 +25,22 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Length"),
-                   "Input(Length) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Length"), true,
+                      "Input(Length) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequenceUnpadOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "The rank of Input(X) can't be less than 2.");
 
     auto len_dims = ctx->GetInputDim("Length");
-    PADDLE_ENFORCE(len_dims.size() == 2 && len_dims[1] == 1,
-                   "The shape of Input(Length) should be [batch_size, 1].");
-    PADDLE_ENFORCE(
-        len_dims[0] == x_dims[0],
+    PADDLE_ENFORCE_EQ(len_dims.size(), 1,
+                      "The shape of Input(Length) should be [batch_size].");
+    PADDLE_ENFORCE_EQ(
+        len_dims[0], x_dims[0],
         "Input(X) and Input(Length) should have the same first dimension.");
 
     int64_t out_dim_0 = -1;
@@ -96,7 +96,7 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       in which there are 3 sequences padded to length 5, and the acutal length 
       specified by Input(Length):
 
-          Length.data = [[2], [3], [4]],
+          Length.data = [2, 3, 4],
 
       after unpadding, Output(Out) will be:
 
@@ -112,10 +112,10 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceUnpadGradOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequenceUnpadGradOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
         "Input(Out@GRAD) of SequenceUnpadGradOp should not be null.");
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
