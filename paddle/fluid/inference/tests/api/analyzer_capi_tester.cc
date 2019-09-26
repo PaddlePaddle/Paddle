@@ -47,13 +47,13 @@ TEST(AnalysisPredictor, use_gpu) {
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
 
-  int batch_size = 1;
-  int channels = 3;
-  int height = 224;
-  int width = 224;
+  const int batch_size = 1;
+  const int channels = 3;
+  const int height = 224;
+  const int width = 224;
   float input[batch_size * channels * height * width] = {0};
   int shape[4] = {batch_size, channels, height, width};
-  PD_Predictor* predictor = PD_CreatePaddlePredictor(config);
+  PD_Predictor* predictor = PD_NewPredictor(config);
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
   PD_ZeroCopyTensor** tensor = NULL;
