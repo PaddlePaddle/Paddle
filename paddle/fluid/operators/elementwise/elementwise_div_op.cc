@@ -38,7 +38,7 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFuntionality() const override {
-    return "two tensors divide element-wise and returns a new resulting tensor";
+    return "Divide two tensors element-wise";
   }
 };
 

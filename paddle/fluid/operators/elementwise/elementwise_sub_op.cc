@@ -38,8 +38,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFuntionality() const override {
-    return "two tensors substract element-wise and returns a new resulting "
-           "tensor";
+    return "Substract two tensors element-wise";
   }
 };
 

@@ -38,7 +38,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFuntionality() const override {
-    return "two tensors add element-wise and returns a new resulting tensor";
+    return "Add two tensors element-wise";
   }
 };
 

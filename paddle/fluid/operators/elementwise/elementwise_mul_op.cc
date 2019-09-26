@@ -38,8 +38,7 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFuntionality() const override {
-    return "two tensors multiply element-wise and returns a new resulting "
-           "tensor";
+    return "Multiply two tensors element-wise";
   }
 };
 
