@@ -649,7 +649,7 @@ class Variable(object):
         Run backward of current Graph which starts from current Variable
 
         Parameter:
-            - **backward_strategy** : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to Run Backward
+            - **backward_strategy** : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to run backward
 
         Returns:  None
 
