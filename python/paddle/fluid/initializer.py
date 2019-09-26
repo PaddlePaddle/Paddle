@@ -281,6 +281,7 @@ class UniformInitializer(Initializer):
 
         op = block._prepend_op(
             type="uniform_random",
+            inputs={},
             outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
