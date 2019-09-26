@@ -63,6 +63,5 @@ class TestDistCTR2x2_ASYNC(TestDistBase):
         self.check_with_place("dist_ctr.py", delta=100, check_error_log=True)
 
 
-
 if __name__ == "__main__":
     unittest.main()
