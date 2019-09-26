@@ -79,12 +79,23 @@ typedef struct PD_ZeroCopyTensor PD_ZeroCopyTensor;
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorReshape(
     PD_ZeroCopyTensor* tensor, int* shape, int size);
 
-PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorMutableData(
+PADDLE_CAPI_EXPORT extern float* PD_ZeroCopyTensorMutableFLOATData(
+    PD_ZeroCopyTensor* tensor, PD_Place place);
+PADDLE_CAPI_EXPORT extern int32_t* PD_ZeroCopyTensorMutableINT32Data(
+    PD_ZeroCopyTensor* tensor, PD_Place place);
+PADDLE_CAPI_EXPORT extern int64_t* PD_ZeroCopyTensorMutableINT64Data(
+    PD_ZeroCopyTensor* tensor, PD_Place place);
+PADDLE_CAPI_EXPORT extern uint8_t* PD_ZeroCopyTensorMutableUINT8Data(
     PD_ZeroCopyTensor* tensor, PD_Place place);
 
-PADDLE_CAPI_EXPORT extern void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor,
-                                                      PD_Place place,
-                                                      int* size);
+PADDLE_CAPI_EXPORT extern float* PD_ZeroCopyTensorFLOATData(
+    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
+PADDLE_CAPI_EXPORT extern int32_t* PD_ZeroCopyTensorINT32Data(
+    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
+PADDLE_CAPI_EXPORT extern int64_t* PD_ZeroCopyTensorINT64Data(
+    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
+PADDLE_CAPI_EXPORT extern uint8_t* PD_ZeroCopyTensorUINT8Data(
+    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
 
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor,
                                                 void* data,

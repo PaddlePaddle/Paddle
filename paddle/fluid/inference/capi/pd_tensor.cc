@@ -125,14 +125,42 @@ void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
   tensor->tensor.Reshape(new_shape);
 }
 
-void* PD_ZeroCopyTensorMutableData(PD_ZeroCopyTensor* tensor, PD_Place place) {
-  return tensor->tensor.mutable_data<void>(paddle::ConvertToPlace(place));
+float* PD_ZeroCopyTensorMutableFLOATData(PD_ZeroCopyTensor* tensor,
+                                         PD_Place place) {
+  return tensor->tensor.mutable_data<float>(paddle::ConvertToPlace(place));
+}
+int32_t* PD_ZeroCopyTensorMutableINT32Data(PD_ZeroCopyTensor* tensor,
+                                           PD_Place place) {
+  return tensor->tensor.mutable_data<int32_t>(paddle::ConvertToPlace(place));
+}
+int64_t* PD_ZeroCopyTensorMutableINT64Data(PD_ZeroCopyTensor* tensor,
+                                           PD_Place place) {
+  return tensor->tensor.mutable_data<int64_t>(paddle::ConvertToPlace(place));
+}
+uint8_t* PD_ZeroCopyTensorMutableUINT8Data(PD_ZeroCopyTensor* tensor,
+                                           PD_Place place) {
+  return tensor->tensor.mutable_data<uint8_t>(paddle::ConvertToPlace(place));
 }
 
-void* PD_ZeroCopyTensorData(PD_ZeroCopyTensor* tensor, PD_Place place,
-                            int* size) {
+float* PD_ZeroCopyTensorFLOATData(PD_ZeroCopyTensor* tensor, PD_Place place,
+                                  int* size) {
   paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor.data<void>(&p, size);
+  return tensor->tensor.data<float>(&p, size);
+}
+int32_t* PD_ZeroCopyTensorINT32Data(PD_ZeroCopyTensor* tensor, PD_Place place,
+                                    int* size) {
+  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
+  return tensor->tensor.data<int32_t>(&p, size);
+}
+int64_t* PD_ZeroCopyTensorINT64Data(PD_ZeroCopyTensor* tensor, PD_Place place,
+                                    int* size) {
+  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
+  return tensor->tensor.data<int64_t>(&p, size);
+}
+uint8_t* PD_ZeroCopyTensorUINT8Data(PD_ZeroCopyTensor* tensor, PD_Place place,
+                                    int* size) {
+  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
+  return tensor->tensor.data<uint8_t>(&p, size);
 }
 
 void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
