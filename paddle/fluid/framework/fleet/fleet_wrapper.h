@@ -55,7 +55,21 @@ namespace framework {
 class FleetWrapper {
  public:
   virtual ~FleetWrapper() {}
-  FleetWrapper() { scale_sparse_gradient_with_batch_size_ = true; }
+  FleetWrapper() {
+    scale_sparse_gradient_with_batch_size_ = true;
+    // trainer sleep some time for pslib core dump
+    sleep_seconds_before_fail_exit_ = 300;
+    // pslib request server timeout ms
+    client2client_request_timeout_ms_ = 500000;
+    // pslib connect server timeout_ms
+    client2client_connect_timeout_ms_ = 10000;
+    // pslib request max retry
+    client2client_max_retry_ = 3;
+  }
+
+  void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
+                              int max_retry);
+
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
   // Param<out>: fea_values
@@ -195,6 +209,10 @@ class FleetWrapper {
  protected:
   static bool is_initialized_;
   bool scale_sparse_gradient_with_batch_size_;
+  int32_t sleep_seconds_before_fail_exit_;
+  int client2client_request_timeout_ms_;
+  int client2client_connect_timeout_ms_;
+  int client2client_max_retry_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 

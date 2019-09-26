@@ -36,15 +36,24 @@ launch a process on each of the given gpu card.
 """
 
 from __future__ import print_function
+import logging
 import sys
 from sys import version
 import subprocess
 import os
-import warnings
+import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+log_handler = logging.StreamHandler()
+log_format = logging.Formatter(
+    '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s: %(message)s')
+log_handler.setFormatter(log_format)
+logger.addHandler(log_handler)
 
 
 def _print_arguments(args):
@@ -129,6 +138,12 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
+def terminate_procs(procs):
+    for p in procs:
+        if p.poll() is None:
+            p.terminate()
+
+
 def start_procs(args):
     """
     """
@@ -154,14 +169,14 @@ def start_procs(args):
             node_id = int(node_id)
 
             if args.node_ip != "127.0.0.1" and current_node_ip != args.node_ip:
-                warnings.warn(
+                logger.warning(
                     "Please NOTE: When using paddlecloud, current_node_ip is \
 automatically got from POD_IP. Your input node_ip: {} doesn't equals to \
 current_node_ip: {} from paddlecloud environment."
                     .format(args.node_ip, current_node_ip))
             if args.cluster_node_ips != "127.0.0.1" and args.cluster_node_ips != ",".join(
                     node_ips):
-                warnings.warn(
+                logger.warning(
                     "Please NOTE: When using paddlecloud, cluster_node_ips is \
 automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
 Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
@@ -228,16 +243,39 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
 
         procs.append(proc)
 
-    for i in range(0, len(procs)):
-        proc = procs[i]
+    try:
+        alive = True
+        error = False
+        # wait all process finish or one error
+        while alive and not error:
+            alive = False
+            for p in procs:
+                ret = p.poll()
+                if ret is None:
+                    alive = True
+                elif ret != 0:
+                    error = True
+            time.sleep(1)
 
-        proc.wait()
-        if len(log_fns) > 0:
-            log_fns[i].close()
+        if error:
+            terminate_procs(procs)
+            exit(1)
 
-        if proc.returncode != 0:
-            raise subprocess.CalledProcessError(
-                returncode=procs[i].returncode, cmd=cmds[i])
+    except KeyboardInterrupt:
+        logger.warning("KeyboardInterrupt, exit")
+        terminate_procs(procs)
+        raise
+    except SystemExit:
+        logger.error("One trainer process abort, exit")
+        terminate_procs(procs)
+        raise
+    except:
+        logger.error("Trainer process abort, exit")
+        terminate_procs(procs)
+        raise
+    finally:
+        for fn in log_fns:
+            fn.close()
 
 
 def launch():

@@ -166,6 +166,9 @@ message VarDesc {
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
+  // True if the variable is an input data and
+  // have to check the feed data shape and dtype
+  optional bool need_check_feed = 4 [ default = false ];
 }
 
 message BlockDesc {

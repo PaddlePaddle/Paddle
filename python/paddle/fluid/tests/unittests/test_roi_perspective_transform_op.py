@@ -87,10 +87,10 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     estimated_height = (len2 + len4) / 2.0
     estimated_width = (len1 + len3) / 2.0
 
-    normalized_height = transformed_height
+    normalized_height = max(2, transformed_height)
     normalized_width = round(estimated_width *
                              (normalized_height - 1) / estimated_height) + 1
-    normalized_width = min(normalized_width, transformed_width)
+    normalized_width = max(2, min(normalized_width, transformed_width))
 
     dx1 = x1 - x2
     dx2 = x3 - x2
@@ -99,9 +99,9 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     dy2 = y3 - y2
     dy3 = y0 - y1 + y2 - y3
     matrix = np.zeros([9])
-    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) / (
+    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 + 1e-5) / (
         normalized_width - 1)
-    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) / (
+    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 + 1e-5) / (
         normalized_height - 1)
     matrix[8] = 1
 

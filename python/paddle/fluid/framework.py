@@ -416,6 +416,8 @@ class Variable(object):
         stop_gradient (bool): True if the variable will stop to calculate its
             gradients when backward. Default: False.
         is_data (bool): True if the variable is an input data. Default: False
+        need_check_feed (bool): True if the variable is an input data and have
+            to check the feed data shape and dtype. Default: False
 
     Notes:
         The constructor of Variable should not be invoked directly. Please
@@ -425,7 +427,7 @@ class Variable(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
@@ -444,6 +446,7 @@ class Variable(object):
                  error_clip=None,
                  stop_gradient=False,
                  is_data=False,
+                 need_check_feed=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -456,12 +459,13 @@ class Variable(object):
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
+            self.stop_gradient_ = kwargs.get("stop_gradient", True)
             if not self._ivar:
                 self._ivar = core.VarBase(
                     name, type
                     if type else core.VarDesc.VarType.LOD_TENSOR, dtype
                     if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [], stop_gradient, True
+                    list(shape) if shape else [], True
                     if persistable else False)
             if persistable:
                 _dygraph_tracer().trace_var(name, self)
@@ -530,6 +534,9 @@ class Variable(object):
                             "The previous persistable is {1}; the new "
                             "persistable is {2}. They are not matched".format(
                                 self.name, self.persistable, persistable))
+
+            if need_check_feed and is_new_var:
+                self.desc.set_need_check_feed(need_check_feed)
 
             if capacity is not None:
                 if is_new_var:
@@ -617,6 +624,17 @@ class Variable(object):
 
         Returns:
             str: The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                cur_program = fluid.Program()
+                cur_block = cur_program.current_block()
+                new_variable = cur_block.create_var(name="X",
+                                                    shape=[-1, 23, 48],
+                                                    dtype='float32')
+                new_variable.to_string(True)
         """
         if in_dygraph_mode():
             # TODO(panyx0718): add more dygraph debug info.
@@ -641,18 +659,6 @@ class Variable(object):
         return res_str
 
     __repr__ = __str__
-
-    def set_desc(self, input):
-        """
-        Set the variable description.
-
-        Args:
-            input(core.VarDesc): The new VarDesc.
-
-        Returns:
-            None
-        """
-        self.desc = input
 
     @property
     def stop_gradient(self):
@@ -903,6 +909,21 @@ class Variable(object):
         slice_end = []
         reverse_axis = []
 
+        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+            self.block.append_op(
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': [out]},
+                attrs={
+                    'shape': shape,
+                    'dtype': out.dtype,
+                    'value': float(value),
+                    'force_cpu': force_cpu or force_init_on_cpu()
+                },
+                stop_gradient=True)
+            out.stop_gradient = True
+            return out
+
         for dim, slice_item in enumerate(item):
             if isinstance(slice_item, slice):
                 start = slice_item.start
@@ -928,17 +949,81 @@ class Variable(object):
                 slice_start.append(start)
                 slice_end.append(end)
             else:
-                # int
                 decrease_axis.append(dim)
                 slice_axis.append(dim)
                 slice_start.append(slice_item)
-                slice_end.append(slice_item + 1
-                                 if slice_item != -1 else 10000000)
+                if isinstance(slice_item, Variable):
+                    temp_1 = self.block.create_var(dtype='int32')
+                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
+                    temp_end = self.block.create_var(dtype='int32')
+                    self.block.append_op(
+                        type='elementwise_add',
+                        inputs={'X': slice_item,
+                                'Y': temp_1},
+                        outputs={'Out': temp_end},
+                        attrs={'axis': -1})
+                    slice_end.append(temp_end)
+                else:
+                    slice_end.append(slice_item + 1
+                                     if slice_item != -1 else 10000000)
+
+        def contain_var(one_list):
+            for ele in one_list:
+                if isinstance(ele, Variable):
+                    return True
+            return False
+
+        def get_new_list_tensor(old_list):
+            new_list_tensor = []
+            for dim in old_list:
+                if isinstance(dim, Variable):
+                    dim.stop_gradient = True
+                    new_list_tensor.append(dim)
+                else:
+                    assert (isinstance(dim, int))
+                    temp_out = self.block.create_var(dtype='int32')
+                    fill_constant(
+                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    new_list_tensor.append(temp_out)
+            return new_list_tensor
+
+        inputs = {'Input': [self]}
+        attrs = {
+            'axes': slice_axis,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axis
+        }
+        infer_flags = list(1 for i in range(len(slice_axis)))
+
+        # starts
+        if not contain_var(slice_start):
+            attrs['starts'] = slice_start
+        else:
+            inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+            for i, dim in enumerate(slice_start):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
+        # ends
+        if not contain_var(slice_end):
+            attrs['ends'] = slice_end
+        else:
+            inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+            for i, dim in enumerate(slice_end):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+        # infer_flags
+        attrs['infer_flags'] = infer_flags
 
         out = self
         if len(slice_axis) > 0:
             # append slice_op here
-
             slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
                                                              "_slice"),
@@ -946,14 +1031,9 @@ class Variable(object):
 
             self.block.append_op(
                 type="slice",
-                inputs={'Input': [out]},
+                inputs=inputs,
                 outputs={'Out': [slice_out_var]},
-                attrs={
-                    'axes': slice_axis,
-                    'starts': slice_start,
-                    'ends': slice_end,
-                    'decrease_axis': decrease_axis
-                })
+                attrs=attrs)
 
             out = slice_out_var
 
@@ -1067,7 +1147,7 @@ class Operator(object):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cur_program = Program()
+            cur_program = fluid.Program()
             cur_block = cur_program.current_block()
             # var1 += var2 + var3
             cur_block.append_op(type="sum",
@@ -1759,6 +1839,11 @@ class Block(object):
                 init_ops = []
                 for op in block.ops:
                     if var.name in op.output_arg_names:
+                        # In startup_program, "c_broadcast" and "c_sync_comm_stream"
+                        # are treated as initialization ops that cause error. 
+                        # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
+                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
+                            continue
                         init_ops.append(op)
                 return init_ops
 
@@ -1774,6 +1859,7 @@ class Block(object):
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = False
         return param
 
     def append_op(self, *args, **kwargs):
@@ -2029,7 +2115,8 @@ class Block(object):
                 dtype=var.dtype,
                 type=var.type,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                need_check_feed=var.desc.need_check_feed())
         else:
             ret_var = self.create_var(
                 name=var.name,
@@ -2038,7 +2125,8 @@ class Block(object):
                 type=var.type,
                 lod_level=var.lod_level,
                 persistable=True if force_persistable else var.persistable,
-                is_data=var.is_data)
+                is_data=var.is_data,
+                need_check_feed=var.desc.need_check_feed())
         return ret_var
 
 
@@ -2341,6 +2429,20 @@ class IrOpNode(IrNode):
             "The node operator description cannot be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
+    def rename_output(self, old_output_name, new_output_name):
+        """
+        Rename the output of this node.
+
+        Args:
+            old_output_name(str): the old output name.
+            new_output_name(str): the new output name.
+        """
+        assert self.node.op() is not None, \
+            "The node operator description cannot be None."
+        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
+        ), old_output_name, new_output_name))
+        self.node.op()._rename_output(old_output_name, new_output_name)
+
     def input(self, name):
         """
         Get the argument name list by the parameter name for input.
@@ -2633,6 +2735,24 @@ class IrGraph(object):
         new_input_node.append_output(op_node)
         op_node.append_input(new_input_node)
         op_node.rename_input(old_input_node.name(), new_input_node.name())
+
+    def update_output_link(self, old_output_node, new_output_node, op_node):
+        """
+        Update the output's link of an operator node.
+
+        Args:
+            old_output_node(IrNode): the old output node of the giving op_node.
+            new_output_node(IrNode): the new output node of the giving op_node.
+            op_node(IrOpNode): the operator node that is needed to update input's link.
+        """
+        assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
+        self.graph.nodes() and op_node.node in self.graph.nodes(), \
+        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+        old_output_node.remove_input(op_node)
+        op_node.remove_output(old_output_node)
+        new_output_node.append_input(op_node)
+        op_node.append_output(new_output_node)
+        op_node.rename_output(old_output_node.name(), new_output_node.name())
 
     def link_to(self, node_in, node_out):
         """
@@ -3235,9 +3355,13 @@ class Program(object):
         """
         if for_test:
             if self._appending_grad_times > 0:
-                loss_op = self._find_loss_op()
-                assert loss_op is not None, "The optimized network should have loss operator."
-                forward_prog = self._prune([], loss_op)
+                forward_prog = Program()
+                forward_prog.desc = core.prune_backward(self.desc)
+                forward_prog.blocks = [
+                    Block(forward_prog, i)
+                    for i in six.moves.range(forward_prog.desc.num_blocks())
+                ]
+                forward_prog._sync_with_cpp()
                 p = forward_prog._inference_optimize(prune_read_op=False)
             else:
                 p = self._inference_optimize(prune_read_op=False)
@@ -3614,6 +3738,8 @@ class Program(object):
         for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
+            if var.desc.need_check_feed():
+                self.global_block().var(var.name).desc.set_need_check_feed(True)
 
     def list_vars(self):
         """
@@ -3636,16 +3762,6 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
-
-    def _find_loss_op(self):
-        loss_op = None
-        op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        forward_loss = int(core.op_proto_and_checker_maker.OpRole.Forward
-                           ) | int(core.op_proto_and_checker_maker.OpRole.Loss)
-        for op in self.global_block().ops:
-            if int(op.all_attrs()[op_role_key]) == forward_loss:
-                loss_op = op
-        return loss_op
 
 
 class Parameter(Variable):
