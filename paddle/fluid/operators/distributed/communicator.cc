@@ -14,8 +14,9 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <paddle/fluid/framework/program_desc.h>
 #include <chrono>  // NOLINT
+#include <map>
 #include <thread>  // NOLINT
-
+#include <unordered_set>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -555,14 +556,13 @@ void GeoSgdCommunicator::SendThread() {
         auto send_task = [this, &var_name] {
           auto origin_var_name = DeltaVarToVar(var_name);
 
-          auto before_send = GetCurrentUS();
           if (var_list_[origin_var_name] == true) {
             auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
             SendUpdateSparseVars(origin_var_name, ids_set);
           } else {
             SendUpdateDenseVars(origin_var_name);
           }
-
+          auto before_send = GetCurrentUS();
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
           send_functor(ctx, *delta_scope_.get(), true);
@@ -751,8 +751,9 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
           }
         }));
   }
-  for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
-
+  for (size_t i = 0; i < fs.size(); ++i) {
+    fs[i].wait();
+  }
   auto after_run_send_sparse = GetCurrentUS();
   VLOG(1) << "run send update sparse var " << var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
