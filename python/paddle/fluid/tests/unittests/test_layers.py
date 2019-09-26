@@ -743,7 +743,7 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
 
         with self.dynamic_graph():
-            inp_np = np.random.randn(3, 3).astype("float32")
+            inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
             inp = base.to_variable(inp_np)
             mode = 'channel'
             prelu1 = nn.PRelu(
@@ -1361,13 +1361,18 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             conv3d1 = nn.Conv3DTranspose(
-                'conv3d1', num_filters=3, filter_size=2, bias_attr='conv3d1_b')
+                'conv3d1',
+                num_filters=3,
+                filter_size=2,
+                bias_attr='conv3d1_b',
+                use_cudnn=False)
             conv3d2 = nn.Conv3DTranspose(
                 'conv3d2',
                 num_filters=3,
                 filter_size=2,
                 param_attr=weight_attr,
-                bias_attr='conv3d2_b')
+                bias_attr='conv3d2_b',
+                use_cudnn=False)
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
