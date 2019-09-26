@@ -237,7 +237,7 @@ class CompiledProgram(object):
 
         return self
 
-    def with_inference_optimize(self, config):
+    def _with_inference_optimize(self, config):
         """ Add inference optimize
 
         Args:

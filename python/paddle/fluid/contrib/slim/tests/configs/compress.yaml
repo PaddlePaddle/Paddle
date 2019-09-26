@@ -1,0 +1,4 @@
+version: 1.0
+compressor:
+    epoch: 1 
+    checkpoint_path: './checkpoints/'

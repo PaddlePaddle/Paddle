@@ -78,10 +78,11 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-        block_id_, ops_);
-    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(block_id_, ops_);
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(prog_, block_id_,
+                                                               ops_);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        block_id_, ops_);
+        prog_, block_id_, ops_);
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
