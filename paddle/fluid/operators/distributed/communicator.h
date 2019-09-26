@@ -313,7 +313,7 @@ class AsyncCommunicator : public Communicator {
 class GeoSgdCommunicator : public Communicator {
  public:
   GeoSgdCommunicator(){}
-  ~GeoSgdCommunicator() {};
+  ~GeoSgdCommunicator();
   void InitImpl(const paddle::framework::ProgramDesc& program, 
                 Scope* training_scope,
                 std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,

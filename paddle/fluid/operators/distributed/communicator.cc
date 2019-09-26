@@ -362,6 +362,19 @@ void AsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop done";
 }
 
+GeoSgdCommunicator::~GeoSgdCommunicator() {
+  if (FLAGS_v >= 3) {
+    std::string msg("~Geo Sgd Communicator");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
+  running_ = false;
+  if (send_thread_) send_thread_->join();
+  if (FLAGS_v >= 3) {
+    std::string msg("~Geo Sgd Communicator done");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
+}
+
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc& program, 
                 Scope* training_scope,
                 std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
@@ -432,6 +445,34 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc& program,
   pserver_scope_.reset(new Scope());
 }
 
+void GeoSgdCommunicator::Start() {
+  VLOG(0) << "Geo Sgd Communicator start";
+  if (!communicator_) {
+    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
+  } else {
+    VLOG(0) << "start send thread ";
+    running_ = true;
+    // start send and recv thread
+    send_thread_.reset(
+        new std::thread(std::bind(&GeoSgdCommunicator::SendThread, this)));
+  }
+} 
+
+void GeoSgdCommunicator::Stop() {
+  VLOG(0) << "Geo Sgd Communicator stop";
+  running_ = false;
+  if (!communicator_) {
+    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
+  } else {
+    if (send_thread_) {
+      VLOG(1) << "stop send thread";
+      send_thread_->join();
+      send_thread_.reset(nullptr);
+    }
+  }
+  VLOG(0) << "Geo Sgd Communicator stop done";
+}
+
 void GeoSgdCommunicator::Send(const std::string& var_name,
                               const framework::Scope& scope) {
   // when execute trainer startup program, recv parameter from pserver
@@ -475,8 +516,100 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
     }
   }
   need_push_queue_->Push(ids_table);
+}
 
-  VLOG(4) << "GeoSgd send complete";
+void GeoSgdCommunicator::SendThread() {
+  VLOG(0) << "SendThread start!";
+  auto before_run_training = GetCurrentUS();
+
+  while(running_) {
+    std::vector<std::future<void>> task_futures;
+    task_futures.reserve(send_varname_to_ctx_.size());
+    auto before_run_send_graph = GetCurrentUS();
+
+    if (ids_send_vec_.size() < geo_need_push_nums_) {
+        VLOG(4) << "ids_send_vec_ Size: " << ids_send_vec_.size();
+        if (need_push_queue_->Size() > 0) {
+          ids_send_vec_.push_back(*(need_push_queue_->Pop()));
+          VLOG(3) << "ids_send_vec_ pushed";
+        }
+    }
+
+    if (ids_send_vec_.size() >= geo_need_push_nums_) {
+        auto after_run_training = GetCurrentUS();
+        VLOG(1) << "run Training use time "
+                << after_run_training - before_run_training;
+        before_run_training = GetCurrentUS();
+        VLOG(1) << "Start send after get need_push_num";
+
+        for (auto &iter : send_varname_to_ctx_) {
+          auto &var_name = iter.first;
+          auto send_task = [this, &var_name] {
+            auto origin_var_name = DeltaVarToVar(var_name);
+
+            auto before_send = GetCurrentUS();
+            if (var_list_[origin_var_name] == true) {
+              auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
+              SendUpdateSparseVars(origin_var_name, ids_set);
+            } else {
+              SendUpdateDenseVars(origin_var_name);
+            }
+
+            auto send_functor = distributed::ParameterSend<float>();
+            auto &ctx = send_varname_to_ctx_.at(var_name);
+            send_functor(ctx, *delta_scope_.get(), true);
+    
+            auto after_send = GetCurrentUS();
+            VLOG(1) << "send " << var_name << " use time "
+                    << after_send - before_send;
+          };
+          task_futures.emplace_back(
+              send_threadpool_->enqueue(std::move(send_task)));
+        }
+      }
+    for (auto &task_f : task_futures) {
+        task_f.wait();
+        have_push_.fetch_add(1, std::memory_order_relaxed);
+      }
+    auto after_run_send_graph = GetCurrentUS();
+    VLOG(1) << "run send graph use time "
+            << after_run_send_graph - before_run_send_graph;
+    Recv();
+  }
+}
+
+void GeoSgdCommunicator::Recv() {
+  auto push_nums = have_push_.load();
+  if (push_nums >= send_varname_to_ctx_.size()) {
+    ids_send_vec_.clear();
+    RecvAll();
+    have_push_.store(0);
+  }
+}
+
+void GeoSgdCommunicator::RecvAll() {
+  if (!running_) return;
+  auto before_recv = GetCurrentUS();
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(recv_varname_to_ctx_.size());
+  for (auto &iter : recv_varname_to_ctx_) {
+    auto recv_task = [this, &iter] {
+      auto &var_name = iter.first;
+      auto recv_functor = distributed::ParameterRecv<float>();
+      auto before_parameter_recv = GetCurrentUS();
+      recv_functor(iter.second, *pserver_scope_.get());
+      auto after_parameter_recv = GetCurrentUS();
+      VLOG(1) << "run parameter recv var " << var_name << " use time "
+              << after_parameter_recv - before_parameter_recv;
+      RecvUpdateVars(var_name);
+    };
+    task_futures.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
+  }
+  for (auto &task : task_futures) {
+    task.wait();
+  }
+  auto after_recv = GetCurrentUS();
+  VLOG(1) << "run recv graph use time " << after_recv - before_recv;
 }
 
 std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
@@ -733,128 +866,7 @@ void GeoSgdCommunicator::GeoSgdDenseParamInit(framework::Scope *scope_x,
   framework::CopyVariable(*var_x, var_y);
 }
 
-void GeoSgdCommunicator::Start() {
-  VLOG(0) << "Geo Sgd Communicator start";
-  if (!communicator_) {
-    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
-  } else {
-    VLOG(0) << "start send thread ";
-    running_ = true;
-    // start send and recv thread
-    send_thread_.reset(
-        new std::thread(std::bind(&GeoSgdCommunicator::SendThread, this)));
-  }
-} 
 
-void GeoSgdCommunicator::Stop() {
-  VLOG(0) << "Geo Sgd Communicator stop";
-  running_ = false;
-  if (!communicator_) {
-    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
-  } else {
-    if (send_thread_) {
-      VLOG(1) << "stop send thread";
-      send_thread_->join();
-      send_thread_.reset(nullptr);
-    }
-  }
-  VLOG(0) << "Geo Sgd Communicator stop done";
-}
-
-void GeoSgdCommunicator::SendThread() {
-  VLOG(0) << "SendThread start!";
-  auto before_run_training = GetCurrentUS();
-
-  while(running_) {
-    std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
-    auto before_run_send_graph = GetCurrentUS();
-
-    if (ids_send_vec_.size() < geo_need_push_nums_) {
-        VLOG(4) << "ids_send_queue_ Size: " << ids_send_vec_.size();
-        if (need_push_queue_->Size() > 0) {
-          ids_send_vec_.push_back(*(need_push_queue_->Pop()));
-          VLOG(3) << "ids_send_queue pushed";
-        }
-    }
-
-    if (ids_send_vec_.size() >= geo_need_push_nums_) {
-        auto after_run_training = GetCurrentUS();
-        VLOG(1) << "run Training use time "
-                << after_run_training - before_run_training;
-        before_run_training = GetCurrentUS();
-        VLOG(1) << "Start send after get need_push_num";
-
-        for (auto &iter : send_varname_to_ctx_) {
-          auto &var_name = iter.first;
-          auto send_task = [this, &var_name] {
-            auto origin_var_name = DeltaVarToVar(var_name);
-
-            auto before_send = GetCurrentUS();
-            if (var_list_[origin_var_name] == true) {
-              auto ids_set = SparseIdsMerge(ids_send_vec_, origin_var_name);
-              SendUpdateSparseVars(origin_var_name, ids_set);
-            } else {
-              SendUpdateDenseVars(origin_var_name);
-            }
-
-            auto send_functor = distributed::ParameterSend<float>();
-            auto &ctx = send_varname_to_ctx_.at(var_name);
-            send_functor(ctx, *delta_scope_.get(), true);
-    
-            auto after_send = GetCurrentUS();
-            VLOG(1) << "send " << var_name << " use time "
-                    << after_send - before_send;
-          };
-          task_futures.emplace_back(
-              send_threadpool_->enqueue(std::move(send_task)));
-        }
-      }
-    for (auto &task_f : task_futures) {
-        task_f.wait();
-        have_push_.fetch_add(1, std::memory_order_relaxed);
-      }
-    auto after_run_send_graph = GetCurrentUS();
-    VLOG(1) << "run send graph use time "
-            << after_run_send_graph - before_run_send_graph;
-    Recv();
-  }
-}
-
-void GeoSgdCommunicator::Recv() {
-  auto push_nums = have_push_.load();
-  if (push_nums >= send_varname_to_ctx_.size()) {
-    ids_send_vec_.clear();
-    RecvAll();
-    have_push_.store(0);
-  }
-}
-
-void GeoSgdCommunicator::RecvAll() {
-  if (!running_) return;
-  auto before_recv = GetCurrentUS();
-  std::vector<std::future<void>> task_futures;
-  task_futures.reserve(recv_varname_to_ctx_.size());
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto recv_task = [this, &iter] {
-      auto &var_name = iter.first;
-      VLOG(2) << "recv var " << var_name;
-      auto recv_functor = distributed::ParameterRecv<float>();
-      auto before_parameter_recv = GetCurrentUS();
-      recv_functor(iter.second, *pserver_scope_.get());
-      auto after_parameter_recv = GetCurrentUS();
-      VLOG(1) << "run parameter recv var " << var_name << " use time "
-              << after_parameter_recv - before_parameter_recv;
-      RecvUpdateVars(var_name);
-    };
-    task_futures.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
-  }
-  for (auto &task : task_futures) {
-    task.wait();
-  }
-  auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_recv;
-}
 
 
 }  // namespace distributed
