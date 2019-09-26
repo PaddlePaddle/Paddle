@@ -35,9 +35,10 @@ class TestDistCTR2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_dist_ctr(self):
-        self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
+        self.check_with_place("dist_ctr.py", delta=1e-2, check_error_log=False)
 
 
+@skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -52,14 +53,14 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
             need_envs=need_envs)
 
 
-class TestDistCTR2x2(TestDistBase):
+class TestDistCTR2x2_ASYNC(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._hogwild_mode = True
         self._enforce_place = "CPU"
 
     def test_dist_ctr(self):
-        self.check_with_place("dist_ctr.py", delta=100, check_error_log=False)
+        self.check_with_place("dist_ctr.py", delta=100, check_error_log=True)
 
 
 

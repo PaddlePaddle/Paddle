@@ -92,6 +92,7 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
+            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
