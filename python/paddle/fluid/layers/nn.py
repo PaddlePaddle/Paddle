@@ -11718,14 +11718,139 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
 
 
 def elementwise_max(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2, 5, 4]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
+
+    """
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
 def elementwise_min(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[1, 3, 2]
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_pow(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2, 243, 16]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -11738,15 +11863,33 @@ def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
 
 
 for func in [
+        elementwise_max,
+        elementwise_pow,
+        elementwise_min,
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "axis (int32, optional): If X.dimension != Y.dimension, \
+            Y.dimension must be a subsequence of x.dimension. \
+            And axis is the start dimension index for broadcasting Y onto X. ",
+            "act (string, optional): Activation applied to the output. \
+            Default is None. Details: :ref:`api_guide_activations_en` ",
+            "name (string, optional): Name of the output. \
+            Default is None. It's used to print debug info for developers. Details: \
+            :ref:`api_guide_Name` "
+        ],
+        skip_attrs_set={"x_data_format", "y_data_format", "axis"
+                        }) + """\n""" + str(func.__doc__)
+
+for func in [
+        elementwise_mod,
+        elementwise_floordiv,
         elementwise_add,
         elementwise_div,
         elementwise_sub,
         elementwise_mul,
-        elementwise_max,
-        elementwise_min,
-        elementwise_pow,
-        elementwise_mod,
-        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -14197,43 +14340,85 @@ def deformable_roi_pooling(input,
                            position_sensitive=False,
                            name=None):
     """
-    Deformable PSROI Pooling Layer
+    Deformable ROI Pooling Layer
+  
+    Performs deformable region-of-interest pooling on inputs. As described
+    in `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_, it will get offset for each bin after 
+    roi pooling so that pooling at correct region. Batch_size will change to the number of region bounding boxes after deformable_roi_pooling.
+  
+    The operation has three steps:
     
+    1. Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height.
+  
+    2. Add offset to pixel in ROI to get new location and the new value which are computed directly through
+       bilinear interpolation with four nearest pixel.
+     
+    3. Sample several points in each bin to get average values as output.
+  
+  
     Args:
-       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
-                        is height of the feature, and W is the width of the feature.
-       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                        the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
-                         N is number of ROIs, C is number of channels, which indicate the offset distance 
-                         in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
-                          value is True or False. Default: False.
-       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
-                         is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
-                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height (integer): The pooled output height. Default: 1.
-       pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
-                        if None, default value is [pooled_height, pooled_width].
-       sample_per_part (integer): The number of samples in each bin. Default: 1.
-       trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
-       name (str): Name of layer. Default: None.
+        input (Variable):The input of deformable roi pooling and it is tensor which value type is float32. The shape of input is
+                         [N, C, H, W]. Where N is batch size, C is number of input channels,
+                         H is height of the feature, and W is the width of the feature.
+        rois (Variable): ROIs (Regions of Interest) with type float32 to pool over. It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), and the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates, which value type is float32.
+        trans (Variable): Offset of features on ROIs while pooling which value type is float32. The format is [N, C, H, W], where 
+                          N is number of ROIs, C is number of channels, which indicate the offset distance 
+                          in the x and y directions, H is pooled height, and W is pooled width. 
+        no_trans (bool): Whether to add offset to get new value or not while roi pooling, which value with type bool is True or False.
+                         If value is True, no offset will be added in operation. Default: False.
+        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width), which value type is float32.
+                         Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+        group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value type is int32. (eg.number of input channels 
+                          is k1 * k2 * (C + 1), which k1 and k2 are group width and height and C+1 is number of output
+                          chanels.) eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
+        pooled_height (int): The pooled output height which value type is int32. Default: 1.
+        pooled_width (int): The pooled output width which value type is int32. Default: 1.
+        part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, and values always equal to pooled_height \
+                         and pooled_width. Default: if None, default value is [pooled_height, pooled_width].
+        sample_per_part (int): The number of samples in each bin which value type is int32. If value is bigger, it will consume more performance. Default: 1.
+        trans_std (float): Coefficient of offset which value type is float32. It controls weight of offset. Default: 0.1.
+        position_sensitive (bool): Whether to choose deformable psroi pooling mode or not, and value type is bool(True or False). If value is False, input dimension equals to output dimension. \
+                                   If value is True, input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
+        name (str|None): Name of layer. Default: None.
     Returns:
-        Variable: The tensor variable storing the deformable psroi pooling \
-                  result.
-
+        Variable: Output of deformable roi pooling is that, if position sensitive is False, input dimension equals to output dimension. If position sensitive is True,\
+                  input dimension should be the result of output dimension divided by pooled height and pooled width.
 
     Examples:
       .. code-block:: python
 
+        # position_sensitive=True
+        import paddle.fluid as fluid
+        input = fluid.layers.data(name="input",
+                                  shape=[2, 192, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        rois = fluid.layers.data(name="rois",
+                                 shape=[4],
+                                 dtype='float32', 
+                                 lod_level=1)
+        trans = fluid.layers.data(name="trans",
+                                  shape=[2, 384, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False) 
+        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
+                                                     rois=rois, 
+                                                     trans=trans, 
+                                                     no_trans=False,
+                                                     spatial_scale=1.0, 
+                                                     group_size=(1, 1),
+                                                     pooled_height=8,
+                                                     pooled_width=8,
+                                                     part_size=(8, 8),
+                                                     sample_per_part=4, 
+                                                     trans_std=0.1,
+                                                     position_sensitive=True)
+  
+        # position_sensitive=False
         import paddle.fluid as fluid
         input = fluid.layers.data(name="input",
                                   shape=[2, 192, 64, 64], 
