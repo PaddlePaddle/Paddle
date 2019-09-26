@@ -92,6 +92,12 @@ PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyToCPU(
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorCopyFromCpu(
     PD_ZeroCopyTensor* tensor, void* data, PD_DataType data_type);
 
+// PADDLE_CAPI_EXPORT extern void PD_ZeroCopyToCPU(
+//    PD_ZeroCopyTensor *tensor, void *data, PD_DataType dtype);
+
+// PADDLE_CAPI_EXPORT extern void PD_ZeroCopyFromCPU(
+//    PD_ZeroCopyTensor *tensor, void *data, PD_DataType dtype);
+
 PADDLE_CAPI_EXPORT
 extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int* size);
 
