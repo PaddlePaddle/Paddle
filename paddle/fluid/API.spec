@@ -16,7 +16,7 @@ paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=N
 paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c2562241744aabe3fff1b59af22dd281'))
 paddle.fluid.in_dygraph_mode (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '301bae0d8e02cc9eec5be02f052f11c6'))
 paddle.fluid.is_compiled_with_cuda (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '60c7f107a5050aeb58bb74eb175672b5'))
-paddle.fluid.Variable ('paddle.fluid.framework.Variable', ('document', 'a7c077bf34288f4e646207ec9526b62f'))
+paddle.fluid.Variable ('paddle.fluid.framework.Variable', ('document', '65ff735c2b96673d7131f5ff6b0db40c'))
 paddle.fluid.Variable.__init__ (ArgSpec(args=['self', 'block', 'type', 'name', 'shape', 'dtype', 'lod_level', 'capacity', 'persistable', 'error_clip', 'stop_gradient', 'is_data', 'need_check_feed'], varargs=None, keywords='kwargs', defaults=(VarType.LOD_TENSOR, None, None, None, None, None, None, None, False, False, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.Variable.astype (ArgSpec(args=['self', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '78541af4039262ed7ce3c447f8cc9cc1'))
 paddle.fluid.Variable.backward (ArgSpec(args=['self', 'backward_strategy'], varargs=None, keywords=None, defaults=(None,)), ('document', 'cb928fa194da09694f4267f0a25268f1'))
