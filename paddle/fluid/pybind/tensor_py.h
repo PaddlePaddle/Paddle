@@ -135,45 +135,20 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
-template <typename T>
-void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
-                          T place) {
+template <typename T, typename P>
+void SetTensorFromPyArrayT(
+    framework::Tensor *self,
+    py::array_t<T, py::array::c_style | py::array::forcecast> array, P place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
   self->Resize(framework::make_ddim(dims));
-  void *dst = nullptr;
-  constexpr int style = pybind11::array::c_style | pybind11::array::forcecast;
+  auto dst = self->mutable_data<T>(place);
 
-  if (py::isinstance<py::array_t<float, style>>(array)) {
-    dst = self->mutable_data<float>(place);
-  } else if (py::isinstance<py::array_t<int, style>>(array)) {
-    dst = self->mutable_data<int>(place);
-  } else if (py::isinstance<py::array_t<int64_t, style>>(array)) {
-    dst = self->mutable_data<int64_t>(place);
-  } else if (py::isinstance<py::array_t<double, style>>(array)) {
-    dst = self->mutable_data<double>(place);
-  } else if (py::isinstance<py::array_t<int8_t, style>>(array)) {
-    dst = self->mutable_data<int8_t>(place);
-  } else if (py::isinstance<py::array_t<uint8_t, style>>(array)) {
-    dst = self->mutable_data<uint8_t>(place);
-  } else if (py::isinstance<py::array_t<paddle::platform::float16, style>>(
-                 array)) {
-    dst = self->mutable_data<paddle::platform::float16>(place);
-  } else if (py::isinstance<py::array_t<bool, style>>(array)) {
-    dst = self->mutable_data<bool>(place);
-  } else {
-    PADDLE_THROW(
-        "Incompatible data or style type: tensor.set() supports bool, float32, "
-        "float64, "
-        "int8, int32, int64, uint8 and uint16, but got %s!",
-        array.dtype());
-  }
   if (paddle::platform::is_cpu_place(place)) {
     std::memcpy(dst, array.data(), array.nbytes());
-
   } else {
 #ifdef PADDLE_WITH_CUDA
     if (paddle::platform::is_cuda_pinned_place(place)) {
@@ -191,6 +166,37 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
     PADDLE_THROW("Not supported GPU, please compile WITH_GPU option");
 #endif
   }
+}
+
+template <typename P>
+void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
+                          P place) {
+  if (py::isinstance<py::array_t<float>>(array)) {
+    SetTensorFromPyArrayT<float, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<int>>(array)) {
+    SetTensorFromPyArrayT<int, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<int64_t>>(array)) {
+    SetTensorFromPyArrayT<int64_t, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<double>>(array)) {
+    SetTensorFromPyArrayT<double, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<int8_t>>(array)) {
+    SetTensorFromPyArrayT<int8_t, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
+    SetTensorFromPyArrayT<uint8_t, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<bool>>(array)) {
+    SetTensorFromPyArrayT<bool, P>(self, array, place);
+  } else {
+    PADDLE_THROW(
+        "Incompatible data or style type: tensor.set() supports bool, float16, "
+        "float32, "
+        "float64, "
+        "int8, int32, int64 and uint8, but got %s!",
+        array.dtype());
+  }
+  // auto p = static_cast<const float*>(array.data());
+  // std::cout << "address of array.data():" << p << std::endl;
 }
 
 template <typename T>
