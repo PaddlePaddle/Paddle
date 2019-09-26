@@ -17,6 +17,11 @@
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPlace;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
+
 extern "C" {
 
 PD_Tensor* PD_NewPaddleTensor() { return new PD_Tensor; }

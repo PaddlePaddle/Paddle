@@ -21,6 +21,11 @@
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPlace;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
+
 extern "C" {
 
 PD_AnalysisConfig* PD_NewAnalysisConfig() { return new PD_AnalysisConfig; }

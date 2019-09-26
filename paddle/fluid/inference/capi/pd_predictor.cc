@@ -18,6 +18,11 @@
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPlace;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
+
 extern "C" {
 
 bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
