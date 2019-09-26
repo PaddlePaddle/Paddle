@@ -251,7 +251,7 @@ class Communicator {
                                      int &geo_need_push_nums) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T());
-      communicator_->InitImpl(program, training_scope, vars_info, trainers, geo_need_push_nums);
+      communicator_->InitImpl(program, training_scope, std::ref(vars_info), std::ref(trainers), std::ref(geo_need_push_nums));
     }
   }
 
