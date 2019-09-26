@@ -161,10 +161,12 @@ template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
                                                 int *size) const;
 template uint8_t *ZeroCopyTensor::data<uint8_t>(PaddlePlace *place,
                                                 int *size) const;
+template void *ZeroCopyTensor::data<void>(PaddlePlace *place, int *size) const;
 template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
 template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
 template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
+template void *ZeroCopyTensor::mutable_data<void>(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),
