@@ -32,12 +32,10 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   std::ostringstream sout;
   std::ostringstream sout_py_trace;
   // Step 1. Construct python call stack string
-  sout_py_trace << "\n------------------------------------------\n";
-  sout_py_trace << "Python Call Stacks (More useful to users):";
-  sout_py_trace << "\n------------------------------------------\n";
-  if (callstack.empty()) {
-    sout_py_trace << "None. Only Op error has Python call stacks.";
-  } else {
+  if (!callstack.empty()) {
+    sout_py_trace << "\n------------------------------------------\n";
+    sout_py_trace << "Python Call Stacks (More useful to users):";
+    sout_py_trace << "\n------------------------------------------\n";
     for (auto &line : callstack) {
       sout_py_trace << line;
     }
