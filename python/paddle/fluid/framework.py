@@ -3385,7 +3385,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, feeded_var_names, targets):
+    def _prune(self, targets, feeded_var_names=None):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3396,11 +3396,15 @@ class Program(object):
         Args:
             targets(list|Variable|Operator): A list of variables or operators
                 need to be pruned
+            feeded_var_names(list|string|None): A list of variable names from where
+                pruning start
 
         Returns:
             Program:  A new, pruned program.
 
         """
+        if feeded_var_names is None:
+            feeded_var_names = []
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
