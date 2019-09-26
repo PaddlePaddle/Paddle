@@ -185,6 +185,9 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
     SetTensorFromPyArrayT<uint8_t, P>(self, array, place);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+  } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
+    // TODO(cql): temporary keeping uint16, should be depracated later
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetTensorFromPyArrayT<bool, P>(self, array, place);
   } else {
@@ -192,11 +195,9 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
         "Incompatible data or style type: tensor.set() supports bool, float16, "
         "float32, "
         "float64, "
-        "int8, int32, int64 and uint8, but got %s!",
+        "int8, int32, int64 and uint8, uint16, but got %s!",
         array.dtype());
   }
-  // auto p = static_cast<const float*>(array.data());
-  // std::cout << "address of array.data():" << p << std::endl;
 }
 
 template <typename T>

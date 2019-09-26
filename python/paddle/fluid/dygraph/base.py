@@ -188,8 +188,6 @@ def to_variable(value, block=None, name=None):
             stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
-        if value.dtype == np.float16:
-            value = value.view(np.uint16)
         tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):

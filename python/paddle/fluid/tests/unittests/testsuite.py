@@ -68,11 +68,6 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
 
 
 def set_input(scope, op, inputs, place):
-    def np_value_to_fluid_value(input):
-        if input.dtype == np.float16:
-            input = input.view(np.uint16)
-        return input
-
     def __set_input__(var_name, var):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
@@ -80,7 +75,7 @@ def set_input(scope, op, inputs, place):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            tensor.set(np_value_to_fluid_value(var), place)
+            tensor.set(var, place)
         elif isinstance(var, float):
             scope.find_var(var_name).set_float(var)
         elif isinstance(var, int):
@@ -121,16 +116,6 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-        # NOTE(dzhwinter): type hacking
-        # numpy float16 is binded to paddle::platform::float16
-        # in tensor_py.h via the help of uint16 datatype. Because
-        # the internal memory representation of float16 is
-        # actually uint16_t in paddle. So we use np.uint16 in numpy for
-        # raw memory, it can pass through the pybind. So in the testcase,
-        # we feed data use data.view(uint16), but the dtype is float16 in fact.
-        # The data.view(uint16) means do not cast the data type, but process data as the uint16
-        if dtype == np.uint16:
-            dtype = np.float16
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name)
 

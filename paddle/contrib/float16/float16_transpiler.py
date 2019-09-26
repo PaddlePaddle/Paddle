@@ -244,12 +244,7 @@ class Float16Transpiler:
             self.scope.var(fp16_var_name)
             fp16_tensor = self.scope.find_var(fp16_var_name).get_tensor()
             tensor = np.array(self.scope.find_var(var.name).get_tensor())
-            # After the old tensor data is converted to np.float16, view(np.uint16)
-            # is used so that the internal memory of the numpy array will be 
-            # reinterpreted to be of np.uint16 data type, which is binded to fluid 
-            # float16 data type via the help of pybind in tensor_py.h. 
-            fp16_tensor.set(
-                tensor.astype(np.float16).view(np.uint16), self.place)
+            fp16_tensor.set(tensor.astype(np.float16), self.place)
 
             # old var will be replaced by the fp16 var in program desc
             self.input_map[var.name] = fp16_var_name

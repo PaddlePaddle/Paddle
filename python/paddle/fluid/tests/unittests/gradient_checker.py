@@ -64,7 +64,7 @@ def _set_item(t, i, e, np_dtype):
         shape = np_t.shape
         np_t = np_t.flatten()
         np_t[i] = e
-        np_t = np_t.reshape(shape).view(np.uint16)
+        np_t = np_t.reshape(shape)
         t.set(np_t, place)
     elif np_dtype == np.float32:
         t._set_float_element(i, e)
