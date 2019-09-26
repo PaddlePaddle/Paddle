@@ -41,11 +41,17 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     if (input->lod().empty()) {
       size_t padding_value =
           static_cast<size_t>(ctx.Attr<int>("padding_value"));
+      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      const T* input_length_data = input_length->data<T>();
+
+      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+      T* output_length_data = output_length->mutable_data<T>(ctx.GetPlace());
+
       for (size_t batch_id = 0; batch_id < (unsigned)input_dims[0];
            batch_id++) {
         T prev_token = -1;
         size_t output_idx = 0;
-        for (size_t i = 0; i < (unsigned)input_dims[1]; i++) {
+        for (size_t i = 0; i < (unsigned)input_length_data[batch_id]; i++) {
           size_t input_ind = batch_id * input_dims[1] + i;
           if ((unsigned)input_data[input_ind] != blank &&
               !(merge_repeated && input_data[input_ind] == prev_token)) {
@@ -55,6 +61,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
           }
           prev_token = input_data[input_ind];
         }
+        output_length_data[batch_id] = output_idx;
         for (size_t j = output_idx; j < (unsigned)input_dims[1]; j++)
           output_data[batch_id * input_dims[1] + j] = padding_value;
       }

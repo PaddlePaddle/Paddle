@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-def fc_refer(matrix, with_bias):
+def fc_refer(matrix, with_bias, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
     w_i, w_o = matrix.weights.shape
 
@@ -31,22 +31,32 @@ def fc_refer(matrix, with_bias):
     else:
         result = np.dot(x_data, w_data)
 
-    return result
+    if with_relu:
+        return np.maximum(result, 0)
+    else:
+        return result
 
 
 class MatrixGenerate:
-    def __init__(self, mb, ic, oc, h, w):
+    def __init__(self, mb, ic, oc, h, w, bias_dims=2):
         self.input = np.random.random((mb, ic, h, w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
-        self.bias = np.random.random((1, oc)).astype("float32")
+        if bias_dims == 2:
+            self.bias = np.random.random((1, oc)).astype("float32")
+        else:
+            self.bias = np.random.random((oc)).astype("float32")
 
 
 class TestFCOp(OpTest):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
+
     def setUp(self):
         self.op_type = "fc"
-        self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
+        self.config()
 
-        self.with_bias = True
         if self.with_bias:
             self.inputs = {
                 'Input': self.matrix.input,
@@ -56,54 +66,60 @@ class TestFCOp(OpTest):
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
 
-        self.attrs = {'use_mkldnn': False}
+        if self.with_relu:
+            activation_type = "relu"
+        else:
+            activation_type = ""
+        self.attrs = {'use_mkldnn': False, 'activation_type': activation_type}
 
-        self.outputs = {'Out': fc_refer(self.matrix, self.with_bias)}
+        self.outputs = {
+            'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)
+        }
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestFCOpNoBias(TestFCOp):
-    def init_shapes(self, mb, ic, oc, h, w):
+class TestFCOpNoBias1(TestFCOp):
+    def config(self):
         self.with_bias = False
-        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+        self.with_relu = False
+        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
 
 
-class TestFCOpWithBias(TestFCOp):
-    def init_shapes(self, mb, ic, oc, h, w):
+class TestFCOpNoBias2(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
+
+
+class TestFCOpNoBias4(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.matrix = MatrixGenerate(1, 32, 64, 3, 3, 1)
+
+
+class TestFCOpWithBias1(TestFCOp):
+    def config(self):
         self.with_bias = True
-        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+        self.with_relu = False
+        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
 
 
-class TestFCOp1(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(2, 8, 10, 1, 1)
+class TestFCOpWithBias2(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
 
 
-class TestFCOp2(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(4, 5, 6, 2, 2)
-
-
-class TestFCOp4(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(1, 32, 64, 3, 3)
-
-
-class TestFCOpWithBias1(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(3, 8, 10, 2, 1)
-
-
-class TestFCOpWithBias2(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(4, 5, 6, 2, 2)
-
-
-class TestFCOpWithBias3(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(1, 64, 32, 3, 3)
+class TestFCOpWithBias3(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
 
 
 if __name__ == "__main__":
