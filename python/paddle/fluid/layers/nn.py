@@ -11702,18 +11702,302 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def elementwise_add(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_add(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[3., 8., 6.]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_add(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) # z.shape=[2,3,4,5]
+
+
+    ..  code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                "y": np.random.randint(1, 5, size=[5]).astype('float32')
+            }
+        
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_add(x, y, axis=3)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value) # z.shape=[2,3,4,5]
+    """
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
 def elementwise_div(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_div(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2., 0.6, 2.]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_div(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) # z.shape=[2,3,4,5]
+
+
+    ..  code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                "y": np.random.randint(1, 5, size=[5]).astype('float32')
+            }
+        
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_div(x, y, axis=3)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value) # z.shape=[2,3,4,5]
+    """
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
 def elementwise_sub(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_sub(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[1., -2., 2.]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_sub(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) # z.shape=[2,3,4,5]
+
+
+    ..  code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                "y": np.random.randint(1, 5, size=[5]).astype('float32')
+            }
+        
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_sub(x, y, axis=3)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value) # z.shape=[2,3,4,5]
+    """
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 def elementwise_mul(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_mul(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2., 15., 8.]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_mul(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) # z.shape=[2,3,4,5]
+
+
+    ..  code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                "y": np.random.randint(1, 5, size=[5]).astype('float32')
+            }
+        
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_mul(x, y, axis=3)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+        print(z_value) # z.shape=[2,3,4,5]
+    """
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
@@ -11863,6 +12147,10 @@ def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
 
 
 for func in [
+        elementwise_add,
+        elementwise_div,
+        elementwise_sub,
+        elementwise_mul,
         elementwise_max,
         elementwise_pow,
         elementwise_min,
@@ -11886,10 +12174,6 @@ for func in [
 for func in [
         elementwise_mod,
         elementwise_floordiv,
-        elementwise_add,
-        elementwise_div,
-        elementwise_sub,
-        elementwise_mul,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
