@@ -41,6 +41,7 @@ bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) { return buf->buf.empty(); }
 void* PD_PaddleBufData(PD_PaddleBuf* buf) { return buf->buf.data(); }
 
 size_t PD_PaddleBufLength(PD_PaddleBuf* buf) { return buf->buf.length(); }
+}  // extern "C"
 
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
   switch (dtype) {
@@ -109,5 +110,3 @@ PD_ACPrecision ConvertToACPrecision(Precision dtype) {
   PADDLE_ENFORCE(false, "Unsupport place.");
   return PD_ACPrecision::kFloat32;
 }
-
-}  // extern "C"
