@@ -48,12 +48,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
+  bool enable_fp16_;
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
+  AnalysisConfig::Precision precision_mode_;
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -66,6 +68,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     workspace_size_ = Attr<int>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
+    enable_fp16_ = Attr<bool>("enable_fp16");
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
@@ -92,6 +95,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Get(engine_key_ + std::to_string(predictor_id_));
+    }
+    precision_mode_ = AnalysisConfig::Precision::kFloat32;
+    if (enable_int8_) {
+      precision_mode_ = AnalysisConfig::Precision::kInt8;
+    }
+    if (enable_fp16_) {
+      precision_mode_ = AnalysisConfig::Precision::kHalf;
     }
   }
 
@@ -141,7 +151,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
-            max_batch_size_, workspace_size_, enable_int8_,
+            max_batch_size_, workspace_size_, precision_mode_,
             calib_res->calib_.get(),
             boost::get<platform::CUDAPlace>(dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
@@ -173,7 +183,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
+    PADDLE_ENFORCE_EQ(input_names_.empty(), false,
+                      "should pass at least one input");
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -193,7 +204,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      auto t_shape = framework::vectorize(t.dims());
+      auto t_shape = framework::vectorize<int64_t>(t.dims());
+      // check if the input shapes are consistent with model.
+      if (HasAttr(x + "_shape")) {
+        std::vector<int64_t> i_shape = Attr<std::vector<int64_t>>(x + "_shape");
+        std::vector<int64_t> model_input_shape(i_shape.begin() + 1,
+                                               i_shape.end());
+        std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
+                                                 t_shape.end());
+        PADDLE_ENFORCE_EQ(model_input_shape == runtime_input_shape, true,
+                          "Input shapes are inconsistent with the model. TRT 5 "
+                          "or lower version "
+                          "does not support dynamic input shapes. Please check "
+                          "your input shapes.");
+      }
+
       runtime_batch = t_shape[0];
 
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
@@ -241,7 +266,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(engine_key_ + std::to_string(predictor_id_),
-                      max_batch_size_, workspace_size_, enable_int8_,
+                      max_batch_size_, workspace_size_, precision_mode_,
                       calibrator_.get(), device_id_);
       PrepareTRTEngine(scope, trt_engine_);
     }

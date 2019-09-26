@@ -65,28 +65,33 @@ double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 class CoalesceGradTensorPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const {
+    if (Get<size_t>(details::kNRanks) <= 1) {
+      VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
+              << ", there doesn't need apply FuseAllReduceOpPass.";
+      return;
+    }
     ir::Graph &result = *graph;
-
     details::ParamsAndGrads params_grads;
     RecordParamsAndGrads(result, &params_grads);
 
-    VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
-      return;
-    }
-
-    auto vars_info = GetVarInfo(result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndDenseGrads,
                                             &result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndSparseGrads,
                                             &result);
     ResetAttribute<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads, &result);
+
+    VLOG(10) << "The number of params and grads is:" << params_grads.size();
+    if (params_grads.size() == 0) {
+      return;
+    }
+
     auto &p_g_dense_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     auto &p_g_sparse_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndSparseGrads);
 
+    auto vars_info = GetVarInfo(result);
     for (auto &param_grad : params_grads) {
       if (IsLoDTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
@@ -118,33 +123,37 @@ class CoalesceGradTensorPass : public ir::Pass {
         p_g_dense_grad.size(), num_of_p_g_dense_grad,
         "The number of p_g_dense_grad is not consistent with before.");
 
+    auto &pinned_var_set =
+        graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
-      SetGradientPersistable(p_g_dense_grad, vars_info);
+      RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
       CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
-        SetGradientPersistable(p_g_dense_grad, vars_info);
-        PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
-                       "The data type of the same group is not consistent.");
+        RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
+        PADDLE_ENFORCE_EQ(IsUnifiedDtype(sub_param_grad, vars_info), true,
+                          "The data type of the same group is not consistent.");
         CoalesceTensors(vars_info, sub_param_grad, &result);
       }
     }
   }
 
-  void SetGradientPersistable(
+  void RecordGradients(
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
-      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
-      const {
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      std::unordered_set<std::string> *pinned_var_set) const {
+    // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
-      PADDLE_ENFORCE(iter != vars_info.end(), "%s is not found.", p_g.second);
-      PADDLE_ENFORCE(!iter->second.empty());
-      // Set persistable
+      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
+                        p_g.second);
+      PADDLE_ENFORCE_EQ(!iter->second.empty(), true);
       for (auto it : iter->second) {
         PADDLE_ENFORCE_NOT_NULL(it->Var());
-        it->Var()->SetPersistable(true);
+        pinned_var_set->insert(it->Var()->Name());
       }
-      PADDLE_ENFORCE(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)));
+      PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+                        true);
     }
   }
 
@@ -411,8 +420,10 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
       const std::string &var_name) const {
     auto grad_iter = vars_info.find(var_name);
-    PADDLE_ENFORCE(grad_iter != vars_info.end(), "%s is not found.", var_name);
-    PADDLE_ENFORCE(!grad_iter->second.empty());
+    PADDLE_ENFORCE_EQ(grad_iter != vars_info.end(), true, "%s is not found.",
+                      var_name);
+    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true, "%s is not found.",
+                      var_name);
     PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
     return grad_iter->second.front()->Var();
   }
@@ -484,5 +495,4 @@ class CoalesceGradTensorPass : public ir::Pass {
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
               paddle::framework::ir::CoalesceGradTensorPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+    .RequirePassAttr(paddle::framework::details::kNRanks);

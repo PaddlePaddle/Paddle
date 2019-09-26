@@ -63,7 +63,7 @@ if(WITH_GPU)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -123,8 +123,8 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog data_feed_proto
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -133,7 +133,9 @@ cc_test(version_test SRCS version_test.cc DEPS version)
 
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
-cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc memory_optimize_helper)
+cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
+
+cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
@@ -193,18 +195,17 @@ else()
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper)
+target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_helper conditional_block_op_helper)
 
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
-cc_test(inplace_op_inference_test SRCS inplace_op_inference_test.cc DEPS inplace_op_pass op_registry proto_desc op_info memory_optimize_helper pass_builder)
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
@@ -221,6 +222,9 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info string_helper glog)
 
 # Get the current working branch
 execute_process(

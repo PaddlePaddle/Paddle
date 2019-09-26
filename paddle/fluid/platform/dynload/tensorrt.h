@@ -14,7 +14,9 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+#if !defined(_WIN32)
 #include <dlfcn.h>
+#endif
 
 #include <mutex>  // NOLINT
 
@@ -34,7 +36,7 @@ extern void* tensorrt_dso_handle;
   struct DynLoad__##__name {                                            \
     template <typename... Args>                                         \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {    \
-      using tensorrt_func = decltype(__name(args...)) (*)(Args...);     \
+      using tensorrt_func = decltype(&::__name);                        \
       std::call_once(tensorrt_dso_flag, []() {                          \
         tensorrt_dso_handle =                                           \
             paddle::platform::dynload::GetTensorRtDsoHandle();          \

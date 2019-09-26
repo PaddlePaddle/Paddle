@@ -28,10 +28,12 @@ struct UniqueOpFunctor {
   framework::Tensor* out_;
   framework::Tensor* index_;
   const framework::Tensor* in_;
+  framework::Tensor* count_;
 
   UniqueOpFunctor(framework::Tensor* out, framework::Tensor* index,
-                  const framework::Tensor* in)
-      : out_(out), index_(index), in_(in) {}
+                  const framework::Tensor* in,
+                  framework::Tensor* count = nullptr)
+      : out_(out), index_(index), in_(in), count_(count) {}
 
   template <typename IndexT>
   void apply() const {
@@ -50,12 +52,43 @@ struct UniqueOpFunctor {
     for (auto i = 0; i < in_->numel(); i++) {
       auto it = dict.find(in_data[i]);
       if (it == dict.end()) {
-        dict.insert(std::make_pair(in_data[i], j));
-        uniq.push_back(in_data[i]);
+        dict.emplace(std::make_pair(in_data[i], j));
+        uniq.emplace_back(in_data[i]);
         index_data[i] = static_cast<IndexT>(j);
         j++;
       } else {
         index_data[i] = static_cast<IndexT>(it->second);
+      }
+    }
+
+    if (count_ != nullptr) {
+      // Resize the count tensor dims to allocate the memory
+      count_->Resize(framework::make_ddim({static_cast<int64_t>(uniq.size())}));
+      IndexT* count_data = count_->mutable_data<IndexT>(platform::CPUPlace());
+      // init count_data to 0
+      memset(count_data, 0, uniq.size() * sizeof(IndexT));
+
+      const auto& index_type = index_->type();
+      bool index_type_match = index_type == framework::proto::VarType::INT32 ||
+                              index_type == framework::proto::VarType::INT64;
+      PADDLE_ENFORCE(
+          index_type_match,
+          "Index holds the wrong type, it holds %s, but desires to be %s or %s",
+          paddle::framework::DataTypeToString(index_type),
+          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
+          paddle::framework::DataTypeToString(
+              framework::proto::VarType::INT64));
+
+      if (index_type == framework::proto::VarType::INT32) {
+        for (auto i = 0; i < in_->numel(); ++i) {
+          const IndexT& index = index_data[i];
+          count_data[static_cast<int32_t>(index)] += static_cast<IndexT>(1);
+        }
+      } else {
+        for (auto i = 0; i < in_->numel(); ++i) {
+          const IndexT& index = index_data[i];
+          count_data[static_cast<int64_t>(index)] += static_cast<IndexT>(1);
+        }
       }
     }
 

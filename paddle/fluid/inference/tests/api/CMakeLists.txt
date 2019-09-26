@@ -43,6 +43,17 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	     --iterations=2)
 endfunction()
 
+function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
+	inference_analysis_test_run(${TARGET_NAME}
+	COMMAND ${test_binary}
+        ARGS --infer_model=${model_dir}/model
+             --infer_data=${data_path}
+             --warmup_batch_size=10
+             --batch_size=300
+             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+	     --iterations=1)
+endfunction()
+
 function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
@@ -112,11 +123,6 @@ inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyze
 set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
 download_model_and_data(${LAC_INSTALL_DIR} "lac_model.tar.gz" "lac_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc)
-
-# MM DNN
-set(MM_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mm_dnn")
-download_model_and_data(${MM_DNN_INSTALL_DIR} "MM_DNN_model.tar.gz" "MM_DNN_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_mm_dnn ${MM_DNN_INSTALL_DIR} analyzer_mm_dnn_tester.cc)
 
 # Pyramid DNN
 set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
@@ -232,12 +238,15 @@ if(WITH_MKLDNN)
   inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   ### Object detection models
-  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_100.bin")
+  set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
   set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
   set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
   # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_100.tar.gz")
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
+
+  # download small demo set of pascalvoc for testing local userdata preprocessing
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_int8_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -245,7 +254,7 @@ if(WITH_MKLDNN)
   # mobilenet-ssd int8
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+  inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
 endif()
 
@@ -255,17 +264,23 @@ download_model_and_data(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_dat
 inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
+    set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
-        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
+        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
     endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(trt_resnet50_test SRCS trt_resnet50_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(trt_fc_prelu_test SRCS trt_fc_prelu_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(trt_cascade_rcnn_test SRCS trt_cascade_rcnn_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
 endif()

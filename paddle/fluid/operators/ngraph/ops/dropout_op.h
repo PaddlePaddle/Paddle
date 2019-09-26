@@ -41,6 +41,7 @@ static void BuildDropoutNode(
       op_attrs.Get<std::string>("dropout_implementation");
   auto is_test = op_attrs.Get<bool>("is_test");
   auto seed = op_attrs.Get<int>("seed");
+  auto fix_seed = op_attrs.Get<bool>("fix_seed");
   float value = 1.0f - dropout_prob;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
 
@@ -58,7 +59,8 @@ static void BuildDropoutNode(
                                                 ngraph::Shape{}, {1});
 
     auto gen_mask = std::make_shared<ngraph::op::GenerateMask>(
-        one, input->get_shape(), input->get_element_type(), seed, value);
+        one, input->get_shape(), input->get_element_type(), seed, value,
+        fix_seed);
 
     if (upscale_in_train) {
       auto mask_val = paddle::platform::CreateConstant(

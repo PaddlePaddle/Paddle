@@ -20,10 +20,12 @@ add_custom_command(TARGET profiler_py_proto POST_BUILD
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif(NOT WIN32)
 
+cc_library(flags SRCS flags.cc DEPS gflags) 
+
 if(WITH_GPU)
-  nv_library(enforce SRCS enforce.cc)
+  nv_library(enforce SRCS enforce.cc DEPS flags)
 else()
-  cc_library(enforce SRCS enforce.cc)
+  cc_library(enforce SRCS enforce.cc DEPS flags)
 endif()
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
@@ -59,8 +61,6 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
-
 nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 IF(WITH_GPU)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
@@ -70,9 +70,9 @@ ENDIF()
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
+cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    temp_allocator ${dgc_deps})
+    ${dgc_deps})
 
 if (WITH_DISTRIBUTE)
   cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
@@ -115,8 +115,9 @@ cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
-if(WITH_GPU)
-    nv_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor operator)
-else()
-    cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor operator)
+if(NOT APPLE AND NOT WIN32)
+  cc_library(device_code SRCS device_code.cc DEPS device_context)
+  if(WITH_GPU)
+    cc_test(device_code_test SRCS device_code_test.cc DEPS device_code lod_tensor)
+  endif()
 endif()

@@ -30,27 +30,26 @@ using platform::to_void_cast;
 
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
-    const bool is_layout_correct = input->layout() == DataLayout::kMKLDNN;
-    const bool is_format_defined =
-        input->format() != memory::format::format_undef;
-    PADDLE_ENFORCE(is_layout_correct && is_format_defined,
-                   "Wrong layout/format set for Input tensor");
+    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
+                      "Wrong format set for Input tensor");
   }
 }
 
 static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
                                                 const mkldnn::engine& engine,
                                                 const memory::data_type& dt) {
-  const auto dims = paddle::framework::vectorize2int(input.dims());
+  const auto dims = paddle::framework::vectorize<int>(input.dims());
   const auto format = input.format();
   auto description = memory::desc(dims, dt, format);
   auto mem_prim_desc = memory::primitive_desc(description, engine);
   return mem_prim_desc;
 }
 
-static mkldnn::memory::format GetDstMemFormat(
+static MKLDNNMemoryFormat GetDstMemFormat(
     const concat::primitive_desc& concat_pd) {
-  return (memory::format)concat_pd.dst_primitive_desc().desc().data.format;
+  return (MKLDNNMemoryFormat)concat_pd.dst_primitive_desc().desc().data.format;
 }
 
 static platform::CPUPlace GetCpuPlace(
@@ -65,31 +64,6 @@ static const mkldnn::engine& GetMKLDNNEngine(
     const paddle::framework::ExecutionContext& ctx) {
   auto& dev_ctx = ctx.template device_context<platform::MKLDNNDeviceContext>();
   return dev_ctx.GetEngine();
-}
-
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const std::vector<const Tensor*> multi_input,
-                      const int64_t& concat_axis, const memory::data_type& dt) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  for (size_t i = 0; i < multi_input.size(); i++) {
-    platform::MKLDNNHandler::AppendKeyDims(
-        &key, paddle::framework::vectorize2int(multi_input[i]->dims()));
-  }
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
-  platform::MKLDNNHandler::AppendKey(&key,
-                                     std::to_string(multi_input[0]->format()));
-  if (platform::get_cur_mkldnn_session_id() ==
-      platform::kMKLDNNSessionID_Default) {
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << tid;
-    platform::MKLDNNHandler::AppendKey(&key, "-t:");
-    platform::MKLDNNHandler::AppendKey(&key, ss.str());
-  }
-  return key;
 }
 
 template <typename T>
@@ -127,8 +101,8 @@ class ConcatPrimitiveFactory {
  private:
   memory::desc CreateDstMemDescriptor(Tensor* output,
                                       const memory::data_type& dt) {
-    auto dst_dims = paddle::framework::vectorize2int(output->dims());
-    return memory::desc(dst_dims, dt, memory::format::any);
+    auto dst_dims = paddle::framework::vectorize<int>(output->dims());
+    return memory::desc(dst_dims, dt, MKLDNNMemoryFormat::any);
   }
 
   mkldnn::memory CreateDstMemory(const concat::primitive_desc& concat_pd,
@@ -161,8 +135,8 @@ class ConcatPrimitiveFactory {
   std::vector<memory::primitive_desc> srcs_pd;
   std::vector<memory> srcs;
   std::vector<primitive::at> inputs;
-  boost::optional<memory> dst_mem;  // TODO(mgallus): change to std::optional
-};                                  // upon introduction of C++17 to paddle
+  boost::optional<memory> dst_mem;
+};
 
 template <typename T>
 class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -180,7 +154,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
 
     ConcatPrimitiveFactory<T> prim_creator;
-    std::string key = CreateKey(ctx, multi_input, concat_axis, dt);
+    std::string key = platform::CreateKey(
+        paddle::framework::vectorize<int>(multi_input[0]->dims()), concat_axis,
+        ctx.op().Output("Out"), dt, multi_input[0]->format(),
+        platform::ThreadIDasStr());
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
     const std::string key_srcs = key + "@concat_srcs";

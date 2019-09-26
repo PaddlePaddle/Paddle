@@ -21,66 +21,32 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
+from paddle.fluid import compiler
 
-class DistributedStrategy(object):
+import os
+import sys
+import six
+
+
+class LambConfig(object):
     def __init__(self):
-        # precision configs
-        self.use_fp16 = False
-        self.use_fp32 = True
-        # algorithmic communication
-        self.local_sgd = False
-        self.dgc = False
-        # communication topology configs
-        self.h_allreduce = False
-
-    def build(self):
-        self.strategy_map = {}
-        # make sure we set single precision config True
-        if self.use_fp32 and self.use_fp16:
-            self.use_fp16 = False
-        # make sure we set single algorithmic communication True
-        if self.local_sgd and self.dgc:
-            self.local_sgd = False
-        self.strategy_map["fp16"] = self.use_fp16
-        self.strategy_map["fp32"] = self.use_fp32
-        self.strategy_map["localsgd"] = self.local_sgd
-        self.strategy_map["dgc"] = self.dgc
-        self.strategy_map["h_allreduce"] = self.h_allreduce
+        pass
 
 
-class DistributedOptimizerFactory(object):
+class DistFCConfig(object):
     def __init__(self):
-        self.strategy_to_optimizer_map()
-
-    def strategy_to_optimizer_map(self):
-        pattern = {}
-        pattern["fp16"] = ["FP16SGDOptimizer", "FP16LocalSGDOptimizer"]
-        pattern["fp32"] = ["FP32SGDOptimizer", "FP32LocalSGDOptimizer"]
-        pattern["localsgd"] = ["FP16LocalSGDOptimizer", "FP32LocalSGDOptimizer"]
-        pattern["h_allreduce"] = [
-            "FP32SGDOptimizer",
-            "FP32LocalSGDOptimizer",
-            "FP16SGDOptimizer",
-            "FP16LocalSGDOptimizer",
-        ]
-        self.pattern = pattern
-
-    def create_by_strategy(self, optimizer, strategy):
-        if strategy == None:
-            strategy = DistributedStrategy()
-        strategy.build()
-        strategy_list = []
-        for key in strategy.strategy_map:
-            if strategy.strategy_map[key]:
-                strategy_list.append(self.pattern[key])
-        classname = list(set.intersection(*map(set, strategy_list)))[0]
-        return globals()[classname](optimizer, strategy)
+        pass
 
 
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
         self._local_ip = 0
+
+        self.startup_program = None
+        self._origin_program = None
+        self._transpiled_program = None
+        self.main_program = None
 
     def init_worker(self):
         logging.warn(
@@ -103,10 +69,8 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
-        optimizer_factory = DistributedOptimizerFactory()
-
         self._optimizer = \
-            optimizer_factory.create_by_strategy(optimizer, strategy)
+            CollectiveOptimizer(optimizer, strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -117,14 +81,37 @@ class Collective(Fleet):
                              main_program=None,
                              export_for_deployment=True):
         io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                self._executor, main_program, None, None,
+                                executor, main_program, None, None,
                                 export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
-        io.save_persistables(self._executor, dirname, main_program, None)
+        io.save_persistables(executor, dirname, main_program, None)
 
 
 fleet = Collective()
+
+
+class DistributedStrategy(fluid.BuildStrategy):
+    """
+    Init function of DistributedStrategy
+    """
+
+    def __init__(self):
+        super(DistributedStrategy, self).__init__()
+        self.use_local_sgd = False
+        self.use_dist_fc = False
+
+        self.dist_fc_config = None  # DistFCConfig
+        self.mode = "nccl2"  # or collective
+        self.collective_mode = None  # local_sgd or grad_allreduce
+        self.nccl_comm_num = 1
+        self.forward_recompute = False
+        self.recompute_checkpoints = []
+
+        self.exec_strategy = fluid.ExecutionStrategy()
+
+        # configurations below are used for unit test
+        self._ut4grad_allreduce = False
 
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
@@ -134,6 +121,9 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
+        assert isinstance(
+            strategy,
+            DistributedStrategy), "strategy must be DistributedStrategy"
         super(CollectiveOpBasedOptimizer, self).__init__(optimizer, strategy)
 
     def backward(self,
@@ -149,69 +139,6 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
 
-class FP16SGDOptimizer(CollectiveOpBasedOptimizer):
-    """
-    do all reduce within every minibatch
-    """
-
-    def __init__(self, optimizer, strategy=None):
-        super(FP16SGDOptimizer, self).__init__(optimizer, strategy)
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        pass
-
-
-class FP32LocalSGDOptimizer(CollectiveOpBasedOptimizer):
-    def __init__(self, optimizer, strategy=None):
-        super(FP32LocalSGDOptimizer, self).__init__(optimizer, strategy)
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        opts, param_and_grads = self._optimizer.minimize(loss)
-        config = fluid.DistributeTranspilerConfig()
-        config.mode = 'collective'
-        config.collective_mode = 'local_sgd'
-        t = fluid.DistributeTranspiler(config=config)
-        t.transpile(
-            trainer_id=fleet.worker_index(),
-            trainers=fleet.worker_endpoints(),
-            current_endpoint=fleet.worker_endpoints()[fleet.worker_index()],
-            startup_program=startup_program,
-            program=loss.block.program)
-        return opts, param_and_grads
-
-
-class FP32SGDOptimizer(CollectiveOpBasedOptimizer):
-    def __init__(self, optimizer, strategy=None):
-        super(FP32SGDOptimizer, self).__init__(optimizer, strategy)
-
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
-        opts, param_and_grads = self._optimizer.minimize(loss)
-        config = fluid.DistributeTranspilerConfig()
-        config.mode = 'collective'
-        config.collective_mode = 'grad_allreduce'
-        t = fluid.DistributeTranspiler(config=config)
-
-        t.transpile(
-            trainer_id=fleet.worker_index(),
-            trainers=fleet.worker_endpoints(),
-            current_endpoint=fleet.worker_endpoints()[fleet.worker_index()],
-            startup_program=startup_program,
-            program=loss.block.program)
-        return opts, param_and_grads
-
-
 class CollectiveOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
@@ -223,9 +150,14 @@ class CollectiveOptimizer(DistributedOptimizer):
     training.
     """
 
-    def __init__(self, optimizer, strategy=None):
+    def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
-        self.strategy = strategy
+        if strategy.forward_recompute:
+            self.forward_recompute = True
+            self.recompute_checkpoints = strategy.recompute_checkpoints
+        else:
+            self.forward_recompute = False
+        self.print_config = False
 
     def backward(self,
                  loss,
@@ -238,6 +170,158 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def apply_gradients(self, params_grads):
         return self._optimizer.apply_gradients(params_grads)
+
+    def _check_condition(self, name, **kwargs):
+        for k, v in six.iteritems(kwargs):
+            if v is True:
+                assert False, "you can't use %s and %s together" % (name, k)
+
+    def _check_collective_mode(self, main_program, optimizer, strategy):
+        """
+        Check the conflict condtions.
+        """
+        if strategy.use_local_sgd:
+            strategy.mode = "collective"
+            strategy.collective_mode = "local_sgd"
+            self._check_condition(
+                "use_local_sgd",
+                use_dgc=main_program._enable_dgc,
+                use_dist_fc=strategy.use_dist_fc,
+                use_lamb=main_program._use_lamb)
+
+        if strategy.use_dist_fc:
+            self._check_condition(
+                "use_dist_fc",
+                use_dgc=main_program._enable_dgc,
+                use_local_sgd=strategy.use_local_sgd,
+                use_lamb=main_program._use_lamb)
+            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+
+        if strategy._ut4grad_allreduce:
+            strategy.mode = "collective"
+            strategy.collective_mode = "grad_allreduce"
+            self._check_condition(
+                "_ut4grad_allreduce",
+                use_dgc=main_program._enable_dgc,
+                use_lamb=main_program._use_lamb)
+
+        if self._strategy.collective_mode=="local_sgd" \
+                or self._strategy.collective_mode == "grad_allreduce":
+            assert self._strategy.mode == "collective", \
+                "local_sgd and grad_allreduce can be used under collective mode"
+
+    def _transpile(self, startup_program, main_program):
+        """
+        Transpile the programs to distributed programs. And add the variables.
+        """
+        worker_endpoints = fleet.worker_endpoints()
+        trainer_id = fleet.worker_index()
+        current_endpoint = fleet.worker_endpoints()[trainer_id]
+        worker_endpoints_env = ','.join(worker_endpoints)
+        trainers_num = fleet.worker_num()
+
+        if self.print_config:
+            print("worker_endpoints:{} trainers_num:{} current_endpoint:{} \
+                  trainer_id:{}".format(worker_endpoints, trainers_num,
+                                        current_endpoint, trainer_id))
+
+        # call transpiler
+        config = dist_transpiler.DistributeTranspilerConfig()
+        config.mode = self._strategy.mode
+        config.collective_mode = self._strategy.collective_mode
+
+        config.nccl_comm_num = self._strategy.nccl_comm_num
+        config.use_hierarchical_allreduce = self._strategy.use_hierarchical_allreduce
+        config.hierarchical_allreduce_inter_nranks = self._strategy.hierarchical_allreduce_inter_nranks
+
+        t = dist_transpiler.DistributeTranspiler(config=config)
+        t.transpile(
+            trainer_id=trainer_id,
+            trainers=worker_endpoints_env,
+            startup_program=startup_program,
+            program=main_program,
+            current_endpoint=current_endpoint)
+
+    def _get_node_ips_from_endpoints(self, endpoints):
+        ss = set()
+        ips = []
+        for ep in endpoints:
+            ip = ep.split(":")[0].strip()
+            if ip not in ss:
+                ss.add(ip)
+                ips.append(ip)
+            else:
+                continue
+
+        return ips
+
+    def _node_num(self):
+        worker_endpoints = fleet.worker_endpoints()
+        current_endpoint = fleet.worker_endpoints()[fleet.worker_index()]
+        worker_endpoints_env = ','.join(worker_endpoints)
+
+        node_ips = self._get_node_ips_from_endpoints(worker_endpoints)
+        node_ip = current_endpoint.split(":")[0].strip()
+
+        node_num = len(node_ips)
+
+        return node_num
+
+    def _try_to_compile(self, startup_program, main_program):
+        node_num = self._node_num()
+        assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
+
+        self._strategy.fuse_all_reduce_ops = True
+        exec_strategy = self._strategy.exec_strategy
+
+        if node_num <= 1:
+            if self._strategy.nccl_comm_num > 1:
+                logging.warn("set nccl_comm_num=1 since you only have 1 node.")
+            self._strategy.nccl_comm_num = 1
+
+            if self._strategy.use_hierarchical_allreduce:
+                logging.warn(
+                    "set use_hierarchical_allreduce=False since you only have 1 node."
+                )
+            self._strategy.use_hierarchical_allreduce = False
+
+        sync_allreduce = os.getenv("FLAGS_sync_nccl_allreduce")
+        if sync_allreduce is None or sync_allreduce == "1":
+            exec_strategy.num_threads = self._strategy.nccl_comm_num + 1
+            if self._strategy.use_hierarchical_allreduce:
+                exec_strategy.num_threads = 2 * self._strategy.nccl_comm_num + 1
+            if exec_strategy.num_threads > 4:
+                logging.warn(
+                    "if you use use_hierarchical_allreduce or "
+                    "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
+                )
+
+        if self.print_config:
+            print("node_num:", node_num, "num_threads:",
+                  exec_strategy.num_threads, "use_hierarchical_allreduce:",
+                  self._strategy.use_hierarchical_allreduce, "nccl_comm_num:",
+                  self._strategy.nccl_comm_num, "FLAGS_sync_nccl_allreduce:",
+                  sync_allreduce)
+
+        self._transpile(startup_program, main_program)
+
+        if self._strategy.mode == "collective":
+            return main_program
+
+        self._strategy.num_trainers = fleet.worker_num()
+        self._strategy.trainer_id = fleet.worker_index()
+        self._strategy.trainers_endpoints = fleet.worker_endpoints()
+        self._strategy.enable_backward_optimizer_op_deps = True
+
+        self._compiled_program = compiler.CompiledProgram(main_program)
+
+        self._compiled_program.with_data_parallel(
+            loss_name=self._loss.name,
+            build_strategy=self._strategy,
+            exec_strategy=self._strategy.exec_strategy,
+            share_vars_from=None)
+
+        return self._compiled_program
 
     def minimize(self,
                  loss,
@@ -260,24 +344,31 @@ class CollectiveOptimizer(DistributedOptimizer):
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
+        main_program = loss.block.program
+        if startup_program is None:
+            startup_program = fluid.default_startup_program()
+        fleet.startup_program = startup_program
+
+        self._loss = loss
+
+        self._check_collective_mode(main_program, self._optimizer,
+                                    self._strategy)
+
+        if self.forward_recompute:
+            assert (isinstance(self.recompute_checkpoints, list) and
+                    len(self.recompute_checkpoints) > 0)
+            self._optimizer = \
+                fluid.optimizer.RecomputeOptimizer(self._optimizer)
+            self._optimizer._set_checkpoints(self.recompute_checkpoints)
+
         optimize_ops, param_grads = self._optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
-
-        worker_endpoints = fleet.worker_endpoints()
-        trainer_id = fleet.worker_index()
-        current_endpoint = fleet.worker_endpoints()[trainer_id]
-
-        startup_program = startup_program if startup_program else \
-            fluid.framework.default_startup_program
-
-        # call transpiler
-        config = dist_transpiler.DistributeTranspilerConfig()
-        config.mode = "nccl2"
-        t = dist_transpiler.DistributeTranspiler(config=config)
-        t.transpile(
-            trainer_id,
-            trainers=','.join(worker_endpoints),
+            loss,
             startup_program=startup_program,
-            current_endpoint=current_endpoint)
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        fleet._origin_program = main_program.clone(for_test=False)
+        fleet._transpiled_program = main_program
+        fleet.main_program = self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads

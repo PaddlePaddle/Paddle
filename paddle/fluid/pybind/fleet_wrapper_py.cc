@@ -43,12 +43,17 @@ void BindFleetWrapper(py::module* m) {
   py::class_<framework::FleetWrapper>(*m, "Fleet")
       .def(py::init())
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
+      .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
       .def("run_server", &framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
+      .def("get_cache_threshold", &framework::FleetWrapper::GetCacheThreshold)
+      .def("cache_shuffle", &framework::FleetWrapper::CacheShuffle)
+      .def("save_cache", &framework::FleetWrapper::SaveCache)
       .def("load_model", &framework::FleetWrapper::LoadModel)
+      .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
@@ -60,7 +65,9 @@ void BindFleetWrapper(py::module* m) {
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
       .def("load_from_paddle_model",
            &framework::FleetWrapper::LoadFromPaddleModel)
-      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable);
+      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
+      .def("set_client2client_config",
+           &framework::FleetWrapper::SetClient2ClientConfig);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

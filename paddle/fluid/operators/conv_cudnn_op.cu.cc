@@ -18,22 +18,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(cudnn_deterministic, false,
-            "Whether allow using an autotuning algorithm for convolution "
-            "operator. The autotuning algorithm may be non-deterministic. If "
-            "true, the algorithm is deterministic.");
-DEFINE_uint64(conv_workspace_size_limit,
-              paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-              "cuDNN convolution workspace limit in MB unit.");
-DEFINE_bool(cudnn_exhaustive_search, false,
-            "Whether enable exhaustive search for cuDNN convolution or "
-            "not, default is False.");
+DECLARE_bool(cudnn_deterministic);
+DECLARE_uint64(conv_workspace_size_limit);
+DECLARE_bool(cudnn_exhaustive_search);
 
 namespace paddle {
 namespace operators {
@@ -517,4 +509,10 @@ REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv3d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<double>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
+REGISTER_OP_KERNEL(
+    conv3d_grad_grad, CUDNN, plat::CUDAPlace,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<float>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<double>,
+    paddle::operators::CUDNNConvDoubleGradOpKernel<plat::float16>);

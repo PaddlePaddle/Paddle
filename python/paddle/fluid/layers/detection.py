@@ -53,6 +53,7 @@ __all__ = [
     'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'multiclass_nms2',
     'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
@@ -446,7 +447,8 @@ def detection_output(loc,
                      nms_top_k=400,
                      keep_top_k=200,
                      score_threshold=0.01,
-                     nms_eta=1.0):
+                     nms_eta=1.0,
+                     return_index=False):
     """
     **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
@@ -489,21 +491,32 @@ def detection_output(loc,
         score_threshold(float): Threshold to filter out bounding boxes with
             low confidence score. If not provided, consider all boxes.
         nms_eta(float): The parameter for adaptive NMS.
+        return_index(bool): Whether return selected index. Default: False
 
     Returns:
-        Variable:
 
-            The detection outputs is a LoDTensor with shape [No, 6].
-            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
-            `No` is the total number of detections in this mini-batch. For each
-            instance, the offsets in first dimension are called LoD, the offset
-            number is N + 1, N is the batch size. The i-th image has
-            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
-            has no detected results. If all images have not detected results,
-            LoD will be set to {1}, and output tensor only contains one
-            value, which is -1.
-            (After version 1.3, when no boxes detected, the lod is changed
-             from {0} to {1}.)
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned. 
+
+        Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
+        has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
+        the total number of detections in this mini-batch. For each instance, 
+        the offsets in first dimension are called LoD, the offset number is 
+        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
+        detected results, if it is 0, the i-th image has no detected results. 
+
+        If all images have not detected results, LoD will be set to {1}, and 
+        output tensor only contains one value, which is -1.
+        (After version 1.3, when no boxes detected, the lod is changed
+        from {0} to {1}.)       
+ 
+        Index: Only return when return_index is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected index which type is Integer. 
+        The index is the absolute value cross batches. No is the same number 
+        as Out. If the index is used to gather other attribute such as age, 
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
+        N is the batch size and M is the number of boxes.
+
 
     Examples:
         .. code-block:: python
@@ -518,10 +531,11 @@ def detection_output(loc,
                           append_batch_size=False, dtype='float32')
             scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
-            nmsed_outs = fluid.layers.detection_output(scores=scores,
+            nmsed_outs, index = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
-                                       prior_box_var=pbv)
+                                       prior_box_var=pbv,
+                                       return_index=True)
     """
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
@@ -534,20 +548,40 @@ def detection_output(loc,
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
-    helper.append_op(
-        type="multiclass_nms",
-        inputs={'Scores': scores,
-                'BBoxes': decoded_box},
-        outputs={'Out': nmsed_outs},
-        attrs={
-            'background_label': 0,
-            'nms_threshold': nms_threshold,
-            'nms_top_k': nms_top_k,
-            'keep_top_k': keep_top_k,
-            'score_threshold': score_threshold,
-            'nms_eta': 1.0
-        })
+    if return_index:
+        index = helper.create_variable_for_type_inference(dtype='int')
+        helper.append_op(
+            type="multiclass_nms2",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs,
+                     'Index': index},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            })
+        index.stop_gradient = True
+    else:
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'Scores': scores,
+                    'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            })
     nmsed_outs.stop_gradient = True
+    if return_index:
+        return nmsed_outs, index
     return nmsed_outs
 
 
@@ -924,7 +958,7 @@ def yolo_box(x,
         x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
         img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
-        loss = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
+        boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -1295,7 +1329,7 @@ def ssd_loss(location,
 
       5.1 Compute confidence loss.
 
-      5.1 Compute localization loss.
+      5.2 Compute localization loss.
 
       5.3 Compute the overall weighted loss.
 
@@ -2690,10 +2724,31 @@ def multiclass_nms(bboxes,
     is larger than -1. Then this operator pruns away boxes that have high IOU
     (intersection over union) overlap with already selected boxes by adaptive
     threshold NMS based on parameters of nms_threshold and nms_eta.
-
     Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
+    See below for an example:
+
+    .. code-block:: text
+
+        if:
+            box1.data = (2.0, 3.0, 7.0, 5.0) format is (xmin, ymin, xmax, ymax)
+            box1.scores = (0.7, 0.2, 0.4)  which is (label0.score=0.7, label1.score=0.2, label2.cores=0.4)
+
+            box2.data = (3.0, 4.0, 8.0, 5.0)
+            box2.score = (0.3, 0.3, 0.1)
+
+            nms_threshold = 0.3
+            background_label = 0
+            score_threshold = 0
+
+
+        Then:
+            iou = 4/11 > 0.3
+            out.data = [[1, 0.3, 3.0, 4.0, 8.0, 5.0],    
+                         [2, 0.4, 2.0, 3.0, 7.0, 5.0]]
+                         
+            Out format is (label, confidence, xmin, ymin, xmax, ymax)
     Args:
         bboxes (Variable): Two types of bboxes are supported:
                            1. (Tensor) A 3-D Tensor with shape
@@ -2734,7 +2789,7 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Out(Variable): A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
              Each row has 10 values: 
@@ -2784,6 +2839,141 @@ def multiclass_nms(bboxes,
         outputs={'Out': output})
     output.stop_gradient = True
 
+    return output
+
+
+def multiclass_nms2(bboxes,
+                    scores,
+                    score_threshold,
+                    nms_top_k,
+                    keep_top_k,
+                    nms_threshold=0.3,
+                    normalized=True,
+                    nms_eta=1.,
+                    background_label=0,
+                    return_index=False,
+                    name=None):
+    """
+    **Multiclass NMS2**
+    
+    This operator is to do multi-class non maximum suppression (NMS) on
+    boxes and scores.
+
+    In the NMS step, this operator greedily selects a subset of detection bounding
+    boxes that have high scores larger than score_threshold, if providing this
+    threshold, then selects the largest nms_top_k confidences scores if nms_top_k
+    is larger than -1. Then this operator pruns away boxes that have high IOU
+    (intersection over union) overlap with already selected boxes by adaptive
+    threshold NMS based on parameters of nms_threshold and nms_eta.
+
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): Two types of bboxes are supported:
+                           1. (Tensor) A 3-D Tensor with shape
+                           [N, M, 4 or 8 16 24 32] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is 
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
+                           M is the number of bounding boxes, C is the 
+                           class number   
+        scores (Variable): Two types of scores are supported:
+                           1. (Tensor) A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is 
+                           number of bounding boxes. For each category there 
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes.
+                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
+                           M is the number of bbox, C is the class number.
+                           In this case, input BBoxes should be the second
+                           case with shape [M, C, 4].
+        background_label (int): The index of background label, the background 
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score. If not provided, 
+                                 consider all boxes.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences aftern the filtering detections based
+                         on score_threshold.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        name(str): Name of the multiclass nms op. Default: None.
+
+    Returns:
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned. 
+
+        Out: A 2-D LoDTensor with shape [No, 6] represents the detections. 
+        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax] 
+        or A 2-D LoDTensor with shape [No, 10] represents the detections. 
+        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3, 
+        x4, y4]. No is the total number of detections. 
+
+        If all images have not detected results, all elements in LoD will be
+        0, and output tensor is empty (None).
+
+        Index: Only return when return_index is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected index which type is Integer. 
+        The index is the absolute value cross batches. No is the same number 
+        as Out. If the index is used to gather other attribute such as age, 
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where 
+        N is the batch size and M is the number of boxes.
+
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle.fluid as fluid
+            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+                                      dtype='float32', lod_level=1)
+            scores = fluid.layers.data(name='scores', shape=[81],
+                                      dtype='float32', lod_level=1)
+            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+                                              scores=scores,
+                                              background_label=0,
+                                              score_threshold=0.5,
+                                              nms_top_k=400,
+                                              nms_threshold=0.3,
+                                              keep_top_k=200,
+                                              normalized=False,
+                                              return_index=True)
+    """
+    helper = LayerHelper('multiclass_nms2', **locals())
+
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
+    helper.append_op(
+        type="multiclass_nms2",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized
+        },
+        outputs={'Out': output,
+                 'Index': index})
+    output.stop_gradient = True
+    index.stop_gradient = True
+
+    if return_index:
+        return output, index
     return output
 
 

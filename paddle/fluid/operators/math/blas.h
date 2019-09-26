@@ -112,6 +112,22 @@ class Blas {
 
   template <typename T>
   void GEMM_FREE(T* data) const;
+
+  template <typename T>
+  void CSRMM(const char* transa, const int* m, const int* n, const int* k,
+             const T* alpha, const char* matdescra, const T* val,
+             const int* indx, const int* pntrb, const int* pntre, const T* b,
+             const int* ldb, const T* beta, T* c, const int* ldc) const;
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void MatMulWithHead(const framework::Tensor& mat_a,
+                      const MatDescriptor& dim_a,
+                      const framework::Tensor& mat_b,
+                      const MatDescriptor& dim_b, T alpha, int head_number,
+                      framework::Tensor* mat_out, T beta,
+                      bool mat_y_split_vertical) const;
+#endif
 #endif
 
   template <typename T>
@@ -176,6 +192,15 @@ class Blas {
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
+                           int W1, int H1, int W2, int H2, T alpha, const T* A,
+                           const T* B, T beta, T* C, int batchCount,
+                           int64_t strideA, int64_t strideB,
+                           int64_t head_number, bool split_b_vertical) const;
+#endif
+
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
@@ -221,6 +246,18 @@ class BlasT : private Blas<DeviceContext> {
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
   }
+
+  template <typename... ARGS>
+  void CSRMM(ARGS... args) const {
+    Base()->template CSRMM<T>(args...);
+  }
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename... ARGS>
+  void MatMulWithHead(ARGS... args) const {
+    Base()->template MatMulWithHead<T>(args...);
+  }
+#endif
 #endif
 
   template <typename... ARGS>

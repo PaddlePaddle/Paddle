@@ -43,7 +43,7 @@ IF(WIN32)
 ELSE()
     #TODO(intel-huying):
     #  Now enable Erf function in mklml library temporarily, it will be updated as offical version later.
-    SET(MKLML_VER "Glibc225_vsErf_mklml_lnx_${TIME_VERSION}" CACHE STRING "" FORCE)
+    SET(MKLML_VER "csrmm2_mklml_lnx_2019.0.2" CACHE STRING "" FORCE)
     SET(MKLML_URL "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/libmklml_intel.so)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5.so)

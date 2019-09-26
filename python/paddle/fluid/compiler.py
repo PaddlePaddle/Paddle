@@ -45,6 +45,23 @@ def _is_pserver_mode(main_program):
     return False
 
 
+def _has_backward_op(graph):
+    for node in graph.nodes():
+        if node.is_op() and node.op() is not None and \
+                node.op().type().endswith("_grad"):
+            return True
+    return False
+
+
+def _prune_feed_ops(program):
+    # prune the feed ops in the program.
+    pop_idx = []
+    for i, op in enumerate(program.global_block().ops):
+        if op.type == "feed": pop_idx.append(i)
+    for index in pop_idx[::-1]:
+        program.global_block()._remove_op(index)
+
+
 class CompiledProgram(object):
     """
     Compiles to Graph for execution.
@@ -92,14 +109,19 @@ class CompiledProgram(object):
             (potentially optimized before), it will be directly used for
             further optimizations. Note: graph is only supported when compiled
             with with_data_parallel option.
+        build_strategy(BuildStrategy): build_strategy is used to
+            build the graph with the specified options.
+            For more information, please refer to fluid.BuildStrategy.
+            Default None.
     """
 
-    def __init__(self, program_or_graph):
+    def __init__(self, program_or_graph, build_strategy=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
+            _prune_feed_ops(program_or_graph)
             self._graph = core.Graph(program_or_graph.desc)
             self._program = program_or_graph
         else:
@@ -112,6 +134,11 @@ class CompiledProgram(object):
         self._compiled = False
         self._is_data_parallel = False
         self._is_inference = False
+        self._loss_name = None
+        self._share_vars_from = None
+        self._places = None
+        self._build_strategy = build_strategy
+        self._exec_strategy = None
 
     def with_data_parallel(self,
                            loss_name=None,
@@ -162,9 +189,11 @@ class CompiledProgram(object):
         Args:
             loss_name (str): The loss name must set in training. Default None.
             build_strategy(BuildStrategy): build_strategy is used to
-                build the graph so it can run on multiple devices/cores with
-                optimized topology.
+                build the graph with the specified options.
                 For more information, please refer to fluid.BuildStrategy.
+                Note that, if you set build_strategy in the argument list when
+                creating CompiledProgram and calling with_data_parallel,
+                the build_strategy in CompiledProgram will be overwritten by the latter.
                 Default None.
             exec_strategy(ExecutionStrategy): exec_strategy is used to
                 to select the a way to execute the graph, for example how many
@@ -189,34 +218,26 @@ class CompiledProgram(object):
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
         self._is_data_parallel = True
-        self._build_strategy = build_strategy
+        # FIXME(zcd): Currently, the build_strategy can be set during creating
+        # CompiledProgram or calling with_data_parallel, and it may be confusing,
+        # but in the long run, we should set up build_strategy only when creating
+        # CompiledProgram, and exec_strategy should be deprecated.
+        if build_strategy is not None: self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        if self._build_strategy is None:
-            self._build_strategy = BuildStrategy()
-        if places is not None:
-            if not isinstance(places, (list, tuple)):
-                places = [places]
-            self._places = places
-        else:
-            self._places = None
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+        self._places = places
 
-        # FIXME(dzhwinter): enable_inplace should be after memory_optimize
-        # if turn on python memory optimize, turn off the inplace_pass.
-        # memory_optimize and enable_inplace default are True, but we can disable them on purpose
-        if self._program:
-            if self._program._is_mem_optimized:
-                self._build_strategy.memory_optimize = False
+        if _has_backward_op(self._graph):
+            assert self._loss_name is not None, "The loss_name should be set here."
 
-            if self._build_strategy.memory_optimize:
-                self._build_strategy._use_legacy_memory_optimize_strategy = True
+        if self._places is not None:
+            if not isinstance(self._places, (list, tuple)):
+                self._places = [self._places]
+
         return self
 
-    def with_inference_optimize(self, config):
+    def _with_inference_optimize(self, config):
         """ Add inference optimize
 
         Args:
@@ -238,10 +259,13 @@ class CompiledProgram(object):
     def _with_distributed(self):
         raise NotImplementedError()
 
-    def _compile_data_parallel(self, use_cuda=False, scope=None):
+    def _compile_data_parallel(self, places, use_cuda=False, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
+            if not self._is_data_parallel:
+                raise ValueError(
+                    "Currently, only data parallel mode need share_vars_from.")
             if not self._share_vars_from._is_data_parallel:
                 raise ValueError("share_vars_from is not data parallel. Cannot "
                                  "share vars from it.")
@@ -250,30 +274,34 @@ class CompiledProgram(object):
                     "share_vars_from is not compiled and run, so there is no "
                     "var to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
-            # drop the local_exe_scopes of the previous parallel_executor
-            self._share_vars_from._executor.drop_local_exe_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
 
+        assert isinstance(places, tuple) or isinstance(places, list), \
+            "Currently , The places type only should be list or tuple, \n" \
+            "but the input type is {}.".format(type(places))
+
+        if self._build_strategy is None:
+            self._build_strategy = BuildStrategy()
+        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
+
+        if self._exec_strategy is None:
+            self._exec_strategy = ExecutionStrategy()
         self._exec_strategy.use_cuda = use_cuda
-        has_set_place = (self._places is not None)
-        if has_set_place:
-            for p in self._places:
-                assert p._type() == self._place._type(), \
-                    "Place type not match. You may set the wrong type of places"
-        else:
-            self._places = cuda_places(
-            ) if self._exec_strategy.use_cuda else cpu_places()
-        assert self._places, "no place for execution"
 
         if self._exec_strategy.num_threads == 0:
             if self._exec_strategy.use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(self._places) * 4
+                self._exec_strategy.num_threads = len(places) * 4
             else:
-                self._exec_strategy.num_threads = len(self._places) * 2
+                self._exec_strategy.num_threads = len(places) * 2
+
+        if self._build_strategy.num_trainers > 1:
+            assert self._is_data_parallel, \
+                "If you use multi-trainer to train the model, you should use "\
+                "the data parallel model, i.e. calling with_data_parallel function."
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -300,7 +328,8 @@ class CompiledProgram(object):
                     node.var().type() != core.VarDesc.VarType.RAW:
                 self._persistable_vars.append(cpt.to_text(node.name()))
 
-        places = list(map(_place_obj, self._places))
+        places = list(map(_place_obj, places))
+
         # ParallelExecutor would broadcast all the parameters during initializing.
         # The parameters of each process should be in the same ordered for the data-parallelism
         # distributed training to keep the broadcast correct.
@@ -337,13 +366,28 @@ class CompiledProgram(object):
 
         self._scope = scope
         self._place = place
-        if self._is_data_parallel:
-            self._executor = self._compile_data_parallel(
-                use_cuda=isinstance(self._place, core.CUDAPlace),
-                scope=self._scope)
-        elif self._is_inference:
+
+        if self._is_inference:
             self._executor = self._compile_inference()
         else:
-            p = _place_obj(self._place)
-            self._executor = core.Executor(p)
+            if self._is_data_parallel:
+                self._places = self._get_places(self._place, self._places)
+            else:
+                self._places = [self._place]
+            self._executor = self._compile_data_parallel(
+                use_cuda=isinstance(self._place, core.CUDAPlace),
+                scope=self._scope,
+                places=self._places)
         return self
+
+    def _get_places(self, place, place_list):
+        has_set_place = (place_list is not None)
+        if has_set_place:
+            for p in place_list:
+                assert p._type() == place._type(), \
+                    "Place type not match. You may set the wrong type of places"
+        else:
+            place_list = cuda_places() if isinstance(
+                place, core.CUDAPlace) else cpu_places()
+        assert place_list, "no place for execution"
+        return place_list

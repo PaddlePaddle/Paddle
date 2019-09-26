@@ -32,6 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(use_ngraph);
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -81,6 +83,29 @@ class ParallelExecutorPrivate {
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
+
+  /**
+   * NOTE(zengjinle): the feeded variables of users should not be reused,
+   * because users may feed them into another network. Changing the feeded
+   * variables that users can visit may cause calculation wrong, which is
+   * a very subtle bug when traning networks. However, these variables
+   * can be garbage collected.
+   *
+   * ParallelExecutor provides 2 methods to feed variables:
+   *
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *                                variables, so we have to skip these.
+   *
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *                                       variables, so we do not need to skip
+   *                                       them.
+   */
+  inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
+    auto iter = mem_opt_var_infos_[scope_idx].find(name);
+    if (iter != mem_opt_var_infos_[scope_idx].end()) {
+      iter->second->SetSkipMemoryReuse(true);
+    }
+  }
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
@@ -233,6 +258,13 @@ class ParallelExecutorPrivate {
 };
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
+  if (FLAGS_use_ngraph) {
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_use_ngraph=True, memory optimization strategy is "
+           "disabled in ParallelExecutor";
+    return graph;
+  }
+
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -250,11 +282,42 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
+    LOG(INFO) << "Inplace strategy is enabled, when "
+                 "build_strategy.enable_inplace = True";
   }
 
-  // TODO(zjl): refactor MemoryOptimizePass as well!!!
+  /**
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
+   * set BuildStrategy.memory_optimize according to whether gc is enabled.
+   * If gc is enabled, BuildStrategy.memory_optimize = False.
+   * If gc is disabled, BuildStrategy.memory_optimize = True.
+   * This is because gc+memory_optimize is worse than gc only.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
+   */
+  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
+  if (!build_strategy_.memory_optimize_) {
+    build_strategy_.memory_optimize_ = !is_gc_enabled;
+  }
 
-  if (GetEagerDeletionThreshold() < 0) {
+  if (build_strategy_.memory_optimize_.get()) {
+    auto cross_op_memory_reuse_pass = ir::PassRegistry::Instance().Get(
+        "buffer_shared_cross_op_memory_reuse_pass");
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kMemOptVarInfoMapList,
+                                            &mem_opt_var_infos_);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
+                                            &last_live_ops_of_vars);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
+    graph = cross_op_memory_reuse_pass->Apply(graph);
+    VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
+    LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
+                 "build_strategy.memory_optimize = True or garbage collection "
+                 "strategy is disabled, which is not recommended";
+  }
+
+  if (!is_gc_enabled) {
     return graph;
   }
   size_t max_memory_size = static_cast<size_t>(GetEagerDeletionThreshold());
@@ -302,6 +365,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
+    LOG(INFO) << "Garbage collection strategy is enabled, when "
+              << "FLAGS_eager_delete_tensor_gb = "
+              << (static_cast<double>(GetEagerDeletionThreshold()) / (1 << 30));
   }
   return graph;
 }
@@ -499,21 +565,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   }
 
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
-    if (graph_num > 1) {
-      LOG(WARNING)
-          << "The number of graph should be only one, "
-             "but the current graph has "
-          << ir::GraphNum(*graph)
-          << " sub_graphs. If you want to see the nodes of the "
-             "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
-             "to specify the output dir. NOTES: if you not do training, "
-             "please don't pass loss_var_name.";
-    }
-  }
-
   std::unordered_map<Scope *, Scope *> scope_map;
   for (auto *scope : member_->local_scopes_) {
     auto &local_exec_scope = scope->NewScope();
@@ -654,8 +705,8 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                           const std::string &fetched_var_name) {
+FeedFetchList ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors) {
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
@@ -670,8 +721,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors);
-  *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
-      fetch_data;
+  return fetch_data;
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
@@ -682,6 +732,9 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
     auto &map = tensors[i];
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
+      if (!is_persistable) {
+        member_->SetSkipMemoryReuse(i, pair.first);
+      }
       auto *feed_scope = is_persistable ? member_->local_scopes_[i]
                                         : member_->local_exec_scopes_[i];
       auto *feed_var = feed_scope->Var(pair.first);
@@ -695,15 +748,19 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
+  size_t num_places = member_->places_.size();
   for (auto &pair : tensors) {
+    bool is_persistable = member_->IsPersistable(pair.first);
+    VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
+            << " data (" << pair.first << "), dim:" << pair.second.dims()
+            << ", place: " << pair.second.place();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
-    if (member_->places_.size() != lod_tensors.size()) {
-      bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
+    if (!is_persistable && num_places != lod_tensors.size()) {
       auto error_info = string::Sprintf(
-          "The number(%d) of samples of "
-          "current batch is less than the count(%d) of "
-          "devices(%s), currently, it is not allowed. ",
-          lod_tensors.size(), member_->places_.size(),
+          "The number(%d) of samples[%s] of current batch is less than the "
+          "count(%d) of devices(%s), currently, it is not allowed. ",
+          lod_tensors.size(), pair.first, num_places,
           (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=
@@ -711,10 +768,35 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "to determine the number of devices you need.";
       }
       PADDLE_THROW(error_info);
+    } else if (is_persistable) {
+      if (lod_tensors.size() == 1) {
+        lod_tensors.reserve(num_places);
+        auto &tensor = lod_tensors.front();
+        PADDLE_ENFORCE_EQ(tensor.dims(), pair.second.dims(),
+                          "The dim doesn't match.");
+        PADDLE_ENFORCE_EQ(tensor.place(), member_->places_.at(0),
+                          "The place doesn't match.");
+        for (size_t i = 1; i < num_places; ++i) {
+          lod_tensors.emplace_back();
+          auto &tmp = lod_tensors.back();
+          framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
+        }
+      }
+      if (lod_tensors.size() != num_places) {
+        auto error_info = string::Sprintf(
+            "The number(%d) of samples[%s] of the current batch does not match "
+            "the count(%d) of devices(%s). Because that %s is a persistable "
+            "variable, you can feed just one sample, in that case, the input "
+            "sample will be copied in %d copies and be sent to different "
+            "places separately. If you need that different place has different "
+            "value, you should feed %d samples.",
+            lod_tensors.size(), pair.first, num_places,
+            (is_cpu_place ? "CPU" : "GPU"), pair.first, num_places, num_places);
+        PADDLE_THROW(error_info);
+      }
     }
 
-    bool is_persistable = member_->IsPersistable(pair.first);
-    for (size_t j = 0; j < member_->places_.size(); ++j) {
+    for (size_t j = 0; j < num_places; ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
@@ -780,3 +862,4 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
+USE_PASS(buffer_shared_cross_op_memory_reuse_pass);

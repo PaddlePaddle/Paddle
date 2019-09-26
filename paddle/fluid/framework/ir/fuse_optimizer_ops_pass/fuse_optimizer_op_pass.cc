@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include <algorithm>
+#include <set>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -48,7 +49,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   }
 
   VLOG(6) << "Find " << fuse_op_type << " operators : " << opt_ops_num
-          << ", and " << opt_nodes.size() << " for dense gradients ";
+          << ", and " << opt_nodes.size() << " for dense gradients.";
   if (opt_nodes.size() == 0 || result.Has(details::kFusedOptType)) {
     if (result.Has(details::kFusedOptType)) {
       auto &opt_type =
@@ -59,6 +60,20 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     }
     return;
   }
+
+  // There should not have no-ctr-var between the op_nodes that link the op_node
+  // of op_nodes.
+  if (HasVarDepsBetweenOps(topo_nodes, opt_nodes)) {
+    VLOG(6) << "There are interdependent variables among these optimization "
+               "operators, which can not be handled well at present.";
+    return;
+  }
+
+  LOG(WARNING) << "Find " << fuse_op_type << " operators : " << opt_ops_num
+               << ", and " << opt_nodes.size() << " for dense gradients. "
+               << "To make the speed faster, those optimization are fused "
+                  "during training.";
+
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
   if (!result.Has(details::kProgramDescs)) {
@@ -96,6 +111,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
         "The number of dense gradients should be little than optimizer ops.");
+
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
       opt_grad_set.insert(p_g.second);
@@ -128,7 +144,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
       auto iter =
           std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
-      PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
+      PADDLE_ENFORCE_EQ(iter != fused_vars.end(), true,
+                        "Not find the fused_grad.");
       fused_vars_name[kGrad] = fused_grad.front();
 
       // Sort the parameters and auxiliary variables according
@@ -137,7 +154,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                &opt_nodes);
       grad_fused = true;
     } else {
-      VLOG(10) << "The number of new gradients is " << new_grad_idx.size();
+      VLOG(6) << "The number of new gradients is " << new_grad_idx.size();
       if (new_grad_idx.size() == 1) return;
       // NOTE(zcd): If the gradients of backward stage and optimization stage
       // have diff, Only take care of the the gradient of optimization stage.
@@ -158,12 +175,52 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                     &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
-  FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
+  auto *fused_opt_node =
+      FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
 
+  InsertInputAndOutputForFusedOpNode(opt_nodes, graph, fused_opt_node);
   // Step 6: Remove optimizer Ops
   for (auto &opt_op : opt_nodes) {
     graph->RemoveNode(opt_op);
   }
+}
+
+bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
+    const std::vector<Node *> &topo_nodes,
+    const std::vector<Node *> &opt_nodes) const {
+  std::unordered_map<Node *, std::unordered_set<Node *>> preceding_ops;
+  std::unordered_map<Node *, std::unordered_set<Node *>> pending_ops;
+  for (auto &op : topo_nodes) {
+    preceding_ops[op];
+    pending_ops[op];
+    for (auto &var : op->outputs) {
+      if (var->IsCtrlVar()) continue;
+      for (auto &pending_op : var->outputs) {
+        preceding_ops[pending_op].insert(op);
+        pending_ops[op].insert(pending_op);
+      }
+    }
+  }
+
+  std::unordered_set<Node *> opt_node_set(opt_nodes.begin(), opt_nodes.end());
+  auto has_var_deps = [](const std::unordered_set<Node *> &op_set1,
+                         const std::unordered_set<Node *> &op_set2) -> bool {
+    std::set<Node *> intersect_ops;
+    set_intersection(op_set1.begin(), op_set1.end(), op_set2.begin(),
+                     op_set2.end(),
+                     inserter(intersect_ops, intersect_ops.begin()));
+    return !intersect_ops.empty();
+  };
+
+  for (auto opt_node : opt_node_set) {
+    if (has_var_deps(preceding_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+    if (has_var_deps(pending_ops.at(opt_node), opt_node_set)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FuseOptimizerOpPass::GradientsFilter(
@@ -196,18 +253,24 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
     ir::Graph *result) const {
+  auto &pinned_var_set =
+      result->GetOrInit<details::PinnedVars>(details::kPinnedVars);
+
   auto vars_info = GetVarInfo(*result);
-  // Set Gradients as Persistable to prevent this var becoming reusable.
+  // The Gradients should not be reused during memory optimization.
   for (auto &grad_var_name : grads) {
     auto iter = vars_info.find(grad_var_name);
-    PADDLE_ENFORCE(iter != vars_info.end());
-    PADDLE_ENFORCE(!iter->second.empty());
+    PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
+                      grad_var_name);
+    PADDLE_ENFORCE_EQ(!iter->second.empty(), true, "%s is not found.",
+                      grad_var_name);
     PADDLE_ENFORCE_NOT_NULL(iter->second.front()->Var());
-    PADDLE_ENFORCE(IsLoDTensorType(iter->second.front()->Var()->GetType()),
-                   "Currently the gradient type only should be LoDTensor when "
-                   "fusing optimizer ops.");
+    PADDLE_ENFORCE_EQ(
+        IsLoDTensorType(iter->second.front()->Var()->GetType()), true,
+        "Currently the gradient type only should be LoDTensor when "
+        "fusing optimizer ops.");
     for (auto var : iter->second) {
-      var->Var()->SetPersistable(true);
+      pinned_var_set.insert(var->Var()->Name());
     }
   }
 
@@ -243,8 +306,9 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
     const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
     const std::string &name) const {
   auto grad_iter = var_nodes.find(name);
-  PADDLE_ENFORCE(grad_iter != var_nodes.end());
-  PADDLE_ENFORCE(grad_iter->second.size() > 0);
+  PADDLE_ENFORCE_EQ(grad_iter != var_nodes.end(), true, "%s is not found.",
+                    name);
+  PADDLE_ENFORCE_GT(grad_iter->second.size(), 0);
   PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
   return grad_iter->second.front()->Var()->GetType();
 }
@@ -271,24 +335,25 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  PADDLE_ENFORCE_NE(aux_vars_set->count(kParam), static_cast<size_t>(0));
-  auto &param_vec = aux_vars_set->at(kParam);
+  PADDLE_ENFORCE_NE(aux_vars_set->count(kGrad), static_cast<size_t>(0));
+  auto &grad_vec = aux_vars_set->at(kGrad);
 
-  std::vector<size_t> param_sort_idx;
-  param_sort_idx.reserve(param_vec.size());
+  std::vector<size_t> grad_sort_idx;
+  grad_sort_idx.reserve(grad_vec.size());
 
   for (auto &p_g : params_grads) {
-    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
-    PADDLE_ENFORCE(iter != param_vec.end());
-    auto idx = std::distance(param_vec.begin(), iter);
-    param_sort_idx.emplace_back(idx);
+    auto iter = std::find(grad_vec.begin(), grad_vec.end(), p_g.second);
+    PADDLE_ENFORCE_EQ(iter != grad_vec.end(), true,
+                      "%s is not found in grad_vec", p_g.second);
+    auto idx = std::distance(grad_vec.begin(), iter);
+    grad_sort_idx.emplace_back(idx);
   }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
     sorted_vars.reserve(aux_vars.second.size());
     for (size_t i = 0; i < aux_vars.second.size(); ++i) {
-      sorted_vars.emplace_back(aux_vars.second.at(param_sort_idx[i]));
+      sorted_vars.emplace_back(aux_vars.second.at(grad_sort_idx[i]));
     }
     std::swap(aux_vars.second, sorted_vars);
 
@@ -304,7 +369,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
   std::vector<ir::Node *> sorted_ops;
   sorted_ops.reserve(ops->size());
   for (size_t i = 0; i < ops->size(); ++i) {
-    sorted_ops.emplace_back(ops->at(param_sort_idx[i]));
+    sorted_ops.emplace_back(ops->at(grad_sort_idx[i]));
   }
   std::swap(*ops, sorted_ops);
 }
@@ -338,26 +403,84 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
   op_desc->SetAttr("check_name", check_name);
 }
 
-void FuseOptimizerOpPass::InserInputAndOutputForOptOps(
-    const std::vector<ir::Node *> &opt_nodes, ir::Node *opt_node) const {
+void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(
+    const std::vector<ir::Node *> &op_nodes, ir::Graph *graph,
+    ir::Node *fused_opt_node) const {
   std::unordered_set<ir::Node *> inputs;
   std::unordered_set<ir::Node *> outputs;
-  for (auto opt_op : opt_nodes) {
-    // set inputs
+  for (auto opt_op : op_nodes) {
     inputs.insert(opt_op->inputs.begin(), opt_op->inputs.end());
     for (auto &input : opt_op->inputs) {
-      replace(input->outputs.begin(), input->outputs.end(), opt_op, opt_node);
+      replace(input->outputs.begin(), input->outputs.end(), opt_op,
+              fused_opt_node);
     }
-    // set outputs
     outputs.insert(opt_op->outputs.begin(), opt_op->outputs.end());
     for (auto &output : opt_op->outputs) {
-      replace(output->inputs.begin(), output->inputs.end(), opt_op, opt_node);
+      replace(output->inputs.begin(), output->inputs.end(), opt_op,
+              fused_opt_node);
     }
   }
-  opt_node->inputs.insert(opt_node->inputs.begin(), inputs.begin(),
-                          inputs.end());
-  opt_node->outputs.insert(opt_node->outputs.begin(), outputs.begin(),
-                           outputs.end());
+
+  // Remove the dependence vars between op_nodes.
+  std::unordered_set<ir::Node *> out_dep_vars;
+  std::unordered_set<ir::Node *> not_useful_vars;
+
+  auto deal_with_ctrl_vars = [&out_dep_vars, &not_useful_vars,
+                              &fused_opt_node](ir::Node *ctr_var_node) {
+    PADDLE_ENFORCE_EQ(ctr_var_node->inputs.size(), 1);
+    if (ctr_var_node->inputs.front() == fused_opt_node) {
+      PADDLE_ENFORCE_GT(ctr_var_node->outputs.size(), 0);
+      auto output_ops = ctr_var_node->outputs;
+      output_ops.erase(std::remove_if(output_ops.begin(), output_ops.end(),
+                                      [&fused_opt_node](const ir::Node *node) {
+                                        return node == fused_opt_node;
+                                      }),
+                       output_ops.end());
+      if (!output_ops.empty()) {
+        out_dep_vars.insert(ctr_var_node);
+      }
+      not_useful_vars.insert(ctr_var_node);
+    }
+  };
+
+  for (auto *in_node : inputs) {
+    if (in_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(in_node);
+    }
+  }
+
+  for (auto *out_node : outputs) {
+    if (out_node->IsCtrlVar()) {
+      deal_with_ctrl_vars(out_node);
+    }
+  }
+
+  for (auto &node : not_useful_vars) {
+    if (inputs.count(node)) {
+      inputs.erase(node);
+    }
+    if (outputs.count(node)) {
+      outputs.erase(node);
+    }
+  }
+
+  for (auto &dep_var : out_dep_vars) {
+    if (not_useful_vars.count(dep_var)) {
+      not_useful_vars.erase(dep_var);
+    }
+    dep_var->inputs.clear();
+    dep_var->inputs.emplace_back(fused_opt_node);
+  }
+
+  outputs.insert(out_dep_vars.begin(), out_dep_vars.end());
+  fused_opt_node->inputs.insert(fused_opt_node->inputs.begin(), inputs.begin(),
+                                inputs.end());
+  fused_opt_node->outputs.insert(fused_opt_node->outputs.begin(),
+                                 outputs.begin(), outputs.end());
+
+  for (auto &ctrl_var_node : not_useful_vars) {
+    graph->RemoveNode(ctrl_var_node);
+  }
 }
 }  // namespace ir
 }  // namespace framework

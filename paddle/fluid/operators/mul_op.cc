@@ -47,23 +47,27 @@ class MulOp : public framework::OperatorWithKernel {
             << " x_num_col_dims=" << x_num_col_dims
             << " y_num_col_dims=" << y_num_col_dims;
 
-    PADDLE_ENFORCE_GT(
-        x_dims.size(), x_num_col_dims,
-        "The input tensor X's rank of MulOp should be larger than "
-        "x_num_col_dims.");
-    PADDLE_ENFORCE_GT(
-        y_dims.size(), y_num_col_dims,
-        "The input tensor Y's rank of MulOp should be larger than "
-        "y_num_col_dims: %ld vs %ld",
-        y_dims.size(), y_num_col_dims);
+    PADDLE_ENFORCE_GT(x_dims.size(), x_num_col_dims,
+                      "ShapeError: The input tensor X's dimensions of MulOp "
+                      "should be larger than x_num_col_dims. But received X's "
+                      "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
+                      x_dims.size(), x_dims, x_num_col_dims);
+    PADDLE_ENFORCE_GT(y_dims.size(), y_num_col_dims,
+                      "ShapeError: The input tensor Y's dimensions of MulOp "
+                      "should be larger than y_num_col_dims. But received Y's "
+                      "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
+                      y_dims.size(), y_dims, y_num_col_dims);
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
-    PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
-                      "First matrix's width must be equal with second matrix's "
-                      "height. %s, %s",
-                      x_mat_dims[1], y_mat_dims[0]);
+    PADDLE_ENFORCE_EQ(
+        x_mat_dims[1], y_mat_dims[0],
+        "ShapeError: After flatten the input tensor X and Y to 2-D dimensions "
+        "matrix X1 and Y1, the matrix X1's width must be equal with matrix "
+        "Y1's height. But received X's shape = [%s], X1's shape = [%s], X1's "
+        "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = %s.",
+        x_dims, x_mat_dims, x_mat_dims[1], y_dims, y_mat_dims, y_mat_dims[0]);
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
@@ -144,13 +148,17 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<float>("scale_x",
-                   "scale_x to used for int8 input data x."
-                   "Only used with MKL-DNN INT8")
+    AddAttr<float>(
+        "scale_x",
+        "scale_x to be used for int8 mul input data x. scale_x has the"
+        "same purpose as scale_in in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
         .SetDefault(1.0f);
-    AddAttr<std::vector<float>>("scale_y",
-                                "scale_y to used for int8 input data y."
-                                "Only used with MKL-DNN INT8")
+    AddAttr<std::vector<float>>(
+        "scale_y",
+        "scale_y to be used for int8 mul input data y. scale_y has the"
+        "same purpose as scale_weights in OPs that support quantization."
+        "Only to be used with MKL-DNN INT8")
         .SetDefault({1.0f});
     AddAttr<float>("scale_out",
                    "scale_out to be used for int8 output data."

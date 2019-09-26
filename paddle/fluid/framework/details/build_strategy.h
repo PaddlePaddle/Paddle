@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -88,8 +89,8 @@ struct BuildStrategy {
   bool fuse_elewise_add_act_ops_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
-  bool fuse_all_optimizer_ops_{false};
-  bool fuse_all_reduce_ops_{false};
+  boost::optional<bool> fuse_all_optimizer_ops_{boost::none};
+  boost::optional<bool> fuse_all_reduce_ops_{boost::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
@@ -97,7 +98,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  bool fuse_broadcast_ops_{false};
+  boost::optional<bool> fuse_broadcast_ops_{boost::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
@@ -108,18 +109,13 @@ struct BuildStrategy {
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
-  // FIXME(liuwei1031) disable memory_optimzie and enable_inplace in 1.4
-  // to open them by default, we need to solve the fetch variable issue
-  // TODO(liuwei1031): memory_optimize depends on kStaleProgramOpDescs,
-  // it is not appropriate, because kStaleProgramOpDescs will be removed in the
-  // near future.
-  bool memory_optimize_{false};
+  // By default, memory_optimize would be opened if gc is disabled, and
+  // be closed if gc is enabled.
+  // Users can forcely enable/disable memory_optimize by setting True/False.
+  boost::optional<bool> memory_optimize_{boost::none};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
-
-  // TODO(zjl): Remove this flag when MemoryOptimizePass is refactored
-  bool use_legacy_memory_optimize_strategy_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

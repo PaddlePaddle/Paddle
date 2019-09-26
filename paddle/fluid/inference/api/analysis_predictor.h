@@ -65,6 +65,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string &name) override;
 
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+
   bool ZeroCopyRun() override;
 
   void CreateFeedFetchVar(framework::Scope *scope);
@@ -89,11 +91,6 @@ class AnalysisPredictor : public PaddlePredictor {
   void SaveOptimModel(const std::string &dir);
 
  protected:
-  // For memory optimization.
-  bool need_collect_var_shapes_for_memory_optim();
-  void CollectVarShapes();
-  void SerializeBatchVarShapes(const std::string &path);
-
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   bool CreateExecutor();
@@ -178,10 +175,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   // Some status here that help to determine the status inside the predictor.
-  bool status_program_optimized_{false};
   bool status_is_cloned_{false};
   bool status_use_gpu_{false};
-  bool status_ir_optim_enabled_{false};
 };
 
 }  // namespace paddle

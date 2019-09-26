@@ -38,9 +38,11 @@ class GroupNormOp : public framework::OperatorWithKernel {
                    "Output(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
                    "Output(Variance) of GroupNormOp should not be null.");
-
     auto x_dim = ctx->GetInputDim("X");
-    auto channel_num = x_dim[1];
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+    const int64_t channel_num =
+        (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
     auto batch_size = x_dim[0];
     auto groups = ctx->Attrs().Get<int>("groups");
     PADDLE_ENFORCE_LE(
@@ -91,7 +93,9 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int &groups) {
           PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
         });
-
+    AddAttr<std::string>("data_layout",
+                         "An optional string from: \"NHWC\", \"NCHW\". ")
+        .SetDefault("NCHW");
     AddComment(R"DOC(
 Group Normalization
 
@@ -170,21 +174,10 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class GroupNormInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"X", "Y"}};
-  }
-};
-
-class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
+                           {framework::GradVarName("Y"),
+                            framework::GradVarName("X")});
 
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {

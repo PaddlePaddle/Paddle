@@ -66,6 +66,14 @@ paddle::ps::Archive<AR>& operator>>(paddle::ps::Archive<AR>& ar,
 std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
 #endif
 
+void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
+                                          int connect_timeout_ms,
+                                          int max_retry) {
+  client2client_request_timeout_ms_ = request_timeout_ms;
+  client2client_connect_timeout_ms_ = connect_timeout_ms;
+  client2client_max_retry_ = max_retry;
+}
+
 void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
@@ -142,7 +150,9 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 void FleetWrapper::CreateClient2ClientConnection() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to create client2client connection";
-  pslib_ptr_->create_client2client_connection();
+  pslib_ptr_->create_client2client_connection(client2client_request_timeout_ms_,
+                                              client2client_connect_timeout_ms_,
+                                              client2client_max_retry_);
 #endif
 }
 
@@ -188,6 +198,7 @@ void FleetWrapper::PullSparseVarsSync(
     auto status = t.get();
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
       exit(-1);
     }
   }
@@ -264,7 +275,8 @@ void FleetWrapper::PushDenseVarsSync(
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* push_sparse_status) {
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    float scale_datanorm, int batch_size) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
@@ -272,6 +284,20 @@ void FleetWrapper::PushDenseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
+    if (scale_datanorm >= 0) {
+      if (t.find(".batch_size@GRAD") != std::string::npos ||
+          t.find(".batch_sum@GRAD") != std::string::npos) {
+        Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
+        float scale = 1.0 / batch_size;
+        mat *= scale;
+      } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
+        VLOG(3) << "epsilon: " << scale_datanorm;
+        for (int i = 0; i < count; ++i) {
+          g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
+                 batch_size * scale_datanorm;
+        }
+      }
+    }
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
@@ -288,19 +314,27 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm) {
+    const int batch_size, const bool use_cvm, const bool dump_slot) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
+  int slot_offset = 0;
   int grad_dim = emb_dim;
+  int show_index = 0;
+  int click_index = 1;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
+  }
+  if (dump_slot) {
+    slot_offset = 1;
+    show_index = 1;
+    click_index = 2;
   }
   CHECK_GE(grad_dim, 0);
 
   push_values->resize(fea_keys.size() + 1);
   for (auto& t : *push_values) {
-    t.resize(emb_dim + offset);
+    t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
   for (size_t i = 0; i < sparse_key_names.size(); ++i) {
@@ -315,9 +349,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
-
+    int slot = 0;
+    if (dump_slot) {
+      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+    }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    if (g_var == nullptr) {
+      continue;
+    }
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
@@ -339,14 +378,19 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
+
       if (use_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
-        memcpy((*push_values)[fea_idx].data() + offset, g,
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
-        (*push_values)[fea_idx][0] = 1.0f;
-        (*push_values)[fea_idx][1] = static_cast<float>(fea_labels[fea_idx]);
+        (*push_values)[fea_idx][show_index] = 1.0f;
+        (*push_values)[fea_idx][click_index] =
+            static_cast<float>(fea_labels[fea_idx]);
+      }
+      if (dump_slot) {
+        (*push_values)[fea_idx][0] = static_cast<float>(slot);
       }
       g += emb_dim;
       fea_idx++;
@@ -370,7 +414,9 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
                                        std::vector<std::string> var_list,
                                        std::string model_path,
                                        std::string model_proto_file,
+                                       std::vector<std::string> table_var_list,
                                        bool load_combine) {
+#ifdef PADDLE_WITH_PSLIB
   // load ProgramDesc from model file
   auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
     std::string contents;
@@ -436,7 +482,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
     }
   }
   delete old_scope;
-  PushDenseParamSync(scope, table_id, old_param_list);
+  PushDenseParamSync(scope, table_id, table_var_list);
+#endif
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
@@ -445,6 +492,7 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
@@ -474,10 +522,65 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
+#endif
+}
+
+double FleetWrapper::GetCacheThreshold() {
+#ifdef PADDLE_WITH_PSLIB
+  double cache_threshold = 0.0;
+  auto ret = pslib_ptr_->_worker_ptr->flush();
+  ret.wait();
+  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(0, cache_threshold);
+  ret.wait();
+  if (cache_threshold < 0) {
+    LOG(ERROR) << "get cache threshold failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return cache_threshold;
+#else
+  VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
+  return 0.0;
+#endif
+}
+
+void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
+                                const int mode, const double cache_threshold) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
+      0, path, std::to_string(mode), std::to_string(cache_threshold));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "cache shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::CacheShuffle does nothing when no pslib";
+#endif
+}
+
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
 #endif
 }
 
@@ -490,20 +593,40 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 #endif
 }
 
+void FleetWrapper::ClearModel() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->clear();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
                                     std::vector<std::string> var_list,
-                                    float decay) {
+                                    float decay, int emb_dim) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (std::string& name : var_list) {
     if (name.find("batch_sum") != std::string::npos) {
       Variable* var = scope->FindVar(name);
       CHECK(var != nullptr) << "var[" << name << "] not found";
-      VLOG(3) << "prepare shrink dense batch_sum";
+      VLOG(0) << "prepare shrink dense batch_sum";
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       float* g = tensor->data<float>();
-      Eigen::Map<Eigen::MatrixXf> mat(g, 1, tensor->numel());
-      mat *= decay;
+
+      // show_batch_sum += N * log(decay)
+      std::string size_name = name;
+      size_name.replace(size_name.find("batch_sum"), size_name.length(),
+                        "batch_size");
+      Variable* var_size = scope->FindVar(size_name);
+      CHECK(var_size != nullptr) << "var[" << size_name << "] not found";
+      VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
+      float* g_size = var_size->GetMutable<LoDTensor>()->data<float>();
+
+      for (int k = 0; k < tensor->numel(); k += emb_dim) {
+        g[k] = g[k] + g_size[k] * log(decay);
+      }
       paddle::ps::Region reg(g, tensor->numel());
       regions.emplace_back(std::move(reg));
     } else {
@@ -521,6 +644,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   auto status = push_status.get();
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else

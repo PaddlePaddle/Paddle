@@ -33,7 +33,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
   }
 
   // Fuse Momentum Ops
-  virtual void FuseOptimizerOps(
+  virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &momentum_ops, ir::Graph *graph) const {
@@ -61,7 +61,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert momentum to graph ";
+    VLOG(6) << "Insert momentum to graph ";
     OpDesc momentum_desc(momentum_ops[0]->Op()->Block());
     momentum_desc.SetType("momentum");
     momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
@@ -77,9 +77,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     momentum_desc.SetAttr("use_nesterov", use_nesterov);
     momentum_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
-    auto momentum_node = graph->CreateOpNode(&momentum_desc);
-
-    InserInputAndOutputForOptOps(momentum_ops, momentum_node);
+    return graph->CreateOpNode(&momentum_desc);
   }
 };
 
@@ -87,6 +85,4 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fuse_momentum_op_pass, paddle::framework::ir::FuseMomentumOpPass)
-    .RequirePassAttr(paddle::framework::details::kPlaces)
-    .RequirePassAttr(paddle::framework::details::kLocalScopes);
+REGISTER_PASS(fuse_momentum_op_pass, paddle::framework::ir::FuseMomentumOpPass);

@@ -238,21 +238,11 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     EigenVectorArrayMap<T> dbias_e(dbias_d, C);
 
     if (layout == framework::DataLayout::kNCHW) {
-      // compute dx
-      int stride = C * HxW;
-      if (dx) {
-        for (int i = 0; i < N; i++) {
-          ConstEigenArrayMap<T> dy_e(dy_d, HxW, C);
-          EigenArrayMap<T> dx_e(dx_d, HxW, C);
-          dx_e = dy_e.rowwise() * scale_e.transpose();
-          dy_d += stride;
-          dx_d += stride;
-        }
-      }
       // compute dscale and dbias
+      int stride = C * HxW;
+      auto* original_dy_d = dy_d;
       if (dscale && dbias) {
         auto* x_d = x->data<T>();
-        dy_d = dy->data<T>();
         for (int i = 0; i < N; i++) {
           ConstEigenArrayMap<T> x_e(x_d, HxW, C);
           ConstEigenArrayMap<T> dy_e(dy_d, HxW, C);
@@ -270,20 +260,33 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
           dy_d += stride;
         }
       }
+
+      // compute dx
+      if (dx) {
+        dy_d = original_dy_d;
+        for (int i = 0; i < N; i++) {
+          ConstEigenArrayMap<T> dy_e(dy_d, HxW, C);
+          EigenArrayMap<T> dx_e(dx_d, HxW, C);
+          dx_e = dy_e.rowwise() * scale_e.transpose();
+          dy_d += stride;
+          dx_d += stride;
+        }
+      }
     } else {
       int num = N * HxW;
       ConstEigenArrayMap<T> dy_e(dy_d, C, num);
-      // compute dx
-      if (dx) {
-        EigenArrayMap<T> dx_e(dx_d, C, num);
-        dx_e = dy_e.colwise() * scale_e;
-      }
       // compute dscale and dbias
       if (dscale && dbias) {
         auto* x_d = x->data<T>();
         ConstEigenArrayMap<T> x_e(x_d, C, num);
         dscale_e = (x_e * dy_e).rowwise().sum();
         dbias_e = dy_e.rowwise().sum();
+      }
+
+      // compute dx
+      if (dx) {
+        EigenArrayMap<T> dx_e(dx_d, C, num);
+        dx_e = dy_e.colwise() * scale_e;
       }
     }
   }
@@ -295,10 +298,10 @@ class AffineChannelNoNeedBufferVarsInference
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
  private:
-  inline bool HasInput(const std::string& name) const {
-    auto& inputs = Inputs();
-    auto iter = inputs.find(name);
-    if (iter == inputs.end() || iter->second.empty()) {
+  inline bool HasOutput(const std::string& name) const {
+    auto& outputs = Outputs();
+    auto iter = outputs.find(name);
+    if (iter == outputs.end() || iter->second.empty()) {
       return false;
     } else {
       return iter->second[0] != framework::kEmptyVarName;
@@ -306,15 +309,20 @@ class AffineChannelNoNeedBufferVarsInference
   }
 
  public:
-  std::unordered_set<std::string> operator()() const {
-    if (!HasInput(framework::GradVarName("Scale")) &&
-        !HasInput(framework::GradVarName("Bias"))) {
+  std::unordered_set<std::string> operator()() const override {
+    if (!HasOutput(framework::GradVarName("Scale")) &&
+        !HasOutput(framework::GradVarName("Bias"))) {
       return {"X"};
     } else {
       return {};
     }
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(AffineChannelInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(AffineChannelGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -323,9 +331,11 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
-                  ops::AffineChannelOpMaker, ops::AffineChannelGradMaker);
+                  ops::AffineChannelOpMaker, ops::AffineChannelGradMaker,
+                  ops::AffineChannelInplaceInferer);
 REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
-                  ops::AffineChannelNoNeedBufferVarsInference);
+                  ops::AffineChannelNoNeedBufferVarsInference,
+                  ops::AffineChannelGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
                        ops::AffineChannelKernel<CPU, double>);

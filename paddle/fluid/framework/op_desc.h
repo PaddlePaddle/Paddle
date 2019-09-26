@@ -80,6 +80,15 @@ class OpDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
+  template <typename T>
+  T GetAttrIfExists(const std::string &name) const {
+    T result{};
+    if (HasAttr(name)) {
+      result = boost::get<T>(GetAttr(name));
+    }
+    return result;
+  }
+
   const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
 
   Attribute GetNullableAttr(const std::string &name) const;

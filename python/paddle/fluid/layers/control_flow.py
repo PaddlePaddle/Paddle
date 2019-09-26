@@ -137,7 +137,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
 def Print(input,
           first_n=-1,
           message=None,
-          summarize=-1,
+          summarize=20,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -179,12 +179,26 @@ def Print(input,
            
            import paddle.fluid as fluid
            
-           input = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
-           input = fluid.layers.Print(input, message = "The content of input layer:")
-           # value = some_layer(...)
-           # Print(value, summarize=10,
-           #    message="The content of some_layer: ")
+           input = fluid.layers.fill_constant(shape=[10,2], value=3, dtype='int64')
+           input = fluid.layers.Print(input, message="The content of input layer:")
+           
+           main_program = fluid.default_main_program()
+           exe = fluid.Executor(fluid.CPUPlace())
+           exe.run(main_program)
 
+    Output at runtime:
+        .. code-block:: bash 
+           
+           1564546375   The content of input layer:     The place is:CPUPlace
+           Tensor[fill_constant_0.tmp_0]
+               shape: [10,2,]
+               dtype: x
+               data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
+               
+           # The information of dtype at runtime may vary in different environments.
+           # Eg: 
+           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
+           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -562,7 +576,7 @@ class StaticRNN(object):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
 
-        parameters = [parent_block.var(name) for name in params]
+        parameters = [parent_block.var(name) for name in set(params)]
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
@@ -665,9 +679,11 @@ class While(object):
             raise TypeError("condition should be a variable")
         assert isinstance(cond, Variable)
         if cond.dtype != core.VarDesc.VarType.BOOL:
-            raise TypeError("condition should be a bool variable")
+            raise TypeError("condition should be a boolean variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
-            raise TypeError("condition should be a bool scalar")
+            raise TypeError(
+                "condition expected shape as [], but given shape as {0}.".
+                format(list(cond.shape)))
         self.cond_var = cond
         self.is_test = is_test
 

@@ -771,58 +771,33 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
-PDNode *patterns::ConvReLU::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
+PDNode *patterns::ConvActivation::operator()(
+    paddle::framework::ir::PDNode *conv_input, std::string conv_type,
+    std::string activation_type) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
-  auto *relu_op = pattern->NewNode(relu_repr())->assert_is_op("relu");
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
   // Create variables
   // Filter
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
-                           ->assert_is_op_input("relu");
+                           ->assert_is_only_output_of_op(conv_type)
+                           ->assert_is_op_input(activation_type);
   // output
-  auto *relu_out_var = pattern->NewNode(relu_out_repr())
-                           ->AsOutput()
-                           ->assert_is_op_output("relu");
+  auto *activation_out_var = pattern->NewNode(activation_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output(activation_type);
 
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
-  relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
-  return relu_out_var;
-}
-
-PDNode *patterns::ConvBReLU::operator()(
-    paddle::framework::ir::PDNode *conv_input) {
-  // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
-  auto *brelu_op = pattern->NewNode(brelu_repr())->assert_is_op("relu6");
-  // Create variables
-  // Filter
-  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
-                              ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *conv_out_var = pattern->NewNode(conv_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d")
-                           ->assert_is_op_input("relu6");
-  // output
-  auto *brelu_out_var = pattern->NewNode(brelu_out_repr())
-                            ->AsOutput()
-                            ->assert_is_op_output("relu6");
-
-  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
-  brelu_op->LinksFrom({conv_out_var}).LinksTo({brelu_out_var});
-  return brelu_out_var;
+  activation_op->LinksFrom({conv_out_var}).LinksTo({activation_out_var});
+  return activation_out_var;
 }
 
 PDNode *patterns::SeqConvEltAddRelu::operator()(
@@ -871,7 +846,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
 }
 
 PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
-                                 bool with_bias) {
+                                 bool with_bias, bool with_relu) {
   // Create shared nodes.
   x->assert_is_op_input("mul", "X");
   auto *mul = pattern->NewNode(mul_repr())->assert_is_op("mul");
@@ -884,11 +859,10 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   auto *mul_out_var =
       pattern->NewNode(mul_out_repr())->assert_is_op_output("mul");
 
+  // Add links.
+  mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
   if (!with_bias) {  // not with bias
-    // Add links.
-    mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
     return mul_out_var;
-
   } else {  // with bias
     mul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
     // Create operators.
@@ -897,15 +871,29 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
     // Create variables.
     auto *bias = pattern->NewNode(bias_repr())
                      ->assert_is_op_input("elementwise_add")
+                     ->assert_is_persistable_var()
                      ->AsInput();
 
-    auto *fc_out = pattern->NewNode(Out_repr())
-                       ->AsOutput()
-                       ->assert_is_op_output("elementwise_add");
+    auto *elementwise_add_out_var =
+        pattern->NewNode(elementwise_add_out_repr())
+            ->AsOutput()
+            ->assert_is_op_output("elementwise_add");
 
-    mul->LinksFrom({mul_w_var, x}).LinksTo({mul_out_var});
-    elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
-    return fc_out;
+    elementwise_add->LinksFrom({mul_out_var, bias})
+        .LinksTo({elementwise_add_out_var});
+    if (!with_relu) {
+      return elementwise_add_out_var;
+    } else {
+      elementwise_add_out_var->AsIntermediate()->assert_is_op_input("relu");
+      // Create operators.
+      auto *relu = pattern->NewNode(relu_repr())->assert_is_op("relu");
+      auto *relu_out_var = pattern->NewNode(relu_out_repr())
+                               ->AsOutput()
+                               ->assert_is_op_output("relu");
+
+      relu->LinksFrom({elementwise_add_out_var}).LinksTo({relu_out_var});
+      return relu_out_var;
+    }
   }
 }
 
@@ -1273,6 +1261,41 @@ PDNode *patterns::ConvConcatReLU::operator()() {
   relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
 
   return relu_out;
+}
+
+PDNode *patterns::ConvRequant::operator()() {
+  // Create Operators
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto requant_op =
+      pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d", "Output");
+  auto requant_out = pattern->NewNode(requant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("requantize", "Output");
+
+  conv_op->LinksTo({conv_out});
+  requant_op->LinksFrom({conv_out}).LinksTo({requant_out});
+
+  return requant_out;
+}
+
+PDNode *patterns::ConvDequant::operator()() {
+  // Create Operators
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto conv_out = pattern->NewNode(conv_out_repr())
+                      ->assert_is_op_output("conv2d", "Output");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  conv_op->LinksTo({conv_out});
+  dequant_op->LinksFrom({conv_out}).LinksTo({dequant_out});
+
+  return dequant_out;
 }
 
 PDNode *patterns::PriorBox::operator()() {
@@ -1880,6 +1903,9 @@ void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,
 void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   auto reshape1_op =
       pattern->NewNode(reshape1_op_repr())->assert_is_op("reshape2");
+  reshape1_op->assert_more([&](Node *x) {
+    return boost::get<std::vector<int>>(x->Op()->GetAttr("shape")).size() == 5;
+  });
 
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->assert_is_op_output("reshape2", "Out")

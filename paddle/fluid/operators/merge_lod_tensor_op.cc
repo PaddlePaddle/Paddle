@@ -28,9 +28,9 @@ class MergeLoDTensorOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+ protected:
+  void RunBase(const framework::Scope &scope,
+               const platform::Place &dev_place) const {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -125,6 +125,33 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       out_lod->insert(out_lod->begin(), x.lod()[i]);
     }
   }
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    RunBase(scope, dev_place);
+  }
+};
+
+class MergeLoDTensorInferOp : public MergeLoDTensorOp {
+ public:
+  MergeLoDTensorInferOp(const std::string &type,
+                        const framework::VariableNameMap &inputs,
+                        const framework::VariableNameMap &outputs,
+                        const framework::AttributeMap &attrs)
+      : MergeLoDTensorOp(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    RunBase(scope, dev_place);
+    framework::Variable *in_true_var = scope.FindVar(Input("InTrue"));
+    framework::Variable *in_false_var = scope.FindVar(Input("InFalse"));
+    in_true_var->Clear();
+    in_false_var->Clear();
+    in_true_var->GetMutable<framework::LoDTensor>();
+    in_false_var->GetMutable<framework::LoDTensor>();
+  }
 };
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -163,9 +190,23 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
                    "MergeLoDTensorOp must has output Out");
 
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
+    PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
+                      "If you are using IfElse OP:"
+                      "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                      "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                      "Please ensure that the cond should be a 2-D tensor and "
+                      "the second dim size of cond should be 1. "
+                      "But now the cond's shape is [",
+                      *mask_dim.Get(), "].\n");
     if (context->IsRuntime() || mask_dim[1] > 0) {
-      PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+      PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+                        "If you are using IfElse OP:"
+                        "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                        "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                        "Please ensure that the cond should be a 2-D tensor "
+                        "and the second dim size of cond should be 1. "
+                        "But now the cond's shape is [",
+                        *mask_dim.Get(), "].\n");
     }
 
     context->SetOutputDim("Out", context->GetInputDim("InTrue"));
@@ -196,3 +237,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape, ops::MergeLoDTensorGradMaker);
+REGISTER_OPERATOR(merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
+                  ops::MergeLoDTensorOpProtoMaker,
+                  ops::MergeLoDTensorInferShape,
+                  paddle::framework::EmptyGradOpMaker);

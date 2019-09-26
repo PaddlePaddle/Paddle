@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
 namespace paddle {
@@ -219,9 +219,11 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, D3, M, x_data, wx_data,
-                                      xx_data,
-                                      bias ? bias->data<T>() : nullptr);
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
+       bias ? bias->data<T>() : nullptr);
 
     int xx_offset = D3;
     int gate_offset = D;
@@ -290,17 +292,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+
+    math::FCFunctor<DeviceContext, T> fc;
     if (M > D3) {
-      math::FCCompute<DeviceContext, T>(blas, total_T, D3, M, x_data, wx_data,
-                                        xx_data,
-                                        bias ? bias->data<T>() : nullptr);
+      fc(dev_ctx, total_T, D3, M, x_data, wx_data, xx_data,
+         bias ? bias->data<T>() : nullptr);
       to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
       batched_input->set_lod(xx->lod());
-      math::FCCompute<DeviceContext, T>(blas, total_T, D3, M, xx_data, wx_data,
-                                        batched_input_data,
-                                        bias ? bias->data<T>() : nullptr);
+      fc(dev_ctx, total_T, D3, M, xx_data, wx_data, batched_input_data,
+         bias ? bias->data<T>() : nullptr);
     }
 
     auto batched_lod = batched_input->lod();
@@ -396,7 +398,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
+
 REGISTER_OP_CPU_KERNEL(fusion_gru, ops::FusionGRUKernel<float>,
                        ops::FusionGRUKernel<double>);

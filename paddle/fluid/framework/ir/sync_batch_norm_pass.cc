@@ -26,7 +26,7 @@ class SyncBatchNormPass : public Pass {
   void ApplyImpl(ir::Graph *graph) const override {
     VLOG(3) << "Use synchronous batch norm";
     for (const Node *n : graph->Nodes()) {
-      if (n->IsOp()) {
+      if (n->IsOp() && n->Op()) {
         auto *op = n->Op();
         if (op->Type() == "batch_norm") {
           op->SetType("sync_batch_norm");

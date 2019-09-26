@@ -66,12 +66,12 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE(IsVar());
+    PADDLE_ENFORCE_EQ(IsVar(), true);
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE(IsOp());
+    PADDLE_ENFORCE_EQ(IsOp(), true);
     return op_desc_.get();
   }
 
@@ -99,7 +99,7 @@ class Node {
 
   // Test if the Node is wrapped by type T.
   template <typename T>
-  bool IsWrappedBy() {
+  bool IsWrappedBy() const {
     return std::type_index(typeid(T)) == wrapper_type_;
   }
 

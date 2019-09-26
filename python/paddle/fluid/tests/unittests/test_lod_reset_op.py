@@ -101,5 +101,26 @@ class TestLodResetOpYIsLoDTensor(OpTest):
         self.check_grad(["X"], "Out", no_grad_set=set("Y"))
 
 
+class TestLodAppendOpByAttr(OpTest):
+    def setUp(self):
+        self.op_type = "lod_reset"
+        x = np.random.random((10, 20)).astype("float32")
+        lod = [[3, 2, 5]]
+        # target_offset_lod and target_lod are the same lod info represented
+        # in offset-based format and length-based format, respectively.
+        target_offset_lod = [i for i in range(11)]
+        self.inputs = {'X': (x, lod)}
+        out_lod = [[3, 2, 5], [1] * 10]
+        # The `target_lod` attribute is still based on offset
+        self.attrs = {'target_lod': target_offset_lod, 'append': True}
+        self.outputs = {'Out': (x, out_lod)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
 if __name__ == '__main__':
     unittest.main()

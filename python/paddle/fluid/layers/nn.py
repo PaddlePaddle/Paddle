@@ -28,15 +28,17 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant
+from .tensor import concat, assign, fill_constant, zeros
 from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
 from ..dygraph import layers
+from ..data_feeder import convert_dtype
 
 __all__ = [
     'fc',
+    'center_loss',
     'embedding',
     'dynamic_lstm',
     'dynamic_lstmp',
@@ -60,6 +62,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'instance_norm',
     'data_norm',
     'beam_search_decode',
     'conv2d_transpose',
@@ -107,6 +110,7 @@ __all__ = [
     'squeeze',
     'unsqueeze',
     'lod_reset',
+    'lod_append',
     'lrn',
     'pad',
     'pad_constant_like',
@@ -117,9 +121,13 @@ __all__ = [
     'image_resize',
     'image_resize_short',
     'resize_bilinear',
+    'resize_trilinear',
     'resize_nearest',
     'gather',
+    'gather_nd',
     'scatter',
+    'scatter_nd_add',
+    'scatter_nd',
     'sequence_scatter',
     'random_crop',
     'mean_iou',
@@ -127,6 +135,7 @@ __all__ = [
     'selu',
     'log',
     'crop',
+    'crop_tensor',
     'rank_loss',
     'margin_rank_loss',
     'elu',
@@ -146,6 +155,7 @@ __all__ = [
     'unstack',
     'sequence_enumerate',
     'unique',
+    'unique_with_counts',
     'expand',
     'sequence_concat',
     'scale',
@@ -164,6 +174,7 @@ __all__ = [
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
+    'strided_slice',
     'shape',
     'rank',
     'size',
@@ -194,10 +205,10 @@ __all__ = [
     'temporal_shift',
     'py_func',
     'psroi_pool',
+    'prroi_pool',
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
-    'tree_conv',
     'npair_loss',
     'pixel_shuffle',
     'fsp_matrix',
@@ -207,7 +218,10 @@ __all__ = [
     'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
+    'filter_by_instag',
     'shard_index',
+    'hard_swish',
+    'mse_loss',
 ]
 
 kIgnoreIndex = -100
@@ -219,7 +233,6 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        act=None,
-       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -293,7 +306,6 @@ def fc(input,
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase.
         name (str, default None): The name of this layer.
 
     Returns:
@@ -353,6 +365,92 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
+def center_loss(input,
+                label,
+                num_classes,
+                alpha,
+                param_attr,
+                update_center=True):
+    """
+    **Center loss Cost layer**
+    
+    This layer accepts input (deep features,the output of the last hidden layer)
+    and target label and return the center loss cost
+    
+    For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
+    
+    .. math::
+
+        Out = \\frac{1}{2}(X - Y)^2
+
+    Args:
+        input (Variable): a 2-D tensor with shape[N x M].
+        label (Variable): the groud truth which is a 2-D tensor
+                         with shape[N x 1],where N is the batch size.
+        num_classes (int): the number of classification categories.
+        alpha (float|Variable): learning rate of centers.
+        param_attr (ParamAttr): Attribute initializer of centers. 
+        update_center (bool): whether to update value of center.
+
+    Returns:
+        Variable: 2-D tensor with shape [N * 1] 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid 
+
+          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          num_classes = 1000
+          alpha = 0.01
+          param_attr = fluid.initializer.Xavier(uniform=False)
+          center_loss=fluid.layers.center_loss(input=input,
+                 label=label,
+                 num_classes=1000,
+                 alpha=alpha,
+                 param_attr=fluid.initializer.Xavier(uniform=False),
+                 update_center=True)
+    """
+    helper = LayerHelper('center_loss', **locals())
+    dtype = helper.input_dtype()
+    centers_shape = [num_classes, input.shape[1]]
+    centers_param = helper.create_parameter(
+        attr=param_attr, shape=centers_shape, dtype=dtype)
+    centers_param.stop_gradient = True
+    if isinstance(alpha, Variable):
+        alpha_param = alpha
+    else:
+        assert isinstance(alpha, float)
+        alpha_param = helper.create_variable(
+            name="centerloss_alpha",
+            shape=[1],
+            dtype="float32",
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=True,
+            stop_gradient=True,
+            initializer=Constant(alpha))
+
+    centersdiff = helper.create_variable_for_type_inference(dtype=input.dtype)
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='center_loss',
+        inputs={
+            'X': [input],
+            'Label': [label],
+            'Centers': [centers_param],
+            'CenterUpdateRate': [alpha_param]
+        },
+        outputs={
+            'SampleCenterDiff': [centersdiff],
+            'Loss': [loss],
+            'CentersOut': [centers_param]
+        },
+        attrs={'cluster_num': num_classes,
+               'need_update': update_center})
+    return loss
+
+
 def embedding(input,
               size,
               is_sparse=False,
@@ -372,18 +470,20 @@ def embedding(input,
 
     Args:
         input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
         size(tuple|list): The shape of the look up table parameter. It should
             have two elements which indicate the size of the dictionary of
             embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update.
         is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If
-            :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
-            :math:`size[0] + dim`.
-        param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        padding_idx(int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        param_attr(ParamAttr): Parameters for this layer.
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -418,6 +518,54 @@ def embedding(input,
             'padding_idx': padding_idx
         })
     return tmp
+
+
+def _pull_box_sparse(input, size, dtype='float32'):
+    """
+    **Pull Box Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which 
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of 
+            each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports 
+	    float32 now.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.pull_box_sparse(input=data, size=[11])    
+    """
+    helper = LayerHelper('pull_box_sparse', **locals())
+    if dtype != 'float32':
+        raise ValueError(
+            "BoxPS only support float type embedding now, and your type is: " +
+            dtype)
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='pull_box_sparse',
+        inputs={'Ids': inputs},
+        outputs={'Out': outs},
+        attrs={'size': size})
+    if len(outs) == 1:
+        return outs[0]
+    return outs
 
 
 @templatedoc(op_type="lstm")
@@ -1260,7 +1408,7 @@ def gru_unit(input,
 
 
 @templatedoc()
-def linear_chain_crf(input, label, param_attr=None):
+def linear_chain_crf(input, label, param_attr=None, length=None):
     """
     Linear Chain CRF.
 
@@ -1268,9 +1416,9 @@ def linear_chain_crf(input, label, param_attr=None):
 
     Args:
         input(${emission_type}): ${emission_comment}
-        input(${transition_type}): ${transition_comment}
         label(${label_type}): ${label_comment}
-        param_attr(ParamAttr): The attribute of the learnable parameter.
+        Length(${length_type}): ${length_comment}
+        param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
 
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
@@ -1280,16 +1428,66 @@ def linear_chain_crf(input, label, param_attr=None):
     Examples:
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             emission = fluid.layers.data(name='emission', shape=[1000], dtype='float32')
-             target = fluid.layers.data(name='target', shape=[1], dtype='int32')
-             crf_cost = fluid.layers.linear_chain_crf(
-                 input=emission,
-                 label=target,
-                 param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.2))
+            import paddle.fluid as fluid
+            import numpy as np
 
+            #define net structure, using LodTensor
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=emission,
+                    label=label,
+                    param_attr=fluid.ParamAttr(
+                    name='crfw',
+                    learning_rate=0.01)) 
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)    
+            #define data, using LoDTensor
+            a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
+            b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
+            feed1 = {'input_data':a,'label':b}
+            loss= exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
+            print(loss) 
+
+            #define net structure, using padding
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
+                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
+                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
+                crf_cost2 = fluid.layers.linear_chain_crf(
+                    input=emission2,
+                    label=label2,
+                    length=label_length,
+                    param_attr=fluid.ParamAttr(
+                     name='crfw',
+                     learning_rate=0.01))
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+
+            #define data, using padding
+            cc=np.random.rand(4,10,10).astype('float32')
+            dd=np.random.rand(4,10,1).astype('int64')
+            ll=np.array([[3,3,4,2]])
+            feed2 = {'input_data2':cc,'label2':dd,'length':ll}
+
+            loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
+            print(loss2) 
+            
+            #you can use find_var to get transition parameter.
+            transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
+            print(transition)
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[1]
@@ -1305,11 +1503,16 @@ def linear_chain_crf(input, label, param_attr=None):
         dtype=helper.input_dtype())
     log_likelihood = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    this_inputs = {
+        "Emission": [input],
+        "Transition": transition,
+        "Label": [label]
+    }
+    if length:
+        this_inputs['length'] = [length]
     helper.append_op(
         type='linear_chain_crf',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=this_inputs,
         outputs={
             "Alpha": [alpha],
             "EmissionExps": [emission_exps],
@@ -1825,22 +2028,70 @@ def sequence_conv(input,
                   num_filters,
                   filter_size=3,
                   filter_stride=1,
-                  padding=None,
+                  padding=True,
+                  padding_start=None,
                   bias_attr=None,
                   param_attr=None,
                   act=None,
                   name=None):
     """
-    This function creates the op for sequence_conv, using the inputs and
-    other convolutional configurations for the filters and stride as given
-    in the input parameters to the function.
+    The sequence_conv receives input sequences with variable length and other convolutional
+    configuration parameters for the filter and stride to apply the convolution operation.
+    It fills all-zero padding data on both sides of the sequence by default to ensure that
+    the output is the same length as the input. You can customize the padding behavior by
+    configuring the parameter :attr:`padding\_start`.
+    
+    **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
+
+    .. code-block:: text
+
+            Here we'll illustrate the details of the padding operation:
+            For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
+            Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
+            Besides, for the sake of simplicity, we assume M=1 and N=2.
+            X = [[a1, a2;
+                  b1, b2;
+                  c1, c2]
+                 [d1, d2]]
+
+            This is to say that input (X) has 4 words and the dimension of each word
+            representation is 2.
+
+            * Case1:
+
+                If padding_start is -1 and filter_size is 3.
+                The length of padding data is calculated as follows:
+                up_pad_len = max(0, -padding_start) = 1
+                down_pad_len = max(0, filter_size + padding_start - 1) = 1
+
+                The output of the input sequence after padding is:
+                data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
+                                       a1, a2, b1, b2, c1, c2;
+                                       b1, b2, c1, c2, 0,  0 ]
+                                      [0,  0,  d1, d2, 0,  0 ]]
+
+                It will be multiplied by the filter weight to get the final output.
 
     Args:
         input (Variable): ${x_comment}
-        num_filters (int): number of filters.
-        filter_size (int): the filter size (H and W).
-        filter_stride (int): stride of the filter.
-        padding (bool): if True, add paddings.
+        num_filters (int): the number of filters.
+        filter_size (int): the height of filter, the width is hidden size by default.
+        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+            future. Currently, it will always pad input to make sure the length of the output is
+            the same as input whether :attr:`padding` is set true or false. Because the length of
+            input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
+            result to not be computed correctly. These padding data will not be trainable or updated
+            while trainnig. 
+        padding_start (int|None): It is used to indicate the start index for padding the input
+            sequence, which can be negative. The negative number means to pad
+            :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
+            The positive number means to skip :attr:`padding_start` time-steps of each instance,
+            and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
+            at the end of the sequence to ensure that the output is the same length as the input.
+            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
+            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
+            is padded at the end of each input sequence.
         bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, sequence_conv
@@ -1859,11 +2110,13 @@ def sequence_conv(input,
         Variable: output of sequence_conv
 
     Examples:
+
         .. code-block:: python
 
              import paddle.fluid as fluid
+
              x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
-             x_conved = fluid.layers.sequence_conv(x,2)
+             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
     assert not in_dygraph_mode(), (
@@ -1874,6 +2127,8 @@ def sequence_conv(input,
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     pre_bias = helper.create_variable_for_type_inference(dtype)
+    if padding_start is None:
+        padding_start = -int(filter_size // 2)
 
     helper.append_op(
         type='sequence_conv',
@@ -1884,8 +2139,8 @@ def sequence_conv(input,
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size // 2),
-            'contextLength': filter_size
+            'contextStart': padding_start,
+            'contextLength': filter_size,
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
@@ -1995,6 +2250,15 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
     """
     helper = LayerHelper('softmax', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in softmax must be Variable, but received %s" %
+            (type(input)))
+    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in softmax must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
@@ -2029,7 +2293,7 @@ def conv2d(input,
     C will equal the number of input image channels divided by the groups.
     Please refer to UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more detials.
+    for more details.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -2068,22 +2332,26 @@ def conv2d(input,
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
+    Note:
+        padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
+
     Args:
         input (Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size 
+            is a tuple, it must contain two integers, (filter_size_height, 
+            filter_size_width). Otherwise, filter_size_height = filter_\
+            size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise,
+            padding_height = padding_width =  padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise,
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -2162,20 +2430,6 @@ def conv2d(input,
         default_initializer=_get_default_param_initializer())
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
-
-    if use_cudnn:
-        helper.create_variable(
-            name="kCUDNNFwdAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdDataAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        helper.create_variable(
-            name="kCUDNNBwdFilterAlgoCache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
 
     helper.append_op(
         type=l_type,
@@ -2261,18 +2515,19 @@ def conv3d(input,
         input (Variable): The input image with [N, C, D, H, W] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+            it must contain three integers, (filter_size_depth, filter_size_height, 
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size.
         stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv3d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
@@ -3100,6 +3355,10 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum)
+        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
+        moving_mean and moving_var is global mean and global variance.
+
 
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
@@ -3112,6 +3371,10 @@ def batch_norm(input,
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5.
@@ -3253,6 +3516,119 @@ def batch_norm(input,
         })
 
     return helper.append_activation(batch_norm_out)
+
+
+def instance_norm(input,
+                  epsilon=1e-05,
+                  param_attr=None,
+                  bias_attr=None,
+                  name=None):
+    """
+    **Instance Normalization Layer**
+
+    Can be used as a normalizer function for conv2d and fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for 
+    Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean of one  feature map in mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance of one feature map in mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Args:
+        input(variable): The rank of input variable can be 2, 3, 4, 5.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        name(string, Default None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: A tensor variable which is the result after applying instance normalization on the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.instance_norm(input=hidden1)
+    """
+    assert bias_attr is not False, "bias_attr should not be False in instance_norm."
+    helper = LayerHelper('instance_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # use fp32 for in parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    channel_num = input_shape[1]
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=dtype,
+        is_bias=True,
+        default_initializer=Constant(0.0))
+
+    # create output
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    instance_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="instance_norm",
+        inputs={
+            "X": input,
+            "Scale": scale,
+            "Bias": bias,
+        },
+        outputs={
+            "Y": instance_norm_out,
+            "SavedMean": saved_mean,
+            "SavedVariance": saved_variance
+        },
+        attrs={"epsilon": epsilon, })
+
+    return instance_norm_out
 
 
 def data_norm(input,
@@ -3518,7 +3894,7 @@ def group_norm(input,
             bias :math:`b`. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act(str): Activation to be applied to the output of group normalizaiton.
-        data_layout(string|NCHW): Only NCHW is supported.
+        data_layout(string, default NCHW): NCHW(num_batch, channels, h, w) or NHWC(num_batch, h, w, channels).
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -3537,9 +3913,12 @@ def group_norm(input,
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
-    if data_layout != 'NCHW':
-        raise ValueError("unsupported data layout:" + data_layout)
-    param_shape = [input_shape[1]]
+    if data_layout != 'NCHW' and data_layout != 'NHWC':
+        raise ValueError(
+            "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
+            + data_layout + " but only NCHW or NHWC supported.")
+    channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
+    param_shape = [channel_num]
     if param_attr:
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3565,8 +3944,11 @@ def group_norm(input,
             "Mean": mean_out,
             "Variance": variance_out,
         },
-        attrs={"epsilon": epsilon,
-               "groups": groups})
+        attrs={
+            "epsilon": epsilon,
+            "groups": groups,
+            "data_layout": data_layout
+        })
 
     return helper.append_activation(group_norm_out)
 
@@ -3689,7 +4071,7 @@ def conv2d_transpose(input,
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
     layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -3727,31 +4109,38 @@ def conv2d_transpose(input,
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
+
+    Note:
+          if output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
+          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`, 
+          conv2d_transpose can compute the kernel size automatically.
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). None if use
+            tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size.
+            it must contain two integers, (filter_size_height, filter_size_width).
+            Otherwise, filter_size_height = filter_size_width = filter_size. None if 
+            use output size to calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            contain two integers, (padding_height, padding_width). Otherwise, 
+            padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            contain two integers, (stride_height, stride_width). Otherwise,
+            stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain two integers, (dilation_height, dilation_width). Otherwise, 
+            dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -3881,7 +4270,7 @@ def conv3d_transpose(input,
     is the width of the feature. Parameters(dilations, strides, paddings) are
     two elements. These two elements represent height and width, respectively.
     The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    explanation and references `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
@@ -3929,18 +4318,19 @@ def conv3d_transpose(input,
             tuple, it must contain three integers, (image_D, image_H, image_W). This
             parameter only works when filter_size is None.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
+            it must contain three integers, (filter_size_depth, filter_size_height, \
+            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
+            filter_size_width = filter_size. None if use output size to
             calculate filter_size.
         padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
+            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
+            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
         stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
+            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
+            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
+            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
+            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -4209,7 +4599,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             import paddle.fluid as fluid
             import numpy
 
-            x = fluid.layers.data(name='y', shape=[10, 5],
+            x = fluid.layers.data(name='x', shape=[10, 5],
                              dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(
                 input=numpy.array([0.0], dtype=numpy.float32))
@@ -4258,7 +4648,7 @@ def sequence_unpad(x, length, name=None):
 	in which there are 3 sequences padded to length 5, and the acutal length
 	specified by input Variable **length**:
 
-	    length.data = [[2], [3], [4]],
+	    length.data = [2, 3, 4],
 
 	after unpadding, the output Variable will be:
 
@@ -4280,9 +4670,15 @@ def sequence_unpad(x, length, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
-            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
-            out = fluid.layers.sequence_unpad(x=x, length=len)
+            import numpy
+
+            # pad data
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
+            pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            
+            # upad data
+            unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
     assert not in_dygraph_mode(), (
@@ -5199,7 +5595,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
 
     Returns:
-        Variable: The product Tensor variable.
+        Variable: The product Tensor (or LoDTensor) variable.
 
     Examples:
         .. code-block:: python
@@ -5456,7 +5852,11 @@ def edit_distance(input,
     return edit_distance_out, sequence_num
 
 
-def ctc_greedy_decoder(input, blank, name=None):
+def ctc_greedy_decoder(input,
+                       blank,
+                       input_length=None,
+                       padding_value=0,
+                       name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
 
@@ -5470,6 +5870,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     .. code-block:: text
 
         Given:
+        for lod mode:
 
         input.data = [[0.6, 0.1, 0.3, 0.1],
                       [0.3, 0.2, 0.4, 0.1],
@@ -5498,48 +5899,114 @@ def ctc_greedy_decoder(input, blank, name=None):
 
         output.lod = [[2, 1]]
 
+        for padding mode:
+
+         input.data = [[[0.6, 0.1, 0.3, 0.1],
+                        [0.3, 0.2, 0.4, 0.1],
+                        [0.1, 0.5, 0.1, 0.3],
+                        [0.5, 0.1, 0.3, 0.1]],
+
+                       [[0.5, 0.1, 0.3, 0.1],
+                        [0.2, 0.2, 0.2, 0.4],
+                        [0.2, 0.2, 0.1, 0.5],
+                        [0.5, 0.1, 0.3, 0.1]]]
+
+        input_length.data = [[4], [4]]
+        input.shape = [2, 4, 4]
+
+        step1: Apply argmax to first input sequence which is input.data[0:4]. Then we get:
+               [[0], [2], [1], [0]], for input.data[4:8] is [[0], [3], [3], [0]], shape is [2,4,1]
+        step2: Change the argmax result to use padding mode, then argmax result is 
+                [[0, 2, 1, 0], [0, 3, 3, 0]], shape is [2, 4], lod is [], input_length is [[4], [4]]
+        step3: Apply ctc_align to padding argmax result, padding_value is 0
+
+        Finally:
+        output.data = [[2, 1, 0, 0],
+                       [3, 0, 0, 0]]
+        output_length.data = [[2], [1]]
+
+
+
 
     Args:
 
         input(Variable): (LoDTensor<float>), the probabilities of
-                         variable-length sequences, which is a 2-D Tensor with
-                         LoD information. It's shape is [Lp, num_classes + 1],
+                         variable-length sequences. When in lod mode, it is a 2-D Tensor with
+                         LoD information. It's shape is [Lp, num_classes + 1] 
                          where Lp is the sum of all input sequences' length and
-                         num_classes is the true number of classes. (not
-                         including the blank label).
+                         num_classes is the true number of classes. When in padding mode,
+                         it is a 3-D Tensor with padding, It's shape is [batch_size, N, num_classes + 1].
+                         (not including the blank label).
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in thehalf-opened
                     interval [0, num_classes + 1).
-        name (str): The name of this layer. It is optional.
+        input_length(Variable, optional): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
+                                 is None.
+        padding_value(int): padding value.
+        name (str, optional): The name of this layer. It is optional.
 
     Returns:
-        Variable: CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
+        output(Variable): For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
                   'Lp' is the sum if all output sequences' length. If all the sequences \
                   in result were empty, the result LoDTensor will be [-1] with  \
-                  LoD [[]] and dims [1, 1].
+                  LoD [[]] and dims [1, 1]. For padding mode, CTC greedy decode result is a 2-D tensor \
+                  with shape [batch_size, N], output length's shape is [batch_size, 1] which is length \
+                  of every sequence in output.
+        output_length(Variable, optional): length of each sequence of output for padding mode.
 
     Examples:
         .. code-block:: python
 
+            # for lod mode
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
+
+            # for padding mode
+            x_pad = fluid.layers.data(name='x_pad', shape=[4,8], dtype='float32')
+            x_pad_len = fluid.layers.data(name='x_pad_len', shape=[1], dtype='int64')
+            out, out_len = fluid.layers.ctc_greedy_decoder(input=x_pad, blank=0,
+                            input_length=x_pad_len)
+
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_variable_for_type_inference(dtype="int64")
-    helper.append_op(
-        type="ctc_align",
-        inputs={"Input": [topk_indices]},
-        outputs={"Output": [ctc_out]},
-        attrs={"merge_repeated": True,
-               "blank": blank})
-    return ctc_out
+
+    if input_length is None:
+        helper.append_op(
+            type="ctc_align",
+            inputs={"Input": [topk_indices]},
+            outputs={"Output": [ctc_out]},
+            attrs={"merge_repeated": True,
+                   "blank": blank})
+        return ctc_out
+    else:
+        ctc_out_len = helper.create_variable_for_type_inference(dtype="int64")
+        ctc_input = squeeze(topk_indices, [2])
+
+        helper.append_op(
+            type="ctc_align",
+            inputs={"Input": [ctc_input],
+                    "InputLength": [input_length]},
+            outputs={"Output": [ctc_out],
+                     "OutputLength": [ctc_out_len]},
+            attrs={
+                "merge_repeated": True,
+                "blank": blank,
+                "padding_value": padding_value
+            })
+        return ctc_out, ctc_out_len
 
 
-def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
+def warpctc(input,
+            label,
+            blank=0,
+            norm_by_times=False,
+            input_length=None,
+            label_length=None):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -5550,13 +6017,18 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
 
     Args:
        input (Variable): The unscaled probabilities of variable-length sequences,
-         which is a 2-D Tensor with LoD information.
-         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
+         information. When it is a 2-D LodTensor, it's shape is 
+         [Lp, num_classes + 1], where Lp is the sum of all input
          sequences' length and num_classes is the true number of classes.
-         (not including the blank label).
+         (not including the blank label). When it is a 3-D Tensor, it's shape 
+         is [max_logit_length, batch_size, num_classes + 1],
+         where max_logit_length is the length of the longest
+         input logit sequence.
        label (Variable): The ground truth of variable-length sequence,
-         which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1],
-         where Lg is th sum of all labels' length.
+         which is a 2-D Tensor with LoD information or a 2-D Tensor without
+         LoD information. When it is a 2-D LoDTensor or 2-D Tensor, 
+         it is of the shape [Lg, 1], where Lg is th sum of all labels' length.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
@@ -5564,37 +6036,65 @@ def warpctc(input, label, blank=0, norm_by_times=False, use_cudnn=False):
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
          follewed by a mean_op.
-       use_cudnn (bool, default false): Whether to use cudnn.
+       input_length(Variable): The length for each input sequence if it is 
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       label_length(Variable): The length for each label sequence if it is
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor of the shape [batch_size, 1].
 
     Examples:
-
         .. code-block:: python
 
+            # using LoDTensor
             import paddle.fluid as fluid
-            label = fluid.layers.data(name='label', shape=[11, 8],
+            import numpy as np
+            
+            label = fluid.layers.data(name='label', shape=[12, 1],
                                       dtype='float32', lod_level=1)
-            predict = fluid.layers.data(name='predict', shape=[11, 1],
-                                        dtype='float32')
+            predict = fluid.layers.data(name='predict', 
+                                        shape=[11, 8],
+                                        dtype='float32',lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
+
+            # using Tensor
+            input_length = fluid.layers.data(name='logits_length', shape=[11],
+                                         dtype='int64')
+            label_length = fluid.layers.data(name='labels_length', shape=[12],
+                                         dtype='int64')
+            target = fluid.layers.data(name='target', shape=[12, 1],
+                                       dtype='int32')
+            # length of the longest logit sequence
+            max_seq_length = 4
+            # number of logit sequences
+            batch_size = 4
+            output = fluid.layers.data(name='output', 
+                                       shape=[max_seq_length, batch_size, 8],
+                                       dtype='float32')
+            loss = fluid.layers.warpctc(input=output,label=target,
+                                        input_length=input_length,
+                                        label_length=label_length)
 
     """
     helper = LayerHelper('warpctc', **locals())
+    this_inputs = {'Logits': [input], 'Label': [label]}
+    if input_length and label_length:
+        this_inputs['LogitsLength'] = [input_length]
+        this_inputs['LabelLength'] = [label_length]
+
     loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
     helper.append_op(
         type='warpctc',
-        inputs={'Logits': [input],
-                'Label': [label]},
+        inputs=this_inputs,
         outputs={'WarpCTCGrad': [grad_out],
                  'Loss': [loss_out]},
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
-            'use_cudnn': use_cudnn
         })
     return loss_out
 
@@ -5715,40 +6215,40 @@ def nce(input,
         .. code-block:: python
 
 
-	    import paddle.fluid as fluid
-        import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-	    window_size = 5
-	    words = []
-	    for i in xrange(window_size):
-		words.append(fluid.layers.data(
-		    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+            window_size = 5
+            words = []
+            for i in xrange(window_size):
+                words.append(fluid.layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
-	    dict_size = 10000
-	    label_word = int(window_size / 2) + 1
+            dict_size = 10000
+            label_word = int(window_size / 2) + 1
 
-	    embs = []
-	    for i in xrange(window_size):
-		if i == label_word:
-		    continue
+            embs = []
+            for i in xrange(window_size):
+                if i == label_word:
+                    continue
 
-		emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
-				   param_attr='embed', is_sparse=True)
-		embs.append(emb)
+                emb = fluid.layers.embedding(input=words[i], size=[dict_size, 32],
+                                   param_attr='embed', is_sparse=True)
+                embs.append(emb)
 
-	    embs = fluid.layers.concat(input=embs, axis=1)
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=dict_size, param_attr='nce.w_0',
-		      bias_attr='nce.b_0')
+            embs = fluid.layers.concat(input=embs, axis=1)
+            loss = fluid.layers.nce(input=embs, label=words[label_word],
+                      num_total_classes=dict_size, param_attr='nce.w_0',
+                      bias_attr='nce.b_0')
 
-	    #or use custom distribution
-	    dist = np.array([0.05,0.5,0.1,0.3,0.05])
-	    loss = fluid.layers.nce(input=embs, label=words[label_word],
-		      num_total_classes=5, param_attr='nce.w_1',
-		      bias_attr='nce.b_1',
-		      num_neg_samples=3,
-		      sampler="custom_dist",
-		      custom_dist=dist)
+             #or use custom distribution
+             dist = np.array([0.05,0.5,0.1,0.3,0.05])
+             loss = fluid.layers.nce(input=embs, label=words[label_word],
+                       num_total_classes=5, param_attr='nce.w_1',
+                       bias_attr='nce.b_1',
+                       num_neg_samples=3,
+                       sampler="custom_dist",
+                       custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -6686,8 +7186,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         type="one_hot",
         inputs=inputs,
         attrs=attrs,
-        outputs={'Out': one_hot_out},
-        stop_gradient=True)
+        outputs={'Out': one_hot_out})
+    one_hot_out.stop_gradient = True
     return one_hot_out
 
 
@@ -6725,8 +7225,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
-            attrs={'step': float(step)},
-            stop_gradient=True)
+            attrs={'step': float(step)})
         counter.stop_gradient = True
 
     return counter
@@ -6737,9 +7236,9 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Gives a new shape to the input Tensor without changing its data.
 
     The target shape can be given by :attr:`shape` or :attr:`actual_shape`.
-    :attr:`shape` is a list of integer while :attr:`actual_shape` is a tensor
+    :attr:`shape` is a list of integer or tensor variable while :attr:`actual_shape` is a tensor
     variable. :attr:`actual_shape` has a higher priority than :attr:`shape`
-    if it is provided, while :attr:`shape` still should be set correctly to
+    if it is provided and it only contains integer, while :attr:`shape` still should be set correctly to
     gurantee shape inference in compile-time.
 
     Some tricks exist when specifying the target shape.
@@ -6771,15 +7270,22 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     besides -1, 0 means the actual dimension value is going to be copied from
     the corresponding dimension of x.
 
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the future and only use :attr:`shape` instead.
+
     Args:
         x(variable): The input tensor.
-        shape(list): The new shape. At most one dimension of the new shape can
-                     be -1.
+        shape(list|tuple|Variable): The new shape. At most one dimension of the new shape can
+                     be -1. If :attr:`shape` is a list or tuple, it can contain Variable or not and
+                     the shape of Variable must be [1].
+
         actual_shape(variable): An optional input. If provided, reshape
                                 according to this given shape rather than
                                 :attr:`shape` specifying shape. That is to
                                 say :attr:`actual_shape` has a higher priority
-                                than :attr:`shape`.
+                                than :attr:`shape(list|tuple)` but not :attr:`shape(Variable)`. \
+                                This argument :attr:`actual_shape` will be removed in a future version. \
+                                Instructions for updating: :attr:`actual_shape` is deprecated,
+                                only use :attr:`shape` instead.
         act (str): The non-linear activation to be applied to the reshaped tensor
                    variable.
         inplace(bool): If ``inplace`` is `True`, the input and output of ``layers.reshape``
@@ -6801,64 +7307,89 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(
-                name='data', shape=[2, 4, 6], dtype='float32')
-            reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], inplace=True)
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            data_1 = fluid.layers.data(
+                name='data_1', shape=[2, 4, 6], dtype='float32')
+            reshaped_1 = fluid.layers.reshape(
+                x=data_1, shape=[-1, 0, 3, 2], inplace=True)
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
+            dim = fluid.layers.fill_constant([1], "int32", 5)
+            reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
     """
 
-    if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python list or tuple.")
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "Input shape must be an Variable or python list or tuple.")
 
-    inputs = {"X": x}
-    if isinstance(actual_shape, Variable):
-        inputs["Shape"] = actual_shape
-    elif actual_shape is not None:
-        raise TypeError("actual_shape should either be Variable or None")
-
-    # Validate the shape
-    unk_dim_idx = -1
-    contain_var = False
-    for dim_idx, dim_size in enumerate(shape):
-        if isinstance(dim_size, Variable):
-            contain_var = True
-            continue
-
-        if dim_size == -1:
-            assert unk_dim_idx == -1, (
-                "Only one dimension in shape can be unknown.")
-            unk_dim_idx = dim_idx
-        elif dim_size == 0:
-            assert dim_idx < len(x.shape), (
-                "The indice of 0s in shape can not exceed Rank(X).")
-        else:
-            assert dim_size > 0, (
-                "Each dimension size given in shape must not be negtive "
-                "except one unknown dimension.")
+    if not isinstance(actual_shape, Variable) and (actual_shape is not None):
+        raise TypeError("actual_shape should either be Variable or None.")
 
     helper = LayerHelper("reshape2", **locals())
+    inputs = {"X": x}
+    attrs = {}
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one dimension in shape can be unknown.")
+                    unk_dim_idx = dim_idx
+                elif dim_size == 0:
+                    assert dim_idx < len(x.shape), (
+                        "The indice of 0s in shape can not exceed Rank(X).")
+                else:
+                    assert dim_size > 0, (
+                        "Each dimension size given in shape must not be negtive "
+                        "except one unknown dimension.")
+        return attrs_shape
+
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'shape': shape}
     else:
-        if contain_var:
-            new_shape_tensor = []
-            for dim in shape:
-                if isinstance(dim, Variable):
-                    dim.stop_gradient = True
-                    new_shape_tensor.append(dim)
-                else:
-                    assert (isinstance(dim, int))
-                    temp_out = helper.create_variable_for_type_inference(
-                        'int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
-                    new_shape_tensor.append(temp_out)
-            inputs['ShapeTensor'] = new_shape_tensor
-            attrs = {}
+        if isinstance(shape, Variable):
+            shape.stop_gradient = True
+            inputs["Shape"] = shape
+        elif isinstance(shape, (list, tuple)):
+            assert len(shape) > 0, (
+                "The size of argument(shape) can't be zero.")
+            attrs["shape"] = get_attr_shape(shape)
+            if contain_var(shape):
+                inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+            elif isinstance(actual_shape, Variable):
+                actual_shape.stop_gradient = True
+                inputs["Shape"] = actual_shape
 
-        else:
-            attrs = {'shape': shape}
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -6980,7 +7511,7 @@ def lod_reset(x, y=None, target_lod=None):
     considered as target LoD first, otherwise :attr:`y.data` would be
     considered as target LoD. If :attr:`y` is not provided, target LoD should
     be specified by :attr:`target_lod`. If target LoD is specified by
-    :attr:`Y.data` or :attr:`target_lod`, only one level LoD is supported.
+    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
 
     .. code-block:: text
 
@@ -7032,7 +7563,7 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LodTensor.
+        x (Variable): Input variable which could be a Tensor or LoDTensor.
         y (Variable|None): If provided, output's LoD would be derived
                            from :attr:`y`.
         target_lod (list|tuple|None): One level LoD which should be considered
@@ -7065,8 +7596,65 @@ def lod_reset(x, y=None, target_lod=None):
             attrs={'target_lod': target_lod},
             outputs={'Out': out})
     else:
-        raise ValueError("y and target_lod should not be both None.")
+        raise ValueError("y and target_lod should not be both none.")
+    return out
 
+
+def lod_append(x, level):
+    """
+    Append level to LoD of :attr:`x`.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            given a 1-level LoDTensor x:
+                x.lod =  [[ 2,           3,                   1 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            level: [1, 1, 1, 1, 1, 1, 1]
+
+            then we get a 2-level LoDTensor:
+                x.lod =  [[ 2, 3, 1 ], [1, 1, 1, 1, 1, 1]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+    Args:
+        x (Variable): Input variable which could be a tensor or LoDTensor.
+        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
+
+    Returns:
+        Variable: Output variable with new LoD level.
+
+    Raises:
+        ValueError: If :attr:`y` is None or and :attr:`level` is not Iterator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
+            out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
+    """
+    from collections import Iterable
+    if x is None:
+        raise ValueError("Input(x) can't be None.")
+    if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
+        raise ValueError("Input(level) must be list, tuple or Variable.")
+
+    helper = LayerHelper("lod_append", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    inputs = {'X': x}
+    attrs = {'append': True}
+
+    if isinstance(level, Variable):
+        inputs['Y'] = level
+    else:
+        attrs['target_lod'] = level
+    helper.append_op(
+        type="lod_reset", inputs=inputs, attrs=attrs, outputs={'Out': out})
     return out
 
 
@@ -7147,9 +7735,9 @@ def pad(x, paddings, pad_value=0., name=None):
     padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    in dimension :attr:`i` is indicated by :attr:`paddings[2i]`, and the number
     of values padded after the contents of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[i+1]`.
+    indicated by :attr:`paddings[2i+1]`.
 
     See below for an example.
 
@@ -7359,7 +7947,11 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates.
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7415,7 +8007,11 @@ def roi_align(input,
 
     Args:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates. 
         pooled_height (integer): ${pooled_height_comment} Default: 1
         pooled_width (integer): ${pooled_width_comment} Default: 1
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
@@ -7506,16 +8102,24 @@ def image_resize(input,
                  resample='BILINEAR',
                  actual_shape=None,
                  align_corners=True,
-                 align_mode=1):
+                 align_mode=1,
+                 data_format='NCHW'):
     """
     **Resize a Batch of Images**
 
-    The input must be a tensor of the shape (num_batches, channels, in_h, in_w),
-    and the resizing only applies on the last two dimensions(hight and width).
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
+    or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
+    (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels), 
+    and the resizing only applies on the three dimensions(depth, hight and width).
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
+    future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
 
         'BILINEAR' : Bilinear interpolation
+
+        'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
 
@@ -7528,6 +8132,11 @@ def image_resize(input,
     W-direction in this op) on a rectilinear 2D grid. The key idea is 
     to perform linear interpolation first in one direction, and then 
     again in the other direction.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
 
     Align_corners and align_mode are optinal parameters,the calculation method 
     of interpolation can be selected by them.
@@ -7586,42 +8195,67 @@ def image_resize(input,
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
+        Trilinear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+
+          else:
+           
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+          
     For details of nearest neighbor interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
 
     For details of bilinear interpolation, please refer to Wikipedia: 
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
 
+    For details of trilinear interpolation, please refer to Wikipedia: 
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+
 
 
     Args:
-        input (Variable): The input tensor of image resize layer,
-                          This is a 4-D tensor of the shape
-                          (num_batches, channels, in_h, in_w).
+        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of image resize
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
-        scale(float|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set. 
-             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
+             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If 
+             a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR' and 'NEAREST'
-                       currently.
-                       Default: 'BILINEAR'
+        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR'
+                       and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
                                 according to this given shape rather than
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                actual_shape instead of :attr:`out_shape` if you
-                                want to specify output shape dynamically. When
-                                using actual_shape to specify output shape, one of
-                                :attr:`out_shape` and :attr:`scale` should also be
-                                set, otherwise errors would be occured in graph
-                                constructing stage.
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the 
                                input and output tensors are aligned, preserving the values at the 
@@ -7629,39 +8263,78 @@ def image_resize(input,
                                Default: True
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
-                            src_idx = scale*dst_index .
+                            src_idx = scale*dst_index.
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels) for 4-D Tensor,
+                                    NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels) for 5-D Tensor.
+                                    Default: 'NCHW'.
 
     Returns:
-        Variable: The output is a 4-D tensor of the shape
-        (num_batches, channls, out_h, out_w).
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR'
-                    or 'NEAREST' currently.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
+                    'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
-        ValueError: out_shape length should be 2.
+        ValueError: out_shape length should be 2 for input 4-D tensor.
+        ValueError: out_shape length should be 3 for input 5-D tensor.
         ValueError: scale should be greater than zero.
         TypeError: align_corners shoule be a bool value
         ValueError: align_mode can only be '0' or '1'
+        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
-            out = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
+            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
+            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.image_resize(input, out_shape=[12, 12], resample="NEAREST")
+            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.image_resize(input, out_shape=[12, dim1], resample="NEAREST")
+            # out1.shape = [-1, 3, 12, -1]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.image_resize(input, out_shape=shape_tensor, resample="NEAREST")
+            # out2.shape = [-1, 3, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.image_resize(input, out_shape=[4, 4], resample="NEAREST", actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.image_resize(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1]
+
     """
     resample_methods = {
         'BILINEAR': 'bilinear',
+        'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
     }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR' or 'NEAREST' currently."
-        )
+            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
+
+    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+        raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
+    if resample == 'TRILINEAR' and len(input.shape) != 5:
+        raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
@@ -7673,41 +8346,110 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
+    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 4-D input.")
+    elif len(input.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
+
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
+    if data_format == 'NCHW' or data_format == 'NCDHW':
+        data_layout = 'NCHW'
+    if data_format == 'NHWC' or data_format == 'NDHWC':
+        data_layout = 'NHWC'
+
     inputs = {"X": input}
     attrs = {
-        "out_h": 0,
-        "out_w": 0,
+        "out_d": -1,
+        "out_h": -1,
+        "out_w": -1,
         "interp_method": resample_type,
         "align_corners": align_corners,
-        "align_mode": align_mode
+        "align_mode": align_mode,
+        "data_layout": data_layout
     }
 
     if out_shape is not None:
         if isinstance(out_shape, Variable):
-            warnings.warn("out_shape as Variable type is deprecated, \
-                    it is recommended to use actual_shape instead of \
-                    out_shape to specify output shape dynamically.")
+            out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError(
                     "out_shape should be a list or tuple or Variable.")
-            if len(out_shape) != 2:
-                raise ValueError("out_shape length should be 2.")
+            # Validate the shape
+            contain_var = False
+            for dim_idx, dim_size in enumerate(out_shape):
+                if isinstance(dim_size, Variable):
+                    contain_var = True
+                    continue
+                assert dim_size > 0, (
+                    "Each dimension size given in out_shape must be greater than 0."
+                )
 
-            out_shape = list(map(int, out_shape))
-            attrs['out_h'] = out_shape[0]
-            attrs['out_w'] = out_shape[1]
+            if contain_var:
+                new_size_tensor = []
+                size_list = []
+                for dim in out_shape:
+                    if isinstance(dim, Variable):
+                        dim.stop_gradient = True
+                        new_size_tensor.append(dim)
+                        size_list.append(-1)
+                    else:
+                        assert (isinstance(dim, int))
+                        temp_out = helper.create_variable_for_type_inference(
+                            'int32')
+                        fill_constant(
+                            [1], 'int32', dim, force_cpu=True, out=temp_out)
+                        new_size_tensor.append(temp_out)
+                        size_list.append(dim)
+                inputs['SizeTensor'] = new_size_tensor
+
+            if len(input.shape) == 4:
+                if len(out_shape) != 2:
+                    raise ValueError("out_shape length should be 2 for "
+                                     "input 4-D tensor.")
+                if contain_var:
+                    attrs['out_h'] = size_list[0]
+                    attrs['out_w'] = size_list[1]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_h'] = out_shape[0]
+                    attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 5:
+                if len(out_shape) != 3:
+                    raise ValueError("out_shape length should be 3 for "
+                                     "input 5-D tensor.")
+                if contain_var:
+                    attrs['out_d'] = size_list[0]
+                    attrs['out_h'] = size_list[1]
+                    attrs['out_w'] = size_list[2]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_d'] = out_shape[0]
+                    attrs['out_h'] = out_shape[1]
+                    attrs['out_w'] = out_shape[2]
 
     else:
-        if scale <= 0:
-            raise ValueError("scale should be greater than zero.")
-        attrs['scale'] = float(scale)
+        if isinstance(scale, Variable):
+            scale.stop_gradient = True
+            inputs["Scale"] = scale
+        if isinstance(scale, float):
+            if scale <= 0:
+                raise ValueError("scale should be greater than zero.")
+            attrs['scale'] = float(scale)
 
     if isinstance(actual_shape, Variable):
+        warnings.warn(
+            "actual_shape will be deprecated, it is recommended to use "
+            "out_shape instead of actual_shape to specify output shape dynamically."
+        )
+        actual_shape.stop_gradient = True
         inputs["OutSize"] = actual_shape
     elif actual_shape is not None:
         raise TypeError("actual_shape should either be Variable or None.")
@@ -7728,11 +8470,15 @@ def resize_bilinear(input,
                     name=None,
                     actual_shape=None,
                     align_corners=True,
-                    align_mode=1):
+                    align_mode=1,
+                    data_format='NCHW'):
     """
     Resize input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
+    the future and only use :attr:`out_shape` instead.
 
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -7758,7 +8504,7 @@ def resize_bilinear(input,
             
             else:
               
-              scale_factor = float(in_size/out_size)     
+              scale_factor = float(in_size/out_size)
 
         Bilinear interpolation:
 
@@ -7771,29 +8517,24 @@ def resize_bilinear(input,
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
-
           else:
 
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-
-
     Args:
-        input(${x_type}): ${x_comment}.
-
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
-
-        scale(float|None): The multiplier for the input height or width. At
+            layer, the shape is (out_h, out_w).Default: None. If a list, each 
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -7801,43 +8542,84 @@ def resize_bilinear(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                actual_shape instead of :attr:`out_shape` if you
-                                want to specify output shape dynamically. When
-                                using actual_shape to specify output shape, one of
-                                :attr:`out_shape` and :attr:`scale` should also be
-                                set, otherwise errors would be occured in graph
-                                constructing stage.
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels). Default: 'NCHW'.
 
     Returns:
-        ${out_comment}.
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
-            out = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
+            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
+            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.resize_bilinear(input, out_shape=[12, 12])
+            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.resize_bilinear(input, out_shape=[12, dim1])
+            # out1.shape = [-1, 3, 12, -1]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.resize_bilinear(input, out_shape=shape_tensor)
+            # out2.shape = [-1, 3, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.resize_bilinear(input, out_shape=[4, 4], actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.resize_bilinear(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1]
     """
 
     return image_resize(input, out_shape, scale, name, 'BILINEAR', actual_shape,
-                        align_corners, align_mode)
+                        align_corners, align_mode, data_format)
 
 
-@templatedoc(op_type="nearest_interp")
-def resize_nearest(input,
-                   out_shape=None,
-                   scale=None,
-                   name=None,
-                   actual_shape=None,
-                   align_corners=True):
+@templatedoc(op_type="trilinear_interp")
+def resize_trilinear(input,
+                     out_shape=None,
+                     scale=None,
+                     name=None,
+                     actual_shape=None,
+                     align_corners=True,
+                     align_mode=1,
+                     data_format='NCDHW'):
     """
-    Resize input by performing nearest neighbor interpolation in both the
-    3rd dimension(in height direction) and the 4th dimension(in width
-    direction) based on given output shape which is specified by actual_shape,
-    out_shape and scale in priority order.
+    Resize input by performing trilinear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated 
+    in the future and only use :attr:`out_shape` instead.
+
+    Trilinear interpolation is an extension of linear interpolation for 
+    interpolating functions of three variables (e.g. D-direction, 
+    H-direction and W-direction in this op) on a rectilinear 3D grid. 
+    The linear interpolation is performed on three directions.
+
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+    Align_corners and align_mode are optinal parameters,the calculation 
+    method of interpolation can be selected by them.
 
     Example:
 
@@ -7851,8 +8633,128 @@ def resize_nearest(input,
             
             else:
               
-              scale_factor = float(in_size/out_size)
+              scale_factor = float(in_size/out_size)     
+
+        Bilinear interpolation:
+
+          if:
+
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+    Args:
+        input(${x_type}): 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize bilinear
+            layer, the shape is (out_d, out_h, out_w). Default: None. If a list, 
+            each element can be  an integer or a Tensor Variable with shape: [1]. If 
+            a Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input depth, height or width.
+             At least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+        name(str|None): The output variable name.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occured in graph constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+        data_format(str, optional): NCDHW(num_batches, channels, depth, height, width) or 
+                                    NDHWC(num_batches, depth, height, width, channels).
+                                    Default: 'NCDHW'.
+
+    Returns:
+        A 5-D Tensor in shape of (num_batches, channels, out_d, out_h, out_w) or 
+        (num_batches, out_d, out_h, out_w, channels).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", shape=[3, 6, 9, 11], dtype="float32")
+            # input.shape = [-1, 3, 6, 9, 11], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.resize_trilinear(input, out_shape=[12, 12, 12])
+            # out0.shape = [-1, 3, 12, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.resize_trilinear(input, out_shape=[12, dim1, 4])
+            # out1.shape = [-1, 3, 12, -1, 4]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="shape_tensor", shape=[3], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.resize_trilinear(input, out_shape=shape_tensor)
+            # out2.shape = [-1, 3, -1, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[3], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.resize_trilinear(input, out_shape=[4, 4, 8], actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4, 8]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.resize_trilinear(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1, -1]
+    """
+
+    return image_resize(input, out_shape, scale, name, 'TRILINEAR',
+                        actual_shape, align_corners, align_mode, data_format)
+
+
+@templatedoc(op_type="nearest_interp")
+def resize_nearest(input,
+                   out_shape=None,
+                   scale=None,
+                   name=None,
+                   actual_shape=None,
+                   align_corners=True,
+                   data_format='NCHW'):
+    """
+    Resize input by performing nearest neighbor interpolation in both the
+    height direction and the width direction based on given output shape 
+    which is specified by actual_shape, out_shape and scale in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the 
+    future and only use :attr:`out_shape` instead.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+              scale_factor = (in_size-1.0)/(out_size-1.0)
             
+            else:
+              
+              scale_factor = float(in_size/out_size)
           
         Nearest neighbor interpolation:
           
@@ -7879,17 +8781,16 @@ def resize_nearest(input,
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
 
     Args:
-        input(${x_type}): ${x_comment}.
-
+        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize nearest
-                                    layer, the shape is (out_h, out_w).
-                                    Default: None
-
-        scale(float|None): The multiplier for the input height or width. At
+            layer, the shape is (out_h, out_w). Default: None. If a list, each 
+            element can be integer or a tensor Variable with shape: [1]. If a 
+            tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set. 
              And :attr:`out_shape` has a higher priority than :attr:`scale`. 
              Default: None.
-
         name(str|None): The output variable name.
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -7897,28 +8798,63 @@ def resize_nearest(input,
                                 :attr:`out_shape` and :attr:`scale` specifying
                                 shape. That is to say actual_shape has the
                                 highest priority. It is recommended to use
-                                actual_shape instead of :attr:`out_shape` if you
-                                want to specify output shape dynamically. When
-                                using actual_shape to specify output shape, one of
-                                :attr:`out_shape` and :attr:`scale` should also be
-                                set, otherwise errors would be occured in graph
-                                constructing stage.
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
+        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
+                                    NHWC(num_batches, height, width, channels).
+                                    Default: 'NCHW'.
 
     Returns:
-        ${out_comment}.
+        A 4-D Tensor in shape of (num_batches, channels, out_h, out_w) or 
+        (num_batches, out_h, out_w, channels).
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3,6,9], dtype="float32")
-            out = fluid.layers.resize_nearest(input, out_shape=[12, 12])
+            input = fluid.layers.data(name="input", shape=[3, 6, 9], dtype="float32")
+            # input.shape = [-1, 3, 6, 9], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            out0 = fluid.layers.resize_nearest(input, out_shape=[12, 12])
+            # out0.shape = [-1, 3, 12, 12], it means out0.shape[0] = input.shape[0] in runtime.
+
+            # out_shape is a list in which each element is a integer or a tensor Variable
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            out1 = fluid.layers.resize_nearest(input, out_shape=[12, dim1])
+            # out1.shape = [-1, 3, 12, -1]
+
+            # out_shape is a 1-D tensor Variable
+            shape_tensor = fluid.layers.data(name="resize_shape", shape=[2], dtype="int32", append_batch_size=False)
+            out2 = fluid.layers.resize_nearest(input, out_shape=shape_tensor)
+            # out2.shape = [-1, 3, -1, -1]
+
+            # when use actual_shape
+            actual_shape_tensor = fluid.layers.data(name="actual_shape_tensor", shape=[2], dtype="int32", append_batch_size=False)
+            out3 = fluid.layers.resize_nearest(input, out_shape=[4, 4], actual_shape=actual_shape_tensor)
+            # out3.shape = [-1, 3, 4, 4]
+
+            # scale is a Variable
+            scale_tensor = fluid.layers.data(name="scale", shape=[1], dtype="float32", append_batch_size=False)
+            out4 = fluid.layers.resize_nearest(input, scale=scale_tensor)
+            # out4.shape = [-1, 3, -1, -1]
     """
 
-    return image_resize(input, out_shape, scale, name, 'NEAREST', actual_shape,
-                        align_corners)
+    return image_resize(
+        input,
+        out_shape,
+        scale,
+        name,
+        'NEAREST',
+        actual_shape,
+        align_corners,
+        align_mode=1,
+        data_format=data_format)
 
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
@@ -8023,6 +8959,91 @@ def gather(input, index, overwrite=True):
     return out
 
 
+def gather_nd(input, index, name=None):
+    """
+    **Gather Nd Layer**
+
+    This function is actually a high-dimensional extension of :code:`gather` 
+    and supports for simultaneous indexing by multiple axes. :attr:`index` is a 
+    K-dimensional integer tensor, which is regarded as a (K-1)-dimensional 
+    tensor of :attr:`index` into :attr:`input`, where each element defines 
+    a slice of params:
+
+    .. math::
+
+        output[(i_0, ..., i_{K-2})] = input[index[(i_0, ..., i_{K-2})]]
+
+    Obviously, :code:`index.shape[-1] <= input.rank` . And, the output tensor has
+    shape :code:`index.shape[:-1] + input.shape[index.shape[-1]:]` .
+
+    .. code-block:: text
+
+            Given:
+                input = [[[ 0,  1,  2,  3],
+                          [ 4,  5,  6,  7],
+                          [ 8,  9, 10, 11]],
+                         [[12, 13, 14, 15],
+                          [16, 17, 18, 19],
+                          [20, 21, 22, 23]]]
+                input.shape = (2, 3, 4)
+
+            * Case 1:
+                index = [[1]]
+                
+                gather_nd(input, index)  
+                         = [input[1, :, :]] 
+                         = [[12, 13, 14, 15],
+                            [16, 17, 18, 19],
+                            [20, 21, 22, 23]]
+
+            * Case 2:
+                index = [[0,2]]
+
+                gather_nd(input, index)
+                         = [input[0, 2, :]]
+                         = [8, 9, 10, 11]
+
+            * Case 3:
+                index = [[1, 2, 3]]
+
+                gather_nd(input, index)
+                         = [input[1, 2, 3]]
+                         = [23]
+
+    Args:
+        input (Variable): The source input
+        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank
+        name (str|None): A name for this layer(optional). If set None, the
+                         layer will be named automatically
+
+    Returns:
+        output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[3, 4, 5], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[2, 2], dtype='int32')
+            output = fluid.layers.gather_nd(x, index)
+
+    """
+    helper = LayerHelper('gather_nd', **locals())
+    dtype = helper.input_dtype()
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type="gather_nd",
+        inputs={"X": input,
+                "Index": index},
+        outputs={"Out": output})
+    return output
+
+
 def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
@@ -8072,6 +9093,127 @@ def scatter(input, index, updates, name=None, overwrite=True):
         attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
+
+
+def scatter_nd_add(ref, index, updates, name=None):
+    """
+    **Scatter_nd_add Layer**
+
+    Output is obtained by applying sparse addition to a single value
+    or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
+    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
+    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates` 
+    is a Tensor with rank :math:`K - 1 + R - Q` and its
+    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
+    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
+    add the corresponding :attr:`updates` slice to the :attr:`ref` slice
+    which is obtained by the last one dimension of :attr:`index` .
+
+    .. code-block:: text
+        
+        Given:
+
+        * Case 1:
+            ref = [0, 1, 2, 3, 4, 5]
+            index = [[1], [2], [3], [1]]
+            updates = [9, 10, 11, 12]
+
+          we get:
+             
+            output = [0, 22, 12, 14, 4, 5]
+
+        * Case 2:
+            ref = [[65, 17], [-14, -25]]
+            index = [[], []]
+            updates = [[[-1, -2], [1, 2]],
+                       [[3, 4], [-3, -4]]]
+            ref.shape = (2, 2)
+            index.shape = (2, 0)
+            updates.shape = (2, 2, 2)
+
+          we get:
+             
+            output = [[67, 19], [-16, -27]]
+
+    Args:
+        ref (Variable): The ref input.
+        index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
+                          Its dtype should be int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter_nd_add op, and it must have the same type
+                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:]
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape and type as ref.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            ref = fluid.layers.data(name='ref', shape=[3, 5, 9, 10], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int32', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+
+            output = fluid.layers.scatter_nd_add(ref, index, updates)
+    """
+    if ref.dtype != updates.dtype:
+        raise ValueError("ref and updates must have same data type.")
+
+    helper = LayerHelper('scatter_nd_add', **locals())
+    dtype = helper.input_dtype()
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
+    helper.append_op(
+        type="scatter_nd_add",
+        inputs={"X": ref,
+                "Index": index,
+                "Updates": updates},
+        outputs={"Out": output})
+    return output
+
+
+def scatter_nd(index, updates, shape, name=None):
+    """
+    **Scatter_nd Layer**
+
+    Output is obtained by scattering the :attr:`updates` in a new tensor according 
+    to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the 
+    tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)` 
+    is equal to :code:`scatter_nd_add(fluid.layers.zeros(shape, updates.dtype), index, updates)` . 
+    If :attr:`index` has repeated elements, then the corresponding updates are accumulated. 
+    Because of the numerical approximation issues, the different order of repeated elements 
+    in :attr:`index` may cause different results. The specific calculation method can be 
+    seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
+
+    Args:
+        index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
+                          Its dtype should be int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter_nd op. 
+                            It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
+        shape(tuple|list): Shape of output tensor.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same type as :attr:`updates` .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            shape = [3, 5, 9, 10]
+
+            output = fluid.layers.scatter_nd(index, updates, shape)
+    """
+    return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
 def sequence_scatter(input, index, updates, name=None):
@@ -8335,10 +9477,12 @@ def mean_iou(input, label, num_classes):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            predict = fluid.layers.data(name='predict', shape=[3, 32, 32])
-            label = fluid.layers.data(name='label', shape=[1])
+            iou_shape = [32, 32]
+            num_classes = 5
+            predict = fluid.layers.data(name='predict', shape=iou_shape)
+            label = fluid.layers.data(name='label', shape=iou_shape)
             iou, wrongs, corrects = fluid.layers.mean_iou(predict, label,
-                                                          num_classes=5)
+                                                          num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
     dtype = helper.input_dtype()
@@ -8361,6 +9505,11 @@ def mean_iou(input, label, num_classes):
 def crop(x, shape=None, offsets=None, name=None):
     """
     Crop input into output, as specified by offsets and shape.
+
+    **Warning:** THIS FUNCTION IS DEPRECATED. It will be removed in a future version.
+    Instructions for updating: Use `fluid.layers.crop_tensor
+    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/layers/nn.html#crop_tensor>`_
+    instead.
 
     .. code-block:: text
 
@@ -8393,16 +9542,16 @@ def crop(x, shape=None, offsets=None, name=None):
     Args:
         x (Variable): The input tensor variable.
         shape (Variable|list/tuple of integer): The output shape is specified
-            by `shape`, which can a Variable or a list/tupe of integer.
+            by `shape`, which can be a Variable or a list/tuple of integer.
             If a tensor Variable, it's rank must be the same as `x`. This way
             is suitable for the case that the output shape may be changed each
-            iteration. If a list/tupe of integer, it's length must be the same
+            iteration. If a list/tuple of integer, it's length must be the same
             as the rank of `x`
         offsets (Variable|list/tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a Variable or or a list/tupe
+            offsets at each dimension. It can be a Variable or a list/tuple
             of integers. If a tensor Variable, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
-            each iteration. If a list/tupe of integer, it's length must be the
+            each iteration. If a list/tuple of integer, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each
             dimension.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -8451,6 +9600,188 @@ def crop(x, shape=None, offsets=None, name=None):
 
     helper.append_op(
         type='crop',
+        inputs=ipts,
+        outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def crop_tensor(x, shape=None, offsets=None, name=None):
+    """
+    Crop input into output, as specified by offsets and shape.
+
+    .. code-block:: text
+
+        * Case 1:
+            Given
+                X = [[0, 1, 2, 0, 0]
+                     [0, 3, 4, 0, 0]
+                     [0, 0, 0, 0, 0]],
+            and
+                shape = [2, 2],
+                offsets = [0, 1],
+            output is:
+                Out = [[1, 2],
+                       [3, 4]].
+        * Case 2:
+            Given
+                X =  [[[0, 1, 2, 3]
+                       [0, 5, 6, 7]
+                       [0, 0, 0, 0]],
+
+                      [[0, 3, 4, 5]
+                       [0, 6, 7, 8]
+                       [0, 0, 0, 0]]].
+            and
+                shape = [2, 2, 3],
+                offsets = [0, 0, 1],
+            output is:
+                Out = [[[1, 2, 3]
+                        [5, 6, 7]],
+
+                        [[3, 4, 5]
+                         [6, 7, 8]]].
+
+    Args:
+        x (Variable): The input tensor variable.
+        shape (Variable|list|tuple of integer): The output shape is specified
+            by `shape`. It can be a 1-D tensor Variable or a list/tuple. If a 
+            1-D tensor Variable, it's rank must be the same as `x`. If a 
+            list/tuple, it's length must be the same as the rank of `x`. Each 
+            element of list can be an integer or a tensor Variable of shape: [1].
+            If Variable contained, it is suitable for the case that the shape may 
+            be changed each iteration. Only the first element of list/tuple can be 
+            set to -1, it means that the first dimension of the output is the same 
+            as the input.
+        offsets (Variable|list|tuple of integer|None): Specifies the cropping
+            offsets at each dimension. It can be a 1-D tensor Variable or a list/tuple.
+            If a 1-D tensor Variable, it's rank must be the same as `x`. If a list/tuple, 
+            it's length must be the same as the rank of `x`. Each element of list can be
+            an integer or a tensor Variable of shape: [1]. If Variable contained, it is 
+            suitable for the case that the offsets may be changed each iteration. If None, 
+            the offsets are 0 at each dimension.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The cropped tensor variable.
+
+    Raises:
+        ValueError: If shape is not a list, tuple or Variable.
+        ValueError: If offsets is not None and not a list, tuple or Variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
+            # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
+
+            # shape is a 1-D tensor variable
+            crop_shape = fluid.layers.data(name="crop_shape", shape=[3], dtype="int32", append_batch_size=False)
+            crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
+            # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
+
+            # or shape is a list in which each element is a constant
+            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
+            # crop1.shape = [-1, 2, 3]
+
+            # or shape is a list in which each element is a constant or variable
+            y = fluid.layers.data(name="y", shape=[3, 8, 8], dtype="float32")
+            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            crop2 = fluid.layers.crop_tensor(y, shape=[-1, 3, dim1, 4])
+            # crop2.shape = [-1, 3, -1, 4]
+
+            # offsets is a 1-D tensor variable
+            crop_offsets = fluid.layers.data(name="crop_offsets", shape=[3], dtype="int32", append_batch_size=False)
+            crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
+            # crop3.shape = [-1, 2, 3]
+
+            # offsets is a list in which each element is a constant or variable
+            offsets_var =  fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
+            # crop4.shape = [-1, 2, 3]
+
+    """
+    helper = LayerHelper('crop_tensor', **locals())
+
+    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
+            isinstance(shape, Variable)):
+        raise ValueError("The shape should be a list, tuple or Variable.")
+
+    if offsets is None:
+        offsets = [0] * len(x.shape)
+
+    if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
+            isinstance(offsets, Variable)):
+        raise ValueError("The offsets should be a list, tuple or Variable.")
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+    ipts = {'X': x}
+    attrs = {}
+
+    def contain_var(input_list):
+        for ele in input_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    if isinstance(offsets, Variable):
+        offsets.stop_gradient = True
+        ipts['Offsets'] = offsets
+    elif contain_var(offsets):
+        new_offsets_tensor = []
+        for dim in offsets:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_offsets_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                assert dim >= 0, ("offsets should be greater or equal to zero.")
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_offsets_tensor.append(temp_out)
+        ipts['OffsetsTensor'] = new_offsets_tensor
+    else:
+        attrs['offsets'] = offsets
+
+    unk_dim_idx = -1
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        ipts['Shape'] = shape
+    elif contain_var(shape):
+        new_shape_tensor = []
+        shape_attr = []
+        for dim_idx, dim_size in enumerate(shape):
+            if isinstance(dim_size, Variable):
+                dim_size.stop_gradient = True
+                new_shape_tensor.append(dim_size)
+                shape_attr.append(-1)
+            else:
+                assert (isinstance(dim_size, int))
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one element in shape can be unknown.")
+                    assert dim_idx == 0, (
+                        "Only the first element in shape can be -1.")
+                    unk_dim_idx = dim_idx
+                else:
+                    assert dim_size > 0, (
+                        "Each dimension size given in shape must be greater than zero."
+                    )
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant(
+                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+                shape_attr.append(dim_size)
+        ipts['ShapeTensor'] = new_shape_tensor
+        attrs['shape'] = shape_attr
+    else:
+        attrs['shape'] = shape
+
+    helper.append_op(
+        type='crop_tensor',
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
@@ -8782,6 +10113,10 @@ def pad2d(input,
     """
 
     helper = LayerHelper('pad2d', **locals())
+
+    assert mode in ['reflect', 'edge', 'constant'
+                    ], "mode should be one of constant, reflect, edge."
+
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
     inputs = {'X': input}
@@ -8867,7 +10202,7 @@ def pow(x, factor=1.0, name=None):
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
-        factor(${factor_type}|1.0): ${factor_comment}
+        factor(float|Variable|1.0): The exponential factor of Pow.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
@@ -8879,16 +10214,28 @@ def pow(x, factor=1.0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.pow(x, factor=2.0)
+
+            # example 1: argument factor is float
+            y_1 = fluid.layers.pow(x, factor=2.0)
+
+            # example 2: argument factor is Variable
+            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            y_2 = fluid.layers.pow(x, factor=factor_tensor)
     """
     helper = LayerHelper('pow', **locals())
+    inputs = {'X': x}
+    attrs = {}
+    if isinstance(factor, Variable):
+        factor.stop_gradient = True
+        inputs['FactorTensor'] = factor
+    else:
+        attrs['factor'] = factor
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='pow',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'factor': factor})
+        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9315,9 +10662,6 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             mask = layers.sequence_mask(x=x)
 
     """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-
     helper = LayerHelper('sequence_mask', **locals())
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -9426,6 +10770,76 @@ def stack(x, axis=0):
     return out
 
 
+@templatedoc(op_type="filter_by_instag")
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
+    """
+    **Filter By Instag Layer**
+   
+    This function filter a batch of ins by instag, 
+    There are multiple ins, and every ins belongs to some tags. 
+    We can specify some tags we want. So the ins which belongs to that tags
+    remains in the output, and others removed.
+ 
+    For example, one batch has 4 ins. Every ins has its tag list. 
+     
+       | Ins   |   Ins_Tag |
+       |:-----:|:------:|
+       |  0    |   0, 1 |
+       |  1    |   1, 3 |
+       |  2    |   0, 3 |
+       |  3    |   2, 6 |
+
+    And Lod is [1,1,1,1]
+
+    And the filter tags [1]
+
+    From the definition above, ins which has tag 1 can pass the filter
+    So Ins 0 and Ins 1 can pass and be seen in the output,
+    Ins 2 and 3 cannot pass because they do not has tag 1.
+
+    Actually, if is_lod is false, it is normal tensor that equals to 
+    lod_tensor with all 1, similar to the example above.
+
+    Args:
+        ins (Variable): Input Variable (LoDTensor), usually it is 2D tensor
+                        And first dimension can have lod info or not.
+        ins_tag (Variable): Input Variable (LoDTensor), usually it is 1D list
+                        And split them by lod info
+        filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
+                        list that holds the tags.
+        is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
+
+    Returns:
+        Variable: filtered ins (LoDTensor) and loss weight (Tensor)
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid.layers as layers
+          ins = layers.data(name='Ins', shape=[-1,32], lod_level=0, dtype='float64')
+          ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+          filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+          out, loss_weight = layers.filter_by_instag(ins,  ins_tag,  filter_tag, True)
+        		
+    """
+    helper = LayerHelper('filter_by_instag', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=ins.dtype)
+    loss_weight = helper.create_variable_for_type_inference(dtype=np.float64)
+    mmap = helper.create_variable_for_type_inference(dtype=ins_tag.dtype)
+    helper.append_op(
+        type='filter_by_instag',
+        inputs={'Ins': ins,
+                'Ins_tag': ins_tag,
+                'Filter_tag': filter_tag},
+        outputs={'Out': out,
+                 'LossWeight': loss_weight,
+                 'IndexMap': mmap},
+        attrs={'is_lod': is_lod})
+
+    return [out, loss_weight]
+
+
 def unstack(x, axis=0, num=None):
     """
     **UnStack Layer**
@@ -9500,7 +10914,7 @@ def expand(x, expand_times, name=None):
 
     Args:
         x (Variable): A tensor with rank in [1, 6].
-        expand_times (list|tuple): Expand times number for each dimension.
+        expand_times (list|tuple|Variable): Expand times number for each dimension.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
@@ -9508,45 +10922,72 @@ def expand(x, expand_times, name=None):
 
     Examples:
         .. code-block:: python
-          
+
             import paddle.fluid as fluid
-            x = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
+
+            # example 1:
+            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
+            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
+
+            # example 2:
+            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
+            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
+            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
     """
+
+    if not isinstance(expand_times, (list, tuple, Variable)):
+        raise ValueError(
+            "Input expand_times must be an Variable, python list or tuple.")
+
     helper = LayerHelper('expand', input=x, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    # check expand_times have tensor
+    inputs = {"X": x}
+    attrs = {}
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_attr_expand_times(list_expand_times):
+        attrs_expand_times = []
+        for idx, times in enumerate(list_expand_times):
+            if isinstance(times, Variable):
+                attrs_expand_times.append(-1)
+            else:
+                attrs_expand_times.append(times)
+                assert times > 0, (
+                    "Each element given in expand_times must not be negtive.")
+        return attrs_expand_times
+
+    def get_new_expand_times_tensor(list_expand_times):
+        new_expand_times_tensor = []
+        for ele in list_expand_times:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                new_expand_times_tensor.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                new_expand_times_tensor.append(temp_out)
+        return new_expand_times_tensor
 
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'expand_times': expand_times}
     else:
+        if isinstance(expand_times, Variable):
+            expand_times.stop_gradient = True
+            inputs['ExpandTimes'] = expand_times
+        elif isinstance(expand_times, (list, tuple)):
+            attrs['expand_times'] = get_attr_expand_times(expand_times)
+            if contain_var(expand_times):
+                inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+                    expand_times)
 
-        def contain_tensor(expand_times):
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        if contain_tensor(expand_times):
-            new_expand_times = []
-            for ele in expand_times:
-                if isinstance(ele, Variable):
-                    ele.stop_gradient = True
-                    new_expand_times.append(ele)
-                else:
-                    assert (isinstance(ele, int))
-                    temp_out = helper.create_variable_for_type_inference(dtype)
-                    fill_constant(
-                        [1], 'int32', ele, force_cpu=True, out=temp_out)
-                    new_expand_times.append(temp_out)
-            inputs = {'X': x, 'expand_times_tensor': new_expand_times}
-            attrs = {}
-        else:
-            inputs = {'X': x}
-            attrs = {'expand_times': expand_times}
-
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
@@ -9818,8 +11259,8 @@ def slice(input, axes, starts, ends):
     Args:
         input (Variable): ${input_comment}.
         axes (List): ${axes_comment}
-        starts (List): ${starts_comment}
-        ends (List): ${ends_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
 
     Returns:
         out (Variable): ${out_comment}
@@ -9828,27 +11269,275 @@ def slice(input, axes, starts, ends):
         .. code-block:: python
 
             import paddle.fluid as fluid
- 
-            starts = [1, 0, 2]
-            ends = [3, 3, 4]
-            axes = [0, 1, 2]
 
             input = fluid.layers.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
-            out = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            sliced_1 = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
     """
 
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple.")
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple.")
+
     helper = LayerHelper('slice', **locals())
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if in_dygraph_mode():
+        inputs = {'Input': input}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'infer_flags': infer_flags
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+            infer_flags = list(-1 for i in range(len(axes)))
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if not contain_var(starts):
+                attrs['starts'] = starts
+            else:
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+            infer_flags = list(-1 for i in range(len(axes)))
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if not contain_var(ends):
+                attrs['ends'] = ends
+            else:
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+        # infer_flags
+        attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
     helper.append_op(
-        type='slice',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={'axes': axes,
-               'starts': starts,
-               'ends': ends})
+        type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+
+    return out
+
+
+@templatedoc()
+def strided_slice(input, axes, starts, ends, strides):
+    """
+    Strided Slice OP
+
+    The conceptualization that really helped me understand this was 
+    that this function emulates the indexing behavior of numpy arrays.
+    If you're familiar with numpy arrays, you'll know that you can make 
+    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
+    Basically, a very succinct way of writing for loops to get certain elements of the array.
+    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
+    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
+    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
+    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
+    the axes which controls the dimension you want to slice makes it more flexible.
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides=[1, 1]
+            Then:
+                result = [ [5, 6, 7], ]
+        
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
+            Then:
+                result = [ [2], ]
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List|Variable): ${starts_comment}
+        ends (List|Variable): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            input = fluid.layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides=[1, 1, 1]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+    """
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple.")
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple.")
+    if not isinstance(strides, (list, tuple, Variable)):
+        raise ValueError(
+            "Input strides must be an Variable, python list or tuple.")
+
+    helper = LayerHelper('strided_slice', **locals())
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if in_dygraph_mode():
+        inputs = {'Input': input}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'strides': strides,
+            'infer_flags': infer_flags
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if not contain_var(starts):
+                attrs['starts'] = starts
+            else:
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if not contain_var(ends):
+                attrs['ends'] = ends
+            else:
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+        # strides
+        if isinstance(strides, Variable):
+            strides.stop_gradient = True
+            inputs['StridesTensor'] = strides
+        elif isinstance(strides, (list, tuple)):
+            attrs['strides'] = []
+            if not contain_var(strides):
+                attrs['strides'] = strides
+            else:
+                inputs['StridesTensorList'] = get_new_list_tensor(strides)
+                for i, dim in enumerate(strides):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
+        attrs['infer_flags'] = infer_flags
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
 
     return out
 
@@ -10029,14 +11718,139 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
 
 
 def elementwise_max(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2, 5, 4]
+
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
+
+    """
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
 def elementwise_min(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[1, 3, 2]
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                "y": np.zeros((3, 4)).astype('float32')
+            }
+
+        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        z = fluid.layers.elementwise_max(x, y, axis=1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def elementwise_pow(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([2, 3, 4]),
+                "y": np.array([1, 5, 2])
+            }
+
+        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
+        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        z = fluid.layers.elementwise_pow(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[2, 243, 16]
+    """
+
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -10049,15 +11863,33 @@ def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
 
 
 for func in [
+        elementwise_max,
+        elementwise_pow,
+        elementwise_min,
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "axis (int32, optional): If X.dimension != Y.dimension, \
+            Y.dimension must be a subsequence of x.dimension. \
+            And axis is the start dimension index for broadcasting Y onto X. ",
+            "act (string, optional): Activation applied to the output. \
+            Default is None. Details: :ref:`api_guide_activations_en` ",
+            "name (string, optional): Name of the output. \
+            Default is None. It's used to print debug info for developers. Details: \
+            :ref:`api_guide_Name` "
+        ],
+        skip_attrs_set={"x_data_format", "y_data_format", "axis"
+                        }) + """\n""" + str(func.__doc__)
+
+for func in [
+        elementwise_mod,
+        elementwise_floordiv,
         elementwise_add,
         elementwise_div,
         elementwise_sub,
         elementwise_mul,
-        elementwise_max,
-        elementwise_min,
-        elementwise_pow,
-        elementwise_mod,
-        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -10147,9 +11979,9 @@ def logical_and(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_and(x=left, y=right)
     """
 
@@ -10176,9 +12008,9 @@ def logical_or(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_or(x=left, y=right)
     """
 
@@ -10205,9 +12037,9 @@ def logical_xor(x, y, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             right = fluid.layers.data(
-                name='right', shape=[1], dtype='int32')
+                name='right', shape=[1], dtype='bool')
             result = fluid.layers.logical_xor(x=left, y=right)
     """
 
@@ -10233,7 +12065,7 @@ def logical_not(x, out=None, name=None):
 
             import paddle.fluid as fluid
             left = fluid.layers.data(
-                name='left', shape=[1], dtype='int32')
+                name='left', shape=[1], dtype='bool')
             result = fluid.layers.logical_not(x=left)
     """
 
@@ -11630,6 +13462,70 @@ def psroi_pool(input,
     return out
 
 
+@templatedoc()
+def prroi_pool(input,
+               rois,
+               output_channels,
+               spatial_scale=1.0,
+               pooled_height=1,
+               pooled_width=1,
+               name=None):
+    """
+    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+
+    Args:
+        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+                        [N,C,H,W]. Where N is batch size,C is number of input channels,H
+                        is height of the feature, and W is the width of the feature.
+        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
+                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        the top left coordinates, and (x2, y2) is the bottom
+                        right coordinates.
+        output_channels (integer): The output's channel.
+        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
+                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+        pooled_height (integer): The pooled output height. Default: 1.
+        pooled_width (integer): The pooled output width. Default: 1.
+        name (str, default None): The name of this operation.
+
+    Returns:
+        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
+            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            pool_out = fluid.layers.prroi_pool(x, rois, 10, 1.0, 7, 7)
+    """
+    helper = LayerHelper('prroi_pool', **locals())
+    # check attrs
+    if not isinstance(output_channels, int):
+        raise TypeError("output_channels must be int type")
+    if not isinstance(spatial_scale, float):
+        raise TypeError("spatial_scale must be float type")
+    if not isinstance(pooled_height, int):
+        raise TypeError("pooled_height must be int type")
+    if not isinstance(pooled_width, int):
+        raise TypeError("pooled_width must be int type")
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='prroi_pool',
+        inputs={'X': input,
+                'ROIs': rois},
+        outputs={'Out': out},
+        attrs={
+            'output_channels': output_channels,
+            'spatial_scale': spatial_scale,
+            'pooled_height': pooled_height,
+            'pooled_width': pooled_width
+        })
+    return out
+
+
 def huber_loss(input, label, delta):
     """
     Huber loss is a loss function used in robust.
@@ -11716,75 +13612,6 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         outputs={'Loss': loss},
         attrs={'reduction': reduction})
     return loss
-
-
-@templatedoc()
-def tree_conv(nodes_vector,
-              edge_set,
-              output_size,
-              num_filters=1,
-              max_depth=2,
-              act='tanh',
-              param_attr=None,
-              bias_attr=None,
-              name=None):
-    """ 
-    ${comment}
-    		
-    Args:
-        nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
-        edge_set(${edge_set_type}): ${edge_set_comment}
-        output_size(int): output feature width
-        num_filters(int): number of filters, Default 1
-        max_depth(int): max depth of filters, Default 2
-        act(str): activation function, Default tanh
-        param_attr(ParamAttr): the parameter attribute for the filters, Default None
-        bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default None
-        name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default None
-
-    Returns:
-        out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          # 10 for max_node_size of dataset, 5 for vector width
-          nodes_vector = fluid.layers.data(name='vectors', shape=[10, 5], dtype='float32')
-          # 10 for max_node_size of dataset, 2 for every edge has two nodes
-          # edges must be directional
-          edge_set = fluid.layers.data(name='edge_set', shape=[10, 2], dtype='float32')
-          # the shape of output will be [10, 6, 1],
-          # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
-          out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
-          # After reshape, output tensor could be nodes_vector for next tree convolution
-          out_vector = fluid.layers.reshape(out_vector, shape=[-1, 10, 6])
-          out_vector_2 = fluid.layers.tree_conv(out_vector, edge_set, 3, 4, 2)
-          # also output tensor could be pooling(the pooling in paper called global pooling)
-          pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
-    """
-    helper = LayerHelper("tree_conv", **locals())
-    dtype = helper.input_dtype('nodes_vector')
-    feature_size = nodes_vector.shape[2]
-    W_shape = [feature_size, 3, output_size, num_filters]
-    W = helper.create_parameter(
-        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
-    if name == None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
-    helper.append_op(
-        type='tree_conv',
-        inputs={'NodesVector': nodes_vector,
-                'EdgeSet': edge_set,
-                'Filter': W},
-        outputs={'Out': out, },
-        attrs={'max_depth': max_depth})
-    if helper.bias_attr:
-        pre_activation = helper.append_bias_op(out)
-    else:
-        pre_activation = out
-    return helper.append_activation(pre_activation)
 
 
 from .ops import square
@@ -12125,6 +13952,58 @@ def unique(x, dtype='int32'):
     return out, index
 
 
+def unique_with_counts(x, dtype='int32'):
+    """
+    **unique** 
+
+    Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
+
+    Args:
+        x(Variable): A 1-D input tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+
+    Returns:
+        tuple: (out, index, count). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
+            `index` is an index tensor pointing to `out`, by which user can recover the original `x` tensor, \
+            `count` is count of unqiue element in the `x`.
+
+    Examples:
+        .. code-block:: python
+
+             import numpy as np
+             import paddle.fluid as fluid
+             x = fluid.layers.assign(np.array([2, 3, 3, 1, 5, 3], dtype='int32'))
+             out, index, count = fluid.layers.unique_with_counts(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
+                                                        # count is [1, 3, 1, 1]
+    """
+    if not (dtype == 'int32' or dtype == 'int64'):
+        raise TypeError(
+            "Op unique_with_counts, index dtype must be int32 or int64")
+
+    if x is None or len(x.shape) != 1:
+        raise ValueError(
+            "Op unique_with_counts, x must not be null and size of dim must be 1"
+        )
+
+    helper = LayerHelper("unique_with_counts", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    index = helper.create_variable_for_type_inference(dtype)
+
+    count = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='unique_with_counts',
+        inputs={'X': x},
+        attrs={'dtype': convert_np_dtype_to_dtype_(dtype)},
+        outputs={'Out': [out],
+                 'Index': [index],
+                 'Count': [count]})
+
+    return out, index, count
+
+
 def deformable_conv(input,
                     offset,
                     mask,
@@ -12138,20 +14017,30 @@ def deformable_conv(input,
                     im2col_step=None,
                     param_attr=None,
                     bias_attr=None,
+                    modulated=True,
                     name=None):
     """
     **Deformable Convolution Layer**
 
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
+   
+    
+    Deformable Convolution v2: 
     
     .. math::
 
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
+
+    Deformable Convolution v1:
     
-    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, respectively.
-    Refer to `Deformable ConvNets v2: More Deformable, Better Results
-    <https://arxiv.org/abs/1811.11168v2>`_ .
+    .. math::
+
+        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
+    
+    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, 
+    which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
+    <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
     
     Example:
         - Input:
@@ -12177,7 +14066,7 @@ def deformable_conv(input,
 
     Args:
         input (Variable): The input image with [N, C, H, W] format.
-        offset (Variable): The input coord offset of deformable convolution layer.
+        offset (Variable): The input coordinate offset of deformable convolution layer.
         Mask (Variable): The input mask of deformable covolution layer.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
@@ -12216,6 +14105,8 @@ def deformable_conv(input,
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
+        modulated (bool): Make sure which version should be used between v1 and v2, where v2 is \
+            used while True. Default: True.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None
     Returns:
@@ -12227,12 +14118,22 @@ def deformable_conv(input,
     Examples:
         .. code-block:: python
 
+          #deformable conv v2:
+         
           import paddle.fluid as fluid
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
           mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=3, padding=1)
+                                             num_filters=2, filter_size=3, padding=1, modulated=True)
+
+          #deformable conv v1:
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
+          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
+                                             num_filters=2, filter_size=3, padding=1, modulated=False)
     """
 
     num_channels = input.shape[1]
@@ -12245,8 +14146,6 @@ def deformable_conv(input,
         raise TypeError("Input of deformable_conv must be Variable")
     if not isinstance(offset, Variable):
         raise TypeError("Input Offset of deformable_conv must be Variable")
-    if not isinstance(mask, Variable):
-        raise TypeError("Input Mask of deformable_conv must be Variable")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -12276,23 +14175,42 @@ def deformable_conv(input,
 
     pre_bias = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(
-        type='deformable_conv',
-        inputs={
-            'Input': input,
-            'Filter': filter_param,
-            'Offset': offset,
-            'Mask': mask,
-        },
-        outputs={"Output": pre_bias},
-        attrs={
-            'strides': stride,
-            'paddings': padding,
-            'dilations': dilation,
-            'groups': groups,
-            'deformable_groups': deformable_groups,
-            'im2col_step': im2col_step,
-        })
+    if modulated:
+        helper.append_op(
+            type='deformable_conv',
+            inputs={
+                'Input': input,
+                'Filter': filter_param,
+                'Offset': offset,
+                'Mask': mask,
+            },
+            outputs={"Output": pre_bias},
+            attrs={
+                'strides': stride,
+                'paddings': padding,
+                'dilations': dilation,
+                'groups': groups,
+                'deformable_groups': deformable_groups,
+                'im2col_step': im2col_step,
+            })
+
+    else:
+        helper.append_op(
+            type='deformable_conv_v1',
+            inputs={
+                'Input': input,
+                'Filter': filter_param,
+                'Offset': offset,
+            },
+            outputs={"Output": pre_bias},
+            attrs={
+                'strides': stride,
+                'paddings': padding,
+                'dilations': dilation,
+                'groups': groups,
+                'deformable_groups': deformable_groups,
+                'im2col_step': im2col_step,
+            })
 
     output = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
     return output
@@ -12422,43 +14340,85 @@ def deformable_roi_pooling(input,
                            position_sensitive=False,
                            name=None):
     """
-    Deformable PSROI Pooling Layer
+    Deformable ROI Pooling Layer
+  
+    Performs deformable region-of-interest pooling on inputs. As described
+    in `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_, it will get offset for each bin after 
+    roi pooling so that pooling at correct region. Batch_size will change to the number of region bounding boxes after deformable_roi_pooling.
+  
+    The operation has three steps:
     
+    1. Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height.
+  
+    2. Add offset to pixel in ROI to get new location and the new value which are computed directly through
+       bilinear interpolation with four nearest pixel.
+     
+    3. Sample several points in each bin to get average values as output.
+  
+  
     Args:
-       input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is 
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H 
-                        is height of the feature, and W is the width of the feature.
-       rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                        the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates.
-       trans (Variable): Offset of features on ROIs while pooling.The format is NCHW, where 
-                         N is number of ROIs, C is number of channels, which indicate the offset distance 
-                         in the x and y directions, H is pooled height, and W is pooled width.
-       no_trans (bool): Whether to add offset to get new value or not while roi pooling, which 
-                          value is True or False. Default: False.
-       spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-       group_size (list|tuple): The number of groups which input channels are divided.(eg.number of input channels 
-                         is k1*k2*(C+1), which k1 and k2 are group width and height and C+1 is number of output
-                         chanels. eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
-       pooled_height (integer): The pooled output height. Default: 1.
-       pooled_width (integer): The pooled output width. Default: 1.
-       part_size (list|tuple): The height and width of offset, eg.(4, 6), which height is 4 and width is 6, Default: 
-                        if None, default value is [pooled_height, pooled_width].
-       sample_per_part (integer): The number of samples in each bin. Default: 1.
-       trans_std (float): Coefficient of offset. Default: 0.1.
-       position_sensitive (bool): Whether to choose deformable psroi pooling mode or not. Default: False.
-       name (str): Name of layer. Default: None.
+        input (Variable):The input of deformable roi pooling and it is tensor which value type is float32. The shape of input is
+                         [N, C, H, W]. Where N is batch size, C is number of input channels,
+                         H is height of the feature, and W is the width of the feature.
+        rois (Variable): ROIs (Regions of Interest) with type float32 to pool over. It should be
+                         a 2-D LoDTensor of shape (num_rois, 4), and the lod level
+                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                         the top left coordinates, and (x2, y2) is the bottom
+                         right coordinates, which value type is float32.
+        trans (Variable): Offset of features on ROIs while pooling which value type is float32. The format is [N, C, H, W], where 
+                          N is number of ROIs, C is number of channels, which indicate the offset distance 
+                          in the x and y directions, H is pooled height, and W is pooled width. 
+        no_trans (bool): Whether to add offset to get new value or not while roi pooling, which value with type bool is True or False.
+                         If value is True, no offset will be added in operation. Default: False.
+        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width), which value type is float32.
+                         Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
+        group_size (list|tuple): The number of groups which input channels are divided and the input is list or tuple, which value type is int32. (eg.number of input channels 
+                          is k1 * k2 * (C + 1), which k1 and k2 are group width and height and C+1 is number of output
+                          chanels.) eg.(4, 6), which 4 is height of group and 6 is width of group. Default: [1, 1].
+        pooled_height (int): The pooled output height which value type is int32. Default: 1.
+        pooled_width (int): The pooled output width which value type is int32. Default: 1.
+        part_size (list|tuple): The height and width of offset which values in list or tuple is int32, eg.(4, 6), which height is 4 and width is 6, and values always equal to pooled_height \
+                         and pooled_width. Default: if None, default value is [pooled_height, pooled_width].
+        sample_per_part (int): The number of samples in each bin which value type is int32. If value is bigger, it will consume more performance. Default: 1.
+        trans_std (float): Coefficient of offset which value type is float32. It controls weight of offset. Default: 0.1.
+        position_sensitive (bool): Whether to choose deformable psroi pooling mode or not, and value type is bool(True or False). If value is False, input dimension equals to output dimension. \
+                                   If value is True, input dimension shoule be output dimension * pooled_height * pooled_width. Default: False.
+        name (str|None): Name of layer. Default: None.
     Returns:
-        Variable: The tensor variable storing the deformable psroi pooling \
-                  result.
-
+        Variable: Output of deformable roi pooling is that, if position sensitive is False, input dimension equals to output dimension. If position sensitive is True,\
+                  input dimension should be the result of output dimension divided by pooled height and pooled width.
 
     Examples:
       .. code-block:: python
 
+        # position_sensitive=True
+        import paddle.fluid as fluid
+        input = fluid.layers.data(name="input",
+                                  shape=[2, 192, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False)                   
+        rois = fluid.layers.data(name="rois",
+                                 shape=[4],
+                                 dtype='float32', 
+                                 lod_level=1)
+        trans = fluid.layers.data(name="trans",
+                                  shape=[2, 384, 64, 64], 
+                                  dtype='float32', 
+                                  append_batch_size=False) 
+        x = fluid.layers.nn.deformable_roi_pooling(input=input, 
+                                                     rois=rois, 
+                                                     trans=trans, 
+                                                     no_trans=False,
+                                                     spatial_scale=1.0, 
+                                                     group_size=(1, 1),
+                                                     pooled_height=8,
+                                                     pooled_width=8,
+                                                     part_size=(8, 8),
+                                                     sample_per_part=4, 
+                                                     trans_std=0.1,
+                                                     position_sensitive=True)
+  
+        # position_sensitive=False
         import paddle.fluid as fluid
         input = fluid.layers.data(name="input",
                                   shape=[2, 192, 64, 64], 
@@ -12525,52 +14485,46 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This layer creates the sharded index for input. This layers is used in
-    model- and data- parallel mixed training generally, in which the index
-    data (usually the label) should be recaculated in each trainer according
-    to 
-
-    .. math::
+    This function recomputes the `input` indices according to the offset of the
+    shard. The length of the indices is evenly divided into N shards, and if
+    the `shard_id` matches the shard with the input index inside, the index is
+    recomputed on the basis of the shard offset, elsewise it is set to
+    `ignore_value`. The detail is as follows:
+    :: 
         
-        assert index_num % nshards == 0
+        shard_size = (index_num + nshards - 1) // nshards
+        y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-        shard_size = index_num / nshards
-
-        y = x % shard_size if x / shard_size == shard_id else ignore_value
-
-    We take the distributed one-hot representation to show what this layer is
-    used for. The distributed one-hot representation is seperated into multiple
-    shards, and each shard is filling zeros except the one with the index
-    inside. In order to create these sharded representation in each trainer,
-    the original index should be recalculated (i.e. sharded) before.
+    NOTE: If the length of indices cannot be evely divided by the shard number,
+    the size of the last shard will be less than the calculated `shard_size`
 
     Examples:
+    ::
     
-        X is a Tensor of integer values:
+        Input:
           X.shape = [4, 1]
           X.data = [[1], [6], [12], [19]]
+          index_num = 20
+          nshards = 2
+          ignore_value = -1
         
-        suppose index_num = 20 and nshards = 2, then we get shard_size = 10
-        
-        if shard_id == 0, we get the Out:
+        if shard_id == 0, we get:
           Out.shape = [4, 1]
           Out.data = [[1], [6], [-1], [-1]]
         
-        if shard_id == 1, we get the Out:
+        if shard_id == 1, we get:
           Out.shape = [4, 1]
           Out.data = [[-1], [-1], [2], [9]]
     
-        the default `ignore_value` -1 is used in this example.
-    
     Args:
-        input(Variable): Input indices, last dimension must be 1.
-        index_num(scalar): An interger defining the range of the index.
-        nshards(scalar): The number of shards
-        shard_id(scalar): The index of the current shard
-        ignore_value(scalar): An ingeter value out of sharded index range
+        - **input** (Variable): Input indices, last dimension must be 1.
+        - **index_num** (scalar): An interger defining the range of the index.
+        - **nshards** (scalar): The number of shards
+        - **shard_id** (scalar): The index of the current shard
+        - **ignore_value** (scalar): An ingeter value out of sharded index range
 
     Returns:
-        Variable: The shard index of input.
+        Variable: The sharded index of input.
 
     Examples:
         .. code-block:: python
@@ -12605,3 +14559,75 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         },
         stop_gradient=True)
     return out
+
+
+@templatedoc()
+def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(Varaible): Input of HardSwish operator.
+        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
+        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
+        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            y = fluid.layers.hard_swish(x)
+    """
+    helper = LayerHelper('hard_swish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='hard_swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold,
+               'scale': scale,
+               'offset': offset})
+    return out
+
+
+def mse_loss(input, label):
+    """
+    **Mean square error layer**
+
+    This layer accepts input predications and target label and returns the mean square error.
+
+    The loss can be described as:
+
+    .. math::
+        
+        Out = mean((X - Y)^2)
+
+    In the above equation:
+
+        * :math:`X`: Input predications, a tensor.
+        * :math:`Y`: Input labels, a tensor.
+        * :math:`Out`: Output value, same shape with :math:`X`.
+
+    Args:
+        input (Variable): Input tensor, has predictions.
+        label (Variable): Label tensor, has target labels.
+
+    Returns:
+        Variable: The tensor variable storing the mean square error difference of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.data(name='y_predict', shape=[1], dtype='float32')
+            mse = fluid.layers.mse_loss(input=y_predict, label=y)
+
+    """
+    return reduce_mean(square_error_cost(input, label))

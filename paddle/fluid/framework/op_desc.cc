@@ -18,8 +18,10 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -679,26 +681,33 @@ void OpDesc::CheckAttrs() {
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
-  VLOG(3) << "CompileTime infer shape on " << Type();
-  InitInferShapeFuncs();
-  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
-  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
-                 "%s's infer_shape has not been registered", this->Type());
-  CompileTimeInferShapeContext ctx(*this, block);
-  if (VLOG_IS_ON(10)) {
-    std::ostringstream sout;
-    auto inames = this->InputArgumentNames();
-    sout << " From [";
-    std::copy(inames.begin(), inames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "] to [";
-    auto onames = this->OutputArgumentNames();
-    std::copy(onames.begin(), onames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "]";
-    VLOG(10) << sout.str();
+  try {
+    VLOG(3) << "CompileTime infer shape on " << Type();
+    InitInferShapeFuncs();
+    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                   "%s's infer_shape has not been registered", this->Type());
+    CompileTimeInferShapeContext ctx(*this, block);
+    if (VLOG_IS_ON(10)) {
+      std::ostringstream sout;
+      auto inames = this->InputArgumentNames();
+      sout << " From [";
+      std::copy(inames.begin(), inames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "] to [";
+      auto onames = this->OutputArgumentNames();
+      std::copy(onames.begin(), onames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "]";
+      VLOG(10) << sout.str();
+    }
+    infer_shape(&ctx);
+  } catch (platform::EnforceNotMet exception) {
+    framework::InsertCallStackInfo(Type(), attrs_, &exception);
+    throw std::move(exception);
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  infer_shape(&ctx);
 }
 
 void OpDesc::InferVarType(BlockDesc *block) const {
@@ -807,7 +816,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
   var->SetShapes(dim_vec);
 }
 

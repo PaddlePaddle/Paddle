@@ -18,10 +18,11 @@ import logging
 import os
 import multiprocessing
 import sys
+import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
-from .framework import Program, default_main_program, Variable
+from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
 from .. import compat as cpt
@@ -125,6 +126,91 @@ def as_numpy(tensor):
         return np.array(tensor)
     else:
         return None
+
+
+def dtype_is_compatible_with(first, second):
+    """
+    Returns True if the first dtype can be compatible the second one.
+    Currently, we require the two dtype's have to be same.
+      
+    Args:
+        dtype (np.dtype|VarType|str): The type of data: float32, int64, etc.
+    
+    Returns:
+        True if the two types are same.
+    """
+    if not isinstance(first, core.VarDesc.VarType):
+        first = convert_np_dtype_to_dtype_(first)
+    if not isinstance(second, core.VarDesc.VarType):
+        second = convert_np_dtype_to_dtype_(second)
+    return first == second
+
+
+def dimension_is_compatible_with(first, second):
+    """
+    Returns True if the two dimensions are compatible.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
+
+    Args:
+        first (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
+        second (list/tuple): integers representing shape. "None" or negative
+            number means unknown.
+
+    Returns:
+        True if the two dimensions are compatible.
+    """
+
+    dim_len = len(first)
+    if dim_len != len(second):
+        return False
+
+    for i in range(dim_len):
+        if first[i] is None or first[i] < 0:
+            continue
+        if second[i] is None or second[i] < 0:
+            continue
+        if first[i] != second[i]:
+            return False
+
+    return True
+
+
+def check_feed_shape_type(var, feed):
+    """
+    Returns True if the variable doesn't require feed check or it is compatible
+    with the shape and have same dtype as the feeded value.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimentions are same.
+    3. For negative number or 'None' in a dimention, it means unknown so it
+       is compatible with any number.
+    
+    Args:
+        var (Variable): the Variable object
+        feed (LoDTensor): the feeded value, which must be a LoDTensor
+    Returns:
+        True if the shape and dtype of variable is compatible with the feed value
+    Raises:
+        ValueError: if the shape or dtype of the variable is not compatible with
+            the feed value
+    """
+    if var.desc.need_check_feed():
+        if not dimension_is_compatible_with(feed.shape(), var.shape):
+            raise ValueError('Cannot feed value of shape %r for Variable %r, '
+                             'which has shape %r' %
+                             (feed.shape, var.name, var.shape))
+        if not dtype_is_compatible_with(feed._dtype(), var.dtype):
+            raise ValueError('Cannot feed value of type %r for Variable %r, '
+                             'which has type %r' %
+                             (feed._dtype(), var.name, var.dtype))
+    return True
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -442,12 +528,15 @@ class Executor(object):
 
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
-        for op in program.global_block().ops:
+        global_block = program.global_block()
+        for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place)
+                var = global_block.var(feed_target_name)
+                check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -491,15 +580,26 @@ class Executor(object):
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy):
         exe = program._executor
+        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
+        # instead of program. We will add support for checking Vars in Graph
+        need_check_feed = program._program is not None
+        if need_check_feed:
+            global_block = program._program.global_block()
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
                 if not isinstance(feed_tensor, core.LoDTensor):
                     feed_tensor = core.LoDTensor()
-                    # always set to CPU place, since the tensor need to be splitted
+                    # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
+                    assert isinstance( feed[feed_name], np.ndarray ), \
+                        "The input({}) should be numpy.array, but not {}.".format(
+                        feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
+                if need_check_feed:
+                    var = global_block.var(feed_name)
+                    check_feed_shape_type(var, feed_tensor)
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -519,49 +619,21 @@ class Executor(object):
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
+                        assert isinstance(each[feed_name], np.ndarray), \
+                            "The input({}) should be numpy.array, but not {}.".format(
+                            feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
+                    if need_check_feed:
+                        var = global_block.var(feed_name)
+                        check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        exe.run(fetch_var_names, fetch_var_name)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
-
-        if return_numpy:
-            return as_numpy(arr)
-        return [arr[i] for i in range(len(arr))]
-
-    def _check_fetch_vars_persistable(self, program, fetch_list):
-        for var in fetch_list:
-            if isinstance(var, Variable):
-                persistable = var.persistable
-            else:
-                block_num = program.desc.num_blocks()
-                persistable = None
-                var_name = cpt.to_bytes(var)
-                for i in six.moves.range(block_num):
-                    var_desc = program.desc.block(i).find_var(var_name)
-                    if var_desc:
-                        persistable = var_desc.persistable()
-                        break
-                assert persistable is not None, "Variable {} is not found".format(
-                    var)
-
-            if not persistable:
-                logging.warn("""
-     Detect that build_strategy.memory_optimize = True, but the some variables in the fetch
-     list is not persistable, you may get wrong fetched value, or an exeception may be thrown
-     about cannot find variable of the fetch list. 
-
-     TO FIX this:
-         # Sample
-         conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None) 
-         # if you need to fetch conv1, then:
-         conv1.persistable = True
-
-                 """)
+        tensors = exe.run(fetch_var_names)._move_to_list()
+        return as_numpy(tensors) if return_numpy else tensors
 
     def run(self,
             program=None,
@@ -640,26 +712,43 @@ class Executor(object):
                 use_program_cache=use_program_cache)
         except Exception as e:
             if not isinstance(e, core.EOFException):
-                print("An exception was thrown!\n {}".format(str(e)))
-            raise e
+                print("!!!A non-EOF exception is thrown.")
+            six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache):
-
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
+        use_default_main_program = program is None
+        if program is None:
+            program = default_main_program()
+        if isinstance(program, Program) and \
+                        len(program.global_block().ops) == 0:
+            error_info = "The current program is empty."
+            if use_default_main_program:
+                error_info += " Maybe you should pass the Program or the CompiledProgram manually."
+            warnings.warn(error_info)
+
         if scope is None:
             scope = global_scope()
-        if fetch_list is None:
+
+        if fetch_list is not None:
+            if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
+                fetch_list = [fetch_list]
+            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "but the input type is {}. For more information please refer to \n"\
+                "the executor.run(...).".format(type(fetch_list))
+        else:
             fetch_list = []
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
         # For backward compatibility, run directly.
         if not compiled:
             return self._run_program(
                 program,
-                self._default_executor,
                 feed=feed,
                 fetch_list=fetch_list,
                 feed_var_name=feed_var_name,
@@ -667,13 +756,11 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache)
-        else:
-            if fetch_list and program._is_data_parallel and program._program and    \
-                    program._build_strategy._use_legacy_memory_optimize_strategy:
-                self._check_fetch_vars_persistable(program._program, fetch_list)
 
         program._compile(scope, self.place)
-        if program._is_data_parallel:
+        if program._is_inference:
+            return self._run_inference(program._executor, feed)
+        else:
             return self._run_parallel(
                 program,
                 scope=scope,
@@ -681,26 +768,8 @@ class Executor(object):
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy)
-        elif program._is_inference:
-            return self._run_inference(program._executor, feed)
-        else:
-            # TODO(panyx0718): Can compile program to optimize executor
-            # performance.
-            # TODO(panyx0718): executor should be able to run graph.
-            assert program._program, "CompiledProgram is compiled from graph, can only run with_data_parallel."
-            # use_program_cache is not valid with CompiledProgram
-            return self._run_program(
-                program._program,
-                self._default_executor,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=False)
 
-    def _run_program(self, program, exe, feed, fetch_list, feed_var_name,
+    def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
@@ -713,9 +782,8 @@ class Executor(object):
             raise TypeError(
                 "feed requires dict as its Parameter. But you passed in %s" %
                 (type(feed)))
-        if program is None:
-            program = default_main_program()
 
+        assert program is not None, "The program should not be Empty"
         if not isinstance(program, Program):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
@@ -763,13 +831,17 @@ class Executor(object):
 
         self._feed_data(program, feed, feed_var_name, scope)
         if not use_program_cache:
-            exe.run(program.desc, scope, 0, True, True, fetch_var_name)
+            self._default_executor.run(program.desc, scope, 0, True, True,
+                                       fetch_var_name)
         else:
-            exe.run_cached_prepared_ctx(ctx, scope, False, False, False)
-        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
+            self._default_executor.run_cached_prepared_ctx(ctx, scope, False,
+                                                           False, False)
+        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        tensors = arr._move_to_list()
         if return_numpy:
-            outs = as_numpy(outs)
-        return outs
+            return as_numpy(tensors)
+        else:
+            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
@@ -831,7 +903,6 @@ class Executor(object):
                     program.program._fleet_opt)
             trainer._set_program(program.program)
 
-        # The following thread_num-determined logic will be deprecated
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
@@ -917,9 +988,11 @@ class Executor(object):
         trainer._set_infer(True)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None
 
@@ -1001,8 +1074,10 @@ class Executor(object):
             print_period=print_period)
         trainer._gen_trainer_desc()
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
         self._default_executor.run_from_dataset(program.desc, scope,
                                                 dataset.dataset,
                                                 trainer._desc())
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
         return None
