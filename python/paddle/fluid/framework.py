@@ -623,9 +623,6 @@ class Variable(object):
             raise Exception(
                 "Variable.set_value() is only avaliable in DyGraph mode.")
 
-    def __set__(self, instance, value):
-        self.set_value(value)
-
     def backward(self, backward_strategy=None):
         if in_dygraph_mode():
             from .dygraph import BackwardStrategy
