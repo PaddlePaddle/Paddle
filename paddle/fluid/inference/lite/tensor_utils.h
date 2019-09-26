@@ -12,10 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include "paddle/fluid/framework/tensor.h"
+#include "lite/api/paddle_place.h"
+#include "lite/core/tensor.h"
+
 namespace paddle {
 namespace inference {
 namespace lite {
 
+template <typename DstTensor, typename SrcTensor>
+void TensorCopy(DstTensor* dst, const SrcTensor& src);
 
 }  // namespace lite
 }  // namespace inference

@@ -12,13 +12,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/lite/op_teller.h"
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include <map>
+#include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/lite/tensor_utils.h"
 
 namespace paddle {
 namespace inference {
 namespace lite {
+
+using paddle::lite_api::TargetType;
+using platform::CPUPlace;
+using platform::CUDAPlace;
+
+static const platform::Place& GetNativePlace(TargetType) {
+  switch (TargetType) {
+    case TargetType::kHost:
+      return CPUPlace();
+    case TargetType::kCUDA:
+      return CUDAPlace();
+    default:
+      LOG(FATAL) << "Error target type";
+      return platform::Place();
+  }
+}
+
+static const 
+
+template<>
+void TensorCopy(paddle::lite::Tensor* dst, const framework::LoDTensor& src) {
+  const TargetType dst_target = dst->target();
+  const platform::Place& src_place = src.place();
+  const platform::Place& dst_place = GetNativePlace(dst_target);
+  std::vector<int64_t> dims = framework::vectorize(src.dims());
+  dst->Resize(dims);
+  const void* src_data = src_t.data<void>();
+  void* dst_data = dst->mutable_data<void>(dst_target);
+
+}
+
+template<>
+void TensorCopy(framework::LoDTensor* dst, const paddle::lite::Tensor& src) {
+  const platform::Place& src_place = GetNativePlace(src.target());
+}
+
 
 
 }  // namespace lite
