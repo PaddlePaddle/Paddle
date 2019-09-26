@@ -11753,6 +11753,7 @@ Examples:
 
 
     ..  code-block:: python
+
         import paddle.fluid as fluid
         import numpy as np
 
@@ -11772,6 +11773,7 @@ Examples:
         z_value = exe.run(feed=gen_data(),
                             fetch_list=[z.name])
         print(z_value) # z.shape=[2,3,4,5]
+
     """
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
@@ -11828,6 +11830,7 @@ Examples:
 
 
     ..  code-block:: python
+
         import paddle.fluid as fluid
         import numpy as np
 
@@ -11847,6 +11850,7 @@ Examples:
         z_value = exe.run(feed=gen_data(),
                             fetch_list=[z.name])
         print(z_value) # z.shape=[2,3,4,5]
+
     """
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -11903,6 +11907,7 @@ Examples:
 
 
     ..  code-block:: python
+
         import paddle.fluid as fluid
         import numpy as np
 
@@ -11922,6 +11927,7 @@ Examples:
         z_value = exe.run(feed=gen_data(),
                             fetch_list=[z.name])
         print(z_value) # z.shape=[2,3,4,5]
+
     """
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
@@ -11978,6 +11984,7 @@ Examples:
 
 
     ..  code-block:: python
+
         import paddle.fluid as fluid
         import numpy as np
 
@@ -11997,6 +12004,7 @@ Examples:
         z_value = exe.run(feed=gen_data(),
                             fetch_list=[z.name])
         print(z_value) # z.shape=[2,3,4,5]
+ 
     """
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
