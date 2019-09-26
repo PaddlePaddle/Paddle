@@ -24,7 +24,7 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
     """
     **Data Layer**
 
-    This function creates a variable on the global scope. The global variables
+    This function creates a variable on the global block. The global variables
     can be accessed by all the following operators in the graph.
 
     Note: 
@@ -32,14 +32,16 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
        version. Please use this `paddle.fluid.data`. 
        
        The `paddle.fluid.layers.data` set shape at compile time but does NOT
-       check the shape of feeded data, this `paddle.fluid.data` checks the
-       shape of data feeded by Executor/ParallelExecutor during run time.
+       check the shape or the dtype of feeded data, this `paddle.fluid.data`
+       checks the shape and the dtype of data feeded by Executor or 
+       ParallelExecutor during run time.
 
     Args:
-       name (str): The name/alias of the variable
+       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+           for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape.
        dtype (np.dtype|VarType|str): The type of the data. Supported dtype:
-           float16, float32, float64, int8, int16, int32, int64, uint8, bool.
+           bool, float16, float32, float64, int8, int16, int32, int64, uint8.
        type (VarType): The output type. Supported type: VarType.LOD_TENSOR, 
            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR.
 
