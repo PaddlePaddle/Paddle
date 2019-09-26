@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-
+"""
+Convert the fluid program to distributed data-parallelism programs.
+"""
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -57,9 +59,10 @@ class DistributedTranspiler(Fleet):
         """
         if not self._transpile_config.sync_mode:
             if self._transpile_config.geo_sgd_mode:
-                self._communicator = Communicator(self.main_program,self.vars_info,
-                                                  fleet.worker_num(),
-                                                  self._transpile_config.geo_sgd_need_push_nums)
+                self._communicator = Communicator(
+                    self.main_program, self.vars_info,
+                    fleet.worker_num(),
+                    self._transpile_config.geo_sgd_need_push_nums)
             else:
                 self._communicator = Communicator(self.main_program)
             self._communicator.start()
@@ -252,7 +255,8 @@ class DistributedTranspiler(Fleet):
                 sync_mode=config.sync_mode,
                 current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
+                self._transpiler.get_pserver_programs(
+                    self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()

@@ -169,7 +169,7 @@ class DistributeTranspilerConfig(object):
     # Geo-sgd algorithm
     geo_sgd_mode = False
     geo_sgd_need_push_nums = 100
-    
+
     nccl_comm_num = 1
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
