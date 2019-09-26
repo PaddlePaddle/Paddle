@@ -77,7 +77,7 @@ paddle.fluid.io.PyReader.next (ArgSpec(args=['self'], varargs=None, keywords=Non
 paddle.fluid.io.PyReader.reset (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7432197701fdaab1848063860dc0b97e'))
 paddle.fluid.io.PyReader.start (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'a0983fb21a0a51e6a31716009fe9a9c1'))
 paddle.fluid.io.DataLoader ('paddle.fluid.reader.DataLoader', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.io.DataLoader.__init__
+paddle.fluid.io.DataLoader.__init__ 
 paddle.fluid.io.DataLoader.from_dataset (ArgSpec(args=['dataset', 'places', 'drop_last'], varargs=None, keywords=None, defaults=(True,)), ('document', '58e8bffa033f26b00b256c8bb1daff11'))
 paddle.fluid.io.DataLoader.from_generator (ArgSpec(args=['feed_list', 'capacity', 'use_double_buffer', 'iterable', 'return_list'], varargs=None, keywords=None, defaults=(None, None, True, True, False)), ('document', '8034bdb488fa18d60c4ffb0ba9658337'))
 paddle.fluid.io.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
