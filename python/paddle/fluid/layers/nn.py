@@ -2258,11 +2258,12 @@ def conv2d(input,
            bias_attr=None,
            use_cudnn=True,
            act=None,
-           name=None):
+           name=None,
+           data_format="NCHW"):
     """
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
-    Output are in NCHW format, where N is batch size, C is the number of
+    Output are in NCHW or NHWC format, where N is batch size, C is the number of
     channels, H is the height of the feature, and W is the width of the feature.
     Filter is in MCHW format, where M is the number of output image channels,
     C is the number of input image channels, H is the height of the filter,
@@ -2283,7 +2284,7 @@ def conv2d(input,
 
     Where:
 
-    * :math:`X`: Input value, a tensor with NCHW format.
+    * :math:`X`: Input value, a tensor with NCHW or NHWC format.
     * :math:`W`: Filter value, a tensor with MCHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
@@ -2313,7 +2314,7 @@ def conv2d(input,
         padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format.
+        input (Variable): The input image with [N, C, H, W] or [N, H, W, C] format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size 
@@ -2323,9 +2324,14 @@ def conv2d(input,
         stride (int|tuple): The stride size. If stride is a tuple, it must
             contain two integers, (stride_height, stride_width). Otherwise,
             stride_height = stride_width = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_height, padding_width). Otherwise,
-            padding_height = padding_width =  padding. Default: padding = 0.
+        padding (string|int|list|tuple): The padding size. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
+            `padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_height, dilation_width). Otherwise,
             dilation_height = dilation_width = dilation. Default: dilation = 1.
@@ -2349,7 +2355,10 @@ def conv2d(input,
         act (str): Activation type, if it is set to None, activation is not appended.
             Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
+            will be named automatically. Default: None.
+        data_format (str): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -2367,8 +2376,23 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
-    num_channels = input.shape[1]
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("Attr(use_cudnn) should be True or False. Received "
+                         "Attr(use_cudnn): %s. " % str(use_cudnn))
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
+
+    channel_last = (data_format == "NHWC")
+    num_channels = input.shape[3] if channel_last else input.shape[1]
+    if num_channels < 0:
+        raise ValueError(
+            "The channel dimmention of the input(%s) should be defined. "
+            "Received: %s." % (str(input.shape), str(num_channels)))
     assert param_attr is not False, "param_attr should not be False here."
+
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
@@ -2381,18 +2405,61 @@ def conv2d(input,
         num_filter_channels = num_channels
     else:
         if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
+            raise ValueError(
+                "The number of input channels must be divisible by Attr(groups). "
+                "Received: number of channels(%s), groups(%s)." %
+                (str(num_channels), str(groups)))
         num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
-    if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
+    # padding
+    def _update_padding(padding, data_format):
+        def is_list_or_tuple(ele):
+            if isinstance(ele, list) or isinstance(ele, tuple):
+                return True
+            return False
 
-    input_shape = input.shape
+        if is_list_or_tuple(padding) and len(padding) == 4:
+            if is_list_or_tuple(padding[0]) and (data_format == "NCHW"):
+                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[2:4]
+                padding = [ele for a_list in padding for ele in a_list]
+            elif is_list_or_tuple(padding[0]) and (data_format == "NHWC"):
+                if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[1:3]
+                padding = [ele for a_list in padding for ele in a_list]
+            padding = utils.convert_to_list(padding, 4, 'padding')
+        else:
+            padding = utils.convert_to_list(padding, 2, 'padding')
+            padding = [padding[0], padding[0], padding[1], padding[1]]
+
+        return padding
+
+    padding_algorithm = "EXPLICIT"
+    if isinstance(padding, str):
+        padding = padding.upper()
+        if padding not in ["SAME", "VALID"]:
+            raise ValueError(
+                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'." %
+                str(padding))
+        if padding == "VALID":
+            padding_algorithm = "VALID"
+            padding = [0, 0, 0, 0]
+        elif padding == "SAME":
+            padding_algorithm = "SAME"
+            padding = [0, 0, 0, 0]
+
+    padding = _update_padding(padding, data_format)
+
     filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
@@ -2422,7 +2489,9 @@ def conv2d(input,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': False,
-            'fuse_relu_before_depthwise_conv': False
+            'fuse_relu_before_depthwise_conv': False,
+            "padding_algorithm": padding_algorithm,
+            "data_format": data_format,
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -2441,13 +2510,14 @@ def conv3d(input,
            bias_attr=None,
            use_cudnn=True,
            act=None,
-           name=None):
+           name=None,
+           data_format="NCDHW"):
     """
     **Convlution3D Layer**
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are in NCDHW format. Where N is batch size C is the number of
+    Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
     and W is the width of the feature. Convlution3D is similar with Convlution2D
     but adds one dimension(depth). If bias attribution and activation type are
@@ -2462,7 +2532,7 @@ def conv3d(input,
 
     In the above equation:
 
-    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
@@ -2489,7 +2559,7 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, D, H, W] format.
+        input (Variable): The input image with [N, C, D, H, W] or [N, D, H, W, C]format.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size is a tuple,
@@ -2499,9 +2569,15 @@ def conv3d(input,
         stride (int|tuple): The stride size. If stride is a tuple, it must
             contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
             stride_depth = stride_height = stride_width = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_depth, padding_height, padding_width). Otherwise,
-            padding_depth = padding_height = padding_width = padding. Default: padding = 0.
+        padding (string|int|list|tuple): The padding size. f `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
         dilation (int|tuple): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
             dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
@@ -2526,6 +2602,9 @@ def conv3d(input,
             Default: None.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
+        data_format (str): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -2548,22 +2627,85 @@ def conv3d(input,
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
-    num_channels = input.shape[1]
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("Attr(use_cudnn) should be True or False. Received "
+                         "Attr(use_cudnn): %s. " % str(use_cudnn))
+
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
+
+    channel_last = (data_format == "NDHWC")
+    num_channels = input.shape[4] if channel_last else input.shape[1]
+    if num_channels < 0:
+        raise ValueError(
+            "The channel dimmention of the input(%s) should be defined. "
+            "Received: %s." % (str(input.shape), str(num_channels)))
 
     if groups is None:
         num_filter_channels = num_channels
     else:
         if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
+            raise ValueError(
+                "The number of input channels must be divisible by Attr(groups). "
+                "Received: number of channels(%s), groups(%s)." %
+                (str(num_channels), str(groups)))
         num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
     stride = utils.convert_to_list(stride, 3, 'stride')
-    padding = utils.convert_to_list(padding, 3, 'padding')
     dilation = utils.convert_to_list(dilation, 3, 'dilation')
 
-    if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
+    def _update_padding(padding, data_format):
+        def is_list_or_tuple(ele):
+            if isinstance(ele, list) or isinstance(ele, tuple):
+                return True
+            return False
+
+        if is_list_or_tuple(padding) and len(padding) == 5:
+            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
+                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[2:5]
+                padding = [ele for a_list in padding for ele in a_list]
+            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
+                if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[1:4]
+                padding = [ele for a_list in padding for ele in a_list]
+            padding = utils.convert_to_list(padding, 6, 'padding')
+
+        elif is_list_or_tuple(padding) and len(padding) == 6:
+            padding = utils.convert_to_list(padding, 6, 'padding')
+        else:
+            padding = utils.convert_to_list(padding, 3, 'padding')
+            padding = [
+                padding[0], padding[0], padding[1], padding[1], padding[2],
+                padding[2]
+            ]
+
+        return padding
+
+    padding_algorithm = "EXPLICIT"
+    if isinstance(padding, str):
+        padding = padding.upper()
+        if padding not in ["SAME", "VALID"]:
+            raise ValueError(
+                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'." %
+                str(padding))
+        if padding == "VALID":
+            padding_algorithm = "VALID"
+            padding = [0, 0, 0, 0, 0, 0]
+        elif padding == "SAME":
+            padding_algorithm = "SAME"
+            padding = [0, 0, 0, 0, 0, 0]
+
+    padding = _update_padding(padding, data_format)
 
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
@@ -2595,7 +2737,9 @@ def conv3d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False
+            'use_mkldnn': False,
+            "padding_algorithm": padding_algorithm,
+            "data_format": data_format,
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
