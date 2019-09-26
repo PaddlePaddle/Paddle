@@ -216,6 +216,8 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
+        if isinstance(getattr(type(self), name, None), property):
+            object.__setattr__(self, name, value)
         if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
