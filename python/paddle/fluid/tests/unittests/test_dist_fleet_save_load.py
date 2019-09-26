@@ -66,14 +66,6 @@ class TestFleetSaveLoadDense2x2(TestFleetBase):
         cluster_env.update(required_envs)
         tr0_var, tr1_var = self._run_cluster(model_file, cluster_env)
 
-        if model_dir.startswith('hdfs:'):
-            model_dir = tempfile.gettempdir(
-            ) + '/fake_hadoop_repos/user/simnet_bow/'
-        cmd = 'ls ' + model_dir + ' | wc -l'
-        cmd_exec = os.popen(cmd)
-        self.assertEqual(cmd_exec.read().strip(), '6')
-        cmd_exec.close()
-
     def test_fleet_local_save(self):
         need_envs = {
             "IS_DISTRIBUTED": '1',
