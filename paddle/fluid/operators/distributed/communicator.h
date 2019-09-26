@@ -214,7 +214,7 @@ class Communicator {
   template <typename T>
   static Communicator* InitInstance(const paddle::framework::ProgramDesc& program, 
                                     Scope* training_scope,
-                                    std::map<std::string,std::map<std::string,std::vector<std::string>>> vars_info,
+                                    std::map<std::string,std::map<std::string,std::vector<std::string>>> &vars_info,
                                     int &trainers,
                                     int &geo_need_push_nums) {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>, 
