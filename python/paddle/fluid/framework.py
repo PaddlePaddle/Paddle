@@ -676,10 +676,6 @@ class Variable(object):
                 backward_strategy = BackwardStrategy()
                 backward_strategy.sort_sum_gradient = False
 
-            if self._ivar is None:
-                raise ValueError(
-                    "%s is Empty, Please use fluid.dygraph.guard() as context "
-                    % self.name)
             self._ivar._run_backward(backward_strategy, _dygraph_tracer())
         else:
             raise ValueError(
