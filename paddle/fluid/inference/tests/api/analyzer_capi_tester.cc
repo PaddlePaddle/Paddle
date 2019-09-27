@@ -45,6 +45,7 @@ TEST(PD_AnalysisPredictor, compare) {
   //     "trt_inference_test_models/mobilenet/");
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   config = PD_SetModel(config, model_dir);
+  LOG(INFO) << PD_ModelDir(config);
   config = PD_DisableGpu(config);
   // PD_SetCpuMathLibraryNumThreads(config, 10);
   config = PD_SwitchUseFeedFetchOps(config, false);
