@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/capi/c_api.h"
-#include "paddle/fluid/inference/capi/c_api_internal.h"
+// #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -37,12 +37,8 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
 }*/
 
 TEST(PD_AnalysisPredictor, compare) {
-  // std::string a = FLAGS_infer_model;
-  LOG(INFO) << FLAGS_infer_model;
+  std::string a = FLAGS_infer_model;
   const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
-  // const char* model_dir = GetModelPath(
-  //     "/paddle/Paddle/build/third_party/inference_demo/trt_tests_models/"
-  //     "trt_inference_test_models/mobilenet/");
   LOG(INFO) << model_dir;
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   config = PD_SetModel(config, model_dir);
@@ -66,8 +62,12 @@ TEST(PD_AnalysisPredictor, compare) {
   // PD_PredictorZeroCopyRun(config, input, batch_size * channels * height *
   // width,
   //                         &out, &out_size, shape, 4);
+  AnalysisConfig c;
+  c.SetModel(model_dir);
+  c.DisableGpu();
+  c.SwitchUseFeedFetchOps(false);
   int shape_size = 4;
-  auto predictor = CreatePaddlePredictor(config->config);
+  auto predictor = CreatePaddlePredictor(c);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;
