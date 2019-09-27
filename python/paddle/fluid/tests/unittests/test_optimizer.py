@@ -757,9 +757,9 @@ class TestRecomputeOptimizer(unittest.TestCase):
             stat_dict = {}
             recompute_optimizer.load(stat_dict)
         except NotImplementedError as e:
-            self.assertEqual("All targets of prune() can only be "
-                             "Variable or Operator.",
-                             cpt.get_exception_message(e))
+            self.assertEqual(
+                "load function is not supported by Recompute Optimizer for now",
+                cpt.get_exception_message(e))
 
 
 if __name__ == '__main__':
