@@ -93,6 +93,7 @@ void profile(bool use_mkldnn = false) {
   std::string model_dir1 = FLAGS_infer_model + "/model/__model__";
   // std::string params_file = FLAGS_infer_model + "/model/__params__";
   const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
+  LOG(INFO) << model_dir;
   const char *params_file =
       GetModelPath(FLAGS_infer_model + "/model/__params__");
   // LOG(INFO) << model_dir;
