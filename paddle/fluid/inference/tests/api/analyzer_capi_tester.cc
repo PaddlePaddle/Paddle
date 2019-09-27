@@ -90,20 +90,36 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
-  std::string a = FLAGS_infer_model;
-  const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
-  const char *params_file =
-      GetModelPath(FLAGS_infer_model + "/model/__params__");
-  LOG(INFO) << model_dir;
-  PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
-  PD_SetModel(&config, model_dir, params_file);
-  LOG(INFO) << PD_ModelDir(&config);
-  PD_DisableGpu(&config);
-  PD_SetCpuMathLibraryNumThreads(&config, 10);
-  PD_SwitchUseFeedFetchOps(&config, false);
-  PD_SwitchSpecifyInputNames(&config, true);
-  PD_SwitchIrDebug(&config, true);
-  LOG(INFO) << "before here! ";
+  AnalysisConfig config;
+  config.DisableGpu();
+  config.SetModel(FLAGS_infer_model + "/model/__model__",
+                  FLAGS_infer_model + "/model/__params__");
+  // config.pass_builder()->TurnOnDebug();
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto &input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
+
+  // std::string a = FLAGS_infer_model;
+  // const char *model_dir = GetModelPath(FLAGS_infer_model +
+  // "/model/__model__");
+  // const char *params_file =
+  //     GetModelPath(FLAGS_infer_model + "/model/__params__");
+  // LOG(INFO) << model_dir;
+  // PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
+  // PD_SetModel(&config, model_dir, params_file);
+  // LOG(INFO) << PD_ModelDir(&config);
+  // PD_DisableGpu(&config);
+  // PD_SetCpuMathLibraryNumThreads(&config, 10);
+  // PD_SwitchUseFeedFetchOps(&config, false);
+  // PD_SwitchSpecifyInputNames(&config, true);
+  // PD_SwitchIrDebug(&config, true);
+  // LOG(INFO) << "before here! ";
 
   // const int batch_size = 1;
   // const int channels = 3;
@@ -114,26 +130,26 @@ void profile(bool use_mkldnn = false) {
   // int shape[4] = {batch_size, channels, height, width};
 
   // int shape_size = 4;
-  AnalysisConfig cfg;
-  cfg.SetModel(model_dir, params_file);
-  cfg.DisableGpu();
-  cfg.SwitchUseFeedFetchOps(false);
-  auto predictor = CreatePaddlePredictor(cfg);
+  // AnalysisConfig cfg;
+  // cfg.SetModel(model_dir, params_file);
+  // cfg.DisableGpu();
+  // cfg.SwitchUseFeedFetchOps(false);
+  // auto predictor = CreatePaddlePredictor(cfg);
 
-  std::vector<std::vector<PaddleTensor>> inputs_all;
-  SetInput(&inputs_all);
-  std::vector<PaddleTensor> outputs;
-  for (auto &input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
-  }
+  // std::vector<std::vector<PaddleTensor>> inputs_all;
+  // SetInput(&inputs_all);
+  // std::vector<PaddleTensor> outputs;
+  // for (auto &input : inputs_all) {
+  //   ASSERT_TRUE(predictor->Run(input, &outputs));
+  // }
 
-  /*auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputTensor(input_names[0]);
-  std::vector<int> tensor_shape;
-  tensor_shape.assign(shape, shape + shape_size);
-  input_t->Reshape(tensor_shape);
-  input_t->copy_from_cpu(input);
-  CHECK(predictor->ZeroCopyRun());*/
+  // auto input_names = predictor->GetInputNames();
+  // auto input_t = predictor->GetInputTensor(input_names[0]);
+  // std::vector<int> tensor_shape;
+  // tensor_shape.assign(shape, shape + shape_size);
+  // input_t->Reshape(tensor_shape);
+  // input_t->copy_from_cpu(input);
+  // CHECK(predictor->ZeroCopyRun());
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
