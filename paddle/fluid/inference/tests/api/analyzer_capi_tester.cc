@@ -109,19 +109,19 @@ void profile(bool use_mkldnn = false) {
   const int channels = 3;
   const int height = 224;
   const int width = 224;
-  float input[batch_size * channels * height * width] = {0};
+  // float input[batch_size * channels * height * width] = {0};
 
-  int shape[4] = {batch_size, channels, height, width};
+  // int shape[4] = {batch_size, channels, height, width};
 
-  int shape_size = 4;
+  // int shape_size = 4;
   AnalysisConfig cfg;
   cfg.SetModel(model_dir, params_file);
   cfg.DisableGpu();
   cfg.SwitchUseFeedFetchOps(false);
   auto predictor = CreatePaddlePredictor(cfg);
 
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  SetInput(&inputs_all);
   std::vector<PaddleTensor> outputs;
   for (auto &input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
