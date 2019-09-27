@@ -27,23 +27,26 @@ __all__ = [
 
 class ParamAttr(object):
     """
-    Parameter attributes object. To fine-tuning network training process, user
-    can set parameter's attributes to control training details. Such as learning rate,
-    regularization, trainable, do_model_average and the method to initialize param.
+    Create a object to represent the attribute of parameter. The attributes are
+    including: name, initializer, learning rate, regularizer, trainable, gradient clip,
+    and model average.
 
-
-    Args:
-        name(str): The parameter's name. Default None.
-        initializer(Initializer): The method to initial this parameter. Default None.
-        learning_rate(float): The parameter's learning rate. The learning rate when
-            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
-            Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
-        trainable(bool): Whether this parameter is trainable. Default True.
-        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
-            gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average 
-            when model average is enabled. Default True.
+    Parameters:
+        name (str, optional): The parameter's name. Default None, meaning that the name
+                would be created automatically.
+        initializer (Initializer, optional): The method to initial this parameter. Default
+                None, meaning that the weight parameter is initialized by Xavier initializer,
+                and the bias parameter is initialized by 0.
+        learning_rate (float): The parameter's learning rate. The learning rate when
+                optimize is the global learning rates times the parameter's learning rate times
+                the factor of learning rate scheduler. Default 1.0.
+        regularizer (WeightDecayRegularizer, optional): Regularization factor. Default None, meaning
+                there is no regularization.
+        trainable (bool): Whether this parameter is trainable. Default True.
+        gradient_clip (BaseGradientClipAttr, optional): The method to clip this parameter's
+                gradient. Default None, meaning that there is no gradient clip.
+        do_model_average (bool): Whether this parameter should do model average
+                when model average is enabled. Default False.
 
     Examples:
         .. code-block:: python
@@ -54,6 +57,7 @@ class ParamAttr(object):
                                             learning_rate=0.5,
                                             regularizer=fluid.regularizer.L2Decay(1.0),
                                             trainable=True)
+            print(w_param_attrs.name) # "fc_weight"
             x = fluid.layers.data(name='X', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=10, param_attr=w_param_attrs)
     """
