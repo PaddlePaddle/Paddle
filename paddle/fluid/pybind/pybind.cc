@@ -304,7 +304,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
-      .def("to_dlpack",
+      .def("_to_dlpack",
            [](Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
              DLManagedTensor *dmt = dlpack_tensor.toDLManagedTensor();
