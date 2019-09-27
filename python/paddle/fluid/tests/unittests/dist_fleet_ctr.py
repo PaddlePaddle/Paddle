@@ -147,7 +147,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 dataset=dataset,
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
-                print_period=100,
+                print_period=2,
                 debug=False)
             pass_time = time.time() - pass_start
 
