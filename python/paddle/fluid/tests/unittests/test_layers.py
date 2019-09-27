@@ -1354,6 +1354,25 @@ class TestBook(LayerTest):
             return (layers.pool2d(
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)))
 
+    def make_pool2d_infershape(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            theta = self._get_data("theta", shape=[2, 3], dtype='float32')
+            x = fluid.layers.affine_grid(theta, out_shape=[2, 3, 244, 244])
+            return (layers.pool2d(
+                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)))
+
+    def make_pool3d(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(
+                name='x', shape=[3, 244, 244, 244], dtype='float32')
+            return (layers.pool3d(
+                x,
+                pool_size=[5, 3, 2],
+                pool_stride=[1, 2, 3],
+                pool_padding=(2, 1, 1)))
+
     def make_adaptive_pool2d(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
