@@ -74,15 +74,6 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
 }  // namespace distributed
 
 template <typename T>
-inline std::string to_string(const std::vector<T> &vec) {
-  std::stringstream ss;
-  for (const auto &c : vec) {
-    ss << c << " ";
-  }
-  return ss.str();
-}
-
-template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
                                   int multi_parts) {
@@ -153,18 +144,6 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     auto table_pairs = GetMultiFieldRpcContext(rpc_ctx, scope, multi_parts);
 
-    std::stringstream ss;
-
-    ss << "varname: " << rpc_ctx.var_name << " size: " << table_pairs.size()
-       << " ";
-
-    for (size_t i = 0; i < table_pairs.size(); i++) {
-      ss << "ep: " << table_pairs[i].first
-         << " tabname: " << table_pairs[i].second << "  ";
-    }
-
-    VLOG(1) << ss.str();
-
     outs_rows_idx.resize(table_pairs.size());
     outs_dense_idx.resize(table_pairs.size());
 
@@ -233,21 +212,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
               << "need send: " << need_send;
 
       if (need_send) {
-        auto *var = local_scope->FindVar(send_var_name);
-
-        auto rows =
-            to_string<int64_t>(var->Get<framework::SelectedRows>().rows());
-        auto &value = var->Get<framework::SelectedRows>().value();
-        auto *z_value = value.data<float>();
-
-        std::stringstream ss;
-        ss << "\n";
-        for (int x = 0; x < value.numel(); x++) {
-          ss << z_value[x] << " ";
-        }
-
-        VLOG(4) << "sending " << send_var_name << " to " << endpoint << " with "
-                << " rows: " << rows << " values: " << ss.str();
+        VLOG(4) << "sending " << send_var_name << " to " << endpoint;
 
         rets.push_back(rpc_client->AsyncSendVar(
             endpoint, cpu_ctx, *local_scope.get(), send_var_name));
