@@ -114,7 +114,7 @@ class TestFleetBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._geo_sgd = False
-        self._geo_sgd_need_push_nums = 2
+        self._geo_sgd_need_push_nums = 5
         self._setup_config()
 
     def _find_free_port(self):
@@ -184,6 +184,8 @@ class TestFleetBase(unittest.TestCase):
 
         if self._geo_sgd:
             tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
+                self._geo_sgd, self._geo_sgd_need_push_nums)
+            ps_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
                 self._geo_sgd, self._geo_sgd_need_push_nums)
 
         # Run dist train to compare with local results
@@ -272,7 +274,7 @@ def runtime_main(test_class):
     parser.add_argument(
         '--geo_sgd_mode', type=bool, required=False, default=False)
     parser.add_argument(
-        '--geo_need_push_nums', type=int, required=False, default=2)
+        '--geo_sgd_need_push_nums', type=int, required=False, default=2)
     args = parser.parse_args()
 
     model = test_class()
