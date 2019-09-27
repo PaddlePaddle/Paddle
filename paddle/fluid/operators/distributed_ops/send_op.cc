@@ -47,8 +47,9 @@ class SendOp : public framework::OperatorBase {
     auto height_sections = Attr<std::vector<int64_t>>("sections");
 
     if (send_varnames.size() > 0) {
-      if(ins.size() > 1){
-        distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
+      if (ins.size() > 1) {
+        distributed::Communicator::GetInstance()->Send(ins, send_varnames,
+                                                       scope);
       } else {
         distributed::Communicator::GetInstance()->Send(ins[0], scope);
       }
