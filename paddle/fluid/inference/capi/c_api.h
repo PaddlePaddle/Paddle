@@ -147,7 +147,7 @@ PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(
 // predictor);
 
 PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
-    const PD_AnalysisConfig* config, int* inputs, int in_size, int** output,
+    const PD_AnalysisConfig* config, float* inputs, int in_size, float** output,
     int** out_size, int* shape, int shape_size);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(

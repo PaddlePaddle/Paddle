@@ -115,7 +115,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config, float* inputs,
   std::vector<int> tensor_shape;
   tensor_shape.assign(shape, shape + shape_size);
   input_t->Reshape(tensor_shape);
-  input_t->copy_from_cpu(input);
+  input_t->copy_from_cpu(inputs);
   CHECK(predictor->ZeroCopyRun());
 
   return true;
@@ -134,12 +134,12 @@ PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
   return cloned;
 }
 
-PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
+/*PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   auto predictor = paddle::CreatePaddlePredictor(config->config);
 
   // new PD_Predictor(config->config);
   // predictor->predictor = paddle::CreatePaddlePredictor(config->config);
 
   return static_cast<PD_Predictor*>(predictor);
-}
+}*/
 }  // extern "C"
