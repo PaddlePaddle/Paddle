@@ -35,7 +35,7 @@ T *DynLoad(void *handle, std::string name) {
 #else
   auto errorno = GetLastError();
 #endif  // !_WIN32
-  PADDLE_ENFORCE(nullptr != func, errorno);
+  PADDLE_ENFORCE_NOT_NULL(func, errorno);
   return func;
 }
 
@@ -87,8 +87,8 @@ void LoadOpLib(const std::string &dso_name) {
       std::vector<std::unique_ptr<OpDesc>> ret;
       for (auto &str : strs) {
         proto::OpDesc proto_desc;
-        PADDLE_ENFORCE(proto_desc.ParseFromString(str),
-                       "Failed to parse OpDesc from string");
+        PADDLE_ENFORCE_EQ(proto_desc.ParseFromString(str), true,
+                          "Failed to parse OpDesc from string");
         ret.emplace_back(new OpDesc(proto_desc, nullptr));
       }
       return ret;

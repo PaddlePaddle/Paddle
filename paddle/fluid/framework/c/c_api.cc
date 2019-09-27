@@ -47,8 +47,8 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     size_t op_num = grad_op_descs.size();
     ret.resize(op_num);
     for (size_t i = 0; i < op_num; ++i) {
-      PADDLE_ENFORCE(
-          grad_op_descs[i]->Proto()->SerializePartialToString(&ret[i]),
+      PADDLE_ENFORCE_EQ(
+          grad_op_descs[i]->Proto()->SerializePartialToString(&ret[i]), true,
           "Cannot serialize message.");
     }
   }
