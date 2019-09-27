@@ -58,19 +58,19 @@ TEST(PD_AnalysisPredictor, compare) {
   float input[batch_size * channels * height * width] = {0};
 
   int shape[4] = {batch_size, channels, height, width};
-  float* out;
-  int* out_size;
+  // float* out;
+  // int* out_size;
   // PD_PredictorZeroCopyRun(config, input, batch_size * channels * height *
   // width,
   //                         &out, &out_size, shape, 4);
-
+  int shape_size = 4;
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;
   tensor_shape.assign(shape, shape + shape_size);
   input_t->Reshape(tensor_shape);
-  input_t->copy_from_cpu(inputs);
+  input_t->copy_from_cpu(input);
   CHECK(predictor->ZeroCopyRun());
 
   // PD_Predictor* predictor = PD_NewPredictor(config);
