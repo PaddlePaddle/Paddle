@@ -35,7 +35,7 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
 }*/
 
 TEST(PD_AnalysisPredictor, use_gpu) {
-  std::string a = FLAGS_infer_model;
+  std::string a = FLAGS_infer_model + "/";
   const char* model_dir = GetModelPath(a);
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   PD_SetModel(config, model_dir);
