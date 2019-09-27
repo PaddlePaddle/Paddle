@@ -693,9 +693,9 @@ def box_coder(prior_box,
             by default.
         box_normalized(bool): Whether treat the priorbox as a noramlized box.
             Set true by default.
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
         axis(int): Which axis in PriorBox to broadcast for box decode, 
             for example, if axis is 0 and TargetBox has shape [N, M, 4] and 
             PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
@@ -1149,10 +1149,10 @@ def bipartite_match(dist_matrix,
         dist_threshold(float32, optional): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
             on the maximum distance, 0.5 by default.
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer 
-            to :ref:`api_guide_Name`, None by default.  
-
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
+ 
     Returns:
         Tuple:
 
@@ -2057,9 +2057,9 @@ def anchor_generator(input,
        stride(list|tuple, optional): The anchors stride across width and height.
            The data type is float32. e.g. [16.0, 16.0]. None by default.
        offset(float32, optional): Prior boxes center offset. 0.5 by default.
-       name(str, optional): The parameter is used for developers to print
-           debug info. For detailed information please refer 
-           to :ref:`api_guide_Name`, None by default.  
+       name(str, optional): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and None 
+           by default. 
 
     Returns:
         Tuple:
@@ -2592,9 +2592,9 @@ def box_clip(input, im_info, name=None):
             (height, width, scale) represeting the information of image. 
             height and width is the input size and scale is the ratio of input
             size and original size. The data type is float32 or float64.
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
     
     Returns:
         Variable:
@@ -3036,9 +3036,9 @@ def distribute_fpn_proposals(fpn_rois,
             come from.
         refer_level(int32): The referring level of FPN layer with specified scale.
         refer_scale(int32): The referring scale of FPN layer with specified level.
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
         Tuple:
@@ -3102,9 +3102,10 @@ def box_decoder_and_assign(prior_box,
         target_box(${target_box_type}): ${target_box_comment}
         box_score(${box_score_type}): ${box_score_comment}
         box_clip(${box_clip_type}): ${box_clip_comment}
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
     Returns:
         Tuple:
 
@@ -3180,9 +3181,9 @@ def collect_fpn_proposals(multi_rois,
         min_level(int): The lowest level of FPN layer to collect
         max_level(int): The highest level of FPN layer to collect
         post_nms_top_n(int): The number of selected RoIs
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.        
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.        
 
     Returns:
         Variable:

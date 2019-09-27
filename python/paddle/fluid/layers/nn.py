@@ -7933,9 +7933,9 @@ def roi_align(input,
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
         sampling_ratio(int32, optional): ${sampling_ratio_comment} Default: -1
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
         Variable:
@@ -10256,8 +10256,9 @@ def prelu(x, mode, param_attr=None, name=None):
         param_attr(ParamAttr|None): The parameter attribute for the learnable
           weight (alpha), it can be create by ParamAttr. None by default.
           For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        name(str|None): A name for this layer(optional). If set None, the layer
-          will be named automatically.
+        name(str|None): For detailed information, please refer 
+          to :ref:`api_guide_Name`. Usually name is no need to set and 
+          None by default. 
 
     Returns:
         Variable:
@@ -11792,9 +11793,9 @@ def clip_by_norm(x, max_norm, name=None):
     Args:
         x(${x_type}): ${x_comment}
         max_norm(${max_norm_type}): ${max_norm_comment}
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
         Variable:
@@ -12007,9 +12008,9 @@ def maxout(x, groups, name=None):
     Args:
         x(${x_type}): ${x_comment}
         groups(${groups_type}): ${groups_comment}
-        name(str, optional): The parameter is used for developers to print
-            debug info. For detail information please refer
-            to :ref:`api_guide_Name`, None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
 
     Returns:
         Variable:
