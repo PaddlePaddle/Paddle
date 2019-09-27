@@ -43,6 +43,7 @@ TEST(PD_AnalysisPredictor, compare) {
   // const char* model_dir = GetModelPath(
   //     "/paddle/Paddle/build/third_party/inference_demo/trt_tests_models/"
   //     "trt_inference_test_models/mobilenet/");
+  LOG(INFO) << model_dir;
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   config = PD_SetModel(config, model_dir);
   LOG(INFO) << PD_ModelDir(config);
