@@ -106,13 +106,13 @@ bool PD_CudnnEnabled(PD_AnalysisConfig* config) {
   return config->config.cudnn_enabled();
 }
 
-void PD_SwitchIrOptim(PD_AnalysisConfig* config, int x) {
+void PD_SwitchIrOptim(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrOptim(x);
 }
 
 bool PD_IrOptim(PD_AnalysisConfig* config) { return config->config.ir_optim(); }
 
-void PD_SwitchUseFeedFetchOps(PD_AnalysisConfig* config, int x) {
+void PD_SwitchUseFeedFetchOps(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchUseFeedFetchOps(x);
 }
 
@@ -175,7 +175,7 @@ bool PD_AnakinEngineEnabled(PD_AnalysisConfig* config) {
   return config->config.anakin_engine_enabled();
 }
 
-void PD_SwitchIrDebug(PD_AnalysisConfig* config, int x) {
+void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrDebug(x);
 }
 

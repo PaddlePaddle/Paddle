@@ -197,12 +197,12 @@ PADDLE_CAPI_EXPORT extern void PD_EnableCUDNN(PD_AnalysisConfig* config);
 PADDLE_CAPI_EXPORT extern bool PD_CudnnEnabled(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrOptim(PD_AnalysisConfig* config,
-                                                int x = true);
+                                                bool x = true);
 
 PADDLE_CAPI_EXPORT extern bool PD_IrOptim(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchUseFeedFetchOps(
-    PD_AnalysisConfig* config, int x = true);
+    PD_AnalysisConfig* config, bool x = true);
 
 PADDLE_CAPI_EXPORT extern bool PD_UseFeedFetchOpsEnabled(
     PD_AnalysisConfig* config);
@@ -216,7 +216,7 @@ PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
     PD_AnalysisConfig* config, int workspace_size = 1 << 20,
     int max_batch_size = 1, int min_subgraph_size = 3,
     Precision precision = Precision::kFloat32, bool use_static = false,
-    bool use_calib_mode = true);
+    bool use_calib_mode = false);
 
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(
     PD_AnalysisConfig* config);
@@ -235,7 +235,7 @@ PADDLE_CAPI_EXPORT extern bool PD_AnakinEngineEnabled(
     PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
-                                                int x = true);
+                                                bool x = true);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableNgraph(PD_AnalysisConfig* config);
 

@@ -64,8 +64,6 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
       PADDLE_ENFORCE(false, "Unsupport dtype.");
       return PD_PaddleDType::FLOAT32;
   }
-  PADDLE_ENFORCE(false, "Unsupport dtype.");
-  return PD_PaddleDType::FLOAT32;
 }
 
 paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
@@ -80,8 +78,6 @@ paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
       PADDLE_ENFORCE(false, "Unsupport place.");
       return PD_PaddlePlace::kUNK;
   }
-  PADDLE_ENFORCE(false, "Unsupport dtype.");
-  return PD_PaddlePlace::kUNK;
 }
 
 PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
@@ -95,11 +91,9 @@ PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
     case PD_PaddleDType::UINT8:
       return PD_DataType::PD_UINT8;
     default:
-      PADDLE_ENFORCE(false, "Unsupport place.");
+      PADDLE_ENFORCE(false, "Unsupport dtype.");
       return PD_DataType::PD_UNKDTYPE;
   }
-  PADDLE_ENFORCE(false, "Unsupport place.");
-  return PD_DataType::PD_UNKDTYPE;
 }
 
 PD_ACPrecision ConvertToACPrecision(Precision dtype) {
@@ -111,10 +105,8 @@ PD_ACPrecision ConvertToACPrecision(Precision dtype) {
     case Precision::kHalf:
       return PD_ACPrecision::kHalf;
     default:
-      PADDLE_ENFORCE(false, "Unsupport place.");
+      PADDLE_ENFORCE(false, "Unsupport precision.");
       return PD_ACPrecision::kFloat32;
   }
-  PADDLE_ENFORCE(false, "Unsupport place.");
-  return PD_ACPrecision::kFloat32;
 }
 }  // namespace paddle

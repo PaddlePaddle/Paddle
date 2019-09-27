@@ -48,7 +48,7 @@ char** PD_GetPredictorInputNames(PD_Predictor* predictor, int** in_size) {
   ret_names = predictor->predictor->GetInputNames();
   int size = ret_names.size();
   *in_size = &size;
-  char** names = nullptr;
+  char** names = new char*[size];
   for (int i = 0; i < size; ++i) {
     std::snprintf(names[i], ret_names[i].length() + 1, "%s",
                   ret_names[i].c_str());
@@ -60,7 +60,8 @@ InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
                                                int** size) {
   std::map<std::string, std::vector<int64_t>> input_tensor_shape =
       predictor->predictor->GetInputTensorShape();
-  InTensorShape* ret_in_tensor_shape = nullptr;
+  InTensorShape* ret_in_tensor_shape =
+      new InTensorShape[input_tensor_shape.size()];
   int i = 0;
   for (auto item : input_tensor_shape) {
     std::snprintf(ret_in_tensor_shape[i].name, item.first.length() + 1, "%s",
@@ -80,7 +81,7 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
   std::vector<std::string> ret_names;
   ret_names = predictor->predictor->GetOutputNames();
   int size = ret_names.size();
-  char** names = nullptr;
+  char** names = new char*[size];
   for (int i = 0; i < size; ++i) {
     std::snprintf(names[i], ret_names[i].length() + 1, "%s",
                   ret_names[i].c_str());
@@ -90,7 +91,7 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
-  PD_ZeroCopyTensor* ret = nullptr;
+  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor =
       *(predictor->predictor->GetInputTensor(std::string(name)).get());
   return ret;
@@ -98,7 +99,7 @@ PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
-  PD_ZeroCopyTensor* ret = nullptr;
+  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor =
       *(predictor->predictor->GetOutputTensor(std::string(name)).get());
   return ret;
