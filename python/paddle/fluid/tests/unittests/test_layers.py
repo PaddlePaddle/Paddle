@@ -1365,9 +1365,13 @@ class TestBook(LayerTest):
     def make_pool3d(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            x = self._get_data(name='x', shape=[3, 244, 244, 244], dtype='float32')
+            x = self._get_data(
+                name='x', shape=[3, 244, 244, 244], dtype='float32')
             return (layers.pool3d(
-                x, pool_size=[5, 3, 2], pool_stride=[1, 2, 3], pool_padding=(2, 1, 1)))
+                x,
+                pool_size=[5, 3, 2],
+                pool_stride=[1, 2, 3],
+                pool_padding=(2, 1, 1)))
 
     def make_adaptive_pool2d(self):
         with program_guard(fluid.default_main_program(),
