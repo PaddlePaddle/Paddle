@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
+import paddle.compat as cpt
 
 
 class TestPrune(unittest.TestCase):
@@ -60,6 +61,39 @@ class TestPrune(unittest.TestCase):
         self.assertEqual(
             [op.type for op in pruned_program.global_block().ops],
             ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+
+    def test_prune_target_not_list(self):
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+        with fluid.program_guard(program, startup_program):
+            (x, y, label, loss) = self.net()
+        self.assertEqual(len(block.ops), 5)
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "mean"
+        ])
+        pruned_program = program._prune(targets=loss)
+        self.assertEqual(len(pruned_program.global_block().ops), 5)
+        self.assertEqual(
+            [op.type for op in pruned_program.global_block().ops],
+            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+
+    def test_prune_target_none(self):
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+        with fluid.program_guard(program, startup_program):
+            (x, y, label, loss) = self.net()
+        self.assertEqual(len(block.ops), 5)
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "mean"
+        ])
+        try:
+            pruned_program = program._prune(targets=None)
+        except ValueError as e:
+            self.assertEqual(
+                "All targets of prune() can only be Variable or Operator.",
+                cpt.get_exception_message(e))
 
 
 if __name__ == '__main__':
