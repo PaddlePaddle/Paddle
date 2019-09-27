@@ -92,10 +92,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 void profile(bool use_mkldnn = false) {
   std::string model_dir1 = FLAGS_infer_model + "/model/__model__";
   std::string params_file1 = FLAGS_infer_model + "/model/__params__";
-  const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
-  LOG(INFO) << model_dir;
-  const char *params_file =
-      GetModelPath(FLAGS_infer_model + "/model/__params__");
+  // const char *model_dir = GetModelPath(FLAGS_infer_model +
+  // "/model/__model__");
+  // LOG(INFO) << model_dir;
+  // const char *params_file =
+  //     GetModelPath(FLAGS_infer_model + "/model/__params__");
   // LOG(INFO) << model_dir;
   PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
   // LOG(INFO) << PD_ModelDir(&config);
