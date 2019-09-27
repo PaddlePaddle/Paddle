@@ -459,6 +459,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
+  proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
+                                           const std::string& name) const;
+
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;

@@ -1175,6 +1175,29 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   return data_type;
 }
 
+proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
+    const ExecutionContext& ctx, const std::string& name) const {
+  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  PADDLE_ENFORCE_EQ(vars.empty(), false, "The Input %s is an empty variable.",
+                    name);
+  const Variable* var = vars.front();
+  const Tensor* t = nullptr;
+  if (var->IsType<LoDTensor>()) {
+    t = &var->Get<LoDTensor>();
+  } else if (var->IsType<SelectedRows>()) {
+    t = &(var->Get<SelectedRows>().value());
+  } else {
+    PADDLE_THROW(
+        "The Input variable(%s) used to determine kernel data type "
+        "should be LoDTensor or SelectedRows",
+        name);
+  }
+  PADDLE_ENFORCE_NOT_NULL(t, "The Input variable %s is not initialized.", name);
+  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                    "The Tensor of Input variable %s is not initialized", name);
+  return t->type();
+}
+
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
