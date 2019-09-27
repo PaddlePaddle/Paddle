@@ -21,7 +21,7 @@ from test_dist_base import TestDistBase
 
 
 def download_files():
-    url_prefix = 'http://paddle-unittest-data.cdn.bcebos.com/dist_transformer/'
+    url_prefix = 'http://paddle-unittest-data.bj.bcebos.com/dist_transformer/'
     vocab_url = url_prefix + 'vocab.bpe.32000'
     vocab_md5 = 'a86d345ca6e27f6591d0dccb1b9be853'
     paddle.dataset.common.download(vocab_url, 'test_dist_transformer',

@@ -77,10 +77,9 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   weights_array_2d.colwise() *= scale_array;
 }
 
-std::unique_ptr<ir::Graph> ConvAffineChannelFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -139,7 +138,7 @@ std::unique_ptr<ir::Graph> ConvAffineChannelFusePass::ApplyImpl(
     desc.SetAttr("axis", 1);
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
-    GraphSafeRemoveNodes(graph.get(), {ac_scale, ac_bias, affine_channel});
+    GraphSafeRemoveNodes(graph, {ac_scale, ac_bias, affine_channel});
 
     IR_NODE_LINK_TO(conv_out, eltwise_op);
     IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
@@ -147,16 +146,14 @@ std::unique_ptr<ir::Graph> ConvAffineChannelFusePass::ApplyImpl(
     found_conv_ac_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
 
   AddStatis(found_conv_ac_count);
-  return graph;
 }
 
-std::unique_ptr<ir::Graph> ConvEltwiseAddAffineChannelFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
@@ -199,7 +196,7 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddAffineChannelFusePass::ApplyImpl(
     eltwise->Op()->SetAttr("axis", 1);
     eltwise->Op()->SetOutput("Out", std::vector<std::string>({ac_out->Name()}));
 
-    GraphSafeRemoveNodes(graph.get(),
+    GraphSafeRemoveNodes(graph,
                          {ac_scale, ac_bias, affine_channel, eltwise_out});
 
     IR_NODE_LINK_TO(eltwise, ac_out);
@@ -207,9 +204,8 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddAffineChannelFusePass::ApplyImpl(
     found_conv_ac_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   AddStatis(found_conv_ac_count);
-  return graph;
 }
 
 }  // namespace ir

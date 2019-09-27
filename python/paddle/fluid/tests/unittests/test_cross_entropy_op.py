@@ -76,6 +76,23 @@ class TestCrossEntropyOp(OpTest):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
 
 
+class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
+    """Test cross-entropy with discrete one-hot labels with shape [batch_size]
+    """
+
+    def init_label(self):
+        self.label = np.random.randint(
+            0, self.class_num, (self.batch_size), dtype="int64")
+
+    def get_cross_entropy(self):
+        self.cross_entropy = np.asmatrix(
+            [
+                -np.log(self.x[i][self.label[i]])
+                for i in range(self.x.shape[0])
+            ],
+            dtype="float64")
+
+
 class TestCrossEntropyOp2(TestCrossEntropyOp):
     """Test cross-entropy with vectorized soft labels.
     """
@@ -165,6 +182,22 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
 
     def init_bs_class_num(self):
         self.class_num = 10
+
+
+class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
+    """Test high rank tensor cross-entropy with discrete one-hot labels with shape [batch_size]
+    """
+
+    def init_label(self):
+        self.label_2d = np.random.randint(
+            0, self.class_num, (self.ins_num, 1), dtype="int64")
+        self.label = self.label_2d.reshape(self.shape)
+
+    def get_cross_entropy(self):
+        cross_entropy_2d = np.asmatrix(
+            [[-np.log(self.X_2d[i][self.label_2d[i][0]])]
+             for i in range(self.X_2d.shape[0])]).astype(self.dtype)
+        self.cross_entropy = np.array(cross_entropy_2d).reshape(self.shape)
 
 
 class TestCrossEntropyOp5(TestCrossEntropyOp):
@@ -270,6 +303,23 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
         self.class_num = 10
 
 
+class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
+    """Test cross-entropy with ignore index with shape [batch_size].
+    """
+
+    def init_label(self):
+        self.label = np.random.randint(
+            0, self.class_num, (self.batch_size), dtype="int64")
+
+    def get_cross_entropy(self):
+        self.cross_entropy = np.asmatrix(
+            [[-np.log(self.x[i][self.label[i]])]
+             if self.label[i] != self.ignore_index else [0]
+             for i in range(self.x.shape[0])]).astype(self.dtype)
+        self.cross_entropy = np.array(self.cross_entropy).reshape(
+            [self.batch_size]).astype(self.dtype)
+
+
 # Add Fp16 test
 def create_test_class(parent, cls_name):
     @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -298,9 +348,13 @@ create_test_class(TestCrossEntropyOp, "TestCrossEntropyF16Op")
 #create_test_class(TestCrossEntropyOp2, "TestCrossEntropyF16Op2")
 create_test_class(TestCrossEntropyOp3, "TestCrossEntropyF16Op3")
 create_test_class(TestCrossEntropyOp4, "TestCrossEntropyF16Op4")
+create_test_class(TestCrossEntropyOp4RemoveLastDim,
+                  "TestCrossEntropyF16Op4RemoveLastDim")
 #create_test_class(TestCrossEntropyOp5, "TestCrossEntropyF16Op5")
 create_test_class(TestCrossEntropyOp6, "TestCrossEntropyF16Op6")
 create_test_class(TestCrossEntropyOp7, "TestCrossEntropyF16Op7")
+create_test_class(TestCrossEntropyOp7RemoveLastDim,
+                  "TestCrossEntropyF16Op7RemoveLastDim")
 
 if __name__ == "__main__":
     unittest.main()

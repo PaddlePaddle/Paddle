@@ -57,8 +57,18 @@ void SetDeviceId(int device_id);
 //! Get the memory usage of current GPU device.
 void GpuMemoryUsage(size_t *available, size_t *total);
 
+//! Get the available memory to allocate, which is the size of available gpu
+//! minus reserving.
+size_t GpuAvailableMemToAlloc();
+
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();
+
+//! Get the initial allocation size of current GPU device.
+size_t GpuInitAllocSize();
+
+//! Get the re-allocation size of current GPU device.
+size_t GpuReallocSize();
 
 //! Get the minimum chunk size for GPU buddy allocator.
 size_t GpuMinChunkSize();

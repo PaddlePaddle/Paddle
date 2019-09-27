@@ -33,3 +33,13 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseSubGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_sub_grad_grad,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        float>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        double>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        int>,
+    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        int64_t>);

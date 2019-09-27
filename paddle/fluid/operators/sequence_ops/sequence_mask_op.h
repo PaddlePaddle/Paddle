@@ -28,48 +28,8 @@
 namespace paddle {
 namespace operators {
 
-class SequenceMaskOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must exist");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
-
-    int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = framework::vectorize2int(ctx->GetInputDim("X"));
-    dim.push_back(maxlen > 0 ? maxlen : -1);
-    ctx->SetOutputDim("Y", framework::make_ddim(dim));
-  }
-};
-
-class SequenceMaskOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "The input tensor of sequence_mask op.");
-    AddOutput("Y", "The output mask of sequence_mask op.");
-    AddAttr<int>("maxlen",
-                 "The maximum length of the sequence. If maxlen < 0, maxlen "
-                 "= max(Input(X)).")
-        .SetDefault(-1)
-        .AddCustomChecker([](const int &v) {
-          PADDLE_ENFORCE(v < 0 || v >= 1,
-                         "Attr(maxlen) must be less than 0 or larger than 1");
-        });
-    AddAttr<int>("out_dtype", "Output data type");
-    AddComment(R"DOC(
-SequenceMask Operator
-
-This operator outputs a Mask according to Input(X) and Attr(maxlen).
-Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
-Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
-
-Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n)) 
-
-If maxlen < 0, maxlen = max(X)
-    )DOC");
-  }
-};
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
@@ -90,8 +50,6 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
-  using Tensor = framework::LoDTensor;
-
   SequenceMaskFunctor(const DeviceContext &ctx, const Tx *x, Tensor *y,
                       int limits, int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
@@ -119,7 +77,25 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Output<Tensor>("Y");
-    auto maxlen = ctx.Attr<int>("maxlen");
+    int maxlen = ctx.Attr<int>("maxlen");
+    if (ctx.HasInput("MaxLenTensor")) {
+      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+      PADDLE_ENFORCE(max_len_tensor != NULL, "MaxLenTensor is NULL");
+      if (platform::is_gpu_place(max_len_tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
+        maxlen = *temp.data<int32_t>();
+      } else {
+        maxlen = *max_len_tensor->data<int32_t>();
+      }
+
+      auto y_dim = framework::vectorize<int>(x->dims());
+      y_dim.push_back(maxlen);
+      y->Resize(framework::make_ddim(y_dim));
+
+      PADDLE_ENFORCE_GT(maxlen, 0,
+                        "MaxLenTensor value should be greater than 0");
+    }
 
     auto *x_data = x->data<Tx>();
     auto x_numel = x->numel();
@@ -134,7 +110,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
 #else
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
-      auto y_dim = framework::vectorize2int(x->dims());
+      auto y_dim = framework::vectorize<int>(x->dims());
       y_dim.push_back(maxlen);
       y->Resize(framework::make_ddim(y_dim));
     }

@@ -171,7 +171,7 @@ class TestCUDNNLstmOp(OpTest):
         }
 
     def test_output_with_place(self):
-        if self.testcuda():
+        if self.has_cuda():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
 
@@ -184,7 +184,7 @@ class TestCUDNNLstmOp(OpTest):
                 ['Out', 'last_h', 'last_c'],
                 max_relative_error=0.02)
 
-    def testcuda(self):
+    def has_cuda(self):
         return core.is_compiled_with_cuda()
 
 

@@ -14,8 +14,11 @@
 
 #include "paddle/fluid/operators/py_func_op.h"
 
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -91,15 +94,12 @@ static void CallPythonFunc(py::object *callable,
   }
 }
 
-class PyFuncOpVarTypInference : public framework::VarTypeInference {
+class PyFuncOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op,
-                  framework::BlockDesc *block) const override {
-    auto &outs = op.Outputs();
-    bool has_out = (outs.count("Out") > 0 && !outs.at("Out").empty());
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    bool has_out = (ctx->HasOutput("Out") && !ctx->Output("Out").empty());
 
-    auto &ins = op.Inputs();
-    bool has_in = (ins.count("X") > 0 && !ins.at("X").empty());
+    bool has_in = (ctx->HasInput("X") && !ctx->Input("X").empty());
 
     /**
      * X or Out can be empty, so that py_func can be more flexible
@@ -107,8 +107,8 @@ class PyFuncOpVarTypInference : public framework::VarTypeInference {
      */
     PADDLE_ENFORCE(has_in || has_out, "Input(X) or Output(Out) must exist");
 
-    PADDLE_ENFORCE_GE(boost::get<int>(op.GetAttr(kForwardPythonCallableId)), 0,
-                      "Function id cannot be less than 0");
+    PADDLE_ENFORCE_GE(boost::get<int>(ctx->GetAttr(kForwardPythonCallableId)),
+                      0, "Function id cannot be less than 0");
 
     if (!has_out) return;
 
@@ -118,7 +118,7 @@ class PyFuncOpVarTypInference : public framework::VarTypeInference {
      * the corresponding forward variable
      */
     const std::string kGradVarSuffix = framework::kGradVarSuffix;
-    auto &out_var_names = outs.at("Out");
+    auto &out_var_names = ctx->Output("Out");
     for (auto &out_var_name : out_var_names) {
       if (out_var_name == framework::kEmptyVarName ||
           out_var_name.size() < kGradVarSuffix.size()) {
@@ -128,18 +128,17 @@ class PyFuncOpVarTypInference : public framework::VarTypeInference {
       size_t len = out_var_name.size() - kGradVarSuffix.size();
       if (out_var_name.substr(len) == kGradVarSuffix) {
         auto fwd_var_name = out_var_name.substr(0, len);
-        auto *out_var_desc = block->FindVarRecursive(out_var_name);
-        auto *fwd_var_desc = block->FindVarRecursive(fwd_var_name);
-        PADDLE_ENFORCE_NOT_NULL(out_var_desc, "Backward variable %s not found",
-                                out_var_name);
-        PADDLE_ENFORCE_NOT_NULL(fwd_var_desc, "Forward variable %s not found",
-                                fwd_var_name);
+        PADDLE_ENFORCE(ctx->HasVar(out_var_name),
+                       "Backward variable %s not found", out_var_name);
+        PADDLE_ENFORCE(ctx->HasVar(fwd_var_name),
+                       "Backward variable %s not found", fwd_var_name);
         VLOG(10) << "Infer var_desc of Output(" << out_var_name << ") as Input("
                  << fwd_var_name << ")";
-        out_var_desc->SetShape(fwd_var_desc->GetShape());
-        out_var_desc->SetDataType(fwd_var_desc->GetDataType());
-        out_var_desc->SetLoDLevel(fwd_var_desc->GetLoDLevel());
-        out_var_desc->SetType(fwd_var_desc->GetType());
+
+        ctx->SetShape(out_var_name, ctx->GetShape(fwd_var_name));
+        ctx->SetDataType(out_var_name, ctx->GetDataType(fwd_var_name));
+        ctx->SetLoDLevel(out_var_name, ctx->GetLoDLevel(fwd_var_name));
+        ctx->SetType(out_var_name, ctx->GetType(fwd_var_name));
       }
     }
   }
@@ -309,5 +308,5 @@ class PyFuncOp : public framework::OperatorBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(py_func, ops::PyFuncOp, ops::PyFuncOpMaker,
-                  ops::PyFuncOpVarTypInference, ops::PyFuncOpShapeInference,
+                  ops::PyFuncOpVarTypeInference, ops::PyFuncOpShapeInference,
                   ops::PyFuncOpGradDescMaker);

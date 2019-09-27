@@ -17,9 +17,10 @@
 #include <NvInfer.h>
 #include <cstring>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "paddle/fluid/inference/tensorrt/plugin/serialize.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -29,6 +30,13 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+class PluginTensorRT;
+
+typedef std::function<PluginTensorRT*(const void*, size_t)>
+    PluginDeserializeFunc;
+
+typedef std::function<PluginTensorRT*(void)> PluginConstructFunc;
 
 class PluginTensorRT : public nvinfer1::IPluginExt {
  public:

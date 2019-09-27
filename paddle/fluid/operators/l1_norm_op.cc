@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/l1_norm_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -62,12 +63,28 @@ $$Out = \sum{|X|}$$
   }
 };
 
+class L1NormGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("l1_norm_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(l1_norm, ops::L1NormOp, ops::L1NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::L1NormGradDescMaker);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);

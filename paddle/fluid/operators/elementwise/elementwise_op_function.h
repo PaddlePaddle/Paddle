@@ -47,25 +47,65 @@ namespace operators {
  * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
  *    pre=2*3, n=4*5, post=1
  *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
+ *
+ * New parameter: *mid_flag* is added to solve m*n*k & m*1*k
+ * broadcast cases.
+ * 3. shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1, 4, 5)
+ *    mid_flag should not be NULL.
+ *    x.shape(2, 3, 20) * y.shape(2, 1, 20).broadcast(2, 3, 20)
  */
 inline void get_mid_dims(const framework::DDim &x_dims,
                          const framework::DDim &y_dims, const int axis,
-                         int *pre, int *n, int *post) {
+                         int *pre, int *n, int *post, int *mid_flag = NULL) {
   *pre = 1;
   *n = 1;
   *post = 1;
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= x_dims[i];
-  }
+  if (mid_flag != NULL) {
+    *mid_flag = 0;
+    int mid = 0;
+    for (int i = 0; i < axis; ++i) {
+      (*pre) *= x_dims[i];
+    }
+    for (int i = 0; i < y_dims.size(); ++i) {
+      if (x_dims[i + axis] != y_dims[i]) {
+        // only support single y_dims[i] = 1 now.
+        PADDLE_ENFORCE_EQ(*mid_flag, 0,
+                          "Broadcast support y_dims with single 1.");
+        PADDLE_ENFORCE_EQ(y_dims[i], 1, "Broadcast dimension mismatch.");
+        // m*n*k m*1*k
+        for (int j = 0; j < i; ++j) {
+          (*pre) *= y_dims[j];
+        }
+        *n = std::max(x_dims[i + axis], y_dims[i]);
+        *mid_flag = 1;
+        mid = i;
+        break;
+      }
+      (*n) *= y_dims[i];
+    }
+    if (*mid_flag) {
+      for (int i = mid + 1; i < x_dims.size(); ++i) {
+        (*post) *= x_dims[i];
+      }
+    } else {
+      for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
+        (*post) *= x_dims[i];
+      }
+    }
+  } else {  // for fused_elementwise_activation_op. keep the old version.
+    for (int i = 0; i < axis; ++i) {
+      (*pre) *= x_dims[i];
+    }
 
-  for (int i = 0; i < y_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
-                      "Broadcast dimension mismatch.");
-    (*n) *= y_dims[i];
-  }
+    for (int i = 0; i < y_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
+                        "Broadcast dimension mismatch.");
+      (*n) *= y_dims[i];
+    }
 
-  for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
-    (*post) *= x_dims[i];
+    for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
+      (*post) *= x_dims[i];
+    }
   }
 }
 
@@ -171,7 +211,6 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
         }
       }
     }
-
     return *this;
   }
 
@@ -268,6 +307,15 @@ class TransformFunctor {
           MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
   }
 
+  inline void RunMidRowWise(int n, int pre, int post) const {
+    platform::Transform<DeviceContext> trans;
+    for (int i = 0; i < pre; i++) {
+      trans(ctx_, x_ + i * n * post, x_ + (i + 1) * n * post,
+            RowwiseTransformIterator<T, DeviceContext>(y_ + i * post, post),
+            z_ + i * n * post, func_);
+    }
+  }
+
  private:
   const T *x_;
   const T *y_;
@@ -351,15 +399,75 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   }
 }
 
+#define BLOCK_X 32
+#define BLOCK_Y 32
+
+// suppose use 2D block is fast because more parallel
+// and memory coalesced
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
+
+  T val(0);
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t full_width =
+      (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
+  size_t full_height =
+      (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+
+  for (int m = idx; m < full_width; m += width_stride) {
+    sdata[threadIdx.y][threadIdx.x] = 0;
+    for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+      int x_offset = n * w + m;
+      if (dx && m < w && n < h) {
+        dx[x_offset] = dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        if (m < w && n < h) {
+          T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+          sdata[threadIdx.y][threadIdx.x] += val;
+        }
+        __syncthreads();
+      }
+    }
+    if (dy) {
+      T my_val = sdata[threadIdx.x][threadIdx.y];
+      for (int i = warpSize >> 1; i > 0; i >>= 1)
+        my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+      __syncthreads();
+      if ((threadIdx.x == 0)) {
+        sdata[0][threadIdx.y] = my_val;
+      }
+      __syncthreads();
+      if (threadIdx.y == 0 && m < w) {
+        dy[m] = sdata[0][threadIdx.x];
+      }
+    }
+  }
+}
+
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T *dx, T *dy) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
-  ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
-      x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  // For small case use 1D block
+  constexpr int half_walf = 16;
+  if (w < half_walf || h < half_walf) {
+    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+    int gird_size = w;
+    ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  } else {
+    // suppose perfoemance improves with h increased.
+    dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+    int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+    FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
+        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+  }
 }
 
 #endif
@@ -441,6 +549,88 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
 
 #endif
 
+template <typename T, typename DX_OP, typename DY_OP>
+static void ElemwiseGradBroadcastMid2CPU(const T *x, const T *y, const T *out,
+                                         const T *dout, int pre, int n,
+                                         int post, DX_OP dx_op, DY_OP dy_op,
+                                         T *dx, T *dy) {
+  for (int i = 0; i < pre; ++i) {
+    for (int j = 0; j < n; ++j) {
+      for (int k = 0; k < post; ++k) {
+        int x_offset = i * n * post + j * post + k;
+        int y_offset = i * post + k;
+        if (dx != nullptr) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+        }
+        if (dy != nullptr) {
+          T tmp =
+              dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+          if (j == 0) {
+            dy[y_offset] = tmp;
+          } else {
+            dy[y_offset] += tmp;
+          }
+        }
+      }
+    }
+  }
+}
+
+#ifdef __NVCC__
+template <typename T, typename DX_OP, typename DY_OP>
+static __global__ void ElemwiseGradBroadcastMid2CUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  int j = threadIdx.x;
+  int tid = blockIdx.x;
+
+  T val(0);
+  int ttid = tid;
+
+  while (true) {
+    int i = ttid / post;
+    int k = ttid % post;
+    if (i >= pre) break;
+
+    int x_offset = i * n * post + j * post + k;
+    int y_offset = i * post + k;
+    if (dx != nullptr) {
+      dx[x_offset] =
+          dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+    }
+
+    if (dy != nullptr) {
+      val += dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+    }
+
+    ttid += ELEMWISE_MAX_BLOCK_DIM;
+  }
+
+  if (dy) {
+    int h = n;
+    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+    val = paddle::platform::reduceSum(val, j, h);
+    if (threadIdx.x == 0) {
+      dy[tid] = val;
+    }
+  }
+}
+
+template <typename T, typename DX_OP, typename DY_OP>
+static void ElemwiseGradBroadcastMid2CUDA(cudaStream_t stream, const T *x,
+                                          const T *y, const T *out,
+                                          const T *dout, int pre, int n,
+                                          int post, DX_OP dx_op, DY_OP dy_op,
+                                          T *dx, T *dy) {
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, n);
+  int gird_size = pre * post;
+  ElemwiseGradBroadcastMid2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
+      x, y, out, dout, pre, n, post, dx_op, dy_op, dx, dy);
+}
+
+#endif
+
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void ElemwiseGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx, const framework::DDim &x_dim,
@@ -473,23 +663,39 @@ void ElemwiseGradComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
-  if (post == 1) {
-    int h = pre;
-    int w = n;
+  int pre, n, post, mid_flag = 0;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &mid_flag);
+  if (mid_flag) {
+    PADDLE_ENFORCE_EQ(mid_flag, 1, "mid_flag should be no more than 1.");
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef __NVCC__
+      ElemwiseGradBroadcastMid2CUDA(
+          ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post, dx_op,
+          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+#endif
+    } else {
+      ElemwiseGradBroadcastMid2CPU(
+          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post,
+          dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    }
+  } else if (post == 1) {
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
       ElemwiseGradBroadcast1CUDA(
           ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-          y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op, dy_op,
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, dx_op, dy_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
 #endif
     } else {
       ElemwiseGradBroadcast1CPU(
-          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op,
-          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n,
+          dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
@@ -619,7 +825,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   auto y_dims_untrimed = y->dims();
   PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
                     "Rank of first input must >= rank of second input.");
-
   if (x_dims == y_dims_untrimed) {
     functor.Run();
     return;
@@ -630,9 +835,12 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                  "Axis should be in range [0, x_dims)");
   auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
-
-  int pre, n, post;
-  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+  int pre, n, post, mid_flag = 0;
+  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post, &mid_flag);
+  if (mid_flag) {
+    functor.RunMidRowWise(n, pre, post);
+    return;
+  }
   if (post == 1) {
     functor.RunRowWise(n, pre);
     return;
@@ -955,24 +1163,24 @@ template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut>
 struct FusedElemwiseAndActGradNoBroadcast {
   HOSTDEVICE void operator()(size_t i) {
+    T x_val = x_[i];
+    T y_val = y_[i];
+    T out_val = out_[i];
+    T dout_val = dout_[i];
+    T intermediate_out_val = UseIntermediateOut
+                                 ? intermediate_out_[i]
+                                 : dx_op_.GetIntermediateOut(x_val, y_val);
     if (dx_ != nullptr) {
-      dx_[i] = UseIntermediateOut
-                   ? dx_op_.UseIntermediateOut(
-                         x_[i], y_[i], intermediate_out_[i], out_[i], dout_[i])
-                   : dx_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
+      dx_[i] = dx_op_.UseIntermediateOut(x_val, y_val, intermediate_out_val,
+                                         out_val, dout_val);
     }
     if (dy_ != nullptr) {
-      dy_[i] = UseIntermediateOut
-                   ? dy_op_.UseIntermediateOut(
-                         x_[i], y_[i], intermediate_out_[i], out_[i], dout_[i])
-                   : dy_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
+      dy_[i] = dy_op_.UseIntermediateOut(x_val, y_val, intermediate_out_val,
+                                         out_val, dout_val);
     }
     if (dintermediate_ != nullptr) {
-      dintermediate_[i] =
-          UseIntermediateOut
-              ? dintermediate_op_.UseIntermediateOut(
-                    x_[i], intermediate_out_[i], out_[i], dout_[i])
-              : dintermediate_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
+      dintermediate_[i] = dintermediate_op_.UseIntermediateOut(
+          x_val, intermediate_out_val, out_val, dout_val);
     }
   }
 
@@ -1559,7 +1767,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Y.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
@@ -1571,7 +1780,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
           intermediate_out);
     } else {
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // shape
       // of Out.
       // for 'f2(x, y)', the shape of intermediate_out should be equal to the
       // shape of Out.
@@ -1584,5 +1794,21 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     }
   }
 }
+
+template <typename DeviceContext, typename T>
+static inline void GetDoubleGradSafeTensor(
+    const framework::ExecutionContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *ddx, framework::Tensor *ddx_safe) {
+  if (ddx) {
+    *ddx_safe = *ddx;
+  } else {
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+    *ddx_safe = ctx.AllocateTmpTensor<T, DeviceContext>(x->dims(), dev_ctx);
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(ctx.template device_context<DeviceContext>(), ddx_safe,
+             static_cast<T>(0));
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

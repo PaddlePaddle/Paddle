@@ -25,10 +25,9 @@ namespace ir {
   auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
-std::unique_ptr<ir::Graph> DepthwiseConvMKLDNNPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("depthwise_conv_mkldnn_pass", graph.get());
+void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init("depthwise_conv_mkldnn_pass", graph);
   GraphPatternDetector gpd;
 
   auto* pattern = gpd.mutable_pattern();
@@ -45,9 +44,8 @@ std::unique_ptr<ir::Graph> DepthwiseConvMKLDNNPass::ApplyImpl(
     found_depthwise_conv_mkldnn_count++;
   };
 
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   AddStatis(found_depthwise_conv_mkldnn_count);
-  return graph;
 }
 
 }  // namespace ir

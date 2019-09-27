@@ -81,15 +81,12 @@ GetTensorFromSelectedRows is used to get the tensor from SelectedRows.
 class GetTensorFromSelectedRowsOpVarTypeInference
     : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const final {
-    auto out_var_name = op_desc.Output("Out").front();
-    auto in_var_name = op_desc.Input("X").front();
+  void operator()(framework::InferVarTypeContext *ctx) const {  // NOLINT
+    auto out_var_name = ctx->Output("Out").front();
+    auto in_var_name = ctx->Input("X").front();
 
-    auto out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto in_var = block->FindRecursiveOrCreateVar(in_var_name);
-    out_var.SetType(framework::proto::VarType::LOD_TENSOR);
-    out_var.SetDataType(in_var.GetDataType());
+    ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+    ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
   }
 };
 

@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import six
+from fake_reader import fake_imdb_reader
 
 
 def bow_net(data,
@@ -48,11 +50,10 @@ def bow_net(data,
 
 class TestGradientClip(unittest.TestCase):
     def setUp(self):
-        self.word_dict = paddle.dataset.imdb.word_dict()
+        self.word_dict_len = 5147
         self.BATCH_SIZE = 2
-        self.train_data = paddle.batch(
-            paddle.dataset.imdb.train(self.word_dict),
-            batch_size=self.BATCH_SIZE)
+        reader = fake_imdb_reader(self.word_dict_len, self.BATCH_SIZE * 100)
+        self.train_data = paddle.batch(reader, batch_size=self.BATCH_SIZE)
 
     def get_places(self):
         places = [core.CPUPlace()]
@@ -131,7 +132,7 @@ class TestGradientClip(unittest.TestCase):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            cost = bow_net(data, label, len(self.word_dict))
+            cost = bow_net(data, label, self.word_dict_len)
 
             fluid.clip.set_gradient_clip(
                 clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=5.0))

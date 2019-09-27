@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,338 +13,271 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/layer.h"
-
-#include <deque>
-#include <limits>
-#include <map>
-#include <random>
+#include <algorithm>
+#include <queue>
 #include <utility>
-
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace imperative {
 
-const char* PyLayer::kFwdInp = "X";
-const char* PyLayer::kFwdOut = "Out";
-
-std::map<int, py::object> py_funcs_;
-
 using framework::Variable;
-
-namespace detail {
-
-template <typename T>
-class TensorAddToFunctor : public boost::static_visitor<> {
- public:
-  TensorAddToFunctor(int64_t numel, const T* x, T* y)
-      : numel_(numel), x_(x), y_(y) {}
-
-  void operator()(const platform::CPUPlace& place) {
-    platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto blas = operators::math::GetBlas<platform::CPUDeviceContext, T>(*ctx);
-    blas.AXPY(numel_, 1., x_, y_);
-  }
-
-#ifdef PADDLE_WITH_CUDA
-  void operator()(const platform::CUDAPlace& place) {
-    platform::CUDADeviceContext* ctx =
-        dynamic_cast<platform::CUDADeviceContext*>(
-            platform::DeviceContextPool::Instance().Get(place));
-    auto blas = operators::math::GetBlas<platform::CUDADeviceContext, T>(*ctx);
-    blas.AXPY(numel_, 1., x_, y_);
-  }
-#else
-  void operator()(const platform::CUDAPlace& place) {
-    PADDLE_THROW("Do NOT support gradient merge in place %s", place);
-  }
-#endif
-
-  // there is NO blas in CUDAPinnedPlace
-  void operator()(const platform::CUDAPinnedPlace& place) {
-    PADDLE_THROW("Do NOT support gradient merge in place %s", place);
-  }
-
- private:
-  int64_t numel_;
-  const T* x_;
-  T* y_;
-};
-
-}  // namespace detail
-
-void AddTo(Variable* src, Variable* dst, platform::Place place) {
-  framework::Tensor* dst_tensor = dst->GetMutable<framework::LoDTensor>();
-  framework::Tensor* src_tensor = src->GetMutable<framework::LoDTensor>();
-
-  // FIXME(minqiyang): loss_grad op will pass a zero grad of label
-  // ugly fix for it
-  if (src_tensor->numel() == 0) {
-    return;
-  }
-
-  PADDLE_ENFORCE(dst_tensor->numel() == src_tensor->numel(),
-                 "dst_numel %lld vs. src_numel %lld", dst_tensor->numel(),
-                 src_tensor->numel());
-
-  detail::TensorAddToFunctor<float> func(
-      src_tensor->numel(), src_tensor->data<float>(),
-      dst_tensor->mutable_data<float>(place));
-  boost::apply_visitor(func, place);
+void ThreadSafeNameSet::Insert(const std::string& name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  set_.insert(name);
 }
 
-class Autograd {
- public:
-  Autograd() {}
+void ThreadSafeNameSet::Remove(const std::string& name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  auto iter = set_.find(name);
+  PADDLE_ENFORCE_EQ(iter != set_.end(), true, "%s does not exist", name);
+  set_.erase(iter);
+}
 
-  void RunBackward(VarBase* var) {
-    if (var->IsStopGradient()) {
+std::vector<std::string> ThreadSafeNameSet::Names() const {
+  std::lock_guard<std::mutex> guard(mtx_);
+  return std::vector<std::string>(set_.begin(), set_.end());
+}
+
+ThreadSafeNameSet VarBase::name_set_;
+
+std::vector<std::string> VarBase::AliveVarNames() { return name_set_.Names(); }
+
+static framework::VariableNameMap CreateVarNameMap(
+    const framework::OpInfo& op_info, const std::string& op_type,
+    const NameVarBaseMap& varbase_map, bool is_input) {
+  if (op_info.proto_ == nullptr) {
+    return {};
+  }
+
+  framework::VariableNameMap result;
+
+  for (auto& var :
+       is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
+    auto it = varbase_map.find(var.name());
+    if (it == varbase_map.end()) {
+      PADDLE_ENFORCE_EQ(
+          var.dispensable(), true,
+          "Var: %s not dispensable and there are no such var in inputs",
+          var.name());
+      result[var.name()] = {};
+    } else {
+      auto& var_vector = it->second;
+      std::vector<std::string> args;
+      args.reserve(var_vector.size());
+      for (auto& var_base : var_vector) {
+        args.emplace_back(var_base->Name());
+      }
+      result[var.name()] = std::move(args);
+    }
+  }
+  return result;
+}
+
+static framework::RuntimeContext PrepareRuntimeContext(
+    const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
+  framework::VariableValueMap inputs, outputs;
+  for (auto& in_pair : ins) {
+    auto& in_ctx = inputs[in_pair.first];
+    in_ctx.reserve(in_pair.second.size());
+    for (auto& in_var : in_pair.second) {
+      in_ctx.emplace_back(in_var->MutableVar());
+    }
+  }
+
+  for (auto& out_pair : outs) {
+    auto& out_ctx = outputs[out_pair.first];
+    out_ctx.reserve(out_pair.second.size());
+    for (auto& out_var : out_pair.second) {
+      out_ctx.emplace_back(out_var->MutableVar());
+    }
+  }
+  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
+}
+
+static std::string DebugString(
+    const std::string& name,
+    const std::vector<std::shared_ptr<VarBase>>& vars) {
+  std::stringstream ss;
+  ss << name << "{";
+
+  for (size_t i = 0; i < vars.size(); ++i) {
+    if (i > 0) ss << ", ";
+
+    if (vars[i] == nullptr) {
+      ss << "NULL";
+      continue;
+    }
+    ss << vars[i]->Name() << "[";
+    auto& var = vars[i]->Var();
+    if (!var.IsInitialized()) {
+      ss << "NOT_INITED_VAR";
+    } else if (var.IsType<framework::LoDTensor>()) {
+      auto& tensor = var.Get<framework::LoDTensor>();
+      ss << "LoDTensor<";
+      if (tensor.IsInitialized()) {
+        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << tensor.place() << ", ";
+        ss << "(" << tensor.dims() << ")";
+      } else {
+        ss << "NOT_INITED";
+      }
+      ss << ">";
+    } else {
+      ss << "UNRESOLVED_TYPE";
+    }
+    ss << "]";
+  }
+
+  ss << "}";
+  return ss.str();
+}
+
+std::string LayerDebugString(const std::string& op_type,
+                             const NameVarBaseMap& ins,
+                             const NameVarBaseMap& outs) {
+  std::stringstream ss;
+  ss << "Op(" << op_type << "): ";
+
+  ss << "Inputs: ";
+
+  size_t i = 0;
+  for (auto& pair : ins) {
+    if (i > 0) ss << ", ";
+    ss << DebugString(pair.first, pair.second);
+    ++i;
+  }
+
+  ss << ",   Outputs: ";
+  i = 0;
+  for (auto& pair : outs) {
+    if (i > 0) ss << ", ";
+    ss << DebugString(pair.first, pair.second);
+    ++i;
+  }
+  return ss.str();
+}
+
+void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
+  if (op.lock() == nullptr) {
+    return;
+  }
+  for (const auto& cur_op : grad_ops_) {
+    if (cur_op.lock() == op.lock()) {
       return;
     }
-    VLOG(3) << "start autograd";
+  }
+  grad_ops_.emplace_back(op);
+}
 
-    std::deque<OpBase*> ready;
-    ready.push_back(var->PreOp());
-
-    std::map<OpBase*, int> dep_counts = ComputeDepCounts(var->PreOp());
-
-    while (!ready.empty()) {
-      OpBase* ready_op = ready.front();
-      ready.pop_front();
-      std::map<std::string, std::vector<VarBase*>> input_grads =
-          ready_op->ApplyGrad();
-
-      for (auto it : input_grads) {
-        const std::vector<VarBase*>& ingrads = it.second;
-        for (size_t i = 0; i < ingrads.size(); ++i) {
-          if (!ingrads[i]) continue;
-          if (ready_op->input_vars_[it.first][i]->IsStopGradient()) {
-            continue;
-          }
-          OpBase* pre_op = ready_op->pre_ops_[it.first][i];
-          if (!pre_op) continue;
-
-          dep_counts[pre_op] -= 1;
-          PADDLE_ENFORCE(dep_counts[pre_op] >= 0);
-          bool pre_op_ready = dep_counts[pre_op] == 0;
-          if (pre_op_ready) {
-            ready.push_back(pre_op);
-          }
-        }
-      }
+void VarBase::ClearGradient() {
+  if (grad_var_) {
+    auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
+    if (grad_t->IsInitialized()) {
+      auto* dev_ctx =
+          platform::DeviceContextPool::Instance().Get(grad_t->place());
+      operators::math::set_constant(*dev_ctx, grad_t, 0.0);
     }
   }
+}
 
- private:
-  std::map<OpBase*, int> ComputeDepCounts(OpBase* op) {
-    std::map<OpBase*, int> ret;
-
-    std::deque<OpBase*> queue;
-    queue.push_back(op);
-    std::unordered_set<OpBase*> visited;
-    visited.insert(op);
-    while (!queue.empty()) {
-      OpBase* candidate = queue.front();
-      queue.pop_front();
-      for (auto it : candidate->pre_ops_) {
-        for (OpBase* pre_op : it.second) {
-          if (!pre_op) continue;
-          VLOG(5) << "op dep " << candidate->op_desc_->Type() << " <---- "
-                  << it.first << " <---- " << pre_op->op_desc_->Type();
-          if (visited.find(pre_op) == visited.end()) {
-            visited.insert(pre_op);
-            queue.push_back(pre_op);
-          }
-          ret[pre_op] += 1;
-        }
-      }
-    }
-    return ret;
-  }
-};
-
-std::unique_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
+std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
-  PADDLE_ENFORCE(var_->IsInitialized(),
-                 "Variable must be initialized when getting numpy tensor");
+  PADDLE_ENFORCE_EQ(var_.IsInitialized() && var_.IsType<framework::LoDTensor>(),
+                    true,
+                    "Variable must be initialized and type of LoDTensor when "
+                    "getting numpy tensor");
 
-  std::unique_ptr<VarBase> new_var(new VarBase());
-  framework::LoDTensor* tensor =
-      new_var->var_->GetMutable<framework::LoDTensor>();
-  tensor->Resize(var_->Get<framework::LoDTensor>().dims());
-  tensor->set_lod(var_->Get<framework::LoDTensor>().lod());
+  auto& src_tensor = var_.Get<framework::LoDTensor>();
 
+  // TODO(Jiabin): change this after move unique_name generator to CXX
+  auto new_var = std::make_shared<VarBase>(
+      false, "Itmp" + std::to_string(copied_counter_++));
+
+  auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
+  dst_tensor->set_lod(src_tensor.lod());
+
+  framework::TensorCopy(src_tensor, dst_place, dst_tensor);
   if (blocking) {
-    platform::DeviceContext* dev_ctx =
-        platform::DeviceContextPool::Instance().Get(dst_place);
-
-    framework::TensorCopySync(var_->Get<framework::LoDTensor>(), dst_place,
-                              tensor);
-
-    dev_ctx->Wait();
-  } else {
-    framework::TensorCopy(var_->Get<framework::LoDTensor>(), dst_place, tensor);
+    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+    auto src_place = src_tensor.place();
+    if (!(src_place == dst_place)) {
+      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    }
   }
 
   if (platform::is_gpu_place(dst_place)) {
-    VLOG(3) << "copy tensor " << var_desc_->Name() << " from gpu";
+    VLOG(3) << "copy tensor " << Name() << " from gpu";
   }
 
   return new_var;
 }
+// create OpBase from optype
+OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const platform::Place& place)
+    : id_(id), place_(place) {
+  const auto& info = framework::OpInfoMap::Instance().Get(type);
 
-framework::LoDTensor& VarBase::GradValue() {
-  VLOG(3) << "get var grad " << var_desc_->Name();
-  return *(grads_->var_->GetMutable<framework::LoDTensor>());
-}
-
-std::map<std::string, std::vector<VarBase*>> OpBase::ApplyGrad() {
-  if (grad_op_descs_.empty() && backward_id_ <= 0) {
-    VLOG(3) << "op with no grad: " << op_desc_->Type();
-    return {};
+  // Step 1: Run forward
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs);
   }
 
-  std::vector<framework::VariableValueMap> grad_outputs;
-  if (backward_id_ > 0) {
-    VLOG(3) << "py_layer_grad";
-    grad_outputs.resize(1);
-    grad_outputs[0][framework::GradVarName(PyLayer::kFwdOut)] =
-        PyLayer::ApplyGrad(
-            backward_id_,
-            grad_input_vars_[0][framework::GradVarName(PyLayer::kFwdInp)]);
-  } else {
-    grad_outputs.resize(grad_op_descs_.size());
-    for (size_t k = 0; k < grad_op_descs_.size(); ++k) {
-      framework::OpDesc* grad_op_desc = grad_op_descs_[k];
-      VLOG(3) << "op grad " << grad_op_desc->Type();
-      for (auto it : grad_output_vars_[k]) {
-        auto& outputs = grad_outputs[k][it.first];
-        for (size_t i = 0; i < it.second.size(); ++i) {
-          // Allocate a new variable
-          Variable* tmp_var = new framework::Variable();
-          tmp_var->GetMutable<framework::LoDTensor>();
-          outputs.push_back(tmp_var);
-        }
-      }
+  auto input_name_map = CreateVarNameMap(info, type, ins, true);
+  auto output_name_map = CreateVarNameMap(info, type, outs, false);
+  op_ = framework::OpRegistry::CreateOp(type, std::move(input_name_map),
+                                        std::move(output_name_map),
+                                        std::move(attrs));
+  VLOG(3) << "Construct Op: " << type << std::endl;
+}
 
-      framework::RuntimeContext ctx(grad_input_vars_[k], grad_outputs[k]);
+// create OpBase from opdesc
+OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
+               const platform::Place& place)
+    : id_(id), op_(framework::OpRegistry::CreateOp(op_desc)), place_(place) {
+  VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
+}
 
-      // No need to do compile time infer shape here.
-      // grad_op_desc_->InferShape(*block_);
-      grad_op_desc->InferVarType(block_);
+void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
+  auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
+  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+  auto& info = op_->Info();
+  if (info.infer_var_type_) {
+    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, op_->Attrs());
+    info.infer_var_type_(&infer_var_type_ctx);
+  }
 
-      std::unique_ptr<framework::OperatorBase> opbase =
-          framework::OpRegistry::CreateOp(*grad_op_desc);
-      framework::OperatorWithKernel* op_kernel =
-          dynamic_cast<framework::OperatorWithKernel*>(opbase.get());
-      PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-
-      framework::Scope scope;
-      PreparedOp p = PreparedOp::Prepare(ctx, *op_kernel, place_);
-      p.op.RuntimeInferShape(scope, place_, ctx);
-      p.func(framework::ExecutionContext(p.op, scope, *p.dev_ctx, p.ctx));
+  // Initialize output var type
+  for (auto& var_pair : outs) {
+    for (auto& var : var_pair.second) {
+      InitializeVariable(var->MutableVar(), var->Type());
     }
   }
 
-  for (size_t k = 0; k < grad_output_vars_.size(); ++k) {
-    for (auto it : grad_output_vars_[k]) {
-      auto& outputs = grad_outputs[k][it.first];
-      auto& origin_outputs = it.second;
-      PADDLE_ENFORCE_EQ(outputs.size(), origin_outputs.size());
+  VLOG(3) << "Running Op " << Type();
+  VLOG(5) << LayerDebugString(Type(), ins, outs);
+  auto runtime_ctx = PrepareRuntimeContext(ins, outs);
 
-      for (size_t i = 0; i < outputs.size(); ++i) {
-        framework::Variable* grad = outputs[i];
-        framework::Variable* orig_grad = origin_outputs[i];
-        AddTo(grad, orig_grad, place_);
-        delete grad;
-      }
-    }
-  }
+  VLOG(6) << "start preparing op: " << Type();
+  auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);
 
-  return input_vars_;
+  VLOG(6) << "finish preparing op: " << Type();
+  prepared_op.Run();
+
+  VLOG(4) << LayerDebugString(Type(), ins, outs);
 }
 
-void VarBase::RunBackward() {
-  if (!pre_op_) return;
-
-  VLOG(3) << "start backward";
-  auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
-  operators::math::set_constant(
-      *(platform::DeviceContextPool::Instance().Get(
-          var_->GetMutable<framework::LoDTensor>()->place())),
-      grads_t, 1.0);
-
-  PADDLE_ENFORCE(
-      grads_ ==
-      pre_op_->output_vars_[pre_op_out_name_][pre_op_out_idx_]->grads_);
-  Autograd().RunBackward(this);
-}
-
-void PyLayer::RegisterFunc(int func_id, const py::object& py_func) {
-  py_funcs_[func_id] = py_func;
-}
-
-int PyLayer::NumFuncs() { return py_funcs_.size(); }
-
-std::vector<VarBase*> PyLayer::Apply(int func_id,
-                                     const std::vector<VarBase*>& inputs) {
-  std::vector<framework::Variable*> invars;
-  for (const VarBase* in : inputs) {
-    invars.push_back(in->var_);
-  }
-  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  std::vector<Variable*> outvars = CallPythonFunc(py_funcs_[func_id], invars);
-  std::vector<VarBase*> ret;
-  for (Variable* v : outvars) {
-    ret.push_back(new VarBase(v, new VarBase(true)));
-  }
-  return ret;
-}
-
-std::vector<Variable*> PyLayer::ApplyGrad(
-    int func_id, const std::vector<framework::Variable*>& inputs) {
-  PADDLE_ENFORCE(py_funcs_.find(func_id) != py_funcs_.end());
-  return CallPythonFunc(py_funcs_[func_id], inputs);
-}
-
-std::vector<framework::Variable*> PyLayer::CallPythonFunc(
-    const py::object& callable, const std::vector<framework::Variable*>& ins) {
-  py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
-  for (size_t i = 0; i < ins.size(); ++i) {
-    const framework::LoDTensor& t = ins[i]->Get<framework::LoDTensor>();
-    in_args[i] = t.IsInitialized() ? py::cast(t) : py::cast(nullptr);
-  }
-  VLOG(3) << "pyfunc in " << py::len(in_args);
-
-  // TODO(panyx0718): Who owns the returned LoDTensor.
-  auto ret = callable(in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  std::vector<framework::Variable*> outs;
-  VLOG(3) << "pyfunc out " << ret_num;
-  for (size_t i = 0; i < ret_num; ++i) {
-    try {
-      auto* py_out_tensor = py::cast<framework::LoDTensor*>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              "Output tensor %d should not be nullptr", i);
-      auto* var = new framework::Variable();
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
-      tensor->ShareDataWith(*py_out_tensor);
-      tensor->set_lod(py_out_tensor->lod());
-      outs.push_back(var);
-    } catch (py::cast_error&) {
-      PADDLE_THROW("The %d-th output must be LoDTensor", i);
-    }
-  }
-  return outs;
+void OpBase::ClearBackwardTrace() {
+  grad_pending_ops_.clear();
+  ins_.clear();
+  outs_.clear();
 }
 
 }  // namespace imperative

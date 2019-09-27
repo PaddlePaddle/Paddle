@@ -131,9 +131,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    auto &outputs = *const_cast<framework::Scope &>(scope)
-                         .Var()
-                         ->GetMutable<std::map<size_t, framework::Tensor>>();
+    std::map<size_t, framework::Tensor> outputs;
 
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
@@ -201,10 +199,9 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
 
 class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
     }
   }
 };

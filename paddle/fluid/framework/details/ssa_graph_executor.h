@@ -38,7 +38,7 @@ class SSAGraphExecutor {
   virtual FeedFetchList Run(const std::vector<std::string>& fetch_tensors) = 0;
 };
 
-void ClearFetchOp(ir::Graph* graph, std::vector<FetchOpHandle*>* fetch_ops);
+void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops);
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

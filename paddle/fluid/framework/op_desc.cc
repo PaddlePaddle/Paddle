@@ -18,12 +18,15 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -240,6 +243,7 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
+  block_ = nullptr;
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
@@ -370,6 +374,11 @@ std::vector<std::string> OpDesc::AttrNames() const {
     retv.push_back(attr.first);
   }
   return retv;
+}
+
+void OpDesc::RemoveAttr(const std::string &name) {
+  attrs_.erase(name);
+  need_update_ = true;
 }
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
@@ -611,6 +620,25 @@ void OpDesc::Flush() {
 
 static std::once_flag init_infer_shape_funcs;
 
+/**
+ * NOTE(paddle-dev): Very tricky code here. Maybe we should find a
+ * better way to register compile-time infershape method gentlely.
+ *
+ * Normally, we can register a class derived from InferShapeBase, so that
+ * we can set the field of `infer_shape_` inside OpInfo when registering op.
+ *
+ * However, there is another way we can set the field of `infer_shape_` inside
+ * OpInfo. Usually, we overload InferShape method of OperatorWithKernel. After
+ * running the following method InitInferShapeFuncs, `infer_shape_` would be set
+ * to be the InferShape method of OperatorWithKernel. That is to say, we borrow
+ * the run-time InferShape method of OperatorWithKernel to be the compile-time
+ * InferShape method.
+ *
+ * However, during compiling time, we may not know inputs, outputs and attrs of
+ * run-time OperatorWithKernel. So the following code creates a fake
+ * OperatorWithKernel object. That is why the field info_ of OperatorBase
+ * would be null.
+ */
 static void InitInferShapeFuncs() {
   std::call_once(init_infer_shape_funcs, [] {
     auto &map = OpInfoMap::Instance();
@@ -622,11 +650,16 @@ static void InitInferShapeFuncs() {
       PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
                      op_type);
       auto &op_info = it->second;
-      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
-          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }
+
+      auto op = dynamic_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
+
+      PADDLE_ENFORCE_NOT_NULL(
+          op, "InferShapeBase is not registered to Operator %s", op_type);
+
       op_info.infer_shape_ = [op](InferShapeContext *ctx) {
         op->InferShape(ctx);
       };
@@ -643,30 +676,38 @@ void OpDesc::CheckAttrs() {
     // not by users.
     return;
   }
+  VLOG(10) << "begin to check attribute of " << Type();
   checker->Check(&attrs_);
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
-  VLOG(3) << "CompileTime infer shape on " << Type();
-  InitInferShapeFuncs();
-  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
-  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
-                 "%s's infer_shape has not been registered", this->Type());
-  CompileTimeInferShapeContext ctx(*this, block);
-  if (VLOG_IS_ON(10)) {
-    std::ostringstream sout;
-    auto inames = this->InputArgumentNames();
-    sout << " From [";
-    std::copy(inames.begin(), inames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "] to [";
-    auto onames = this->OutputArgumentNames();
-    std::copy(onames.begin(), onames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "]";
-    VLOG(10) << sout.str();
+  try {
+    VLOG(3) << "CompileTime infer shape on " << Type();
+    InitInferShapeFuncs();
+    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                   "%s's infer_shape has not been registered", this->Type());
+    CompileTimeInferShapeContext ctx(*this, block);
+    if (VLOG_IS_ON(10)) {
+      std::ostringstream sout;
+      auto inames = this->InputArgumentNames();
+      sout << " From [";
+      std::copy(inames.begin(), inames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "] to [";
+      auto onames = this->OutputArgumentNames();
+      std::copy(onames.begin(), onames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "]";
+      VLOG(10) << sout.str();
+    }
+    infer_shape(&ctx);
+  } catch (platform::EnforceNotMet exception) {
+    framework::InsertCallStackInfo(Type(), attrs_, &exception);
+    throw std::move(exception);
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  infer_shape(&ctx);
 }
 
 void OpDesc::InferVarType(BlockDesc *block) const {
@@ -677,7 +718,8 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
-    info.infer_var_type_(*this, block);
+    InferVarTypeContext context(this, block);
+    info.infer_var_type_(&context);
   }
 }
 
@@ -774,7 +816,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
   var->SetShapes(dim_vec);
 }
 

@@ -1,4 +1,4 @@
-/*Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "ngraph/ngraph.hpp"
 #include "paddle/fluid/operators/ngraph/ops/elementwise_binary_prepare_node.h"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -58,6 +61,17 @@ void BuildElementwiseCompareNode(
   auto out = std::make_shared<T>(x, y);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
+
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(elementwise_max,
+               BuildElementwiseBinaryNode<ngraph::op::Maximum>);
+REGISTER_NG_OP(elementwise_pow, BuildElementwiseBinaryNode<ngraph::op::Power>);
+REGISTER_NG_OP(elementwise_sub,
+               BuildElementwiseBinaryNode<ngraph::op::Subtract>);
+REGISTER_NG_OP(elementwise_min,
+               BuildElementwiseBinaryNode<ngraph::op::Minimum>);
+REGISTER_NG_OP(less_than, BuildElementwiseCompareNode<ngraph::op::Less>);
+REGISTER_NG_OP(elementwise_div, BuildElementwiseBinaryNode<ngraph::op::Divide>);

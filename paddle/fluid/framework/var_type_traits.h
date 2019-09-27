@@ -36,6 +36,7 @@ namespace platform {
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 class Communicator;
+class NCCLCommunicator;
 #endif
 #endif
 }  // namespace platform
@@ -50,8 +51,6 @@ class Scope;
 }  // namespace framework
 
 namespace operators {
-template <typename T>
-class AlgorithmsCache;
 
 class CudnnRNNCache;
 
@@ -142,11 +141,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::map<size_t, Tensor>, operators::reader::LoDTensorBlockingQueueHolder,
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
-    ncclUniqueId, platform::Communicator,
+    ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
 #endif
-    operators::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>,
-    operators::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>,
-    operators::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>,
     operators::CudnnRNNCache,
 #endif
     int, float>;

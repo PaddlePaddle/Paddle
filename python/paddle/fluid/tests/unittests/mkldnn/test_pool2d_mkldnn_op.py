@@ -18,6 +18,24 @@ import unittest
 from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
+def create_test_mkldnn_use_ceil_class(parent):
+    class TestMKLDNNPool2DUseCeilCase(parent):
+        def init_kernel_type(self):
+            self.use_mkldnn = True
+
+        def init_ceil_mode(self):
+            self.ceil_mode = True
+
+    cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNCeilModeCast")
+    TestMKLDNNPool2DUseCeilCase.__name__ = cls_name
+    globals()[cls_name] = TestMKLDNNPool2DUseCeilCase
+
+
+create_test_mkldnn_use_ceil_class(TestPool2D_Op)
+create_test_mkldnn_use_ceil_class(TestCase1)
+create_test_mkldnn_use_ceil_class(TestCase2)
+
+
 def create_test_mkldnn_class(parent):
     class TestMKLDNNCase(parent):
         def init_kernel_type(self):

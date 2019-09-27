@@ -204,7 +204,24 @@ class TestSeqProjectCase1(TestSeqProject):
         self.output_represention = 8  # output feature size
 
 
-class TestSeqProjectCase2(TestSeqProject):
+class TestSeqProjectCase2Len0(TestSeqProject):
+    def init_test_case(self):
+        self.input_row = 11
+        self.context_start = -1
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        offset_lod = [[0, 0, 4, 5, 5, 8, self.input_row, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
+        self.output_represention = 8  # output feature size
+
+
+class TestSeqProjectCase3(TestSeqProject):
     def init_test_case(self):
         self.input_row = 25
         self.context_start = 2
@@ -222,6 +239,22 @@ class TestSeqProjectCase2(TestSeqProject):
         for i in range(len(offset_lod[0]) - 1):
             self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
+
+
+class TestSeqConvApi(unittest.TestCase):
+    def test_api(self):
+        import paddle.fluid as fluid
+
+        x = fluid.layers.data('x', shape=[32], lod_level=1)
+        y = fluid.layers.sequence_conv(
+            input=x, num_filters=2, filter_size=3, padding_start=None)
+
+        place = fluid.CPUPlace()
+        x_tensor = fluid.create_lod_tensor(
+            np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
 
 
 if __name__ == '__main__':

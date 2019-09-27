@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from . import core
+from .data_feeder import DataToLoDTensorConverter
 import numpy as np
 
 __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
@@ -47,6 +48,13 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         sentence. This length-based :code:`recursive_seq_lens` [[2, 3]] will be converted to
         offset-based LoD [[0, 2, 5]] inside the function call.
 
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          t = fluid.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], fluid.CPUPlace())
+
     Please reference :ref:`api_guide_low_level_lod_tensor` for more details
     regarding LoD.
 
@@ -64,19 +72,33 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     if isinstance(data, core.LoDTensor):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
     elif isinstance(data, list):
-        # When input data is a list, it only deal with the case where the base element
-        # is an index of shape [1] and dtype int64 (e.g., word id). Hence, the generated
-        # LoDTensor will be of shape [n, 1] and dtype int64, where `n` is the total number
-        # of words or other indexes in the sequence.
+        # dtype and shape are not important here,
+        # we only want to reuse code of DataToLoDTensorConverter
+        converter = DataToLoDTensorConverter(
+            place=place,
+            lod_level=len(recursive_seq_lens),
+            shape=[],
+            dtype=core.VarDesc.VarType.FP32)
+
         new_recursive_seq_lens = []
         for seq in data:
             new_recursive_seq_lens.append(len(seq))
+            converter.feed(seq)
+
         assert [
             new_recursive_seq_lens
         ] == recursive_seq_lens, "data and recursive_seq_lens do not match"
-        flattened_data = np.concatenate(data, axis=0)
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        return create_lod_tensor(flattened_data, recursive_seq_lens, place)
+
+        arr = np.array(converter.data)
+
+        # FIXME(zjl): the original logic of create_lod_tensor would append
+        # 1 to the shape. Maybe it is not a right way? Currently, we only
+        # follow the previous logic
+        arr = arr.reshape(arr.shape + (1, ))
+        tensor = core.LoDTensor()
+        tensor.set(arr, place)
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        return tensor
     elif isinstance(data, np.ndarray):
         tensor = core.LoDTensor()
         tensor.set(data, place)
@@ -127,6 +149,14 @@ def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
 
     Returns:
         A fluid LoDTensor object with tensor data and recursive_seq_lens info.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          t = fluid.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]], 
+                base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
     # append the total number of basic elements to the front of its shape

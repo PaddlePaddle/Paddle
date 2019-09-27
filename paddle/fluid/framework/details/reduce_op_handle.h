@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -90,6 +91,8 @@ struct ReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
   template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
@@ -106,7 +109,7 @@ struct ReduceOpHandle : public OpHandleBase {
   template <typename T>
   std::vector<const T *> GetInputValues(
       const std::vector<VarHandle *> &in_var_handles,
-      const std::vector<const Scope *> &var_scopes) const;
+      const std::vector<Scope *> &var_scopes) const;
 };
 
 }  // namespace details

@@ -153,3 +153,9 @@ done
 
 # Restore LD_LIBRARY_PATH
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
+
+# According to ar issues: https://lists.gnu.org/archive/html/bug-binutils/2016-05/msg00211.html
+# we should install new version ar with 64-bit supported here
+wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
+tar xzf binutils-2.27.tar.gz && cd binutils-2.27
+./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install

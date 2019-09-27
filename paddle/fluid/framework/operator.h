@@ -16,9 +16,12 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "glog/logging.h"  // For VLOG
@@ -28,9 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -58,6 +63,23 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 
 /// Variables with this suffix are the new Gradient.
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
+
+/// RuntimeContext is used to relate input/output names of Operator with
+/// the corresponding variables in name scope.
+/// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
+/// name scope, since the input/output names of this Op do not change in the
+/// execution, RuntimeContext could be created only at the first iteration of
+/// this Op's execution to save the elapsed time.
+constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
+
+/// If an Op has this attribute, all its kernels should calculate output
+/// variable's shape in the corresponding Compute() function. And
+/// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
+/// function in its runtime for speedup.
+/// TODO(luotao): Note that this temporal attribute would be deleted after all
+/// ops contain it.
+constexpr char kAllKernelsMustComputeRuntimeShape[] =
+    "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@";
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
@@ -140,6 +162,11 @@ class OperatorBase {
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
 
+  const OpInfo& Info() const {
+    PADDLE_ENFORCE_NOT_NULL(info_, "OpInfo of %s is not found", type_);
+    return *info_;
+  }
+
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
@@ -174,6 +201,10 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+
+  // OpInfo
+  const OpInfo* info_;
+
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
@@ -184,12 +215,30 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
+#ifdef PADDLE_WITH_CUDA
+using KernelConfig = boost::variant<
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>,
+    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>>;
+#else
+using KernelConfig = boost::variant<boost::blank>;
+#endif
+
+using OpKernelConfigsMap =
+    std::unordered_map<OpKernelType, std::vector<KernelConfig>,
+                       OpKernelType::Hash>;
+
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext& device_context,
-                   const RuntimeContext& ctx)
-      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
+                   const RuntimeContext& ctx,
+                   std::vector<KernelConfig>* configs)
+      : op_(op),
+        scope_(scope),
+        device_context_(device_context),
+        ctx_(ctx),
+        kernel_configs_(configs) {}
 
   const OperatorBase& op() const { return op_; }
 
@@ -199,6 +248,8 @@ class ExecutionContext {
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);
   }
+
+  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
 
   bool HasInput(const std::string& name) const;
 
@@ -234,31 +285,6 @@ class ExecutionContext {
     return it->second;
   }
 
-  const std::vector<Variable*> LegacyMultiInputVar(
-      const std::string& name) const {
-    auto names = op_.Inputs(name);
-    std::vector<Variable*> res;
-    res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return name == kEmptyVarName ? nullptr
-                                                  : scope_.FindVar(name);
-                   });
-    return res;
-  }
-
-  std::vector<Variable*> LegacyMultiOutputVar(const std::string& name) const {
-    auto names = op_.Outputs(name);
-    std::vector<Variable*> res;
-    res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [this](const std::string& name) {
-                     return name == kEmptyVarName ? nullptr
-                                                  : scope_.FindVar(name);
-                   });
-    return res;
-  }
-
   template <typename T>
   const T* Input(const std::string& name) const {
     auto* var = InputVar(name);
@@ -270,22 +296,6 @@ class ExecutionContext {
     auto var = OutputVar(name);
     return var == nullptr ? nullptr : var->GetMutable<T>();
   }
-
-  template <typename T>
-  const T* LegacyInput(const std::string& name) const {
-    auto* var = LegacyInputVar(name);
-    return var == nullptr ? nullptr : &var->Get<T>();
-  }
-
-  template <typename T>
-  T* LegacyOutput(const std::string& name) const {
-    auto var = LegacyOutputVar(name);
-    return var == nullptr ? nullptr : var->GetMutable<T>();
-  }
-
-  const Variable* LegacyInputVar(const std::string& name) const;
-
-  Variable* LegacyOutputVar(const std::string& name) const;
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
@@ -319,32 +329,6 @@ class ExecutionContext {
     return res;
   }
 
-  template <typename T>
-  const std::vector<const T*> LegacyMultiInput(const std::string& name) const {
-    auto names = op_.Inputs(name);
-    std::vector<const T*> res;
-    res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) -> const T* {
-                     auto var = scope_.FindVar(sub_name);
-                     return var == nullptr ? nullptr : &var->Get<T>();
-                   });
-    return res;
-  }
-
-  template <typename T>
-  std::vector<T*> LegacyMultiOutput(const std::string& name) const {
-    auto names = op_.Outputs(name);
-    std::vector<T*> res;
-    res.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(res),
-                   [&](const std::string& sub_name) -> T* {
-                     auto var = scope_.FindVar(sub_name);
-                     return var == nullptr ? nullptr : var->GetMutable<T>();
-                   });
-    return res;
-  }
-
   platform::Place GetPlace() const { return device_context_.GetPlace(); }
 
   template <typename DeviceContextType>
@@ -358,7 +342,7 @@ class ExecutionContext {
 
 #ifdef PADDLE_WITH_CUDA
   const inline platform::CUDADeviceContext& cuda_device_context() const {
-    PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true);
     return *reinterpret_cast<const platform::CUDADeviceContext*>(
         &device_context_);
   }
@@ -377,17 +361,12 @@ class ExecutionContext {
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
                            const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = platform::DeviceTemporaryAllocator::Instance()
-                                  .Get<DevContext>(dev_ctx)
-                                  .Allocate(product(dim) * sizeof(T));
+    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE(
-        dynamic_cast<platform::TemporaryAllocation*>(allocation_ptr) != nullptr,
-        "The AllocationPtr must be TemporaryAllocation.");
     PADDLE_ENFORCE_GE(allocation_ptr->size(),
                       framework::product(dim) * sizeof(T));
 
@@ -398,33 +377,32 @@ class ExecutionContext {
     return temp_tensor;
   }
 
+  template <typename T>
+  T& GetKernelConfig(size_t idx) const {
+    PADDLE_ENFORCE(
+        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
+        "%s selected kernel doesn't have kernel config %lu <= %lu",
+        op_.Type().c_str(), kernel_configs_->size(), idx);
+    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
+  mutable std::vector<KernelConfig>* kernel_configs_;
 };
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
 
 template <>
-const Tensor* ExecutionContext::LegacyInput<Tensor>(
-    const std::string& name) const;
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
-    const std::string& name) const;
-
-template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -475,7 +453,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   virtual void InferShape(InferShapeContext* ctx) const {
-    OpInfoMap::Instance().Get(Type()).infer_shape_(ctx);
+    Info().infer_shape_(ctx);
   }
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
@@ -483,7 +461,10 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
- protected:
+  std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
+
+  // change this to public so that in dygraph mode we can call it to check if we
+  // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
@@ -493,6 +474,8 @@ class OperatorWithKernel : public OperatorBase {
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope, const platform::Place& place,
+               RuntimeContext* runtime_ctx) const;
 
   /**
    * Transfer data from scope to a transfered scope. If there is no data need to
@@ -508,6 +491,20 @@ class OperatorWithKernel : public OperatorBase {
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
+
+  void ChooseKernel(const RuntimeContext& ctx, const Scope& scope,
+                    const platform::Place& place) const;
+
+ protected:
+  mutable OpKernelConfigsMap kernel_configs_map_;
+  mutable std::unique_ptr<OpKernelType> kernel_type_;
+  mutable std::unique_ptr<OpKernelFunc> kernel_func_;
+  mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
+  mutable const Scope* pre_scope_ = nullptr;
+  mutable bool enable_cache_runtime_context_ = false;
+  mutable bool all_kernels_must_compute_runtime_shape_ = false;
+  mutable std::mutex cache_update_mutex_;
+  mutable bool enable_cache_transfer_scope_ = false;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

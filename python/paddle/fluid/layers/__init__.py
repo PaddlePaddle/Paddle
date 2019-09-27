@@ -33,6 +33,8 @@ from .detection import *
 from . import metric_op
 from .metric_op import *
 from .learning_rate_scheduler import *
+from .collective import *
+from .distributions import *
 
 __all__ = []
 __all__ += nn.__all__
@@ -44,3 +46,4 @@ __all__ += device.__all__
 __all__ += detection.__all__
 __all__ += metric_op.__all__
 __all__ += learning_rate_scheduler.__all__
+__all__ += distributions.__all__

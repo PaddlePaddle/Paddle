@@ -21,8 +21,10 @@ import functools
 from . import layers
 from . import framework
 from . import core
+from .dygraph.base import _not_support
 
 __all__ = [
+    'set_gradient_clip',
     'ErrorClipByValue',
     'GradientClipByValue',
     'GradientClipByNorm',
@@ -55,7 +57,23 @@ class ErrorClipByValue(BaseErrorClipAttr):
     Examples:
         .. code-block:: python
 
-            var = fluid.framework.Variable(..., error_clip=ErrorClipByValue(max=5.0), ...)
+            import paddle.fluid as fluid
+            BATCH_SIZE = 128
+            CLIP_MAX = 2e-6
+            CLIP_MIN = -1e-6
+            prog = fluid.framework.Program()
+            with fluid.program_guard(main_program=prog):
+                image = fluid.layers.data(name='x', shape=[784], dtype='float32')
+                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
+                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+                label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                cost = fluid.layers.cross_entropy(input=predict, label=label)
+                avg_cost = fluid.layers.mean(cost)
+            prog_clip = prog.clone()
+            prog_clip.block(0).var(hidden1.name)._set_error_clip(
+                fluid.clip.ErrorClipByValue(
+                    max=CLIP_MAX, min=CLIP_MIN)
     """
 
     def __init__(self, max, min=None):
@@ -134,12 +152,14 @@ class GradientClipByValue(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             w_param_attrs = fluid.ParamAttr(name=None,
               initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
               regularizer=fluid.regularizer.L1Decay(1.0),
               trainable=True,
-              clip=fluid.clip.GradientClipByValue(-1.0, 1.0))
+              gradient_clip=fluid.clip.GradientClipByValue(-1.0, 1.0))
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, param_attr=w_param_attrs)
     """
 
@@ -185,12 +205,14 @@ class GradientClipByNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
-            w_param_attrs = flui.ParamAttr(name=None,
+            import paddle.fluid as fluid
+            w_param_attrs = fluid.ParamAttr(name=None,
               initializer=fluid.initializer.UniformInitializer(low=-1.0, high=1.0, seed=0),
               learning_rate=1.0,
               regularizer=fluid.regularizer.L1Decay(1.0),
               trainable=True,
-              clip=fluid.clip.GradientClipByNorm(clip_norm=2.0))
+              gradient_clip=fluid.clip.GradientClipByNorm(clip_norm=2.0))
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, param_attr=w_param_attrs)
 
     """
@@ -239,6 +261,20 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+            prog = fluid.framework.Program()
+            startup_program = fluid.framework.Program()
+            with fluid.program_guard(
+                    main_program=prog, startup_program=startup_program):
+                image = fluid.layers.data(name='x', shape=[784], dtype='float32')
+                label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
+                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
+                predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
+                cost = fluid.layers.cross_entropy(input=predict, label=label)
+                avg_cost = fluid.layers.mean(cost)
+            prog_clip = prog.clone()
+            avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
             p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
 
             with fluid.program_guard(main_program=prog_clip):
@@ -301,18 +337,66 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         return param, new_grad
 
 
+@_not_support
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     To specify parameters that require gradient clip.
 
     Args:
         clip(BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
+                for example :ref:`api_fluid_clip_GradientClipByGlobalNorm` ,
                 which describes the type and detailed attributes of required gradient clip.
-        param_list(list(Variable)): Parameters that require gradient clip.
+        param_list(list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
-                When it's None, all parameters in the program will be included.
-        program(Program): The program where parameters are.
-                Will be the default main program when assigned with None.
+                Default None, meaning that all parameters in the program will be included.
+        program(Program, optional): The program where parameters are located.
+                Default None, meaning that using :ref:`api_fluid_default_main_program` .
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+
+            def network():
+                image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+                param_attr1 = fluid.ParamAttr("fc1_param")
+                fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
+                param_attr2 = fluid.ParamAttr("fc2_param")
+                fc2 = fluid.layers.fc(fc1, size=10, param_attr=param_attr2)
+                loss = fluid.layers.reduce_mean(fc2)
+                return loss
+
+
+            # network 1: clip all parameter gradient
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+
+            # network 2: clip parameter gradient by name
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    param_list=["fc1_param", "fc2_param"])
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+
+            # network 3: clip parameter gradient by var
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                loss = network()
+                param_var1 = fluid.default_main_program().global_block().var("fc1_param")
+                param_var2 = fluid.default_main_program().global_block().var("fc2_param")
+                fluid.clip.set_gradient_clip(
+                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                    param_list=[param_var1, param_var2])
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
     """
     if not isinstance(clip, BaseGradientClipAttr):
         raise TypeError(

@@ -74,5 +74,8 @@ class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   virtual void Apply() = 0;
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(BatchSizeLikeNoNeedBufferVarsInference,
+                                      "Input");
+
 }  // namespace operators
 }  // namespace paddle

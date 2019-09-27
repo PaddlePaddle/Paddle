@@ -23,13 +23,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
+  if (axis < 0) {
+    axis = axis + rank;
+  }
+  return axis > 0 ? axis : 0;
+}
+
 template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    PADDLE_ENFORCE(ins[0], "The input should not be null.");
+    auto axis = ComputeAxis(static_cast<int64_t>(ctx.Attr<int>("axis")),
+                            static_cast<int64_t>(ins[0]->dims().size()));
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
@@ -37,6 +46,9 @@ class ConcatKernel : public framework::OpKernel<T> {
     if (axis == 0 && ins.size() < 10) {
       size_t output_offset = 0;
       for (auto* in : ins) {
+        if (!in || in->numel() == 0UL) {
+          continue;
+        }
         auto in_stride = framework::stride_numel(in->dims());
         auto out_stride = framework::stride_numel(out->dims());
         StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
@@ -45,9 +57,13 @@ class ConcatKernel : public framework::OpKernel<T> {
         output_offset += in_stride[axis];
       }
     } else {
-      std::vector<framework::Tensor> inputs(ins.size());
+      std::vector<framework::Tensor> inputs;
       for (size_t j = 0; j < ins.size(); ++j) {
-        inputs[j] = *ins[j];
+        if (ins[j] && ins[j]->numel() > 0) {
+          inputs.push_back(*ins[j]);
+        } else {
+          continue;
+        }
       }
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
@@ -76,13 +92,15 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-
-    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    PADDLE_ENFORCE(ins[0], "The input should not be null.");
+    auto axis = ComputeAxis(static_cast<int64_t>(ctx.Attr<int>("axis")),
+                            static_cast<int64_t>(ins[0]->dims().size()));
 
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;
     for (size_t j = 0; j < outs.size(); ++j) {
-      if (out_var_names[j] != framework::kEmptyVarName) {
+      if (out_var_names[j] != framework::kEmptyVarName &&
+          outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
         outputs.push_back(outs[j]);
       } else {

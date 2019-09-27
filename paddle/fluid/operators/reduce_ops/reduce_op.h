@@ -75,7 +75,8 @@ class ReduceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Functor>
+template <typename DeviceContext, typename T, typename Functor,
+          bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -87,6 +88,21 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
+
+    // NOTE: EigenTensor::From() uses tensor->data()
+    // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
+    // kNoNeedBufferY should set true
+    // and use fake var that has same dims.
+    if (kNoNeedBufferX) {
+      input0 = output;
+    }
+    if (kNoNeedBufferY) {
+      input1 = input2;
+    }
+
+    // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
+    // not be set as Input in grad Maker, use Out_grad to replace here
+    if (!input1) input1 = input2;
 
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
@@ -181,6 +197,9 @@ class ReduceOp : public framework::OperatorWithKernel {
             remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
             dims_vector.end());
       }
+      if (!keep_dim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims[0] != 0) {
@@ -215,6 +234,14 @@ class ReduceGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
       ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
   }
 };
 
@@ -270,3 +297,12 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
                     paddle::framework::DefaultGradOpDescMaker<true>);    \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
+
+#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name)                         \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+   protected:                                                            \
+    virtual std::string GetName() const { return #op_name; }             \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
+  };                                                                     \
+  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+                    paddle::framework::EmptyGradOpMaker);

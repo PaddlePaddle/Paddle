@@ -22,6 +22,7 @@ extern "C" {
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -31,9 +32,6 @@ extern "C" {
 
 namespace paddle {
 namespace framework {
-
-int64_t GetEagerDeletionThreshold();
-bool IsFastEagerDeletionModeEnabled();
 
 class Scope;
 
@@ -55,6 +53,10 @@ class Scope {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  /// Create a sub-scope for current scope but do not record it in the kids to
+  /// avoid performance problems.
+  std::unique_ptr<Scope> NewTmpScope() const;
+
   /// Create a variable with given name if it doesn't exist.
   /// Caller doesn't own the returned Variable.
   Variable* Var(const std::string& name);
@@ -64,6 +66,9 @@ class Scope {
   Variable* Var(std::string* name = nullptr);
 
   void EraseVars(const std::vector<std::string>& var_names);
+
+  // Erase all variables except the given `vars`
+  void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
 
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
@@ -136,9 +141,12 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
   mutable RWLock kids_lock_;
   mutable RWLock vars_lock_;
+#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

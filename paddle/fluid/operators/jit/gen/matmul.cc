@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/operators/jit/gen/matmul.h"
 #include <stddef.h>  // offsetof
+#include <memory>
 #include <vector>
-
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -98,7 +98,7 @@ void MatMulJitCode::genCode() {
 
 class MatMulCreator : public JitCodeCreator<matmul_attr_t> {
  public:
-  bool UseMe(const matmul_attr_t& attr) const override {
+  bool CanBeUsed(const matmul_attr_t& attr) const override {
     return attr.m == 1 && platform::MayIUse(platform::avx512f) &&
            attr.n % ZMM_FLOAT_BLOCK == 0 && attr.k < 512;
   }

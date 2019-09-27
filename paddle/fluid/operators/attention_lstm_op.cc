@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -64,12 +64,19 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto c_dims = ctx->GetInputDim("C0");
   PADDLE_ENFORCE_EQ(c_dims.size(), 2, "Input(C0)'s rank must be 2.");
-  PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims should be N x %d.", D);
+  if (ctx->IsRuntime()) {
+    PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims should be N x %d.", D);
+  }
+
   if (ctx->HasInput("H0")) {
     auto h_dims = ctx->GetInputDim("H0");
-    PADDLE_ENFORCE(h_dims == c_dims,
-                   "The dimension of Input(H0) and Input(C0) "
-                   "should be the same.");
+    PADDLE_ENFORCE_EQ(h_dims.size(), 2UL, "Input(H0)'s rank must be 2.");
+    if (ctx->IsRuntime() ||
+        (framework::product(c_dims) > 0 && framework::product(h_dims) > 0)) {
+      PADDLE_ENFORCE(h_dims == c_dims,
+                     "The dimension of Input(H0) and Input(C0) "
+                     "should be the same.");
+    }
   }
 
   auto atten_w_dims = ctx->GetInputDim("AttentionWeight");
@@ -79,6 +86,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                     "AttentionWeight shapes must be (%d + %d) * 1.", M, D);
   PADDLE_ENFORCE_EQ(atten_w_dims[1], 1,
                     "AttentionWeight shapes must be (%d + %d) * 1.", M, D);
+
   if (ctx->HasInput("AttentionBias")) {
     auto atten_b_dims = ctx->GetInputDim("AttentionBias");
     PADDLE_ENFORCE_EQ(atten_b_dims.size(), 2,
@@ -199,7 +207,7 @@ void AttentionLSTMOpMaker::Make() {
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("cell_activation",
                        "(string, default: tanh)"
-                       "The activation for cell output, `tanh` by defalut.")
+                       "The activation for cell output, `tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddAttr<std::string>("candidate_activation",
@@ -331,10 +339,13 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* lstm_x_data = lstm_x->mutable_data<T>(ctx.GetPlace());
     T* lstm_out_data = lstm_out->mutable_data<T>(ctx.GetPlace());
 
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, 1, M, x_data, atten_w_data,
-                                      atted_x_data, atten_b_data);
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data,
+       atten_b_data);
 
     const T* cur_atten_x_data = atted_x_data;
     const T* cur_x_data = x_data;
@@ -361,8 +372,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
         // 1d. softmax
         vec_softmax<T>(seq_len, fc_out_data, fc_out_data);
         // mul x(seq_len*M) and sum pool
-        math::FCCompute<DeviceContext, T>(blas, 1, M, seq_len, fc_out_data,
-                                          cur_x_data, lstm_x_data);
+        fc(dev_ctx, 1, M, seq_len, fc_out_data, cur_x_data, lstm_x_data);
 
         /// 2. compute LSTM step
         // lstm weight : concat[forget , input , output , tilde]
@@ -411,8 +421,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(attention_lstm, ops::AttentionLSTMOp,
-                  ops::AttentionLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::AttentionLSTMOpMaker);
 
 REGISTER_OP_CPU_KERNEL(attention_lstm, ops::AttentionLSTMKernel<float>,
                        ops::AttentionLSTMKernel<double>);

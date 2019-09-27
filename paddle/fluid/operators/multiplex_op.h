@@ -52,20 +52,25 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* ids = ctx.Input<framework::Tensor>("Ids");
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto d_ins =
         ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+
+    size_t idx = -1UL;
     for (size_t i = 0; i < d_ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
         t.device(*ctx.template device_context<DeviceContext>().eigen_device()) =
             t.constant(static_cast<T>(0));
+
+        idx = i;
       }
     }
 
-    auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->numel() / rows;
+    if (idx == -1UL) return;
+
+    auto rows = d_ins[idx]->dims()[0];
+    auto cols = d_ins[idx]->numel() / rows;
     auto* index = ids->data<int32_t>();
     platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {

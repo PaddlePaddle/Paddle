@@ -148,11 +148,13 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName(("pool2d (Output: " + output_name + ")").c_str());
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
+    RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
+
+    if (op_desc.HasAttr("out_scale")) {
+#if IS_TRT_VERSION_GE(5000)
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+#endif
     }
   }
 };

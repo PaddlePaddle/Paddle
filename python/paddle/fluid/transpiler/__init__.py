@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig
-from .inference_transpiler import InferenceTranspiler
 from .memory_optimization_transpiler import memory_optimize, release_memory
 from .ps_dispatcher import HashName, RoundRobin
 

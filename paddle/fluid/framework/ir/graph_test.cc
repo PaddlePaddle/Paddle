@@ -43,20 +43,20 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
 
 class SumOpVarTypeInference : public VarTypeInference {
  public:
-  void operator()(const OpDesc &op_desc, BlockDesc *block) const override {
-    auto &inputs = op_desc.Input("X");
+  void operator()(InferVarTypeContext *ctx) const override {
+    auto &inputs = ctx->Input("X");
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
     bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [block](const std::string &name) {
-          return block->Var(name)->GetType() == proto::VarType::LOD_TENSOR;
+        inputs.begin(), inputs.end(), [&ctx](const std::string &name) {
+          return ctx->GetType(name) == proto::VarType::LOD_TENSOR;
         });
     if (any_input_is_lod_tensor) {
       default_var_type = proto::VarType::LOD_TENSOR;
     }
 
-    auto out_var_name = op_desc.Output("Out").front();
-    block->Var(out_var_name)->SetType(default_var_type);
+    auto out_var_name = ctx->Output("Out").front();
+    ctx->SetType(out_var_name, default_var_type);
   }
 };
 
@@ -71,7 +71,7 @@ class DummyOpMaker : public OpProtoAndCheckerMaker {
 
 class DummyOpVarTypeInference : public VarTypeInference {
  public:
-  void operator()(const OpDesc &op_desc, BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 }  // namespace framework
 }  // namespace paddle
@@ -205,6 +205,52 @@ TEST(GraphTest, WriteAfterWrite) {
   ASSERT_NE(control_dep1, nullptr);
   ASSERT_NE(control_dep2, nullptr);
   ASSERT_EQ(control_dep1, control_dep2);
+}
+
+TEST(GraphTest, TestException) {
+  ProgramDesc prog;
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
+
+  bool not_met_exception = false;
+  try {
+    g->Erase("no_attr");
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->CreateVarNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->CreateOpNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->RemoveNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
+
+  not_met_exception = false;
+  try {
+    g->AddNode(nullptr);
+    g->AddNode(nullptr);
+  } catch (const platform::EnforceNotMet &e) {
+    not_met_exception = true;
+  }
+  ASSERT_TRUE(not_met_exception);
 }
 }  // namespace framework
 }  // namespace paddle

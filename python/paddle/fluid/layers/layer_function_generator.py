@@ -61,7 +61,9 @@ def escape_math(text):
                                     _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
 
-def _generate_doc_string_(op_proto, additional_args_lines=None):
+def _generate_doc_string_(op_proto,
+                          additional_args_lines=None,
+                          skip_attrs_set=None):
     """
     Generate docstring by OpProto
 
@@ -92,6 +94,11 @@ def _generate_doc_string_(op_proto, additional_args_lines=None):
     # attr use_mkldnn and is_test also should not be visible to users.
     skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
+    skip_attrs.add("use_cudnn")
+
+    if skip_attrs_set:
+        for t in skip_attrs_set:
+            skip_attrs.add(t)
 
     for each_attr in op_proto.attrs:
         if each_attr.name in skip_attrs:
@@ -249,7 +256,14 @@ def generate_activation_fn(op_type):
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)
+    func.__doc__ = func.__doc__ + """
+Examples:
+    .. code-block:: python
 
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[32, 784])
+        result = fluid.layers.%s(data)
+""" % op_type
     return func
 
 

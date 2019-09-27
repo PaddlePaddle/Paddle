@@ -153,7 +153,7 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
   }
 }
 
-bool LayerNormKernel::UseMe(const int& d) const {
+bool LayerNormKernel::CanBeUsed(const int& d) const {
   return platform::MayIUse(platform::avx) && d >= YMM_FLOAT_BLOCK;
 }
 

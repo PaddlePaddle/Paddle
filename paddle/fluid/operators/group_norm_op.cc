@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/group_norm_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -35,9 +38,11 @@ class GroupNormOp : public framework::OperatorWithKernel {
                    "Output(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
                    "Output(Variance) of GroupNormOp should not be null.");
-
     auto x_dim = ctx->GetInputDim("X");
-    auto channel_num = x_dim[1];
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+    const int64_t channel_num =
+        (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
     auto batch_size = x_dim[0];
     auto groups = ctx->Attrs().Get<int>("groups");
     PADDLE_ENFORCE_LE(
@@ -88,7 +93,9 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int &groups) {
           PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
         });
-
+    AddAttr<std::string>("data_layout",
+                         "An optional string from: \"NHWC\", \"NCHW\". ")
+        .SetDefault("NCHW");
     AddComment(R"DOC(
 Group Normalization
 
@@ -105,8 +112,6 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("Y"),
                    "Input(Y) of GroupNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                   "Input(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
                    "Input(Variance) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
@@ -157,7 +162,6 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Bias", Input("Bias"));
     op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
     op->SetInput("Y", Output("Y"));
-    op->SetInput("Mean", Output("Mean"));
     op->SetInput("Variance", Output("Variance"));
 
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
@@ -170,29 +174,10 @@ class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class GroupNormInplaceInToOut : public framework::InplaceInToOut {
- public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
-    return {{"X", "Y"}};
-  }
-};
-
-class GroupNormGradInplaceInToOut : public framework::InplaceInToOut {
- public:
-  using InplaceInToOut::InplaceInToOut;
-
- protected:
-  std::unordered_map<std::string, std::string> Apply(
-      const framework::OpDesc &op_desc,
-      framework::BlockDesc *block) const override {
-    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
+                           {framework::GradVarName("Y"),
+                            framework::GradVarName("X")});
 
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {

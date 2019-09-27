@@ -37,7 +37,8 @@ def max_pool2D_forward_naive(x,
                              global_pool=0,
                              ceil_mode=False,
                              exclusive=True,
-                             adaptive=False):
+                             adaptive=False,
+                             data_type=np.float32):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -76,7 +77,8 @@ def avg_pool2D_forward_naive(x,
                              global_pool=0,
                              ceil_mode=False,
                              exclusive=True,
-                             adaptive=False):
+                             adaptive=False,
+                             data_type=np.float32):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -106,7 +108,13 @@ def avg_pool2D_forward_naive(x,
 
             field_size = ((r_end - r_start) * (c_end - c_start)) \
                         if (exclusive or adaptive) else (ksize[0] * ksize[1])
-            out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
+            if data_type == np.int8 or data_type == np.uint8:
+                out[:, :, i, j] = (np.rint(
+                    np.sum(x_masked, axis=(2, 3)) /
+                    field_size)).astype(data_type)
+            else:
+                out[:, :, i, j] = (np.sum(x_masked, axis=(2, 3)) /
+                                   field_size).astype(data_type)
     return out
 
 
@@ -126,9 +134,10 @@ class TestPool2D_Op(OpTest):
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype(self.dtype)
-        output = self.pool2D_forward_naive(
+        output = (self.pool2D_forward_naive(
             input, self.ksize, self.strides, self.paddings, self.global_pool,
-            self.ceil_mode, self.exclusive, self.adaptive).astype(self.dtype)
+            self.ceil_mode, self.exclusive, self.adaptive,
+            self.dtype)).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -148,11 +157,11 @@ class TestPool2D_Op(OpTest):
 
         self.outputs = {'Out': output}
 
-    def testcudnn(self):
+    def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        if self.testcudnn():
+        if self.has_cudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
@@ -161,7 +170,7 @@ class TestPool2D_Op(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.testcudnn() and self.pool_type != "max":
+        if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=0.07)

@@ -46,9 +46,9 @@ import six
 from six.moves import cPickle as pickle
 __all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
-LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
-SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
+DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
+LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
+SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
 DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
@@ -117,26 +117,28 @@ def reader_creator(data_file,
 
     def reader():
         while True:
-            for file in open(file_list):
-                file = file.strip()
-                batch = None
-                with open(file, 'rb') as f:
-                    if six.PY2:
-                        batch = pickle.load(f)
-                    else:
-                        batch = pickle.load(f, encoding='bytes')
-                if six.PY3:
-                    batch = cpt.to_text(batch)
-                data = batch['data']
-                labels = batch['label']
-                for sample, label in six.moves.zip(data, batch['label']):
-                    yield sample, int(label) - 1
+            with open(file_list, 'r') as f_list:
+                for file in f_list:
+                    file = file.strip()
+                    batch = None
+                    with open(file, 'rb') as f:
+                        if six.PY2:
+                            batch = pickle.load(f)
+                        else:
+                            batch = pickle.load(f, encoding='bytes')
+
+                        if six.PY3:
+                            batch = cpt.to_text(batch)
+                        data_batch = batch['data']
+                        labels_batch = batch['label']
+                        for sample, label in six.moves.zip(data_batch,
+                                                           labels_batch):
+                            yield sample, int(label) - 1
             if not cycle:
                 break
 
     if use_xmap:
-        cpu_num = int(os.environ.get('CPU_NUM', cpu_count()))
-        return xmap_readers(mapper, reader, cpu_num, buffered_size)
+        return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
     else:
         return map_readers(mapper, reader)
 

@@ -31,8 +31,9 @@ class FCFusePass : public FusePassBase {
   virtual ~FCFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(Graph* graph) const override;
+
+  int ApplyFCPattern(Graph* graph, bool with_relu) const;
 };
 
 }  // namespace ir

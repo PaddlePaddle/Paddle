@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -20,24 +21,16 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-namespace {
-
-__device__ __forceinline__ float real_log(float x) { return logf(x); }
-
-__device__ __forceinline__ double real_log(double x) { return log(x); }
-
-__device__ __forceinline__ platform::float16 real_log(
-    const platform::float16& val) {
-  return static_cast<platform::float16>(logf(static_cast<float>(val)));
-}
-
 template <typename T>
 __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
                                    const int N, const int D,
                                    const int ignore_index) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    PADDLE_ASSERT(label[i] >= 0 && label[i] < D || label[i] == ignore_index);
+    PADDLE_ENFORCE(label[i] >= 0 && label[i] < D || label[i] == ignore_index,
+                   "label[%d] expected >= 0 and < %ld, or == %ld, but got "
+                   "%ld. Please check input value.",
+                   i, D, ignore_index, label[i]);
     Y[i] = ignore_index == label[i]
                ? static_cast<T>(0)
                : -math::TolerableValue<T>()(real_log(X[i * D + label[i]]));
@@ -61,15 +54,14 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
     Y[blockIdx.x] = -val;
   }
 }
-}  // namespace
 
 template <typename T>
 class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& ctx,
                   framework::Tensor* out, const framework::Tensor* prob,
-                  const framework::Tensor* labels, bool softLabel,
-                  const int ignore_index) {
+                  const framework::Tensor* labels, const bool softLabel,
+                  const int ignore_index, const int axis_dim) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 

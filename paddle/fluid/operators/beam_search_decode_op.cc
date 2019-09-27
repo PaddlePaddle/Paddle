@@ -123,7 +123,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     auto& dev_ctx = *pool.Get(dev_place);
 
     framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
-    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
+    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx, nullptr);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
@@ -178,10 +178,10 @@ Beam Search Decode Operator. This Operator constructs the full hypotheses for
 each source sentence by walking back along the LoDTensorArray Input(ids)
 whose lods can be used to restore the path in the beam search tree.
 
-The Output(SentenceIds) and Output(SentenceScores) separately contain the 
-generated id sequences and the corresponding scores. The shapes and lods of the 
-two LodTensor are same. The lod level is 2 and the two levels separately 
-indicate how many hypotheses each source sentence has and how many ids each 
+The Output(SentenceIds) and Output(SentenceScores) separately contain the
+generated id sequences and the corresponding scores. The shapes and lods of the
+two LodTensor are same. The lod level is 2 and the two levels separately
+indicate how many hypotheses each source sentence has and how many ids each
 hypothesis has.
 )DOC");
   }
@@ -203,15 +203,12 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    for (auto& o : op_desc.Output("SentenceIds")) {
-      auto& sentence_ids = block->FindRecursiveOrCreateVar(o);
-      sentence_ids.SetType(framework::proto::VarType::LOD_TENSOR);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    for (auto& o : ctx->Output("SentenceIds")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
-    for (auto& o : op_desc.Output("SentenceScores")) {
-      auto& sentence_scores = block->FindRecursiveOrCreateVar(o);
-      sentence_scores.SetType(framework::proto::VarType::LOD_TENSOR);
+    for (auto& o : ctx->Output("SentenceScores")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
   }
 };

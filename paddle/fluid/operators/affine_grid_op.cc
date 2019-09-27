@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/affine_grid_op.h"
+#include <memory>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -173,9 +175,10 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto theta_dims = ctx->GetInputDim("Theta");
     if (ctx->HasOutput(framework::GradVarName("Theta"))) {
-      ctx->SetOutputDim(framework::GradVarName("Theta"), theta_dims);
+      auto output_dims = ctx->GetInputDim(framework::GradVarName("Output"));
+      ctx->SetOutputDim(framework::GradVarName("Theta"),
+                        {output_dims[0], 2, 3});
     }
   }
 

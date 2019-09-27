@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/squared_mat_sub_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
@@ -362,13 +363,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SquaredMatSubFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
-  int fusion_count = BuildFusion(graph.get(), name_scope_);
+void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
+  int fusion_count = BuildFusion(graph, name_scope_);
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

@@ -156,9 +156,10 @@ class NCEKernel : public framework::OpKernel<T> {
     auto input_mat = EigenMatrix<T>::From(*(context.Input<Tensor>("Input")));
 
     // for remote prefetch
+    auto remote_prefetch = context.Attr<bool>("remote_prefetch");
     auto epmap = context.Attr<std::vector<std::string>>("epmap");
 
-    if (!epmap.empty()) {
+    if (remote_prefetch && !epmap.empty()) {
       // if epmap is not empty, then the parameter will be fetched from remote
       // parameter
       // server
@@ -172,7 +173,8 @@ class NCEKernel : public framework::OpKernel<T> {
 
       framework::Scope &local_scope = context.scope().NewScope();
 
-      auto height_sections = context.Attr<std::vector<int>>("height_sections");
+      auto height_sections =
+          context.Attr<std::vector<int64_t>>("height_sections");
       auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
       auto *ids = local_scope.Var("Ids@Prefetch");
@@ -184,7 +186,7 @@ class NCEKernel : public framework::OpKernel<T> {
       std::memcpy(x_tensor->data<int64_t>(), labels.data(),
                   labels.size() * sizeof(int64_t));
 
-      std::vector<int> w_dims = paddle::framework::vectorize2int(
+      std::vector<int> w_dims = paddle::framework::vectorize<int>(
           context.Input<Tensor>("Weight")->dims());
       w_dims[0] = static_cast<int>(labels.size());
 
@@ -193,9 +195,10 @@ class NCEKernel : public framework::OpKernel<T> {
       w_tensor->Resize(framework::make_ddim(w_dims));
 
 #ifdef PADDLE_WITH_DISTRIBUTE
+      auto weight = context.Inputs("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
-                                       table_names, epmap, height_sections,
-                                       context, local_scope);
+                                       weight, false, table_names, epmap,
+                                       height_sections, context, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

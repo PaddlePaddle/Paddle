@@ -69,6 +69,9 @@ void ReaderBase::Start() {
 
 ReaderBase::~ReaderBase() {}
 
-DecoratedReader::~DecoratedReader() { reader_->Shutdown(); }
+DecoratedReader::~DecoratedReader() {
+  VLOG(1) << "~DecoratedReader";
+  reader_->Shutdown();
+}
 }  // namespace framework
 }  // namespace paddle

@@ -65,9 +65,9 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()));
+        layout, framework::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize2int(output->dims()));
+        layout, framework::vectorize<int>(output->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {
@@ -132,9 +132,9 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     }
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()));
+        layout, framework::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize2int(output->dims()));
+        layout, framework::vectorize<int>(output->dims()));
 
     PoolingMode pooling_mode;
     if (pooling_type == "max") {

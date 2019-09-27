@@ -14,11 +14,18 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+ElementWisePlugin* CreateElementWisePluginDeserialize(const void* buffer,
+                                                      size_t length) {
+  return new ElementWisePlugin(buffer, length);
+}
+REGISTER_TRT_PLUGIN("elementwise_plugin", CreateElementWisePluginDeserialize);
 
 namespace details {
 
@@ -119,10 +126,10 @@ int ElementWisePlugin::enqueue(int batch_size, const void* const* inputs,
   const float* y = reinterpret_cast<const float*>(inputs[1]);
   float* out = reinterpret_cast<float*>(outputs[0]);
 
-  if (type_ == nvinfer1::ElementWiseOperation::kSUM) {
+  if (type_ == "add") {
     details::ElementWise(details::Add<float>(), x, y, out, batch_size,
                          prev_size_, midd_size_, post_size_, stream);
-  } else if (type_ == nvinfer1::ElementWiseOperation::kPROD) {
+  } else if (type_ == "mul") {
     details::ElementWise(details::Mul<float>(), x, y, out, batch_size,
                          prev_size_, midd_size_, post_size_, stream);
   } else {
