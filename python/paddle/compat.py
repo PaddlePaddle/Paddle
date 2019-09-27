@@ -74,9 +74,11 @@ def to_text(obj, encoding='utf-8', inplace=False):
             return set([_to_text(item, encoding) for item in obj])
     elif isinstance(obj, dict):
         if inplace:
+            new_obj = {}
             for key, value in six.iteritems(obj):
-                obj[_to_text(key, encoding)] = _to_text(value, encoding)
-                obj.pop(key)
+                new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
+            obj.update(new_obj)
+            return obj
         else:
             new_obj = {}
             for key, value in six.iteritems(obj):
