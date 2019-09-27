@@ -17,18 +17,16 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
 REGISTER_OP_CUDA_KERNEL(
-    concat, ops::ConcatKernel<plat::CUDADeviceContext, double>,
-    ops::ConcatKernel<plat::CUDADeviceContext, float>,
-    ops::ConcatKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ConcatKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ConcatKernel<plat::CUDADeviceContext, int>,
-    ops::ConcatKernel<plat::CUDADeviceContext, plat::float16>);
+    concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CUDADeviceContext, int>);
 REGISTER_OP_CUDA_KERNEL(
-    concat_grad, ops::ConcatGradKernel<plat::CUDADeviceContext, double>,
-    ops::ConcatGradKernel<plat::CUDADeviceContext, float>,
-    ops::ConcatGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ConcatGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ConcatGradKernel<plat::CUDADeviceContext, int>,
-    ops::ConcatGradKernel<plat::CUDADeviceContext, plat::float16>);
+    concat_grad,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>);

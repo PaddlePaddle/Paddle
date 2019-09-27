@@ -198,20 +198,18 @@ class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpDescMaker);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatOpGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<plat::CPUDeviceContext, double>,
-    ops::ConcatKernel<plat::CPUDeviceContext, float>,
-    ops::ConcatKernel<plat::CPUDeviceContext, int64_t>,
-    ops::ConcatKernel<plat::CPUDeviceContext, int>,
-    ops::ConcatKernel<plat::CPUDeviceContext, plat::float16>);
+    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
-    concat_grad, ops::ConcatGradKernel<plat::CPUDeviceContext, double>,
-    ops::ConcatGradKernel<plat::CPUDeviceContext, float>,
-    ops::ConcatGradKernel<plat::CPUDeviceContext, int64_t>,
-    ops::ConcatGradKernel<plat::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<plat::CPUDeviceContext, plat::float16>);
+    concat_grad,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);

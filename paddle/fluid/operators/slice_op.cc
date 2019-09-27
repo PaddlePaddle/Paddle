@@ -288,19 +288,19 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker);
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
                   ops::SliceOpGradNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(slice, ops::SliceKernel<plat::CPUDeviceContext, int>,
-                       ops::SliceKernel<plat::CPUDeviceContext, int64_t>,
-                       ops::SliceKernel<plat::CPUDeviceContext, float>,
-                       ops::SliceKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OP_CPU_KERNEL(slice_grad,
-                       ops::SliceGradKernel<plat::CPUDeviceContext, int>,
-                       ops::SliceGradKernel<plat::CPUDeviceContext, int64_t>,
-                       ops::SliceGradKernel<plat::CPUDeviceContext, float>,
-                       ops::SliceGradKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
