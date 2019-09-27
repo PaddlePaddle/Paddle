@@ -124,7 +124,7 @@ void profile(bool use_mkldnn = false) {
   // auto predictor = CreatePaddlePredictor(cfg);
 
   // std::vector<std::vector<PaddleTensor>> inputs_all;
-  // auto predictor = CreatePaddlePredictor(config.config);
+  auto predictor = CreatePaddlePredictor(config.config);
   // SetFakeImageInput(&inputs_all, model_dir1, false, "__model__",
   // "__params__");
 
