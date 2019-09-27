@@ -34,6 +34,9 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& ids_lod = ids->lod();
+    PADDLE_ENFORCE_EQ(ids_lod.empty(), false,
+                      "Input(Ids) Tensor of SequenceScatterOp does not contain "
+                      "LoD information.");
 
     // Initialize out as same as x
     out->mutable_data<T>(ctx.GetPlace());

@@ -44,6 +44,8 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
+from .data import *
+
 from . import trainer_desc
 from . import inferencer
 
@@ -62,7 +64,7 @@ from . import average
 from . import metrics
 from . import transpiler
 from . import incubate
-from . import input
+from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -93,9 +95,11 @@ __all__ = framework.__all__ + executor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
         'io',
         'initializer',
-        'input',
+        'embedding',
+        'one_hot',
         'layers',
         'contrib',
+        'data',
         'dygraph',
         'transpiler',
         'nets',
