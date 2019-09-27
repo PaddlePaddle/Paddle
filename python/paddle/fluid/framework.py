@@ -638,6 +638,7 @@ class Variable(object):
         new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
         return np.array(new_ivar.value().get_tensor())
 
+    @dygraph_only
     def set_value(self, value):
         """
         Set a new value for this Variable.
@@ -662,23 +663,19 @@ class Variable(object):
                     data = to_variable(data)
                     fc(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
-                    fc.weight[0].set_value(custom_weight)  # change existing weight
+                    fc.weight.set_value(custom_weight)  # change existing weight
                     out = fc(t)  # call with different weight
 
         """
-        if in_dygraph_mode():
-            assert isinstance(value, (Variable, np.ndarray))
-            if list(value.shape) != list(self.shape):
-                raise ValueError(
-                    "The shape of the new value must be the same as that of the original Variable."
-                )
-            self_tensor = self._ivar.value().get_tensor()
-            if isinstance(value, Variable):
-                value = value._ivar.value().get_tensor().__array__()
-            self_tensor.set(value, _current_expected_place())
-        else:
+        assert isinstance(value, (Variable, np.ndarray))
+        if list(value.shape) != list(self.shape):
             raise ValueError(
-                "Variable.set_value() is only avaliable in DyGraph mode.")
+                "The shape of the new value must be the same as that of the original Variable."
+            )
+        self_tensor = self._ivar.value().get_tensor()
+        if isinstance(value, Variable):
+            value = value._ivar.value().get_tensor().__array__()
+        self_tensor.set(value, _current_expected_place())
 
     @dygraph_only
     def backward(self, backward_strategy=None):
