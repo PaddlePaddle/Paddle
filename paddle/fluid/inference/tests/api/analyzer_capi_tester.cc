@@ -143,7 +143,7 @@ void profile(bool use_mkldnn = false) {
   int in_size = 1;
   int *out_size;
   float *output;
-  PD_PredictorZeroCopyRun(config, input, in_size, &output, &out_size, shape,
+  PD_PredictorZeroCopyRun(&config, input, in_size, &output, &out_size, shape,
                           shape_size);
 
   // auto input_names = predictor->GetInputNames();
