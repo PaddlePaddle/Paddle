@@ -75,11 +75,14 @@ class TestDistRunnerBase(object):
                        sync_mode,
                        dc_asgd=False,
                        current_endpoint=None,
-                       nccl_comm_num=1):
+                       nccl_comm_num=1,
+                       hogwild_mode=False):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
+        config.runtime_split_send_recv = hogwild_mode
+
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
@@ -89,6 +92,7 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
+            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
@@ -96,9 +100,15 @@ class TestDistRunnerBase(object):
         self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
-        t = self.get_transpiler(args.trainer_id,
-                                fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, args.dc_asgd)
+
+        t = self.get_transpiler(
+            trainer_id=args.trainer_id,
+            main_program=fluid.default_main_program(),
+            pserver_endpoints=args.endpoints,
+            trainers=args.trainers,
+            sync_mode=args.sync_mode,
+            dc_asgd=args.dc_asgd,
+            hogwild_mode=args.hogwild)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -120,7 +130,7 @@ class TestDistRunnerBase(object):
 
         dist_strategy = DistributedStrategy()
         dist_strategy.exec_strategy = exec_strategy
-        dist_strategy.fuse_memory_size = 1  #MB
+        dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
         if args.use_local_sgd:
             dist_strategy.use_local_sgd = True
@@ -130,11 +140,11 @@ class TestDistRunnerBase(object):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print_to_err("gpu_fleet", "fleet.node_num:")
-        #"fleet.node_id:", fleet.node_id(),
-        #"fleet.trainer_num:", fleet.worker_num())
+        # "fleet.node_id:", fleet.node_id(),
+        # "fleet.trainer_num:", fleet.worker_num())
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-                self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+            self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
@@ -196,10 +206,15 @@ class TestDistRunnerBase(object):
             print_to_err(
                 type(self).__name__,
                 "begin to run transpile on trainer with pserver mode")
-            t = self.get_transpiler(args.trainer_id,
-                                    fluid.default_main_program(),
-                                    args.endpoints, args.trainers,
-                                    args.sync_mode, args.dc_asgd)
+            t = self.get_transpiler(
+                trainer_id=args.trainer_id,
+                main_program=fluid.default_main_program(),
+                pserver_endpoints=args.endpoints,
+                trainers=args.trainers,
+                sync_mode=args.sync_mode,
+                dc_asgd=args.dc_asgd,
+                hogwild_mode=args.hogwild)
+
             trainer_prog = t.get_trainer_program()
             print_to_err(
                 type(self).__name__,
@@ -250,6 +265,9 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
+
+        if args.hogwild:
+            build_stra.async_mode = True
 
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
@@ -411,6 +429,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
+    parser.add_argument('--hogwild', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -467,6 +486,7 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
+        self._hogwild_mode = False
         self._enforce_place = None
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
@@ -630,6 +650,9 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
+        if self._hogwild_mode:
+            tr0_cmd += " --hogwild"
+            tr1_cmd += " --hogwild"
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
@@ -703,8 +726,8 @@ class TestDistBase(unittest.TestCase):
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
         tr_cmd = tr_cmd % \
-                  (self._python_interp, model, self._ps_endpoints,
-                   trainer_id, ep, update_method, self._lr)
+                 (self._python_interp, model, self._ps_endpoints,
+                  trainer_id, ep, update_method, self._lr)
 
         if self._use_reduce:
             tr_cmd += " --use_reduce"
@@ -825,9 +848,9 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_losses\
+        local_losses \
             = self._run_local(model_file, required_envs,
-                                check_error_log)
+                              check_error_log)
         if self._nccl2_mode:
             if self._nccl2_reduce_layer:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
