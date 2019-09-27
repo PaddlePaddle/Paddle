@@ -52,10 +52,6 @@ TEST(PD_AnalysisPredictor, compare) {
   std::vector<std::vector<PaddleTensor>> inputs_all;
   SetFakeImageInput(&inputs_all, FLAGS_infer_model + "/mobilenet", false,
                     "__model__", "");
-  auto a = inputs_all[0][0].shape;
-  for (int i = 0; i < a.size(); ++i) {
-    LOG(INFO) << a[i];
-  }
   const int batch_size = 1;
   const int channels = 3;
   const int height = 224;
@@ -72,7 +68,13 @@ TEST(PD_AnalysisPredictor, compare) {
       PD_GetPredictorInputTensor(predictor, input_names[0]);
   PD_ZeroCopyTensorReshape(tensor, shape, 4);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
-  CHECK(PD_PredictorZeroCopyRun(predictor));
+  // CHECK(PD_PredictorZeroCopyRun(predictor));
+  PD_Tensor ten[1];
+  ten[0].tensor = inputs_all[0][0];
+  PD_Tensor* out = PD_NewPaddleTensor();
+  int outsize;
+  int insize = 1;
+  PD_PredictorRun(predictor, ten, insize, out, outsize, 1);
 
   /*std::vector<PaddleTensor> outputs;
   for (auto& input : inputs_all) {
