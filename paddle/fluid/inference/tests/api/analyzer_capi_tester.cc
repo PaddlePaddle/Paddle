@@ -43,10 +43,10 @@ TEST(PD_AnalysisPredictor, compare) {
   //     "/paddle/Paddle/build/third_party/inference_demo/trt_tests_models/"
   //     "trt_inference_test_models/mobilenet/");
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  PD_SetModel(&config, model_dir);
-  PD_DisableGpu(&config);
+  config = PD_SetModel(config, model_dir);
+  config = PD_DisableGpu(config);
   // PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(&config, false);
+  config = PD_SwitchUseFeedFetchOps(config, false);
   // PD_SwitchSpecifyInputNames(config, true);
   // PD_SwitchIrDebug(config, true);
   LOG(INFO) << "before here! ";
