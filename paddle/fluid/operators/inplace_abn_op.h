@@ -84,7 +84,8 @@ class InplaceABNActivation {
   void GradCompute(const framework::ExecutionContext& ctx, const int act_type,
                    const Device& d, X x, Y y, DX dx, DY dy, bool is_inplace) {
     const float alpha = ctx.Attr<float>("alpha");
-
+    std::cout << "is_inplace : " << is_inplace << std::endl;
+    std::cout << "alpha : " << alpha << std::endl;
     if (act_type == InplaceABNActivationType::identity) {
       if (is_inplace) {
         x.device(d) = y;

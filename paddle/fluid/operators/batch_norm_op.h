@@ -84,6 +84,8 @@ class BatchNormOpInferVarType
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(BatchNormOpInference, {"X", "Y"});
+
 template <typename DeviceContext, typename T>
 class BatchNormKernel : public framework::OpKernel<T> {
  public:

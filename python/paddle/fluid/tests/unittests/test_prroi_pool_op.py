@@ -48,7 +48,7 @@ class TestPRROIPoolOp(OpTest):
         self.x_dim = [self.batch_size, self.channels, self.height, self.width]
 
         self.spatial_scale = 1.0 / 4.0
-        self.output_channels = 3
+        self.output_channels = self.channels
         self.pooled_height = 2
         self.pooled_width = 2
 

@@ -429,6 +429,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Input<Tensor>("Y");
+    //      auto *y = ctx.Output<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -440,8 +441,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = (x->data<T>() == y->data<T>());
-
+    //    bool is_inplace = (y->memory_size() > 0 && x->data<T>() ==
+    //    y->data<T>());
+    bool is_inplace = (x == y);
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
@@ -522,9 +524,8 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
-          auto px = const_cast<Tensor &>(*x);
-          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
-                                  sample_size, N * C);
+          EigenArrayMap<T> x_data(const_cast<T *>(x->data<T>()), sample_size,
+                                  N * C);
           ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
             x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
@@ -566,8 +567,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
-          auto px = const_cast<Tensor &>(*x);
-          EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
+          EigenArrayMap<T> x_data(const_cast<T *>(x->data<T>()), C,
                                   N * sample_size);
           ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
           x_data = (y_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
@@ -618,6 +618,7 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
   op->SetInput("Y", Output("Y"));
+  //    op->SetOutput("Y", Input("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
@@ -645,7 +646,8 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
+                  ops::BatchNormOpInference);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

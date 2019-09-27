@@ -38,9 +38,9 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                       place,
                       layout,
                       seed,
-                      inplace_abn=False,
                       only_forward=False,
                       activation="identity",
+                      sync_bn=False,
                       use_cuda=False):
         main = fluid.Program()
         startup = fluid.Program()
@@ -62,7 +62,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     use_cudnn=False)
                 bn = fluid.layers.batch_norm(
                     conv,
-                    in_place=inplace_abn,
                     act=activation,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -71,22 +70,22 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     data_layout=layout,
                     is_test=only_forward)
 
-                sigmoid = fluid.layers.sigmoid(conv)
+                sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
-                if use_cuda and not inplace_abn:
+                if use_cuda and not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
-        return main, startup, [out, bn]
+        return main, startup, [out, conv]
 
     def compare(self, place, layout, only_forward, activation, use_cuda):
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
         # Single-GPU, N = 32 per GPU
-        main, startup, outs = self.build_program(place, layout, seed, False,
-                                                 only_forward, activation)
+        main, startup, outs = self.build_program(
+            place, layout, seed, only_forward, activation, False, use_cuda)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -96,6 +95,10 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             others = [
                 'batch_norm_0.tmp_0',
                 'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                # 'batch_norm_0.tmp_2@GRAD',
+                'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
         for nm in fetch_names:
@@ -107,8 +110,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
         #####################################################################
         # Multi-GPUs, self.N / core.get_cuda_device_count() per GPU
-        main, startup, outs = self.build_program(place, layout, seed, True,
-                                                 only_forward, activation)
+        main, startup, outs = self.build_program(
+            place, layout, seed, only_forward, activation, True, use_cuda)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names1 = [v.name for v in outs] + [
@@ -116,10 +119,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         ]
 
         if not only_forward:
-            others = [
-                'batch_norm_0.tmp_0',
-                'batch_norm_0.tmp_1',
-            ]
             fetch_names1 += others
         for nm in fetch_names1:
             fv = fluid.framework._get_var(str(nm), program=main)
@@ -145,7 +144,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 inplace_abn_val = inplace_abn_val[:bn_val.shape[0]]
             self.assertTrue(
                 np.allclose(
-                    bn_val, inplace_abn_val, atol=1e-2),
+                    bn_val, inplace_abn_val, atol=1e-100),
                 "Output (" + fetch_names[i] + ":" + fetch_names1[i] +
                 ") has diff. \n" + "\nBN     " + str(bn_val) + "\n" +
                 "Inplace ABN " + str(inplace_abn_val))

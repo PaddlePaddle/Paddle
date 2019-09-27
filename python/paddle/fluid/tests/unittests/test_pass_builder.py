@@ -76,7 +76,7 @@ class TestPassBuilder(unittest.TestCase):
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
 
-    def test_parallel_testing_with_new_strategy(self):
+    def tes1t_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
         build_strategy.fuse_elewise_add_act_ops = True
@@ -107,6 +107,31 @@ class TestPassBuilder(unittest.TestCase):
             os.stat("/tmp/test_viz_pass")
         except os.error:
             self.assertFalse(True)
+
+    def test_backward_optimizer_coverage(self):
+        build_strategy = fluid.BuildStrategy()
+        pass_builder = build_strategy._finalize_strategy_and_create_passes()
+        while len(pass_builder.all_passes()) > 0:
+            pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
+
+        fuse_all_reduce_op_pass = pass_builder.insert_pass(
+            len(pass_builder.all_passes()), "fuse_all_reduce_op_pass")
+        backward_optimizer_op_deps_pass = pass_builder.insert_pass(
+            len(pass_builder.all_passes()), "backward_optimizer_op_deps_pass")
+        # self.assertEqual(1, len(pass_builder.all_passes()))
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            input = fluid.layers.fill_constant(
+                shape=[1], value=3, dtype='int64')
+            input = input * input
+            # input = input - input
+            adam = fluid.optimizer.Adam(learning_rate=1e-3)
+            adam.minimize(input)
+
+        graph = core.Graph(main.desc)
+        # fuse_all_reduce_op_pass.apply(graph)
+        backward_optimizer_op_deps_pass.apply(graph)
 
 
 if __name__ == '__main__':
