@@ -48,10 +48,10 @@ def max_pool2D_forward_naive(x,
     else:
         H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
                  ) // strides[0] + 1 if ceil_mode else (
-                                                               H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+                     H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
         W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
                  ) // strides[1] + 1 if ceil_mode else (
-                                                               W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+                     W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
         for j in range(W_out):
@@ -88,10 +88,10 @@ def avg_pool2D_forward_naive(x,
     else:
         H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] - 1
                  ) // strides[0] + 1 if ceil_mode else (
-                                                               H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+                     H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
         W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] - 1
                  ) // strides[1] + 1 if ceil_mode else (
-                                                               W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+                     W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
         for j in range(W_out):
@@ -313,6 +313,7 @@ class TestPool2D_Op(OpTest):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
 
     def init_global_pool(self):
         self.global_pool = True
@@ -337,6 +338,7 @@ class TestCase1(TestPool2D_Op):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
 
     def init_global_pool(self):
         self.global_pool = False
@@ -355,6 +357,7 @@ class TestCase2(TestPool2D_Op):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
 
     def init_global_pool(self):
         self.global_pool = False
@@ -366,16 +369,19 @@ class TestCase2(TestPool2D_Op):
 class TestCase3(TestPool2D_Op):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase4(TestCase1):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase5(TestCase2):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 #--------------------test pool2d cudnn--------------------
@@ -810,7 +816,7 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
 
 
 class TestCUDNNAvgInclude_AsyPadding_channel_last(
-    TestCUDNNAvgInclude_AsyPadding):
+        TestCUDNNAvgInclude_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
 
@@ -819,7 +825,7 @@ class TestCUDNNAvgInclude_AsyPadding_channel_last(
 
 
 class TestAvgPoolAdaptive_AsyPadding_channel_last(
-    TestAvgPoolAdaptive_AsyPadding):
+        TestAvgPoolAdaptive_AsyPadding):
     def init_data_format(self):
         self.data_format = "NHWC"
 
