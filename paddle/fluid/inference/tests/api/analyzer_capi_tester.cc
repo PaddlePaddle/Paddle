@@ -66,9 +66,9 @@ TEST(PD_AnalysisPredictor, use_gpu) {
   PD_Predictor* predictor = PD_NewPredictor(config);
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
-  PD_ZeroCopyTensor* tensor = new PD_ZeroCopyTensor;
   PD_DataType data_type = PD_FLOAT32;
-  tensor = PD_GetPredictorInputTensor(predictor, input_names[0]);
+  PD_ZeroCopyTensor* tensor =
+      PD_GetPredictorInputTensor(predictor, input_names[0]);
   PD_ZeroCopyTensorReshape(tensor, shape, 4);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
   CHECK(PD_PredictorZeroCopyRun(predictor));
