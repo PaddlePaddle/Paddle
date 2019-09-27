@@ -140,13 +140,19 @@ void profile(bool use_mkldnn = false) {
   //   ASSERT_TRUE(predictor->Run(input, &outputs));
   // }
 
-  auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputTensor(input_names[0]);
-  std::vector<int> tensor_shape;
-  tensor_shape.assign(shape, shape + shape_size);
-  input_t->Reshape(tensor_shape);
-  input_t->copy_from_cpu(input);
-  CHECK(predictor->ZeroCopyRun());
+  int in_size = 1;
+  int *out_size;
+  float *output;
+  PD_PredictorZeroCopyRun(config, input, in_size, &output, &out_size, shape,
+                          shape_size);
+
+  // auto input_names = predictor->GetInputNames();
+  // auto input_t = predictor->GetInputTensor(input_names[0]);
+  // std::vector<int> tensor_shape;
+  // tensor_shape.assign(shape, shape + shape_size);
+  // input_t->Reshape(tensor_shape);
+  // input_t->copy_from_cpu(input);
+  // CHECK(predictor->ZeroCopyRun());
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
