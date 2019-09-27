@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -93,14 +94,14 @@ void profile(bool use_mkldnn = false) {
   const char *model_dir = GetModelPath(FLAGS_infer_model + "/__model__");
   const char *params_file = GetModelPath(FLAGS_infer_model + "/__params__");
   LOG(INFO) << model_dir;
-  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
-  PD_SetModel(config, model_dir, params_file);
-  LOG(INFO) << PD_ModelDir(config);
-  PD_DisableGpu(config);
-  PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
-  PD_SwitchSpecifyInputNames(config, true);
-  PD_SwitchIrDebug(config, true);
+  PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
+  PD_SetModel(&config, model_dir, params_file);
+  LOG(INFO) << PD_ModelDir(&config);
+  PD_DisableGpu(&config);
+  PD_SetCpuMathLibraryNumThreads(&config, 10);
+  PD_SwitchUseFeedFetchOps(&config, false);
+  PD_SwitchSpecifyInputNames(&config, true);
+  PD_SwitchIrDebug(&config, true);
   LOG(INFO) << "before here! ";
 
   const int batch_size = 1;
@@ -111,13 +112,8 @@ void profile(bool use_mkldnn = false) {
 
   int shape[4] = {batch_size, channels, height, width};
 
-  AnalysisConfig c;
-  c.SetModel(model_dir, params_file);
-  LOG(INFO) << c.model_dir();
-  c.DisableGpu();
-  c.SwitchUseFeedFetchOps(false);
   int shape_size = 4;
-  auto predictor = CreatePaddlePredictor(c);
+  auto predictor = CreatePaddlePredictor(config.config);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;
