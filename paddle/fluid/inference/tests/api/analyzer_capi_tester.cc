@@ -90,23 +90,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
-  std::string model_dir = FLAGS_infer_model + "/model/";
-  AnalysisConfig config;
-  config.DisableGpu();
-  config.SetModel(FLAGS_infer_model + "/model/__model__",
-                  FLAGS_infer_model + "/model/__params__");
-  // config.pass_builder()->TurnOnDebug();
-
-  std::vector<std::vector<PaddleTensor>> inputs_all;
-  auto predictor = CreatePaddlePredictor(config);
-  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
-
-  std::vector<PaddleTensor> outputs;
-  for (auto &input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
-  }
-
-  // std::string a = FLAGS_infer_model;
+  std::string model_dir = FLAGS_infer_model + "/model/__model__";
+  std::string params_file = FLAGS_infer_model + "/model/__params__";
   // const char *model_dir = GetModelPath(FLAGS_infer_model +
   // "/model/__model__");
   // const char *params_file =
@@ -131,11 +116,20 @@ void profile(bool use_mkldnn = false) {
   // int shape[4] = {batch_size, channels, height, width};
 
   // int shape_size = 4;
-  // AnalysisConfig cfg;
-  // cfg.SetModel(model_dir, params_file);
-  // cfg.DisableGpu();
-  // cfg.SwitchUseFeedFetchOps(false);
-  // auto predictor = CreatePaddlePredictor(cfg);
+  AnalysisConfig cfg;
+  cfg.DisableGpu();
+  cfg.SwitchUseFeedFetchOps(false);
+  cfg.SetModel(model_dir, params_file);
+  auto predictor = CreatePaddlePredictor(cfg);
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "__params__");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto &input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
 
   // std::vector<std::vector<PaddleTensor>> inputs_all;
   // SetInput(&inputs_all);
