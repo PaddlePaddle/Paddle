@@ -43,10 +43,10 @@ TEST(PD_AnalysisPredictor, compare) {
   //     "/paddle/Paddle/build/third_party/inference_demo/trt_tests_models/"
   //     "trt_inference_test_models/mobilenet/");
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  PD_SetModel(config, model_dir);
-  PD_DisableGpu(config);
+  PD_SetModel(&config, model_dir);
+  PD_DisableGpu(&config);
   // PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
+  PD_SwitchUseFeedFetchOps(&config, false);
   // PD_SwitchSpecifyInputNames(config, true);
   // PD_SwitchIrDebug(config, true);
   LOG(INFO) << "before here! ";
@@ -64,7 +64,7 @@ TEST(PD_AnalysisPredictor, compare) {
   // width,
   //                         &out, &out_size, shape, 4);
   int shape_size = 4;
-  auto predictor = paddle::CreatePaddlePredictor(config->config);
+  auto predictor = CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;

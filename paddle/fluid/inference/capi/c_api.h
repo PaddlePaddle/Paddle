@@ -157,79 +157,79 @@ PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
 
 enum Precision { kFloat32 = 0, kInt8, kHalf };
 
-PADDLE_CAPI_EXPORT extern PD_AnalysisConfig* PD_NewAnalysisConfig();
+PADDLE_CAPI_EXPORT extern PD_AnalysisConfig** PD_NewAnalysisConfig();
 
 PADDLE_CAPI_EXPORT extern void PD_DeleteAnalysisConfig(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_SetModel(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SetModel(PD_AnalysisConfig** config,
                                            const char* model_dir,
                                            const char* params_path = NULL);
 
 PADDLE_CAPI_EXPORT
-extern void PD_SetProgFile(PD_AnalysisConfig* config, const char* x);
+extern void PD_SetProgFile(PD_AnalysisConfig** config, const char* x);
 
-PADDLE_CAPI_EXPORT extern void PD_SetParamsFile(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SetParamsFile(PD_AnalysisConfig** config,
                                                 const char* x);
 
-PADDLE_CAPI_EXPORT extern void PD_SetOptimCacheDir(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SetOptimCacheDir(PD_AnalysisConfig** config,
                                                    const char* opt_cache_dir);
 
-PADDLE_CAPI_EXPORT extern const char* PD_ModelDir(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ModelDir(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern const char* PD_ProgFile(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ProgFile(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern const char* PD_ParamsFile(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern const char* PD_ParamsFile(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(
-    PD_AnalysisConfig* config, uint64_t memory_pool_init_size_mb,
+    PD_AnalysisConfig** config, uint64_t memory_pool_init_size_mb,
     int device_id = 0);
 
-PADDLE_CAPI_EXPORT extern void PD_DisableGpu(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_DisableGpu(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern bool PD_UseGpu(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_UseGpu(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern int PD_GpuDeviceId(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern int PD_GpuDeviceId(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern int PD_MemoryPoolInitSizeMb(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern float PD_FractionOfGpuMemoryForPool(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableCUDNN(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableCUDNN(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern bool PD_CudnnEnabled(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_CudnnEnabled(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_SwitchIrOptim(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SwitchIrOptim(PD_AnalysisConfig** config,
                                                 bool x = true);
 
-PADDLE_CAPI_EXPORT extern bool PD_IrOptim(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_IrOptim(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchUseFeedFetchOps(
-    PD_AnalysisConfig* config, bool x = true);
+    PD_AnalysisConfig** config, bool x = true);
 
 PADDLE_CAPI_EXPORT extern bool PD_UseFeedFetchOpsEnabled(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchSpecifyInputNames(
-    PD_AnalysisConfig* config, bool x = true);
+    PD_AnalysisConfig** config, bool x = true);
 
-PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
-    PD_AnalysisConfig* config, int workspace_size = 1 << 20,
+    PD_AnalysisConfig** config, int workspace_size = 1 << 20,
     int max_batch_size = 1, int min_subgraph_size = 3,
     Precision precision = Precision::kFloat32, bool use_static = false,
     bool use_calib_mode = false);
 
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
 typedef struct PD_MaxInputShape PD_MaxInputShape;
 
 PADDLE_CAPI_EXPORT extern void PD_EnableAnakinEngine(
-    PD_AnalysisConfig* config, int max_batch_size = 1,
+    PD_AnalysisConfig** config, int max_batch_size = 1,
     PD_MaxInputShape* max_input_shape = NULL, int max_input_shape_size = 0,
     int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
     bool auto_config_layout = false, char** passes_filter = NULL,
@@ -237,61 +237,62 @@ PADDLE_CAPI_EXPORT extern void PD_EnableAnakinEngine(
     int ops_filter_size = 0);
 
 PADDLE_CAPI_EXPORT extern bool PD_AnakinEngineEnabled(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig** config,
                                                 bool x = true);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableNgraph(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableNgraph(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern bool PD_NgraphEnabled(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_NgraphEnabled(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_SetMkldnnCacheCapacity(
-    PD_AnalysisConfig* config, int capacity);
+    PD_AnalysisConfig** config, int capacity);
 
-PADDLE_CAPI_EXPORT extern bool PD_MkldnnEnabled(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_MkldnnEnabled(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_SetCpuMathLibraryNumThreads(
-    PD_AnalysisConfig* config, int cpu_math_library_num_threads);
+    PD_AnalysisConfig** config, int cpu_math_library_num_threads);
 
 PADDLE_CAPI_EXPORT extern int PD_CpuMathLibraryNumThreads(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnQuantizer(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern bool PD_MkldnnQuantizerEnabled(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_SetModelBuffer(PD_AnalysisConfig* config,
+PADDLE_CAPI_EXPORT extern void PD_SetModelBuffer(PD_AnalysisConfig** config,
                                                  const char* prog_buffer,
                                                  size_t prog_buffer_size,
                                                  const char* params_buffer,
                                                  size_t params_buffer_size);
 
-PADDLE_CAPI_EXPORT extern bool PD_ModelFromMemory(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_ModelFromMemory(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableMemoryOptim(
-    PD_AnalysisConfig* config, bool static_optim = false,
+    PD_AnalysisConfig** config, bool static_optim = false,
     bool force_update_static_cache = false);
 
-PADDLE_CAPI_EXPORT extern bool PD_MemoryOptimEnabled(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_MemoryOptimEnabled(
+    PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableProfile(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableProfile(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig** config);
 
-PADDLE_CAPI_EXPORT extern bool PD_IsValid(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern bool PD_IsValid(PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
-    const PD_AnalysisConfig* config);
+    const PD_AnalysisConfig** config);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
-    const PD_AnalysisConfig* config);
+    const PD_AnalysisConfig** config);
 
 #ifdef __cplusplus
 }  // extern "C"
