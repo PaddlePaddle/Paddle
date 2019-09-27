@@ -51,7 +51,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
         for index, ele in enumerate(self.new_shape):
             shape_tensor.append(("x" + str(index), np.ones(
                 (1)).astype("int64") * ele))
-        self.inputs = {'ShapeTensor': shape_tensor}
+        self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
 
@@ -72,7 +72,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
 class TestUniformRandomOp_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
-        self.inputs = {"Shape": np.array([1000, 784]).astype("int64")}
+        self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
 
@@ -240,7 +240,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
         op = Operator(
             "uniform_random",
-            Shape="Shape",
+            ShapeTensor="Shape",
             Out="X",
             min=-5.0,
             max=10.0,
@@ -274,7 +274,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
 
         op = Operator(
             "uniform_random",
-            ShapeTensor=["shape1", "shape2"],
+            ShapeTensorList=["shape1", "shape2"],
             Out="X",
             min=-5.0,
             max=10.0,

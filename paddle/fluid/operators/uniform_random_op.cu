@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/uniform_random_op.h"
 namespace paddle {
 namespace operators {
 
@@ -47,41 +48,6 @@ struct UniformGenerator {
     return out;
   }
 };
-using Tensor = framework::Tensor;
-std::vector<int64_t> get_new_data_from_shape_tensor_cu(
-    const Tensor* new_data_tensor) {
-  std::vector<int64_t> vec_new_data;
-  auto* new_data = new_data_tensor->data<int64_t>();
-  framework::Tensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<int64_t>();
-  }
-  vec_new_data =
-      std::vector<int64_t>(new_data, new_data + new_data_tensor->numel());
-  return vec_new_data;
-}
-
-std::vector<int64_t> get_new_shape_from_shape_tensorlist_cu(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
-  // get tensor from
-  std::vector<int64_t> vec_new_shape;
-  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
-    auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-
-      vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
-    } else {
-      vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
-    }
-  }
-
-  return vec_new_shape;
-}
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
@@ -94,14 +60,13 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     auto out_var = context.OutputVar("Out");
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        context.MultiInput<framework::Tensor>("ShapeTensor");
-    if (list_new_shape_tensor.size() > 0 || context.HasInput("Shape")) {
-      if (context.HasInput("Shape")) {
-        auto* shape_tensor = context.Input<framework::Tensor>("Shape");
-        new_shape = get_new_data_from_shape_tensor_cu(shape_tensor);
+        context.MultiInput<framework::Tensor>("ShapeTensorList");
+    if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
+      if (context.HasInput("ShapeTensor")) {
+        auto* shape_tensor = context.Input<framework::Tensor>("ShapeTensor");
+        new_shape = get_new_data_from_shape_tensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
-        new_shape =
-            get_new_shape_from_shape_tensorlist_cu(list_new_shape_tensor);
+        new_shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
       }
     }
 

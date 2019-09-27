@@ -11,46 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/fluid/operators/uniform_random_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-
-std::vector<int64_t> get_new_data_from_shape_tensor(
-    const Tensor *new_data_tensor) {
-  std::vector<int64_t> vec_new_data;
-  auto *new_data = new_data_tensor->data<int64_t>();
-  framework::Tensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<int64_t>();
-  }
-  for (size_t i = 0; i < new_data_tensor->numel(); ++i)
-    vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
-  return vec_new_data;
-}
-
-std::vector<int64_t> get_new_shape_from_shape_tensorlist(
-    const std::vector<const Tensor *> &list_new_shape_tensor) {
-  std::vector<int64_t> vec_new_shape;
-  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
-    auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-
-      vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int64_t>()));
-    } else {
-      vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
-    }
-  }
-
-  return vec_new_shape;
-}
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
@@ -63,10 +29,10 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     auto out_var = ctx.OutputVar("Out");
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    if (list_new_shape_tensor.size() > 0 || ctx.HasInput("Shape")) {
-      if (ctx.HasInput("Shape")) {
-        auto *shape_tensor = ctx.Input<framework::Tensor>("Shape");
+        ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+    if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
+      if (ctx.HasInput("ShapeTensor")) {
+        auto *shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
         new_shape = get_new_data_from_shape_tensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
@@ -134,12 +100,12 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
                       "diag_step must greater than or equal 0");
 
-    if (ctx->HasInputs("ShapeTensor")) {
+    if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
-      auto inputs_name = ctx->Inputs("ShapeTensor");
+      auto inputs_name = ctx->Inputs("ShapeTensorList");
       PADDLE_ENFORCE_GT(
           inputs_name.size(), 0,
-          "Input(ShapeTensor)'size of Op(uniform_random) can't be zero."
+          "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
           "Please check the Attr(shape)'s size of"
           "Op(fluid.layers.uniform_random).)");
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
@@ -148,8 +114,8 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       return;
     }
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    if (ctx->HasInput("Shape") && shape.empty()) {
-      auto shape_dims = ctx->GetInputDim("Shape");
+    if (ctx->HasInput("ShapeTensor") && shape.empty()) {
+      auto shape_dims = ctx->GetInputDim("ShapeTensor");
       PADDLE_ENFORCE_EQ(
           shape_dims.size(), 1,
           "Input(ShapeTensor)' dimension size of Op(uniform_random) must be 1."
@@ -165,10 +131,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(shape.empty(), false,
-                      "if there is no ShapeTensor and no Input(Shape),the "
-                      "attr(shape) information must "
-                      "be set by Attr(shape).");
+    PADDLE_ENFORCE_EQ(
+        shape.empty(), false,
+        "if there is no Input(ShapeTensorList) and no Input(ShapeTensor),the "
+        "attr(shape) information must "
+        "be set by Attr(shape).");
     std::vector<int64_t> tensor_shape;
     tensor_shape.reserve(shape.size());
     for (auto dim : shape) {
@@ -188,7 +155,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ShapeTensor") {
+    if (var_name == "ShapeTensorList" || var_name == "ShapeTensor") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -199,14 +166,14 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Shape",
+    AddInput("ShapeTensor",
              "(Tensor<int64_t>, optional). If provided, uniform_ranodom "
              "according to "
              "this given shape. That is to say it has a higher priority than "
              "the shape attribute, while the shape attribute still should be "
              "set correctly to gurantee shape inference in compile time.")
         .AsDispensable();
-    AddInput("ShapeTensor",
+    AddInput("ShapeTensorList",
              "(vector<Tensor<int64_t>>, optional). If provided, uniform_random "
              "will use this"
              "The shape of the tensor in vector MUST BE [1]"
