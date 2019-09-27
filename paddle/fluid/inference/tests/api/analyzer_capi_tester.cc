@@ -57,13 +57,10 @@ TEST(PD_AnalysisPredictor, compare) {
   float input[batch_size * channels * height * width] = {0};
 
   int shape[4] = {batch_size, channels, height, width};
-  // float* out;
-  // int* out_size;
-  // PD_PredictorZeroCopyRun(config, input, batch_size * channels * height *
-  // width,
-  //                         &out, &out_size, shape, 4);
+
   AnalysisConfig c;
   c.SetModel(model_dir);
+  LOG(INFO) << c.model_dir();
   c.DisableGpu();
   c.SwitchUseFeedFetchOps(false);
   int shape_size = 4;
