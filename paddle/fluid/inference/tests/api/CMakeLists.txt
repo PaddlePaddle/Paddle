@@ -291,4 +291,6 @@ set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
     inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
 endif()
-inference_analysis_api_test(test_analyzer_capi ${MOBILENET_INSTALL_DIR} analyzer_capi_tester.cc EXTRA_DEPS paddle_fluid_c paddle_fluid pd_config pd_predictor pd_tensor pd_c_api)
+inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${MOBILENET_INSTALL_DIR})
