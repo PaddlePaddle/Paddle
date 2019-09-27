@@ -154,7 +154,7 @@ void profile(bool use_mkldnn = false) {
   // input_t->copy_from_cpu(input);
   // CHECK(predictor->ZeroCopyRun());
 
-  PD_Predictor *predictor = PD_NewPredictor(config);
+  PD_Predictor *predictor = PD_NewPredictor(&config);
   // auto predictor = CreatePaddlePredictor(config->config);
 
   int *size;
