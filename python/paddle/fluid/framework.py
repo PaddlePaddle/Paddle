@@ -632,10 +632,6 @@ class Variable(object):
 
         """
 
-        if self._ivar is None:
-            raise ValueError(
-                "%s is Empty, Please use fluid.dygraph.guard() as context " %
-                self.name)
         if not self._ivar.value().get_tensor()._is_initialized():
             raise ValueError("%s is Empty, Please check if it has no data in" %
                              self.name)
@@ -680,10 +676,6 @@ class Variable(object):
                 backward_strategy = BackwardStrategy()
                 backward_strategy.sort_sum_gradient = False
 
-            if self._ivar is None:
-                raise ValueError(
-                    "%s is Empty, Please use fluid.dygraph.guard() as context "
-                    % self.name)
             self._ivar._run_backward(backward_strategy, _dygraph_tracer())
         else:
             raise ValueError(
@@ -721,10 +713,6 @@ class Variable(object):
                     print(loss2.gradient())
 
         """
-        if self._ivar is None:
-            raise ValueError(
-                "%s is Empty, Please use fluid.dygraph.guard() as context " %
-                self.name)
         if self._ivar._grad_ivar() is None:
             raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
                              "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
@@ -768,10 +756,6 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
-        if self._ivar is None:
-            raise ValueError(
-                "%s is Empty, Please use fluid.dygraph.guard() as context " %
-                self.name)
         self._ivar._clear_gradient()
 
     def __str__(self):
