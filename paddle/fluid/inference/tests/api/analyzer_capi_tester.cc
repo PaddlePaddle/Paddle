@@ -119,13 +119,21 @@ void profile(bool use_mkldnn = false) {
   cfg.DisableGpu();
   cfg.SwitchUseFeedFetchOps(false);
   auto predictor = CreatePaddlePredictor(cfg);
-  auto input_names = predictor->GetInputNames();
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  std::vector<PaddleTensor> outputs;
+  for (auto &input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
+
+  /*auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;
   tensor_shape.assign(shape, shape + shape_size);
   input_t->Reshape(tensor_shape);
   input_t->copy_from_cpu(input);
-  CHECK(predictor->ZeroCopyRun());
+  CHECK(predictor->ZeroCopyRun());*/
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
