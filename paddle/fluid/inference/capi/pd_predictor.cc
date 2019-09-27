@@ -103,23 +103,23 @@ PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
   return ret;
 }
 
-/*bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
+bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
   return predictor->predictor->ZeroCopyRun();
-}*/
-bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config, float* inputs,
-                             int in_size, float** output, int** out_size,
-                             int* shape, int shape_size) {
-  auto predictor = paddle::CreatePaddlePredictor(config->config);
-  auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputTensor(input_names[0]);
-  std::vector<int> tensor_shape;
-  tensor_shape.assign(shape, shape + shape_size);
-  input_t->Reshape(tensor_shape);
-  input_t->copy_from_cpu(inputs);
-  CHECK(predictor->ZeroCopyRun());
-
-  return true;
 }
+// bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config, float* inputs,
+//                              int in_size, float** output, int** out_size,
+//                              int* shape, int shape_size) {
+//   auto predictor = paddle::CreatePaddlePredictor(config->config);
+//   auto input_names = predictor->GetInputNames();
+//   auto input_t = predictor->GetInputTensor(input_names[0]);
+//   std::vector<int> tensor_shape;
+//   tensor_shape.assign(shape, shape + shape_size);
+//   input_t->Reshape(tensor_shape);
+//   input_t->copy_from_cpu(inputs);
+//   CHECK(predictor->ZeroCopyRun());
+
+//   return true;
+// }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
