@@ -54,6 +54,8 @@ class FleetDistRunnerBase(object):
 
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
+        strategy.geo_sgd_mode = args.geo_sgd_mode
+        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
 
         avg_cost = self.net()
 
@@ -78,6 +80,8 @@ class FleetDistRunnerBase(object):
 
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
+        strategy.geo_sgd_mode = args.geo_sgd_mode
+        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
 
         avg_cost = self.net()
 
@@ -109,6 +113,8 @@ class TestFleetBase(unittest.TestCase):
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
+        self._geo_sgd = False
+        self._geo_sgd_need_push_nums = 2
         self._setup_config()
 
     def _find_free_port(self):
@@ -175,6 +181,10 @@ class TestFleetBase(unittest.TestCase):
         if self._sync_mode:
             tr_cmd += " --sync_mode"
             ps_cmd += " --sync_mode"
+
+        if self._geo_sgd:
+            tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
+                self._geo_sgd, self._geo_sgd_need_push_nums)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -259,7 +269,10 @@ def runtime_main(test_class):
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--sync_mode', action='store_true')
-
+    parser.add_argument(
+        '--geo_sgd_mode', type=bool, required=False, default=False)
+    parser.add_argument(
+        '--geo_need_push_nums', type=int, required=False, default=2)
     args = parser.parse_args()
 
     model = test_class()
