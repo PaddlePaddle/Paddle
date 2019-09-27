@@ -25,9 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-const char* GetModelPath(std::string a) {
-  return (a + "/" + "mobilenet").c_str();
-}
+const char* GetModelPath(std::string a) { return a.c_str(); }
 
 /*TEST(TensorRT_mobilenet, compare) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
