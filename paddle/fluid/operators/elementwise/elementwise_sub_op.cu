@@ -41,8 +41,9 @@ struct SameDimsElemwiseSub<platform::CUDADeviceContext, platform::float16> {
                   const framework::Tensor* x, const framework::Tensor* y,
                   framework::Tensor* z) {
     auto size = x->numel();
-    dim3 gird_size = dim3((size / 2 + TILE_SIZE - 1) / TILE_SIZE, 1);
-    dim3 block_size = dim3(TILE_SIZE, 1);
+    dim3 gird_size = dim3(
+        (size / 2 + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
     const half* x2 =
         reinterpret_cast<const half*>(x->data<platform::float16>());
     const half* y2 =
@@ -76,9 +77,10 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(TILE_SIZE, 1);
+  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
   auto size = x->numel();
-  dim3 gird_size = dim3((size + TILE_SIZE - 1) / TILE_SIZE, 1);
+  dim3 gird_size =
+      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<
       T><<<gird_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
