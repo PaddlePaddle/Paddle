@@ -48,9 +48,10 @@ TEST(PD_AnalysisPredictor, use_gpu) {
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-
+  LOG(INFO) << "before here! ";
   std::vector<std::vector<PaddleTensor>> inputs_all;
-  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  SetFakeImageInput(&inputs_all, FLAGS_infer_model + "/mobilenet", false,
+                    "__model__", "");
   auto a = inputs_all[0][0].shape;
   for (int i = 0; i < a.size(); ++i) {
     LOG(INFO) << a[i];
