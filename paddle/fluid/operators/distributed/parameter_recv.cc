@@ -152,14 +152,14 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
-      std::vector<int64_t> *var_slr_row = var_slr->mutable_rows();
+      auto *var_slr_row = var_slr->mutable_rows();
       width = var_slr->mutable_value()->dims()[1];
       height += var_slr->height();
       auto row_offset = abs_sections[i];
       VLOG(4) << "Recv split_var " << recv_var_name << " Row size "
               << var_slr_row->size();
       for (size_t j = 0; j < var_slr_row->size(); j++) {
-        new_rows.push_back(row_offset + var_slr_row->at(j));
+        new_rows.push_back(row_offset + *var_slr_row[j]);
       }
     }
     slr->set_rows(new_rows);
