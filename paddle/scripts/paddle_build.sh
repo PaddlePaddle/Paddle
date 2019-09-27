@@ -307,7 +307,6 @@ function build_base() {
     make install -j ${parallel_number}
 }
 
-
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -585,15 +584,18 @@ function card_test() {
         done
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                echo "ctest -I $i,,$NUM_PROC -R \"($testcases)\" -V &"
                 ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
             else
+                echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" &"
                 env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
+                echo "ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
                 ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
             else
-                # echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
+                echo "env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R \"($testcases)\" --output-on-failure &"
                 env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
             fi
         fi
@@ -960,6 +962,16 @@ EOF
     ./clean.sh
 }
 
+function test_fluid_lib_train() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for training ...
+    ========================================
+EOF
+    cd ${PADDLE_ROOT}/paddle/fluid/train/demo
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    ./clean.sh
+}
 
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
@@ -1053,6 +1065,11 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
+        test_fluid_lib_train
+        ;;
+      test_train)
+        gen_fluid_lib ${parallel_number}
+        test_fluid_lib_train
         ;;
       assert_api_approvals)
         assert_api_spec_approvals

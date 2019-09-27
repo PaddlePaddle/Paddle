@@ -104,9 +104,10 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
     PADDLE_ENFORCE_EQ(
-        input_dims[1], output_channels,
-        "the channel of X(%d) should be equal to the output_channels(%d)",
-        input_dims[1], output_channels);
+        input_dims[1], output_channels * pooled_height * pooled_width,
+        "the channel of X(%d) should be equal to the product of "
+        "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+        input_dims[1], output_channels, pooled_height, pooled_width);
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
                       "The pooled output height must be greater than 0");

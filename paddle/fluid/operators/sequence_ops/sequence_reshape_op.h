@@ -32,6 +32,9 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     int64_t in_width = in_dims[1];
     auto& in_lod = in->lod();
 
+    PADDLE_ENFORCE_EQ(in_lod.empty(), false,
+                      "Input(X) Tensor of SequenceReshapeOp does not contain "
+                      "LoD information.");
     PADDLE_ENFORCE_EQ(in_lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(

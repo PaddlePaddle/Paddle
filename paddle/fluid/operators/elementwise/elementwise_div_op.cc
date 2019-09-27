@@ -24,6 +24,22 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }
   std::string GetEquation() const override { return "Out = X / Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Divide two tensors element-wise";
+  }
 };
 
 class ElementwiseDivGradOpDescMaker : public framework::SingleGradOpDescMaker {
@@ -80,7 +96,8 @@ REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
 
 REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
                   ops::ElementwiseDivDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
+                  ops::ElementwiseDivDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
