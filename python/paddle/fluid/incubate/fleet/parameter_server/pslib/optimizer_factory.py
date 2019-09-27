@@ -245,7 +245,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["optimizer"] = "DownpourSGD"
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
-        opt_info["use_cvm"] = strategy.get("use_cvm", False)
+        opt_info["use_cvm"] = False
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["dump_slot"] = False
@@ -255,6 +255,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
+            opt_info["use_cvm"] = True
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
 
         for loss in losses:
