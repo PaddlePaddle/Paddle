@@ -145,7 +145,7 @@ inline void MergeVars(const std::string& var_name,
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
-    math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
+    math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
         merge_average;
     merge_average(dev_ctx, inputs, out_slr);
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
