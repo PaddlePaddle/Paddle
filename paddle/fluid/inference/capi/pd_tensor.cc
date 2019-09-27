@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
@@ -52,6 +55,10 @@ void PD_SetPaddleTensorShape(PD_Tensor* tensor, int* shape, int size) {
 void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
   std::vector<int> new_shape;
   new_shape.assign(shape, shape + size);
+  LOG(INFO) << new_shape[0];
+  LOG(INFO) << new_shape[1];
+  LOG(INFO) << new_shape[2];
+  LOG(INFO) << new_shape[3];
   tensor->tensor->Reshape(new_shape);
 }
 
