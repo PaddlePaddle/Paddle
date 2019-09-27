@@ -22,13 +22,14 @@ namespace operators {
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Emission",
-             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
-             " with shape [N x D], where N is the size of the "
-             "mini-batch and D is the total tag number. The unscaled emission "
-             "weight matrix for the linear chain CRF. When a Tensor input,"
-             "A Tensor with shape [N x S x D], where N is batch number,"
-             "S is max length of sequences, D is the total tag number.");
+    AddInput(
+        "Emission",
+        "(LoDTensor/Tensor<float>). When a LoDTensor input, A 2-D LoDTensor"
+        " with shape [N x D], where N is the size of the "
+        "mini-batch and D is the total tag number. The unscaled emission "
+        "weight matrix for the linear chain CRF. When a Tensor input,"
+        "A Tensor with shape [N x S x D], where N is batch size,"
+        "S is max length of sequences, D is the total tag number.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "

@@ -75,19 +75,10 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     auto emission_dims = emission_weights->dims();
 
     const Tensor* label = ctx.Input<framework::Tensor>("Label");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    Tensor emission_weights_tmp = ctx.AllocateTmpTensor<T, DeviceContext>(
-        emission_weights->dims(), dev_ctx);
-    emission_weights_tmp.ShareDataWith(*emission_weights);
-    Tensor label_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
-    label_tmp.ShareDataWith(*label);
-    Tensor emission_exps_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
-    emission_exps_tmp.ShareDataWith(*emission_exps);
-    Tensor alpha_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
-    alpha_tmp.ShareDataWith(*alpha);
+    Tensor emission_weights_tmp = *emission_weights;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor alpha_tmp = *alpha;
     size_t seq_num = 0;
     size_t batch_size;
     size_t tag_num;
@@ -239,24 +230,15 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     const Tensor* alpha = ctx.Input<Tensor>("Alpha");
     const T* ll_grad =
         ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
     auto* emission_grad_data =
         emission_grad->mutable_data<T>(platform::CPUPlace());
     memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
-    Tensor alpha_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
-    alpha_tmp.ShareDataWith(*alpha);
-    Tensor label_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
-    label_tmp.ShareDataWith(*label);
-    Tensor emission_exps_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
-    emission_exps_tmp.ShareDataWith(*emission_exps);
-    Tensor emission_grad_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_grad->dims(), dev_ctx);
-    emission_grad_tmp.ShareDataWith(*emission_grad);
+    Tensor alpha_tmp = *alpha;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor emission_grad_tmp = *emission_grad;
     // getting seq_num  using padding or not
     size_t seq_num = 0;
     framework::Vector<size_t> lod;

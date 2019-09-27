@@ -46,11 +46,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       const int64_t* length_data = length->data<int64_t>();
       auto in_dims = emission_weights->dims();
 
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      framework::Tensor emission_weights_tmp =
-          ctx.AllocateTmpTensor<T, DeviceContext>(emission_weights->dims(),
-                                                  dev_ctx);
-      emission_weights_tmp.ShareDataWith(*emission_weights);
+      Tensor emission_weights_tmp = *emission_weights;
       emission_weights_tmp.Resize({in_dims[0] * in_dims[1], in_dims[2]});
 
       decoded_path->Resize({in_dims[0] * in_dims[1], 1});
