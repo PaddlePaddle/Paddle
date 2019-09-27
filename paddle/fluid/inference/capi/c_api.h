@@ -34,6 +34,7 @@ extern "C" {
 
 // PaddleBuf
 typedef struct PD_PaddleBuf PD_PaddleBuf;
+typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 
 enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
 enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
@@ -153,7 +154,6 @@ PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
     PD_Predictor* predictor);
 
 // AnalysisConfig
-typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 
 enum Precision { kFloat32 = 0, kInt8, kHalf };
 
