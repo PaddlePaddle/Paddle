@@ -36,18 +36,21 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
   // profile(model_dir, true, FLAGS_use_tensorrt);
 }*/
 
-TEST(PD_AnalysisPredictor, compare) {
+TEST(Analysis_capi, compare) {
   std::string a = FLAGS_infer_model;
-  const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
+  const char* model_dir =
+      GetModelPath(FLAGS_infer_model + "/mobilenet/__model__");
+  const char* params_file =
+      GetModelPath(FLAGS_infer_model + "/mobilenet/__params__");
   LOG(INFO) << model_dir;
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  PD_SetModel(config, model_dir);
+  PD_SetModel(config, model_dir, params_file);
   LOG(INFO) << PD_ModelDir(config);
   PD_DisableGpu(config);
-  // PD_SetCpuMathLibraryNumThreads(config, 10);
+  PD_SetCpuMathLibraryNumThreads(config, 10);
   PD_SwitchUseFeedFetchOps(config, false);
-  // PD_SwitchSpecifyInputNames(config, true);
-  // PD_SwitchIrDebug(config, true);
+  PD_SwitchSpecifyInputNames(config, true);
+  PD_SwitchIrDebug(config, true);
   LOG(INFO) << "before here! ";
 
   const int batch_size = 1;
@@ -59,7 +62,7 @@ TEST(PD_AnalysisPredictor, compare) {
   int shape[4] = {batch_size, channels, height, width};
 
   AnalysisConfig c;
-  c.SetModel(model_dir);
+  c.SetModel(model_dir, params_file);
   LOG(INFO) << c.model_dir();
   c.DisableGpu();
   c.SwitchUseFeedFetchOps(false);
@@ -72,31 +75,6 @@ TEST(PD_AnalysisPredictor, compare) {
   input_t->Reshape(tensor_shape);
   input_t->copy_from_cpu(input);
   CHECK(predictor->ZeroCopyRun());
-
-  // PD_Predictor* predictor = PD_NewPredictor(config);
-  /*auto predictor = CreatePaddlePredictor(config->config);
-
-  int* size;
-  char** input_names = PD_GetPredictorInputNames(predictor, &size);
-  LOG(INFO) << input_names[0];
-  PD_DataType data_type = PD_FLOAT32;
-  PD_ZeroCopyTensor* tensor =
-      PD_GetPredictorInputTensor(predictor, input_names[0]);
-  PD_ZeroCopyTensorReshape(tensor, shape, 4);
-  PD_ZeroCopyFromCpu(tensor, input, data_type);
-  CHECK(PD_PredictorZeroCopyRun(predictor));*/
-
-  /*PD_Tensor* ten = PD_NewPaddleTensor();
-  ten->tensor = inputs_all[0][0];
-  PD_Tensor* out = PD_NewPaddleTensor();
-  int* outsize;
-  int insize = 1;
-  PD_PredictorRun(predictor, ten, insize, out, &outsize, 1);*/
-
-  /*std::vector<PaddleTensor> outputs;
-  for (auto& input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
-  }*/
 }
 
 }  // namespace inference
