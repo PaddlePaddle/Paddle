@@ -50,17 +50,17 @@ TEST(PD_AnalysisPredictor, use_gpu) {
   const int height = 224;
   const int width = 224;
   float input[batch_size * channels * height * width] = {0};
+  // std::vector<std::vector<PaddleTensor>> inputs_all;
+  // SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
   int shape[4] = {batch_size, channels, height, width};
   PD_Predictor* predictor = PD_NewPredictor(config);
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
   PD_ZeroCopyTensor** tensor = new PD_ZeroCopyTensor*[*size];
   PD_DataType data_type = PD_FLOAT32;
-  for (int i = 0; i < *size; ++i) {
-    tensor[i] = PD_GetPredictorInputTensor(predictor, input_names[i]);
-    PD_ZeroCopyTensorReshape(tensor[i], shape, 4);
-    PD_ZeroCopyFromCpu(tensor[i], input, data_type);
-  }
+  tensor[0] = PD_GetPredictorInputTensor(predictor, input_names[0]);
+  PD_ZeroCopyTensorReshape(tensor[0], shape, 4);
+  PD_ZeroCopyFromCpu(tensor[0], input, data_type);
   CHECK(PD_PredictorZeroCopyRun(predictor));
 
   /*std::vector<PaddleTensor> outputs;
