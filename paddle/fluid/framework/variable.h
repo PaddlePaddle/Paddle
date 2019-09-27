@@ -27,12 +27,12 @@ class Variable {
  public:
   template <typename T>
   const T& Get() const {
-    static_assert(
-        IsRegisteredVarType<T>(),
-        "Not registered type. Please register T inside var_type_traits.h");
-    PADDLE_ENFORCE(holder_ != nullptr, "Variable must hold some thing");
+    static_assert(IsRegisteredVarType<T>(),
+                  "Type T is not registered. Please register T inside "
+                  "var_type_traits.h.");
+    PADDLE_ENFORCE(holder_ != nullptr, "This Variable is not initialized.");
     PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
-                   "Variable must be type %s, the holding type is %s",
+                   "The Variable type must be %s, but the type it holds is %s.",
                    ToTypeName(VarTypeTrait<T>::kId),
                    ToTypeName(holder_->Type()));
     return *static_cast<const T*>(holder_->Ptr());
@@ -45,10 +45,10 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
-      PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
-                     "Variable must be type %s, the holding type is %s",
-                     ToTypeName(VarTypeTrait<T>::kId),
-                     ToTypeName(holder_->Type()));
+      PADDLE_ENFORCE(
+          holder_->Type() == VarTypeTrait<T>::kId,
+          "The Variable type must be %s, but the type it holds is %s.",
+          ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type()));
     }
     return static_cast<T*>(holder_->Ptr());
   }
@@ -61,7 +61,7 @@ class Variable {
   void Clear() { holder_.reset(); }
 
   int Type() const {
-    PADDLE_ENFORCE(holder_ != nullptr, "Must hold memory");
+    PADDLE_ENFORCE(holder_ != nullptr, "This Variable is not initialized.");
     return holder_->Type();
   }
 
@@ -87,9 +87,9 @@ class Variable {
   // parameter of Variable.
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    static_assert(
-        IsRegisteredVarType<T>(),
-        "Not registered type. Please register T inside var_type_traits.h");
+    static_assert(IsRegisteredVarType<T>(),
+                  "Type T is not registered. Please register T inside "
+                  "var_type_traits.h.");
     PlaceholderImpl() { this->Init(&obj_, VarTypeTrait<T>::kId); }
 
    private:

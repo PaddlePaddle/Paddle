@@ -1178,8 +1178,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
 proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     const ExecutionContext& ctx, const std::string& name) const {
   const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
-  PADDLE_ENFORCE_EQ(vars.empty(), false, "The Input %s is an empty variable.",
-                    name);
+  PADDLE_ENFORCE_EQ(
+      vars.empty(), false,
+      "The %s Op doesn't have Input %s or it is an empty Variable.",
+      this->type_, name);
   const Variable* var = vars.front();
   const Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
@@ -1188,13 +1190,16 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     t = &(var->Get<SelectedRows>().value());
   } else {
     PADDLE_THROW(
-        "The Input variable(%s) used to determine kernel data type "
+        "The Input Variable(%s) of %s Op used to determine kernel data type "
         "should be LoDTensor or SelectedRows",
-        name);
+        name, this->type_);
   }
-  PADDLE_ENFORCE_NOT_NULL(t, "The Input variable %s is not initialized.", name);
-  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                    "The Tensor of Input variable %s is not initialized", name);
+  // No need to check if t is nullptr, if so, var->isType or var->Get will throw
+  // error.
+  PADDLE_ENFORCE_EQ(
+      t->IsInitialized(), true,
+      "The Tensor in the %s Op's Input Variable %s is not initialized",
+      this->type_, name);
   return t->type();
 }
 
