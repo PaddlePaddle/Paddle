@@ -163,7 +163,7 @@ void profile(bool use_mkldnn = false) {
   PD_DataType data_type = PD_FLOAT32;
   PD_ZeroCopyTensor *tensor =
       PD_GetPredictorInputTensor(predictor, input_names[0]);
-  PD_ZeroCopyTensorReshape(tensor, shape, 4);
+  PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
   CHECK(PD_PredictorZeroCopyRun(predictor));
 
