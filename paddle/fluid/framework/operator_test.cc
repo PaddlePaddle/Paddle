@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/init.h"
 
 namespace paddle {

@@ -1191,14 +1191,14 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   } else {
     PADDLE_THROW(
         "The Input Variable(%s) of %s Op used to determine kernel data type "
-        "should be LoDTensor or SelectedRows",
+        "should be LoDTensor or SelectedRows.",
         name, this->type_);
   }
   // No need to check if t is nullptr, if so, var->isType or var->Get will throw
   // error.
   PADDLE_ENFORCE_EQ(
       t->IsInitialized(), true,
-      "The Tensor in the %s Op's Input Variable %s is not initialized",
+      "The Tensor in the %s Op's Input Variable %s is not initialized.",
       this->type_, name);
   return t->type();
 }
