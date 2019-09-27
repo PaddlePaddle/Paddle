@@ -20,6 +20,7 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
