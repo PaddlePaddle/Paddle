@@ -131,7 +131,7 @@ inline DEVICE half2 half2_div(const half2& a, const half2& b) {
     }                                                                          \
   }                                                                            \
   template <>                                                                  \
-  __global__ void SameDimsElemwise##Func##CUDAKernel<half>(                    \
+  inline __global__ void SameDimsElemwise##Func##CUDAKernel<half>(             \
       const half* x, const half* y, half* z, int64_t size) {                   \
     int start = threadIdx.x + blockDim.x * blockIdx.x;                         \
     int stride = blockDim.x * gridDim.x;                                       \
