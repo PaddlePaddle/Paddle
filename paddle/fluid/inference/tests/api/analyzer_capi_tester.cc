@@ -123,14 +123,15 @@ void profile(bool use_mkldnn = false) {
   // cfg.SetModel(model_dir, params_file);
   // auto predictor = CreatePaddlePredictor(cfg);
 
-  std::vector<std::vector<PaddleTensor>> inputs_all;
-  auto predictor = CreatePaddlePredictor(config.config);
-  SetFakeImageInput(&inputs_all, model_dir1, false, "__model__", "__params__");
+  // std::vector<std::vector<PaddleTensor>> inputs_all;
+  // auto predictor = CreatePaddlePredictor(config.config);
+  // SetFakeImageInput(&inputs_all, model_dir1, false, "__model__",
+  // "__params__");
 
-  std::vector<PaddleTensor> outputs;
-  for (auto &input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
-  }
+  // std::vector<PaddleTensor> outputs;
+  // for (auto &input : inputs_all) {
+  //   ASSERT_TRUE(predictor->Run(input, &outputs));
+  // }
 
   // std::vector<std::vector<PaddleTensor>> inputs_all;
   // SetInput(&inputs_all);
@@ -139,13 +140,13 @@ void profile(bool use_mkldnn = false) {
   //   ASSERT_TRUE(predictor->Run(input, &outputs));
   // }
 
-  // auto input_names = predictor->GetInputNames();
-  // auto input_t = predictor->GetInputTensor(input_names[0]);
-  // std::vector<int> tensor_shape;
-  // tensor_shape.assign(shape, shape + shape_size);
-  // input_t->Reshape(tensor_shape);
-  // input_t->copy_from_cpu(input);
-  // CHECK(predictor->ZeroCopyRun());
+  auto input_names = predictor->GetInputNames();
+  auto input_t = predictor->GetInputTensor(input_names[0]);
+  std::vector<int> tensor_shape;
+  tensor_shape.assign(shape, shape + shape_size);
+  input_t->Reshape(tensor_shape);
+  input_t->copy_from_cpu(input);
+  CHECK(predictor->ZeroCopyRun());
 }
 
 TEST(Analyzer_vis, profile) { profile(); }
