@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 
-std::vector<int64_t> get_new_data_from_shape_tensor(
+inline std::vector<int64_t> get_new_data_from_shape_tensor(
     const Tensor *new_data_tensor) {
   auto *new_data = new_data_tensor->data<int64_t>();
   if (platform::is_gpu_place(new_data_tensor->place())) {
@@ -35,7 +35,7 @@ std::vector<int64_t> get_new_data_from_shape_tensor(
   return vec_new_data;
 }
 
-std::vector<int64_t> get_new_shape_from_shape_tensorlist(
+inline std::vector<int64_t> get_new_shape_from_shape_tensorlist(
     const std::vector<const Tensor *> &list_new_shape_tensor) {
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
