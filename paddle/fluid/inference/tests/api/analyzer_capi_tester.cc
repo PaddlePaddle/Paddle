@@ -91,7 +91,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
   std::string model_dir1 = FLAGS_infer_model + "/model/__model__";
-  // std::string params_file = FLAGS_infer_model + "/model/__params__";
+  std::string params_file1 = FLAGS_infer_model + "/model/__params__";
   const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
   LOG(INFO) << model_dir;
   const char *params_file =
@@ -105,7 +105,7 @@ void profile(bool use_mkldnn = false) {
   // PD_SwitchSpecifyInputNames(&config, true);
   // PD_SwitchIrDebug(&config, true);
   // LOG(INFO) << "before here! ";
-  PD_SetModel(&config, *model_dir, *params_file);
+  PD_SetModel(&config, model_dir1.c_str(), params_file1.c_str());
 
   // const int batch_size = 1;
   // const int channels = 3;
