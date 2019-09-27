@@ -378,13 +378,13 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                 next_op = op_out.outputs[0]
                 if next_op.name() not in self._mul_ops:
                     self._remove_fake_quantize(graph, op)
+                else:
+                    quant_op = self._transform_to_quantize_mkldnn(graph, op)
+                    self._transform_to_mul_mkldnn(graph, next_op, quant_op)
 
         for op in graph.all_op_nodes():
             if op.name() in self._fake_dequantize_types:
-                op_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
-                prev_op = op_in.inputs[0]
-                if prev_op.name() not in self._mul_ops:
-                    self._remove_fake_dequantize(graph, op)
+                self._remove_fake_dequantize(graph, op)
         return graph
 
     def _remove_fake_quantize(self, graph, op):
@@ -465,7 +465,6 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'fc_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
@@ -532,6 +531,39 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                 if op.op().attr("pooling_type") == "avg":
                     ids.append(op.id())
         return set(ids)
+
+    def _transform_to_quantize_mkldnn(self, graph, op_node):
+        """
+        Transform fake_quantize_xx op to quantize mkldnn op in the graph.
+        """
+        input_var_node = graph._find_node_by_name(op_node.inputs,
+                                                  op_node.input("X")[0])
+        output_var_node = graph._find_node_by_name(op_node.outputs,
+                                                   op_node.output("Out")[0])
+        scale_in = self._s8_max / self._load_param(
+            self._scope, op_node.input("InScale")[0])[0]
+        quant_op_node = graph.create_op_node(
+            op_type='quantize',
+            attrs={
+                'data_format': 'MKLDNNLAYOUT',
+                'use_mkldnn': 1,
+                'Scale': scale_in,
+                'is_negative_input': 1
+            },
+            inputs={'Input': input_var_node},
+            outputs={'Output': output_var_node})
+        graph.link_to(input_var_node, quant_op_node)
+        graph.link_to(quant_op_node, output_var_node)
+        graph.safe_remove_nodes(op_node)
+        return quant_op_node
+
+    def _transform_to_mul_mkldnn(self, graph, op_node, quantize_node):
+        input_name = op_node.input("X")[0]
+        scale_in = quantize_node.op().attr("Scale")
+        op_node.set_attr("scale_y", [1.0])
+        op_node.set_attr("scale_x", scale_in)
+        op_node.set_attr("scale_out", 1.0)
+        op_node.set_attr("force_fp32_output", True)
 
     def _quantize_fp32_graph(self, graph):
         ir_pass = self._core.get_pass('cpu_quantize_placement_pass')
