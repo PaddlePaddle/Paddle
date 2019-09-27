@@ -121,9 +121,11 @@ PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
 }
 
 PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
-  auto predictor = new PD_Predictor();
-  predictor->predictor = paddle::CreatePaddlePredictor(config->config);
+  auto predictor = paddle::CreatePaddlePredictor(config->config);
 
-  return predictor;
+  // new PD_Predictor(config->config);
+  // predictor->predictor = paddle::CreatePaddlePredictor(config->config);
+
+  return dynamic_cast<PD_Predictor*>(predictor);
 }
 }  // extern "C"
