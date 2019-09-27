@@ -564,7 +564,7 @@ void GeoSgdCommunicator::SendThread() {
           auto before_send = GetCurrentUS();
           auto send_functor = distributed::ParameterSend<float>();
           auto &ctx = send_varname_to_ctx_.at(var_name);
-          send_functor(ctx, *delta_scope_.get(), true, 2);
+          send_functor(ctx, *delta_scope_.get(), true, 1);
 
           auto after_send = GetCurrentUS();
           VLOG(1) << "send " << var_name << " use time "
