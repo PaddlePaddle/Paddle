@@ -35,7 +35,7 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
   // profile(model_dir, true, FLAGS_use_tensorrt);
 }*/
 
-TEST(PD_AnalysisPredictor /* , use_gpu*/) {
+TEST(PD_AnalysisPredictor, compare) {
   // std::string a = FLAGS_infer_model;
   const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
   // const char* model_dir = GetModelPath(
