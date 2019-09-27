@@ -105,10 +105,10 @@ void profile(bool use_mkldnn = false) {
   PD_SwitchIrDebug(&config, true);
   LOG(INFO) << "before here! ";
 
-  const int batch_size = 1;
-  const int channels = 3;
-  const int height = 224;
-  const int width = 224;
+  // const int batch_size = 1;
+  // const int channels = 3;
+  // const int height = 224;
+  // const int width = 224;
   // float input[batch_size * channels * height * width] = {0};
 
   // int shape[4] = {batch_size, channels, height, width};
