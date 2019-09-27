@@ -418,8 +418,6 @@ template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
 template struct MergeAdd<platform::CPUDeviceContext, float>;
 template struct MergeAdd<platform::CPUDeviceContext, double>;
 
-template struct MergeAverage<platform::CPUDeviceContext, int>;
-template struct MergeAverage<platform::CPUDeviceContext, int64_t>;
 template struct MergeAverage<platform::CPUDeviceContext, float>;
 template struct MergeAverage<platform::CPUDeviceContext, double>;
 
