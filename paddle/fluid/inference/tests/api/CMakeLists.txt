@@ -289,4 +289,4 @@ endif()
 
 inference_analysis_test(analyzer_capi_tester SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/MOBILENET_MODEL_DIR)
+            ARGS --infer_model=${MOBILENET_MODEL_DIR}/mobilenet_model)
