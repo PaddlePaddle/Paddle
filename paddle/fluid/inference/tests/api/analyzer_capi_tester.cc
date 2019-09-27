@@ -36,10 +36,9 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
 
 TEST(PD_AnalysisPredictor, use_gpu) {
   std::string a = FLAGS_infer_model;
-  const char* model_dir = GetModelPath(FLAGS_infer_model + "/__model__");
-  const char* param_dir = GetModelPath(FLAGS_infer_model + "/__params__");
+  const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  PD_SetModel(config, model_dir, param_dir);
+  PD_SetModel(config, model_dir);
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   PD_SwitchUseFeedFetchOps(config, false);
