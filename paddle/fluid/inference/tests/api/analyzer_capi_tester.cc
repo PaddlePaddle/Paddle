@@ -114,7 +114,11 @@ void profile(bool use_mkldnn = false) {
   int shape[4] = {batch_size, channels, height, width};
 
   int shape_size = 4;
-  auto predictor = CreatePaddlePredictor(config.config);
+  AnalysisConfig cfg;
+  cfg.SetModel(model_dir, params_file);
+  cfg.DisableGpu();
+  cfg.SwitchUseFeedFetchOps(false);
+  auto predictor = CreatePaddlePredictor(cfg);
   auto input_names = predictor->GetInputNames();
   auto input_t = predictor->GetInputTensor(input_names[0]);
   std::vector<int> tensor_shape;
