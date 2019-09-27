@@ -90,22 +90,21 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
-  std::string model_dir = FLAGS_infer_model + "/model/__model__";
-  std::string params_file = FLAGS_infer_model + "/model/__params__";
-  // const char *model_dir = GetModelPath(FLAGS_infer_model +
-  // "/model/__model__");
-  // const char *params_file =
-  //     GetModelPath(FLAGS_infer_model + "/model/__params__");
+  // std::string model_dir = FLAGS_infer_model + "/model/__model__";
+  // std::string params_file = FLAGS_infer_model + "/model/__params__";
+  const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
+  const char *params_file =
+      GetModelPath(FLAGS_infer_model + "/model/__params__");
   // LOG(INFO) << model_dir;
-  // PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
-  // PD_SetModel(&config, model_dir, params_file);
+  PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
   // LOG(INFO) << PD_ModelDir(&config);
-  // PD_DisableGpu(&config);
+  PD_DisableGpu(&config);
   // PD_SetCpuMathLibraryNumThreads(&config, 10);
-  // PD_SwitchUseFeedFetchOps(&config, false);
+  PD_SwitchUseFeedFetchOps(&config, false);
   // PD_SwitchSpecifyInputNames(&config, true);
   // PD_SwitchIrDebug(&config, true);
   // LOG(INFO) << "before here! ";
+  PD_SetModel(&config, model_dir, params_file);
 
   // const int batch_size = 1;
   // const int channels = 3;
@@ -116,14 +115,14 @@ void profile(bool use_mkldnn = false) {
   // int shape[4] = {batch_size, channels, height, width};
 
   // int shape_size = 4;
-  AnalysisConfig cfg;
-  cfg.DisableGpu();
-  cfg.SwitchUseFeedFetchOps(false);
-  cfg.SetModel(model_dir, params_file);
+  // AnalysisConfig cfg;
+  // cfg.DisableGpu();
+  // cfg.SwitchUseFeedFetchOps(false);
+  // cfg.SetModel(model_dir, params_file);
   // auto predictor = CreatePaddlePredictor(cfg);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
-  auto predictor = CreatePaddlePredictor(cfg);
+  auto predictor = CreatePaddlePredictor(config);
   SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "__params__");
 
   std::vector<PaddleTensor> outputs;
