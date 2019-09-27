@@ -38,7 +38,7 @@ const char* GetModelPath(std::string a) { return a.c_str(); }
 
 TEST(PD_AnalysisPredictor, compare) {
   // std::string a = FLAGS_infer_model;
-  const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
+  /*const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
   // const char* model_dir = GetModelPath(
   //     "/paddle/Paddle/build/third_party/inference_demo/trt_tests_models/"
   //     "trt_inference_test_models/mobilenet/");
@@ -75,7 +75,24 @@ TEST(PD_AnalysisPredictor, compare) {
   PD_Tensor* out = PD_NewPaddleTensor();
   int* outsize;
   int insize = 1;
-  PD_PredictorRun(predictor, ten, insize, out, &outsize, 1);
+  PD_PredictorRun(predictor, ten, insize, out, &outsize, 1);*/
+
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  AnalysisConfig config;
+  config.DisableGpu();
+  // config.EnableUseGpu(100, 0);
+  // config.EnableCUDNN();
+  config.SetModel(model_dir);
+  // config.pass_builder()->TurnOnDebug();
+
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  auto predictor = CreatePaddlePredictor(config);
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
+  std::vector<PaddleTensor> outputs;
+  for (auto& input : inputs_all) {
+    ASSERT_TRUE(predictor->Run(input, &outputs));
+  }
 
   /*std::vector<PaddleTensor> outputs;
   for (auto& input : inputs_all) {
