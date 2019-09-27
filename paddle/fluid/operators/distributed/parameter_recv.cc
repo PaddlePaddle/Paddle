@@ -159,7 +159,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       VLOG(4) << "Recv split_var " << recv_var_name << " Row size "
               << var_slr_row->size();
       for (size_t j = 0; j < var_slr_row->size(); j++) {
-        new_rows.push_back(row_offset + *var_slr_row[j]);
+        new_rows.push_back(row_offset + (*var_slr_row)[j]);
       }
     }
     slr->set_rows(new_rows);
