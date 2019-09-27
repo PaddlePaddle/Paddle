@@ -126,6 +126,6 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   // new PD_Predictor(config->config);
   // predictor->predictor = paddle::CreatePaddlePredictor(config->config);
 
-  return dynamic_cast<PD_Predictor*>(predictor);
+  return static_cast<PD_Predictor*>(predictor);
 }
 }  // extern "C"
