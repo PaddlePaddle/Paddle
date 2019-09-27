@@ -4087,5 +4087,10 @@ def load_op_library(lib_filename):
             fluid.load_op_library('custom_op.so')
 
     """
+    if not os.path.exists(lib_filename) or lib_filename not in os.environ[
+            'LD_LIBRARY_PATH']:
+        raise ValueError("{} does not exists or not in LD_LIBRARY_PATH, "
+                         "please make sure the file exist or set it in "
+                         "LD_LIBRARY_PATH .".format(lib_filename))
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
