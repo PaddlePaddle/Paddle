@@ -39,7 +39,7 @@ using PD_PaddlePlace = paddle::PaddlePlace;
 using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
 struct PD_Predictor {
-  std::unique_ptr<paddle::PaddlePredictor> predictor;
+  std::unique_ptr<paddle::PaddlePredictor> predictor = nullptr;
 };
 
 struct PD_AnalysisConfig {
@@ -53,7 +53,7 @@ struct InTensorShape {
 };
 
 struct PD_ZeroCopyTensor {
-  std::unique_ptr<paddle::ZeroCopyTensor> tensor;
+  std::unique_ptr<paddle::ZeroCopyTensor> tensor = nullptr;
 };
 
 struct PD_Tensor {
