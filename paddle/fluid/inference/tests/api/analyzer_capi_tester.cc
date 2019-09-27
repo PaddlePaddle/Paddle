@@ -41,11 +41,11 @@ TEST(PD_AnalysisPredictor, compare) {
   const char* model_dir = GetModelPath(FLAGS_infer_model + "/mobilenet");
   LOG(INFO) << model_dir;
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  config = PD_SetModel(config, model_dir);
+  PD_SetModel(config, model_dir);
   LOG(INFO) << PD_ModelDir(config);
-  config = PD_DisableGpu(config);
+  PD_DisableGpu(config);
   // PD_SetCpuMathLibraryNumThreads(config, 10);
-  config = PD_SwitchUseFeedFetchOps(config, false);
+  PD_SwitchUseFeedFetchOps(config, false);
   // PD_SwitchSpecifyInputNames(config, true);
   // PD_SwitchIrDebug(config, true);
   LOG(INFO) << "before here! ";
