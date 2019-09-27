@@ -59,7 +59,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
       ctx->Attrs().Get<std::string>("data_layout"));
 
   PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                 "Input X must have 2 to 5 dimensions.");
+                 "ShapeError: Input X must have 2 to 5 dimensions. But received:"
+                 "the dimensions of Input X is [%d]", x_dims.size());
 
   const int64_t C =
       (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -68,8 +69,10 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
 
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL, "ShapeError: the dimension of scale must equal to 1."
+                 "But received: the dimension of scale is [%d]", scale_dim.size());
+  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL, "ShapeError: the dimension of bias must equal to 1."
+                 "But received: the dimension of scale is [%d]", bias_dim.size());
 
   bool check = true;
   if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
@@ -78,8 +81,10 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C, "ShapeError: the shape of scale must equal to [%d]"
+                     "But received: the shape of scale is [%d]", C, scale_dim[0]);
+    PADDLE_ENFORCE_EQ(bias_dim[0], C, "ShapeError: the shape of bias must equal to [%d]"
+                     "But received: the shape of bias is [%d]", C, bias_dim[0]);
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});

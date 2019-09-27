@@ -46,26 +46,35 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
-  PADDLE_ENFORCE(in_dims.size() == 4 || in_dims.size() == 5,
-                 "Conv intput should be 4-D or 5-D tensor, get %u",
+  PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
+                 "ShapeError: Conv intput should be 4-D or 5-D tensor, But received: %u",
                  in_dims.size());
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "Conv input dimension and filter dimension should be the same.");
-  PADDLE_ENFORCE(
-      in_dims.size() - strides.size() == 2U,
-      "Conv input dimension and strides dimension should be consistent.");
+      "ShapeError: Conv input dimension and filter dimension should be the same."
+      "But received: input dimension of Conv is [%d], the filter dimension" 
+      "of Conv is [%d]", in_dims.size(), filter_dims.size());
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() - strides.size() == 2U, true,
+      "ShapeError: Conv input dimension and strides dimension should be consistent."
+      "But received: the dimension of input minus the dimention of stride is 2, but the"
+      "input dimension of Conv is [%d], the stride dimention of Conv is [%d]", 
+      in_dims.size(), strides.size());
   PADDLE_ENFORCE_EQ(
       paddings.size(), strides.size(),
-      "Conv paddings dimension and Conv strides dimension should be the same.");
+      "ShapeError: Conv paddings dimension and Conv strides dimension should be the same."
+      "But received: The paddings dimention of Conv is [%d], the stride dimention of Conv is [%d]",
+      paddings.size(), strides.size());
 
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
-                    "The number of input channels should be equal to filter "
-                    "channels * groups.");
+                    "ShapeError: The number of input channels should be equal to filter "
+                    "channels * groups. But received: the input channels is [%d], the filter channel is [%d],"
+                    "the groups is [%d]", in_dims[1], filter_dims[1], groups);
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
-      "The number of output channels should be divided by groups.");
+      "ShapeError: The number of output channels should be divided by groups."
+      "But received: the output channels is [%d], the groups is [%d]", filter_dims[0], groups);
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
