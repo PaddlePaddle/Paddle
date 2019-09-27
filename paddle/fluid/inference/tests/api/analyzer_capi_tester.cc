@@ -120,7 +120,7 @@ void profile(bool use_mkldnn = false) {
   cfg.DisableGpu();
   cfg.SwitchUseFeedFetchOps(false);
   cfg.SetModel(model_dir, params_file);
-  auto predictor = CreatePaddlePredictor(cfg);
+  // auto predictor = CreatePaddlePredictor(cfg);
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(cfg);
