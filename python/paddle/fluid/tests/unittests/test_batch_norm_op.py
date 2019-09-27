@@ -534,10 +534,10 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
 class TestBatchNormOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # the input of conv2d must be Variable.
+            # the input of batch_norm must be Variable.
             x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
-            # the input dtype of conv2d must be float32 or float64
+            # the input dtype of batch_norm must be float32 or float64
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.batch_norm, x2)
 

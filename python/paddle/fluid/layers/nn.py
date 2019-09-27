@@ -2432,7 +2432,8 @@ def conv2d(input,
         num_filter_channels = num_channels
     else:
         if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
+            raise ValueError("ShapeError: the channel of input must be divisible by groups,"
+                             "But received: the channel of input is {}, the groups is {}".format(num_channels, groups))
         num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
