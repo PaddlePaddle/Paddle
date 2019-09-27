@@ -69,7 +69,7 @@ TEST(PD_AnalysisPredictor, compare) {
       PD_GetPredictorInputTensor(predictor, input_names[0]);
   PD_ZeroCopyTensorReshape(tensor, shape, 4);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
-  // CHECK(PD_PredictorZeroCopyRun(predictor));
+  CHECK(PD_PredictorZeroCopyRun(predictor));
   /*PD_Tensor* ten = PD_NewPaddleTensor();
   ten->tensor = inputs_all[0][0];
   PD_Tensor* out = PD_NewPaddleTensor();
