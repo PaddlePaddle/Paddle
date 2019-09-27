@@ -48,6 +48,28 @@ struct SameDimsElemwiseMul<
   }
 };
 
+class ElementwiseMulOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Mul"; }
+  std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Multiply two tensors element-wise";
+  }
+};
+
 class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -64,12 +86,6 @@ class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
     return op;
   }
-};
-
-class ElementwiseMulOpMaker : public ElementwiseOpMaker {
- protected:
-  virtual std::string GetName() const { return "Mul"; }
-  virtual std::string GetEquation() const { return "Out = X \\\\odot Y"; }
 };
 
 class ElementwiseMulDoubleGradDescMaker

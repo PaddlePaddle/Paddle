@@ -95,6 +95,9 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
 
     auto lod = x->lod();
     auto dims = x->dims();
+    PADDLE_ENFORCE_EQ(lod.empty(), false,
+                      "Input(X) Tensor of SequenceSoftmaxOp does not contain "
+                      "LoD information.");
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_GT(

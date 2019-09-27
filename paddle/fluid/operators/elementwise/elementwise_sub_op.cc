@@ -47,6 +47,27 @@ struct SameDimsElemwiseSub<
     eigen_z.device(place) = eigen_x - eigen_y;
   }
 };
+class ElementwiseSubOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Sub"; }
+  std::string GetEquation() const override { return "Out = X - Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Substract two tensors element-wise";
+  }
+};
 
 class ElementwiseSubDoubleGradDescMaker
     : public framework::SingleGradOpDescMaker {
@@ -74,8 +95,7 @@ class ElementwiseSubDoubleGradDescMaker
 
 namespace ops = paddle::operators;
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, "Sub",
-                                           "Out = X - Y");
+REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 REGISTER_OPERATOR(elementwise_sub_grad, ops::ElementwiseOpExplicitGrad,
                   ops::ElementwiseGradOpInplace,

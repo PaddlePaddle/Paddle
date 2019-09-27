@@ -52,6 +52,22 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }
   std::string GetEquation() const override { return "Out = X / Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Divide two tensors element-wise";
+  }
 };
 
 class ElementwiseDivGradOpDescMaker : public framework::SingleGradOpDescMaker {
