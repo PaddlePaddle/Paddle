@@ -48,13 +48,18 @@ TEST(PD_AnalysisPredictor, use_gpu) {
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
 
+  std::vector<std::vector<PaddleTensor>> inputs_all;
+  SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+  auto a = inputs_all[0][0].shape;
+  for (int i = 0; i < a.size(); ++i) {
+    LOG(INFO) << a[i];
+  }
   const int batch_size = 1;
   const int channels = 3;
   const int height = 224;
   const int width = 224;
   float input[batch_size * channels * height * width] = {0};
-  // std::vector<std::vector<PaddleTensor>> inputs_all;
-  // SetFakeImageInput(&inputs_all, model_dir, false, "__model__", "");
+
   int shape[4] = {batch_size, channels, height, width};
   PD_Predictor* predictor = PD_NewPredictor(config);
   int* size;
