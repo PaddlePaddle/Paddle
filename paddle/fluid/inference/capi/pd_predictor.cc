@@ -91,14 +91,14 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
-  PD_ZeroCopyTensor* ret;
+  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor = predictor->predictor->GetInputTensor(std::string(name)).get();
   return ret;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
-  PD_ZeroCopyTensor* ret;
+  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor = predictor->predictor->GetOutputTensor(std::string(name)).get();
   return ret;
 }
