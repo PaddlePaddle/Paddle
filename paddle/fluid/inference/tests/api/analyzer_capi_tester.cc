@@ -108,15 +108,15 @@ void profile(bool use_mkldnn = false) {
   // LOG(INFO) << "before here! ";
   PD_SetModel(&config, model_dir1.c_str(), params_file1.c_str());
 
-  // const int batch_size = 1;
-  // const int channels = 3;
-  // const int height = 224;
-  // const int width = 224;
-  // float input[batch_size * channels * height * width] = {0};
+  const int batch_size = 1;
+  const int channels = 3;
+  const int height = 224;
+  const int width = 224;
+  float input[batch_size * channels * height * width] = {0};
 
-  // int shape[4] = {batch_size, channels, height, width};
+  int shape[4] = {batch_size, channels, height, width};
 
-  // int shape_size = 4;
+  int shape_size = 4;
   // AnalysisConfig cfg;
   // cfg.DisableGpu();
   // cfg.SwitchUseFeedFetchOps(false);
