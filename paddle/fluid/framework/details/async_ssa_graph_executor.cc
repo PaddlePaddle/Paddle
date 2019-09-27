@@ -87,8 +87,8 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
     VLOG(3) << "this is distribute mode, will use communicator";
 
     auto *instance = operators::distributed::Communicator::InitInstance<
-         operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
-                                                    recv_varname_to_ctx, scope);
+        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
+                                                   recv_varname_to_ctx, scope);
     if (!instance->IsRunning()) instance->Start();
   }
 #endif
