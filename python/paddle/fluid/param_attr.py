@@ -27,8 +27,8 @@ __all__ = [
 
 class ParamAttr(object):
     """
-    Create a object to represent the attribute of parameter. The attributes are
-    including: name, initializer, learning rate, regularizer, trainable, gradient clip,
+    Create a object to represent the attribute of parameter. The attributes are:
+    name, initializer, learning rate, regularizer, trainable, gradient clip,
     and model average.
 
     Parameters:
