@@ -5074,6 +5074,15 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     """
     helper = LayerHelper('reduce_sum', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(
+            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in reduce_sum  must be float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(input.dtype)))
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
@@ -5133,6 +5142,15 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_mean must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(
+            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in reduce_mean  must be float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(input.dtype)))
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]

@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestSumOp(OpTest):
@@ -409,6 +412,30 @@ class Test1DReduceWithAxes1(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestReduceSumOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.reduce_sum, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
+
+
+class TestReduceMeanOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.reduce_mean, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
 
 if __name__ == '__main__':

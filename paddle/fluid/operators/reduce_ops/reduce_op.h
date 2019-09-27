@@ -165,13 +165,27 @@ class ReduceOp : public framework::OperatorWithKernel {
                    "Output(Out) of ReduceOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
+    PADDLE_ENFORCE_LE(x_rank, 6,
+                      "ShapeError: The input tensor X's dimensions of Reduce "
+                      "should be less equal than 6. But received X's "
+                      "dimensions = %d, X's shape = [%s].",
+                      x_rank, x_dims);
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+
+    PADDLE_ENFORCE_GT(
+        dims.size(), 0,
+        "ShapeError: The input dim dimensions of Reduce "
+        "shoud be greater than 0. But received the dim dimesions of Reduce "
+        " = %d",
+        dims.size());
+
     for (size_t i = 0; i < dims.size(); ++i) {
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          "The dim should be in the range [-rank(input), rank(input)).");
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        "ShapeError: The reduce dim index  should be in the "
+                        "range [-dimension(X), dimension(X)]."
+                        "which dimesion = %d, But received dim index = %d",
+                        x_rank, dims[i]);
     }
     sort(dims.begin(), dims.end());
     bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
@@ -202,7 +216,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
-      if (dims[0] != 0) {
+      if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
         ctx->ShareLoD("X", /*->*/ "Out");
       }
@@ -223,10 +237,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        "ShapeError: The reduce dim index  should be in the "
+                        "range [-dimension(X), dimension(X)]."
+                        "which dimesion = %d, But received dim index = %d",
+                        x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          "The dim should be in the range [-rank(input), rank(input)).");
     }
     sort(dims.begin(), dims.end());
     auto x_grad_name = framework::GradVarName("X");
