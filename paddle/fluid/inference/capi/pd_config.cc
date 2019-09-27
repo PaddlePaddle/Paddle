@@ -30,7 +30,7 @@ extern "C" {
 
 PD_AnalysisConfig* PD_NewAnalysisConfig() { return new PD_AnalysisConfig; }
 
-void PD_DeleteAnalysisConfig(PD_AnalysisConfig** config) {
+void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
   if (config) {
     delete config;
     config = nullptr;
