@@ -25,7 +25,7 @@ paddle.fluid.Variable.detach (ArgSpec(args=['self'], varargs=None, keywords=None
 paddle.fluid.Variable.gradient (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '86b246bfaf20f3058e91927abbcf9fb9'))
 paddle.fluid.Variable.numpy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7536e8feb56d827875943e7f01d406fc'))
 paddle.fluid.Variable.to_string (ArgSpec(args=['self', 'throw_on_error', 'with_details'], varargs=None, keywords=None, defaults=(False,)), ('document', '31f359a2c074f26dc0ffff296fc3983f'))
-paddle.fluid.load_op_library (ArgSpec(args=['lib_filename'], varargs=None, keywords=None, defaults=None), ('document', '7ae1e8589ad2234c41398dc6d87fa23d'))
+paddle.fluid.load_op_library (ArgSpec(args=['lib_filename'], varargs=None, keywords=None, defaults=None), ('document', 'c009b2ea5fb6520f2d2f53aafec788e0'))
 paddle.fluid.Executor ('paddle.fluid.executor.Executor', ('document', '34e8c1769313fbeff7817212dda6259e'))
 paddle.fluid.Executor.__init__ (ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.Executor.close (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '3a584496aa1343f36eebf3c46b323a74'))

@@ -4312,7 +4312,7 @@ def load_op_library(lib_filename):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            fluid.load_op_library('custom_op.so')
+            #fluid.load_op_library('custom_op.so')
 
     """
     if not os.path.exists(lib_filename) or lib_filename not in os.environ[
