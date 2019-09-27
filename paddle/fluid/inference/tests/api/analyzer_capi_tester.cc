@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -72,9 +73,9 @@ TEST(PD_AnalysisPredictor, compare) {
   PD_Tensor* ten = PD_NewPaddleTensor();
   ten->tensor = inputs_all[0][0];
   PD_Tensor* out = PD_NewPaddleTensor();
-  int outsize;
+  int* outsize;
   int insize = 1;
-  PD_PredictorRun(predictor, ten, insize, out, outsize, 1);
+  PD_PredictorRun(predictor, ten, insize, out, &outsize, 1);
 
   /*std::vector<PaddleTensor> outputs;
   for (auto& input : inputs_all) {
