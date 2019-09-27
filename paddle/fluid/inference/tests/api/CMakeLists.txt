@@ -287,6 +287,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
 endif()
 
-inference_analysis_test(analyzer_capi_tester SRCS analyzer_capi_tester.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${MOBILENET_INSTALL_DIR}/inference-vis-demos%2Fmobilenet)
+set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
+if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
+    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+endif()
+inference_analysis_api_test_with_refer_result(test_analyzer_capi ${MOBILENET_INSTALL_DIR} analyzer_capi_tester.cc)
