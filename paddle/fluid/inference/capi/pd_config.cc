@@ -42,8 +42,8 @@ void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
 
 PD_AnalysisConfig* PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
                                const char* params_path) {
-  PADDLE_ENFORCE(model_dir != nullptr,
-                 "Input(model_dir) of PD_SetModel should not be null.");
+  // PADDLE_ENFORCE(model_dir != nullptr,
+  //                "Input(model_dir) of PD_SetModel should not be null.");
   LOG(INFO) << model_dir;
   LOG(INFO) << std::string(model_dir);
   if (!params_path) {
