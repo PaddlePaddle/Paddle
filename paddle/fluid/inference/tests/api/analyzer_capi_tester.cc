@@ -105,7 +105,7 @@ void profile(bool use_mkldnn = false) {
   // PD_SwitchSpecifyInputNames(&config, true);
   // PD_SwitchIrDebug(&config, true);
   // LOG(INFO) << "before here! ";
-  PD_SetModel(&config, model_dir, params_file);
+  PD_SetModel(&config, *model_dir, *params_file);
 
   // const int batch_size = 1;
   // const int channels = 3;
