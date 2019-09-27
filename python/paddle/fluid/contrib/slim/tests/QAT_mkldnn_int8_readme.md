@@ -54,7 +54,7 @@ Notes:
 | Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff  | MKL-DNN INT8 Top5 Accuracy | Top5 Diff |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------:| :------------------------: | :--------:|
 | ResNet50     |         76.55%         |          93.04%        |           76.31%          |     0.24%   |           92.99%           |   0.12%   |
-| MobileNet-V1 |         70.83%         |          89.56%        |           70.52%          |    -0.25%   |           89.42%           |   0.12%  |
+| MobileNet-V1 |         70.77%         |          89.54%        |           70.52%          |    -0.25%   |           89.42%           |   0.12%  |
 
 >**III. QAT2 Python Performance on Intel(R) Xeon(R) Gold 6248**
 
