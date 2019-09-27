@@ -78,8 +78,12 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
   } else {
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(PoolOutputSize(
-          in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+      if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
+        output_shape.push_back(-1);
+      } else {
+        output_shape.push_back(PoolOutputSize(
+            in_x_dims[i + 2], ksize[i], paddings[i], strides[i], ceil_mode));
+      }
     }
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
