@@ -385,7 +385,6 @@ class GeoSgdCommunicator : public Communicator {
   std::shared_ptr<Scope>
       old_scope_;  // parameter local, storage the param after last recv
   std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
-
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
 

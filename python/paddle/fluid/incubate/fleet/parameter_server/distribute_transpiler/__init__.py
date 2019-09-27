@@ -67,10 +67,6 @@ class DistributedTranspiler(Fleet):
             wait_server_ready(fleet.server_endpoints(to_string=False))
 
         if not self._transpile_config.sync_mode:
-            self._communicator = Communicator(self.main_program)
-
-            if not self._communicator.is_running():
-                self._communicator.start()
             if self._transpile_config.geo_sgd_mode:
                 self._communicator = Communicator(
                     self.main_program, self.vars_info,
@@ -79,7 +75,9 @@ class DistributedTranspiler(Fleet):
             else:
                 warnings.warn("communicator has been initialized, skip")
                 self._communicator = Communicator(self.main_program)
-            self._communicator.start()
+
+            if not self._communicator.is_running():
+                self._communicator.start()
 
     def init_server(self, model_dir=None):
         """
