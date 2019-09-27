@@ -120,32 +120,32 @@ inline DEVICE half2 half2_div(const half2& a, const half2& b) {
 #endif
 }
 
-#define DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Func, expr, FP16Function)             \
-  template <typename T>                                                        \
-  __global__ void SameDimsElemwise##Func##CUDAKernel(const T* x, const T* y,   \
-                                                     T* z, int64_t size) {     \
-    int col = blockIdx.x * blockDim.x + threadIdx.x;                           \
-    while (col < size) {                                                       \
-      z[col] = x[col] expr y[col];                                             \
-      col += blockDim.x * gridDim.x;                                           \
-    }                                                                          \
-  }                                                                            \
-  template <>                                                                  \
-  inline __global__ void SameDimsElemwise##Func##CUDAKernel<half>(             \
-      const half* x, const half* y, half* z, int64_t size) {                   \
-    int start = threadIdx.x + blockDim.x * blockIdx.x;                         \
-    int stride = blockDim.x * gridDim.x;                                       \
-    int n2 = size / 2;                                                         \
-    const half2* x2 = reinterpret_cast<const half2*>(x);                       \
-    const half2* y2 = reinterpret_cast<const half2*>(y);                       \
-    half2* z2 = reinterpret_cast<half2*>(z);                                   \
-    for (int i = start; i < n2; i += stride) {                                 \
-      z2[i] = FP16Function(x2[i], y2[i]);                                      \
-    }                                                                          \
-    if (start == 0 && (size % 2)) {                                            \
-      z[size - 1] =                                                            \
-          __float2half(__half2float(x[size - 1]) + __half2float(y[size - 1])); \
-    }                                                                          \
+#define DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Func, expr, FP16Function)           \
+  template <typename T>                                                      \
+  __global__ void SameDimsElemwise##Func##CUDAKernel(const T* x, const T* y, \
+                                                     T* z, int64_t size) {   \
+    int col = blockIdx.x * blockDim.x + threadIdx.x;                         \
+    while (col < size) {                                                     \
+      z[col] = x[col] expr y[col];                                           \
+      col += blockDim.x * gridDim.x;                                         \
+    }                                                                        \
+  }                                                                          \
+  template <>                                                                \
+  inline __global__ void SameDimsElemwise##Func##CUDAKernel<half>(           \
+      const half* x, const half* y, half* z, int64_t size) {                 \
+    int start = threadIdx.x + blockDim.x * blockIdx.x;                       \
+    int stride = blockDim.x * gridDim.x;                                     \
+    int n2 = size / 2;                                                       \
+    const half2* x2 = reinterpret_cast<const half2*>(x);                     \
+    const half2* y2 = reinterpret_cast<const half2*>(y);                     \
+    half2* z2 = reinterpret_cast<half2*>(z);                                 \
+    for (int i = start; i < n2; i += stride) {                               \
+      z2[i] = FP16Function(x2[i], y2[i]);                                    \
+    }                                                                        \
+    if (start == 0 && (size % 2)) {                                          \
+      z[size - 1] = __float2half(__half2float(x[size - 1])                   \
+                                     expr __half2float(y[size - 1]));        \
+    }                                                                        \
   }
 DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Add, +, half2_add)
 DEFINE_SIMPLE_CUDA_BINARY_KERNEL(Sub, -, half2_sub)
