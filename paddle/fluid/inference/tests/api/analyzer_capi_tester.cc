@@ -60,7 +60,12 @@ TEST(PD_AnalysisPredictor, compare) {
   float input[batch_size * channels * height * width] = {0};
 
   int shape[4] = {batch_size, channels, height, width};
-  PD_Predictor* predictor = PD_NewPredictor(config);
+  float* out;
+  int* out_size;
+  PD_PredictorZeroCopyRun(config, input, batch_size * channels * height * width,
+                          &out, &out_size, shape, 4);
+  // PD_Predictor* predictor = PD_NewPredictor(config);
+  /*auto predictor = CreatePaddlePredictor(config->config);
 
   int* size;
   char** input_names = PD_GetPredictorInputNames(predictor, &size);
@@ -70,7 +75,7 @@ TEST(PD_AnalysisPredictor, compare) {
       PD_GetPredictorInputTensor(predictor, input_names[0]);
   PD_ZeroCopyTensorReshape(tensor, shape, 4);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
-  CHECK(PD_PredictorZeroCopyRun(predictor));
+  CHECK(PD_PredictorZeroCopyRun(predictor));*/
 
   /*PD_Tensor* ten = PD_NewPaddleTensor();
   ten->tensor = inputs_all[0][0];
