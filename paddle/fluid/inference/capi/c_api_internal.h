@@ -42,7 +42,7 @@ struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor = nullptr;
 
   explicit PD_Predictor(paddle::AnalysisConfig config) {
-    predictor = paddle::CreatePaddlePredictor(config->config);
+    predictor = paddle::CreatePaddlePredictor(config.config);
   }
 };
 
