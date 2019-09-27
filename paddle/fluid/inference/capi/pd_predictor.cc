@@ -104,8 +104,7 @@ PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
 }
 
 bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
-  std::unique_ptr<paddle::AnalysisPredictor> pre(predictor->predictor);
-  return pre->ZeroCopyRun();
+  return predictor->predictor->ZeroCopyRun();
 }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
