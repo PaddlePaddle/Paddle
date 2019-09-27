@@ -60,8 +60,8 @@ Record ProcessALine(const std::string &line) {
 const char *GetModelPath(std::string str) { return str.c_str(); }
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model + "/__model__",
-                FLAGS_infer_model + "/__params__");
+  cfg->SetModel(FLAGS_infer_model + "/model/__model__",
+                FLAGS_infer_model + "/model/__params__");
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);
@@ -91,8 +91,9 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
   std::string a = FLAGS_infer_model;
-  const char *model_dir = GetModelPath(FLAGS_infer_model + "/__model__");
-  const char *params_file = GetModelPath(FLAGS_infer_model + "/__params__");
+  const char *model_dir = GetModelPath(FLAGS_infer_model + "/model/__model__");
+  const char *params_file =
+      GetModelPath(FLAGS_infer_model + "/model/__params__");
   LOG(INFO) << model_dir;
   PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
   PD_SetModel(&config, model_dir, params_file);
