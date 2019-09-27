@@ -4083,8 +4083,8 @@ def load_op_library(lib_filename):
     Examples:
         .. code-block:: python
 
-        import paddle.fluid as fluid
-        fluid.load_op_library('custom_op.so')
+            import paddle.fluid as fluid
+            fluid.load_op_library('custom_op.so')
 
     """
     core.load_op_library(lib_filename)
