@@ -96,8 +96,8 @@ void zero_copy_run() {
   PD_SwitchSpecifyInputNames(&config, true);
   PD_SwitchIrDebug(&config, true);
   PD_SetModel(&config, model_dir.c_str());  //, params_file1.c_str());
-  bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
-  bool specify_input_names = PD_SpecifyInputName(config);
+  bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(&config);
+  bool specify_input_names = PD_SpecifyInputName(&config);
 
   const int batch_size = 1;
   const int channels = 3;
@@ -132,33 +132,46 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   int num_thread = PD_CpuMathLibraryNumThreads(config);
+  CHECK(10 == num_thread) << "NO";
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str());
-  PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir"));
+  PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir").c_str());
   const char *model_dir_ = PD_ModelDir(config);
+  LOG(INFO) << model_dir;
   PD_EnableUseGpu(config, 100, 0);
   bool use_gpu = PD_UseGpu(config);
+  CHECK(use_gpu) << "NO";
   int device = PD_GpuDeviceId(config);
-  int InitSize = PD_MemoryPoolInitSizeMb(config);
+  CHECK(0 == device) << "NO";
+  int init_size = PD_MemoryPoolInitSizeMb(config);
+  CHECK(100 == init_size) << "NO";
   float frac = PD_FractionOfGpuMemoryForPool(config);
+  LOG(INFO) << frac;
   PD_EnableCUDNN(config);
   bool cudnn = PD_CudnnEnabled(config);
+  CHECK(cudnn) << "NO";
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
+  CHECK(ir_optim) << "NO";
   PD_EnableTensorRtEngine(config);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
+  CHECK(trt_enable) << "NO";
   /*PD_EnableAnakinEngine(config, );
   bool anakin_enable = PD_AnakinEngineEnabled(config);*/
   PD_EnableNgraph(config);
   bool ngraph_enable = PD_NgraphEnabled(config);
+  CHECK(ngraph_enable) << "NO";
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
+  CHECK(memory_optim_enable) << "NO";
   PD_EnableProfile(cnofig);
   bool profiler_enable = PD_ProfileEnabled(config);
+  CHECK(profiler_enable) << "NO";
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
+  CHECK(is_valid) << "NO";
   PD_DeleteAnalysisConfig(config);
 }
 
@@ -173,9 +186,12 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SwitchIrDebug(config, true);
   PD_EnableMKLDNN(config);
   bool mkldnn_enable = PD_MkldnnEnabled(config);
+  CHECK(mkldnn_enable) << "NO";
   PD_EnableMkldnnQuantizer(config);
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
+  CHECK(quantizer_enable) << "NO";
   PD_SetModel(config, model_dir.c_str());
+  PD_DeleteAnalysisConfig(config);
 }
 #endif
 
