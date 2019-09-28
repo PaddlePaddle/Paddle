@@ -54,7 +54,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
           rank, label_dims.size(),
           "ShapeError: If Attr(soft_label) == true, Input(X) and Input(Label) "
           "shall have the same dimensions. But received: the dimensions of Input(X) is [%d],"
-          "the dimensions of Input(Label) is [%d]", rank, label_dims.size());
+          "the shape of Input(X) is [%s], the dimensions of Input(Label) is [%d], the shape of"
+          "Input(Label) is [%s]", rank, x_dims, label_dims.size(), label_dims);
+
       if (check) {
         PADDLE_ENFORCE_EQ(x_dims[rank - 1], label_dims[rank - 1],
                           "ShapeError: If Attr(soft_label) == true, the last dimension of "
@@ -71,8 +73,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             rank, label_dims.size() + 1,
             "ShapeError: The rank of Input(X) should be equal to Input(Label) plus 1."
-            "But received: The dimension of Input(X) is [%d], The dimension of Input(Label) is [%d]",
-            rank, label_dims.size());
+            "But received: The dimension of Input(X) is [%d], the shape of Input(X) is [%s],"
+            "the dimension of Input(Label) is [%d], the shape of Input(Label) is [%s]",
+            rank, x_dims, label_dims.size(), label_dims);
       }
     }
 
