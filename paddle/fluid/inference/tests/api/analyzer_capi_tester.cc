@@ -97,7 +97,9 @@ void zero_copy_run() {
   PD_SwitchIrDebug(&config, true);
   PD_SetModel(&config, model_dir.c_str());  //, params_file1.c_str());
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(&config);
+  CHECK(!use_feed_fetch) << "NO";
   bool specify_input_names = PD_SpecifyInputName(&config);
+  CHECK(specify_input_names) << "NO";
 
   const int batch_size = 1;
   const int channels = 3;
@@ -139,7 +141,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SetModel(config, model_dir.c_str());
   PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir").c_str());
   const char *model_dir_ = PD_ModelDir(config);
-  LOG(INFO) << model_dir;
+  LOG(INFO) << model_dir_;
   PD_EnableUseGpu(config, 100, 0);
   bool use_gpu = PD_UseGpu(config);
   CHECK(use_gpu) << "NO";
@@ -166,7 +168,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   CHECK(memory_optim_enable) << "NO";
-  PD_EnableProfile(cnofig);
+  PD_EnableProfile(config);
   bool profiler_enable = PD_ProfileEnabled(config);
   CHECK(profiler_enable) << "NO";
   PD_SetInValid(config);
