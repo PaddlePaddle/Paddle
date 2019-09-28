@@ -129,7 +129,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   std::map<std::string, std::unique_ptr<ZeroCopyTensor>> in;
   for (int i = 0; i < in_size; ++i) {
     auto input_t = predictor->GetInputTensor(inputs[i]);
-    vector<int> tensor_shape;
+    std::vector<int> tensor_shape;
     tensor_shape.assign(inputs[i].shape,
                         inputs[i].shape + inputs[i].shape_size);
     input_t->Reshape(tensor_shape);
