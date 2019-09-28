@@ -154,7 +154,8 @@ void profile(bool use_mkldnn = false) {
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
   inputs->dtype = PD_FLOAT32;
-  const char *tmp_name = GetModelPath("x") inputs->name = &tmp_name;
+  const char *tmp_name = GetModelPath("x");
+  inputs->name = &tmp_name;
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 
