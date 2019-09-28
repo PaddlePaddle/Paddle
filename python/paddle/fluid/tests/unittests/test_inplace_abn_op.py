@@ -38,7 +38,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                       place,
                       layout,
                       seed,
-                      inplace_abn=False,
                       only_forward=False,
                       activation="identity",
                       alpha=1.0,
@@ -57,7 +56,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     stop_gradient=False)
                 bn = fluid.layers.batch_norm(
                     data,
-                    in_place=inplace_abn,
                     act=activation,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -66,6 +64,9 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     data_layout=layout,
                     is_test=only_forward,
                     fuse_alpha=alpha)
+                # NOTE: in inplace mode input and output of bn
+                # may have same name, multiply 1. to generate 
+                # a new Variable for fetch
                 bn = bn * 1.
 
                 sigmoid = fluid.layers.sigmoid(bn)
@@ -86,7 +87,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         fetch_names = []
         for inplace in [False, True]:
             main, startup, outs = self.build_program(
-                place, layout, seed, inplace, only_forward, activation, alpha)
+                place, layout, seed, only_forward, activation, alpha)
             exe = fluid.Executor(place)
             exe.run(startup)
 
@@ -133,16 +134,13 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 "\n" + "Inplace ABN " + str(inplace_abn_val))
 
     def test_op(self):
-        use_cudas = [False]
-        if core.is_compiled_with_cuda():
-            use_cudas.append(True)
-
+        use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]
         for use_cuda in use_cudas:
             place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
             layouts = ["NCHW", "NHWC"]
             for layout in layouts:
-                for activation, alpha in zip(['elu', 'leaky_relu'],
-                                             [1.0, 0.02]):
+                for activation, alpha in zip([None, 'elu', 'leaky_relu'],
+                                             [0., 1., 0.02]):
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation,
                                      alpha, use_cuda)

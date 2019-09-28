@@ -3675,7 +3675,6 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -3755,7 +3754,6 @@ def batch_norm(input,
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
         moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
@@ -3771,7 +3769,9 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-        fuse_alpha(float, Default 1.0): when fuse activation(elu|leakyrelu) for inplace_abn, give the alpha parameter.
+        fuse_alpha(float, Default 1.0): when enable_inpalce is set in build strategy and activation is in 
+            [None, '', elu, leaky_relu], inplace activative batch normalization will be used, and alpha 
+            parameter for activation can be given by this parameter.
     Returns:
         A Variable holding Tensor which is the result after applying batch normalization on the input, 
         has same shape and data type with input. 
@@ -3856,28 +3856,24 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
-    use_mkldnn = False
-    if in_place and act in ['identity', 'elu', 'leaky_relu']:
+    if act in [None, '', 'elu', 'leaky_relu']:
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
-        use_mkldnn = False
         fuse_with_relu = False
         use_fused_act = True
-        batch_norm_out = input
     else:
         op_type = "batch_norm"
         use_fused_act = False
-        batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
-    # # in-place would be controlled by build_strategy.enable_inplace flag
-    # batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    # in-place would be controlled by build_strategy.enable_inplace flag
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
     attrs = {
         "momentum": momentum,
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": use_mkldnn,
+        "use_mkldnn": False,
         "fuse_with_relu": fuse_with_relu,
         "use_global_stats": use_global_stats
     }

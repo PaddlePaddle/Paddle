@@ -89,7 +89,8 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
     AddAttr<std::string>(
         "activation",
         "(enum string, default identity, can be identity|elu|leakyrelu) "
-        "The activation type used for output candidate {h}_t.");
+        "The activation type used for output candidate {h}_t.")
+        .SetDefault("");
     AddAttr<float>("alpha",
                    "(float, default 1.0) Only used in inplace-abn kernel,"
                    "the activation type(identity|elu|leakyrelu) would be fused "
@@ -115,10 +116,9 @@ class InplaceABNKernel
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     BatchNormKernel<DeviceContext, T>::Compute(ctx);
 
-    auto cur_x = EigenVector<T>::Flatten(*y);
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.Compute(ctx, activation, place, cur_x, cur_y);
+    functor.Compute(ctx, activation, place, cur_y, cur_y);
   }
 };
 
@@ -127,36 +127,38 @@ class InplaceABNGradKernel
     : public paddle::operators::BatchNormGradKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
 
-    d_x->mutable_data<T>(ctx.GetPlace());
-    auto& px = const_cast<Tensor&>(*x);
-    auto cur_x = EigenVector<T>::Flatten(px);
-    auto cur_y = EigenVector<T>::Flatten(*y);
-    auto cur_dx = EigenVector<T>::Flatten(*d_x);
-    auto cur_dy = EigenVector<T>::Flatten(*d_y);
+    auto& py = const_cast<Tensor&>(*y);
+    auto& pd_y = const_cast<Tensor&>(*d_y);
+    auto cur_y = EigenVector<T>::Flatten(py);
+    auto cur_dy = EigenVector<T>::Flatten(pd_y);
 
     InplaceABNActivation<DeviceContext, T> functor;
-    functor.GradCompute(ctx, activation, place, cur_x, cur_y, cur_dx, cur_dy,
-                        x->data<T>() == y->data<T>());
+    functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(InplaceABNInplaceInferer, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(InplaceABNGradInplaceInferer,
+                           {framework::GradVarName("Y"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
-                  ops::InplaceABNOpGradMaker, ops::BatchNormOpInferVarType);
-REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
+                  ops::InplaceABNOpGradMaker, ops::InplaceABNInplaceInferer,
+                  ops::BatchNormOpInferVarType)
+REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp,
+                  ops::InplaceABNGradInplaceInferer)
 
 REGISTER_OP_CPU_KERNEL(
     inplace_abn,
