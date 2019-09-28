@@ -39,14 +39,7 @@ using PD_PaddlePlace = paddle::PaddlePlace;
 using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
 struct PD_Predictor {
-  // using unq_predictor = std::unique_ptr<paddle::PaddlePredictor>;
   std::unique_ptr<paddle::PaddlePredictor> predictor;
-
-  // PD_Predictor() = default;
-
-  // explicit PD_Predictor(const paddle::AnalysisConfig& config) {
-  //   predictor = new paddle::AnalysisPredictor(config);
-  // }
 };
 
 struct PD_AnalysisConfig {

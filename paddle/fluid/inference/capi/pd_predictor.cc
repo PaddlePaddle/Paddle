@@ -102,9 +102,9 @@ PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
   return std::move(ret);
 }
 
-// bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
-//   return predictor->predictor->ZeroCopyRun();
-// }
+bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
+  return predictor->predictor->ZeroCopyRun();
+}
 // bool PD_PredictorZeroCopyRun1(const PD_AnalysisConfig* config, float* inputs,
 //                               int in_size, float** output, int** out_size,
 //                               int* shape, int shape_size) {
@@ -120,40 +120,42 @@ PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
 //   return true;
 // }
 
-bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
-                             PD_ZeroCopyData* inputs, int in_size,
-                             PD_ZeroCopyData** output, int** out_size) {
-  auto predictor = paddle::CreatePaddlePredictor(config->config);
-  auto input_names = predictor->GetInputNames();
-  LOG(INFO) << input_names[0];
-  LOG(INFO) << inputs[0].name;
-  for (int i = 0; i < in_size; ++i) {
-    auto input_t = predictor->GetInputTensor(inputs[i].name);
-    std::vector<int> tensor_shape;
-    tensor_shape.assign(inputs[i].shape,
-                        inputs[i].shape + inputs[i].shape_size);
-    input_t->Reshape(tensor_shape);
-    switch (inputs[i].dtype) {
-      case PD_FLOAT32:
-        input_t->copy_from_cpu(static_cast<float*>(inputs[i].data));
-        break;
-      case PD_INT32:
-        input_t->copy_from_cpu(static_cast<int32_t*>(inputs[i].data));
-        break;
-      case PD_INT64:
-        input_t->copy_from_cpu(static_cast<int64_t*>(inputs[i].data));
-        break;
-      case PD_UINT8:
-        input_t->copy_from_cpu(static_cast<uint8_t*>(inputs[i].data));
-        break;
-      default:
-        PADDLE_ENFORCE(false, "Unsupport data type.");
-        break;
-    }
-  }
-  CHECK(predictor->ZeroCopyRun());
-  return true;
-}
+////////////////////////////// do not delete
+// bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
+//                              PD_ZeroCopyData* inputs, int in_size,
+//                              PD_ZeroCopyData** output, int** out_size) {
+//   auto predictor = paddle::CreatePaddlePredictor(config->config);
+//   auto input_names = predictor->GetInputNames();
+//   LOG(INFO) << input_names[0];
+//   LOG(INFO) << inputs[0].name;
+//   for (int i = 0; i < in_size; ++i) {
+//     auto input_t = predictor->GetInputTensor(inputs[i].name);
+//     std::vector<int> tensor_shape;
+//     tensor_shape.assign(inputs[i].shape,
+//                         inputs[i].shape + inputs[i].shape_size);
+//     input_t->Reshape(tensor_shape);
+//     switch (inputs[i].dtype) {
+//       case PD_FLOAT32:
+//         input_t->copy_from_cpu(static_cast<float*>(inputs[i].data));
+//         break;
+//       case PD_INT32:
+//         input_t->copy_from_cpu(static_cast<int32_t*>(inputs[i].data));
+//         break;
+//       case PD_INT64:
+//         input_t->copy_from_cpu(static_cast<int64_t*>(inputs[i].data));
+//         break;
+//       case PD_UINT8:
+//         input_t->copy_from_cpu(static_cast<uint8_t*>(inputs[i].data));
+//         break;
+//       default:
+//         PADDLE_ENFORCE(false, "Unsupport data type.");
+//         break;
+//     }
+//   }
+//   CHECK(predictor->ZeroCopyRun());
+//   return true;
+// }
+//////////////////////////////
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
