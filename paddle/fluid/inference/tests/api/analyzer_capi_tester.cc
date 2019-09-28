@@ -162,7 +162,7 @@ void profile(bool use_mkldnn = false) {
   // CHECK(predictor->ZeroCopyRun());
 
   // PD_Predictor *predictor = PD_NewPredictor(&config);
-  auto pre = CreatePaddlePredictor(config->config);
+  auto pre = CreatePaddlePredictor(config.config);
   PD_Predictor *predictor;
   predictor->predictor = std::move(pre);
   int *size;
