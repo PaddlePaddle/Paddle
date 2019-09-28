@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,20 +19,11 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
-class TestDistMnist2x2(TestFleetBase):
+class TestDistGeot_c2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._geo_sgd = True
+        self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,
                          model_file,
