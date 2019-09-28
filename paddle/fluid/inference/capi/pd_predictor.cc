@@ -50,8 +50,7 @@ char** PD_GetPredictorInputNames(PD_Predictor* predictor, int** in_size) {
   *in_size = &size;
   char** names = new char*[size];
   for (int i = 0; i < size; ++i) {
-    std::snprintf(names[i], ret_names[i].length() + 1, "%s",
-                  ret_names[i].c_str());
+    snprintf(names[i], ret_names[i].length() + 1, "%s", ret_names[i].c_str());
   }
   return names;
 }
