@@ -157,8 +157,9 @@ void profile(bool use_mkldnn = false) {
   // inputs->name = new char[2];
   // inputs->name = "x";
   // LOG(INFO) << sizeof(std::string("x")) / sizeof(char*) + 1;
-  inputs->name = new char[1];
+  inputs->name = new char[2];
   inputs->name[0] = 'x';
+  inputs->name[1] = '\0';
   // snprintf(inputs->name, sizeof(name) / sizeof(char *) + 1, "%s", name);
   LOG(INFO) << inputs->name;
   inputs->shape = shape;
