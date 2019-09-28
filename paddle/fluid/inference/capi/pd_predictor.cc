@@ -126,6 +126,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
                              PD_ZeroCopyData** output, int** out_size) {
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
+  LOG(INFO) << input_names[0];
   for (int i = 0; i < in_size; ++i) {
     auto input_t = predictor->GetInputTensor(inputs[i].name);
     std::vector<int> tensor_shape;
