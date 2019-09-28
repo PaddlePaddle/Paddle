@@ -19,7 +19,18 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
-class TestDistGeot_c2x2(TestFleetBase):
+def skip_ci(func):
+    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
+
+    def __func__(*args, **kwargs):
+        if on_ci:
+            return
+        return func(*args, **kwargs)
+
+    return __func__
+
+
+class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
         self._geo_sgd = True
