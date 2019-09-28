@@ -43,6 +43,53 @@ def output_hist_diag(out):
     return hist, prob
 
 
+class TestUniformRandomOp_attr_tensorlist(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.new_shape = (1000, 784)
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype("int64") * ele))
+        self.inputs = {'ShapeTensorList': shape_tensor}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOp_attr_tensor(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
 class TestUniformRandomOp(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
@@ -156,6 +203,88 @@ class TestUniformRandomOpApi(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+
+
+class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
+    def test_attr_tensor_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
+            ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2])
+
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(startup_program)
+            outs = exe.run(train_program, fetch_list=[ret])
+
+
+class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        out = scope.var("X").get_selected_rows()
+        shape_tensor = scope.var("Shape").get_tensor()
+        shape_tensor.set(np.array([4, 784]).astype("int64"), place)
+
+        op = Operator(
+            "uniform_random",
+            ShapeTensor="Shape",
+            Out="X",
+            min=-5.0,
+            max=10.0,
+            seed=10)
+        op.run(scope, place)
+        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        hist, prob = output_hist(np.array(out.get_tensor()))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        out = scope.var("X").get_selected_rows()
+        shape_1 = scope.var("shape1").get_tensor()
+        shape_1.set(np.array([4]).astype("int64"), place)
+        shape_2 = scope.var("shape2").get_tensor()
+        shape_2.set(np.array([784]).astype("int64"), place)
+
+        op = Operator(
+            "uniform_random",
+            ShapeTensorList=["shape1", "shape2"],
+            Out="X",
+            min=-5.0,
+            max=10.0,
+            seed=10)
+        op.run(scope, place)
+        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        hist, prob = output_hist(np.array(out.get_tensor()))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
 if __name__ == "__main__":
