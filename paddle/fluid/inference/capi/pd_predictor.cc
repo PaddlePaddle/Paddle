@@ -134,16 +134,16 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     input_t->Reshape(tensor_shape);
     switch (inputs[i].dtype) {
       case PD_FLOAT32:
-        input_t->copy_from_cpu(static_cast<float> inputs[i].data);
+        input_t->copy_from_cpu(static_cast<float*>(inputs[i].data));
         break;
       case PD_INT32:
-        input_t->copy_from_cpu(static_cast<int32_t> inputs[i].data);
+        input_t->copy_from_cpu(static_cast<int32_t*>(inputs[i].data));
         break;
       case PD_INT64:
-        input_t->copy_from_cpu(static_cast<int_64_t> inputs[i].data);
+        input_t->copy_from_cpu(static_cast<int64_t*>(inputs[i].data));
         break;
       case PD_UINT8:
-        input_t->copy_from_cpu(static_cast<uint8_t> inputs[i].data);
+        input_t->copy_from_cpu(static_cast<uint8_t*>(inputs[i].data));
         break;
       default:
         PADDLE_ENFORCE(false, "Unsupport data type.");
