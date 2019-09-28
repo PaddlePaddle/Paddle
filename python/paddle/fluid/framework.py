@@ -639,6 +639,45 @@ class Variable(object):
         return np.array(new_ivar.value().get_tensor())
 
     @dygraph_only
+    def set_value(self, value):
+        """
+        Set a new value for this Variable.
+
+        Args:
+            value (Variable|np.ndarray): the new value.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.ones([3, 32, 32], dtype='float32')
+                with fluid.dygraph.guard():
+                    fc = fluid.dygraph.FC("fc", 4)
+                    t = to_variable(data)
+                    fc(t)  # call with default weight
+                    custom_weight = np.random.randn(1024, 4).astype("float32")
+                    fc.weight.set_value(custom_weight)  # change existing weight
+                    out = fc(t)  # call with different weight
+
+        """
+        assert isinstance(value, (Variable, np.ndarray))
+        if list(value.shape) != list(self.shape):
+            raise ValueError(
+                "The shape of the new value must be the same as that of the original Variable."
+            )
+        self_tensor = self._ivar.value().get_tensor()
+        if isinstance(value, Variable):
+            value = value._ivar.value().get_tensor().__array__()
+        self_tensor.set(value, _current_expected_place())
+
+    @dygraph_only
     def backward(self, backward_strategy=None):
         """
         **Notes: This API is ONLY avaliable in Dygraph mode**
@@ -1042,7 +1081,7 @@ class Variable(object):
             if self.shape[axis] < 0:
                 return self._cloneVar(True)
             index = int(item)
-            if (index > 0 and index >= self.shape[axis])\
+            if (index > 0 and index >= self.shape[axis]) \
                     or (index < 0 and (index + self.shape[axis]) < 0):
                 raise IndexError("invalid index")
             return self._sliceVar([axis], [index], [index + 1])
@@ -2662,10 +2701,10 @@ class IrOpNode(IrNode):
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and \
-            all(isinstance(v, Block) for v in val):
+                all(isinstance(v, Block) for v in val):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
-            isinstance(val, core.ProgramDesc):
+                isinstance(val, core.ProgramDesc):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -2888,8 +2927,8 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
-        self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -3024,7 +3063,7 @@ class IrGraph(object):
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                            + ' -o ' + pdf_save_path, shell=True)
+                                          + ' -o ' + pdf_save_path, shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
