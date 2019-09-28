@@ -164,7 +164,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool anakin_enable = PD_AnakinEngineEnabled(config);*/
   PD_EnableNgraph(config);
   bool ngraph_enable = PD_NgraphEnabled(config);
-  LOG(INFO) << ngraph_enable) << "Ngraph";
+  LOG(INFO) << ngraph_enable << "Ngraph";
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   CHECK(memory_optim_enable) << "NO";
