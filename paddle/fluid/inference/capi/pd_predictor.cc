@@ -137,7 +137,7 @@ PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
 PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   // auto predictor = paddle::CreatePaddlePredictor(config->config);
 
-  auto predictor = new PD_Predictor(*config);
+  auto predictor = new PD_Predictor();
   predictor->predictor = paddle::CreatePaddlePredictor(config->config);
   return std::move(predictor);
 
