@@ -161,9 +161,10 @@ void profile(bool use_mkldnn = false) {
   // input_t->copy_from_cpu(input);
   // CHECK(predictor->ZeroCopyRun());
 
-  PD_Predictor *predictor = PD_NewPredictor(&config);
-  // auto predictor = CreatePaddlePredictor(config->config);
-
+  // PD_Predictor *predictor = PD_NewPredictor(&config);
+  auto pre = CreatePaddlePredictor(config->config);
+  PD_Predictor *predictor;
+  predictor->predictor = std::move(pre);
   int *size;
   char **input_names = PD_GetPredictorInputNames(predictor, &size);
   LOG(INFO) << input_names[0];
