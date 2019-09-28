@@ -90,7 +90,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
 void profile(bool use_mkldnn = false) {
-  std::string model_dir1 = FLAGS_infer_model + "/__model__";
+  std::string model_dir1 = FLAGS_infer_model;  // + "/model/__model__";
   // std::string params_file1 = FLAGS_infer_model + "/model/__params__";
   // const char *model_dir = GetModelPath(FLAGS_infer_model +
   // "/model/__model__");
