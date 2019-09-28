@@ -73,11 +73,12 @@ class DistributedTranspiler(Fleet):
                     fleet.worker_num(),
                     self._transpile_config.geo_sgd_need_push_nums)
             else:
-                warnings.warn("communicator has been initialized, skip")
                 self._communicator = Communicator(self.main_program)
 
             if not self._communicator.is_running():
                 self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
