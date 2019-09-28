@@ -133,7 +133,6 @@ class LightNASStrategy(Strategy):
                 self._retrain_epoch == 0 or
             (context.epoch_id - self.start_epoch) % self._retrain_epoch == 0):
             _logger.info("light nas strategy on_epoch_begin")
-            min_tokens = self._current_tokens[:]
             min_flops = -1
             for _ in range(self._max_try_times):
                 startup_p, train_p, test_p, _, _, train_reader, test_reader = context.search_space.create_net(
@@ -155,7 +154,7 @@ class LightNASStrategy(Strategy):
                         self._current_tokens, flops))
                 if flops > self._max_flops or (self._max_latency > 0 and
                                                latency > self._max_latency):
-                    #self._current_tokens = self._search_agent.next_tokens(min_tokens)
+                    self._current_tokens = self._search_agent.next_tokens()
                     self._current_tokens = self._controller.next_tokens(
                         min_tokens)
                 else:

@@ -128,7 +128,7 @@ class SAController(EvolutionaryController):
         Get next tokens.
         """
         if control_token:
-            tokens = control_token
+            tokens = control_token[:]
         else:
             tokens = self._tokens
         new_tokens = tokens[:]
