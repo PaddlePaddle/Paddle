@@ -142,8 +142,8 @@ void profile(bool use_mkldnn = false) {
 
   std::vector<std::vector<PaddleTensor>> inputs;
   SetInput(&inputs);
-  for (int i = 0; i < inputs[0][0].dims().size(); i++) {
-    LOG(INFO) << inputs[0][0].dims()[i];
+  for (int i = 0; i < inputs[0][0].shape.size(); i++) {
+    LOG(INFO) << (inputs[0][0].shape)[i];
   }
 
   int in_size = 1;
