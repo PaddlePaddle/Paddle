@@ -92,14 +92,14 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetInputTensor(std::string(name));
+  ret->tensor = predictor->predictor->GetInputTensor(std::string(name)).get();
   return ret;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetOutputTensor(std::string(name));
+  ret->tensor = predictor->predictor->GetOutputTensor(std::string(name)).get();
   return ret;
 }
 
@@ -138,7 +138,7 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   // auto predictor = paddle::CreatePaddlePredictor(config->config);
 
   auto predictor = new PD_Predictor;
-  predictor->predictor = paddle::CreatePaddlePredictor(config->config);
+  predictor->predictor = paddle::CreatePaddlePredictor(config->config).get();
   return predictor;
 
   // return static_cast<PD_Predictor*>(predictor);
