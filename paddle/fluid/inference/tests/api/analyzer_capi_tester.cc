@@ -140,17 +140,18 @@ void profile(bool use_mkldnn = false) {
   //   ASSERT_TRUE(predictor->Run(input, &outputs));
   // }
 
-  std::vector<std::vector<PaddleTensor>> inputs;
-  SetInput(&inputs);
-  for (int i = 0; i < inputs[0][0].shape.size(); i++) {
-    LOG(INFO) << (inputs[0][0].shape)[i];
-  }
+  // std::vector<std::vector<PaddleTensor>> inputs;
+  // SetInput(&inputs);
+  // for (int i = 0; i < inputs[0][0].shape.size(); i++) {
+  //   LOG(INFO) << (inputs[0][0].shape)[i];
+  // }
 
-  int in_size = 1;
-  int *out_size;
-  float *output;
-  PD_PredictorZeroCopyRun1(&config, input, in_size, &output, &out_size, shape,
-                           shape_size);
+  // int in_size = 1;
+  // int *out_size;
+  // float *output;
+  // PD_PredictorZeroCopyRun1(&config, input, in_size, &output, &out_size,
+  // shape,
+  //                          shape_size);
 
   // auto input_names = predictor->GetInputNames();
   // auto input_t = predictor->GetInputTensor(input_names[0]);
@@ -163,15 +164,15 @@ void profile(bool use_mkldnn = false) {
   // PD_Predictor *predictor = PD_NewPredictor(&config);
   // auto predictor = CreatePaddlePredictor(config->config);
 
-  // int *size;
-  // char **input_names = PD_GetPredictorInputNames(predictor, &size);
-  // LOG(INFO) << input_names[0];
-  // PD_DataType data_type = PD_FLOAT32;
-  // PD_ZeroCopyTensor *tensor =
-  //     PD_GetPredictorInputTensor(predictor, input_names[0]);
-  // PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
-  // PD_ZeroCopyFromCpu(tensor, input, data_type);
-  // CHECK(PD_PredictorZeroCopyRun(predictor));
+  int *size;
+  char **input_names = PD_GetPredictorInputNames(predictor, &size);
+  LOG(INFO) << input_names[0];
+  PD_DataType data_type = PD_FLOAT32;
+  PD_ZeroCopyTensor *tensor =
+      PD_GetPredictorInputTensor(predictor, input_names[0]);
+  PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
+  PD_ZeroCopyFromCpu(tensor, input, data_type);
+  CHECK(PD_PredictorZeroCopyRun(predictor));
 
   /*PD_Tensor* ten = PD_NewPaddleTensor();
   ten->tensor = inputs_all[0][0];
