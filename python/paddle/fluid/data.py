@@ -20,7 +20,7 @@ from .layer_helper import LayerHelper
 __all__ = ['data']
 
 
-def data(name, shape, dtype='float32'):
+def data(name, shape, dtype='float32', lod_level=0):
     """
     **Data Layer**
 
@@ -44,6 +44,12 @@ def data(name, shape, dtype='float32'):
        shape (list|tuple): List|Tuple of integers declaring the shape.
        dtype (np.dtype|VarType|str): The type of the data. Supported dtype:
            bool, float16, float32, float64, int8, int16, int32, int64, uint8.
+           Default: float32
+       lod_level (int, optional): The LoD level of the LoDTensor. 0 means the
+           input data is not a sequence. LoD is an advanced feature of
+           PaddlePaddle. Usually users don't have to set this value. For more
+           details about when and how to use LoD level, see
+           :ref:`user_guide_lod_tensor` . Default: 0
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -88,6 +94,6 @@ def data(name, shape, dtype='float32'):
         dtype=dtype,
         type=core.VarDesc.VarType.LOD_TENSOR,
         stop_gradient=True,
-        lod_level=0,
+        lod_level=lod_level,
         is_data=True,
         need_check_feed=True)
