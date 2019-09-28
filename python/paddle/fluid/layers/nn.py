@@ -1680,76 +1680,53 @@ def dropout(x,
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
-    **Cross Entropy Layer**
+    This operator computes the cross entropy between input and label. It
+    supports both hard-label and and soft-label cross entropy computation.
 
-    This layer computes the cross entropy between `input` and `label`. It
-    supports both standard cross-entropy and soft-label cross-entropy loss
-    computation.
-
-    1) One-hot cross-entropy:
-        `soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
+    1. Hard-label cross entropy: if soft_label=False, :math:`label[i_1, i_2, ..., i_k]`
+       is the hard label of each sample.
 
         .. math::
 
-            Y[i] = -\log(X[i, Label[i]])
+           output[i_1, i_2, ..., i_k]=-log(input[i_1, i_2, ..., i_k, j]), label[i_1, i_2, ..., i_k] = j, j != ignore\_index
 
-    2) Soft-label cross-entropy:
-        `soft_label = True`, `Label[i, j]` indicates the soft label of class j
-        for sample i:
+    2. Soft-label cross entropy: if soft_label=True,  :math:`label[i_1, i_2, ..., i_k, j]`
+       is the soft label of each sample corresponding to the j-th class.
 
         .. math::
 
-            Y[i] = \sum_j{-Label[i, j] * log(X[i, j])}
-
-       Please make sure that in this case the summation of each row of `label`
-       equals one.
-
-    3) One-hot cross-entropy with vecterized `label`:
-         As a special case of 2), when each row of 'label' has only one
-         non-zero element which is equal to 1, soft-label cross-entropy degenerates
-         to a one-hot cross-entropy with one-hot label representation.
+           output[i_1, i_2, ..., i_k]= -\sum_{j}label[i_1,i_2,...,i_k,j]*log(input[i_1, i_2, ..., i_k,j])
 
     Args:
-        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
-                                batch size and D is the number of classes. This
-                                input is a probability computed by the previous
-                                operator, which is almost always the result of
-                                a softmax operator.
-        label (Variable|list): the ground truth which is a 2-D tensor. When
-                               `soft_label` is set to `False`, `label` is a
-                               tensor<int64> with shape [N x 1]. When
-                               `soft_label` is set to `True`, `label` is a
-                               tensor<float/double> with shape [N x D].
-        soft_label (bool): a flag indicating whether to
-                                           interpretate the given labels as soft
-                                           labels. Default: `False`.
-        ignore_index (int): Specifies a target value that is ignored and does
-                            not contribute to the input gradient. Only valid
-                            if soft_label is set to False. Default: kIgnoreIndex
+        input (Variable): a multidimensional Tensor with shape
+                :math:`[N_1, N_2, ..., N_k, D]`, where the last dimension D is
+                the class number. The data type should be float32 or float64.
+        label (Variable): label value corresponding to input. If
+                soft_label=False, the dimension of label should be :math:`[N_1, N_2, ..., N_k]`
+                or :math:`[N_1, N_2, ..., N_k, 1]` , and its data type should be int64,
+                and the value must be inside [0, D). If soft_label=True, the shape,
+                data type of label should be the same with input, and the sum of
+                soft label value of each sample should be 1.
+        soft_label (bool): indicate whether label is soft. Default False, meaning that
+                the label is hard. If soft_label=True, the label is soft.
+        ignore_index (int): specify an ignorable label value. The ignored label would be
+                omitted when computing. If it is a negative integer, no label would
+                be ignored. Only valid when soft_label=False. Default -100.
 
     Returns:
-         A 2-D tensor with shape [N x 1], the cross entropy loss.
-
-    Raises:
-         ValueError:
-
-                      1. the 1st dimension of ``input`` and ``label`` are not equal.
-
-                      2. when ``soft_label == True``, and the 2nd dimension of
-                         ``input`` and ``label`` are not equal.
-
-                      3. when ``soft_label == False``, and the 2nd dimension of
-                         ``label`` is not 1.
+         A Variable holding Tensor representing the cross entropy, whose data type is the same with input.
+         If soft_label=False, the shape of output is the same with label.
+         If soft_label=True, the shape of output is :math:`[N_1, N_2, ..., N_k, 1]` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          classdim = 7
-          x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
-          label = fluid.layers.data(name='label', shape=[3, 1], dtype='float32', append_batch_size=False)
-          predict = fluid.layers.fc(input=x, size=classdim, act='softmax')
-          cost = fluid.layers.cross_entropy(input=predict, label=label)
+            import paddle.fluid as fluid
+            class_num = 7
+            x = fluid.layers.data(name='x', shape=[3, 10], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
