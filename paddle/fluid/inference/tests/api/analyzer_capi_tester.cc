@@ -164,7 +164,7 @@ void profile(bool use_mkldnn = false) {
   // PD_Predictor *predictor = PD_NewPredictor(&config);
   auto pre = CreatePaddlePredictor(config.config);
   PD_Predictor *predictor = NULL;
-  predictor->predictor = std::move(pre);
+  predictor->predictor = pre.Clone();
 
   int *size;
   char **input_names = PD_GetPredictorInputNames(predictor, &size);
@@ -174,6 +174,7 @@ void profile(bool use_mkldnn = false) {
       PD_GetPredictorInputTensor(predictor, input_names[0]);
   PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
   PD_ZeroCopyFromCpu(tensor, input, data_type);
+  LOG(INFO) << "before zerocopyrun.";
   CHECK(PD_PredictorZeroCopyRun(predictor));
 
   /*PD_Tensor* ten = PD_NewPaddleTensor();
