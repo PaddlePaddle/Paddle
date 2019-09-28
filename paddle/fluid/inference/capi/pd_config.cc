@@ -136,7 +136,7 @@ void PD_SwitchSpecifyInputNames(PD_AnalysisConfig* config, bool x) {
 
 bool PD_SpecifyInputName(const PD_AnalysisConfig* config) {
   return config->config.specify_input_name();
-}
+}  //
 
 void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
                              int max_batch_size, int min_subgraph_size,
@@ -203,7 +203,7 @@ void PD_EnableMKLDNN(PD_AnalysisConfig* config) {
 
 void PD_SetMkldnnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
   config->config.SetMkldnnCacheCapacity(capacity);
-}
+}  //
 
 bool PD_MkldnnEnabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_enabled();
