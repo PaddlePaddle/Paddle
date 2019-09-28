@@ -149,12 +149,12 @@ void profile(bool use_mkldnn = false) {
 
   int in_size = 1;
   int *out_size;
-  float *output;
+  // float *output;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
   inputs->dtype = PD_FLOAT32;
-  inputs->name = "x".c_str();
+  inputs->name = GetModelPath("x");
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 
