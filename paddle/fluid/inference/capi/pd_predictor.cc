@@ -93,14 +93,14 @@ PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor = predictor->predictor->GetInputTensor(std::string(name));
-  return ret;
+  return std::move(ret);
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
   ret->tensor = predictor->predictor->GetOutputTensor(std::string(name));
-  return ret;
+  return std::move(ret);
 }
 
 bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
@@ -139,7 +139,7 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
 
   auto predictor = new PD_Predictor;
   predictor->predictor = paddle::CreatePaddlePredictor(config->config);
-  return predictor;
+  return std::move(predictor);
 
   // return static_cast<PD_Predictor*>(predictor);
 }
