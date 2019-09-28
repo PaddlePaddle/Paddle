@@ -35,6 +35,7 @@ void* GetWarpCTCDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetOpDsoHandle(const std::string& dso_name);
 
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
