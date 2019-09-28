@@ -156,8 +156,8 @@ void profile(bool use_mkldnn = false) {
   inputs->dtype = PD_FLOAT32;
   // inputs->name = new char[2];
   // inputs->name = "x";
-  LOG(INFO) << sizeof(std::string("x")) / sizeof(char) + 1;
-  snprintf(inputs->name, sizeof(std::string("x")) / sizeof(char) + 1, "%s",
+  // LOG(INFO) << sizeof(std::string("x")) / sizeof(char*) + 1;
+  snprintf(inputs->name, sizeof(std::string("x")) / sizeof(char *) + 1, "%s",
            std::string("x").c_str());
   inputs->shape = shape;
   inputs->shape_size = shape_size;
