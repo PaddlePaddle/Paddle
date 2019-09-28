@@ -154,7 +154,7 @@ void profile(bool use_mkldnn = false) {
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
   inputs->dtype = PD_FLOAT32;
-  inputs->name = GetModelPath("x");
+  inputs->name = "x\0";
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 

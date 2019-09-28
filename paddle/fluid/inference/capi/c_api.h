@@ -37,7 +37,7 @@ enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 typedef struct PD_ZeroCopyData {
-  const char* name = new char[50];
+  char* name = new char[50];
   void* data;
   PD_DataType dtype;
   int* shape;
