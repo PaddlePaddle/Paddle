@@ -165,6 +165,7 @@ void profile(bool use_mkldnn = false) {
   auto pre = CreatePaddlePredictor(config.config);
   PD_Predictor *predictor = NULL;
   predictor->predictor = std::move(pre);
+
   int *size;
   char **input_names = PD_GetPredictorInputNames(predictor, &size);
   LOG(INFO) << input_names[0];
