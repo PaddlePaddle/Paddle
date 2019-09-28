@@ -148,7 +148,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
   PADDLE_ENFORCE_EQ(
-      input_names.size, in_size,
+      input_names.size(), in_size,
       "The number of input and the number of model's input must match. ");
   for (int i = 0; i < in_size; ++i) {
     auto input_t = predictor->GetInputTensor(inputs[i].name);
