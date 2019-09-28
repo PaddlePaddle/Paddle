@@ -87,27 +87,17 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   (*inputs).emplace_back(input_slots);
 }
 
-// Easy for profiling independently.
-//  ocr, mobilenet and se_resnext50
-void profile(bool use_mkldnn = false) {
-  std::string model_dir1 =
-      FLAGS_infer_model + "/mobilenet";  // + "/model/__model__";
-  // std::string params_file1 = FLAGS_infer_model + "/model/__params__";
-  // const char *model_dir = GetModelPath(FLAGS_infer_model +
-  // "/model/__model__");
-  // LOG(INFO) << model_dir;
-  // const char *params_file =
-  //     GetModelPath(FLAGS_infer_model + "/model/__params__");
-  // LOG(INFO) << model_dir;
-  PD_AnalysisConfig config;  // = PD_NewAnalysisConfig();
-  // LOG(INFO) << PD_ModelDir(&config);
+void zero_copy_run() {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  PD_AnalysisConfig config;
   PD_DisableGpu(&config);
   PD_SetCpuMathLibraryNumThreads(&config, 10);
   PD_SwitchUseFeedFetchOps(&config, false);
   PD_SwitchSpecifyInputNames(&config, true);
   PD_SwitchIrDebug(&config, true);
-  // LOG(INFO) << "before here! ";
-  PD_SetModel(&config, model_dir1.c_str());  //, params_file1.c_str());
+  PD_SetModel(&config, model_dir.c_str());  //, params_file1.c_str());
+  bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
+  bool specify_input_names = PD_SpecifyInputName(config);
 
   const int batch_size = 1;
   const int channels = 3;
@@ -116,93 +106,78 @@ void profile(bool use_mkldnn = false) {
   float input[batch_size * channels * height * width] = {0};
 
   int shape[4] = {batch_size, channels, height, width};
-
   int shape_size = 4;
-  // AnalysisConfig cfg;
-  // cfg.DisableGpu();
-  // cfg.SwitchUseFeedFetchOps(false);
-  // cfg.SetModel(model_dir, params_file);
-  // auto predictor = CreatePaddlePredictor(cfg);
 
-  // std::vector<std::vector<PaddleTensor>> inputs_all;
-  // auto predictor = CreatePaddlePredictor(config.config);
-  // SetFakeImageInput(&inputs_all, model_dir1, false, "__model__",
-  // "__params__");
+  int in_size = 1;
+  int *out_size;
+  PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
+  PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
+  inputs->data = static_cast<void *>(input);
+  inputs->dtype = PD_FLOAT32;
+  inputs->name = new char[2];
+  inputs->name[0] = 'x';
+  inputs->name[1] = '\0';
+  LOG(INFO) << inputs->name;
+  inputs->shape = shape;
+  inputs->shape_size = shape_size;
 
-  // std::vector<PaddleTensor> outputs;
-  // for (auto &input : inputs_all) {
-  //   ASSERT_TRUE(predictor->Run(input, &outputs));
-  // }
-
-  // std::vector<std::vector<PaddleTensor>> inputs_all;
-  // SetInput(&inputs_all);
-  // std::vector<PaddleTensor> outputs;
-  // for (auto &input : inputs_all) {
-  //   ASSERT_TRUE(predictor->Run(input, &outputs));
-  // }
-
-  // std::vector<std::vector<PaddleTensor>> inputs;
-  // SetInput(&inputs);
-  // for (int i = 0; i < inputs[0][0].shape.size(); i++) {
-  //   LOG(INFO) << (inputs[0][0].shape)[i];
-  // }
-  /////////////////////////////////////// do not delete
-  // int in_size = 1;
-  // int *out_size;
-  // PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
-  // PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
-  // inputs->data = static_cast<void *>(input);
-  // inputs->dtype = PD_FLOAT32;
-  // inputs->name = new char[2];
-  // inputs->name[0] = 'x';
-  // inputs->name[1] = '\0';
-  // LOG(INFO) << inputs->name;
-  // inputs->shape = shape;
-  // inputs->shape_size = shape_size;
-
-  // PD_PredictorZeroCopyRun(&config, inputs, in_size, &outputs, &out_size);
-  //////////////////////////////////////////
-
-  // auto input_names = predictor->GetInputNames();
-  // auto input_t = predictor->GetInputTensor(input_names[0]);
-  // std::vector<int> tensor_shape;
-  // tensor_shape.assign(shape, shape + shape_size);
-  // input_t->Reshape(tensor_shape);
-  // input_t->copy_from_cpu(input);
-  // CHECK(predictor->ZeroCopyRun());
-
-  PD_Predictor *predictor = PD_NewPredictor(&config);
-  // auto pre = CreatePaddlePredictor(config.config);
-
-  int *size;
-  char **input_names = PD_GetPredictorInputNames(predictor, &size);
-  LOG(INFO) << input_names[0];
-  PD_DataType data_type = PD_FLOAT32;
-  PD_ZeroCopyTensor *tensor =
-      PD_GetPredictorInputTensor(predictor, input_names[0]);
-  PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
-  PD_ZeroCopyFromCpu(tensor, input, data_type);
-  LOG(INFO) << "before zerocopyrun.";
-  CHECK(PD_PredictorZeroCopyRun(predictor));
-
-  /*PD_Tensor* ten = PD_NewPaddleTensor();
-  ten->tensor = inputs_all[0][0];
-  PD_Tensor* out = PD_NewPaddleTensor();
-  int* outsize;
-  int insize = 1;
-  PD_PredictorRun(predictor, ten, insize, out, &outsize, 1);*/
-
-  /*std::vector<PaddleTensor> outputs;
-  for (auto& input : inputs_all) {
-    ASSERT_TRUE(predictor->Run(input, &outputs));
-  }*/
+  PD_PredictorZeroCopyRun(&config, inputs, in_size, &outputs, &out_size);
 }
 
-TEST(Analyzer_vis, profile) { profile(); }
+TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
-// #ifdef PADDLE_WITH_MKLDNN
-// TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
-// #endif
+TEST(PD_AnalysisConfig, use_gpu) {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
+  PD_DisableGpu(config);
+  PD_SetCpuMathLibraryNumThreads(config, 10);
+  int num_thread = PD_CpuMathLibraryNumThreads(config);
+  PD_SwitchUseFeedFetchOps(config, false);
+  PD_SwitchSpecifyInputNames(config, true);
+  PD_SwitchIrDebug(config, true);
+  PD_SetModel(config, model_dir.c_str());
+  PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir"));
+  const char *model_dir_ = PD_ModelDir(config);
+  PD_EnableUseGpu(config, 100, 0);
+  bool use_gpu = PD_UseGpu(config);
+  int device = PD_GpuDeviceId(config);
+  int InitSize = PD_MemoryPoolInitSizeMb(config);
+  float frac = PD_FractionOfGpuMemoryForPool(config);
+  PD_EnableCUDNN(config);
+  bool cudnn = PD_CudnnEnabled(config);
+  PD_SwitchIrOptim(config, true);
+  bool ir_optim = PD_IrOptim(config);
+  PD_EnableTensorRtEngine(config);
+  bool trt_enable = PD_TensorrtEngineEnabled(config);
+  /*PD_EnableAnakinEngine(config, );
+  bool anakin_enable = PD_AnakinEngineEnabled(config);*/
+  PD_EnableNgraph(config);
+  bool ngraph_enable = PD_NgraphEnabled(config);
+  PD_EnableMemoryOptim(config);
+  bool memory_optim_enable = PD_MemoryOptimEnabled(config);
+  PD_EnableProfile(cnofig);
+  bool profiler_enable = PD_ProfileEnabled(config);
+  PD_SetInValid(config);
+  bool is_valid = PD_IsValid(config);
+  PD_DeleteAnalysisConfig(config);
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(PD_AnalysisConfig, profile_mkldnn) {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
+  PD_DisableGpu(config);
+  PD_SetCpuMathLibraryNumThreads(config, 10);
+  PD_SwitchUseFeedFetchOps(config, false);
+  PD_SwitchSpecifyInputNames(config, true);
+  PD_SwitchIrDebug(config, true);
+  PD_EnableMKLDNN(config);
+  bool mkldnn_enable = PD_MkldnnEnabled(config);
+  PD_EnableMkldnnQuantizer(config);
+  bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
+  PD_SetModel(config, model_dir.c_str());
+}
+#endif
 
 // Check the fuse status
 // TEST(Analyzer_vis, fuse_statis) {

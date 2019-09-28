@@ -66,12 +66,6 @@ struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
 };
 
-struct PD_MaxInputShape {
-  char* name;
-  int* shape;
-  int shape_size;
-};
-
 namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 

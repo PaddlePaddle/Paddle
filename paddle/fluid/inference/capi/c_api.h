@@ -126,10 +126,15 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
 // AnalysisPredictor
 typedef struct PD_Predictor PD_Predictor;
 
-PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
-                                               PD_Tensor* inputs, int in_size,
-                                               PD_Tensor* output_data,
-                                               int** out_size, int batch_size);
+// PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
+//                                                PD_Tensor* inputs, int
+//                                                in_size,
+//                                                PD_Tensor** output_data,
+//                                                int** out_size, int
+//                                                batch_size);
+
+bool PD_PredictorRun(PD_AnalysisConfig* config, PD_Tensor* inputs, int in_size,
+                     PD_Tensor* output_data, int** out_size, int batch_size);
 
 PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
     PD_Predictor* predictor, int** in_size);
@@ -148,11 +153,12 @@ PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorInputTensor(
 PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(
     PD_Predictor* predictor, const char* name);
 
-PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(PD_Predictor* predictor);
+// PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(PD_Predictor*
+// predictor);
 
-// PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
-//     const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
-//     PD_ZeroCopyData** output, int** out_size);
+PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
+    const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
+    PD_ZeroCopyData** output, int** out_size);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
     PD_Predictor* predictor);
@@ -230,7 +236,11 @@ PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(
     PD_AnalysisConfig* config);
 
-typedef struct PD_MaxInputShape PD_MaxInputShape;
+typedef struct PD_MaxInputShape {
+  char* name;
+  int* shape;
+  int shape_size;
+} PD_MaxInputShape;
 
 PADDLE_CAPI_EXPORT extern void PD_EnableAnakinEngine(
     PD_AnalysisConfig* config, int max_batch_size = 1,
