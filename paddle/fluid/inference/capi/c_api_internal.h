@@ -55,7 +55,7 @@ struct InTensorShape {
 
 struct PD_ZeroCopyTensor {
   std::unique_ptr<paddle::ZeroCopyTensor> tensor;
-  PD_ZeroCopyTensor() { tensor = new paddle::ZeroCopyTensor(); }
+  // PD_ZeroCopyTensor() { tensor = new paddle::ZeroCopyTensor(); }
 };
 
 struct PD_Tensor {
