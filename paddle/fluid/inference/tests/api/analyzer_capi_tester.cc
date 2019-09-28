@@ -152,9 +152,9 @@ void profile(bool use_mkldnn = false) {
   float *output;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
-  inputs->data = static_cast<void *> input;
+  inputs->data = static_cast<void *>(input);
   inputs->dtype = PD_FLOAT32;
-  inputs->name = "x";
+  inputs->name = "x".c_str();
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 
