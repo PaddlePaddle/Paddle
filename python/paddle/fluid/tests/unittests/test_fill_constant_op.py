@@ -20,6 +20,8 @@ from op_test import OpTest
 
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestFillConstantOp1(OpTest):
@@ -102,6 +104,18 @@ class TestFillConstantOpWithSelectedRows(OpTest):
 
         for place in places:
             self.check_with_place(place)
+
+
+class TestFillConstantOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.fill_constant, x1)
+            # The input dtype of softmax_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.fill_constant, x2)
 
 
 if __name__ == "__main__":

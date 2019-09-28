@@ -397,6 +397,16 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
 
     helper = LayerHelper("fill_constant", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in fill_constant  must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(input.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'input' in fill_constant must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
