@@ -3857,18 +3857,20 @@ def batch_norm(input,
         dtype=dtype, stop_gradient=True)
 
     use_mkldnn = False
-    if in_place and act in ['identity', 'elu', 'leakyrelu']:
+    if in_place and act in ['identity', 'elu', 'leaky_relu']:
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
         use_mkldnn = False
         fuse_with_relu = False
         use_fused_act = True
+        batch_norm_out = input
     else:
         op_type = "batch_norm"
         use_fused_act = False
+        batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
-    # in-place would be controlled by build_strategy.enable_inplace flag
-    batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    # # in-place would be controlled by build_strategy.enable_inplace flag
+    # batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
     attrs = {
         "momentum": momentum,

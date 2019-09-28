@@ -358,6 +358,9 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         break;
       }
       case DataLayout::kNHWC: {
+        EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
+                               N * C);
+        ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C,
                          N * sample_size) =
             (ConstEigenArrayMap<T>(x->data<T>(), C, N * sample_size).colwise() *
@@ -565,7 +568,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
             x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
-                                 scale_inv_var_nhw(nc % C) +
+                                 scale_inv_var_nhw(nc % C) / scale_coefff +
                              mean_arr(nc % C);
           }
         }
@@ -573,7 +576,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                  sample_size, N * C);
-        d_x_arr.setZero();
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
@@ -591,7 +593,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         if (!use_global_stats) {
           for (int nc = 0; nc < N * C; ++nc) {
             int c = nc % C;
-            d_x_arr.col(nc) +=
+            d_x_arr.col(nc) =
                 scale_inv_var_nhw(c) *
                 (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
                  (x_arr.col(nc) - mean_arr[c]) *
@@ -600,7 +602,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         } else {
           for (int nc = 0; nc < N * C; ++nc) {
             int c = nc % C;
-            d_x_arr.col(nc) += scale_inv_var_nhw(c) * d_y_arr.col(nc);
+            d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
           }
         }
         break;
@@ -611,19 +613,27 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
           ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
-          x_data = (y_data.colwise() - bias_arr) / scale_inv_var_nhw + mean_arr;
+          for (int nhw = 0; nhw < N * sample_size; nhw++) {
+            x_data.col(nhw) = (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw /
+                                  scale_coefff +
+                              mean_arr;
+          }
         }
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N * sample_size);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
                                  N * sample_size);
-        d_x_arr.setZero();
 
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
           dy_sum_arr += d_y_arr.col(nhw);
           dy_mul_x_sub_mean_mul_invstd_sum_arr +=
               (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
         }
+        const auto d_y_row_sum = d_y_arr.rowwise().sum().eval();
+        const auto x_minus_mean = x_arr.colwise() - mean_arr;
+        const auto d_y_mul_x_minus_mean_row_sum =
+            (d_y_arr * x_minus_mean).rowwise().sum().eval();
+        const auto inv_var_sqr = inv_var_arr * inv_var_arr;
 
         if (d_scale && d_bias) {
           d_bias_arr = dy_sum_arr;
@@ -632,7 +642,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
         if (!use_global_stats) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) +=
+            d_x_arr.col(nhw) =
                 scale_inv_var_nhw *
                 (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
                  (x_arr.col(nhw) - mean_arr) *
@@ -640,7 +650,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           }
         } else {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_x_arr.col(nhw) += scale_inv_var_nhw * d_y_arr.col(nhw);
+            d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
           }
         }
         break;
@@ -683,11 +693,16 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
+<<<<<<< HEAD
                   ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 <<<<<<< HEAD
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 =======
 // ops::BatchNormInplaceInToOut);
+=======
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
+                  paddle::framework::SingleOpInplaceInToOut);
+>>>>>>> fa5d46f... inplace_abn forward and backward right. test=develop
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 //                  ops::BatchNormGradInplaceInToOut);
 >>>>>>> d870177... test=develop

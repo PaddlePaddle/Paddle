@@ -34,7 +34,7 @@ enum InplaceABNActivationType { identity = 0, leakyrelu = 1, elu = 2 };
 
 inline InplaceABNActivationType GetInplaceABNActivationType(
     const std::string& type) {
-  if (type == "leakyrelu") {
+  if (type == "leaky_relu") {
     return InplaceABNActivationType::leakyrelu;
   } else if (type == "elu") {
     return InplaceABNActivationType::elu;
