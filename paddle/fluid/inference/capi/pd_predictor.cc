@@ -130,7 +130,7 @@ void PD_DeletePredictor(PD_Predictor* predictor) {
 
 PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
   PD_Predictor* cloned = new PD_Predictor;
-  cloned->predictor = predictor->predictor->Clone();
+  cloned->predictor = predictor->predictor->Clone().get();
   return cloned;
 }
 
