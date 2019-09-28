@@ -47,6 +47,7 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
+    'load_op_library',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -1299,6 +1300,12 @@ class OpProtoHolder(object):
         if type not in self.op_proto_map:
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
+
+    def update_op_proto(self):
+        op_protos = get_all_op_protos()
+        for proto in op_protos:
+            if proto.type not in self.op_proto_map:
+                self.op_proto_map[proto.type] = proto
 
     @staticmethod
     def generated_op_attr_names():
@@ -4327,3 +4334,25 @@ def _dygraph_place_guard(place):
     yield
 
     _dygraph_current_expected_place_ = tmp_place
+
+
+def load_op_library(lib_filename):
+    """
+    Load a dynamic library, including custom operators and kernels.
+    When library is loaded, ops and kernels registered in the library
+    will be available in PaddlePaddle main process.
+    Please note, the type of custom operators cann't have the same type
+    with the existing operators in the framework.
+
+    Args:
+        lib_filename (str): name of dynamic library.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            #fluid.load_op_library('custom_op.so')
+
+    """
+    core.load_op_library(lib_filename)
+    OpProtoHolder.instance().update_op_proto()
