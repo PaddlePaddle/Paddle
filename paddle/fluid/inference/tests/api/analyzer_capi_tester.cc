@@ -140,6 +140,12 @@ void profile(bool use_mkldnn = false) {
   //   ASSERT_TRUE(predictor->Run(input, &outputs));
   // }
 
+  std::vector<std::vector<PaddleTensor>> inputs;
+  SetInput(&inputs);
+  for (int i = 0; i < inputs[0][0].dims().size(); i++) {
+    LOG(INFO) << inputs[0][0].dims()[i];
+  }
+
   int in_size = 1;
   int *out_size;
   float *output;
