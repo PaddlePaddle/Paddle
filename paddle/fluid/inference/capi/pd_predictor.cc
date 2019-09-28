@@ -92,34 +92,34 @@ char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
 PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
                                               const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetInputTensor(std::string(name)).get();
+  ret->tensor = predictor->predictor->GetInputTensor(std::string(name));
   return ret;
 }
 
 PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
                                                const char* name) {
   PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetOutputTensor(std::string(name)).get();
+  ret->tensor = predictor->predictor->GetOutputTensor(std::string(name));
   return ret;
 }
 
 bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
   return predictor->predictor->ZeroCopyRun();
 }
-// bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config, float* inputs,
-//                              int in_size, float** output, int** out_size,
-//                              int* shape, int shape_size) {
-//   auto predictor = paddle::CreatePaddlePredictor(config->config);
-//   auto input_names = predictor->GetInputNames();
-//   auto input_t = predictor->GetInputTensor(input_names[0]);
-//   std::vector<int> tensor_shape;
-//   tensor_shape.assign(shape, shape + shape_size);
-//   input_t->Reshape(tensor_shape);
-//   input_t->copy_from_cpu(inputs);
-//   CHECK(predictor->ZeroCopyRun());
+bool PD_PredictorZeroCopyRun1(const PD_AnalysisConfig* config, float* inputs,
+                              int in_size, float** output, int** out_size,
+                              int* shape, int shape_size) {
+  auto predictor = paddle::CreatePaddlePredictor(config->config);
+  auto input_names = predictor->GetInputNames();
+  auto input_t = predictor->GetInputTensor(input_names[0]);
+  std::vector<int> tensor_shape;
+  tensor_shape.assign(shape, shape + shape_size);
+  input_t->Reshape(tensor_shape);
+  input_t->copy_from_cpu(inputs);
+  CHECK(predictor->ZeroCopyRun());
 
-//   return true;
-// }
+  return true;
+}
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
@@ -130,7 +130,7 @@ void PD_DeletePredictor(PD_Predictor* predictor) {
 
 PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
   PD_Predictor* cloned = new PD_Predictor;
-  cloned->predictor = predictor->predictor->Clone().get();
+  cloned->predictor = predictor->predictor->Clone();
   return cloned;
 }
 
@@ -138,7 +138,7 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
   // auto predictor = paddle::CreatePaddlePredictor(config->config);
 
   auto predictor = new PD_Predictor;
-  predictor->predictor = paddle::CreatePaddlePredictor(config->config).get();
+  predictor->predictor = paddle::CreatePaddlePredictor(config->config);
   return predictor;
 
   // return static_cast<PD_Predictor*>(predictor);
