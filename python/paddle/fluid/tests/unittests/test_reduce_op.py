@@ -429,11 +429,11 @@ class TestReduceSumOpError(OpTest):
 class TestReduceMeanOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The input type of reduce_sum_op must be Variable.
+            # The input type of reduce_mean_op must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x1)
-            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            # The input dtype of reduce_mean_op  must be float32 or float64 or int32 or int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
