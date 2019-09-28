@@ -151,6 +151,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     }
   }
   CHECK(predictor->ZeroCopyRun());
+  return true;
 }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
