@@ -457,7 +457,8 @@ def fill_constant_batch_size_like(input,
                                   dtype,
                                   value,
                                   input_dim_idx=0,
-                                  output_dim_idx=0):
+                                  output_dim_idx=0,
+                                  force_cpu=False):
     """
     ${comment}
 
@@ -475,6 +476,8 @@ def fill_constant_batch_size_like(input,
         input_dim_idx(${input_dim_idx_type}): ${input_dim_idx_comment}.
 
         output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
+
+        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
 
     Returns:
         ${out_comment}.
@@ -500,7 +503,8 @@ def fill_constant_batch_size_like(input,
             'dtype': out.dtype,
             'value': float(value),
             'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx
+            'output_dim_idx': output_dim_idx,
+            'force_cpu': force_cpu or force_init_on_cpu()
         })
     out.stop_gradient = True
     return out

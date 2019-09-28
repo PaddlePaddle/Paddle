@@ -77,9 +77,13 @@ class GatherNdGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    const auto& x_type = x->type();
     return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+        x_type,
+        x_type == framework::proto::VarType::BOOL
+            ? x->place()  // to be consistent with compare and logical ops
+            : ctx.device_context().GetPlace());
   }
 };
 
@@ -173,7 +177,7 @@ REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
                        ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>,
+                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
