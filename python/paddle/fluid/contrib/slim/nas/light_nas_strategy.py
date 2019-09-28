@@ -154,7 +154,6 @@ class LightNASStrategy(Strategy):
                         self._current_tokens, flops))
                 if flops > self._max_flops or (self._max_latency > 0 and
                                                latency > self._max_latency):
-                    self._current_tokens = self._search_agent.next_tokens()
                     self._current_tokens = self._controller.next_tokens(
                         min_tokens)
                 else:
