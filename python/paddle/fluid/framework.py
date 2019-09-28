@@ -660,7 +660,7 @@ class Variable(object):
                 data = np.ones([3, 32, 32], dtype='float32')
                 with fluid.dygraph.guard():
                     fc = fluid.dygraph.FC("fc", 4)
-                    data = to_variable(data)
+                    t = to_variable(data)
                     fc(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
                     fc.weight.set_value(custom_weight)  # change existing weight

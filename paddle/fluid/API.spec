@@ -24,7 +24,7 @@ paddle.fluid.Variable.clear_gradient (ArgSpec(args=['self'], varargs=None, keywo
 paddle.fluid.Variable.detach (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '0730b2d310b014d9b0a903b2034757d7'))
 paddle.fluid.Variable.gradient (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '86b246bfaf20f3058e91927abbcf9fb9'))
 paddle.fluid.Variable.numpy (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7536e8feb56d827875943e7f01d406fc'))
-paddle.fluid.Variable.set_value (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', '57fec17d3c94f5dcacedad6a817e3812'))
+paddle.fluid.Variable.set_value (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', 'c424b9e763ff51c38a6917f98026fe7d'))
 paddle.fluid.Variable.to_string (ArgSpec(args=['self', 'throw_on_error', 'with_details'], varargs=None, keywords=None, defaults=(False,)), ('document', '31f359a2c074f26dc0ffff296fc3983f'))
 paddle.fluid.Executor ('paddle.fluid.executor.Executor', ('document', '34e8c1769313fbeff7817212dda6259e'))
 paddle.fluid.Executor.__init__ (ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
