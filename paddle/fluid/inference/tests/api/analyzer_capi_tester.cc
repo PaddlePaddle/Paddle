@@ -173,7 +173,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   CHECK(profiler_enable) << "NO";
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
-  CHECK(is_valid) << "NO";
+  CHECK(!is_valid) << "NO";
   PD_DeleteAnalysisConfig(config);
 }
 
