@@ -287,7 +287,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
 endif()
 
-set(CAPI_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_tests_models")
+set(CAPI_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_tests_models")
 if (NOT EXISTS ${CAPI_MODEL_INSTALL_DIR})
     inference_download_and_uncompress(${CAPI_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
 endif()
