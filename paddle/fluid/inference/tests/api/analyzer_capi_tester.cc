@@ -146,12 +146,11 @@ void profile(bool use_mkldnn = false) {
   //   LOG(INFO) << (inputs[0][0].shape)[i];
   // }
 
-  // int in_size = 1;
-  // int *out_size;
-  // float *output;
-  // PD_PredictorZeroCopyRun1(&config, input, in_size, &output, &out_size,
-  // shape,
-  //                          shape_size);
+  int in_size = 1;
+  int *out_size;
+  float *output;
+  PD_PredictorZeroCopyRun1(&config, input, in_size, &output, &out_size, shape,
+                           shape_size);
 
   // auto input_names = predictor->GetInputNames();
   // auto input_t = predictor->GetInputTensor(input_names[0]);
@@ -162,20 +161,20 @@ void profile(bool use_mkldnn = false) {
   // CHECK(predictor->ZeroCopyRun());
 
   // PD_Predictor *predictor = PD_NewPredictor(&config);
-  auto pre = CreatePaddlePredictor(config.config);
-  PD_Predictor *predictor = NULL;
-  predictor->predictor = pre.Clone();
+  // auto pre = CreatePaddlePredictor(config.config);
+  // PD_Predictor *predictor = NULL;
+  // predictor->predictor = pre.Clone();
 
-  int *size;
-  char **input_names = PD_GetPredictorInputNames(predictor, &size);
-  LOG(INFO) << input_names[0];
-  PD_DataType data_type = PD_FLOAT32;
-  PD_ZeroCopyTensor *tensor =
-      PD_GetPredictorInputTensor(predictor, input_names[0]);
-  PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
-  PD_ZeroCopyFromCpu(tensor, input, data_type);
-  LOG(INFO) << "before zerocopyrun.";
-  CHECK(PD_PredictorZeroCopyRun(predictor));
+  // int *size;
+  // char **input_names = PD_GetPredictorInputNames(predictor, &size);
+  // LOG(INFO) << input_names[0];
+  // PD_DataType data_type = PD_FLOAT32;
+  // PD_ZeroCopyTensor *tensor =
+  //     PD_GetPredictorInputTensor(predictor, input_names[0]);
+  // PD_ZeroCopyTensorReshape(tensor, shape, shape_size);
+  // PD_ZeroCopyFromCpu(tensor, input, data_type);
+  // LOG(INFO) << "before zerocopyrun.";
+  // CHECK(PD_PredictorZeroCopyRun(predictor));
 
   /*PD_Tensor* ten = PD_NewPaddleTensor();
   ten->tensor = inputs_all[0][0];
