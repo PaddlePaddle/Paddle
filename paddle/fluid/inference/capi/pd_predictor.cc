@@ -44,8 +44,9 @@ extern "C" {
 //   return false;
 // }
 
-bool PD_PredictorRun(PD_AnalysisConfig* config, PD_Tensor* inputs, int in_size,
-                     PD_Tensor* output_data, int** out_size, int batch_size) {
+bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
+                     int in_size, PD_Tensor* output_data, int** out_size,
+                     int batch_size) {
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   std::vector<paddle::PaddleTensor> in;
   for (int i = 0; i < in_size; ++i) {
