@@ -305,6 +305,8 @@ class Compressor(object):
             log_period(int): The period of print log of training.
 
         """
+        # TODO(baiyifan02@baidu.com): need to figure out why the root handler will be automatically added
+        _logger.root.handlers = []
         assert train_feed_list is None or isinstance(
             train_feed_list, list
         ), "train_feed_list should be a list of tuple, such as [('image', image.name), ('label', gt.name)]"
