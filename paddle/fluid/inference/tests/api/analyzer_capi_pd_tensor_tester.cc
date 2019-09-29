@@ -43,8 +43,8 @@ void PD_run() {
   LOG(INFO) << "PaddleBuf empty: " << PD_PaddleBufEmpty(buf);
   int batch = 1;
   int channel = 3;
-  int height = 224;
-  int width = 224;
+  int height = 300;
+  int width = 300;
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
   float* data = new float[batch * channel * height * width];
