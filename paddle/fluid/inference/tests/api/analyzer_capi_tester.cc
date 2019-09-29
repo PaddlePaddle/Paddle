@@ -101,9 +101,6 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_EnableTensorRtEngine(config);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
-  PD_EnableAnakinEngine(config);
-  bool anakin_enable = PD_AnakinEngineEnabled(config);
-  LOG(INFO) << anakin_enable;
   PD_EnableNgraph(config);
   bool ngraph_enable = PD_NgraphEnabled(config);
   LOG(INFO) << ngraph_enable << " Ngraph";
@@ -136,6 +133,9 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   CHECK(quantizer_enable) << "NO";
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, model_dir.c_str());
+  PD_EnableAnakinEngine(config);
+  bool anakin_enable = PD_AnakinEngineEnabled(config);
+  LOG(INFO) << anakin_enable;
   PD_DeleteAnalysisConfig(config);
 }
 #endif
