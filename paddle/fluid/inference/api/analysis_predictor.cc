@@ -569,6 +569,7 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
+  PADDLE_ENFORCE_EQ(config_.use_feed_fetch_ops_, false, "Should set config.SwitchUseFeedFetchOps(false) before using ZeroCopyTensor related APIs.");
   std::vector<std::string> input_names;
   for (auto &item : idx2feeds_) {
     input_names.push_back(item.second);
@@ -759,10 +760,11 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
       }
       TRTCalibratorEngine *calib_engine =
           Singleton<TRTCalibratorEngineManager>::Global().Get(engine_name);
-      LOG(INFO) << "Wait for calib threads done.";
+      LOG(INFO) << "Waiting for calib threads to be done.";
       calib_engine->calib_->waitAndSetDone();
       LOG(INFO) << "Generating TRT Calibration table data, this may cost a lot "
                    "of time...";
+      LOG(WARNING) << "This process is for generating calibration table only.";
       calib_engine->thr_->join();
       std::string calibration_table_data =
           calib_engine->calib_->getCalibrationTableAsString();
