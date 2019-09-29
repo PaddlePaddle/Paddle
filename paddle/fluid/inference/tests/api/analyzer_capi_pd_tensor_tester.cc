@@ -79,7 +79,7 @@ std::string read_file(std::string filename) {
 }
 
 void buffer_run() {
-  PD_AnalysisConfig* config = PD_NewAnalysisConfig();
+  // PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   std::string prog_file = FLAGS_infer_model + "/__model__";
   std::string params_file = FLAGS_infer_model + "/__params__";
 
