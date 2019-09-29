@@ -370,7 +370,12 @@ inline constexpr bool IsArithmetic() {
 
 template <typename T1, typename T2, bool kIsArithmetic /* = true */>
 struct TypeConverterImpl {
-  using Type1 = typename std::common_type<T1, T2>::type;
+ private:
+  using T1WithoutRef = typename std::remove_reference<T1>::type;
+  using T2WithoutRef = typename std::remove_reference<T1>::type;
+
+ public:
+  using Type1 = typename std::common_type<T1WithoutRef, T2WithoutRef>::type;
   using Type2 = Type1;
 };
 
@@ -383,8 +388,11 @@ struct TypeConverterImpl<T1, T2, false> {
 template <typename T1, typename T2>
 struct TypeConverter {
  private:
+  using T1WithoutRef = typename std::remove_reference<T1>::type;
+  using T2WithoutRef = typename std::remove_reference<T1>::type;
+
   static constexpr bool kIsArithmetic =
-      IsArithmetic<T1>() && IsArithmetic<T2>();
+      IsArithmetic<T1WithoutRef>() && IsArithmetic<T2WithoutRef>();
 
  public:
   using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
@@ -424,15 +432,16 @@ struct CanToString {
 template <bool kCanToString /* = true */>
 struct BinaryCompareMessageConverter {
   template <typename T>
-  static std::string Convert(const char* expression, const T& value) {
-    return expression + std::string(":") + string::to_string(value);
+  static std::string Convert(const char* expression, T&& value) {
+    return expression + std::string(":") +
+           string::to_string(std::forward<T>(value));
   }
 };
 
 template <>
 struct BinaryCompareMessageConverter<false> {
   template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
+  static const char* Convert(const char* expression, T&& value) {
     return expression;
   }
 };
@@ -441,8 +450,8 @@ struct BinaryCompareMessageConverter<false> {
 
 #define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
   do {                                                                         \
-    auto __val1 = (__VAL1);                                                    \
-    auto __val2 = (__VAL2);                                                    \
+    auto&& __val1 = (__VAL1);                                                  \
+    auto&& __val2 = (__VAL2);                                                  \
     using __TYPE1__ = decltype(__val1);                                        \
     using __TYPE2__ = decltype(__val2);                                        \
     using __COMMON_TYPE1__ =                                                   \
@@ -455,14 +464,16 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
-                   " %s.\n%s",                                                 \
-                   #__VAL1, #__VAL2,                                           \
-                   ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL1, __val1),            \
-                   ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL2, __val2),            \
-                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
+      PADDLE_THROW(                                                            \
+          "Expected %s " #__CMP " %s, but received %s " #__INV_CMP " %s.\n%s", \
+          #__VAL1, #__VAL2,                                                    \
+          ::paddle::platform::details::BinaryCompareMessageConverter<          \
+              __kCanToString__>::Convert(#__VAL1,                              \
+                                         std::forward<__TYPE1__>(__val1)),     \
+          ::paddle::platform::details::BinaryCompareMessageConverter<          \
+              __kCanToString__>::Convert(#__VAL2,                              \
+                                         std::forward<__TYPE2__>(__val2)),     \
+          ::paddle::string::Sprintf(__VA_ARGS__));                             \
     }                                                                          \
   } while (0)
 
