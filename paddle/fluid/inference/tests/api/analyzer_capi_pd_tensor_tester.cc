@@ -72,7 +72,7 @@ void PD_run() {
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
 
-std::string read_file(string filename) {
+std::string read_file(std::string filename) {
   std::ifstream ifile(filename);
   std::ostringstream buf;
   char ch;
