@@ -322,7 +322,7 @@ void AsyncCommunicator::BarrierIncrement() { barrier_counter_++; }
 
 void AsyncCommunicator::BarrierWait() {
   std::unique_lock<std::mutex> lk(barrier_mutex_);
-  barrier_cond_.wait(lk, [this] { return (barrier_cv_); });
+  barrier_cond_.wait(lk, [this] { return (barrier_counter_ == 0); });
 }
 
 void AsyncCommunicator::BarrierWeakUp() {
