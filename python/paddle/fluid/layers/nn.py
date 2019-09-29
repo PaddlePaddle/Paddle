@@ -1662,7 +1662,11 @@ def dropout(x,
         raise TypeError(
             "The type of 'input' in dropout must be Variable, but received %s" %
             (type(input)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in dropout only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in dropout must be float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
@@ -1743,7 +1747,11 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         raise TypeError(
             "The type of 'input' in cross_entropy must be Variable, but received %s"
             % (type(input)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in cross_entropy only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in cross_entropy must be float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
@@ -2391,9 +2399,13 @@ def conv2d(input,
         raise TypeError(
             "The type of 'input' in conv2d must be Variable, but received %s" %
             (type(input)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in conv2d only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'input' in conv2d must be float32 or float64, but received %s."
+            "The data type of 'input' in conv2d must be float16 or float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
 
     num_channels = input.shape[1]
@@ -3612,7 +3624,11 @@ def batch_norm(input,
         raise TypeError(
             "The type of 'input' in batch_norm must be Variable, but received %s"
             % (type(input)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in batch_norm only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in batch_norm must be float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
