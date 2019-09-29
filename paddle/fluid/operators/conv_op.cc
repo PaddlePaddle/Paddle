@@ -82,15 +82,17 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_dims[1], filter_dims[1] * groups,
       "ShapeError: The number of input channels should be equal to filter "
-      "channels * groups. But received: the input channels is [%d], the filter "
-      "channel is [%d],"
+      "channels * groups. But received: the input channels is [%d], the shape"
+      "of input is [%s], the filter channel is [%d], the shape of filter is "
+      "[%s],"
       "the groups is [%d]",
-      in_dims[1], filter_dims[1], groups);
+      in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
       "ShapeError: The number of output channels should be divided by groups."
-      "But received: the output channels is [%d], the groups is [%d]",
-      filter_dims[0], groups);
+      "But received: the output channels is [%d], the shape of filter is [%s]"
+      "(the first dimension of filter is output channel), the groups is [%d]",
+      filter_dims[0], filter_dims, groups);
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
