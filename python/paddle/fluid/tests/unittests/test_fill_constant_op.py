@@ -109,11 +109,8 @@ class TestFillConstantOpWithSelectedRows(OpTest):
 class TestFillConstantOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The input type of fill_constant must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.fill_constant, x1)
-            # The input dtype of fill_constant must be float32 or float64.
+            # The input dtype of fill_constant must be float16 or float32 or float64.
+            #or int32 or int64
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.fill_constant, x2)
 
