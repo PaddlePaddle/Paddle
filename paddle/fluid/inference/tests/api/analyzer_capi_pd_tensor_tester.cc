@@ -39,18 +39,27 @@ void PD_run() {
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
   PD_Tensor* input = PD_NewPaddleTensor();
-  char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
-  PD_SetPaddleTensorName(input, name);
-  PD_SetPaddleTensorDType(input, PD_FLOAT32);
   PD_PaddleBuf* buf = PD_NewPaddleBuf();
   LOG(INFO) << "PaddleBuf empty: " << PD_PaddleBufEmpty(buf);
   int batch = 1;
   int channel = 3;
   int height = 224;
   int width = 224;
+  int shape[4] = [ batch, channel, height, width ];
+  int shape_size = 4;
   float* data = new float[batch * channel * height * width];
   PD_PaddleBufReset(buf, static_cast<void*>(data),
                     sizeof(float) * (batch * channel * height * width));
+
+  char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
+  PD_SetPaddleTensorName(input, name);
+  PD_SetPaddleTensorDType(input, PD_FLOAT32);
+  PD_SetPaddleTensorShape(input, shape, shape_size);
+  PD_SetPaddleTensorData(input, buf);
+
+  PD_Tensor* out_data;
+  int* out_size;
+  PD_PredictorZeroCopyRun(config, input, 1, out_data, &out_size);
 }
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
