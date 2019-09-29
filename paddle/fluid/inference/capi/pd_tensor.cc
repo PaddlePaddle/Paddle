@@ -57,7 +57,7 @@ const char* PD_GetPaddleTensorName(const PD_Tensor* tensor) {
 }
 
 PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
-  return ConvertToPD_DataType(tensor->tensor.dtype);
+  return ConvertToPDDataType(tensor->tensor.dtype);
 }
 
 PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
