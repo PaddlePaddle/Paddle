@@ -195,7 +195,7 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::SelectedRows& input1,
                   framework::Tensor* input2) {
-    if (UNLIKELY(input1.rows().empty())) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
     }
@@ -277,7 +277,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output,
                   const bool sorted_result = false) {
-    if (inputs.empty()) {
+    if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
@@ -298,7 +298,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     std::set<int64_t> merged_row_set;
     size_t row_num = 0;
     for (auto* input : inputs) {
-      if (input->rows().empty()) {
+      if (input->rows().size() == 0) {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
@@ -359,7 +359,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (auto* input : inputs) {
-        if (input->rows().empty()) {
+        if (input->rows().size() == 0) {
           continue;
         }
         auto* input_data = input->value().data<T>();
@@ -396,7 +396,7 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output) {
-    if (inputs.empty()) {
+    if (inputs.size() == 0) {
       VLOG(3) << "no input! return";
       return;
     }
