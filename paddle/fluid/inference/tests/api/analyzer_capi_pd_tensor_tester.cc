@@ -45,7 +45,7 @@ void PD_run() {
   int channel = 3;
   int height = 224;
   int width = 224;
-  int shape[4] = [ batch, channel, height, width ];
+  int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
   float* data = new float[batch * channel * height * width];
   PD_PaddleBufReset(buf, static_cast<void*>(data),
