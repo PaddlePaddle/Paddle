@@ -78,7 +78,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                  "But received: the shape of scale is [%s], the dimension of scale is [%d]", 
                  scale_dim, scale_dim.size());
   PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL, "ShapeError: the dimension of bias must equal to 1."
-                 "But received: the shape of scale is [%s],the dimension of scale is [%d]", 
+                 "But received: the shape of bias is [%s],the dimension of bias is [%d]", 
                  bias_dim, bias_dim.size());
 
   bool check = true;

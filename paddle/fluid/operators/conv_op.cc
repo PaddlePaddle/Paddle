@@ -52,7 +52,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "ShapeError: Conv input dimension and filter dimension should be the same."
+      "ShapeError: Conv input dimension and filter dimension should be the equal."
       "But received: the shape of Conv input is [%s], input dimension of Conv input is [%d],"
       "the shape of filter is [%s],  the filter dimension of Conv is [%d]", 
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
@@ -60,14 +60,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size() == 2U, true,
-      "ShapeError: the dimension of input minus the dimension of stride must euqal to 2."
+      "ShapeError: the dimension of input minus the dimension of stride must be euqal to 2."
       "But received: the dimension of input minus the dimension of stride is [%d], the"
       "input dimension of Conv is [%d], the shape of Conv input is [%s], the stride" 
       "dimension of Conv is [%d]", 
       in_sub_stride_size, in_dims.size(), in_dims, strides.size());
   PADDLE_ENFORCE_EQ(
       paddings.size(), strides.size(),
-      "ShapeError: Conv paddings dimension and Conv strides dimension should be the same."
+      "ShapeError: Conv paddings dimension and Conv strides dimension should be equal."
       "But received: The paddings dimension of Conv is [%d]"
       "the stride dimension of Conv is [%d]", paddings.size(), strides.size());
 
