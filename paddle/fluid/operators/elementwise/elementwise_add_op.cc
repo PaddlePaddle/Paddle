@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 template <typename T>
 struct SameDimsElemwiseAdd<
     platform::CPUDeviceContext, T,
@@ -68,7 +67,6 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
 
   std::string GetOpFuntionality() const override {
     return "Add two tensors element-wise";
-
   }
 };
 
