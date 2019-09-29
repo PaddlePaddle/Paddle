@@ -79,39 +79,14 @@ std::string read_file(std::string filename) {
 }
 
 void buffer_run() {
-  // PD_AnalysisConfig* config = PD_NewAnalysisConfig();
+  PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   std::string prog_file = FLAGS_infer_model + "/__model__";
   std::string params_file = FLAGS_infer_model + "/__params__";
 
   std::string prog_str = read_file(prog_file);
-  // LOG(INFO) << prog_str;
   std::string params_str = read_file(params_file);
-  AnalysisConfig cfg;
-  cfg.SetModelBuffer(prog_str.c_str(), prog_str.size(), params_str.c_str(),
-                     params_str.size());
-  LOG(INFO) << cfg.prog_file();
-  LOG(INFO) << cfg.params_file();
-  auto predictor = CreatePaddlePredictor(cfg);
-  PaddleTensor tensor;
-  tensor.name = "image";
-  tensor.dtype = PaddleDType::FLOAT32;
-  int batch = 1;
-  int channel = 3;
-  int height = 300;
-  int width = 300;
-  // int shape[4] = {batch, channel, height, width};
-  // int shape_size = 4;
-  float* data = new float[batch * channel * height * width];
-  tensor.shape = std::vector<int>({batch, channel, height, width});
-  tensor.data = PaddleBuf(static_cast<void*>(data),
-                          sizeof(float) * (batch * channel * height * width));
-  std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
-  std::vector<PaddleTensor> outputs;
-  predictor->Run(paddle_tensor_feeds, &outputs, batch);
-  LOG(INFO) << outputs.size();
-  LOG(INFO) << *(static_cast<float*>(outputs[0].data.data()));
 
-  /*PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
+  PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
                     params_str.c_str(), params_str.size());
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
@@ -146,7 +121,7 @@ void buffer_run() {
   LOG(INFO) << PD_PaddleBufLength(b);
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
-  PD_PaddleBufResize(b, 500);*/
+  PD_PaddleBufResize(b, 500);
 }
 
 TEST(SetModelBuffer, read) { buffer_run(); }
