@@ -60,20 +60,6 @@ static inline void GetNCDHW(const framework::DDim& dims,
   }
 }
 
-static inline bool IsSymmetricPadding(const std::vector<int>& paddings,
-                                      const int data_dim) {
-  bool is_sys_pad = true;
-  if (paddings.size() == data_dim * 2) {
-    for (size_t i = 0; i < data_dim; ++i) {
-      if (paddings[2 * i] != paddings[2 * i + 1]) {
-        is_sys_pad = false;
-        return is_sys_pad;
-      }
-    }
-  }
-  return is_sys_pad;
-}
-
 template <typename DeviceContext, typename T, size_t D>
 static void Slice_2(const framework::ExecutionContext& context,
                     const Tensor* input, Tensor* out,
@@ -169,7 +155,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
 
     Tensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
@@ -381,7 +367,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // cuDNN only supports padding the same amount on every dimension.
     // So we create a new padded input tensor.
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
     Tensor transformed_input(input->type());
     Tensor transformed_input_grad(input->type());
     std::vector<int> padding_common(data_dim, 0);
@@ -714,7 +700,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
     Tensor transformed_X(X->type());
     Tensor transformed_ddX(X->type());
 
