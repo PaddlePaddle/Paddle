@@ -67,11 +67,65 @@ void PD_run() {
   LOG(INFO) << PD_PaddleBufLength(b);
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
+  PD_PaddleBufResize(b, 500);
 }
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
 
-TEST(SetModelBuffer, read) {}
+std::string read_file(string filename) {
+  std::ifstream ifile(filename);
+  std::ostringstream buf;
+  char ch;
+  while (buf && ifile.get(ch)) buf.put(ch);
+  return buf.str();
+}
+
+void buffer_run() {
+  PD_AnalysisConfig* config = PD_NewAnalysisConfig();
+  std::string prog_file = FLAGS_infer_model + "/__model__";
+  std::string params_file = FLAGS_infer_model + "/__params__";
+
+  std::string prog_str = read_file(prog_file);
+  std::string params_str = read_file(params_file);
+  PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
+                    params_str.c_str(), params_str.size());
+
+  LOG(INFO) << PD_ProgFile(config);
+  LOG(INFO) << PD_ParamsFile(config);
+  CHECK(PD_ModelFromMemory(config)) << "NO";
+  PD_Tensor* input = PD_NewPaddleTensor();
+  PD_PaddleBuf* buf = PD_NewPaddleBuf();
+  LOG(INFO) << "PaddleBuf empty: " << PD_PaddleBufEmpty(buf);
+  int batch = 1;
+  int channel = 3;
+  int height = 300;
+  int width = 300;
+  int shape[4] = {batch, channel, height, width};
+  int shape_size = 4;
+  float* data = new float[batch * channel * height * width];
+  PD_PaddleBufReset(buf, static_cast<void*>(data),
+                    sizeof(float) * (batch * channel * height * width));
+
+  char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
+  PD_SetPaddleTensorName(input, name);
+  PD_SetPaddleTensorDType(input, PD_FLOAT32);
+  PD_SetPaddleTensorShape(input, shape, shape_size);
+  PD_SetPaddleTensorData(input, buf);
+
+  PD_Tensor* out_data = PD_NewPaddleTensor();
+  int* out_size;
+  PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
+  LOG(INFO) << *out_size;
+  LOG(INFO) << PD_GetPaddleTensorName(out_data);
+  LOG(INFO) << PD_GetPaddleTensorDType(out_data);
+  PD_PaddleBuf* b = PD_GetPaddleTensorData(out_data);
+  LOG(INFO) << PD_PaddleBufLength(b);
+  float* result = static_cast<float*>(PD_PaddleBufData(b));
+  LOG(INFO) << *result;
+  PD_PaddleBufResize(b, 500);
+}
+
+TEST(SetModelBuffer, read) { buffer_run(); }
 
 }  // namespace analysis
 }  // namespace inference
