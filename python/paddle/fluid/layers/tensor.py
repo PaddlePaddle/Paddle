@@ -21,6 +21,7 @@ from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
 from .layer_function_generator import templatedoc
+from ..data_feeder import convert_dtype
 import numpy
 
 __all__ = [
@@ -397,12 +398,20 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
 
     helper = LayerHelper("fill_constant", **locals())
-    if dtype not in ['float16', 'float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(
+            dtype) not in ['float16', 'float32', 'float64', 'int32', 'int64']:
         raise TypeError(
             "The create data type in fill_constant must be float16 or float32"
-            "or float64 or int32 or int64  but received %s." % ((dtype)))
+            "or float64 or int32 or int64  but received %s." % conver_dtype(
+                (dtype)))
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        if (convert_dtype(dtype) == convert_dtype(out.dtype)):
+            raise TypeError(
+                "The create data type in op must be same with out type2"
+                "but received %s and out dtype %s." % (conver_dtype(
+                    (dtype), convert_dtype(out.type))))
     helper.append_op(
         type='fill_constant',
         inputs={},
