@@ -296,9 +296,7 @@ PADDLE_CAPI_EXPORT extern void PD_SetModelBuffer(PD_AnalysisConfig* config,
 PADDLE_CAPI_EXPORT extern bool PD_ModelFromMemory(
     const PD_AnalysisConfig* config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableMemoryOptim(
-    PD_AnalysisConfig* config, bool static_optim = false,
-    bool force_update_static_cache = false);
+PADDLE_CAPI_EXPORT extern void PD_EnableMemoryOptim(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_MemoryOptimEnabled(
     const PD_AnalysisConfig* config);

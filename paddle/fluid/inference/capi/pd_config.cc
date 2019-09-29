@@ -233,9 +233,8 @@ bool PD_ModelFromMemory(const PD_AnalysisConfig* config) {
   return config->config.model_from_memory();
 }
 
-void PD_EnableMemoryOptim(PD_AnalysisConfig* config, bool static_optim,
-                          bool force_update_static_cache) {
-  config->config.EnableMemoryOptim(static_optim, force_update_static_cache);
+void PD_EnableMemoryOptim(PD_AnalysisConfig* config) {
+  config->config.EnableMemoryOptim();
 }
 
 bool PD_MemoryOptimEnabled(const PD_AnalysisConfig* config) {
