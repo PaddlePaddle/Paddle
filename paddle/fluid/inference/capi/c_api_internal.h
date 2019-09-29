@@ -54,7 +54,7 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 
 paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
 
-PD_DataType ConvertToPDDataType(paddle::PD_PaddleDType dtype);
+PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
 
-PD_ACPrecision ConvertToACPrecision(paddle::Precision dtype);
+PD_ACPrecision ConvertToACPrecision(Precision dtype);
 }
