@@ -2311,10 +2311,12 @@ def conv2d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Note:
-        padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
+        padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/\
+        PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
 
     Args:
-        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type of input is float16 or float32 or float64.
+        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type 
+            of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size 
@@ -2328,7 +2330,9 @@ def conv2d(input,
             on both sides for each dimention. If padding is a tuple, it must
             contain two integers, (padding_height, padding_width). Otherwise,
             padding_height = padding_width =  padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel points. This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has a nice visualization of what dilation does. If dilation is a tuple, it must
+        dilation (int|tuple): The dilation size. It means the spacing between the kernel 
+            points. This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ 
+            has a nice visualization of what dilation does. If dilation is a tuple, it must
             contain two integers, (dilation_height, dilation_width). Otherwise,
             dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
@@ -2355,7 +2359,9 @@ def conv2d(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, The tensor variable storing the convolution result, and if act is not None, the tensor variable storing convolution and non-linearity activation result.
+        Variable: The output tensor and input tensor have same shape. If act is None, 
+                  the tensor variable storing the convolution result, and if act is not 
+                  None, the tensor variable storing convolution and non-linearity activation result.
 
     Examples:
         .. code-block:: python
@@ -2441,8 +2447,6 @@ def conv3d(input,
            act=None,
            name=None):
     """
-    **Convlution3D Layer**
-
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW format. Where N is batch size C is the number of
@@ -2487,7 +2491,8 @@ def conv3d(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
-        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data type of input is float16 or float32 or float64.
+        input (Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data 
+            type of input is float16 or float32 or float64.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size is a tuple,
@@ -2501,7 +2506,9 @@ def conv3d(input,
             for each dimention. If padding is a tuple, it must contain three integers, (padding_depth, 
             padding_height, padding_width). Otherwise, padding_depth = padding_height = padding_width = \
             padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel points. This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has a nice visualization of what dilation does. If dilation is a tuple, it must
+        dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
+            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ 
+            has a nice visualization of what dilation does. If dilation is a tuple, it must
             contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
             dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups (int): The groups number of the Conv3d Layer. According to grouped
@@ -2528,7 +2535,10 @@ def conv3d(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, The tensor variable storing the convolution result, and if act is not None, the tensor variable storing convolution and non-linearity activation result.
+        Variable: The output tensor and input tensor have same shape. If act is None, 
+                  the tensor variable storing the convolution result, and if act is not 
+                  None, the tensor variable storing convolution and non-linearity 
+                  activation result.
 
     Examples:
         .. code-block:: python
@@ -3517,7 +3527,8 @@ def batch_norm(input,
         sync_batch_norm automatically.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type is float16 or float32 or float64.
+        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+            is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
@@ -3540,7 +3551,8 @@ def batch_norm(input,
 	     Default: None.
         data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default. 
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
+            Usually name is no need to set and None by default. 
         moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
             will save global mean with the string.
@@ -3556,7 +3568,8 @@ def batch_norm(input,
             and variance are also used during train period.
 
     Returns:
-        Variable: A tensor variable which is the result after applying batch normalization on the input. The shape of output equal to the shape of input.
+        Variable: A tensor variable which is the result after applying batch normalization on the input. 
+                  The shape of output equal to the shape of input.
 
     Examples:
 
@@ -3691,7 +3704,8 @@ def instance_norm(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type is float32 or float64.
+        input(variable): The rank of input variable can be 2, 3, 4, 5. 
+            The data type is float32 or float64.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
@@ -3708,7 +3722,8 @@ def instance_norm(input,
             will be named automatically.
 
     Returns:
-        Variable: A tensor variable which is the result after applying instance normalization on the input.
+        Variable: A tensor variable which is the result after applying instance normalization 
+                  on the input.
 
     Examples:
 
@@ -4201,8 +4216,6 @@ def conv2d_transpose(input,
                      act=None,
                      name=None):
     """
-    **Convlution2D transpose layer**
-
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCHW format. Where N is batch size, C is the number of channels,
@@ -4252,7 +4265,9 @@ def conv2d_transpose(input,
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ] 
 
     Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d, when stride > 1, conv2d maps multiple input shape to the same output shape, so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
+          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d, 
+          when stride > 1, conv2d maps multiple input shape to the same output shape, 
+          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
           else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must 
@@ -4260,24 +4275,32 @@ def conv2d_transpose(input,
           conv2d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type of input is float32 or float64.
+        input(Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type
+                         of input is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
             If output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and filter_size should not be None at the same time.
+            should follow the formula above. Default: None. output_size and filter_size 
+            should not be None at the same time.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_height, filter_size_width).
             Otherwise, filter_size_height = filter_size_width = filter_size. None if 
-            use output size to calculate filter_size. Default: None. filter_size and output_size should not be None at the same time.
-        padding(int|tuple): The padding size. The padding argument effectively adds `dilation * (kernel - 1)` amount of zero-padding on both sidee of input. If padding is a tuple, it must contain two integers, (padding_height, padding_width). Otherwise, 
-            padding_height = padding_width = padding. Default: padding = 0.
-        stride(int|tuple): The stride size. It means the stride in transposed convolution. If stride is a tuple, it must
-            contain two integers, (stride_height, stride_width). Otherwise,
-            stride_height = stride_width = stride. Default: stride = 1.
-        dilation(int|tuple): The dilation size. It means the spacing between the kernel points. This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has a nice visualization of what dilation does. If dilation is a tuple, it must
+            use output size to calculate filter_size. Default: None. filter_size and 
+            output_size should not be None at the same time.
+        padding(int|tuple): The padding size. The padding argument effectively adds 
+            `dilation * (kernel - 1)` amount of zero-padding on both sides of input. 
+            If padding is a tuple, it must contain two integers, (padding_height, \
+            padding_width). Otherwise, padding_height = padding_width = padding. 
+            Default: padding = 0.
+        stride(int|tuple): The stride size. It means the stride in transposed convolution. 
+            If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+        dilation(int|tuple): The dilation size. It means the spacing between the kernel points. 
+            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ 
+            has a nice visualization of what dilation does. If dilation is a tuple, it must
             contain two integers, (dilation_height, dilation_width). Otherwise, 
             dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv2d transpose layer. Inspired by
@@ -4304,7 +4327,10 @@ def conv2d_transpose(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, The tensor variable storing the transposed convolution result, and if act is not None, the tensor variable storing transposed convolution and non-linearity activation result.
+        Variable: The output tensor and input tensor have same shape. If act is None, 
+                  the tensor variable storing the transposed convolution result, and 
+                  if act is not None, the tensor variable storing transposed convolution 
+                  and non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -4401,8 +4427,6 @@ def conv3d_transpose(input,
                      act=None,
                      name=None):
     """
-    **Convlution3D transpose layer**
-
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW format. Where N is batch size, C is the number of channels,
@@ -4454,30 +4478,45 @@ def conv3d_transpose(input,
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
     Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, when stride > 1, conv3d maps multiple input shape to the same output shape, so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`; 
-          else, the :math:`D_{out}` of the output size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, 
+          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
           and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
           between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
           conv3d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data type of input is float32 or float64.
+        input(Variable): The input is 5-D Tensor with shape [N, C, D, H, W], the data type 
+            of input is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width). This
-            parameter only works when filter_size is None. If output_size and filter_size are specified at the same time, They should follow the formula above. Default: None. output_size and filter_size should not be None at the same time.
+            parameter only works when filter_size is None. If output_size and filter_size are 
+            specified at the same time, They should follow the formula above. Default: None. 
+            Output_size and filter_size should not be None at the same time.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_depth, filter_size_height, \
             filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
             filter_size_width = filter_size. None if use output size to
-            calculate filter_size. Default: None. filter_size and output_size should not be None at the same time.
-        padding(int|tuple): The padding size. The padding argument effectively adds `dilation * (kernel - 1)` amount of zero-padding on both sidee of input. If padding is a tuple, it must contain three integers, (padding_depth, padding_height, padding_width). Otherwise, padding_depth = padding_height = padding_width = padding. Default: padding = 0.
-        stride(int|tuple): The stride size. It means the stride in transposed convolution. If stride is a tuple, it must
-            contain three integers, (stride_depth, stride_height, stride_width). Otherwise,
-            stride_depth = stride_height = stride_width = stride. Default: stride = 1.
-        dilation(int|tuple): The dilation size. It means the spacing between the kernel points. This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has a nice visualization of what dilation does. If dilation is a tuple, it must
+            calculate filter_size. Default: None. filter_size and output_size should not be 
+            None at the same time.
+        padding(int|tuple): The padding size. The padding argument effectively adds 
+            `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If padding 
+            is a tuple, it must contain three integers, (padding_depth, padding_height, \
+            padding_width). Otherwise, padding_depth = padding_height = padding_width = \
+            padding. Default: padding = 0.
+        stride(int|tuple): The stride size. It means the stride in transposed convolution. 
+            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+            Default: stride = 1.
+        dilation(int|tuple): The dilation size. It means the spacing between the kernel points. 
+            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has 
+            a nice visualization of what dilation does. If dilation is a tuple, it must
             contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
             dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv3d transpose layer. Inspired by
@@ -4504,7 +4543,10 @@ def conv3d_transpose(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, The tensor variable storing the transposed convolution result, and if act is not None, the tensor variable storing transposed convolution and non-linearity activation result.
+        Variable: The output tensor and input tensor have same shape. If act is None, 
+                  the tensor variable storing the transposed convolution result, and 
+                  if act is not None, the tensor variable storing transposed convolution 
+                  and non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -14086,15 +14128,19 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
   **Npair Loss Layer**
 
-  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/papers/nips16_npairmetriclearning.pdf>`_ .
+  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective 
+       <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
+       papers/nips16_npairmetriclearning.pdf>`_ .
 
   Npair loss requires paired data. Npair loss has two parts: the first part is L2
   regularizer on the embedding vector; the second part is cross entropy loss which
   takes the similarity matrix of anchor and positive as logits.
 
   Args:
-    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], the data type is float32 or float32.
-    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], the data type is float32 or float32.
+    anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
+                      the data type is float32 or float32.
+    positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
+                      the data type is float32 or float32.
     labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float32 or int64.
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
