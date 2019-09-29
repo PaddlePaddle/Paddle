@@ -19,20 +19,9 @@
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
-template <PD_DataType DType>
-struct GetDataType;
-#define DECLARE_PD_DTYPE_CONVERTOR(PD_DATA_TYPE, REAL_TYPE) \
-  template <>                                               \
-  struct GetDataType<PD_DATA_TYPE> {                        \
-    using RealType = REAL_TYPE;                             \
-  }
-
-DECLARE_PD_DTYPE_CONVERTOR(PD_FLOAT32, float);
-DECLARE_PD_DTYPE_CONVERTOR(PD_INT32, int32_t);
-DECLARE_PD_DTYPE_CONVERTOR(PD_INT64, int64_t);
-DECLARE_PD_DTYPE_CONVERTOR(PD_UINT8, uint8_t);
-
-#undef DECLARE_PD_DTYPE_CONVERTOR
+using PD_PaddleDType = paddle::PaddleDType;
+using PD_PaddlePlace = paddle::PaddlePlace;
+using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
 using PD_PaddleDType = paddle::PaddleDType;
 using PD_PaddlePlace = paddle::PaddlePlace;
@@ -53,7 +42,7 @@ struct InTensorShape {
 };
 
 struct PD_ZeroCopyTensor {
-  paddle::ZeroCopyTensor tensor;
+  paddle::ZeroCopyTensor* tensor;
 };
 
 struct PD_Tensor {
@@ -62,12 +51,6 @@ struct PD_Tensor {
 
 struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
-};
-
-struct PD_MaxInputShape {
-  char* name;
-  int* shape;
-  int shape_size;
 };
 
 namespace paddle {

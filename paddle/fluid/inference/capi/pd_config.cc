@@ -28,7 +28,7 @@ using paddle::ConvertToACPrecision;
 
 extern "C" {
 
-PD_AnalysisConfig* PD_NewAnalysisConfig() { return new PD_AnalysisConfig; }
+PD_AnalysisConfig* PD_NewAnalysisConfig() { return new PD_AnalysisConfig; }  //
 
 void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
   if (config) {
@@ -41,6 +41,8 @@ void PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
                  const char* params_path) {
   PADDLE_ENFORCE(model_dir != nullptr,
                  "Input(model_dir) of PD_SetModel should not be null.");
+  LOG(INFO) << model_dir;
+  LOG(INFO) << std::string(model_dir);
   if (!params_path) {
     config->config.SetModel(std::string(model_dir));
   } else {
@@ -67,15 +69,15 @@ void PD_SetOptimCacheDir(PD_AnalysisConfig* config, const char* opt_cache_dir) {
   config->config.SetOptimCacheDir(std::string(opt_cache_dir));
 }
 
-const char* PD_ModelDir(PD_AnalysisConfig* config) {
+const char* PD_ModelDir(const PD_AnalysisConfig* config) {
   return config->config.model_dir().c_str();
 }
 
-const char* PD_ProgFile(PD_AnalysisConfig* config) {
+const char* PD_ProgFile(const PD_AnalysisConfig* config) {
   return config->config.prog_file().c_str();
 }
 
-const char* PD_ParamsFile(PD_AnalysisConfig* config) {
+const char* PD_ParamsFile(const PD_AnalysisConfig* config) {
   return config->config.params_file().c_str();
 }
 
@@ -86,23 +88,25 @@ void PD_EnableUseGpu(PD_AnalysisConfig* config,
 
 void PD_DisableGpu(PD_AnalysisConfig* config) { config->config.DisableGpu(); }
 
-bool PD_UseGpu(PD_AnalysisConfig* config) { return config->config.use_gpu(); }
+bool PD_UseGpu(const PD_AnalysisConfig* config) {
+  return config->config.use_gpu();
+}
 
-int PD_GpuDeviceId(PD_AnalysisConfig* config) {
+int PD_GpuDeviceId(const PD_AnalysisConfig* config) {
   return config->config.gpu_device_id();
 }
 
-int PD_MemoryPoolInitSizeMb(PD_AnalysisConfig* config) {
+int PD_MemoryPoolInitSizeMb(const PD_AnalysisConfig* config) {
   return config->config.memory_pool_init_size_mb();
 }
 
-float PD_FractionOfGpuMemoryForPool(PD_AnalysisConfig* config) {
+float PD_FractionOfGpuMemoryForPool(const PD_AnalysisConfig* config) {
   return config->config.fraction_of_gpu_memory_for_pool();
 }
 
 void PD_EnableCUDNN(PD_AnalysisConfig* config) { config->config.EnableCUDNN(); }
 
-bool PD_CudnnEnabled(PD_AnalysisConfig* config) {
+bool PD_CudnnEnabled(const PD_AnalysisConfig* config) {
   return config->config.cudnn_enabled();
 }
 
@@ -110,13 +114,15 @@ void PD_SwitchIrOptim(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrOptim(x);
 }
 
-bool PD_IrOptim(PD_AnalysisConfig* config) { return config->config.ir_optim(); }
+bool PD_IrOptim(const PD_AnalysisConfig* config) {
+  return config->config.ir_optim();
+}
 
 void PD_SwitchUseFeedFetchOps(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchUseFeedFetchOps(x);
 }
 
-bool PD_UseFeedFetchOpsEnabled(PD_AnalysisConfig* config) {
+bool PD_UseFeedFetchOpsEnabled(const PD_AnalysisConfig* config) {
   return config->config.use_feed_fetch_ops_enabled();
 }
 
@@ -124,7 +130,7 @@ void PD_SwitchSpecifyInputNames(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchSpecifyInputNames(x);
 }
 
-bool PD_SpecifyInputName(PD_AnalysisConfig* config) {
+bool PD_SpecifyInputName(const PD_AnalysisConfig* config) {
   return config->config.specify_input_name();
 }
 
@@ -137,7 +143,7 @@ void PD_EnableTensorRtEngine(PD_AnalysisConfig* config, int workspace_size,
       paddle::ConvertToACPrecision(precision), use_static, use_calib_mode);
 }
 
-bool PD_TensorrtEngineEnabled(PD_AnalysisConfig* config) {
+bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {
   return config->config.tensorrt_engine_enabled();
 }
 
@@ -171,7 +177,7 @@ void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size,
                                     auto_config_layout, pf, of);
 }
 
-bool PD_AnakinEngineEnabled(PD_AnalysisConfig* config) {
+bool PD_AnakinEngineEnabled(const PD_AnalysisConfig* config) {
   return config->config.anakin_engine_enabled();
 }
 
@@ -183,7 +189,7 @@ void PD_EnableNgraph(PD_AnalysisConfig* config) {
   config->config.EnableNgraph();
 }
 
-bool PD_NgraphEnabled(PD_AnalysisConfig* config) {
+bool PD_NgraphEnabled(const PD_AnalysisConfig* config) {
   return config->config.ngraph_enabled();
 }
 
@@ -195,7 +201,7 @@ void PD_SetMkldnnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
   config->config.SetMkldnnCacheCapacity(capacity);
 }
 
-bool PD_MkldnnEnabled(PD_AnalysisConfig* config) {
+bool PD_MkldnnEnabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_enabled();
 }
 
@@ -204,7 +210,7 @@ void PD_SetCpuMathLibraryNumThreads(PD_AnalysisConfig* config,
   config->config.SetCpuMathLibraryNumThreads(cpu_math_library_num_threads);
 }
 
-int PD_CpuMathLibraryNumThreads(PD_AnalysisConfig* config) {
+int PD_CpuMathLibraryNumThreads(const PD_AnalysisConfig* config) {
   return config->config.cpu_math_library_num_threads();
 }
 
@@ -212,7 +218,7 @@ void PD_EnableMkldnnQuantizer(PD_AnalysisConfig* config) {
   config->config.EnableMkldnnQuantizer();
 }
 
-bool PD_MkldnnQuantizerEnabled(PD_AnalysisConfig* config) {
+bool PD_MkldnnQuantizerEnabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_quantizer_enabled();
 }
 
@@ -223,7 +229,7 @@ void PD_SetModelBuffer(PD_AnalysisConfig* config, const char* prog_buffer,
                                 params_buffer_size);
 }
 
-bool PD_ModelFromMemory(PD_AnalysisConfig* config) {
+bool PD_ModelFromMemory(const PD_AnalysisConfig* config) {
   return config->config.model_from_memory();
 }
 
@@ -232,7 +238,7 @@ void PD_EnableMemoryOptim(PD_AnalysisConfig* config, bool static_optim,
   config->config.EnableMemoryOptim(static_optim, force_update_static_cache);
 }
 
-bool PD_MemoryOptimEnabled(PD_AnalysisConfig* config) {
+bool PD_MemoryOptimEnabled(const PD_AnalysisConfig* config) {
   return config->config.enable_memory_optim();
 }
 
@@ -240,11 +246,13 @@ void PD_EnableProfile(PD_AnalysisConfig* config) {
   config->config.EnableProfile();
 }
 
-bool PD_ProfileEnabled(PD_AnalysisConfig* config) {
+bool PD_ProfileEnabled(const PD_AnalysisConfig* config) {
   return config->config.profile_enabled();
 }
 
 void PD_SetInValid(PD_AnalysisConfig* config) { config->config.SetInValid(); }
 
-bool PD_IsValid(PD_AnalysisConfig* config) { return config->config.is_valid(); }
+bool PD_IsValid(const PD_AnalysisConfig* config) {
+  return config->config.is_valid();
+}
 }  // extern "C"
