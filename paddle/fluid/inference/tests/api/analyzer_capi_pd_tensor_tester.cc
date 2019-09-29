@@ -89,6 +89,8 @@ void buffer_run() {
   AnalysisConfig cfg;
   cfg.SetModelBuffer(prog_str.c_str(), prog_str.size(), params_str.c_str(),
                      params_str.size());
+  LOG(INFO) << cfg.prog_file();
+  LOG(INFO) << cfg.params_file();
   auto predictor = CreatePaddlePredictor(cfg);
   PaddleTensor tensor;
   tensor.name = "image";
