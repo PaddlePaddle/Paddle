@@ -401,15 +401,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     if convert_dtype(
             dtype) not in ['float16', 'float32', 'float64', 'int32', 'int64']:
         raise TypeError(
-            "The create data type in fill_constant must be float16 or float32"
-            "or float64 or int32 or int64  but received %s." % convert_dtype(
+            "The create data type in fill_constant must be one of float16, float32,"
+            "float64, int32 or int64, but received %s." % convert_dtype(
                 (dtype)))
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
         if not (convert_dtype(dtype) == convert_dtype(out.dtype)):
             raise TypeError(
-                "The create data type in op must be same with out type2"
+                "The create data type in op must be same with out type"
                 "but received %s and out dtype %s." % (convert_dtype(
                     (dtype), convert_dtype(out.dtype))))
     helper.append_op(
