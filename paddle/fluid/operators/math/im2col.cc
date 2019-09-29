@@ -32,22 +32,26 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
+                  const std::vector<int>& padding, framework::Tensor* col,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+                      "The dimension of col should be 5.");
 
     if (stride[0] == 1 && stride[1] == 1 && dilation[0] == 1 &&
         dilation[1] == 1) {
-      if (padding[0] == 0 && padding[1] == 0) {
-        im2col_sh1sw1dh1dw1ph0pw0<T>(im, col);
+      if (padding[0] == 0 && padding[1] == 0 && padding[2] == 0 &&
+          padding[3] == 0) {
+        im2col_sh1sw1dh1dw1ph0pw0<T>(im, col, data_layout);
         return;
-      } else if (padding[0] == 1 && padding[1] == 1) {
-        im2col_sh1sw1dh1dw1ph1pw1<T>(im, col);
+      } else if (padding[0] == 1 && padding[1] == 1 && padding[2] == 1 &&
+                 padding[3] == 1) {
+        im2col_sh1sw1dh1dw1ph1pw1<T>(im, col, data_layout);
         return;
       }
       // TODO(TJ): complete padding >=2
     }
-    im2col_common<T>(im, dilation, stride, padding, col);
+    im2col_common<T>(im, dilation, stride, padding, col, data_layout);
   }
 };
 
@@ -64,12 +68,17 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
-    int im_channels = im->dims()[0];
-    int im_height = im->dims()[1];
-    int im_width = im->dims()[2];
+                  const std::vector<int>& padding, framework::Tensor* im,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+                      "The dimension of col should be 5.");
+    int im_channels =
+        (data_layout == DataLayout::kNCHW ? im->dims()[0] : im->dims()[2]);
+    int im_height =
+        (data_layout == DataLayout::kNCHW ? im->dims()[1] : im->dims()[0]);
+    int im_width =
+        (data_layout == DataLayout::kNCHW ? im->dims()[2] : im->dims()[1]);
     int filter_height = col.dims()[1];
     int filter_width = col.dims()[2];
     int col_height = col.dims()[3];
@@ -105,7 +114,15 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
-            im_data[(im_row_idx + c_im * im_height) * im_width + im_col_idx] +=
+            int im_offset;
+            if (data_layout == DataLayout::kNCHW) {
+              im_offset =
+                  (c_im * im_height + im_row_idx) * im_width + im_col_idx;
+            } else {
+              im_offset =
+                  (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
+            }
+            im_data[im_offset] +=
                 col_data[(c * col_height + h) * col_width + w];
           }
         }
@@ -135,12 +152,17 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
+                  const std::vector<int>& padding, framework::Tensor* col,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+                      "The dimension of col should be 5.");
+    int im_channels =
+        (data_layout == DataLayout::kNCHW ? im.dims()[0] : im.dims()[2]);
+    int im_height =
+        (data_layout == DataLayout::kNCHW ? im.dims()[1] : im.dims()[0]);
+    int im_width =
+        (data_layout == DataLayout::kNCHW ? im.dims()[2] : im.dims()[1]);
     int filter_height = col->dims()[3];
     int filter_width = col->dims()[4];
     int col_height = col->dims()[0];
@@ -151,15 +173,19 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
 
     for (int col_row_idx = 0; col_row_idx < col_height; ++col_row_idx) {
       for (int col_col_idx = 0; col_col_idx < col_width; ++col_col_idx) {
+        int c = 0;
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
-            int im_row_offset =
-                col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
+              int w_offset = c % filter_width;
+              int h_offset = (c / filter_width) % filter_height;
+              c += 1;
+              int im_row_offset =
+                  col_row_idx * stride[0] - padding[0] + h_offset * dilation[0];
               int im_col_offset =
-                  col_col_idx * stride[1] + filter_col_idx - padding[1];
+                  col_col_idx * stride[1] - padding[2] + w_offset * dilation[1];
 
               int col_offset =
                   ((((col_row_idx)*col_width + col_col_idx) * im_channels +
@@ -169,8 +195,15 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                       filter_width +
                   filter_col_idx;
 
-              int im_offset = (channel * im_height + im_row_offset) * im_width +
-                              im_col_offset;
+              int im_offset;
+              if (data_layout == DataLayout::kNCHW) {
+                im_offset = (channel * im_height + im_row_offset) * im_width +
+                            im_col_offset;
+              } else {
+                im_offset =
+                    (im_row_offset * im_width + im_col_offset) * im_channels +
+                    channel;
+              }
               col_data[col_offset] =
                   (im_row_offset < 0 || im_row_offset >= im_height ||
                    im_col_offset < 0 || im_col_offset >= im_width)
@@ -197,42 +230,55 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
-    int im_channels = im->dims()[0];
-    int im_height = im->dims()[1];
-    int im_width = im->dims()[2];
+                  const std::vector<int>& padding, framework::Tensor* im,
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+                      "The dimension of col should be 5.");
+    int im_channels =
+        (data_layout == DataLayout::kNCHW ? im->dims()[0] : im->dims()[2]);
+    int im_height =
+        (data_layout == DataLayout::kNCHW ? im->dims()[1] : im->dims()[0]);
+    int im_width =
+        (data_layout == DataLayout::kNCHW ? im->dims()[2] : im->dims()[1]);
     int filter_height = col.dims()[3];
     int filter_width = col.dims()[4];
     int col_height = col.dims()[0];
     int col_width = col.dims()[1];
 
-    PADDLE_ENFORCE_EQ(
-        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height,
-        "Output_height and padding(padding_up, padding_down) are "
-        "inconsistent.");
-    PADDLE_ENFORCE_EQ(
-        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
-        col_width,
-        "col_width and padding(padding_left, padding_right) are "
-        "inconsistent.");
+    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
+                       ((dilation[0] * (filter_height - 1) + 1))) /
+                              stride[0] +
+                          1,
+                      col_height,
+                      "Output_height and padding(padding_up, padding_down) are "
+                      "inconsistent.");
+    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
+                       ((dilation[1] * (filter_width - 1) + 1))) /
+                              stride[1] +
+                          1,
+                      col_width,
+                      "Output_height and padding(padding_up, padding_down) are "
+                      "inconsistent.");
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
 
     for (int col_row_idx = 0; col_row_idx < col_height; ++col_row_idx) {
       for (int col_col_idx = 0; col_col_idx < col_width; ++col_col_idx) {
+        int c = 0;
         for (int channel = 0; channel < im_channels; ++channel) {
           for (int filter_row_idx = 0; filter_row_idx < filter_height;
                ++filter_row_idx) {
-            int im_row_offset =
-                col_row_idx * stride[0] + filter_row_idx - padding[0];
             for (int filter_col_idx = 0; filter_col_idx < filter_width;
                  ++filter_col_idx) {
+              int w_offset = c % filter_width;
+              int h_offset = (c / filter_width) % filter_height;
+              c += 1;
+              int im_row_offset =
+                  col_row_idx * stride[0] - padding[0] + h_offset * dilation[0];
               int im_col_offset =
-                  col_col_idx * stride[1] + filter_col_idx - padding[1];
+                  col_col_idx * stride[1] - padding[1] + w_offset * dilation[1];
 
               int col_offset =
                   (((col_row_idx * col_width + col_col_idx) * im_channels +
@@ -244,9 +290,15 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
 
               if (im_row_offset >= 0 && im_row_offset < im_height &&
                   im_col_offset >= 0 && im_col_offset < im_width) {
-                int im_offset =
-                    (channel * im_height + im_row_offset) * im_width +
-                    im_col_offset;
+                int im_offset;
+                if (data_layout == DataLayout::kNCHW) {
+                  im_offset = (channel * im_height + im_row_offset) * im_width +
+                              im_col_offset;
+                } else {
+                  im_offset =
+                      (im_row_offset * im_width + im_col_offset) * im_channels +
+                      channel;
+                }
                 im_data[im_offset] += col_data[col_offset];
               }
             }
