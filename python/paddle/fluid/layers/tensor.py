@@ -405,7 +405,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'float16', 'float32', 'float64', 'int32', 'int64'
     ]:
         raise TypeError(
-            "The data type of 'input' in fill_constant must be float32 or float64, but received %s."
+            "The data type of 'input' in fill_constant must be float16 or float32 or float64 or int32 or int64  but received %s."
             % (convert_dtype(input.dtype)))
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
