@@ -111,8 +111,20 @@ class TestFillConstantOpError(OpTest):
         with program_guard(Program(), Program()):
             # The input dtype of fill_constant must be float16 or float32 or float64.
             #or int32 or int64
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.fill_constant, x2)
+            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='uint8')
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='float64',
+                out=x2)
 
 
 if __name__ == "__main__":
