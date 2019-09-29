@@ -57,20 +57,6 @@ void BindCommunicator(py::module* m) {
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning);
-  /*
-  py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
-                                                          "GeoSgdCommunicator")
-      .def(py::init([](const ProgramDesc& program, Scope* param_scope,
-                      std::map<std::string,std::map<std::string,std::vector<std::string>>>
-  vars_info){
-        VLOG(0) << "using geo sgd communicator";
-        Communicator::GeoSgdInit(program, param_scope,vars_info);
-        return Communicator::GetInstantcePtr();
-      }))
-      .def("stop", &Communicator::Stop)
-      .def("start", &Communicator::Start)
-      .def("is_running", &Communicator::IsRunning);
-  */
 }
 
 }  // namespace pybind

@@ -16,7 +16,12 @@ from __future__ import print_function
 
 import os
 import unittest
+import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from test_dist_fleet_base import TestFleetBase
+from dist_simnet_bow import train_network
 
 
 def skip_ci(func):
@@ -60,6 +65,35 @@ class TestDistGeoCtr_2x2(TestFleetBase):
     def test_dist_train(self):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestGeoSgdTranspiler(unittest.TestCase):
+    def test_pserver(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+
+        fleet.init(role)
+
+        batch_size = 128
+        is_sparse = True
+        is_distribute = False
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = False
+        strategy.geo_sgd_mode = True
+        strategy.geo_sgd_need_push_nums = 5
+
+        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
+
+        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        pserver_startup_program = fleet.startup_program
+        pserver_mian_program = fleet.main_program
 
 
 if __name__ == "__main__":

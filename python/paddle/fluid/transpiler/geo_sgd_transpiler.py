@@ -43,46 +43,9 @@ from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerCon
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
-PRINT_LOG = False
 
 
 class GeoSgdTranspiler(DistributeTranspiler):
-    """
-    **GeoSgdTranspiler**
-
-    Convert the fluid program to distributed data-parallelism programs.
-
-    Examples:
-        .. code-block:: python
-
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
-
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_loss = fluid.layers.mean(cost)
-
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-            sgd_optimizer.minimize(avg_loss)
-
-            # for pserver mode
-            pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            current_endpoint = "192.168.0.1:6174"
-            trainer_id = 0
-            trainers = 4
-            role = "PSERVER"
-            t = fluid.DistributeTranspiler()
-            t.transpile(
-                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
-            if role == "PSERVER":
-                 pserver_program = t.get_pserver_program(current_endpoint)
-                 pserver_startup_program = t.get_startup_program(current_endpoint,
-                                                                pserver_program)
-            elif role == "TRAINER":
-                 trainer_program = t.get_trainer_program()
-    """
-
     def __init__(self, config=None):
         if config is not None:
             self.config = config
@@ -91,10 +54,6 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
-
-        global PRINT_LOG
-        if self.config.print_log:
-            PRINT_LOG = True
 
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
@@ -177,7 +136,6 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # send sparse id to communicator
         self.sparse_var = []
         self.sparse_tables = []
-        self.sparse_tables.append("FLAG_GEO_SGD_SPARSE_PARAMETER")
         for op in self.origin_program.global_block().ops:
             if op.type == "lookup_table":
                 op._set_attr('remote_prefetch', False)

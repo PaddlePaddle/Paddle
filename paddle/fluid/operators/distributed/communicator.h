@@ -1,8 +1,11 @@
 /* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -291,13 +294,13 @@ class AsyncCommunicator : public Communicator {
 
   void Send(const std::vector<std::string>& sparse_var_names,
             const std::vector<std::string>& sparse_var_tables,
-            const framework::Scope& scope) override {}
+            const framework::Scope& scope) override;
 
   void InitImpl(
       const paddle::framework::ProgramDesc& program, Scope* param_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      const int& trainers, const int& geo_need_push_nums) override {}
+      const int& trainers, const int& geo_need_push_nums) override;
 
  private:
   std::unordered_map<std::string,
@@ -338,10 +341,10 @@ class GeoSgdCommunicator : public Communicator {
 
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                 const RpcCtxMap& recv_varname_to_ctx,
-                Scope* recv_scope) override {}
+                Scope* recv_scope) override;
 
   void InitImpl(const paddle::framework::ProgramDesc& program,
-                Scope* recv_scope) override {}
+                Scope* recv_scope) override;
 
  private:
   void SendThread();
