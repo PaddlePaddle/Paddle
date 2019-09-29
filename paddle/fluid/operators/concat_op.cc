@@ -67,8 +67,11 @@ class ConcatOp : public framework::OperatorWithKernel {
           if (check_shape) {
             // check all shape in run time
             PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                              "Input tensors should have the same "
-                              "elements except the specify axis.");
+                              "ShapeError: Input tensors should have the same "
+                              "elements except the specify axis. "
+                              "But recevied axis = %s, input[0]'s shape = "
+                              "[%s], input[%s]'s shape = [%s]",
+                              axis, ins[0], i, ins[j]);
           }
         }
       }
