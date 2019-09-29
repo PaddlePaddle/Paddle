@@ -25,25 +25,6 @@ using paddle::ConvertToACPrecision;
 
 extern "C" {
 
-// bool PD_PredictorRun(PD_Predictor* predictor, PD_Tensor* inputs, int in_size,
-//                      PD_Tensor** output_data, int** out_size, int batch_size)
-//                      {
-//   std::vector<paddle::PaddleTensor> in;
-//   for (int i = 0; i < in_size; ++i) {
-//     in.emplace_back(inputs->tensor);
-//   }
-//   std::vector<paddle::PaddleTensor> out;
-//   if (predictor->predictor->Run(in, &out, batch_size)) {
-//     int osize = out.size();
-//     for (int i = 0; i < osize; ++i) {
-//       output_data[i].tensor = out[i];
-//     }
-//     *out_size = &osize;
-//     return true;
-//   }
-//   return false;
-// }
-
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
                      int in_size, PD_Tensor* output_data, int** out_size,
                      int batch_size) {
@@ -123,25 +104,6 @@ PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
   return std::move(ret);
 }
 
-// bool PD_PredictorZeroCopyRun(PD_Predictor* predictor) {
-//   return predictor->predictor->ZeroCopyRun();
-// }
-// bool PD_PredictorZeroCopyRun1(const PD_AnalysisConfig* config, float* inputs,
-//                               int in_size, float** output, int** out_size,
-//                               int* shape, int shape_size) {
-//   auto predictor = paddle::CreatePaddlePredictor(config->config);
-//   auto input_names = predictor->GetInputNames();
-//   auto input_t = predictor->GetInputTensor(input_names[0]);
-//   std::vector<int> tensor_shape;
-//   tensor_shape.assign(shape, shape + shape_size);
-//   input_t->Reshape(tensor_shape);
-//   input_t->copy_from_cpu(inputs);
-//   CHECK(predictor->ZeroCopyRun());
-
-//   return true;
-// }
-
-////////////////////////////// do not delete
 bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
                              PD_ZeroCopyData* inputs, int in_size,
                              PD_ZeroCopyData** output, int** out_size) {
@@ -177,7 +139,6 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   CHECK(predictor->ZeroCopyRun());
   return true;
 }
-//////////////////////////////
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
   if (predictor) {
@@ -193,12 +154,8 @@ PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
 }
 
 PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
-  // auto predictor = paddle::CreatePaddlePredictor(config->config);
-
   auto predictor = new PD_Predictor();
   predictor->predictor = paddle::CreatePaddlePredictor(config->config);
   return std::move(predictor);
-
-  // return static_cast<PD_Predictor*>(predictor);
 }
 }  // extern "C"

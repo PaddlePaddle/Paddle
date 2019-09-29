@@ -138,13 +138,6 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
 // AnalysisPredictor
 typedef struct PD_Predictor PD_Predictor;
 
-// PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(PD_Predictor* predictor,
-//                                                PD_Tensor* inputs, int
-//                                                in_size,
-//                                                PD_Tensor** output_data,
-//                                                int** out_size, int
-//                                                batch_size);
-
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
                      int in_size, PD_Tensor* output_data, int** out_size,
                      int batch_size);
@@ -166,9 +159,6 @@ PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorInputTensor(
 PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(
     PD_Predictor* predictor, const char* name);
 
-// PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(PD_Predictor*
-// predictor);
-
 PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
     const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
     PD_ZeroCopyData** output, int** out_size);
@@ -177,7 +167,6 @@ PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
     PD_Predictor* predictor);
 
 // AnalysisConfig
-
 enum Precision { kFloat32 = 0, kInt8, kHalf };
 
 PADDLE_CAPI_EXPORT extern PD_AnalysisConfig* PD_NewAnalysisConfig();
