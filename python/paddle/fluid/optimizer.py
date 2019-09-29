@@ -811,8 +811,7 @@ class MomentumOptimizer(Optimizer):
 
 class DGCMomentumOptimizer(MomentumOptimizer):
     """
-
-    Original paper is https://arxiv.org/abs/1712.01887
+    DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
     DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
         only gradients larger than a threshold are transmitted.
@@ -821,7 +820,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     Eventually, these gradients become large enough to be transmitted.
 
-    Thus, DGC sends the large gradients immediately but eventually send all of the gradients over time.
+    Thus, DGC sends the large gradients immediately but eventually sends all of the gradients over time.
 
     To ensure no loss of accuracy, DGC employs momentum correction and local gradient clipping on top of the gradient sparsification to maintain model performance.
 
@@ -832,23 +831,27 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
 
-        2. Call momentum to optimize on the cost.
+        2. Call momentum to optimize the cost.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-            Can be a float value or a Variable with one float value as data element.
+        learning_rate (float|Variable): The learning rate used to update parameters. \
+            It can be a float value or a Variable with one float value as a data element.
         momentum (float): Momentum factor.
         rampup_begin_step (int): The beginning step from which gradient compression is implemented.
-        rampup_step (int): How long it use the sparsity periods. Default is 1.
-            for example: If the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 5, \
-                it will use 0.75 at 0 step, and 0.9375 at 1 step, and so on. And when reach sparsity array ends, \
-                it will use 0.999 then and after.
-        sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity).
-        use_nesterov (bool): Enables Nesterov momentum. True means use nesterov.
-        local_grad_clip_norm (float): Clip norm value if needed.
-        num_trainers: The number of training nodes.
-        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: An optional name prefix.
+        rampup_step (int): Time steps used in sparsity warm-up periods. Default is 1.
+            For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100, \
+                it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. \
+                And when reach sparsity array ends, it will use 0.999 then and after.
+        sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
+            Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
+                the top [1%, 0.1%] important element will be transmitted.
+        use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
+        local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
+        num_trainers (int, optional): The number of training nodes. Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as \
+            :ref:`api_fluid_regularizer_L2DecayRegularizer`. Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
         .. code-block:: python
@@ -1779,26 +1782,29 @@ class DecayedAdagradOptimizer(Optimizer):
 
 class AdadeltaOptimizer(Optimizer):
     """
-    **NOTES: This API does not support sparse parameter optimization.**
+    **Notes: This API does not support sparse parameter optimization.**
 
     Adadelta Optimizer. Please refer to this for details:
-    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
-    <https://arxiv.org/abs/1212.5701>`_.
+    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD <https://arxiv.org/abs/1212.5701>`_.
+
+    The update is done as follows:
 
     .. math::
 
-        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2\\
+        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2
 
-        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }\\
+        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \\epsilon ) / ( E(g_t^2) + \\epsilon ) }
 
-        E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
+        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\_rate)^2
 
     Args:
-        learning_rate(float|Variable): global learning rate.
-        epsilon(float): a small float number for numeric stability. Default 1.0e-6.
-        rho(float): a floating point value indicating the decay rate.
-        regularization(WeightDecayRegularizer, optional): A Regularizer, such as fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no regularization.
-        name(str, optional): A optional name prefix for debugging. Default None.
+        learning_rate (float|Variable): global learning rate.
+        epsilon (float): a small float number for numeric stability. Default 1.0e-6.
+        rho (float): a floating point value indicating the decay rate. Default 0.95.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+                fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no
+                regularization.
+        name (str, optional): A optional name prefix for debugging. Default None.
 
     Examples:
         .. code-block:: python
