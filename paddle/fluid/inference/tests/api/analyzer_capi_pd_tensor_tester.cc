@@ -31,8 +31,8 @@ namespace analysis {
 
 void PD_run() {
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
-  std::string prog_file = "";
-  std::string params_file = "";
+  std::string prog_file = FLAGS_infer_model + "/__model__";
+  std::string params_file = FLAGS_infer_model + "/__params__";
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_SetProgFile(config, prog_file.c_str());
   PD_SetParamsFile(config, params_file.c_str());

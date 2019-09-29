@@ -301,4 +301,4 @@ if (NOT EXISTS ${CAPI_MODEL_INSTALL_DIR})
 endif()
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${CAPI_MODEL_INSTALL_DIR})
+            ARGS --infer_model=${CAPI_MODEL_INSTALL_DIR}/model)
