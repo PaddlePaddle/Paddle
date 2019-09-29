@@ -222,6 +222,7 @@ __all__ = [
     'shard_index',
     'hard_swish',
     'mse_loss',
+    'uniform_random',
 ]
 
 kIgnoreIndex = -100
@@ -2900,15 +2901,16 @@ def pool2d(input,
            use_cudnn=True,
            ceil_mode=False,
            name=None,
-           exclusive=True):
+           exclusive=True,
+           data_format="NCHW"):
     """
     ${comment}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+                          input tensor is `"NCHW"` or `"NHWC"`, where `N` is batch size, `C` is
+                          the number of channels, `H` is the height of the
+                          feature, and `W` is the width of the feature.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -2916,8 +2918,13 @@ def pool2d(input,
         pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width).
             Otherwise, the pool stride size will be a square of an int.
-        pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
-            it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
+        pool_padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
+            `pool_padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Otherwise, the pool padding size will be a square of an int.
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
@@ -2925,55 +2932,125 @@ def pool2d(input,
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
         exclusive (bool): Whether to exclude padding points in average pooling
-                          mode, default is true
+                          mode, default is `true`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+                The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         Variable: The pooling result.
 
     Raises:
-        ValueError: If 'pool_type' is not "max" nor "avg"
-        ValueError: If 'global_pooling' is False and 'pool_size' is -1
-        ValueError: If 'use_cudnn' is not a bool value.
+        ValueError: If `pool_type` is not "max" nor "avg"
+        ValueError: If `global_pooling` is False and `pool_size` is -1
+        ValueError: If `use_cudnn` is not a bool value.
 
     Examples:
 
         .. code-block:: python
 
           import paddle.fluid as fluid
+
           data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
-          pool2d = fluid.layers.pool2d(
-                            input=data,
-                            pool_size=2,
-                            pool_type='max',
-                            pool_stride=1,
-                            global_pooling=False)
+              name='data', shape=[10, 3, 32, 32], append_batch_size=False, dtype='float32')
+
+          # example 1:
+          # Attr(pool_padding) is a list with 4 elements, Attr(data_format) is "NCHW".
+          out_1 = fluid.layers.pool2d(
+            input = data,
+            pool_size = 3,
+            pool_type = "avg",
+            pool_stride = 1,
+            pool_padding = [1, 2, 1, 0],
+            data_format = "NCHW")
+
+          # example 2:
+          # Attr(pool_padding) is a string, Attr(data_format) is "NCHW".
+          out_2 = fluid.layers.pool2d(
+            input = data,
+            pool_size = 3,
+            pool_type = "avg",
+            pool_stride = 1,
+            pool_padding = "VALID",
+            data_format = "NCHW")
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
-            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            "Unknown Attr(pool_type): '%s'. It can only be 'max' or 'avg'.",
             str(pool_type))
 
     if global_pooling is False and pool_size == -1:
         raise ValueError(
-            "When the global_pooling is False, pool_size must be passed "
-            "and be a valid value. Received pool_size: " + str(pool_size))
-
-    pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
-    pool_padding = utils.convert_to_list(pool_padding, 2, 'pool_padding')
-    pool_stride = utils.convert_to_list(pool_stride, 2, 'pool_stride')
+            "When Attr(global_pooling) is False, Attr(pool_size) must be passed "
+            "and be a valid value. Received pool_size: %s." % str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
+        raise ValueError("Attr(use_cudnn) should be True or False. Received "
+                         "Attr(use_cudnn): %s." % str(use_cudnn))
 
-    l_type = 'pool2d'
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
 
-    helper = LayerHelper(l_type, **locals())
+    pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
+    pool_stride = utils.convert_to_list(pool_stride, 2, 'pool_stride')
+
+    def update_padding(padding, data_format):
+        def is_list_or_tuple(ele):
+            if isinstance(ele, list) or isinstance(ele, tuple):
+                return True
+            return False
+
+        if is_list_or_tuple(padding) and len(padding) == 4:
+            if is_list_or_tuple(padding[0]) and (data_format == "NCHW"):
+                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero pool_padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[2:4]
+                padding = [ele for a_list in padding for ele in a_list]
+            elif is_list_or_tuple(padding[0]) and (data_format == "NHWC"):
+                if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero pool_padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[1:3]
+                padding = [ele for a_list in padding for ele in a_list]
+            padding = utils.convert_to_list(padding, 4, 'padding')
+
+        else:
+            padding = utils.convert_to_list(padding, 2, 'padding')
+
+        return padding
+
+    padding_algorithm = "EXPLICIT"
+    if isinstance(pool_padding, str):
+        pool_padding = pool_padding.upper()
+        if pool_padding not in ["SAME", "VALID"]:
+            raise ValueError(
+                "Unknown Attr(pool_padding): '%s'. It can only be 'SAME' or 'VALID'."
+                % str(pool_padding))
+        if pool_padding == "VALID":
+            padding_algorithm = "VALID"
+            pool_padding = [0, 0, 0, 0]
+            if ceil_mode != False:
+                raise ValueError(
+                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
+                    "Received ceil_mode: True.")
+        elif pool_padding == "SAME":
+            padding_algorithm = "SAME"
+            pool_padding = [0, 0, 0, 0]
+
+    pool_padding = update_padding(pool_padding, data_format)
+
+    op_type = 'pool2d'
+    helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
-        type=l_type,
+        type=op_type,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
@@ -2982,10 +3059,12 @@ def pool2d(input,
             "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding,
+            "padding_algorithm": padding_algorithm,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
             "exclusive": exclusive,
+            "data_format": data_format,
         })
 
     return pool_out
@@ -3001,30 +3080,43 @@ def pool3d(input,
            use_cudnn=True,
            ceil_mode=False,
            name=None,
-           exclusive=True):
+           exclusive=True,
+           data_format="NCDHW"):
     """
     ${comment}
 
     Args:
         input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCDHW, where N is batch size, C is
-                          the number of channels, D is the depth of the feature,
-                          H is the height of the feature, and W is the width
+                          input tensor is `"NCDHW"` or `"NDHWC"`, where `N` is batch size, `C` is
+                          the number of channels, `D` is the depth of the feature,
+                          `H` is the height of the feature, and `W` is the width
                           of the feature.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size 
             is a tuple or list, it must contain three integers, 
             (pool_size_Depth, pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be the cube of an int.
         pool_type (string): ${pooling_type_comment}
-        pool_stride (int): stride of the pooling layer.
-        pool_padding (int): padding size.
+        pool_stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
+            it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
+            Otherwise, the pool stride size will be a cube of an int.
+        pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
         exclusive (bool): Whether to exclude padding points in average pooling
-                          mode, default is true
+                          mode, default is true.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
+                The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+                `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         Variable: output of pool3d layer.
@@ -3034,39 +3126,114 @@ def pool3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
+
           data = fluid.layers.data(
-              name='data', shape=[3, 32, 32, 32], dtype='float32')
-          pool3d = fluid.layers.pool3d(
-                            input=data,
-                            pool_size=2,
-                            pool_type='max',
-                            pool_stride=1,
-                            global_pooling=False)
+              name='data', shape=[10, 3, 32, 32, 32], append_batch_size=False, dtype='float32')
+
+          # example 1:
+          # Attr(pool_padding) is a list with 6 elements, Attr(data_format) is "NCDHW".
+          out_1 = fluid.layers.pool3d(
+            input = data,
+            pool_size = 2,
+            pool_type = "avg",
+            pool_stride = 1,
+            pool_padding = [1, 2, 1, 0, 1, 2],
+            global_pooling = False,
+            data_format = "NCDHW")
+
+          # example 2:
+          # Attr(pool_padding) is a string, Attr(data_format) is "NCDHW".
+          out_2 = fluid.layers.pool3d(
+            input = data,
+            pool_size = 3,
+            pool_type = "avg",
+            pool_stride = 1,
+            pool_padding = "VALID",
+            global_pooling = False,
+            data_format = "NCDHW")
+
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
-            "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
+            "Unknown Attr(pool_type): '%s'. It can only be 'max' or 'avg'.",
             str(pool_type))
 
     if global_pooling is False and pool_size == -1:
         raise ValueError(
-            "When the global_pooling is False, pool_size must be passed "
-            "and be a valid value. Received pool_size: " + str(pool_size))
-
-    pool_size = utils.convert_to_list(pool_size, 3, 'pool_size')
-    pool_padding = utils.convert_to_list(pool_padding, 3, 'pool_padding')
-    pool_stride = utils.convert_to_list(pool_stride, 3, 'pool_stride')
+            "When Attr(global_pooling) is False, Attr(pool_size) must be passed "
+            "and be a valid value. Received Attr(pool_size): %s." %
+            str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
+        raise ValueError("Attr(use_cudnn) should be True or False. Received "
+                         "Attr(use_cudnn): %s. " % str(use_cudnn))
 
-    l_type = "pool3d"
-    helper = LayerHelper(l_type, **locals())
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s" % str(data_format))
+
+    pool_size = utils.convert_to_list(pool_size, 3, 'pool_size')
+    pool_stride = utils.convert_to_list(pool_stride, 3, 'pool_stride')
+
+    def update_padding(padding, data_format):
+        def is_list_or_tuple(ele):
+            if isinstance(ele, (list, tuple)):
+                return True
+            return False
+
+        if is_list_or_tuple(padding) and len(padding) == 5:
+            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
+                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero pool_padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[2:5]
+                padding = [ele for a_list in padding for ele in a_list]
+            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
+                if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
+                    raise ValueError(
+                        "Non-zero pool_padding(%s) in the batch or channel dimensions "
+                        "is not supported." % str(padding))
+                padding = padding[1:4]
+                padding = [ele for a_list in padding for ele in a_list]
+            padding = utils.convert_to_list(padding, 6, 'padding')
+
+        elif is_list_or_tuple(padding) and len(padding) == 6:
+            padding = utils.convert_to_list(padding, 6, 'padding')
+
+        else:
+            padding = utils.convert_to_list(padding, 3, 'padding')
+
+        return padding
+
+    padding_algorithm = "EXPLICIT"
+    if isinstance(pool_padding, str):
+        pool_padding = pool_padding.upper()
+        if pool_padding not in ["SAME", "VALID"]:
+            raise ValueError(
+                "Unknown Attr(pool_padding): '%s'. It can only be 'SAME' or 'VALID'."
+                % str(pool_padding))
+        if pool_padding == "VALID":
+            padding_algorithm = "VALID"
+            pool_padding = [0, 0, 0, 0, 0, 0]
+            if ceil_mode != False:
+                raise ValueError(
+                    "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
+                    "Received ceil_mode: True.")
+        elif pool_padding == "SAME":
+            padding_algorithm = "SAME"
+            pool_padding = [0, 0, 0, 0, 0, 0]
+
+    pool_padding = update_padding(pool_padding, data_format)
+
+    op_type = "pool3d"
+    helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
-        type=l_type,
+        type=op_type,
         inputs={"X": input},
         outputs={"Out": pool_out},
         attrs={
@@ -3075,10 +3242,12 @@ def pool3d(input,
             "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding,
+            "padding_algorithm": padding_algorithm,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
             "use_mkldnn": False,
             "exclusive": exclusive,
+            "data_format": data_format,
         })
 
     return pool_out
@@ -14938,3 +15107,120 @@ def mse_loss(input, label):
 
     """
     return reduce_mean(square_error_cost(input, label))
+
+
+@templatedoc()
+def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
+    """
+    This operator initializes a variable with random values sampled from a
+    uniform distribution. The random result is in set [min, max).
+
+    Examples:
+    ::
+    
+        Input:
+          shape = [1, 2]
+        
+        Output:
+          result=[[0.8505902, 0.8397286]]
+
+    Args:
+        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
+                                     and if the shape type is list or tuple, its elements can be an integer
+                                     or a tensor with the shape [1], the data type of the tensor is int64. 
+                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output tensor, such as float32, float64.
+                                                  Default: float32.
+        min (float, optional): Minimum value of uniform random, It's a closed interval. Default -1.0.
+        max (float, optional): Maximun value of uniform random, It's an open interval. Default 1.0.
+        seed (int, optional): Random seed used for generating samples. 0 means use a
+            seed generated by the system. Note that if seed is not 0, this
+            operator will always generate the same random numbers every time.
+            Default 0.
+
+    Returns: a Tensor with randomly initialized results whose data type is determined by the dtype parameter 
+                and whose dimension is determined by the shape parameter.
+    Return type: Variable
+
+    Throw exception:
+        TypeError: The shape type should be list or tupple or variable.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.uniform_random(shape=[3, 4])
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            result_2 = fluid.layers.uniform_random(shape=[dim_1, 5])
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64
+            var_shape = fluid.layers.data(name='var_shape',shape=[2],append_batch_size=False)
+            result_3 = fluid.layers.uniform_random(var_shape)
+
+    """
+    if not (isinstance(shape, (list, tuple, Variable))):
+        raise TypeError("Input shape must be a python list,Variable or tuple.")
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int64')
+                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                assert dim_size > 0, (
+                    "Each dimension size given in shape must not be negtive "
+                    "except one unknown dimension.")
+        return attrs_shape
+
+    helper = LayerHelper("uniform_random", **locals())
+    inputs = dict()
+    attrs = dict()
+    if in_dygraph_mode():
+        attrs = {'shape': shape}
+    else:
+        if isinstance(shape, Variable):
+            shape.stop_gradient = True
+            inputs["ShapeTensor"] = shape
+        elif isinstance(shape, (list, tuple)):
+            assert len(shape) > 0, (
+                "The size of argument(shape) can't be zero.")
+            attrs["shape"] = get_attr_shape(shape)
+            if contain_var(shape):
+                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="uniform_random", inputs=inputs, attrs=attrs,
+        outputs={"Out": out})
+
+    return helper.append_activation(out)

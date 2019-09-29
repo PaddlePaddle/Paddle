@@ -566,9 +566,10 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpDescMaker {
     auto ddw = OutputGrad(framework::GradVarName("Filter"));
     std::vector<std::string> empty_str = {};
 
-    op->SetOutput(
-        "DDOutput",
-        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DDOutput",
+                  (ddx.empty() && ddw.empty())
+                      ? empty_str
+                      : InputGrad(framework::GradVarName("Output")));
     op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
     op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
 
@@ -600,9 +601,10 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpDescMaker {
     auto ddw = OutputGrad(framework::GradVarName("Filter"));
     std::vector<std::string> empty_str = {};
 
-    op->SetOutput(
-        "DDOutput",
-        ddx.empty() ? empty_str : InputGrad(framework::GradVarName("Output")));
+    op->SetOutput("DDOutput",
+                  (ddx.empty() && ddw.empty())
+                      ? empty_str
+                      : InputGrad(framework::GradVarName("Output")));
     op->SetOutput("DFilter", ddx.empty() ? empty_str : InputGrad("Filter"));
     op->SetOutput("DInput", ddw.empty() ? empty_str : InputGrad("Input"));
 
@@ -617,7 +619,8 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("Filter");
   auto do_dims = ctx->GetInputDim("DOutput");
 
-  if (ctx->HasOutput("DDOutput") && ctx->HasInput("DDInput")) {
+  if (ctx->HasOutput("DDOutput") &&
+      (ctx->HasInput("DDInput") || (ctx->HasInput("DDFilter")))) {
     ctx->SetOutputDim("DDOutput", do_dims);
   }
   if (ctx->HasOutput("DFilter") && ctx->HasInput("DDInput")) {
