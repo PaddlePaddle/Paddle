@@ -21,6 +21,7 @@ from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
 from .layer_function_generator import templatedoc
+from ..data_feeder import convert_dtype
 import numpy
 
 __all__ = [
@@ -165,6 +166,17 @@ def cast(x, dtype):
             result = fluid.layers.cast(x=data, dtype='float64')
     """
     helper = LayerHelper('cast', **locals())
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in cast must be Variable, but received %s" %
+            (type(x)))
+    if convert_dtype(x.dtype) not in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
+    ]:
+        raise TypeError(
+            "The data type of 'x' in cast must be bool, float16, float32, float64, int32, int64, uint8, but received %s."
+            % (convert_dtype(x.dtype)))
+
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
