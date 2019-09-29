@@ -433,7 +433,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
     std::string ex_msg = err.what();
     EXPECT_TRUE(
         ex_msg.find("The Tensor in the indicate_lod_tensor_data_type_test Op's "
-                    "Input Variable LoDTensor is not initialized") !=
+                    "Input Variable LoDTensor(0) is not initialized") !=
         std::string::npos);
   }
   ASSERT_TRUE(caught);
@@ -460,7 +460,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
     std::string ex_msg = err.what();
     EXPECT_TRUE(
         ex_msg.find("The Tensor in the indicate_selected_rows_data_type_test "
-                    "Op's Input Variable SelectedRows is not initialized") !=
+                    "Op's Input Variable SelectedRows(0) is not initialized") !=
         std::string::npos);
   }
   ASSERT_TRUE(caught);

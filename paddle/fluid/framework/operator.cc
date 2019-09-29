@@ -1138,69 +1138,70 @@ Scope* OperatorWithKernel::PrepareData(
   return new_scope;
 }
 
+proto::VarType::Type OperatorWithKernel::GetInputDataType(
+    const ExecutionContext& ctx, const std::string& name) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  PADDLE_ENFORCE_EQ(
+      vars.empty(), false,
+      "The %s Op doesn't have Input %s or it is an empty Variable.", Type(),
+      name);
+  for (size_t i = 0; i < vars.size(); ++i) {
+    const Variable* var = vars[i];
+    if (var != nullptr) {
+      const Tensor* t = nullptr;
+      if (var->IsType<Tensor>()) {
+        t = &var->Get<Tensor>();
+      } else if (var->IsType<LoDTensor>()) {
+        t = &var->Get<LoDTensor>();
+      } else if (var->IsType<SelectedRows>()) {
+        t = &(var->Get<SelectedRows>().value());
+      }
+      if (t != nullptr) {
+        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                          "The Tensor in the %s Op's Input Variable %s(%lu) is "
+                          "not initialized.",
+                          Type(), name, i);
+        proto::VarType::Type tmp = t->type();
+        PADDLE_ENFORCE(tmp == data_type || data_type == dafault_data_type,
+                       "The DataType of %s Op's duplicable Variable %s must be "
+                       "consistent. The current variable type is (%s), but the "
+                       "previous variable type is (%s).",
+                       Type(), name, DataTypeToString(tmp),
+                       DataTypeToString(data_type));
+        data_type = tmp;
+      }
+    }
+  }
+  return data_type;
+}
+
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
-    for (size_t i = 0; i < vars.size(); ++i) {
-      const Variable* var = vars[i];
-      if (var != nullptr) {
-        const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
-        } else if (var->IsType<SelectedRows>()) {
-          t = &(var->Get<SelectedRows>().value());
-        }
-        if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
-                         input.first, i);
-          proto::VarType::Type tmp = t->type();
-          PADDLE_ENFORCE(
-              tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
-              Type(), input.first, DataTypeToString(data_type),
-              DataTypeToString(tmp));
-          data_type = tmp;
-        }
-      }
-    }
+    data_type = GetInputDataType(ctx, input.first);
   }
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "DataType should be indicated by input");
+  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
+                    "DataType should be indicated by input Variable.");
   return data_type;
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     const ExecutionContext& ctx, const std::string& name) const {
-  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
-  PADDLE_ENFORCE_EQ(
-      vars.empty(), false,
-      "The %s Op doesn't have Input %s or it is an empty Variable.",
-      this->type_, name);
-  const Variable* var = vars.front();
-  const Tensor* t = nullptr;
-  if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
-  } else if (var->IsType<SelectedRows>()) {
-    t = &(var->Get<SelectedRows>().value());
-  } else {
-    PADDLE_THROW(
-        "The Input Variable(%s) of %s Op used to determine kernel data type "
-        "should be LoDTensor or SelectedRows.",
-        name, this->type_);
-  }
-  // No need to check if t is nullptr, if so, var->isType or var->Get will throw
-  // error.
-  PADDLE_ENFORCE_EQ(
-      t->IsInitialized(), true,
-      "The Tensor in the %s Op's Input Variable %s is not initialized.",
-      this->type_, name);
-  return t->type();
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = GetInputDataType(ctx, name);
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      "The Input Variable(%s) of %s Op used to determine kernel data type "
+      "should be LoDTensor or SelectedRows.",
+      name, Type());
+  return data_type;
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

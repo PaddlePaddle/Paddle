@@ -28,9 +28,9 @@ class Variable {
   template <typename T>
   const T& Get() const {
     static_assert(IsRegisteredVarType<T>(),
-                  "Type T is not registered. Please register T inside "
-                  "var_type_traits.h.");
-    PADDLE_ENFORCE(holder_ != nullptr, "This Variable is not initialized.");
+                  "Not registered type. Please register T inside "
+                  "var_type_traits.h");
+    PADDLE_ENFORCE(holder_ != nullptr, "Variable is not initialized.");
     PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
                    "The Variable type must be %s, but the type it holds is %s.",
                    ToTypeName(VarTypeTrait<T>::kId),
@@ -61,7 +61,7 @@ class Variable {
   void Clear() { holder_.reset(); }
 
   int Type() const {
-    PADDLE_ENFORCE(holder_ != nullptr, "This Variable is not initialized.");
+    PADDLE_ENFORCE(holder_ != nullptr, "Variable is not initialized.");
     return holder_->Type();
   }
 
@@ -88,8 +88,8 @@ class Variable {
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
     static_assert(IsRegisteredVarType<T>(),
-                  "Type T is not registered. Please register T inside "
-                  "var_type_traits.h.");
+                  "Not registered type. Please register T inside "
+                  "var_type_traits.h");
     PlaceholderImpl() { this->Init(&obj_, VarTypeTrait<T>::kId); }
 
    private:
