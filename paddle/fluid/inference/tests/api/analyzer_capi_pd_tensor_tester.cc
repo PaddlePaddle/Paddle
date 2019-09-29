@@ -35,7 +35,7 @@ void PD_run() {
   std::string params_file = "";
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_SetProgFile(config, prog_file.c_str());
-  PD_SetParamsFile(config, params.c_str());
+  PD_SetParamsFile(config, params_file.c_str());
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
   PD_Tensor* input = PD_NewPaddleTensor();
@@ -49,8 +49,8 @@ void PD_run() {
   int height = 224;
   int width = 224;
   float* data = new float[batch * channel * height * width];
-  PD_PaddleBufReset(buf, static_cast<void*> data,
-                    sizeof(float) * (batch_size * channels * height * width));
+  PD_PaddleBufReset(buf, static_cast<void*>(data),
+                    sizeof(float) * (batch * channel * height * width));
 }
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
