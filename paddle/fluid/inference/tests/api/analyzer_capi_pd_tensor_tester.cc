@@ -57,7 +57,7 @@ void PD_run() {
   PD_SetPaddleTensorShape(input, shape, shape_size);
   PD_SetPaddleTensorData(input, buf);
 
-  PD_Tensor* out_data;
+  PD_Tensor* out_data = PD_NewPaddleTensor();
   int* out_size;
   PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
 }
