@@ -85,7 +85,6 @@ class FleetDistRunnerBase(object):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        self.do_training(fleet)
         out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
