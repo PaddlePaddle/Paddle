@@ -278,25 +278,8 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("place"))
       .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
            py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, R"DOC(
-        Set the data of LoDTensor on place with given numpy array.
-        
-        Args:
-          lod (numpy.ndarray): the data to set.
-          place (CPUPlace|CUDAPlace|CUDAPinnedPlace): the place where the LoDTensor is to be set.
-
-        Returns:
-            None.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                import numpy as np
-
-                t = fluid.LoDTensor()
-                t.set(np.ndarray([5, 30]), fluid.CPUPlace())
-          )DOC")
+      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"))
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
            py::arg("place"))
@@ -329,7 +312,26 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
            py::arg("place"))
       .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), R"DOC(
+        Set the data of LoDTensor on place with given numpy array.
+        
+        Args:
+          lod (numpy.ndarray): The data to set.
+          place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
+          LoDTensor is to be set.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                t = fluid.LoDTensor()
+                t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+          )DOC")
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
@@ -363,25 +365,42 @@ PYBIND11_MODULE(core_noavx, m) {
         return ostr.str();
       });
 
+  // TODO(cql): add reference: en_user_guide_lod_tensor
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD (Level of Details) information, it can be used for variable-length sequences, See :ref:`cn_user_guide_lod_tensor` for details.
+    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
+    it can be used for variable-length sequences, 
+    see :ref:`en_user_guide_lod_tensor` for details.
 
-    LoDTensor can be converted to numpy array using `np.array(lod_tensor)`.
+    LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
-    You can skip the following explanation if you don't need to know details of LoDTensor.
+    You can skip the following explanation if you don't need to know details 
+    of LoDTensor.
 
-    The following two examples show how to use LODtensor to represent variable-length sequences.
+    The following two examples show how to use LODtensor to represent 
+    variable-length sequences.
     
     Example 1:
     
-    Suppose x is a LoDTensor representing a variable-length sequence. It contains two logical subsequences, the length of first logical sequence is 2 (e.g., number of samples is 2), the length of second logical sequence is 3, and the total length is 5. 
-    The data of the first logical sequence is [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is the dimension of each sample.
+    Suppose x is a LoDTensor representing a variable-length sequence. 
+    It contains two logical subsequences, the length of first logical sequence 
+    is 2 (e.g., number of samples is 2), the length of second logical sequence 
+    is 3, and the total length is 5. The data of the first logical sequence is 
+    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
+    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
+    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
+    the dimension of each sample.
     
-    Logically, we can represent the variable-length sequence in two ways: one is in the form of recursive sequence lengths, that is, 
-    x.recursive_sequence_lengths=[[2, 3]; the other is in the form of offsets, that is, x.lod=[[0, 2, 2+3]. 
-    These two representations are equivalent, and you can set and retrieve recursive_sequence_lengths or LoD through the corresponding interfaces of LoDTensor introduced later.
+    Logically, we can represent the variable-length sequence in two ways: one 
+    is in the form of recursive sequence lengths, that is, 
+    x.recursive_sequence_lengths=[[2, 3]; the other is in the form of offsets, 
+    that is, x.lod=[[0, 2, 2+3]. These two representations are equivalent, and 
+    you can set and retrieve recursive_sequence_lengths or LoD through the 
+    corresponding interfaces of LoDTensor introduced later.
 
-    Actually, in order to access sequence faster, Paddle uses offset to store different lengths of sequences. Therefore, the operations on recursive_sequence_lengths will be converted to the operations on LoD eventually.
+    Actually, in order to access sequence faster, Paddle uses offset to store 
+    different lengths of sequences. 
+    Therefore, the operations on recursive_sequence_lengths will be converted 
+    to the operations on LoD eventually.
     
     .. code-block:: python
 
@@ -397,11 +416,19 @@ PYBIND11_MODULE(core_noavx, m) {
 
     Example 2:
 
-    LoD may have more than one level (for example, a paragraph may have more than one sentence and a sentence may have more than one word). Suppose y is a LoDTensor and its lod_level is 2. 
-    From level = 0, there are two logical sequences, the length of which is 2 and 1, respectively, indicating that the first logical sequence contains two sub-sequences and the second logical sequence contains one sub-sequence. 
-    From level = 1, the lengths of two sub-sequences contained by the first logical sequence is 2 and 2, and the length of sub-sequence contained by the second logical sequence is 3.
+    LoD may have more than one level (for example, a paragraph may have more 
+    than one sentence and a sentence may have more than one word). Suppose y 
+    is a LoDTensor and its lod_level is 2. 
+    From level = 0, there are two logical sequences, the length of which is 
+    2 and 1, respectively, indicating that the first logical sequence contains 
+    two sub-sequences and the second logical sequence contains one sub-sequence. 
+    From level = 1, the lengths of two sub-sequences contained by the first 
+    logical sequence is 2 and 2, and the length of sub-sequence contained by 
+    the second logical sequence is 3.
       
-    Therefore, the LoDTensor is represented in the form of recursive sequence lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7].
+    Therefore, the LoDTensor is represented in the form of recursive sequence 
+    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
+    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7].
 
     .. code-block:: python
 
@@ -459,7 +486,7 @@ PYBIND11_MODULE(core_noavx, m) {
            Set LoD of the LoDTensor.
 
            Args:
-               lod (List[List[int]]): the lod to set.
+               lod (List[List[int]]): The lod to set.
 
            Returns:
                 None.
@@ -494,12 +521,12 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("recursive_sequence_lengths"), R"DOC(
            Set LoD of the LoDTensor according to recursive sequence lengths.
 
-           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
+           For example, if recursive_sequence_lengths=[[2, 3]], which means
            there are two sequences with length 2 and 3 respectively, the
            corresponding lod would be [[0, 2, 2+3]], i.e., [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): the recursive sequence lengths.
+                recursive_sequence_lengths (List[List[int]]): The recursive sequence lengths.
            
            Returns:
                 None.
@@ -556,7 +583,8 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD of the LoDTensor.
+           Return the recursive sequence lengths corresponding to of the LodD 
+           of the LoDTensor.
 
            Returns:
                The recursive sequence lengths.
@@ -1226,7 +1254,7 @@ All parameter, weight, gradient are variables in Paddle.
              Append a LoDensor to LoDTensorArray.
               
              Args:
-                   tensor (LoDTensor): the LoDTensor to be appended.
+                   tensor (LoDTensor): The LoDTensor to be appended.
 
              Returns:
                    Void.
