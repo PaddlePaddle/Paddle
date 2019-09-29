@@ -62,7 +62,8 @@ PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
 
 PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
   PD_PaddleBuf* ret = PD_NewPaddleBuf();
-  ret->buf = tensor->tensor.data return ret;
+  ret->buf = tensor->tensor.data;
+  return ret;
 }
 
 int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
