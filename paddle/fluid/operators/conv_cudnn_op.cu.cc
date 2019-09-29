@@ -355,15 +355,17 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     size_t workspace_size = 0;
     if (ddO) {
       ddy = ddO->mutable_data<T>(ctx.GetPlace());
-      args1.handle = handle;
-      args1.idesc.set(*ddX, iwo_group);
-      args1.wdesc.set(*W, layout, iwo_group);
-      args1.odesc.set(*ddO, iwo_group);
-      args1.cdesc.set(dtype, paddings, strides, dilations, c_group);
+      if (ddX) {
+        args1.handle = handle;
+        args1.idesc.set(*ddX, iwo_group);
+        args1.wdesc.set(*W, layout, iwo_group);
+        args1.odesc.set(*ddO, iwo_group);
+        args1.cdesc.set(dtype, paddings, strides, dilations, c_group);
 
-      using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, 0, ctx);
-      workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
+        using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+        fwd_algo1 = search1::Find<T>(args1, exhaustive_search, false, 0, ctx);
+        workspace_size = search1::GetWorkspaceSize(args1, fwd_algo1);
+      }
 
       if (ddW) {
         ddw = ddW->data<T>();
@@ -380,7 +382,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (dW) {
+    if (dW && ddX) {
       dw = dW->mutable_data<T>(ctx.GetPlace());
       args3.handle = handle;
       args3.idesc.set(*ddX, iwo_group);
@@ -423,17 +425,20 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
 
     if (ddO) {
-      ddx = ddX->data<T>();
-      for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
-            [&](void* workspace_ptr) {
-              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
-                  handle, &alpha, args1.idesc.desc(), ddx + i * group_offset_in,
-                  args1.wdesc.desc(), w + i * group_offset_filter,
-                  args1.cdesc.desc(), fwd_algo1, workspace_ptr, workspace_size,
-                  &beta, args1.odesc.desc(), ddy + i * group_offset_out));
-            },
-            workspace_size);
+      if (ddX) {
+        ddx = ddX->data<T>();
+        for (int i = 0; i < groups; i++) {
+          wkspace_handle.RunFunc(
+              [&](void* workspace_ptr) {
+                CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
+                    handle, &alpha, args1.idesc.desc(),
+                    ddx + i * group_offset_in, args1.wdesc.desc(),
+                    w + i * group_offset_filter, args1.cdesc.desc(), fwd_algo1,
+                    workspace_ptr, workspace_size, &beta, args1.odesc.desc(),
+                    ddy + i * group_offset_out));
+              },
+              workspace_size);
+        }
       }
       if (ddW) {
         for (int i = 0; i < groups; i++) {
@@ -451,7 +456,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (dW) {
+    if (dW && ddX) {
       ddx = ddX->data<T>();
       for (int i = 0; i < groups; i++) {
         wkspace_handle.RunFunc(
