@@ -73,11 +73,9 @@ void PD_run() {
 TEST(PD_Tensor, PD_run) { PD_run(); }
 
 std::string read_file(std::string filename) {
-  std::ifstream ifile(filename);
-  std::ostringstream buf;
-  char ch;
-  while (buf && ifile.get(ch)) buf.put(ch);
-  return buf.str();
+  std::ifstream file(filename);
+  return std::string((std::istreambuf_iterator<char>(file)),
+                     std::istreambuf_iterator<char>());
 }
 
 void buffer_run() {
