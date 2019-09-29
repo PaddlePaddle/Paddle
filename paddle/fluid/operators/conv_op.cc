@@ -47,38 +47,50 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                 "ShapeError: Conv intput should be 4-D or 5-D tensor. But received: %u-D Tensor,"
-                 "the shape of Conv input is [%s]", in_dims.size(), in_dims);
+                    "ShapeError: Conv input should be 4-D or 5-D tensor. But "
+                    "received: %u-D Tensor,"
+                    "the shape of Conv input is [%s]",
+                    in_dims.size(), in_dims);
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "ShapeError: Conv input dimension and filter dimension should be the equal."
-      "But received: the shape of Conv input is [%s], input dimension of Conv input is [%d],"
-      "the shape of filter is [%s],  the filter dimension of Conv is [%d]", 
+      "ShapeError: Conv input dimension and filter dimension should be the "
+      "equal."
+      "But received: the shape of Conv input is [%s], input dimension of Conv "
+      "input is [%d],"
+      "the shape of filter is [%s],  the filter dimension of Conv is [%d]",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
 
   int in_sub_stride_size = in_dims.size() - strides.size();
-  PADDLE_ENFORCE_EQ(
-      in_dims.size() - strides.size() == 2U, true,
-      "ShapeError: the dimension of input minus the dimension of stride must be euqal to 2."
-      "But received: the dimension of input minus the dimension of stride is [%d], the"
-      "input dimension of Conv is [%d], the shape of Conv input is [%s], the stride" 
-      "dimension of Conv is [%d]", 
-      in_sub_stride_size, in_dims.size(), in_dims, strides.size());
-  PADDLE_ENFORCE_EQ(
-      paddings.size(), strides.size(),
-      "ShapeError: Conv paddings dimension and Conv strides dimension should be equal."
-      "But received: The paddings dimension of Conv is [%d]"
-      "the stride dimension of Conv is [%d]", paddings.size(), strides.size());
+  PADDLE_ENFORCE_EQ(in_dims.size() - strides.size() == 2U, true,
+                    "ShapeError: the dimension of input minus the dimension of "
+                    "stride must be euqal to 2."
+                    "But received: the dimension of input minus the dimension "
+                    "of stride is [%d], the"
+                    "input dimension of Conv is [%d], the shape of Conv input "
+                    "is [%s], the stride"
+                    "dimension of Conv is [%d]",
+                    in_sub_stride_size, in_dims.size(), in_dims,
+                    strides.size());
+  PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
+                    "ShapeError: Conv paddings dimension and Conv strides "
+                    "dimension should be equal."
+                    "But received: The paddings dimension of Conv is [%d]"
+                    "the stride dimension of Conv is [%d]",
+                    paddings.size(), strides.size());
 
-  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
-                    "ShapeError: The number of input channels should be equal to filter "
-                    "channels * groups. But received: the input channels is [%d], the filter channel is [%d],"
-                    "the groups is [%d]", in_dims[1], filter_dims[1], groups);
+  PADDLE_ENFORCE_EQ(
+      in_dims[1], filter_dims[1] * groups,
+      "ShapeError: The number of input channels should be equal to filter "
+      "channels * groups. But received: the input channels is [%d], the filter "
+      "channel is [%d],"
+      "the groups is [%d]",
+      in_dims[1], filter_dims[1], groups);
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
       "ShapeError: The number of output channels should be divided by groups."
-      "But received: the output channels is [%d], the groups is [%d]", filter_dims[0], groups);
+      "But received: the output channels is [%d], the groups is [%d]",
+      filter_dims[0], groups);
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
