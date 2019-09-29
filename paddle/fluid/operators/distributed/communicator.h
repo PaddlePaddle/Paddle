@@ -172,6 +172,8 @@ class Communicator {
                     const framework::Scope& scope) = 0;
   virtual void Recv() = 0;
 
+  virtual void Barrier() = 0;
+
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
                         Scope* recv_scope) = 0;
@@ -239,6 +241,13 @@ class AsyncCommunicator : public Communicator {
   void Send(const std::string& var_name,
             const framework::Scope& scope) override;
   void Recv() override;
+
+  void Barrier() override;
+
+  void BarrierIncrement();
+  void BarrierWait();
+  void BarrierWeakUp();
+
   void RecvAll();
 
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
@@ -264,6 +273,12 @@ class AsyncCommunicator : public Communicator {
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
+
+  // mutex for Wait client sync
+  std::mutex barrier_mutex_;
+  std::condition_variable barrier_cond_;
+  volatile bool barrier_cv_;
+  std::atomic<int64_t> barrier_counter_{0};
 };
 
 }  // namespace distributed

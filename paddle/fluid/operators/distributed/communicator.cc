@@ -161,6 +161,16 @@ AsyncCommunicator::~AsyncCommunicator() {
 void AsyncCommunicator::SendThread() {
   VLOG(3) << "SendThread start!";
   while (running_) {
+    while (true) {
+      auto barrier_counter = barrier_counter_.load();
+
+      if (barrier_counter >= FLAGS_communicator_max_merge_var_num) {
+        break;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
     VLOG(3) << "run send graph";
@@ -222,6 +232,8 @@ void AsyncCommunicator::SendThread() {
     VLOG(3) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     Recv();
+
+    BarrierWeakUp();
   }
   VLOG(0) << "communicator stopped, send thread exit";
 }
@@ -299,6 +311,23 @@ void AsyncCommunicator::RecvAll() {
   }
   auto after_recv = GetCurrentUS();
   VLOG(1) << "run recv graph use time " << after_recv - before_send;
+}
+
+void AsyncCommunicator::Barrier() {
+  BarrierIncrement();
+  BarrierWait();
+}
+
+void AsyncCommunicator::BarrierIncrement() { barrier_counter_++; }
+
+void AsyncCommunicator::BarrierWait() {
+  std::unique_lock<std::mutex> lk(barrier_mutex_);
+  barrier_cond_.wait(lk, [this] { return (barrier_cv_); });
+}
+
+void AsyncCommunicator::BarrierWeakUp() {
+  barrier_counter_.store(0);
+  barrier_cond_.notify_all();
 }
 
 void AsyncCommunicator::Start() {

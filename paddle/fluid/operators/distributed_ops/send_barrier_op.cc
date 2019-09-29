@@ -36,23 +36,30 @@ class SendBarrierOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
+    auto is_communicator = Attr<bool>("is_communicator");
 
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(
-            Attr<int>("trainer_id"));
+    if (is_communicator) {
+      distributed::Communicator::GetInstance()->Barrier();
+    } else {
+      std::vector<std::string> eps =
+          Attr<std::vector<std::string>>("endpoints");
 
-    VLOG(3) << "SendBarrierOp sync";
+      distributed::RPCClient* rpc_client =
+          distributed::RPCClient::GetInstance<RPCCLIENT_T>(
+              Attr<int>("trainer_id"));
 
-    std::vector<distributed::VarHandlePtr> rets;
+      VLOG(3) << "SendBarrierOp sync";
 
-    for (auto& ep : eps) {
-      VLOG(3) << "send barrier, ep: " << ep;
-      rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
-    }
+      std::vector<distributed::VarHandlePtr> rets;
 
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+      for (auto& ep : eps) {
+        VLOG(3) << "send barrier, ep: " << ep;
+        rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
+      }
+
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+      }
     }
   }
 };
@@ -76,6 +83,11 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
+    AddAttr<bool>("is_communicator",
+                  "(bool, default false)"
+                  "communicator=True is for async mode, this will send signal "
+                  "to Communicator Instance")
+        .SetDefault(false);
   }
 };
 
