@@ -296,7 +296,6 @@ function build_base() {
     make install -j ${parallel_number}
 }
 
-
 function build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -952,6 +951,16 @@ EOF
     ./clean.sh
 }
 
+function test_fluid_lib_train() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for training ...
+    ========================================
+EOF
+    cd ${PADDLE_ROOT}/paddle/fluid/train/demo
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    ./clean.sh
+}
 
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
@@ -1045,6 +1054,11 @@ function main() {
       test_inference)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
+        test_fluid_lib_train
+        ;;
+      test_train)
+        gen_fluid_lib ${parallel_number}
+        test_fluid_lib_train
         ;;
       assert_api_approvals)
         assert_api_spec_approvals

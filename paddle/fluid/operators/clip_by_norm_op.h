@@ -105,10 +105,11 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor) The input of clip_by_norm op."
+             "(Tensor) The input of clip_by_norm op and data type is float32."
              "The number of dimensions must be between [1, 9].");
     AddOutput("Out",
-              "(Tensor) The output of clip_by_norm op with shape as input(X)");
+              "(Tensor) The output of clip_by_norm op with shape as input(X)"
+              "The data type is float32.");
     AddAttr<float>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
 ClipByNorm Operator.
