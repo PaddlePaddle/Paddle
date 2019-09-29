@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+"""
+    high level unit test for distribute fleet.
+"""
 import argparse
 import os
 import pickle
@@ -40,6 +42,12 @@ LEARNING_RATE = 0.01
 
 
 class FleetDistRunnerBase(object):
+    """
+        run_pserver,run_trainer : after init role, using transpiler split program
+        net : implment by child class, the network of model
+        do training : exe run program
+    """
+
     def run_pserver(self, args):
         if args.role.upper() != "PSERVER":
             raise ValueError("args role must be PSERVER")
@@ -88,8 +96,6 @@ class FleetDistRunnerBase(object):
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
-
-        self.do_training(fleet)
         out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
@@ -102,6 +108,11 @@ class FleetDistRunnerBase(object):
 
 
 class TestFleetBase(unittest.TestCase):
+    """
+        start_pserver,start_trainer : add start cmd to test
+        run_cluster : using multi process to test distribute program
+    """
+
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
@@ -170,13 +181,18 @@ class TestFleetBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs):
         env = {'CPU_NUM': '1'}
+        python_path = self._python_interp
+
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
+            python_path += " -m coverage run --branch -p"
         env.update(envs)
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
-            self._python_interp, model, self._ps_endpoints, self._trainers)
+            python_path, model, self._ps_endpoints, self._trainers)
 
         ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
-            self._python_interp, model, self._ps_endpoints, self._trainers)
+            python_path, model, self._ps_endpoints, self._trainers)
 
         if self._sync_mode:
             tr_cmd += " --sync_mode"
