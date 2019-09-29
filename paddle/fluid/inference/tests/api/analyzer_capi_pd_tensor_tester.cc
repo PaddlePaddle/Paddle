@@ -107,7 +107,7 @@ void buffer_run() {
   std::vector<PaddleTensor> outputs;
   predictor->Run(paddle_tensor_feeds, &outputs, batch);
   LOG(INFO) << outputs.size();
-  LOG(INFO) << *(static_cast<float*>(outputs[0].data));
+  LOG(INFO) << *(static_cast<float*>(outputs[0].data.data()));
 
   /*PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
                     params_str.c_str(), params_str.size());
