@@ -33,15 +33,18 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+                      "The dimension of col should be 5.");
 
     if (stride[0] == 1 && stride[1] == 1 && dilation[0] == 1 &&
         dilation[1] == 1) {
-      if (padding[0] == 0 && padding[1] == 0) {
+      if (padding[0] == 0 && padding[1] == 0 && padding[2] == 0 &&
+          padding[3] == 0) {
         im2col_sh1sw1dh1dw1ph0pw0<T>(im, col);
         return;
-      } else if (padding[0] == 1 && padding[1] == 1) {
+      } else if (padding[0] == 1 && padding[1] == 1 && padding[2] == 1 &&
+                 padding[3] == 1) {
         im2col_sh1sw1dh1dw1ph1pw1<T>(im, col);
         return;
       }
@@ -65,8 +68,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+                      "The dimension of col should be 5.");
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];
     int im_width = im->dims()[2];
@@ -136,8 +140,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                   const framework::Tensor& im, const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col) {
-    PADDLE_ENFORCE(im.dims().size() == 3);
-    PADDLE_ENFORCE(col->dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col->dims().size(), 5,
+                      "The dimension of col should be 5.");
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
     int im_width = im.dims()[2];
@@ -198,8 +203,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im) {
-    PADDLE_ENFORCE(im->dims().size() == 3);
-    PADDLE_ENFORCE(col.dims().size() == 5);
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(col.dims().size(), 5,
+                      "The dimension of col should be 5.");
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];
     int im_width = im->dims()[2];
