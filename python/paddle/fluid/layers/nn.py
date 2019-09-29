@@ -1741,8 +1741,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
     if not isinstance(input, Variable):
         raise TypeError(
-            "The type of 'input' in cross_entropy must be Variable, but received %s" %
-            (type(input)))
+            "The type of 'input' in cross_entropy must be Variable, but received %s"
+            % (type(input)))
     if convert_dtype(input.dtype) not in ['float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in cross_entropy must be float32 or float64, but received %s."
@@ -2410,8 +2410,10 @@ def conv2d(input,
         num_filter_channels = num_channels
     else:
         if num_channels % groups != 0:
-            raise ValueError("ShapeError: the channel of input must be divisible by groups,"
-                             "But received: the channel of input is {}, the groups is {}".format(num_channels, groups))
+            raise ValueError(
+                "ShapeError: the channel of input must be divisible by groups,"
+                "But received: the channel of input is {}, the shape of input is {}"
+                ", the groups is {}".format(num_channels, input.shape, groups))
         num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
@@ -3608,8 +3610,8 @@ def batch_norm(input,
 
     if not isinstance(input, Variable):
         raise TypeError(
-            "The type of 'input' in batch_norm must be Variable, but received %s" %
-            (type(input)))
+            "The type of 'input' in batch_norm must be Variable, but received %s"
+            % (type(input)))
     if convert_dtype(input.dtype) not in ['float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in batch_norm must be float32 or float64, but received %s."
