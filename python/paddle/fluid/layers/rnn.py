@@ -248,7 +248,9 @@ def dynamic_rnn(cell,
     if sequence_length:
         max_seq_len = nn.shape(flatten(inputs)[0])[0]
         mask = nn.sequence_mask(
-            sequence_length, maxlen=max_seq_len, dtype='float32')
+            sequence_length,
+            maxlen=max_seq_len,
+            dtype=flatten(initial_states)[0].dtype)
         mask = nn.transpose(mask, [1, 0])
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
@@ -359,8 +361,9 @@ class BeamSearchDecoder(Decoder):
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
         probs = nn.elementwise_mul(
-            nn.elementwise_add(probs, self.noend_mask_tensor), finished,
-            axis=0) - nn.elementwise_mul(
+            nn.expand(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
+            self.noend_mask_tensor,
+            axis=-1) - nn.elementwise_mul(
                 probs, (finished - 1), axis=0)
         return probs
 
