@@ -84,10 +84,14 @@ void buffer_run() {
   std::string params_file = FLAGS_infer_model + "/__params__";
 
   std::string prog_str = read_file(prog_file);
-  LOG(INFO) << prog_str;
+  // LOG(INFO) << prog_str;
   std::string params_str = read_file(params_file);
-  PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
-                    params_str.c_str(), params_str.size());
+  AnalysisConfig cfg;
+  cfg.SetModelBuffer(prog_str.c_str(), prog_str.size(), params_str.c_str(),
+                     params_str.size());
+  // PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
+  //                   params_str.c_str(), params_str.size());
+  config->config = cfg;
 
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
