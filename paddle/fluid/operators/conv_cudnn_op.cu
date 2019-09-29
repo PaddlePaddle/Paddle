@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
@@ -71,30 +72,6 @@ static inline bool IsSymmetricPadding(const std::vector<int>& paddings,
     }
   }
   return is_sys_pad;
-}
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-
-template <typename DeviceContext, typename T, size_t D>
-static void PadFunction(const framework::ExecutionContext& context,
-                        const std::vector<int>& pads,
-                        const framework::Tensor& src, T pad_value,
-                        framework::Tensor* out) {
-  Eigen::array<std::pair<int, int>, D> paddings;
-
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings[i].first = pads[i * 2];
-    paddings[i].second = pads[i * 2 + 1];
-  }
-
-  auto src_tensor = EigenTensor<T, D>::From(src);
-  auto out_tensor = EigenTensor<T, D>::From(*out);
-
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
-  out_tensor.device(place) = src_tensor.pad(paddings, pad_value);
 }
 
 template <typename DeviceContext, typename T, size_t D>
@@ -225,12 +202,12 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         case 5: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
@@ -446,12 +423,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         case 5: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
@@ -786,16 +763,16 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_ddX_channel, pad_value,
               &transformed_ddX);
         } break;
         case 5: {
-          PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_ddX_channel, pad_value,
               &transformed_ddX);
         } break;
