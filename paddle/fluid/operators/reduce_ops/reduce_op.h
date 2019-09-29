@@ -180,12 +180,12 @@ class ReduceOp : public framework::OperatorWithKernel {
         dims.size());
 
     for (size_t i = 0; i < dims.size(); ++i) {
-      if (dims[i] < 0) dims[i] = x_rank + dims[i];
       PADDLE_ENFORCE_LT(dims[i], x_rank,
-                        "ShapeError: The reduce dim index  should be in the "
+                        "ShapeError: The reduce dim index %d should be in the "
                         "range [-dimension(X), dimension(X)]."
                         "which dimesion = %d, But received dim index = %d",
-                        x_rank, dims[i]);
+                        i, x_rank, dims[i]);
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());
     bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
@@ -238,10 +238,10 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
-                        "ShapeError: The reduce dim index  should be in the "
+                        "ShapeError: The reduce dim index %d should be in the "
                         "range [-dimension(X), dimension(X)]."
                         "which dimesion = %d, But received dim index = %d",
-                        x_rank, dims[i]);
+                        i, x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());
