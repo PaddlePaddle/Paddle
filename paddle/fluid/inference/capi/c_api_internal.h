@@ -23,10 +23,6 @@ using PD_PaddleDType = paddle::PaddleDType;
 using PD_PaddlePlace = paddle::PaddlePlace;
 using PD_ACPrecision = paddle::AnalysisConfig::Precision;
 
-using PD_PaddleDType = paddle::PaddleDType;
-using PD_PaddlePlace = paddle::PaddlePlace;
-using PD_ACPrecision = paddle::AnalysisConfig::Precision;
-
 struct PD_Predictor {
   std::unique_ptr<paddle::PaddlePredictor> predictor;
 };

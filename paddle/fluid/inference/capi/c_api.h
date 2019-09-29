@@ -44,9 +44,6 @@ typedef struct PD_ZeroCopyData {
   int shape_size;
 } PD_ZeroCopyData;
 
-enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
-enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
-
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_NewPaddleBuf();
 
 PADDLE_CAPI_EXPORT extern void PD_DeletePaddleBuf(PD_PaddleBuf* buf);
@@ -325,12 +322,6 @@ PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(
 PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(const PD_AnalysisConfig* config);
-
-PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
-    const PD_AnalysisConfig* config);
-
-PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
-    const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_CreatePaddlePredictor(
     const PD_AnalysisConfig* config);
