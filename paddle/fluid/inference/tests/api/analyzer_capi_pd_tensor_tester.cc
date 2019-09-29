@@ -65,7 +65,7 @@ void PD_run() {
   LOG(INFO) << PD_GetPaddleTensorDType(out_data);
   PD_PaddleBuf* b = PD_GetPaddleTensorData(out_data);
   LOG(INFO) << PD_PaddleBufLength(b);
-  float* result = PD_PaddleBufData(b);
+  float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
 }
 
