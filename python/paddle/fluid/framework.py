@@ -4025,9 +4025,6 @@ class Parameter(Variable):
             raise ValueError("Parameter shape cannot be empty")
 
         for each in shape:
-            if not isinstance(each, (int, long)):
-                raise ValueError(
-                    "The shape of Parameter must be a list[int/long].")
             if each < 0:
                 raise ValueError("Parameter shape should not be related with "
                                  "batch-size")
