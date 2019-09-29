@@ -167,6 +167,12 @@ class ReduceOp : public framework::OperatorWithKernel {
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    PADDLE_ENFORCE_GT(
+        dims.size(), 0,
+        "ShapeError: The input dim dimensions of Reduce "
+        "shoud be greater than 0. But received the dim dimesions of Reduce "
+        " = %d",
+        dims.size());
     for (size_t i = 0; i < dims.size(); ++i) {
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
       PADDLE_ENFORCE_LT(
