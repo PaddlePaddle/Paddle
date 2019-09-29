@@ -60,7 +60,7 @@ PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
   return ConvertToPDDataType(tensor->tensor.dtype);
 }
 
-PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
+PD_PaddleBuf PD_GetPaddleTensorData(const PD_Tensor* tensor) {
   return tensor->tensor.data;
 }
 
