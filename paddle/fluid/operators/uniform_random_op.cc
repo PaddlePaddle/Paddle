@@ -119,8 +119,8 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           shape_dims.size(), 1,
           "Input(ShapeTensor)' dimension size of Op(uniform_random) must be 1."
-          "Please check the Attr(shape)'s dimension size of"
-          "Op(fluid.layers.uniform_random).)");
+          "But received ShapeTensor's dimensions = %d, shape = [%s]",
+          shape_dims.size(), shape_dims);
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
         num_ele *= shape_dims[i];

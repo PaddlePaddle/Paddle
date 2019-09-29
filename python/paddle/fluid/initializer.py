@@ -19,6 +19,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
+from .data_feeder import convert_dtype
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -259,8 +260,18 @@ class UniformInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+
+        if not isinstance(var, framework.Variable):
+            raise TypeError(
+                "The type of 'var' in UniformInitializer must be Variable, but received %s"
+                % (type(var)))
+
+        if convert_dtype(var.dtype) not in ['float16', 'float32', 'float64']:
+            raise TypeError(
+                "The data type of 'var' in UniformInitializer must be float16, float32 or float64, but received %s."
+                % (convert_dtype(var.dtype)))
+
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed

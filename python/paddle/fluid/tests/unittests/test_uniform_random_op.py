@@ -45,6 +45,9 @@ def output_hist_diag(out):
 
 class TestUniformRandomOp_attr_tensorlist(OpTest):
     def setUp(self):
+        """
+        Check: ShapeTensor's dimensions should greater than 1.
+        """
         self.op_type = "uniform_random"
         self.new_shape = (1000, 784)
         shape_tensor = []
@@ -71,6 +74,9 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
 
 class TestUniformRandomOp_attr_tensor(OpTest):
     def setUp(self):
+        """
+        Check: ShapeTensor's dimensions should greater than 0.
+        """
         self.op_type = "uniform_random"
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
         self.init_attrs()
