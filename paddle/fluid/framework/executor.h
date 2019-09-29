@@ -56,7 +56,8 @@ class Executor {
   explicit Executor(const platform::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const platform::Place& place,
+                    bool clear_mkldnn_cache = true);
 
   /*
    * Close this Executor.

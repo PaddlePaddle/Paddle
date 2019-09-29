@@ -91,7 +91,17 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place, bool clear_mkldnn_cache)
+    : place_(place) {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((clear_mkldnn_cache) && (platform::is_cpu_place(place))) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->ResetBlobMap();
+  }
+#endif
+}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE

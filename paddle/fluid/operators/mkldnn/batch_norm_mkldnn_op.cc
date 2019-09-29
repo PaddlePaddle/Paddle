@@ -40,8 +40,7 @@ class BatchNormMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::batch_normalization_forward,
                                  mkldnn::batch_normalization_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, epsilon, flags, global_stats, fmt,
-                                uniq_name)) {
+            platform::CreateKey(dims, uniq_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(
@@ -59,8 +58,7 @@ class BatchNormMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::batch_normalization_forward,
                                  mkldnn::batch_normalization_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, epsilon, flags, false, src_fmt,
-                                uniq_name)) {
+            platform::CreateKey(dims, uniq_name)) {
     auto diff_dst_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
