@@ -136,7 +136,7 @@ class TestLoDTensor(unittest.TestCase):
             np.array_equal(
                 np.array(tensor_from_dlpack),
                 np.array([[1], [2], [3], [4]]).astype('int')))
-
+        # when build with cuda
         if core.is_compiled_with_cuda():
             gtensor = fluid.create_lod_tensor(
                 np.array([[1], [2], [3], [4]]).astype('int'), [[1, 3]],
