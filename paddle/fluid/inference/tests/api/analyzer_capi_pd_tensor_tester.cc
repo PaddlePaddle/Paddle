@@ -59,7 +59,7 @@ void PD_run() {
 
   PD_Tensor* out_data;
   int* out_size;
-  PD_PredictorRun(config, input, 1, out_data, &out_size);
+  PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
 }
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
