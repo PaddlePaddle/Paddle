@@ -39,6 +39,9 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
+    PADDLE_ENFORCE_EQ(
+        in->lod().empty(), false,
+        "Input(X) Tensor of SequenceConvOp does not contain LoD information.");
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
 

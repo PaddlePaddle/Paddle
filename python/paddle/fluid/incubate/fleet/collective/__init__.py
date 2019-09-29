@@ -105,6 +105,8 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
+        self.forward_recompute = False
+        self.recompute_checkpoints = []
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -150,6 +152,11 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
+        if strategy.forward_recompute:
+            self.forward_recompute = True
+            self.recompute_checkpoints = strategy.recompute_checkpoints
+        else:
+            self.forward_recompute = False
         self.print_config = False
 
     def backward(self,
@@ -346,6 +353,13 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
+
+        if self.forward_recompute:
+            assert (isinstance(self.recompute_checkpoints, list) and
+                    len(self.recompute_checkpoints) > 0)
+            self._optimizer = \
+                fluid.optimizer.RecomputeOptimizer(self._optimizer)
+            self._optimizer._set_checkpoints(self.recompute_checkpoints)
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss,

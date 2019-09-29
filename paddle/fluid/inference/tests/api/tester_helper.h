@@ -42,6 +42,8 @@ DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
+DEFINE_bool(enable_int8, true, "Enable INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
 // setting iterations to 0 means processing the whole dataset
 DEFINE_int32(iterations, 0, "number of batches to process");
@@ -482,68 +484,88 @@ void SummarizeAccuracy(float avg_acc_fp32, float avg_acc_int8,
             << std::setprecision(4) << avg_acc_int8;
 }
 
+void SummarizePerformance(const char *title, float sample) {
+  CHECK_GT(sample, 0.0);
+  auto throughput = 1000.0 / sample;
+  LOG(INFO) << title << ": avg fps: " << std::fixed << std::setw(6)
+            << std::setprecision(4) << throughput << ", avg latency: " << sample
+            << " ms";
+}
+
 void SummarizePerformance(float sample_latency_fp32,
                           float sample_latency_int8) {
-  // sample latency in ms
-  auto throughput_fp32 = 1000.0 / sample_latency_fp32;
-  auto throughput_int8 = 1000.0 / sample_latency_int8;
-  LOG(INFO) << "--- Performance summary --- ";
-  LOG(INFO) << "FP32: avg fps: " << std::fixed << std::setw(6)
-            << std::setprecision(4) << throughput_fp32
-            << ", avg latency: " << sample_latency_fp32 << " ms";
-  LOG(INFO) << "INT8: avg fps: " << std::fixed << std::setw(6)
-            << std::setprecision(4) << throughput_int8
-            << ", avg latency: " << sample_latency_int8 << " ms";
+  if (FLAGS_enable_fp32) SummarizePerformance("FP32", sample_latency_fp32);
+  if (FLAGS_enable_int8) SummarizePerformance("INT8", sample_latency_int8);
+}
+
+float CompareAccuracyOne(
+    const std::vector<std::vector<PaddleTensor>> &output_slots,
+    int compared_idx) {
+  if (output_slots.size() == 0)
+    throw std::invalid_argument(
+        "CompareAccuracy: output_slots vector is empty.");
+
+  float total_accs{0};
+
+  for (size_t i = 0; i < output_slots.size(); ++i) {
+    switch (compared_idx) {
+      case 1:
+        PADDLE_ENFORCE_GE(
+            output_slots[i].size(), 2UL,
+            "To achieve top 1 accuracy, output_slots_quant[i].size()>=2");
+        break;
+      case 2:
+        PADDLE_ENFORCE_GE(
+            output_slots[i].size(), 2UL,
+            "To achieve top 1 accuracy, output_slots_ref[i].size()>=2");
+        break;
+      default:
+        throw std::invalid_argument(
+            "CompareAccuracy: compared_idx is out of range.");
+    }
+
+    if (output_slots[i][compared_idx].lod.size() > 0)
+      throw std::invalid_argument("CompareAccuracy: output has nonempty LoD.");
+
+    if (output_slots[i][compared_idx].dtype != paddle::PaddleDType::FLOAT32)
+      throw std::invalid_argument(
+          "CompareAccuracy: output is of a wrong type.");
+
+    total_accs +=
+        *static_cast<float *>(output_slots[i][compared_idx].data.data());
+  }
+
+  CHECK_GT(output_slots.size(), 0);
+
+  return total_accs / output_slots.size();
 }
 
 void CompareAccuracy(
     const std::vector<std::vector<PaddleTensor>> &output_slots_quant,
     const std::vector<std::vector<PaddleTensor>> &output_slots_ref,
     int compared_idx) {
-  if (output_slots_quant.size() == 0 || output_slots_ref.size() == 0)
+  if ((FLAGS_enable_fp32 && FLAGS_enable_int8) &&
+      (output_slots_quant.size() == 0 || output_slots_ref.size()) == 0)
     throw std::invalid_argument(
         "CompareAccuracy: output_slots vector is empty.");
 
-  float total_accs_quant{0};
-  float total_accs_ref{0};
-  for (size_t i = 0; i < output_slots_quant.size(); ++i) {
-    if (compared_idx == 1) {
-      PADDLE_ENFORCE_GE(
-          output_slots_quant[i].size(), 2UL,
-          "To achieve top 1 accuracy, output_slots_quant[i].size()>=2");
-      PADDLE_ENFORCE_GE(
-          output_slots_ref[i].size(), 2UL,
-          "To achieve top 1 accuracy, output_slots_ref[i].size()>=2");
-    } else if (compared_idx == 2) {
-      PADDLE_ENFORCE_GE(output_slots_quant[i].size(), 3UL,
-                        "To achieve mAP, output_slots_quant[i].size()>=3");
-      PADDLE_ENFORCE_GE(output_slots_ref[i].size(), 3UL,
-                        "To achieve mAP, output_slots_ref[i].size()>=3");
-    } else {
-      throw std::invalid_argument(
-          "CompareAccuracy: compared_idx is out of range.");
-    }
+  float avg_acc_quant = 0.0;
+  float avg_acc_ref = 0.0;
 
-    if (output_slots_quant[i][compared_idx].lod.size() > 0 ||
-        output_slots_ref[i][compared_idx].lod.size() > 0)
-      throw std::invalid_argument("CompareAccuracy: output has nonempty LoD.");
-    if (output_slots_quant[i][compared_idx].dtype !=
-            paddle::PaddleDType::FLOAT32 ||
-        output_slots_ref[i][compared_idx].dtype != paddle::PaddleDType::FLOAT32)
-      throw std::invalid_argument(
-          "CompareAccuracy: output is of a wrong type.");
-    total_accs_quant +=
-        *static_cast<float *>(output_slots_quant[i][compared_idx].data.data());
-    total_accs_ref +=
-        *static_cast<float *>(output_slots_ref[i][compared_idx].data.data());
-  }
-  float avg_acc_quant = total_accs_quant / output_slots_quant.size();
-  float avg_acc_ref = total_accs_ref / output_slots_ref.size();
+  if (FLAGS_enable_int8)
+    avg_acc_quant = CompareAccuracyOne(output_slots_quant, compared_idx);
+
+  if (FLAGS_enable_fp32)
+    avg_acc_ref = CompareAccuracyOne(output_slots_ref, compared_idx);
 
   SummarizeAccuracy(avg_acc_ref, avg_acc_quant, compared_idx);
-  CHECK_GT(avg_acc_ref, 0.0);
-  CHECK_GT(avg_acc_quant, 0.0);
-  CHECK_LE(avg_acc_ref - avg_acc_quant, FLAGS_quantized_accuracy);
+
+  if (FLAGS_enable_fp32) CHECK_GT(avg_acc_ref, 0.0);
+
+  if (FLAGS_enable_int8) CHECK_GT(avg_acc_quant, 0.0);
+
+  if (FLAGS_enable_fp32 && FLAGS_enable_int8)
+    CHECK_LE(avg_acc_ref - avg_acc_quant, FLAGS_quantized_accuracy);
 }
 
 void CompareDeterministic(
@@ -591,18 +613,24 @@ void CompareQuantizedAndAnalysis(
   PrintConfig(cfg, true);
   std::vector<std::vector<PaddleTensor>> analysis_outputs;
   float sample_latency_fp32{-1};
-  TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true, VarType::FP32,
-                          &sample_latency_fp32);
+
+  if (FLAGS_enable_fp32) {
+    TestOneThreadPrediction(cfg, inputs, &analysis_outputs, true, VarType::FP32,
+                            &sample_latency_fp32);
+  }
 
   LOG(INFO) << "--- INT8 prediction start ---";
   auto *qcfg = reinterpret_cast<const PaddlePredictor::Config *>(qconfig);
   PrintConfig(qcfg, true);
   std::vector<std::vector<PaddleTensor>> quantized_outputs;
   float sample_latency_int8{-1};
-  TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true, VarType::INT8,
-                          &sample_latency_int8);
 
+  if (FLAGS_enable_int8) {
+    TestOneThreadPrediction(qcfg, inputs, &quantized_outputs, true,
+                            VarType::INT8, &sample_latency_int8);
+  }
   SummarizePerformance(sample_latency_fp32, sample_latency_int8);
+
   CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
 }
 
