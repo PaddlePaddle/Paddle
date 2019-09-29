@@ -26,7 +26,7 @@ using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
 extern "C" {
-
+// PaddleTensor
 PD_Tensor* PD_NewPaddleTensor() { return new PD_Tensor; }
 
 void PD_DeletePaddleTensor(PD_Tensor* tensor) {
@@ -52,6 +52,26 @@ void PD_SetPaddleTensorShape(PD_Tensor* tensor, int* shape, int size) {
   tensor->tensor.shape.assign(shape, shape + size);
 }
 
+const char* PD_GetPaddleTensorName(const PD_Tensor* tensor) {
+  return tensor->tensor.name.c_str();
+}
+
+PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
+  return ConvertToPD_DataType(tensor->tensor.dtype);
+}
+
+PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
+  return tensor->tensor.data;
+}
+
+int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
+  std::vector<int> shape = tensor->tensor.shape;
+  int s = shape.size();
+  *size = &s;
+  return shape.data();
+}
+
+// ZeroCopyTensor
 void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
   std::vector<int> new_shape;
   new_shape.assign(shape, shape + size);

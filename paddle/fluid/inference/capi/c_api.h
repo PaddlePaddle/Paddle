@@ -79,6 +79,18 @@ PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorData(PD_Tensor* tensor,
 PADDLE_CAPI_EXPORT extern void PD_SetPaddleTensorShape(PD_Tensor* tensor,
                                                        int* shape, int size);
 
+PADDLE_CAPI_EXPORT extern const char* PD_GetPaddleTensorName(
+    const PD_Tensor* tensor);
+
+PADDLE_CAPI_EXPORT extern PD_DataType PD_GetPaddleTensorDType(
+    const PD_Tensor* tensor);
+
+PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_GetPaddleTensorData(
+    const PD_Tensor* tensor);
+
+PADDLE_CAPI_EXPORT extern int* PD_GetPaddleTensorShape(const PD_Tensor* tensor,
+                                                       int** size);
+
 // ZeroCopyTensor
 typedef struct PD_ZeroCopyTensor PD_ZeroCopyTensor;
 

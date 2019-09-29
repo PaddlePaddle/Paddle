@@ -60,6 +60,13 @@ void PD_run() {
   PD_Tensor* out_data = PD_NewPaddleTensor();
   int* out_size;
   PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
+  LOG(INFO) << *out_size;
+  LOG(INFO) << PD_GetPaddleTensorName(out_data);
+  LOG(INFO) << PD_GetPaddleTensorDType(out_data);
+  PD_PaddleBuf* b = PD_GetPaddleTensorData(out_data);
+  LOG(INFO) << PD_PaddleBufLength(b);
+  float* result = PD_PaddleBufData(b);
+  LOG(INFO) << *result;
 }
 
 TEST(PD_Tensor, PD_run) { PD_run(); }
