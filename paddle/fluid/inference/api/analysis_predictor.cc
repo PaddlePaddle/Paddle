@@ -569,7 +569,9 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
-  PADDLE_ENFORCE_EQ(config_.use_feed_fetch_ops_, false, "Should set config.SwitchUseFeedFetchOps(false) before using ZeroCopyTensor related APIs.");
+  PADDLE_ENFORCE_EQ(config_.use_feed_fetch_ops_, false,
+                    "Should set config.SwitchUseFeedFetchOps(false) before "
+                    "using ZeroCopyTensor related APIs.");
   std::vector<std::string> input_names;
   for (auto &item : idx2feeds_) {
     input_names.push_back(item.second);
