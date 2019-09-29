@@ -19,6 +19,8 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit, erf
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestActivation(OpTest):
@@ -517,6 +519,18 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
+class TestELUOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elu, x1)
+            # The input dtype of softmax_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.elu, x2)
 
 
 class TestReciprocal(TestActivation):

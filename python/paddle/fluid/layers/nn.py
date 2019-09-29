@@ -10156,6 +10156,17 @@ def elu(x, alpha=1.0, name=None):
             y = fluid.layers.elu(x, alpha=0.2)
     """
     helper = LayerHelper('elu', **locals())
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in elu must be Variable, but received %s" %
+            (type(x)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in elu only support float16 in GPU now.")
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in elu must be float16 (only support on GPU), float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='elu',
