@@ -1668,7 +1668,7 @@ def dropout(x,
         )
     if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'input' in dropout must be float32 or float64, but received %s."
+            "The data type of 'input' in dropout must be float16 or float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1753,7 +1753,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         )
     if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'input' in cross_entropy must be float32 or float64, but received %s."
+            "The data type of 'input' in cross_entropy must be float16 or float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
 
     if not soft_label:
@@ -3630,7 +3630,7 @@ def batch_norm(input,
         )
     if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'input' in batch_norm must be float32 or float64, but received %s."
+            "The data type of 'input' in batch_norm must be float16 or float32 or float64, but received %s."
             % (convert_dtype(input.dtype)))
 
     dtype = helper.input_dtype()
