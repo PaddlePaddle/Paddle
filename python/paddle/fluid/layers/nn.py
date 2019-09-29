@@ -8154,17 +8154,24 @@ def roi_align(input,
     Args:
         input (Variable): ${x_comment}
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                         the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates. 
-        pooled_height (integer): ${pooled_height_comment} Default: 1
-        pooled_width (integer): ${pooled_width_comment} Default: 1
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
-        sampling_ratio(intger): ${sampling_ratio_comment} Default: -1
+            a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The 
+            data type is float32 or float64. Given as [[x1, y1, x2, y2], ...], 
+            (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
+            right coordinates. 
+        pooled_height (int32, optional): ${pooled_height_comment} Default: 1
+        pooled_width (int32, optional): ${pooled_width_comment} Default: 1
+        spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
+        sampling_ratio(int32, optional): ${sampling_ratio_comment} Default: -1
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
-        Variable: ${out_comment}.
+        Variable:
+
+        Output: ${out_comment}.
+
+
     Examples:
         .. code-block:: python
 
@@ -10498,15 +10505,20 @@ def prelu(x, mode, param_attr=None, name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Args:
-        x (Variable): The input tensor.
-        mode (string): The mode for weight sharing. 
+        x (Variable): The input Tensor or LoDTensor with data type float32.
+        mode (str): The mode for weight sharing. 
         param_attr(ParamAttr|None): The parameter attribute for the learnable
-          weight (alpha), it can be create by ParamAttr.
-        name(str|None): A name for this layer(optional). If set None, the layer
-          will be named automatically.
+          weight (alpha), it can be create by ParamAttr. None by default.
+          For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+        name(str|None): For detailed information, please refer 
+          to :ref:`api_guide_Name`. Usually name is no need to set and 
+          None by default. 
 
     Returns:
-        Variable: The output tensor with the same shape as input.
+        Variable:
+
+        output(Variable): The tensor or LoDTensor with the same shape as input.
+        The data type is float32.
 
     Examples:
 
@@ -12561,10 +12573,15 @@ def clip_by_norm(x, max_norm, name=None):
     Args:
         x(${x_type}): ${x_comment}
         max_norm(${max_norm_type}): ${max_norm_comment}
-        name(basestring|None): Name of the output.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
+        Variable:
+
         out(${out_type}): ${out_comment}
+
 
     Examples:
         .. code-block:: python
@@ -12771,10 +12788,15 @@ def maxout(x, groups, name=None):
     Args:
         x(${x_type}): ${x_comment}
         groups(${groups_type}): ${groups_comment}
-        name(basestring|None): Name of the output.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
 
     Returns:
+        Variable:
+
         out(${out_type}): ${out_comment}
+
 
     Examples:
         .. code-block:: python
