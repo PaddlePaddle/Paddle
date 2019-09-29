@@ -44,6 +44,8 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
+from .data import *
+
 from . import trainer_desc
 from . import inferencer
 
@@ -97,6 +99,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'one_hot',
         'layers',
         'contrib',
+        'data',
         'dygraph',
         'transpiler',
         'nets',
