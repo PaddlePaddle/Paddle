@@ -89,6 +89,7 @@ void buffer_run() {
   AnalysisConfig cfg;
   cfg.SetModelBuffer(prog_str.c_str(), prog_str.size(), params_str.c_str(),
                      params_str.size());
+  auto predictor = CreatePaddlePredictor(cfg);
   PaddleTensor tensor;
   tensor.name = "image";
   tensor.dtype = PaddleDType::FLOAT32;
@@ -96,8 +97,8 @@ void buffer_run() {
   int channel = 3;
   int height = 300;
   int width = 300;
-  int shape[4] = {batch, channel, height, width};
-  int shape_size = 4;
+  // int shape[4] = {batch, channel, height, width};
+  // int shape_size = 4;
   float* data = new float[batch * channel * height * width];
   tensor.shape = std::vector<int>({batch, channel, height, width});
   tensor.data = PaddleBuf(static_cast<void*>(data),
@@ -106,7 +107,7 @@ void buffer_run() {
   std::vector<PaddleTensor> outputs;
   predictor->Run(paddle_tensor_feeds, &outputs, batch);
   LOG(INFO) << outputs.size();
-  LOG(INFO) << outputs[0];
+  LOG(INFO) << *(static_cast<float*>(outputs[0].data));
 
   /*PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
                     params_str.c_str(), params_str.size());
