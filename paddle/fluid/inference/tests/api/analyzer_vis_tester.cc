@@ -154,10 +154,6 @@ TEST(Analyzer_vis, compare_determine) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  auto a = input_slots_all[0][0].shape;
-  for (int i = 0; i < a.size(); ++i) {
-    LOG(INFO) << a[i];
-  }
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
 }
