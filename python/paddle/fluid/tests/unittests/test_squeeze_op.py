@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 from op_test import OpTest
 
@@ -66,6 +68,18 @@ class TestSqueezeOp3(TestSqueezeOp):
         self.ori_shape = (3, 1, 5, 1, 4, 1)
         self.axes = (1, -1)
         self.new_shape = (3, 5, 1, 4)
+
+
+class TestSqueezeOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.squeeze, x1)
+            # The input axes of squeeze must be list.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.squeeze, x2, axes=0)
 
 
 if __name__ == "__main__":

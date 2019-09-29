@@ -7451,6 +7451,23 @@ def squeeze(input, axes, name=None):
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
+
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in squeeze must be Variable, but received %s" %
+            (type(input)))
+
+    if convert_dtype(input.dtype
+                     ) not in ['float32', 'float64', 'int8', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in squeeze must be float32, float64, int8, int32,"
+            "int64, but received %s." % (convert_dtype(input.dtype)))
+
+    if not isinstance(axes, list):
+        raise TypeError(
+            "The type of 'axes' in squeeze must be list, but received %s" %
+            (type(axes)))
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(

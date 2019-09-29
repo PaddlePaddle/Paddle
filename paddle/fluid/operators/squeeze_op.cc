@@ -35,14 +35,19 @@ class SqueezeOp : public framework::OperatorWithKernel {
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "Invalid dimnesions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit).");
+                      "ShapeError: the rank of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit)."
+                      "But received X's rank = %d.",
+                      x_dims.size());
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
-      PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The squeeze axis should be less than input "
-                        "tensor's rank.");
+      PADDLE_ENFORCE_LT(
+          a, x_dims.size(),
+          "ShapeError: The squeeze axis should be less than input "
+          "tensor's rank. But received axis = %d, input "
+          "tensor's rank = %d",
+          a, x_dims.size());
     }
 
     auto out_dims = GetOutputShape(axes, x_dims);
@@ -171,14 +176,19 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "Invalid dimnesions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit).");
+                      "ShapeError: the rank of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit)."
+                      "But received X's rank = %d.",
+                      x_dims.size());
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
-      PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The squeeze axis should be less than input "
-                        "tensor's rank.");
+      PADDLE_ENFORCE_LT(
+          a, x_dims.size(),
+          "ShapeError: The squeeze axis should be less than input "
+          "tensor's rank. But received axis = %d, input "
+          "tensor's rank = %d",
+          a, x_dims.size());
     }
 
     auto out_dims = SqueezeOp::GetOutputShape(axes, x_dims);
