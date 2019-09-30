@@ -81,7 +81,8 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   int osize = output_names.size();
   *out_size = &osize;
   for (int i = 0; i < osize; ++i) {
-    output[i].name = output_names[i];
+    snprintf(output[i].name, output_names[i].length() + 1, "%s",
+             output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
     output_t->copy_to_cpu(static_cast<void*>(output[i].data));
     output[i].dtype = inputs[0].dtype;
