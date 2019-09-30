@@ -614,7 +614,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
 
 
 class TestRecomputeOptimizer(unittest.TestCase):
-    def net(self, with_inplace=False):
+    def net(self):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -631,13 +631,6 @@ class TestRecomputeOptimizer(unittest.TestCase):
             dtype="float32", shape=[5, 8], lod_level=0, name="b2")
         b2_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="b2_out")
-        if with_inplace == True:
-            inplace_b1 = block.create_parameter(
-                dtype="float32", shape=[5, 8], lod_level=0, name="inplace_b1")
-            inplace_b2 = block.create_parameter(
-                dtype="float32", shape=[5, 8], lod_level=0, name="inplace_b2")
-            inplace_b3 = block.create_parameter(
-                dtype="float32", shape=[5, 8], lod_level=0, name="inplace_b3")
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
@@ -646,34 +639,16 @@ class TestRecomputeOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
-        if with_inplace == True:
-            block.append_op(
-                type="elementwise_add",
-                inputs={"X": mul_out,
-                        "Y": inplace_b1},
-                outputs={"Out": mul_out})
         block.append_op(
             type="elementwise_add",
             inputs={"X": mul_out,
                     "Y": b1},
             outputs={"Out": b1_out})
-        if with_inplace == True:
-            block.append_op(
-                type="elementwise_add",
-                inputs={"X": b1_out,
-                        "Y": inplace_b2},
-                outputs={"Out": b1_out})
         block.append_op(
             type="elementwise_add",
             inputs={"X": b1_out,
                     "Y": b2},
             outputs={"Out": b2_out})
-        if with_inplace == True:
-            block.append_op(
-                type="elementwise_add",
-                inputs={"X": b2_out,
-                        "Y": inplace_b3},
-                outputs={"Out": b2_out})
         block.append_op(
             type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out})
 
