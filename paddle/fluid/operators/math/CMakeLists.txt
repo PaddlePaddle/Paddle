@@ -57,7 +57,6 @@ math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
 math_library(beam_search DEPS math_function)
 math_library(fc DEPS blas)
-math_library(multihead_matmul)
 
 math_library(matrix_bit_code)
 

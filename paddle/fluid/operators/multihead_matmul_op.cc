@@ -12,50 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/multihead_matmul.h"
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
-class MultiHeadMatMulKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *q = context.Input<framework::Tensor>("Q");
-    auto *k = context.Input<framework::Tensor>("K");
-    auto *v = context.Input<framework::Tensor>("V");
-
-    auto &bias_q = detail::Ref(context.Input<framework::Tensor>("BiasQ"),
-                               "Cannot find BiasQ");
-    auto &bias_k = detail::Ref(context.Input<framework::Tensor>("BiasK"),
-                               "Cannot find BiasK");
-    auto &bias_v = detail::Ref(context.Input<framework::Tensor>("BiasV"),
-                               "Cannot find BiasV");
-
-    auto &bias_qk = detail::Ref(context.Input<framework::Tensor>("BiasQK"),
-                                "Cannot find QK");
-
-    auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-
-    T scale = static_cast<T>(context.Attr<float>("alpha"));
-    bool transpose_q = context.Attr<bool>("transpose_Q");
-    bool transpose_k = context.Attr<bool>("transpose_K");
-    bool transpose_v = context.Attr<bool>("transpose_V");
-
-    int head_number = context.Attr<int>("head_number");
-    // compute q*k with eltadd
-    auto &device_ctx = context.template device_context<DeviceContext>();
-
-    math::MultiHeadGPUCompute<platform::CUDADeviceContext, T>::compute(
-        device_ctx, head_number, q->dims(), k->dims(), v->dims(), q->data<T>(),
-        k->data<T>(), v->data<T>(), bias_q.data<T>(), bias_k.data<T>(),
-        bias_v.data<T>(), bias_qk.data<T>(), out->data<T>(), scale, T(0.0),
-        transpose_q, transpose_k, transpose_v);
-  }
-};
 
 class MultiHeadMatMulOp : public framework::OperatorWithKernel {
  public:
@@ -189,8 +151,3 @@ they are the same.
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(multihead_matmul, ops::MultiHeadMatMulOp,
                              ops::MultiHeadMatMulOpMaker);
-
-REGISTER_OP_CUDA_KERNEL(
-    multihead_matmul,
-    ops::MultiHeadMatMulKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MultiHeadMatMulKernel<paddle::platform::CUDADeviceContext, double>);
