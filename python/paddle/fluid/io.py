@@ -1395,4 +1395,7 @@ def _load_persistable_nodes(executor, dirname, graph):
 
 
 def save(program, model_path):
+    """
+    Save paramter, optimizer and program to the given model path
+    """
     return None
