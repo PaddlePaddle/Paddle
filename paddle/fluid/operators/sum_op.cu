@@ -161,6 +161,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   int64_t lod_length = 0;
   bool dst_write = false;
   for (int i = start; i < in_num; ++i) {
+    if (!in_vars[i]->IsInitialized() ||
+        in_vars[i]->Get<framework::LoDTensor>().numel() == 0)
+      continue;
+
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
       in_data.emplace_back(in_i.data<T>());
