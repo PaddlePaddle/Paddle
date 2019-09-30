@@ -48,14 +48,7 @@ class SendOp : public framework::OperatorBase {
 
     if (send_varnames.size() > 0) {
       PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      if (distributed::Communicator::GetInstance() == nullptr) {
-        auto send_functor = distributed::ParameterSend<float>();
-        auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                               height_sections, trainer_id);
-        send_functor(rpc_ctx, scope, true);
-      } else {
-        distributed::Communicator::GetInstance()->Send(ins[0], scope);
-      }
+      distributed::Communicator::GetInstance()->Send(ins[0], scope);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
