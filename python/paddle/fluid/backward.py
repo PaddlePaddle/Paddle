@@ -67,9 +67,9 @@ class ProgramStats(object):
 
     def is_subgraph(self, var_group1, var_group2):
         # should traverse from var_group1 to var_group2
-        # min op idx in var_group2
         # min op idx in var_group1
         min_op_idx_group1 = len(self.ops)
+        # min op idx in var_group2
         min_op_idx_group2 = len(self.ops)
         for name in var_group1:
             if name not in self.var_op_deps:
