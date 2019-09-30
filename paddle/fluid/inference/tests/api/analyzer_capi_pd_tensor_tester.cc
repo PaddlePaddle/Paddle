@@ -21,14 +21,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
-#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-template <typename T>
 void PD_run() {
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   std::string prog_file = FLAGS_infer_model + "/__model__";
@@ -47,26 +45,13 @@ void PD_run() {
   int width = 300;
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
-  T* data = new T[batch * channel * height * width];
+  float* data = new float[batch * channel * height * width];
   PD_PaddleBufReset(buf, static_cast<void*>(data),
-                    sizeof(T) * (batch * channel * height * width));
+                    sizeof(float) * (batch * channel * height * width));
 
   char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
   PD_SetPaddleTensorName(input, name);
-  switch (typeid(T).name()) {
-    case "3i":
-      PD_SetPaddleTensorDType(input, PD_INT32);
-      break;
-    case "3x":
-      PD_SetPaddleTensorDType(input, PD_INT64);
-      break;
-    case "3h":
-      PD_SetPaddleTensorDType(input, PD_UINT8);
-      break;
-    case "3f":
-      PD_SetPaddleTensorDType(input, PD_FLOAT32);
-      break;
-  }
+  PD_SetPaddleTensorDType(input, PD_FLOAT32);
   PD_SetPaddleTensorShape(input, shape, shape_size);
   PD_SetPaddleTensorData(input, buf);
 
@@ -87,11 +72,24 @@ void PD_run() {
   PD_DeletePaddleBuf(buf);
 }
 
-TEST(PD_Tensor, PD_run) {
-  PD_run<float>();
-  PD_run<int32_t>();
-  PD_run<int64_t>();
-  PD_run<uint8_t>();
+TEST(PD_Tensor, PD_run) { PD_run(); }
+
+TEST(PD_Tensor, int32) {
+  PD_Tensor* input = PD_NewPaddleTensor();
+  PD_SetPaddleTensorDType(input, PD_INT32);
+  LOG(INFO) << PD_GetPaddleTensorDType(input);
+}
+
+TEST(PD_Tensor, int64) {
+  PD_Tensor* input = PD_NewPaddleTensor();
+  PD_SetPaddleTensorDType(input, PD_INT64);
+  LOG(INFO) << PD_GetPaddleTensorDType(input);
+}
+
+TEST(PD_Tensor, int8) {
+  PD_Tensor* input = PD_NewPaddleTensor();
+  PD_SetPaddleTensorDType(input, PD_UINT8);
+  LOG(INFO) << PD_GetPaddleTensorDType(input);
 }
 
 std::string read_file(std::string filename) {

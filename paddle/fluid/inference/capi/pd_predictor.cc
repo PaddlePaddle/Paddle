@@ -80,15 +80,55 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   auto output_names = predictor->GetOutputNames();
   int osize = output_names.size();
   *out_size = &osize;
+  output = new PD_ZeroCopyData[osize];
   for (int i = 0; i < osize; ++i) {
+    LOG(INFO) << 1;
+    output[i].name = new char[output_names[i].length() + 1];
     snprintf(output[i].name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
-    output_t->copy_to_cpu(static_cast<void*>(output[i].data));
-    output[i].dtype = inputs[0].dtype;
+    output[i].dtype = ConvertToPDDataType(output_t->type());
     std::vector<int> output_shape = output_t->shape();
+    output[i].shape = new int[output_shape.size()];
     output[i].shape = output_shape.data();
     output[i].shape_size = output_shape.size();
+    switch (output[i].dtype) {
+      case PD_FLOAT32: {
+        std::vector<float> out_data;
+        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
+                                      1, std::multiplies<int>());
+        out_data.resize(out_num);
+        output_t->copy_to_cpu(out_data.data());
+        output[i].data = static_cast<void*>(out_data.data());
+      } break;
+      case PD_INT32: {
+        std::vector<int32_t> out_data;
+        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
+                                      1, std::multiplies<int>());
+        out_data.resize(out_num);
+        output_t->copy_to_cpu(out_data.data());
+        output[i].data = static_cast<void*>(out_data.data());
+      } break;
+      case PD_INT64: {
+        std::vector<int64_t> out_data;
+        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
+                                      1, std::multiplies<int>());
+        out_data.resize(out_num);
+        output_t->copy_to_cpu(out_data.data());
+        output[i].data = static_cast<void*>(out_data.data());
+      } break;
+      case PD_UINT8: {
+        std::vector<uint8_t> out_data;
+        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
+                                      1, std::multiplies<int>());
+        out_data.resize(out_num);
+        output_t->copy_to_cpu(out_data.data());
+        output[i].data = static_cast<void*>(out_data.data());
+      } break;
+      default:
+        PADDLE_ENFORCE(false, "Unsupport data type.");
+        break;
+    }
   }
   return true;
 }

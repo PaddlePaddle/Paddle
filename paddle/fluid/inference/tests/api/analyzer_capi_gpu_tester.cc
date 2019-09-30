@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
-#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -72,6 +71,27 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
   CHECK(!is_valid) << "NO";
+  PD_DeleteAnalysisConfig(config);
+}
+
+TEST(PD_AnalysisConfig, trt_int8) {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
+  PD_EnableUseGpu(config, 100, 0);
+  PD_EnableTensorRtEngine(config, 1 << 20, 1, 3, Precision::kInt8, false, true);
+  bool trt_enable = PD_TensorrtEngineEnabled(config);
+  CHECK(trt_enable) << "NO";
+  PD_DeleteAnalysisConfig(config);
+}
+
+TEST(PD_AnalysisConfig, trt_fp16) {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
+  PD_EnableUseGpu(config, 100, 0);
+  PD_EnableTensorRtEngine(config, 1 << 20, 1, 3, Precision::kHalf, false,
+                          false);
+  bool trt_enable = PD_TensorrtEngineEnabled(config);
+  CHECK(trt_enable) << "NO";
   PD_DeleteAnalysisConfig(config);
 }
 

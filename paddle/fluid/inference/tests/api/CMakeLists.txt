@@ -303,3 +303,9 @@ endif()
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${CAPI_MODEL_INSTALL_PD_DIR}/model)
+
+if(WITH_MKLDNN)
+  inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
+ endif()

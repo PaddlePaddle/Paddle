@@ -29,7 +29,7 @@ namespace analysis {
 
 template <typename T>
 void zero_copy_run() {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  std::string model_dir = FLAGS_infer_model;
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
@@ -47,61 +47,59 @@ void zero_copy_run() {
   const int height = 224;
   const int width = 224;
   T input[batch_size * channels * height * width] = {0};
-
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
-  int in_size = 1;
+  int in_size = 2;
   int *out_size;
-  PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
+  PD_ZeroCopyData *inputs = new PD_ZeroCopyData[2];
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
-  inputs->data = static_cast<void *>(input);
+  inputs[0].data = static_cast<void *>(input);
   std::string nm = typeid(T).name();
   if ("f" == nm) {
-    inputs->dtype = PD_FLOAT32;
+    inputs[0].dtype = PD_FLOAT32;
   } else if ("i" == nm) {
-    inputs->dtype = PD_INT32;
+    inputs[0].dtype = PD_INT32;
   } else if ("x" == nm) {
-    inputs->dtype = PD_INT64;
+    inputs[0].dtype = PD_INT64;
   } else if ("h" == nm) {
-    inputs->dtype = PD_UINT8;
+    inputs[0].dtype = PD_UINT8;
   } else {
     CHECK(false) << "Unsupport dtype. ";
   }
-  inputs->name = new char[2];
-  inputs->name[0] = 'x';
-  inputs->name[1] = '\0';
-  LOG(INFO) << inputs->name;
-  inputs->shape = shape;
-  inputs->shape_size = shape_size;
+  inputs[0].name = new char[6];
+  inputs[0].name[0] = 'i';
+  inputs[0].name[1] = 'm';
+  inputs[0].name[2] = 'a';
+  inputs[0].name[3] = 'g';
+  inputs[0].name[4] = 'e';
+  inputs[0].name[5] = '\0';
+  inputs[0].shape = shape;
+  inputs[0].shape_size = shape_size;
+
+  int *label = new int[1];
+  label[0] = 0;
+  inputs[1].data = static_cast<void *>(label);
+  inputs[1].dtype = PD_INT64;
+  inputs[1].name = new char[6];
+  inputs[1].name[0] = 'l';
+  inputs[1].name[1] = 'a';
+  inputs[1].name[2] = 'b';
+  inputs[1].name[3] = 'e';
+  inputs[1].name[4] = 'l';
+  inputs[1].name[5] = '\0';
+  int label_shape[2] = {1, 1};
+  int label_shape_size = 2;
+  inputs[1].shape = label_shape;
+  inputs[1].shape_size = label_shape_size;
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, outputs, &out_size);
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run<float>(); }
-
-#ifdef PADDLE_WITH_MKLDNN
-TEST(PD_AnalysisConfig, profile_mkldnn) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
-  PD_DisableGpu(config);
-  PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
-  PD_SwitchSpecifyInputNames(config, true);
-  PD_SwitchIrDebug(config, true);
-  PD_EnableMKLDNN(config);
-  bool mkldnn_enable = PD_MkldnnEnabled(config);
-  CHECK(mkldnn_enable) << "NO";
-  PD_EnableMkldnnQuantizer(config);
-  bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
-  CHECK(quantizer_enable) << "NO";
-  PD_SetMkldnnCacheCapacity(config, 0);
-  PD_SetModel(config, model_dir.c_str());
-  PD_EnableAnakinEngine(config);
-  bool anakin_enable = PD_AnakinEngineEnabled(config);
-  LOG(INFO) << anakin_enable;
-  PD_DeleteAnalysisConfig(config);
+TEST(PD_ZeroCopyRun, zero_copy_run) {
+  // zero_copy_run<int32_t>();
+  // zero_copy_run<int64_t>();
+  zero_copy_run<float>();
 }
-#endif
 
 }  // namespace analysis
 }  // namespace inference
