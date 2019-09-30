@@ -95,6 +95,10 @@ def is_persistable(var):
     return var.persistable
 
 
+def is_belong_to_optimizer(var):
+    return var.belong_to_optimizer
+
+
 def _clone_var_in_block_(block, var):
     assert isinstance(var, Variable)
     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
@@ -1425,5 +1429,40 @@ def _load_persistable_nodes(executor, dirname, graph):
 def save(program, model_path):
     """
     Save paramter, optimizer and program to the given model path
+
+    Args:
     """
-    return None
+
+    base_name = os.path.basename(model_path)
+    assert (
+        base_name != "",
+        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    )
+    parameter_list = list(filter(is_parameter, program.list_vars()))
+    paddle.fluid.core._save_static_dict(model_path + ".pdparams",
+                                        parameter_list, global_scope())
+
+    optimizer_var_list = list(
+        filter(is_belong_to_optimizer, program.list_vars()))
+
+    paddle.fluid.core._save_static_dict(model_path + ".pdopt",
+                                        optimizer_var_list, global_scope())
+
+    main_program = program.clone()
+    program.desc.flush()
+    main_program.desc._set_version()
+    paddle.fluid.core.save_op_compatible_info(program.desc)
+
+    with open(model_path + ".pdmodel", "wb") as f:
+        f.write(program.desc.serialize_to_string())
+
+
+def load(program, model_path):
+    parameter_list = list(filter(is_parameter, program.list_vars()))
+    paddle.fluid.core._load_static_dict(model_path + ".pdparams",
+                                        parameter_list, global_scope())
+
+    optimizer_var_list = list(
+        filter(is_belong_to_optimizer, program.list_vars()))
+    paddle.fluid.core._load_static_dict(model_path + ".pdopt",
+                                        optimizer_var_list, global_scope())

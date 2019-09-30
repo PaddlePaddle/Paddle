@@ -21,7 +21,47 @@ import pickle
 from . import learning_rate_scheduler
 import warnings
 
-__all__ = ['save_persistables', 'load_persistables']
+__all__ = [
+    'save_persistables', 'load_persistables', save_parameter, save_optimizer,
+    load_parameter, load_optimizer
+]
+
+
+def save_parameter(model_dict, model_path):
+    base_name = os.path.basename(model_path)
+    assert (
+        base_name != "",
+        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    )
+
+    fluid.core._save_dygraph_dict(model_path + ".pdparams", state)
+
+
+def save_optimizer(optimizer_dict, model_path):
+    base_name = os.path.basename(model_path)
+    assert (
+        base_name != "",
+        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    )
+
+    fluid.core._save_dygraph_dict(model_path + ".pdopt", state)
+
+
+def load_parameter(model_path):
+    params_file_path = model_path + ".pdparams"
+    if os.path.exists(params_file_path):
+        raise RuntimeError("Parameter file [ {} ] not exists".format(
+            params_file_path))
+
+    return fluid.core._load_dygraph_dict(model_path + ".pdparams")
+
+
+def load_optimizer(model_path):
+    opt_file_path = model_path + ".pdopt"
+    if os.path.exists(opt_file_path):
+        raise RuntimeError("Optimizer file [ {} ] not exists".format(
+            opt_file_path))
+    return fluid.core._load_dygraph_dict(opt_file_path)
 
 
 def save_persistables(model_dict, dirname='save_dir', optimizers=None):

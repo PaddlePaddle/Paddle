@@ -299,6 +299,11 @@ bool SaveTensorToDisk(const std::string& file_name,
                static_cast<std::streamsize>(data_size));
   }
 
+  if (!fout) {
+    PADDLE_THROW("Model save failed, data write to model file [%s] error",
+                 file_name);
+  }
+
   fout.close();
 
   return true;
@@ -310,14 +315,14 @@ bool LoadTensorFromDisk(
   std::ifstream fin(file_name, std::ios::binary);
 
   if (!fin) {
-    PADDLE_THROW("File open error. Can not open file [%s]", file_name);
+    PADDLE_THROW("File open error. Can not open model file [%s]", file_name);
   }
 
   ReadReserveBuffer(fin);
 
   size_t tensor_number = ReadTensorNumber(fin);
   PADDLE_ENFORCE_GT(tensor_number, 0U,
-                    "Tensor numer must great than 0, file [%s] seems breaken",
+                    "Tensor number must great than 0, file [%s] seems breaken",
                     file_name);
 
   for (size_t i = 0; i < tensor_number; ++i) {
