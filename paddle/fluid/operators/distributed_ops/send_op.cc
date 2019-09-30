@@ -47,12 +47,9 @@ class SendOp : public framework::OperatorBase {
     auto height_sections = Attr<std::vector<int64_t>>("sections");
 
     if (send_varnames.size() > 0) {
-      PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      if (distributed::Communicator::GetInstance() == nullptr) {
-        auto send_functor = distributed::ParameterSend<float>();
-        auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                               height_sections, trainer_id);
-        send_functor(rpc_ctx, scope, true);
+      if (ins.size() > 1) {
+        distributed::Communicator::GetInstance()->Send(ins, send_varnames,
+                                                       scope);
       } else {
         distributed::Communicator::GetInstance()->Send(ins[0], scope);
       }

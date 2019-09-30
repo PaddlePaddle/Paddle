@@ -30,6 +30,7 @@ link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 add_executable(demo_trainer demo_trainer.cc)
 
 if(WITH_MKLDNN)
+  add_definitions(-DPADDLE_WITH_MKLDNN)
   include_directories("${PADDLE_LIB}/third_party/install/mkldnn/include")
   if(WIN32)
     set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/mkldnn.lib)

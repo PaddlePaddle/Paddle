@@ -94,14 +94,44 @@ class VarBase {
     return &(grad_var_->var_);
   }
 
-  void SetStopGradient(bool stop_gradient) {
-    stop_gradient_ = stop_gradient;
+  // This is used for python api
+  void SetOverridedStopGradient(bool stop_gradient) {
+    if (stop_gradient) {
+      overrided_stop_gradient_ = 1;
+    } else {
+      overrided_stop_gradient_ = 0;
+    }
     if (grad_var_) {
-      grad_var_->stop_gradient_ = stop_gradient;
+      grad_var_->SetOverridedStopGradient(stop_gradient);
+    }
+  }
+  // This is used for python api
+  bool OverridedStopGradient() const {
+    if (overrided_stop_gradient_ == 0) {
+      return false;
+    } else {
+      return true;
     }
   }
 
-  bool StopGradient() const { return stop_gradient_; }
+  // This is used inside C++
+  int InnerOverridedStopGradient() const { return overrided_stop_gradient_; }
+
+  bool GradGenerated() const { return grad_generated_; }
+
+  void SetGradGenerated(bool generated) { grad_generated_ = generated; }
+  // This is used inside C++
+  void InnerSetOverridedStopGradient(bool stop_gradient) {
+    if (overrided_stop_gradient_ == -1) {
+      overrided_stop_gradient_ = static_cast<int>(stop_gradient);
+      if (grad_var_) {
+        grad_var_->InnerSetOverridedStopGradient(stop_gradient);
+      }
+    } else {
+      VLOG(6) << "Ignore Stop gradient conversion for Var: " << Name()
+              << "Set value is: " << overrided_stop_gradient_;
+    }
+  }
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
@@ -161,8 +191,11 @@ class VarBase {
 
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
-
-  bool stop_gradient_{false};
+  // add this property for users may set stop_gradient themselves and this
+  // should override the
+  // frameworks setting (-1) unset, (1) true, (0) false
+  int overrided_stop_gradient_{-1};
+  bool grad_generated_{false};
   bool persistable_{false};
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};

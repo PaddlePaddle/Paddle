@@ -92,27 +92,34 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
     int output_height = col->dims()[5];
     int output_width = col->dims()[6];
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+    bool paddings_size_is_6 = (paddings.size() == 6);
+    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+    PADDLE_ENFORCE_EQ((input_depth + pad_d_forth + pad_d_back -
                        ((dilations[0] * (filter_depth - 1) + 1))) /
                               strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
-                      "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + pad_h_up + pad_h_down -
                        ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
-                      "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + pad_w_left + pad_w_right -
                        ((dilations[2] * (filter_width - 1) + 1))) /
                               strides[2] +
                           1,
                       output_width,
                       "input_width and output_width are "
-                      "Mismatching.");
+                      "mismatching.");
 
     int num_outputs =
         input_channels * output_depth * output_height * output_width;
@@ -122,9 +129,8 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
     vol2col<T><<<blocks, threads, 0, context.stream()>>>(
         num_outputs, vol.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-        filter_width, strides[0], strides[1], strides[2], paddings[0],
-        paddings[1], paddings[2], output_depth, output_height, output_width,
-        col->data<T>());
+        filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
+        pad_w_left, output_depth, output_height, output_width, col->data<T>());
   }
 };
 
@@ -218,27 +224,35 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
     int output_height = col.dims()[5];
     int output_width = col.dims()[6];
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+    bool paddings_size_is_6 = (paddings.size() == 6);
+    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+
+    PADDLE_ENFORCE_EQ((input_depth + pad_d_forth + pad_d_back -
                        ((dilations[0] * (filter_depth - 1) + 1))) /
                               strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
-                      "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_height + pad_h_up + pad_h_down -
                        ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
-                      "Mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+                      "mismatching.");
+    PADDLE_ENFORCE_EQ((input_width + pad_w_left + pad_w_right -
                        ((dilations[2] * (filter_width - 1) + 1))) /
                               strides[2] +
                           1,
                       output_width,
                       "input_width and output_width are "
-                      "Mismatching.");
+                      "mismatching.");
 
     int num_kernels = input_channels * input_depth * input_height * input_width;
 
@@ -248,9 +262,8 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
     col2vol<T><<<blocks, threads, 0, context.stream()>>>(
         num_kernels, col.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-        filter_width, strides[0], strides[1], strides[2], paddings[0],
-        paddings[1], paddings[2], output_depth, output_height, output_width,
-        vol->data<T>());
+        filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
+        pad_w_left, output_depth, output_height, output_width, vol->data<T>());
   }
 };
 

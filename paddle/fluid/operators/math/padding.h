@@ -58,7 +58,7 @@ void PadGradFunction(const framework::ExecutionContext& context,
   auto src_tensor = EigenTensor<T, D>::From(src);
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  d_out_tensor.device(place) = src_tensor.pad(paddings, 0);
+  d_out_tensor.device(place) = src_tensor.pad(paddings, static_cast<T>(0));
 }
 
 template <typename DeviceContext, typename T>

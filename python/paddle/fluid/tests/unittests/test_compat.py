@@ -135,6 +135,22 @@ class TestCompatible(unittest.TestCase):
             self.assertEqual(l, l2)
             self.assertEqual(set([u"", u"123", u"321"]), l2)
 
+            # check dict types, not inplace
+            l = {"": ""}
+            l2 = cpt.to_text(l, inplace=False)
+            self.assertTrue(isinstance(l2, dict))
+            self.assertFalse(l is l2)
+            self.assertEqual(l, l2)
+            self.assertEqual({"": ""}, l2)
+
+            # check dict types, inplace
+            l = {"": ""}
+            l2 = cpt.to_text(l, inplace=True)
+            self.assertTrue(isinstance(l2, dict))
+            self.assertTrue(l is l2)
+            self.assertEqual(l, l2)
+            self.assertEqual({"": ""}, l2)
+
         elif six.PY3:
             self.assertIsNone(cpt.to_text(None))
 
@@ -235,6 +251,22 @@ class TestCompatible(unittest.TestCase):
             self.assertEqual(set(["", "123", "321"]), l2)
             for i in l2:
                 self.assertTrue(isinstance(i, str))
+
+            # check dict types, not inplace
+            l = {"": ""}
+            l2 = cpt.to_text(l, inplace=False)
+            self.assertTrue(isinstance(l2, dict))
+            self.assertFalse(l is l2)
+            self.assertEqual(l, l2)
+            self.assertEqual({"": ""}, l2)
+
+            # check dict types, inplace
+            l = {"": ""}
+            l2 = cpt.to_text(l, inplace=True)
+            self.assertTrue(isinstance(l2, dict))
+            self.assertTrue(l is l2)
+            self.assertEqual(l, l2)
+            self.assertEqual({"": ""}, l2)
 
     def test_to_bytes(self):
         # Only support python2.x and python3.x now

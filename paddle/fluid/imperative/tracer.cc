@@ -36,6 +36,16 @@ static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
   }
 }
 
+static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
+  for (const auto& name_pair : outs) {
+    for (const auto& vb : name_pair.second) {
+      VLOG(6) << "Set output: " << vb->Name() << "'s OverridedStopGradient as "
+              << generate_grad;
+      vb->InnerSetOverridedStopGradient(generate_grad);
+    }
+  }
+}
+
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
@@ -46,18 +56,30 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    TraceBackward(op, ins, outs);
-
-    VLOG(6) << "Finish tracking Backward of op: " << type;
+    TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
+                                        op->OutputNameMap(), op->Attrs()),
+                  ins, outs);
+  } else {
+    VLOG(3) << "No Grad to track for Op: " << type;
   }
-  VLOG(6) << "Finish tracing fwd op: " << type;
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
                                  const NameVarBaseMap& outs,
                                  bool trace_backward) {
-  // TODO(jiabin): Implement auto prune here
-  return trace_backward;
+  if (!trace_backward) return false;
+
+  for (const auto& name_pair : ins) {
+    for (const auto& var_base : name_pair.second) {
+      if (!var_base->OverridedStopGradient()) {
+        VLOG(6) << "Find out input: " << var_base->Name()
+                << "'s GeneratedGrad is True";
+        PassStopGradient(outs, var_base->OverridedStopGradient());
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
@@ -87,19 +109,29 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
       for (auto& var_base_it : grad_in_it.second) {
         if (var_base_it->IsGradFromGradMaker() == true) {
           var_base_it->AddGradOps(grad_op);
+          engine_->InsertGradVar(var_base_it.get());
         }
       }
     }
     std::set<OpBase*, OpBaseCmp> visited_preceding_ops;
     for (auto& grad_out_it : grad_out) {
+      bool flag_clear_list = false;
       for (auto& var_base_it : grad_out_it.second) {
-        auto preceding_ops = var_base_it->GradOps();
+        if ((!var_base_it->OverridedStopGradient()) ||
+            (grad_out_it.second.size() > 1)) {
+          auto preceding_ops = var_base_it->GradOps();
 
-        if (!preceding_ops.empty()) {
-          for (const auto& op : preceding_ops) {
-            visited_preceding_ops.insert(op);
+          if (!preceding_ops.empty()) {
+            for (const auto& op : preceding_ops) {
+              visited_preceding_ops.insert(op);
+            }
           }
+        } else {
+          flag_clear_list = true;
         }
+      }
+      if (flag_clear_list) {
+        grad_out_it.second.clear();
       }
     }
     std::vector<OpBase*> vec_preceding_ops(visited_preceding_ops.begin(),

@@ -197,6 +197,9 @@ class ReduceOp : public framework::OperatorWithKernel {
             remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
             dims_vector.end());
       }
+      if (!keep_dim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims[0] != 0) {
