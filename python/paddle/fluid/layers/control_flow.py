@@ -430,17 +430,17 @@ class StaticRNN(object):
                 size=[vocab_size, hidden_size],
                 dtype='float32',
                 is_sparse=False)
-            # transpose batch size to dim 1。
+            # transform batch size to dim 1
             x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
             boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
             # mark created x_emb as input, each step process a word
             word = rnn.step_input(x_emb)
-            # init memory。
+            # init memory
             prev = rnn.memory(init=boot_memory)
             hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-            # update hidden with prev。
+            # update hidden with prev
             rnn.update_memory(prev, hidden)
 
         """
