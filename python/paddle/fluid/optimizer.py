@@ -198,7 +198,8 @@ class Optimizer(object):
                         shape=[1],
                         value=float(self._learning_rate),
                         dtype='float32' if self._dtype is None else self._dtype,
-                        persistable=True)
+                        persistable=True,
+                        belong_to_optimizer=True)
             # get learning rate Variable from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
                 self._learning_rate_map[framework.default_main_program(
@@ -315,7 +316,8 @@ class Optimizer(object):
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
-            shape=shape)
+            shape=shape,
+            belong_to_optimizer=True)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
         self._accumulators[name][param.name] = var

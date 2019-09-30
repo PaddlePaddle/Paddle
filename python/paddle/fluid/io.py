@@ -39,7 +39,8 @@ batch = paddle.batch
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+    'load_persistables', 'save_inference_model', 'load_inference_model',
+    'batch', 'save', 'load'
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -1391,3 +1392,7 @@ def _load_persistable_nodes(executor, dirname, graph):
         else:
             _logger.warn("Cannot find the var %s!!!" % (node.name()))
     load_vars(executor=executor, dirname=dirname, vars=var_list)
+
+
+def save(program, model_path):
+    return None

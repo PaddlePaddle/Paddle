@@ -372,7 +372,8 @@ def piecewise_decay(boundaries, values):
                 value=0.0,
                 dtype='float32',
                 persistable=True,
-                name="learning_rate")
+                name="learning_rate",
+                belong_to_optimize=True)
 
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
@@ -483,7 +484,8 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             value=0.0,
             dtype=dtype,
             persistable=True,
-            name="learning_rate_warmup")
+            name="learning_rate_warmup",
+            belong_to_optimizer=True)
 
         global_step = _decay_step_counter()
 

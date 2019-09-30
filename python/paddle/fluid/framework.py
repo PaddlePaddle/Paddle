@@ -447,6 +447,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  need_check_feed=False,
+                 belong_to_optimizer=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -455,6 +456,8 @@ class Variable(object):
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
+        self.belong_to_optimizer = belong_to_optimizer
 
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
