@@ -3914,62 +3914,69 @@ def layer_norm(input,
                act=None,
                name=None):
     """
-    ${comment}
+    **Layer Normalization Layer**
+
+    The OP implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
 
-        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
-
-    * :math:`H`: the number of hidden units in a layers
-
-    * :math:`g`: the trainable scale parameter.
-
-    * :math:`b`: the trainable bias parameter.
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): The input tensor variable.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after
+        input(Variable): A multidimensional ``Tensor`` of any dimension, and the data type is float32 or float64.
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default True.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
             normalization. Default True.
-        begin_norm_axis(int): The normalization will be performed along
+        begin_norm_axis(int, optional): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
             Default 1.
-        epsilon(float): The small value added to the variance to prevent
+        epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default 1e-05.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
             :attr:`param_attr` is initialized as 1 if it is added. Default None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default None.
-        act(str): Activation to be applied to the output of layer normalizaiton.
+        act(str, optional): Activation to be applied to the output of layer normalizaiton.
                   Default None.
-        name(str): The name of this layer. It is optional. Default None, and a
-                   unique name would be generated automatically.
+        name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        ${y_comment}
+        Variable: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
 
     Examples:
 
-        >>> import paddle.fluid as fluid
-        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
+            hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            np_x = np.random.random(size=(8, 3, 32, 32)).astype('float32')
+            output = exe.run(feed={"x": np_x}, fetch_list = [hidden1])
+            print(output)
     """
     assert in_dygraph_mode(
     ) is not True, "please use FC instead of fc in dygraph mode!"

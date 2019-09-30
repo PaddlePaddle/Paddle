@@ -1051,18 +1051,18 @@ class BatchNorm(layers.Layer):
     """
     **Batch Normalization Layer**
 
-    Can be used as a normalizer function for conv2d and fully_connected operations.
-    The required data format for this layer is one of the following:
-
-    1. NHWC `[batch, in_height, in_width, in_channels]`
-
-    2. NCHW `[batch, in_channels, in_height, in_width]`
-
+    This interface is used to construct a callable object of the ``BatchNorm`` class.
+    For specific usage, refer to code examples.
+    It implements the function of the Batch Normalization Layer and can be used 
+    as a normalizer function for conv2d and fully connected operations.
+    The data is normalized by the mean and variance of the channel based on the current batch data.
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:`input` is the input features over a mini-batch.
+    When use_global_stats = False, the :math:`\\mu_{\\beta}` 
+    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    Calculated as follows:
 
     ..  math::
 
@@ -1070,70 +1070,79 @@ class BatchNorm(layers.Layer):
         \ mini-batch\ mean \\\\
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
         \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global or running statistics (moving_mean and moving_variance). It usually got from the
+    pre-trained model. Calculated as follows:
+
+    .. math::
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+
+    The normalization function formula is as follows:
+ 
+    ..  math::
+
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
-
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
-    They are global (or running) statistics. (It usually got from the
-    pre-trained model.)
-    The training and testing (or inference) have the same behavior:
-
-    ..  math::
-
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\\gamma` : trainable proportional parameter
+    - :math:`\\beta` : trainable deviation parameter
 
     Parameters:
         name_scope(str): The name of this class.
-        act(str|None): Activation type, linear|relu|prelu|...
-        is_test (bool): A flag indicating whether it is in
-            test phrase or not. Default: False
-        momentum(float): The value used for the moving_mean and
-            moving_var computation. The updated formula is:
-            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
-            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
-            Default is 0.9.
-        epsilon(float): A value added to the denominator for
-            numerical stability. Default is 1e-5.
-        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+        num_channels(int): Indicate the number of channels of the input ``Tensor``.
+        act(str, optional): Activation to be applied to the output of batch normalizaiton. Default: None.
+        is_test (bool, optional): A flag indicating whether it is in test phrase or not. Default: False.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default is 1e-5.
+        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
-        data_layout(string): NCHW|NHWC. Default: NCHW
-        in_place(bool): Make the input and output of batch norm reuse memory. Default: False
-        moving_mean_name(string|None): The name of moving_mean which store the global Mean. Default: None
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
-        fuse_with_relu (bool): if True, this OP performs relu after batch norm. Default: False
-        use_global_stats(bool): Whether to use global mean and
+        dtype(str, optional): Indicate the data type of the input ``Tensor``,
+             which can be float32 or float64. Default: float32.
+        data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
+        moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
+        moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
+        do_model_average_for_mean_and_var(bool, optional): Do model average for mean and variance or not. Default: False.
+        fuse_with_relu (bool, optional): When setting fuse_with_relu True, this OP performs relu after batch norm. 
+            Default: False.
+        use_global_stats(bool, optional): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
-            and variance are also used during train period. Default: False
-        trainable_statistics(bool): Whether to calculate mean and var in eval mode. In eval mode, when
-            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.Default: False
+            and variance are also used during train period. Default: False.
+        trainable_statistics(bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
+            Default: False.
 
     Returns:
-        Variable: A tensor variable which is the result after applying batch normalization on the input.
+        None
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
+          import numpy as np
 
+          x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
-              fc = fluid.FC('fc', size=200, param_attr='fc1.w')
-              hidden1 = fc(x)
+              x = to_variable(x)
               batch_norm = fluid.BatchNorm("batch_norm", 10)
-              hidden2 = batch_norm(hidden1)
+              hidden1 = batch_norm(x)
     """
 
     def __init__(self,
@@ -1363,70 +1372,66 @@ class Embedding(layers.Layer):
 
 class LayerNorm(layers.Layer):
     """
-    Assume feature vectors exist on dimensions
-    `begin_norm_axis ... rank(input)` and calculate the moment statistics along these dimensions for each feature
-    vector `a` with size `H`, then normalize each feature vector using the corresponding
-    statistics. After that, apply learnable gain and bias on the normalized
-    tensor to scale and shift if `scale` and `shift` are set.
-
+    This interface is used to construct a callable object of the ``LayerNorm`` class.
+    For specific usage, refer to code examples.
+    It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
 
-        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons in that layer.
-
-    * :math:`H`: the number of hidden units in a layers
-
-    * :math:`g`: the trainable scale parameter.
-
-    * :math:`b`: the trainable bias parameter.
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
 
     Parameters:
         name_scope(str): The name of this class.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
             normalization. Default: True.
-        begin_norm_axis(int): The normalization will be performed along
+        begin_norm_axis(int, optional): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
             Default: 1.
-        epsilon(float): The small value added to the variance to prevent
+        epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
             :attr:`param_attr` is initialized as 1 if it is added. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        act(str): Activation to be applied to the output of layer normalizaiton.
+        act(str, optional): Activation to be applied to the output of layer normalizaiton.
                   Default: None.
     Returns:
-        Result after normalization
+        None
 
     Examples:
 
         .. code-block:: python
 
           import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
           import numpy
 
+          x = numpy.random.random((3, 32, 32)).astype('float32')
           with fluid.dygraph.guard():
-              x = numpy.random.random((3, 32, 32)).astype('float32')
-              layerNorm = fluid.dygraph.nn.LayerNorm(
-                    'LayerNorm', begin_norm_axis=1)
-             ret = layerNorm(fluid.dygraph.base.to_variable(x))
+              x = to_variable(x)
+              layerNorm = fluid.LayerNorm('LayerNorm', begin_norm_axis=1)
+              ret = layerNorm(x)
 
     """
 
@@ -2562,37 +2567,40 @@ class RowConv(layers.Layer):
 
 class GroupNorm(layers.Layer):
     """
-        **Group Normalization Layer**
+    **Group Normalization Layer**
 
-        Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+    This interface is used to construct a callable object of the ``GroupNorm`` class.
+    For specific usage, refer to code examples.
+    It implements the function of the Group Normalization Layer.
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
-        Parameters:
-            name_scope(str): The name of this class.
-            groups(int): The number of groups that divided from channels.
-            epsilon(float): The small value added to the variance to prevent
-                division by zero. Default: 1e-05.
-            param_attr(ParamAttr|None): The parameter attribute for the learnable
-                scale :math:`g`. If it is set to False, no scale will be added to the output units.
-                If it is set to None, the bias is initialized one. Default: None.
-            bias_attr(ParamAttr|None): The parameter attribute for the learnable
-                bias :math:`b`. If it is set to False, no bias will be added to the output units.
-                If it is set to None, the bias is initialized zero. Default: None.
-            act(str): Activation to be applied to the output of group normalizaiton.
-            data_layout(string|NCHW): Only NCHW is supported.
+    Parameters:
+        name_scope(str): The name of this class.
+        groups(int): The number of groups that divided from channels.
+        epsilon(float, optional): The small value added to the variance to prevent
+                                  division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+                                         scale :math:`g`. If it is set to False, no scale will be added to the output units.
+                                         If it is set to None, the bias is initialized one. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+                                        bias :math:`b`. If it is set to False, no bias will be added to the output units.
+                                        If it is set to None, the bias is initialized zero. Default: None.
+        act(str, optional): Activation to be applied to the output of group normalizaiton. Default: None.
+        data_layout(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
 
-        Returns:
-            Variable: A tensor variable which is the result after applying group normalization on the input.
+    Returns:
+        None
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy
+          import paddle.fluid as fluid
+          import numpy as np
 
-              with fluid.dygraph.guard():
-                  x = numpy.random.random((8, 32, 32)).astype('float32')
-                  groupNorm = fluid.dygraph.nn.GroupNorm('GroupNorm', groups=4)
-                  ret = groupNorm(fluid.dygraph.base.to_variable(x))
+          with fluid.dygraph.guard():
+              x = np.random.random((8, 32, 32)).astype('float32')
+              groupNorm = fluid.dygraph.nn.GroupNorm('GroupNorm', groups=4)
+              ret = groupNorm(fluid.dygraph.base.to_variable(x))
 
     """
 
@@ -2663,6 +2671,8 @@ class SpectralNorm(layers.Layer):
     """
     **Spectral Normalization Layer**
 
+    This interface is used to construct a callable object of the ``SpectralNorm`` class.
+    For specific usage, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
     fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
     Parameters. Calculations are showed as follows.
@@ -2696,22 +2706,22 @@ class SpectralNorm(layers.Layer):
 
     Parameters:
         name_scope(str): The name of this class.
-        dim(int): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
-        power_iters(int): The number of power iterations to calculate spectral norm. Default: 1.
-        eps(float): The epsilon for numerical stability in calculating norms. Default: 1e-12.
-        name (str): The name of this layer. It is optional.
+        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
+        eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A tensor variable of weight parameters after spectral normalization.
+        None
 
     Examples:
        .. code-block:: python
 
             import paddle.fluid as fluid
-            import numpy
+            import numpy as np
 
             with fluid.dygraph.guard():
-                x = numpy.random.random((2, 8, 32, 32)).astype('float32')
+                x = np.random.random((2, 8, 32, 32)).astype('float32')
                 spectralNorm = fluid.dygraph.nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
                 ret = spectralNorm(fluid.dygraph.base.to_variable(x))
 
