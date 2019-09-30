@@ -20,25 +20,10 @@
 #include "paddle/fluid/platform/enforce.h"
 
 using PD_PaddleDType = paddle::PaddleDType;
-using PD_PaddlePlace = paddle::PaddlePlace;
 using PD_ACPrecision = paddle::AnalysisConfig::Precision;
-
-struct PD_Predictor {
-  std::unique_ptr<paddle::PaddlePredictor> predictor;
-};
 
 struct PD_AnalysisConfig {
   paddle::AnalysisConfig config;
-};
-
-struct InTensorShape {
-  char* name;
-  int* tensor_shape;
-  int shape_size;
-};
-
-struct PD_ZeroCopyTensor {
-  paddle::ZeroCopyTensor* tensor;
 };
 
 struct PD_Tensor {
@@ -51,8 +36,6 @@ struct PD_PaddleBuf {
 
 namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
-
-paddle::PaddlePlace ConvertToPlace(PD_Place dtype);
 
 PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
 

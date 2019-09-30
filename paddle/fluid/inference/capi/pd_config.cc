@@ -22,7 +22,6 @@
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
 using paddle::ConvertToPaddleDType;
-using paddle::ConvertToPlace;
 using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 

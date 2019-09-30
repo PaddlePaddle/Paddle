@@ -28,6 +28,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <typename T>
 void PD_run() {
   PD_AnalysisConfig* config = PD_NewAnalysisConfig();
   std::string prog_file = FLAGS_infer_model + "/__model__";
@@ -46,13 +47,26 @@ void PD_run() {
   int width = 300;
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
-  float* data = new float[batch * channel * height * width];
+  T* data = new T[batch * channel * height * width];
   PD_PaddleBufReset(buf, static_cast<void*>(data),
-                    sizeof(float) * (batch * channel * height * width));
+                    sizeof(T) * (batch * channel * height * width));
 
   char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
   PD_SetPaddleTensorName(input, name);
-  PD_SetPaddleTensorDType(input, PD_FLOAT32);
+  switch (typeid(T).name()) {
+    case "3i":
+      PD_SetPaddleTensorDType(input, PD_INT32);
+      break;
+    case "3x":
+      PD_SetPaddleTensorDType(input, PD_INT64);
+      break;
+    case "3h":
+      PD_SetPaddleTensorDType(input, PD_UINT8);
+      break;
+    case "3f":
+      PD_SetPaddleTensorDType(input, PD_FLOAT32);
+      break;
+  }
   PD_SetPaddleTensorShape(input, shape, shape_size);
   PD_SetPaddleTensorData(input, buf);
 
@@ -67,9 +81,18 @@ void PD_run() {
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
   PD_PaddleBufResize(b, 500);
+  PD_DeletePaddleTensor(input);
+  int* size;
+  PD_GetPaddleTensorShape(out_data, &size);
+  PD_DeletePaddleBuf(buf);
 }
 
-TEST(PD_Tensor, PD_run) { PD_run(); }
+TEST(PD_Tensor, PD_run) {
+  PD_run<float>();
+  PD_run<int32_t>();
+  PD_run<int64_t>();
+  PD_run<uint8_t>();
+}
 
 std::string read_file(std::string filename) {
   std::ifstream file(filename);
@@ -121,6 +144,8 @@ void buffer_run() {
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
   PD_PaddleBufResize(b, 500);
+  PD_DeletePaddleTensor(input);
+  PD_DeletePaddleBuf(buf);
 }
 
 TEST(SetModelBuffer, read) { buffer_run(); }

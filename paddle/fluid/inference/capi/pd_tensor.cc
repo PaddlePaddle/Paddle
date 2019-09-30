@@ -20,7 +20,6 @@
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
 using paddle::ConvertToPaddleDType;
-using paddle::ConvertToPlace;
 using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
@@ -70,118 +69,6 @@ int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
   int s = shape.size();
   *size = &s;
   return shape.data();
-}
-
-// ZeroCopyTensor
-void PD_ZeroCopyTensorReshape(PD_ZeroCopyTensor* tensor, int* shape, int size) {
-  std::vector<int> new_shape;
-  new_shape.assign(shape, shape + size);
-  tensor->tensor->Reshape(new_shape);
-}
-
-float* PD_ZeroCopyTensorMutableFLOATData(PD_ZeroCopyTensor* tensor,
-                                         PD_Place place) {
-  return tensor->tensor->mutable_data<float>(paddle::ConvertToPlace(place));
-}
-int32_t* PD_ZeroCopyTensorMutableINT32Data(PD_ZeroCopyTensor* tensor,
-                                           PD_Place place) {
-  return tensor->tensor->mutable_data<int32_t>(paddle::ConvertToPlace(place));
-}
-int64_t* PD_ZeroCopyTensorMutableINT64Data(PD_ZeroCopyTensor* tensor,
-                                           PD_Place place) {
-  return tensor->tensor->mutable_data<int64_t>(paddle::ConvertToPlace(place));
-}
-uint8_t* PD_ZeroCopyTensorMutableUINT8Data(PD_ZeroCopyTensor* tensor,
-                                           PD_Place place) {
-  return tensor->tensor->mutable_data<uint8_t>(paddle::ConvertToPlace(place));
-}
-
-float* PD_ZeroCopyTensorFLOATData(PD_ZeroCopyTensor* tensor, PD_Place place,
-                                  int* size) {
-  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor->data<float>(&p, size);
-}
-int32_t* PD_ZeroCopyTensorINT32Data(PD_ZeroCopyTensor* tensor, PD_Place place,
-                                    int* size) {
-  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor->data<int32_t>(&p, size);
-}
-int64_t* PD_ZeroCopyTensorINT64Data(PD_ZeroCopyTensor* tensor, PD_Place place,
-                                    int* size) {
-  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor->data<int64_t>(&p, size);
-}
-uint8_t* PD_ZeroCopyTensorUINT8Data(PD_ZeroCopyTensor* tensor, PD_Place place,
-                                    int* size) {
-  paddle::PaddlePlace p = paddle::ConvertToPlace(place);
-  return tensor->tensor->data<uint8_t>(&p, size);
-}
-
-void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor, void* data,
-                      PD_DataType data_type) {
-  switch (data_type) {
-    case PD_FLOAT32:
-      tensor->tensor->copy_to_cpu(static_cast<float*>(data));
-      break;
-    case PD_INT32:
-      tensor->tensor->copy_to_cpu(static_cast<int32_t*>(data));
-      break;
-    case PD_INT64:
-      tensor->tensor->copy_to_cpu(static_cast<int64_t*>(data));
-      break;
-    case PD_UINT8:
-      tensor->tensor->copy_to_cpu(static_cast<uint8_t*>(data));
-      break;
-    default:
-      PADDLE_ENFORCE(false, "Unsupport dtype.");
-      break;
-  }
-}
-
-void PD_ZeroCopyFromCpu(PD_ZeroCopyTensor* tensor, void* data,
-                        PD_DataType data_type) {
-  switch (data_type) {
-    case PD_FLOAT32:
-      tensor->tensor->copy_from_cpu(static_cast<float*>(data));
-      break;
-    case PD_INT32:
-      tensor->tensor->copy_from_cpu(static_cast<int32_t*>(data));
-      break;
-    case PD_INT64:
-      tensor->tensor->copy_from_cpu(static_cast<int64_t*>(data));
-      break;
-    case PD_UINT8:
-      tensor->tensor->copy_from_cpu(static_cast<uint8_t*>(data));
-      break;
-    default:
-      PADDLE_ENFORCE(false, "Unsupport dtype.");
-      break;
-  }
-}
-
-int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int** size) {
-  std::vector<int> ret_shape;
-  ret_shape = tensor->tensor->shape();
-  int s = ret_shape.size();
-  int* shapes = new int[s];
-  for (int i = 0; i < s; ++i) {
-    shapes[i] = ret_shape[i];
-  }
-  *size = &s;
-  return shapes;
-}
-
-const char* PD_ZeroCopyTensorName(PD_ZeroCopyTensor* tensor) {
-  return tensor->tensor->name().c_str();
-}
-
-void PD_SetZeroCopyTensorPlace(PD_ZeroCopyTensor* tensor, PD_Place place,
-                               int device) {
-  tensor->tensor->SetPlace(paddle::ConvertToPlace(place), device);
-}
-
-PD_DataType PD_ZeroCopyTensorType(PD_ZeroCopyTensor* tensor) {
-  return paddle::ConvertToPDDataType(tensor->tensor->type());
 }
 
 }  // extern "C"

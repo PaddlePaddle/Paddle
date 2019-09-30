@@ -18,15 +18,16 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <typeinfo>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
-#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
+template <typename T>
 void zero_copy_run() {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_AnalysisConfig config;
@@ -45,7 +46,7 @@ void zero_copy_run() {
   const int channels = 3;
   const int height = 224;
   const int width = 224;
-  float input[batch_size * channels * height * width] = {0};
+  T input[batch_size * channels * height * width] = {0};
 
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
@@ -55,7 +56,20 @@ void zero_copy_run() {
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
-  inputs->dtype = PD_FLOAT32;
+  switch (typeid(T).name()) {
+    case "3i":
+      inputs->dtype = PD_INT32;
+      break;
+    case "3x":
+      inputs->dtype = PD_INT64;
+      break;
+    case "3h":
+      inputs->dtype = PD_UINT8;
+      break;
+    case "3f":
+      inputs->dtype = PD_FLOAT32;
+      break;
+  }
   inputs->name = new char[2];
   inputs->name[0] = 'x';
   inputs->name[1] = '\0';
@@ -66,53 +80,11 @@ void zero_copy_run() {
   PD_PredictorZeroCopyRun(&config, inputs, in_size, &outputs, &out_size);
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
-
-TEST(PD_AnalysisConfig, use_gpu) {
-  std::string model_dir = FLAGS_infer_model + "/mobilenet";
-  PD_AnalysisConfig *config = PD_NewAnalysisConfig();
-  PD_DisableGpu(config);
-  PD_SetCpuMathLibraryNumThreads(config, 10);
-  int num_thread = PD_CpuMathLibraryNumThreads(config);
-  CHECK(10 == num_thread) << "NO";
-  PD_SwitchUseFeedFetchOps(config, false);
-  PD_SwitchSpecifyInputNames(config, true);
-  PD_SwitchIrDebug(config, true);
-  PD_SetModel(config, model_dir.c_str());
-  PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir").c_str());
-  const char *model_dir_ = PD_ModelDir(config);
-  LOG(INFO) << model_dir_;
-  PD_EnableUseGpu(config, 100, 0);
-  bool use_gpu = PD_UseGpu(config);
-  CHECK(use_gpu) << "NO";
-  int device = PD_GpuDeviceId(config);
-  CHECK(0 == device) << "NO";
-  int init_size = PD_MemoryPoolInitSizeMb(config);
-  CHECK(100 == init_size) << "NO";
-  float frac = PD_FractionOfGpuMemoryForPool(config);
-  LOG(INFO) << frac;
-  PD_EnableCUDNN(config);
-  bool cudnn = PD_CudnnEnabled(config);
-  CHECK(cudnn) << "NO";
-  PD_SwitchIrOptim(config, true);
-  bool ir_optim = PD_IrOptim(config);
-  CHECK(ir_optim) << "NO";
-  PD_EnableTensorRtEngine(config);
-  bool trt_enable = PD_TensorrtEngineEnabled(config);
-  CHECK(trt_enable) << "NO";
-  PD_EnableNgraph(config);
-  bool ngraph_enable = PD_NgraphEnabled(config);
-  LOG(INFO) << ngraph_enable << " Ngraph";
-  PD_EnableMemoryOptim(config);
-  bool memory_optim_enable = PD_MemoryOptimEnabled(config);
-  CHECK(memory_optim_enable) << "NO";
-  PD_EnableProfile(config);
-  bool profiler_enable = PD_ProfileEnabled(config);
-  CHECK(profiler_enable) << "NO";
-  PD_SetInValid(config);
-  bool is_valid = PD_IsValid(config);
-  CHECK(!is_valid) << "NO";
-  PD_DeleteAnalysisConfig(config);
+TEST(PD_ZeroCopyRun, zero_copy_run) {
+  zero_copy_run<float>();
+  zero_copy_run<int32_t>();
+  zero_copy_run<int64_t>();
+  zero_copy_run<uint8_t>();
 }
 
 #ifdef PADDLE_WITH_MKLDNN

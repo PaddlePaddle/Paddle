@@ -19,7 +19,6 @@
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
 using paddle::ConvertToPaddleDType;
-using paddle::ConvertToPlace;
 using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
@@ -45,68 +44,9 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
   return false;
 }
 
-char** PD_GetPredictorInputNames(PD_Predictor* predictor, int** in_size) {
-  std::vector<std::string> ret_names;
-  ret_names = predictor->predictor->GetInputNames();
-  int size = ret_names.size();
-  *in_size = &size;
-  char** names = new char*[size];
-  for (int i = 0; i < size; ++i) {
-    snprintf(names[i], ret_names[i].length() + 1, "%s", ret_names[i].c_str());
-  }
-  return names;
-}
-
-InTensorShape* PD_GetPredictorInputTensorShape(PD_Predictor* predictor,
-                                               int** size) {
-  std::map<std::string, std::vector<int64_t>> input_tensor_shape =
-      predictor->predictor->GetInputTensorShape();
-  InTensorShape* ret_in_tensor_shape =
-      new InTensorShape[input_tensor_shape.size()];
-  int i = 0;
-  for (auto item : input_tensor_shape) {
-    std::snprintf(ret_in_tensor_shape[i].name, item.first.length() + 1, "%s",
-                  item.first.c_str());
-    std::vector<int64_t> tmp_shape = item.second;
-    ret_in_tensor_shape[i].shape_size = tmp_shape.size();
-    for (int j = 0; j < tmp_shape.size(); ++j) {
-      ret_in_tensor_shape[i].tensor_shape[j] = tmp_shape[j];
-    }
-    ++i;
-  }
-  *size = &i;
-  return ret_in_tensor_shape;
-}
-
-char** PD_GetPredictorOutputNames(PD_Predictor* predictor) {
-  std::vector<std::string> ret_names;
-  ret_names = predictor->predictor->GetOutputNames();
-  int size = ret_names.size();
-  char** names = new char*[size];
-  for (int i = 0; i < size; ++i) {
-    std::snprintf(names[i], ret_names[i].length() + 1, "%s",
-                  ret_names[i].c_str());
-  }
-  return names;
-}
-
-PD_ZeroCopyTensor* PD_GetPredictorInputTensor(PD_Predictor* predictor,
-                                              const char* name) {
-  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetInputTensor(std::string(name)).get();
-  return std::move(ret);
-}
-
-PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(PD_Predictor* predictor,
-                                               const char* name) {
-  PD_ZeroCopyTensor* ret = new PD_ZeroCopyTensor;
-  ret->tensor = predictor->predictor->GetOutputTensor(std::string(name)).get();
-  return std::move(ret);
-}
-
 bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
                              PD_ZeroCopyData* inputs, int in_size,
-                             PD_ZeroCopyData** output, int** out_size) {
+                             PD_ZeroCopyData* output, int** out_size) {
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
   PADDLE_ENFORCE_EQ(
@@ -137,25 +77,18 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     }
   }
   CHECK(predictor->ZeroCopyRun());
-  return true;
-}
-
-void PD_DeletePredictor(PD_Predictor* predictor) {
-  if (predictor) {
-    delete predictor;
-    predictor = nullptr;
+  auto output_names = predictor->GetOutputNames();
+  int osize = output_names.size();
+  *out_size = &osize;
+  for (int i = 0; i < osize; ++i) {
+    output[i].name = output_names[i];
+    auto output_t = predictor->GetOutputTensor(output_names[i]);
+    output_t->copy_to_cpu(static_cast<void*>(output[i].data));
+    output[i].dtype = inputs[0].dtype;
+    std::vector<int> output_shape = output_t->shape();
+    output[i].shape = output_shape.data();
+    output[i].shape_size = output_shape.size();
   }
-}
-
-PD_Predictor* PD_ClonePredictor(const PD_Predictor* predictor) {
-  PD_Predictor* cloned = new PD_Predictor;
-  cloned->predictor = predictor->predictor->Clone();
-  return cloned;
-}
-
-PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
-  auto predictor = new PD_Predictor();
-  predictor->predictor = paddle::CreatePaddlePredictor(config->config);
-  return std::move(predictor);
+  return true;
 }
 }  // extern "C"

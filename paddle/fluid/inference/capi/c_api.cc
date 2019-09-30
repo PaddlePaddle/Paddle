@@ -18,7 +18,6 @@
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
 using paddle::ConvertToPaddleDType;
-using paddle::ConvertToPlace;
 using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
@@ -63,20 +62,6 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
     default:
       PADDLE_ENFORCE(false, "Unsupport dtype.");
       return PD_PaddleDType::FLOAT32;
-  }
-}
-
-paddle::PaddlePlace ConvertToPlace(PD_Place dtype) {
-  switch (dtype) {
-    case PD_UNK:
-      return PD_PaddlePlace::kUNK;
-    case PD_CPU:
-      return PD_PaddlePlace::kCPU;
-    case PD_GPU:
-      return PD_PaddlePlace::kGPU;
-    default:
-      PADDLE_ENFORCE(false, "Unsupport place.");
-      return PD_PaddlePlace::kUNK;
   }
 }
 

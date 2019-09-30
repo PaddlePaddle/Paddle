@@ -33,7 +33,6 @@ extern "C" {
 #endif
 
 enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
-enum PD_Place { PD_UNK = -1, PD_CPU, PD_GPU };
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 typedef struct PD_ZeroCopyData {
@@ -43,6 +42,11 @@ typedef struct PD_ZeroCopyData {
   int* shape;
   int shape_size;
 } PD_ZeroCopyData;
+typedef struct InTensorShape {
+  char* name;
+  int* tensor_shape;
+  int shape_size;
+} InTensorShape;
 
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_NewPaddleBuf();
 
@@ -91,80 +95,15 @@ PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_GetPaddleTensorData(
 PADDLE_CAPI_EXPORT extern int* PD_GetPaddleTensorShape(const PD_Tensor* tensor,
                                                        int** size);
 
-// ZeroCopyTensor
-typedef struct PD_ZeroCopyTensor PD_ZeroCopyTensor;
-
-PADDLE_CAPI_EXPORT extern void PD_ZeroCopyTensorReshape(
-    PD_ZeroCopyTensor* tensor, int* shape, int size);
-
-PADDLE_CAPI_EXPORT extern float* PD_ZeroCopyTensorMutableFLOATData(
-    PD_ZeroCopyTensor* tensor, PD_Place place);
-PADDLE_CAPI_EXPORT extern int32_t* PD_ZeroCopyTensorMutableINT32Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place);
-PADDLE_CAPI_EXPORT extern int64_t* PD_ZeroCopyTensorMutableINT64Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place);
-PADDLE_CAPI_EXPORT extern uint8_t* PD_ZeroCopyTensorMutableUINT8Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place);
-
-PADDLE_CAPI_EXPORT extern float* PD_ZeroCopyTensorFLOATData(
-    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
-PADDLE_CAPI_EXPORT extern int32_t* PD_ZeroCopyTensorINT32Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
-PADDLE_CAPI_EXPORT extern int64_t* PD_ZeroCopyTensorINT64Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
-PADDLE_CAPI_EXPORT extern uint8_t* PD_ZeroCopyTensorUINT8Data(
-    PD_ZeroCopyTensor* tensor, PD_Place place, int* size);
-
-PADDLE_CAPI_EXPORT extern void PD_ZeroCopyToCPU(PD_ZeroCopyTensor* tensor,
-                                                void* data,
-                                                PD_DataType data_type);
-
-PADDLE_CAPI_EXPORT extern void PD_ZeroCopyFromCpu(PD_ZeroCopyTensor* tensor,
-                                                  void* data,
-                                                  PD_DataType data_type);
-
-PADDLE_CAPI_EXPORT
-extern int* PD_ZeroCopyTensorShape(PD_ZeroCopyTensor* tensor, int** size);
-
-PADDLE_CAPI_EXPORT extern const char* PD_ZeroCopyTensorName(
-    PD_ZeroCopyTensor* tensor);
-
-PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyTensorPlace(
-    PD_ZeroCopyTensor* tensor, PD_Place place, int device = -1);
-
-PADDLE_CAPI_EXPORT extern PD_DataType PD_ZeroCopyTensorType(
-    PD_ZeroCopyTensor* tensor);
-
 // AnalysisPredictor
-typedef struct PD_Predictor PD_Predictor;
-
-bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
-                     int in_size, PD_Tensor* output_data, int** out_size,
-                     int batch_size);
-
-PADDLE_CAPI_EXPORT extern char** PD_GetPredictorInputNames(
-    PD_Predictor* predictor, int** in_size);
-
-typedef struct InTensorShape InTensorShape;
-
-PADDLE_CAPI_EXPORT extern InTensorShape* PD_GetPredictorInputTensorShape(
-    PD_Predictor* predictor, int** size);
-
-PADDLE_CAPI_EXPORT extern char** PD_GetPredictorOutputNames(
-    PD_Predictor* predictor);
-
-PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorInputTensor(
-    PD_Predictor* predictor, const char* name);
-
-PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_GetPredictorOutputTensor(
-    PD_Predictor* predictor, const char* name);
+PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(const PD_AnalysisConfig* config,
+                                               PD_Tensor* inputs, int in_size,
+                                               PD_Tensor* output_data,
+                                               int** out_size, int batch_size);
 
 PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
     const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
-    PD_ZeroCopyData** output, int** out_size);
-
-PADDLE_CAPI_EXPORT extern PD_Predictor* PD_PredictorClone(
-    PD_Predictor* predictor);
+    PD_ZeroCopyData* output, int** out_size);
 
 // AnalysisConfig
 enum Precision { kFloat32 = 0, kInt8, kHalf };
