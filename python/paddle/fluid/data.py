@@ -20,28 +20,34 @@ from .layer_helper import LayerHelper
 __all__ = ['data']
 
 
-def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
+def data(name, shape, dtype='float32', lod_level=0):
     """
     **Data Layer**
 
-    This function creates a variable on the global scope. The global variables
-    can be accessed by all the following operators in the graph.
+    This function creates a variable on the global block. The global variable
+    can be accessed by all the following operators in the graph. The variable
+    is a placeholder that could be feeded with input, such as Executor can feed
+    input into the variable.
 
     Note: 
        `paddle.fluid.layers.data` is deprecated. It will be removed in a future
        version. Please use this `paddle.fluid.data`. 
        
-       The `paddle.fluid.layers.data` set shape at compile time but does NOT
-       check the shape of feeded data, this `paddle.fluid.data` checks the
-       shape of data feeded by Executor/ParallelExecutor during run time.
+       The `paddle.fluid.layers.data` set shape and dtype at compile time but
+       does NOT check the shape or the dtype of feeded data, this
+       `paddle.fluid.data` checks the shape and the dtype of data feeded by
+       Executor or ParallelExecutor during run time.
 
     Args:
-       name (str): The name/alias of the variable
+       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+           for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape.
-       dtype (np.dtype|VarType|str): The type of the data. Supported dtype:
-           float16, float32, float64, int8, int16, int32, int64, uint8, bool.
-       type (VarType): The output type. Supported type: VarType.LOD_TENSOR, 
-           VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR.
+       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+           uint8. Default: float32
+       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
 
     Returns:
         Variable: The global variable that gives access to the data.
@@ -50,15 +56,33 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import numpy as np
 
-          # Creates a variable with fixed size [1, 2, 3]
+          # Creates a variable with fixed size [3, 2, 1]
           # User can only feed data of the same shape to x
-          x = fluid.data(name='x', shape=[1, 2, 3], dtype='int64')
+          x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
 
           # Creates a variable with changable batch size -1.
-          # Users can feed data of any batch size into y, 
-          # but size of each data sample has to be [3, 224, 224]
-          y = fluid.data(name='y', shape=[-1, 3, 224, 224], dtype='float32')
+          # Users can feed data of any batch size into y,
+          # but size of each data sample has to be [2, 1]
+          y = fluid.data(name='y', shape=[-1, 2, 1], dtype='float32')
+
+          z = x + y
+
+          # In this example, we will feed x and y with np-ndarry "1"
+          # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
+          feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+
+          exe = fluid.Executor(fluid.CPUPlace())
+          out = exe.run(fluid.default_main_program(),
+                        feed={
+                            'x': feed_data,
+                            'y': feed_data
+                        },
+                        fetch_list=[z.name])
+
+          # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
+          print(out)
 
     """
     helper = LayerHelper('data', **locals())
@@ -66,8 +90,8 @@ def data(name, shape, dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR):
         name=name,
         shape=shape,
         dtype=dtype,
-        type=type,
+        type=core.VarDesc.VarType.LOD_TENSOR,
         stop_gradient=True,
-        lod_level=0,
+        lod_level=lod_level,
         is_data=True,
         need_check_feed=True)

@@ -30,7 +30,6 @@ def skip_ci(func):
     return __func__
 
 
-@skip_ci
 class TestDistMnist2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
