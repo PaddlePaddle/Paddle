@@ -220,7 +220,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   FLAGS_reallocate_gpu_memory_in_mb = 0;
 
   void* p = nullptr;
-  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(4) << 30) == cudaSuccess);
+  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(3) << 30) == cudaSuccess);
 
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
@@ -228,7 +228,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
-  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(5) << 30);
+  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(2) << 30);
 
   if (p) {
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
