@@ -15,8 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communicator_py.h"
 
 #include <Python.h>
+#include <map>
 #include <memory>
-
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "pybind11/pybind11.h"
 
@@ -27,6 +29,7 @@ namespace py = pybind11;
 using paddle::framework::ProgramDesc;
 using paddle::operators::distributed::Communicator;
 using paddle::operators::distributed::AsyncCommunicator;
+using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::framework::Scope;
 
 namespace paddle {
@@ -37,7 +40,18 @@ void BindCommunicator(py::module* m) {
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
       .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
+        VLOG(0) << "using communicator";
         Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+        return Communicator::GetInstantcePtr();
+      }))
+      .def(py::init([](
+          const ProgramDesc& program, Scope* training_scope,
+          std::map<std::string,
+                   std::map<std::string, std::vector<std::string>>>& vars_info,
+          int& trainers, int& geo_need_push_nums) {
+        VLOG(0) << "using geo sgd communicator";
+        Communicator::InitInstance<GeoSgdCommunicator>(
+            program, training_scope, vars_info, trainers, geo_need_push_nums);
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
