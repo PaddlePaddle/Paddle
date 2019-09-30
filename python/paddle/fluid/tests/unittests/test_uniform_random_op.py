@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def output_hist(out):
@@ -94,6 +95,21 @@ class TestUniformRandomOp_attr_tensor(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOpError(OpTest):
+    def test_errors(self):
+        main_prog = Program()
+        start_prog = Program()
+        with program_guard(main_prog, start_prog):
+            block = main_prog.global_block()
+            # the input type of uniform_random must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.uniform_random, x1, block)
+            # the input dtype of uniform_random must be float16, float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4, 784], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.uniform_random, x2, block)
 
 
 class TestUniformRandomOp(OpTest):

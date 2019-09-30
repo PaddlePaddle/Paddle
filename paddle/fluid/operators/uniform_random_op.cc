@@ -74,8 +74,11 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<unsigned int>(ctx.Attr<int>("diag_step"));
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
-      PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
-                        "The index of diagonal elements is out of bounds");
+      PADDLE_ENFORCE_GT(
+          size, (diag_num - 1) * (diag_step + 1),
+          "The index of diagonal elements is out of bounds."
+          "And the diagonal elements's should be smaller than %d, received %d",
+          (diag_num - 1) * (diag_step + 1), size);
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data[pos] = diag_val;
