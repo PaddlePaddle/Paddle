@@ -66,6 +66,14 @@ paddle::ps::Archive<AR>& operator>>(paddle::ps::Archive<AR>& ar,
 std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
 #endif
 
+void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
+                                          int connect_timeout_ms,
+                                          int max_retry) {
+  client2client_request_timeout_ms_ = request_timeout_ms;
+  client2client_connect_timeout_ms_ = connect_timeout_ms;
+  client2client_max_retry_ = max_retry;
+}
+
 void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
@@ -142,7 +150,9 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 void FleetWrapper::CreateClient2ClientConnection() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to create client2client connection";
-  pslib_ptr_->create_client2client_connection();
+  pslib_ptr_->create_client2client_connection(client2client_request_timeout_ms_,
+                                              client2client_connect_timeout_ms_,
+                                              client2client_max_retry_);
 #endif
 }
 
@@ -344,7 +354,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    if (g_var == nullptr) {
+      continue;
+    }
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";

@@ -119,10 +119,11 @@ Example:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker, ops::SplitGradMaker);
 REGISTER_OP_CPU_KERNEL(
-    split, ops::SplitOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SplitOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SplitOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SplitOpKernel<paddle::platform::CPUDeviceContext, int>);
+    split, ops::SplitOpKernel<plat::CPUDeviceContext, double>,
+    ops::SplitOpKernel<plat::CPUDeviceContext, float>,
+    ops::SplitOpKernel<plat::CPUDeviceContext, int64_t>,
+    ops::SplitOpKernel<plat::CPUDeviceContext, int>,
+    ops::SplitOpKernel<plat::CPUDeviceContext, plat::float16>);
