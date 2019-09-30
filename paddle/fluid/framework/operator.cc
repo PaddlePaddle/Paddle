@@ -1144,10 +1144,6 @@ proto::VarType::Type OperatorWithKernel::GetInputDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
-  PADDLE_ENFORCE_EQ(
-      vars.empty(), false,
-      "The %s Op doesn't have Input %s or it is an empty Variable.", Type(),
-      name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1199,7 +1195,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "should be LoDTensor or SelectedRows.",
+      "is empty or not LoDTensor or SelectedRows.",
       name, Type());
   return data_type;
 }
