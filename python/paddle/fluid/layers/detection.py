@@ -824,22 +824,24 @@ def yolov3_loss(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
+        x (Variable): ${x_comment}The data type is float32 or float64. 
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
                           in the third dimenstion, x, y, w, h should be stored. 
                           x,y is the center cordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
-                          an image.
+                          an image.The data type is float32 or float64. 
         gt_label (Variable): class id of ground truth boxes, shoud be in shape
-                            of [N, B].
+                            of [N, B].The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
         gt_score (Variable): mixup score of ground truth boxes, shoud be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
@@ -945,13 +947,15 @@ def yolo_box(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
-        img_size (Variable): ${img_size_comment}
+        x (Variable): ${x_comment} The data type is float32 or float64. 
+        img_size (Variable): ${img_size_comment} The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolo box layer. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -2784,9 +2788,10 @@ def multiclass_nms(bboxes,
                            N is the batch size. Each bounding box has four
                            coordinate values and the layout is 
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the 
-                           class number   
+                           class number. The data type is float32 or float64.   
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
@@ -2794,11 +2799,11 @@ def multiclass_nms(bboxes,
                            number of bounding boxes. For each category there 
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
-                           of BBoxes.
+                           of BBoxes.The data type is float32 or float64. 
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
-                           case with shape [M, C, 4].
+                           case with shape [M, C, 4].The data type is float32 or float64. 
         background_label (int): The index of background label, the background 
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
@@ -2816,7 +2821,7 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Out(Variable): A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
              Each row has 10 values: 
