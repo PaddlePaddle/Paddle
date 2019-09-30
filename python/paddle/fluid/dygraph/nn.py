@@ -1683,39 +1683,38 @@ class GRUUnit(layers.Layer):
 
 class NCE(layers.Layer):
     """
-    Compute and return the noise-contrastive estimation training loss. See
+    This interface is used to construct a callable object of the ``NCE`` class.
+    For specific usage, refer to code examples.
+    It implements the function of the ``NCE`` loss function.
+    By default this function uses a uniform distribution for sampling, and it
+    compute and return the noise-contrastive estimation training loss. See
     `Noise-contrastive estimation: A new estimation principle for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_ .
-    By default this operator uses a uniform distribution for sampling.
 
     Parameters:
         name_scope(str): The name of this class.
         num_total_classes (int): Total number of classes in all samples
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
              of nce. If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of nce.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of nce.
              If it is set to False, no bias will be added to the output units.
              If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
-        num_neg_samples (int): The number of negative classes. The default value is 10.
-        sampler (str): The sampler used to sample class from negtive classes.
+        num_neg_samples (int, optional): The number of negative classes. The default value is 10.
+        sampler (str, optional): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (float[]|None): A float[] with size=num_total_classes.
+        custom_dist (float[], optional): A float[] with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probability of i-th class to be sampled.
                        Default: None.
-        seed (int): The seed used in sampler. Default: 0.
-        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
-
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+        seed (int, optional): The seed used in sampler. Default: 0.
+        is_sparse(bool, optional): The flag indicating whether to use sparse update. If is_sparse is True, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
 
     Returns:
-        Variable: The output nce loss.
+        None
 
     Examples:
         .. code-block:: python
@@ -1760,6 +1759,9 @@ class NCE(layers.Layer):
 
                 nce_loss3 = nce(embs3, words[label_word])
 
+    Attributes:
+        weight(Parameter): the learnable weights of this layer.
+        bias(Parameter|None): the learnable bias of this layer.
     """
 
     def __init__(self,
@@ -1932,6 +1934,10 @@ class NCE(layers.Layer):
 
 class PRelu(layers.Layer):
     """
+    This interface is used to construct a callable object of the ``PRelu`` class.
+    For specific usage, refer to code examples.
+    It implements three activation methods of the ``PRelu`` activation function.
+
     Equation:
 
     .. math::
@@ -1943,31 +1949,32 @@ class PRelu(layers.Layer):
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
           weight (alpha).
 
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-
     Returns:
-        Variable: The output tensor with the same shape as input.
+        None
 
     Examples:
 
         .. code-block:: python
 
           import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
           import numpy as np
 
           inp_np = np.ones([5, 200, 100, 100]).astype('float32')
           with fluid.dygraph.guard():
+              inp_np = to_variable(inp_np)
               mode = 'channel'
               prelu = fluid.PRelu(
                  'prelu',
                  mode=mode,
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
-              dy_rlt = prelu(fluid.dygraph.base.to_variable(inp_np))
+              dy_rlt = prelu(inp_np)
 
+    Attributes:
+        weight(Parameter): the learnable weights of this layer.
     """
 
     def __init__(self, name_scope, mode, param_attr=None):
