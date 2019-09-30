@@ -34,9 +34,10 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   framework::Tensor* col) const {
-    PADDLE_ENFORCE(vol.dims().size() == 4);
-    PADDLE_ENFORCE(col->dims().size() == 7);
-
+    PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
+                      "The dimension of vol should be 4.");
+    PADDLE_ENFORCE_EQ(col->dims().size(), 7,
+                      "The dimension of col should be 7.");
     int input_channels = vol.dims()[0];
     int input_depth = vol.dims()[1];
     int input_height = vol.dims()[2];
@@ -50,28 +51,35 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
     int channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+    // changed
+    bool paddings_size_is_6 = (paddings.size() == 6);
+    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+    PADDLE_ENFORCE_EQ((input_depth + pad_d_forth + pad_d_back -
                        ((dilations[0] * (filter_depth - 1) + 1))) /
                               strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
                       "mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+    PADDLE_ENFORCE_EQ((input_height + pad_h_up + pad_h_down -
                        ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
                       "mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+    PADDLE_ENFORCE_EQ((input_width + pad_w_left + pad_w_right -
                        ((dilations[2] * (filter_width - 1) + 1))) /
                               strides[2] +
                           1,
                       output_width,
                       "input_width and output_width are "
                       "mismatching.");
-
     const T* vol_data = vol.data<T>();
     T* col_data = col->data<T>();
 
@@ -81,11 +89,11 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
       int d_offset = (c / filter_width / filter_height) % filter_depth;
       int c_in = c / filter_width / filter_height / filter_depth;
       for (int d = 0; d < output_depth; ++d) {
-        int d_pad = d * strides[0] - paddings[0] + d_offset * dilations[0];
+        int d_pad = d * strides[0] - pad_d_forth + d_offset * dilations[0];
         for (int h = 0; h < output_height; ++h) {
-          int h_pad = h * strides[1] - paddings[1] + h_offset * dilations[1];
+          int h_pad = h * strides[1] - pad_h_up + h_offset * dilations[1];
           for (int w = 0; w < output_width; ++w) {
-            int w_pad = w * strides[2] - paddings[2] + w_offset * dilations[2];
+            int w_pad = w * strides[2] - pad_w_left + w_offset * dilations[2];
 
             int col_idx =
                 ((c * output_depth + d) * output_height + h) * output_width + w;
@@ -120,9 +128,10 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   framework::Tensor* vol) const {
-    PADDLE_ENFORCE(vol->dims().size() == 4);
-    PADDLE_ENFORCE(col.dims().size() == 7);
-
+    PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
+                      "The dimension of vol should be 4.");
+    PADDLE_ENFORCE_EQ(col.dims().size(), 7,
+                      "The dimension of col should be 7.");
     int input_channels = vol->dims()[0];
     int input_depth = vol->dims()[1];
     int input_height = vol->dims()[2];
@@ -136,21 +145,29 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
     int channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 
-    PADDLE_ENFORCE_EQ((input_depth + 2 * paddings[0] -
+    bool paddings_size_is_6 = (paddings.size() == 6);
+    int pad_d_forth = paddings_size_is_6 ? paddings[0] : paddings[0];
+    int pad_d_back = paddings_size_is_6 ? paddings[1] : paddings[0];
+    int pad_h_up = paddings_size_is_6 ? paddings[2] : paddings[1];
+    int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
+    int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
+    int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+
+    PADDLE_ENFORCE_EQ((input_depth + pad_d_forth + pad_d_back -
                        ((dilations[0] * (filter_depth - 1) + 1))) /
                               strides[0] +
                           1,
                       output_depth,
                       "input_depth and output_depth are "
                       "mismatching.");
-    PADDLE_ENFORCE_EQ((input_height + 2 * paddings[1] -
+    PADDLE_ENFORCE_EQ((input_height + pad_h_up + pad_h_down -
                        ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1,
                       output_height,
                       "input_height and output_height are "
                       "mismatching.");
-    PADDLE_ENFORCE_EQ((input_width + 2 * paddings[2] -
+    PADDLE_ENFORCE_EQ((input_width + pad_w_left + pad_w_right -
                        ((dilations[2] * (filter_width - 1) + 1))) /
                               strides[2] +
                           1,
@@ -166,11 +183,11 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
       int d_offset = (c / filter_width / filter_height) % filter_depth;
       int cIm = c / filter_width / filter_height / filter_depth;
       for (int d = 0; d < output_depth; ++d) {
-        int d_pad = d * strides[0] - paddings[0] + d_offset * dilations[0];
+        int d_pad = d * strides[0] - pad_d_forth + d_offset * dilations[0];
         for (int h = 0; h < output_height; ++h) {
-          int h_pad = h * strides[1] - paddings[1] + h_offset * dilations[1];
+          int h_pad = h * strides[1] - pad_h_up + h_offset * dilations[1];
           for (int w = 0; w < output_width; ++w) {
-            int w_pad = w * strides[2] - paddings[2] + w_offset * dilations[2];
+            int w_pad = w * strides[2] - pad_w_left + w_offset * dilations[2];
 
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
