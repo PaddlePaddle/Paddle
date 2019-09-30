@@ -67,27 +67,27 @@ class ProgramStats(object):
 
     def is_subgraph(self, var_group1, var_group2):
         # should traverse from var_group1 to var_group2
-        # max op idx in var_group2
+        # min op idx in var_group2
         # min op idx in var_group1
-        min_op_idx = len(self.ops)
-        max_op_idx = -1
+        min_op_idx_group1 = len(self.ops)
+        min_op_idx_group2 = len(self.ops)
         for name in var_group1:
             if name not in self.var_op_deps:
-                return False, min_op_idx, max_op_idx
+                return False, min_op_idx_group1, min_op_idx_group2
         for name in var_group2:
             if name not in self.var_op_deps:
-                return False, min_op_idx, max_op_idx
+                return False, min_op_idx_group1, min_op_idx_group2
         for name in var_group1:
             op_idx = self.var_op_deps[name]["var_as_input_ops"]
             for idx in op_idx:
-                min_op_idx = min(min_op_idx, idx)
+                min_op_idx_group1 = min(min_op_idx_group1, idx)
         for name in var_group2:
             op_idx = self.var_op_deps[name]["var_as_output_ops"]
             for idx in op_idx:
-                max_op_idx = max(max_op_idx, idx)
-        if min_op_idx >= max_op_idx:
-            return False, min_op_idx, max_op_idx
-        return True, min_op_idx, max_op_idx
+                min_op_idx_group2 = min(min_op_idx_group2, idx)
+        if min_op_idx_group1 >= min_op_idx_group2:
+            return False, min_op_idx_group1, min_op_idx_group2
+        return True, min_op_idx_group1, min_op_idx_group2
 
     def build_stats(self):
         for i, op in enumerate(self.ops):

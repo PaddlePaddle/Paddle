@@ -614,7 +614,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
 
 
 class TestRecomputeOptimizer(unittest.TestCase):
-    def net(self):
+    def net(self, with_inplace=False):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
@@ -631,6 +631,11 @@ class TestRecomputeOptimizer(unittest.TestCase):
             dtype="float32", shape=[5, 8], lod_level=0, name="b2")
         b2_out = block.create_var(
             dtype="float32", shape=[5, 8], lod_level=0, name="b2_out")
+        if with_inplace == True:
+            inplace_b1 = block.create_parameter(
+                dtype="float32", shape=[5, 8], lod_level=0, name="inplace_b1")
+            inplace_b3 = block.create_parameter(
+                dtype="float32", shape=[5, 8], lod_level=0, name="inplace_b3")
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
@@ -639,6 +644,12 @@ class TestRecomputeOptimizer(unittest.TestCase):
                     "Y": mul_y},
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
+        if with_inplace == True:
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": mul_out,
+                        "Y": inplace_b1},
+                outputs={"Out": mul_out})
         block.append_op(
             type="elementwise_add",
             inputs={"X": mul_out,
@@ -649,6 +660,12 @@ class TestRecomputeOptimizer(unittest.TestCase):
             inputs={"X": b1_out,
                     "Y": b2},
             outputs={"Out": b2_out})
+        if with_inplace == True:
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": b2_out,
+                        "Y": inplace_b3},
+                outputs={"Out": b2_out})
         block.append_op(
             type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out})
 
@@ -721,6 +738,28 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "mul", "elementwise_add", "elementwise_add", "mean",
             "fill_constant", "mean_grad", "elementwise_add_grad",
             "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
+    def test_inplace_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net(with_inplace=True)
+        self.assertEqual(len(mean_out.block.ops), 6)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "elementwise_add",
+            "elementwise_add", "mean"
+        ])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([mul_out, b2_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        # inplace op should not be recomputed
+        self.assertEqual(len(mean_out.block.ops), 19)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "elementwise_add",
+            "elementwise_add", "mean", "fill_constant", "mean_grad",
+            "elementwise_add_grad", "elementwise_add", "elementwise_add_grad",
+            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
+            "sgd", "sgd", "sgd", "sgd"
         ])
 
     def test_apply_gradients(self):
