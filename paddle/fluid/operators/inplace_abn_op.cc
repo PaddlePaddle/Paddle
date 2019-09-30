@@ -97,6 +97,10 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
                    "with batch_norm, "
                    "this is the alpha value for elu|leakyrelu.")
         .SetDefault(0.1f);
+    AddAttr<bool>("use_sync_bn",
+                  "(bool, default false) Whether use synchronize batch "
+                  "normalization.")
+        .SetDefault(false);
   }
 };
 

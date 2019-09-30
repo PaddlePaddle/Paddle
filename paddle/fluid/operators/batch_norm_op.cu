@@ -246,7 +246,7 @@ static __global__ void KeBNRestoreData(const framework::DataLayout layout, X *x,
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
-    x[i] = (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+    x[i] = (y[i] - bias[c]) / scale[c] / variance[c] + mean[c];
   }
 }
 

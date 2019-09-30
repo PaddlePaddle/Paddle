@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/inplace_abn_op.h"
 #include "paddle/fluid/operators/sync_batch_norm_op.cu.h"
 
@@ -20,7 +21,8 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class InplaceABNKernel
-    : public paddle::operators::SyncBatchNormKernel<DeviceContext, T> {
+    : public paddle::operators::SyncBatchNormKernel<DeviceContext, T>,
+      public paddle::operators::BatchNormKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
@@ -29,7 +31,11 @@ class InplaceABNKernel
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    SyncBatchNormKernel<DeviceContext, T>::Compute(ctx);
+    if (ctx.Attr<bool>("use_sync_bn")) {
+      SyncBatchNormKernel<DeviceContext, T>::Compute(ctx);
+    } else {
+      BatchNormKernel<DeviceContext, T>::Compute(ctx);
+    }
 
     auto cur_y = EigenVector<T>::Flatten(*y);
     InplaceABNActivation<DeviceContext, T> functor;
@@ -41,7 +47,8 @@ class InplaceABNKernel
 // https://kevinzakka.github.io/2016/09/14/batch_normalization/
 template <typename DeviceContext, typename T>
 class InplaceABNGradKernel
-    : public paddle::operators::SyncBatchNormGradKernel<DeviceContext, T> {
+    : public paddle::operators::SyncBatchNormGradKernel<DeviceContext, T>,
+      public paddle::operators::BatchNormGradKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* y = ctx.Input<Tensor>("Y");
@@ -58,7 +65,11 @@ class InplaceABNGradKernel
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
-    SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+    if (ctx.Attr<bool>("use_sync_bn")) {
+      SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+    } else {
+      BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+    }
   }
 };
 
