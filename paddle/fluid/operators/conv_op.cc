@@ -76,6 +76,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                     "dimension of Conv is [%d]",
                     in_sub_stride_size, in_dims.size(), in_dims,
                     strides.size());
+
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ShapeError: Conv paddings dimension and Conv strides "
                     "dimension should be equal."
@@ -83,8 +84,11 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                     "the stride dimension of Conv is [%d]",
                     paddings.size(), strides.size());
 
+  const auto input_channels =
+      channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
+
   PADDLE_ENFORCE_EQ(
-      in_dims[1], filter_dims[1] * groups,
+      input_channels, filter_dims[1] * groups,
       "ShapeError: The number of input channels should be equal to filter "
       "channels * groups. But received: the input channels is [%d], the shape"
       "of input is [%s], the filter channel is [%d], the shape of filter is "
