@@ -30,6 +30,7 @@ namespace analysis {
 TEST(PD_AnalysisConfig, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
+
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   int num_thread = PD_CpuMathLibraryNumThreads(config);
