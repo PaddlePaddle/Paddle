@@ -34,14 +34,16 @@ __all__ = [
 
 class Conv2D(layers.Layer):
     """
+    This interface is used to construct a callable object of the ``Conv2D`` class.
+    For specific usage, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCHW format, where N is batch size, C is the number of
-    channels, H is the height of the feature, and W is the width of the feature.
-    Filter is in MCHW format, where M is the number of output image channels,
-    C is the number of input image channels, H is the height of the filter,
+    the feature map, H is the height of the feature map, and W is the width of the feature map.
+    Filter's shape is [MCHW] , where M is the number of output feature map,
+    C is the number of input feature map, H is the height of the filter,
     and W is the width of the filter. If the groups is greater than 1,
-    C will equal the number of input image channels divided by the groups.
+    C will equal the number of input feature map divided by the groups.
     Please refer to UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`
     for more detials.
@@ -53,14 +55,14 @@ class Conv2D(layers.Layer):
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \\sigma (W \\ast X + b)
 
     Where:
 
-    * :math:`X`: Input value, a tensor with NCHW format.
-    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`X`: Input value, a ``Tensor`` with NCHW format.
+    * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -86,46 +88,49 @@ class Conv2D(layers.Layer):
     Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output
-            image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+            feature map.
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
+        stride (int|tuple, optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
+        padding (int|tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+        dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type, if it is set to None, activation is not appended.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attributes:
         weight (Parameter): the learnable weights of filter of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
+    Returns:
+        None
+    
     Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+        ValueError: if ``use_cudnn`` is not a bool value.
 
     Examples:
         .. code-block:: python
@@ -135,11 +140,11 @@ class Conv2D(layers.Layer):
           from paddle.fluid.dygraph import Conv2D
           import numpy as np
 
-          data = np.random.uniform( -1, 1, [10, 3, 32, 32] ).astype('float32')
+          data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
           with fluid.dygraph.guard():
-              conv2d = Conv2D( "conv2d", 2, 3)
-              data = to_variable( data )
-              conv = conv2d( data )
+              conv2d = Conv2D("conv2d", 2, 3)
+              data = to_variable(data)
+              conv = conv2d(data)
 
     """
 
@@ -723,33 +728,81 @@ class Conv3DTranspose(layers.Layer):
 
 class Pool2D(layers.Layer):
     """
-    The pooling2d operation calculates the output based on the input, pooling_type and ksize, strides,
-    paddings parameters.Input(X) and output(Out) are in NCHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
+    This interface is used to construct a callable object of the ``Pool2D`` class.
+    For specific usage, refer to code examples.
+    The pooling2d operation calculates the output based on the input, pool_type and pool_size, pool_stride,
+    pool_padding parameters.Input and output are in NCHW format, where N is batch size, C is the number of feature map,
+    H is the height of the feature map, and W is the width of the feature map.
     Parameters(ksize, strides, paddings) are two elements. These two elements represent height and width, respectively.
     The input(X) size and output(Out) size may be different.
 
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C, H_{in}, W_{in})`
+
+        - Output:
+
+          Output shape: :math:`(N, C, H_{out}, W_{out})`
+
+        If ``ceil_mode`` = False:
+
+        .. math::
+
+            H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0])}{strides[0]} + 1 \\\\
+            W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1])}{strides[1]} + 1
+
+        If ``ceil_mode`` = True:
+
+        .. math::
+
+            H_{out} = \\frac{(H_{in} - ksize[0] + 2 * paddings[0] + strides[0] - 1)}{strides[0]} + 1 \\\\
+            W_{out} = \\frac{(W_{in} - ksize[1] + 2 * paddings[1] + strides[1] - 1)}{strides[1]} + 1
+
+        If ``exclusive`` = False:
+
+        .. math::
+
+            hstart &= i * strides[0] - paddings[0] \\\\
+            hend   &= hstart + ksize[0] \\\\
+            wstart &= j * strides[1] - paddings[1] \\\\
+            wend   &= wstart + ksize[1] \\\\
+            Output(i ,j) &= \frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]
+
+        If ``exclusive`` = True:
+
+        .. math::
+
+            hstart &= max(0, i * strides[0] - paddings[0])\\\\
+            hend &= min(H, hstart + ksize[0]) \\\\
+            wstart &= max(0, j * strides[1] - paddings[1]) \\\\
+            wend & = min(W, wstart + ksize[1]) \\\\
+            Output(i ,j) & = \frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+
     Parameters:
         name_scope(str) : The name of this class.
-        pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
+        pool_size (int|list|tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be a square of an int. Default: -1
-        pool_type(str) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling. Default: max
-        pool_stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
+            Otherwise, the pool kernel size will be a square of an int. Default: -1.
+        pool_type(str, optional) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling. 
+            Default: max.
+        pool_stride (int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
-            the pool stride size will be a square of an int. Default: 1
-        pool_padding (int|list|tuple): The pool padding size. If pool padding size is a tuple,
+            the pool stride size will be a square of an int. Default: 1.
+        pool_padding (int|list|tuple, optional): The pool padding size. If pool padding size is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
-            Otherwise, the pool padding size will be a square of an int. Default: 0
-        global_pooling (bool): Whether to use the global pooling. If global_pooling = true,
-            kernel size and paddings will be ignored. Default: False
-        use_cudnn (bool): Only used in cudnn kernel, need install cudnn. Default: True
-        ceil_mode (bool): Whether to use the ceil function to calculate output height and width.
-            False is the default. If it is set to False, the floor function will be used. Default: False
-        exclusive (bool): Whether to exclude padding points in average pooling mode. Default: True
+            Otherwise, the pool padding size will be a square of an int. Default: 0.
+        global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
+            kernel size and paddings will be ignored. Default: False.
+        use_cudnn (bool, optional): Only used in cudnn kernel, need install cudnn. Default: True.
+        ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
+            False is the default. If it is set to False, the floor function will be used. Default: False.
+        exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32". 
 
     Returns:
-        Variable: The pooling result.
+        None
 
     Raises:
         ValueError: If 'pool_type' is not "max" nor "avg"
@@ -761,16 +814,16 @@ class Pool2D(layers.Layer):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          import numpy
+          from paddle.fluid.dygraph.base import to_variable
+          import numpy as np
 
           with fluid.dygraph.guard():
-             data = numpy.random.random((3, 32, 32)).astype('float32')
-
+             data = numpy.random.random((3, 32, 32, 5)).astype('float32')
              pool2d = fluid.dygraph.Pool2D("pool2d",pool_size=2,
                             pool_type='max',
                             pool_stride=1,
                             global_pooling=False)
-             pool2d_res = pool2d(data)
+             pool2d_res = pool2d(to_variable(data))
 
     """
 
@@ -836,24 +889,25 @@ class FC(layers.Layer):
     """
     **Fully Connected Layer**
 
-    This function creates a fully connected layer in the network. It can take
-    one or multiple tensors as its inputs(input can be a list of Variable, see
-    Args in detail). It creates a variable called weights for each input tensor,
+    This interface is used to construct a callable object of the ``FC`` class.
+    For specific usage, refer to code examples.
+    It creates a fully connected layer in the network. It can take
+    one or multiple ``Tensor`` as its inputs. It creates a Variable called weights for each input tensor,
     which represents a fully connected weight matrix from each input unit to
     each output unit. The fully connected layer multiplies each input tensor
-    with its corresponding weight to produce an output Tensor with shape [M, `size`],
-    where M is batch size. If multiple input tensors are given, the results of
-    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
+    with its corresponding weight to produce an output Tensor with shape [N, `size`],
+    where N is batch size. If multiple input tensors are given, the results of
+    multiple output tensors with shape [N, `size`] will be summed up. If ``bias_attr``
     is not None, a bias variable will be created and added to the output.
-    Finally, if activation is not None, it will be applied to the output as well.
+    Finally, if ``act`` is not None, it will be applied to the output as well.
 
-    When the input is single tensor:
+    When the input is single ``Tensor`` :
 
     .. math::
 
         Out = Act({XW + b})
 
-    When the input are multiple tensors:
+    When the input are multiple ``Tensor`` :
 
     .. math::
 
@@ -861,35 +915,35 @@ class FC(layers.Layer):
 
     In the above equation:
 
-    * :math:`N`: Number of the input. N equals to len(input) if input is list of Variable.
-    * :math:`X_i`: The i-th input tensor.
+    * :math:`N`: Number of the input. N equals to len(input) if input is list of ``Tensor`` .
+    * :math:`X_i`: The i-th input ``Tensor`` .
     * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
     * :math:`b`: The bias parameter created by this layer (if needed).
     * :math:`Act`: The activation function.
-    * :math:`Out`: The output tensor.
+    * :math:`Out`: The output ``Tensor`` .
 
     See below for an example.
 
     .. code-block:: text
 
         Given:
-            data_1.data = [[[0.1, 0.2],
-                           [0.3, 0.4]]]
-            data_1.shape = (1, 2, 2) # 1 is batch_size
+            data_1.data = [[[0.1, 0.2]]]
+            data_1.shape = (1, 1, 2) # 1 is batch_size
 
-            data_2 = [[[0.1, 0.2, 0.3]]]
-            data_2.shape = (1, 1, 3)
+            data_2.data = [[[0.1, 0.2, 0.3]]]
+            data_2.shape = (1, 1, 3) # 1 is batch_size
 
-            out = fluid.layers.fc(input=[data_1, data_2], size=2)
+            fc = FC("fc", 2, num_flatten_dims=2)
+            out = fc(input=[data_1, data_2])
 
         Then:
-            out.data = [[0.18669507, 0.1893476]]
-            out.shape = (1, 2)
+            out.data = [[[0.182996 -0.474117]]]
+            out.shape = (1, 1, 2)
 
     Parameters:
         name_scope(str): The name of this class.
         size(int): The number of output units in this layer.
-        num_flatten_dims (int): The fc layer can accept an input tensor with more than
+        num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
             into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
             tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
@@ -898,22 +952,22 @@ class FC(layers.Layer):
             form the second dimension of the final matrix (width of the matrix). For example, suppose
             `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
             Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1
-        param_attr (ParamAttr|list of ParamAttr|None): The parameter attribute for learnable
+        param_attr (ParamAttr|list of ParamAttr, optional): The parameter attribute for learnable
             parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
+        bias_attr (ParamAttr|list of ParamAttr, optional): The parameter attribute for the bias
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
-        act (str|None): Activation to be applied to the output of this layer.
-        is_test(bool): A flag indicating whether execution is in test phase. Default: False
-        dtype(str): Dtype used for weight
+        act (str, optional): Activation to be applied to the output of this layer. Default: None.
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default: False.
+        dtype(str, optional): Dtype used for weight, it can be "float32" or "float64". Default: "float32".
 
     Attributes:
         weight (list of Parameter): the learnable weights of this layer.
         bias (Parameter|None): the learnable bias of this layer.
 
-    Raises:
-        ValueError: If rank of the input tensor is less than 2.
-
+    Returns:
+        None
+    
     Examples:
         .. code-block:: python
 
@@ -922,11 +976,11 @@ class FC(layers.Layer):
           from paddle.fluid.dygraph import FC
           import numpy as np
 
-          data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+          data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
           with fluid.dygraph.guard():
-              fc = FC( "fc", 64, num_flatten_dims=2)
-              data = to_variable( data )
-              conv = fc( data )
+              fc = FC("fc", 64, num_flatten_dims=2)
+              data = to_variable(data)
+              conv = fc(data)
 
     """
 
@@ -2136,17 +2190,21 @@ class Conv2DTranspose(layers.Layer):
     """
     **Convlution2D transpose layer**
 
+    This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
+    For specific usage, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
-    filter, and dilations, strides, paddings. Input(Input) and output(Output)
-    are in NCHW format. Where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
-    Parameters(dilations, strides, paddings) are two elements. These two elements
-    represent height and width, respectively. The details of convolution transpose
-    layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    filter, and dilations, strides, paddings. Input and output
+    are in NCHW format. Where N is batch size, C is the number of feature map,
+    H is the height of the feature map, and W is the width of the feature map.
+    Filter's shape is [MCHW] , where M is the number of output feature map,
+    C is the number of input feature map, H is the height of the filter,
+    and W is the width of the filter. If the groups is greater than 1,
+    C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
+    The details of convolution transpose layer, please refer to the following explanation and references
+    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
 
     For each input :math:`X`, the equation is:
 
@@ -2156,10 +2214,10 @@ class Conv2DTranspose(layers.Layer):
 
     Where:
 
-    * :math:`X`: Input value, a tensor with NCHW format.
-    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`X`: Input value, a ``Tensor`` with NCHW format.
+    * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -2187,43 +2245,43 @@ class Conv2DTranspose(layers.Layer):
     Parameters:
         name_scope(str): The name of this class.
         num_filters(int): The number of the filter. It is as same as the output
-            image channel.
-        output_size(int|tuple|None): The output image size. If output size is a
+            feature map.
+        output_size(int|tuple, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above. Default: None.
-        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
             calculate filter_size. Default: None.
-        padding(int|tuple): The padding size. If padding is a tuple, it must
+        padding(int|tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: padding = 0.
-        stride(int|tuple): The stride size. If stride is a tuple, it must
+        stride(int|tuple, optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: stride = 1.
-        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+        dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups(int): The groups number of the Conv2d transpose layer. Inspired by
+        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d_transpose.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+        use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
-        act (str): Activation type, if it is set to None, activation is not appended.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
 
     Attributes:
@@ -2231,20 +2289,16 @@ class Conv2DTranspose(layers.Layer):
         bias (Parameter|None): the learnable bias of this layer.
 
     Returns:
-        Variable: The tensor variable storing the convolution transpose result.
-
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+        None
 
     Examples:
        .. code-block:: python
 
           import paddle.fluid as fluid
-          import numpy
+          import numpy as np
 
           with fluid.dygraph.guard():
-              data = numpy.random.random((3, 32, 32)).astype('float32')
+              data = np.random.random((3, 32, 32, 5)).astype('float32')
               conv2DTranspose = fluid.dygraph.nn.Conv2DTranspose(
                     'Conv2DTranspose', num_filters=2, filter_size=3)
               ret = conv2DTranspose(fluid.dygraph.base.to_variable(data))
@@ -2763,6 +2817,8 @@ class TreeConv(layers.Layer):
     """
         ***Tree-Based Convolution Operator***
 
+        This interface is used to construct a callable object of the ``TreeConv`` class.
+        For specific usage, refer to code examples.
         Tree-Based Convolution is a kind of convolution based on tree structure.
         Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
         which is used to classify tree structures, such as Abstract Syntax Tree.
@@ -2770,23 +2826,22 @@ class TreeConv(layers.Layer):
         which regards multiway tree as binary tree.
         The paper of Tree-Based Convolution Operator is here: https://arxiv.org/abs/1409.5718v1
 
-
         Parameters:
             name_scope(str): The name of this class.
-            output_size(int): output feature width
-            num_filters(int): number of filters, Default: 1.
-            max_depth(int): max depth of filters, Default: 2.
-            act(str): activation function, Default: tanh.
-            param_attr(ParamAttr): the parameter attribute for the filters, Default: None.
-            bias_attr(ParamAttr): the parameter attribute for the bias of this layer, Default: None.
-            name(str): a name of this layer(optional). If set None, the layer will be named automatically, Default: None.
+            output_size(int): output feature width.
+            num_filters(int, optional): number of filters, Default: 1.
+            max_depth(int, optional): max depth of filters, Default: 2.
+            act(str, optional): activation function, Default: tanh.
+            param_attr(ParamAttr, optional): the parameter attribute for the filters, Default: None.
+            bias_attr(ParamAttr, optional): the parameter attribute for the bias of this layer, Default: None.
+            name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
         Attributes:
             weight (Parameter): the learnable weights of filters of this layer.
             bias (Parameter|None): the learnable bias of this layer.
 
         Returns:
-            out(Variable): (Tensor) The feature vector of subtrees. The shape of the output tensor is [max_tree_node_size, output_size, num_filters]. The output tensor could be a new feature vector for next tree convolution layers
+            None
 
         Examples:
 
