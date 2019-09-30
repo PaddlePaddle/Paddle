@@ -1138,11 +1138,11 @@ Scope* OperatorWithKernel::PrepareData(
   return new_scope;
 }
 
-proto::VarType::Type OperatorWithKernel::GetInputDataType(
-    const ExecutionContext& ctx, const std::string& name) const {
+void OperatorWithKernel::GetInputDataType(
+    const ExecutionContext& ctx, const std::string& name,
+    proto::VarType::Type* data_type) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = dafault_data_type;
   const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
@@ -1161,17 +1161,16 @@ proto::VarType::Type OperatorWithKernel::GetInputDataType(
                           "not initialized.",
                           Type(), name, i);
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(tmp == data_type || data_type == dafault_data_type,
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
                        "The DataType of %s Op's duplicable Variable %s must be "
                        "consistent. The current variable type is (%s), but the "
                        "previous variable type is (%s).",
                        Type(), name, DataTypeToString(tmp),
-                       DataTypeToString(data_type));
-        data_type = tmp;
+                       DataTypeToString(*data_type));
+        *data_type = tmp;
       }
     }
   }
-  return data_type;
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
@@ -1180,7 +1179,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
-    data_type = GetInputDataType(ctx, input.first);
+    GetInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
                     "DataType should be indicated by input Variable.");
@@ -1191,7 +1190,8 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     const ExecutionContext& ctx, const std::string& name) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
-  proto::VarType::Type data_type = GetInputDataType(ctx, name);
+  proto::VarType::Type data_type = dafault_data_type;
+  GetInputDataType(ctx, name, &data_type);
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "

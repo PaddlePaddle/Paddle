@@ -475,8 +475,8 @@ class OperatorWithKernel : public OperatorBase {
  private:
   // indicate kernel DataType by input data. By default all input data must be
   // same.
-  proto::VarType::Type GetInputDataType(const ExecutionContext& ctx,
-                                        const std::string& name) const;
+  void GetInputDataType(const ExecutionContext& ctx, const std::string& name,
+                        proto::VarType::Type* type) const;
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
