@@ -29,9 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
@@ -171,6 +173,12 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
+    framework::OpCompatibleMap op_compatible_map;
+    op_compatible_map.InitOpCompatibleMap();
+    return op_compatible_map.ConvertToProto(desc.OpCompatibleMap());
+  });
+
   m.def(
       "_append_python_callable_object_and_return_id",
       [](py::object py_obj) -> size_t {
@@ -219,6 +227,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
+      .def("_alloc_double",
+           [](Tensor &self, paddle::platform::CPUPlace &place) {
+             self.mutable_data<double>(place);
+           })
       .def("_alloc_int",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
@@ -234,6 +246,21 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_alloc_float",
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
+           })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CUDAPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_mutable_data",
+           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>)
@@ -1035,6 +1062,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_dgc", framework::InitDGC);
+  m.def("load_op_library", framework::LoadOpLib);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
@@ -1162,6 +1190,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("size_of_dtype", framework::SizeOfType);
 
+  using VarQuantScale =
+      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)
@@ -1176,6 +1207,20 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::unordered_set<std::string> set) {
+             self.Set(name, new std::unordered_set<std::string>(set));
+           })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::unordered_set<int> set) {
+             self.Set(name, new std::unordered_set<int>(set));
+           })
+      .def("set",
+           [](ir::Pass &self, const std::string &name, VarQuantScale scales) {
+             self.Set(name, new VarQuantScale(scales));
+           })
       .def("type", &ir::Pass::Type)
       .def("apply", [](ir::Pass &self, std::shared_ptr<ir::Graph> graph) {
         self.Apply(graph.get());

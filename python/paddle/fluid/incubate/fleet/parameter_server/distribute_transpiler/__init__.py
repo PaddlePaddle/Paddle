@@ -13,8 +13,10 @@
 # limitations under the License.
 import os
 import warnings
-
 from paddle.fluid import core
+"""
+Convert the fluid program to distributed data-parallelism programs.
+"""
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -25,6 +27,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
@@ -67,7 +70,13 @@ class DistributedTranspiler(Fleet):
             wait_server_ready(fleet.server_endpoints(to_string=False))
 
         if not self._transpile_config.sync_mode:
-            self._communicator = Communicator(self.main_program)
+            if self._transpile_config.geo_sgd_mode:
+                self._communicator = Communicator(
+                    self.main_program, self.vars_info,
+                    fleet.worker_num(),
+                    self._transpile_config.geo_sgd_need_push_nums)
+            else:
+                self._communicator = Communicator(self.main_program)
 
             if not self._communicator.is_running():
                 self._communicator.start()
@@ -141,7 +150,6 @@ class DistributedTranspiler(Fleet):
         ):
             self._communicator.stop()
         self._executor.close()
-
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
 
@@ -482,7 +490,10 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         self._transpile_config = config
-        self._transpiler = OriginTranspiler(config)
+        if config.geo_sgd_mode:
+            self._transpiler = GeoSgdTranspiler(config)
+        else:
+            self._transpiler = OriginTranspiler(config)
 
         if self.is_worker():
             self._transpiler.transpile(
@@ -497,6 +508,9 @@ class DistributedTranspiler(Fleet):
             self.main_program = self._transpiler.get_trainer_program(
                 wait_port=config.wait_port)
             self.startup_program = default_startup_program()
+            if self._transpile_config.geo_sgd_mode:
+                self.vars_info = self._transpiler._get_vars_info()
+                self.startup_program = self._transpiler.trainer_startup_program
         else:
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
@@ -505,7 +519,8 @@ class DistributedTranspiler(Fleet):
                 sync_mode=config.sync_mode,
                 current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
+                self._transpiler.get_pserver_programs(
+                    self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()

@@ -28,11 +28,38 @@ from decorator_helper import prog_scope
 class TestConvDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 4, 7, 8]
+        shape = [2, 4, 3, 3]
         eps = 0.005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 4, 1, bias_attr=False)
+        y = layers.conv2d(x, 2, 1, groups=1, bias_attr=False)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        places = []
+
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConvDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -53,11 +80,11 @@ class TestConvDoubleGradCheck(unittest.TestCase):
 class TestConvDoubleGradCheckTest1(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 4, 5]
+        shape = [2, 3, 3, 3]
         eps = 0.005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv2d(x, 4, 1, padding=1, bias_attr=False)
+        y = layers.conv2d(x, 2, 1, padding=1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -82,7 +109,7 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv3d(x, 4, 1, bias_attr=False)
+        y = layers.conv3d(x, 2, 1, bias_attr=False)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
@@ -107,7 +134,326 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype)
-        y = layers.conv3d(x, 4, 1, padding=1, bias_attr=False)
+        y = layers.conv3d(x, 2, 1, padding=1, bias_attr=False)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 0, 0, 1],
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding="SAME",
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding="VALID",
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 1],
+            bias_attr=False,
+            use_cudnn=True,
+            groups=1,
+            data_format="NHWC")
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv2d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 0, 1, 0],
+            bias_attr=False,
+            use_cudnn=True,
+            groups=1,
+            data_format="NHWC")
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 2, 2, 2]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv3d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 0, 0, 1, 1, 2],
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 2, 2, 2]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv3d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding="SAME",
+            groups=1,
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 3, 3, 2]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv3d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding="VALID",
+            bias_attr=False,
+            use_cudnn=True)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 2, 2, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv3d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 1, 1],
+            bias_attr=False,
+            use_cudnn=True,
+            groups=1,
+            data_format="NDHWC")
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        w = fluid.default_main_program().global_block().all_parameters()
+        w_arr = []
+        for p in w:
+            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+        gradient_checker.double_grad_check(
+            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConv3dDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 2, 2, 2, 3]
+        eps = 0.005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype)
+        y = layers.conv3d(
+            input=x,
+            num_filters=2,
+            filter_size=1,
+            padding=[1, 0, 1, 0, 1, 0],
+            bias_attr=False,
+            use_cudnn=True,
+            groups=1,
+            data_format="NDHWC")
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()

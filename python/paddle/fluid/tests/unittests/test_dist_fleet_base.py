@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+"""
+    high level unit test for distribute fleet.
+"""
 import argparse
 import os
 import pickle
@@ -41,6 +43,12 @@ LEARNING_RATE = 0.01
 
 
 class FleetDistRunnerBase(object):
+    """
+        run_pserver,run_trainer : after init role, using transpiler split program
+        net : implment by child class, the network of model
+        do training : exe run program
+    """
+
     def run_pserver(self, args):
         if args.role.upper() != "PSERVER":
             raise ValueError("args role must be PSERVER")
@@ -55,6 +63,8 @@ class FleetDistRunnerBase(object):
 
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
+        strategy.geo_sgd_mode = args.geo_sgd_mode
+        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
 
         avg_cost = self.net()
 
@@ -79,14 +89,14 @@ class FleetDistRunnerBase(object):
 
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
+        strategy.geo_sgd_mode = args.geo_sgd_mode
+        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
 
         avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
-
-        self.do_training(fleet)
         out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
@@ -99,6 +109,11 @@ class FleetDistRunnerBase(object):
 
 
 class TestFleetBase(unittest.TestCase):
+    """
+        start_pserver,start_trainer : add start cmd to test
+        run_cluster : using multi process to test distribute program
+    """
+
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
@@ -111,6 +126,8 @@ class TestFleetBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self.hadoop_path = None
+        self._geo_sgd = False
+        self._geo_sgd_need_push_nums = 5
         self._setup_config()
 
     def _find_free_port(self):
@@ -142,7 +159,6 @@ class TestFleetBase(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=ps1_pipe,
             env=required_envs)
-
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _start_trainer(self, cmd, required_envs):
@@ -166,19 +182,18 @@ class TestFleetBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs):
         env = {'CPU_NUM': '1'}
-        with_coverage = ""
+        python_path = self._python_interp
+
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            with_coverage = " -m coverage run --branch -p"
+            python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{0} {1} {2} --role trainer --endpoints {3} --current_id {{}} --trainers {4}".format(
-            self._python_interp, with_coverage, model, self._ps_endpoints,
-            self._trainers)
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
+            python_path, model, self._ps_endpoints, self._trainers)
 
-        ps_cmd = "{0} {1} {2} --role pserver --endpoints {3} --current_id {{}} --trainers {4}".format(
-            self._python_interp, with_coverage, model, self._ps_endpoints,
-            self._trainers)
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
+            python_path, model, self._ps_endpoints, self._trainers)
 
         if self._sync_mode:
             tr_cmd += " --sync_mode"
@@ -187,6 +202,12 @@ class TestFleetBase(unittest.TestCase):
         if self.hadoop_path:
             tr_cmd += ' --hadoop_path {}'.format(self.hadoop_path)
             ps_cmd += ' --hadoop_path {}'.format(self.hadoop_path)
+
+        if self._geo_sgd:
+            tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
+                self._geo_sgd, self._geo_sgd_need_push_nums)
+            ps_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
+                self._geo_sgd, self._geo_sgd_need_push_nums)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -272,6 +293,10 @@ def runtime_main(test_class):
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--hadoop_path', type=str, required=False, default="")
+    parser.add_argument(
+        '--geo_sgd_mode', type=bool, required=False, default=False)
+    parser.add_argument(
+        '--geo_sgd_need_push_nums', type=int, required=False, default=2)
 
     args = parser.parse_args()
 
