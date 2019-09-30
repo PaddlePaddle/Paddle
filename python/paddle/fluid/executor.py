@@ -734,7 +734,8 @@ class Executor(object):
                 use_program_cache=use_program_cache)
         except Exception as e:
             if not isinstance(e, core.EOFException):
-                print("!!!A non-EOF exception is thrown.")
+                warnings.warn(
+                    "The following exception is not an EOF exception.")
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,

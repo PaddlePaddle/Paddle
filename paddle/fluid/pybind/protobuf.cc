@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/version.h"
 
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
@@ -69,9 +70,13 @@ void BindProgramDesc(pybind11::module *m) {
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
            })
-      .def("_version", [](pd::ProgramDesc &self) -> int64_t {
-        return self.Proto()->version().version();
-      });
+      .def("_set_version",
+           [](pd::ProgramDesc &self, int64_t version) {
+             return self.SetVersion(version);
+           },
+           pybind11::arg("version") = pd::kCurProgramVersion)
+      .def("_version",
+           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
 }
 
 void BindBlockDesc(pybind11::module *m) {
