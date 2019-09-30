@@ -78,7 +78,7 @@ __global__ void GPUPRROIPoolForward(
     T win_end_h = win_start_h + bin_size_h;
 
     T win_size = max(static_cast<T>(0.0), bin_size_w * bin_size_h);
-    int input_channel = (c * pooled_height + ph) * pooled_width + pw;
+    int input_channel = c;
     const T* offset_input_data =
         input_data +
         (roi_batch_id * input_channels + input_channel) * height * width;
@@ -125,7 +125,7 @@ __global__ void GPUPRROIPoolBackward(
 
     // set roi_batch_id
     int roi_batch_id = rois_batch_id_data[n];
-    int input_channel = (c * pooled_height + ph) * pooled_width + pw;
+    int input_channel = c;
     int input_offset =
         (roi_batch_id * input_channels + input_channel) * height * width;
     T* offset_input_grad_data = input_grad_data + input_offset;
@@ -192,11 +192,6 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int input_channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];
-
-    PADDLE_ENFORCE_EQ(input_channels,
-                      output_channels * pooled_height * pooled_width,
-                      "the channels of input X should equal the product of "
-                      "output_channels x pooled_height x pooled_width");
 
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;

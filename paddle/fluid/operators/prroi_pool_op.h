@@ -134,11 +134,11 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
-    auto output_channels = ctx.Attr<int>("output_channels");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
     int input_channels = in_dims[1];
+    auto output_channels = input_channels;
     int height = in_dims[2];
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
@@ -161,11 +161,6 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
                       "the rois_num from input and lod must be the same");
-
-    PADDLE_ENFORCE_EQ(input_channels,
-                      output_channels * pooled_height * pooled_width,
-                      "the channels of input X should equal the product of "
-                      "output_channels x pooled_height x pooled_width");
 
     // calculate batch id index for each roi according to LoD
     for (int n = 0; n < rois_batch_size; ++n) {
@@ -217,7 +212,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
             int e_h = std::ceil(win_end_h);
 
             int output_index = out_row_offset + pw;
-            int input_channel = (c * pooled_height + ph) * pooled_width + pw;
+            int input_channel = c;
             int input_plane_offset =
                 roi_batch_id * in_stride[0] + input_channel * in_stride[1];
             const T* offset_input_data = input_data + input_plane_offset;
@@ -262,12 +257,12 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
-    auto output_channels = ctx.Attr<int>("output_channels");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
     if (input_grad) {
       auto in_dims = in->dims();
       int input_channels = in_dims[1];
+      auto output_channels = input_channels;
       int height = in_dims[2];
       int width = in_dims[3];
       int rois_num = rois->dims()[0];
@@ -306,7 +301,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
         // set roi_batch_id
         int roi_batch_id = rois_batch_id_data[n];
-        int input_channel = (c * pooled_height + ph) * pooled_width + pw;
+        int input_channel = c;
         int input_offset =
             (roi_batch_id * input_channels + input_channel) * height * width;
         T* offset_input_grad_data = input_grad_data + input_offset;
