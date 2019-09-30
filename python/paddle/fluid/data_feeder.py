@@ -29,12 +29,16 @@ __all__ = ['DataFeeder']
 def convert_dtype(dtype):
     if isinstance(dtype, str):
         if dtype in [
-                'float32', 'int64', 'float64', 'float16', 'int32', 'uint8'
+                'float32', 'int64', 'float64', 'float16', 'int32', 'uint8',
+                'bool'
         ]:
             return dtype
         else:
-            raise ValueError("dtype must be any of [int32, float32, int64, "
-                             "float64, uint8]")
+            raise ValueError(
+                "dtype must be any of [bool, int32, float32, int64, "
+                "float64, uint8]")
+    elif dtype == core.VarDesc.VarType.BOOL:
+        return 'bool'
     elif dtype == core.VarDesc.VarType.FP32:
         return 'float32'
     elif dtype == core.VarDesc.VarType.INT64:
@@ -48,7 +52,7 @@ def convert_dtype(dtype):
     elif dtype == core.VarDesc.VarType.UINT8:
         return 'uint8'
     else:
-        raise ValueError("dtype must be any of [int32, float32, int64, "
+        raise ValueError("dtype must be any of [bool,int32, float32, int64, "
                          "float64, uint8]")
 
 

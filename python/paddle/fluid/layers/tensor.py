@@ -398,10 +398,11 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
 
     helper = LayerHelper("fill_constant", **locals())
-    if convert_dtype(
-            dtype) not in ['float16', 'float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(dtype) not in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
         raise TypeError(
-            "The create data type in fill_constant must be one of float16, float32,"
+            "The create data type in fill_constant must be one of 'bool', float16, float32,"
             "float64, int32 or int64, but received %s." % convert_dtype(
                 (dtype)))
     if out is None:

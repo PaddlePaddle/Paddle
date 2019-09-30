@@ -109,7 +109,7 @@ class TestFillConstantOpWithSelectedRows(OpTest):
 class TestFillConstantOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The input dtype of fill_constant must be one of float16, 
+            # The input dtype of fill_constant must be one of bool, float16, 
             #float32, float64, int32 or int64
             x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
             self.assertRaises(
