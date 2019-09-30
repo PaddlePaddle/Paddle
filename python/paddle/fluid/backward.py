@@ -131,10 +131,8 @@ class ProgramStats(object):
                 # input nodes
                 sorted_checkpoints.append((name, -1))
             else:
-                assert (len(self.var_op_deps[name]["var_as_output_ops"]) == 1
-                        ), "%s is output of multi ops, should not happen" % name
                 sorted_checkpoints.append(
-                    (name, self.var_op_deps[name]["var_as_output_ops"][0]))
+                    (name, max(self.var_op_deps[name]["var_as_output_ops"])))
         sorted_checkpoints = sorted(sorted_checkpoints, key=lambda x: x[1])
         return [x[0] for x in sorted_checkpoints]
 
@@ -607,6 +605,7 @@ def _append_backward_ops_with_checkpoints_(
     """
 
     checkpoints_name = [x.name for x in checkpoints]
+    checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
     buffer_block = block.program._create_block()
 
@@ -640,7 +639,6 @@ def _append_backward_ops_with_checkpoints_(
                 segments.append([min_idx, max_idx + 1])
             start_idx += 1
 
-    checkpoints_name = list(set(checkpoints_name))
     if segments != [] and segments[0][0] != 0:
         recompute_segments = [[0, segments[0][0]]] + segments
     else:
