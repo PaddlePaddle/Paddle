@@ -406,9 +406,9 @@ class GeoSgdCommunicator : public Communicator {
     while (!finish) {
       int running_thread = sparse_thread_running_.size();
       for (auto iter : sparse_thread_running_) {
-        finish_thread -= iter.second;
+        running_thread -= iter.second;
       }
-      if (running_thread = 0) {
+      if (running_thread == 0) {
         finish = true;
       }
     }

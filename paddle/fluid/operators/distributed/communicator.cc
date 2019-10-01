@@ -507,7 +507,7 @@ void GeoSgdCommunicator::Stop() {
       VLOG(1) << "stop send thread";
       send_thread_->join();
       send_thread_.reset(nullptr);
-      for (auto sparse_thread : sparse_send_thread_;) {
+      for (auto &sparse_thread : sparse_send_thread_) {
         sparse_thread->join();
         sparse_thread.reset(nullptr);
       }
