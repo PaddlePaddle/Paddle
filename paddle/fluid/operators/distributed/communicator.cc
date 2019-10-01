@@ -556,7 +556,6 @@ void GeoSgdCommunicator::SendThread() {
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
-    auto before_run_send_graph = GetCurrentUS();
 
     size_t wait_times = 0;
     while (ids_send_vec_.size() < geo_need_push_nums_) {
@@ -808,11 +807,9 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   // step2: update dense var
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
-  float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
 
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
-  float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
   auto *var_y_sub = old_scope_->Var(origin_var_name);
   framework::CopyVariable(*var_y, var_y_sub);

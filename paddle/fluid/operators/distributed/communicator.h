@@ -385,8 +385,8 @@ class GeoSgdCommunicator : public Communicator {
     return param_name;
   }
 
-  const size_t GetSplitedVarIndex(const std::string var_name,
-                                  const std::string splited_var_name) {
+  size_t GetSplitedVarIndex(const std::string var_name,
+                            const std::string splited_var_name) {
     size_t index = 0;
     for (size_t i = 0;
          i < send_varname_to_ctx_[var_name].splited_var_names.size(); i++) {
@@ -396,8 +396,7 @@ class GeoSgdCommunicator : public Communicator {
         break;
       }
     }
-    const size_t splited_var_index = index;
-    return splited_var_index;
+    return index;
   }
 
  private:
