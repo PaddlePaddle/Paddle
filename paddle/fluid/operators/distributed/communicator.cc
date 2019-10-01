@@ -456,7 +456,7 @@ HalfAsyncCommunicator::~HalfAsyncCommunicator() {
 }
 
 void HalfAsyncCommunicator::ConsumeThread() {
-  VLOG(3) << "SendThread start!";
+  VLOG(3) << "ConsumeThread start!";
   while (running_) {
     while (true) {
       if (barrier_counter_.load() >= barrier_trigger_.load()) {
@@ -612,8 +612,8 @@ void HalfAsyncCommunicator::Start() {
     running_ = true;
 
     BarrierTriggerReset(FLAGS_communicator_min_send_grad_num_before_recv);
-    send_thread_.reset(
-        new std::thread(std::bind(&HalfAsyncCommunicator::SendThread, this)));
+    consume_thread_.reset(new std::thread(
+        std::bind(&HalfAsyncCommunicator::ConsumeThread, this)));
   }
 }
 
@@ -623,10 +623,10 @@ void HalfAsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    if (send_thread_) {
+    if (consume_thread_) {
       VLOG(4) << "stop send thread";
-      send_thread_->join();
-      send_thread_.reset(nullptr);
+      consume_thread_->join();
+      consume_thread_.reset(nullptr);
     }
   }
   VLOG(0) << "Communicator stop done";
