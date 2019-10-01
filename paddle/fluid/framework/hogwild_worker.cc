@@ -193,7 +193,7 @@ void HogwildWorker::TrainFiles() {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (is_distributed_) {
-    distributed::Communicator::GetInstance()->BarrierCounterDecrement();
+    distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
   }
 #endif
 }
