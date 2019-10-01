@@ -245,7 +245,6 @@ class AsyncCommunicator : public Communicator {
   void Recv() override;
 
   void Barrier() override;
-  void BarrierWait();
   void BarrierWeakUp();
 
   void BarrierTriggerDecrement() override;
