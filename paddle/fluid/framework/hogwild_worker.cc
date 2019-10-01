@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
@@ -29,6 +30,7 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   use_cvm_ = desc.use_cvm();
+  is_distributed_ = desc.is_distributed();
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -158,6 +160,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (is_distributed_) {
+    distributed::Communicator::GetInstance()->BarrierCounterDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::TrainFiles() {
@@ -183,6 +190,12 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (is_distributed_) {
+    distributed::Communicator::GetInstance()->BarrierCounterDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::PrintFetchVars() {

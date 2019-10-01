@@ -172,6 +172,7 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
   // Scope* thread_scope_;
+  bool is_distributed_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;

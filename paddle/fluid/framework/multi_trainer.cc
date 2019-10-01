@@ -38,6 +38,13 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = readers.size();
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (trainer_desc.is_distributed()) {
+    distributed::Communicator::GetInstance()->BarrierCounterDecrement();
+  }
+#endif
+
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
