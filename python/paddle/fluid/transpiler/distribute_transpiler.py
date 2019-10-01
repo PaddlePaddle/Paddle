@@ -708,16 +708,29 @@ class DistributeTranspiler(object):
                     name=framework.generate_control_dev_var_name())
         input_deps = list(self.grad_name_to_send_dummy_out.values())
 
-        program.global_block().append_op(
-            type="send_barrier",
-            inputs={"X": list(input_deps)},
-            outputs={"Out": send_barrier_out},
-            attrs={
-                "endpoints": pserver_endpoints,
-                "trainer_id": self.trainer_id,
-                "is_communicator": not self.sync_mode,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        if self.sync_mode:
+            program.global_block().append_op(
+                type="send_barrier",
+                inputs={"X": list(input_deps)},
+                outputs={"Out": send_barrier_out},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
+                    "is_communicator": False,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+        if not self.sync_mode and self.config.runtime_split_send_recv:
+            program.global_block().append_op(
+                type="send_barrier",
+                inputs={"X": list(input_deps)},
+                outputs={"Out": send_barrier_out},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
+                    "is_communicator": True,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
