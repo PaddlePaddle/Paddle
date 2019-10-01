@@ -65,7 +65,6 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "COMPLETE_MESSAGE");
       }
       HeartBeatMonitor::GetInstance()->Update(trainer_id, varname, RUNNING);
-      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
 
       std::string run_varname = varname;
 
@@ -86,6 +85,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                                               grad_slr.rows());
       }
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
+                                    scope);
 
       return true;
     } else {  // sync
