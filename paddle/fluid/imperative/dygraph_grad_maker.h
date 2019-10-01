@@ -127,10 +127,9 @@ class GradOpBaseMakerBase {
           grad_var_base_tmp->SetIsGradFromGradMaker(true);
           auto* tensor = grad_var_base_tmp->MutableVar()
                              ->GetMutable<framework::LoDTensor>();
-          tensor
-              ->Resize(var_base_temp->Var()
-                           ->GetMutable<framework::LoDTensor>()
-                           .dims()) vec_temp.emplace_back(grad_var_base_tmp);
+          tensor->Resize(
+              var_base_temp->Var().Get<framework::LoDTensor>().dims());
+          vec_temp.emplace_back(grad_var_base_tmp);
         } else {
           vec_temp.emplace_back(var_base_temp);
         }

@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
 struct SameDimsElemwiseAdd<
     platform::CPUDeviceContext, T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
@@ -100,8 +101,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
     ops::ElementwiseGradOpInplace, ops::ElementwiseGradNoBufVarsInference,
-    ops::ElementwiseAddDoubleGradDescMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseAddDoubleGradDescMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_add_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,

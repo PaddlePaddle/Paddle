@@ -184,11 +184,8 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
         const OpDesc& fwd_op,
         const std::unordered_set<std::string>& no_grad_set,
         std::unordered_map<std::string, std::string>* grad_to_var,
-        const std::vector<BlockDesc*>& grad_block,
-        const imperative::NameVarBaseMap* var_base_in = NULL,
-        const imperative::NameVarBaseMap* var_base_out = NULL) {
-      T maker(fwd_op, no_grad_set, grad_to_var, grad_block, var_base_in,
-              var_base_out);
+        const std::vector<BlockDesc*>& grad_block) {
+      T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
       return maker();
     };
 

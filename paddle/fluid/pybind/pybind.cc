@@ -758,7 +758,7 @@ All parameter, weight, gradient are variables in Paddle.
             framework::OpInfoMap::Instance()
                 .Get(op_desc.Type())
                 .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
-                               grad_sub_block, nullptr, nullptr);
+                               grad_sub_block);
         std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
         std::transform(grad_op_descs.begin(), grad_op_descs.end(),
                        grad_op_desc_ptrs.begin(),

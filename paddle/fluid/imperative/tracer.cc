@@ -56,9 +56,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
-                                        op->OutputNameMap(), op->Attrs()),
-                  ins, outs);
+    TraceBackward(op, ins, outs);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

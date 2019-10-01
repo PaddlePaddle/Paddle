@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
 struct SameDimsElemwiseMul<
     platform::CPUDeviceContext, T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {

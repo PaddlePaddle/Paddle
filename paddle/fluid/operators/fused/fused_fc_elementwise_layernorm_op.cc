@@ -179,7 +179,8 @@ add_out <= elementwise_add(fc_out, Y)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_fc_elementwise_layernorm,
-                  ops::FusedFCElementwiseLayerNormOp,
-                  ops::FusedFCElementwiseLayerNormOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fused_fc_elementwise_layernorm, ops::FusedFCElementwiseLayerNormOp,
+    ops::FusedFCElementwiseLayerNormOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
