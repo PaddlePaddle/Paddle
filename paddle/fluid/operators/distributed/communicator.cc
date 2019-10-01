@@ -732,7 +732,10 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
   var_z_select_rows->set_rows(new_rows);
-  var_z_select_rows->set_height(new_rows.size());
+
+  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  var_z_select_rows->set_height(
+      send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
 
   // using multi thread speed sparse delta calc
   std::vector<int> buts =
@@ -773,7 +776,6 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   VLOG(3) << "run send update sparse var " << var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto trainer_id = send_varname_to_ctx_[var_name].trainer_id;
   auto endpoint = send_varname_to_ctx_[var_name].epmap[splited_var_index];
 
