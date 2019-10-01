@@ -597,7 +597,7 @@ void GeoSgdCommunicator::SendThread() {
               SendUpdateSparseVars(var_name, splited_var_name, ids_set);
               RecvUpdateSparseVars(var_name, splited_var_name);
               auto after_run_geo = GetCurrentUS();
-              VLOG(1) << "run GEO-SGD var " << var_name << " use time "
+              VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
                       << after_run_geo - before_run_geo;
             };
             task_futures.emplace_back(
