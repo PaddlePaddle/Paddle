@@ -199,11 +199,6 @@ class Communicator {
 
   static Communicator* GetInstance() { return communicator_.get(); }
 
-  template <typename T>
-  static T* GetInstance() {
-    return static_cast<T*>(communicator_.get());
-  }
-
   static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
   }
