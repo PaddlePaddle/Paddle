@@ -451,7 +451,7 @@ void GeoSgdCommunicator::InitImpl(
 
     // record sparse section
     if (is_sparse) {
-      absolute_section_[send_var_name] = operators::ToAbsoluteSection(
+      absolute_section_[var_name] = operators::ToAbsoluteSection(
           send_varname_to_ctx_[send_var_name].height_sections);
     }
   }
