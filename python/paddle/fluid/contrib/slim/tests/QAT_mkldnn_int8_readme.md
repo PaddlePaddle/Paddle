@@ -6,11 +6,11 @@ This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle
 You need to install at least PaddlePaddle-1.5 python package `pip install paddlepaddle==1.5`.
 
 ## 1. How to generate INT8 MKL-DNN QAT model
-You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `TransformForMkldnnPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.5, this pass only supports `conv2d` and `depthwise_conv2d` with channel-wise quantization for weights.
+You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `FakeQAT2MkldnnINT8KernelPass` to get the graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.5, this pass only supports `conv2d` and `depthwise_conv2d` with channel-wise quantization for weights.
 
 ```python
     import paddle.fluid as fluid
-    from paddle.fluid.contrib.slim.quantization import TransformForMkldnnPass
+    from paddle.fluid.contrib.slim.quantization import FakeQAT2MkldnnINT8KernelPass
     from paddle.fluid.framework import IrGraph
     from paddle.fluid import core	
     
@@ -18,9 +18,9 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
     graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
     place = fluid.CPUPlace()
     # Convert the IrGraph to MKL-DNN supported INT8 IrGraph by using
-    # TransformForMkldnnPass
-    mkldnn_pass = TransformForMkldnnPass(fluid.global_scope(), place)
-    # Apply TransformForMkldnnPass to IrGraph
+    # FakeQAT2MkldnnINT8KernelPass
+    mkldnn_pass = FakeQAT2MkldnnINT8KernelPass(fluid.global_scope(), place)
+    # Apply FakeQAT2MkldnnINT8KernelPass to IrGraph
     mkldnn_pass.apply(graph)
 ```
 

@@ -45,21 +45,12 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def _dygraph_not_support_(func):
-    def __impl__(*args, **kwargs):
-        assert not framework.in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
-        return func(*args, **kwargs)
-
-    return __impl__
-
-
 def _no_grad_(func):
     """
     This Decorator will avoid the func being decorated creating backward network in dygraph mode
 
-    Args:
-        func: the func don't need grad
+    Parameter:
+        - **func** (python func): the func don't need grad
 
     Examples:
 
@@ -92,7 +83,6 @@ def _no_grad_(func):
 no_grad = wrap_decorator(_no_grad_)
 # for fluidDoc
 no_grad.__doc__ = _no_grad_.__doc__
-_not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
@@ -157,6 +147,7 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
+@framework.dygraph_only
 def to_variable(value, block=None, name=None):
     """
     This function will create a variable from ndarray
@@ -196,6 +187,8 @@ def to_variable(value, block=None, name=None):
             stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
+        if value.dtype == np.float16:
+            value = value.view(np.uint16)
         tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):

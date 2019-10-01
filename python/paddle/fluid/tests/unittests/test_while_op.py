@@ -96,6 +96,16 @@ class TestWhileOp(unittest.TestCase):
                        fetch_list=[sum_result])
         self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
+    def test_exceptions(self):
+        i = layers.zeros(shape=[2], dtype='int64')
+        array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
+        cond = layers.less_than(x=i, y=array_len)
+        with self.assertRaises(TypeError):
+            layers.While(cond=cond)
+        cond = layers.cast(cond, dtype='float64')
+        with self.assertRaises(TypeError):
+            layers.While(cond=cond)
+
 
 if __name__ == '__main__':
     unittest.main()
