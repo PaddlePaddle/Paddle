@@ -346,7 +346,7 @@ class HalfAsyncCommunicator : public Communicator {
       send_varname_to_queue_;
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> send_thread_{nullptr};
+  std::unique_ptr<std::thread> consume_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
