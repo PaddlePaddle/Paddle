@@ -42,7 +42,6 @@ class TrainerDesc(object):
         self._fleet_desc = None
         self._device_worker = None
         self._program = None
-        self._infer = False
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
@@ -62,6 +61,9 @@ class TrainerDesc(object):
 
     def _set_infer(self, infer):
         self._infer = infer
+
+    def _set_is_distributed(self, is_distributed):
+        self.proto_desc.is_distributed = is_distributed
 
     def _set_fleet_desc(self, fleet_desc):
         self._fleet_desc = fleet_desc

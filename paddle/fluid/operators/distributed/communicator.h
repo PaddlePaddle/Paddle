@@ -173,6 +173,8 @@ class Communicator {
   virtual void Recv() = 0;
 
   virtual void Barrier() = 0;
+  virtual void BarrierCounterDecrement() = 0;
+  virtual void BarrierCounterReset(int init_counter) = 0;
 
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
@@ -243,10 +245,12 @@ class AsyncCommunicator : public Communicator {
   void Recv() override;
 
   void Barrier() override;
-
-  void BarrierIncrement();
   void BarrierWait();
   void BarrierWeakUp();
+
+  void BarrierCounterIncrement();
+  void BarrierCounterDecrement();
+  void BarrierCounterReset(int initial_val);
 
   void RecvAll();
 
