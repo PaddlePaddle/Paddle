@@ -20,15 +20,17 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 from . import core
 from .framework import Program
 
-__all__ = ['Communicator']
+__all__ = ['Communicator', 'AsyncMode']
+
+
+class AsyncMode:
+    ASYNC = 1
+    HALF_ASYNC = 2
+    GEO_SGD = 3
 
 
 class Communicator(object):
-    def __init__(self,
-                 program,
-                 vars_info=None,
-                 trainers=None,
-                 geo_sgd_need_push_nums=None):
+    def __init__(self, program, mode, **kwargs):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -55,15 +57,27 @@ class Communicator(object):
         for op in program.block(0).ops:
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
-        # Todo: Add check
-        if vars_info and trainers and geo_sgd_need_push_nums:
-            # for geo sgd
-            self.communicator_ = core.DistCommunicator(
-                program.desc,
-                global_scope(), vars_info, trainers, geo_sgd_need_push_nums)
-        else:
+
+        if mode == AsyncMode.ASYNC:
             self.communicator_ = core.DistCommunicator(program.desc,
-                                                       global_scope())
+                                                       global_scope(), False)
+        elif mode == AsyncMode.HALF_ASYNC:
+            self.communicator_ = core.DistCommunicator(program.desc,
+                                                       global_scope(), True)
+        elif mode == AsyncMode.GEO_SGD:
+            push_vars = kwargs["push_vars"]
+            trainers = int(kwargs["trainers"])
+            push_nums = int(kwargs["push_nums"])
+
+            if trainers <= 0:
+                raise ValueError("trainers must gather than 0")
+            if push_nums <= 0:
+                raise ValueError("geo push delta must gather than 0")
+
+            self.communicator_ = core.DistCommunicator(
+                program.desc, global_scope(), push_vars, trainers, push_nums)
+        else:
+            raise ValueError("unknown MODE for communicator")
 
     def start(self):
         """

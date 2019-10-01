@@ -27,10 +27,11 @@ limitations under the License. */
 namespace py = pybind11;
 
 using paddle::framework::ProgramDesc;
-using paddle::operators::distributed::Communicator;
-using paddle::operators::distributed::AsyncCommunicator;
-using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::framework::Scope;
+using paddle::operators::distributed::AsyncCommunicator;
+using paddle::operators::distributed::Communicator;
+using paddle::operators::distributed::GeoSgdCommunicator;
+using paddle::operators::distributed::HalfAsyncCommunicator;
 
 namespace paddle {
 namespace pybind {
@@ -39,9 +40,17 @@ void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
-        VLOG(0) << "using communicator";
-        Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+      .def(py::init([](const ProgramDesc& program, Scope* param_scope,
+                       bool half_async) {
+        if (half_async) {
+          VLOG(0) << "using half-communicator";
+          Communicator::InitInstance<HalfAsyncCommunicator>(program,
+                                                            param_scope);
+        } else {
+          VLOG(0) << "using communicator";
+          Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+        }
+
         return Communicator::GetInstantcePtr();
       }))
       .def(py::init([](
