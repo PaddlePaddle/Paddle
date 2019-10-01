@@ -39,7 +39,7 @@ message TrainerDesc {
   optional string dump_fields_path = 12;
   repeated string dump_fields = 13;
   optional string dump_converter = 14;
-  optional string is_distributed = 15;
+  optional bool is_distributed = 15;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
