@@ -312,17 +312,24 @@ void AsyncCommunicator::RecvAll() {
 }
 
 void AsyncCommunicator::Barrier() {
-  { barrier_counter_++; }
+  barrier_counter_++;
   {
     std::unique_lock<std::mutex> lk(barrier_mutex_);
     barrier_cond_.wait(lk, [this] { return (barrier_counter_ == 0); });
   }
 }
 
-void AsyncCommunicator::BarrierTriggerDecrement() { barrier_trigger_--; }
+void AsyncCommunicator::BarrierTriggerDecrement() {
+  barrier_trigger_--;
+  VLOG(1) << "BarrierTriggerDecrement decrement barrier trigger to "
+          << barrier_trigger_.load();
+}
 
 void AsyncCommunicator::BarrierTriggerReset(int initial_val) {
   barrier_trigger_.store(initial_val);
+
+  VLOG(1) << "BarrierTriggerReset reset barrier trigger to "
+          << barrier_trigger_.load();
 }
 
 void AsyncCommunicator::BarrierWeakUp() {
