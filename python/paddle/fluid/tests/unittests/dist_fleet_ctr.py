@@ -131,7 +131,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(128)
+        dataset.set_batch_size(32)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)
