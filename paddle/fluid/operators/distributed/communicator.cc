@@ -162,9 +162,7 @@ void AsyncCommunicator::SendThread() {
   VLOG(3) << "SendThread start!";
   while (running_) {
     while (true) {
-      auto barrier_counter = barrier_counter_.load();
-
-      if (barrier_counter >= FLAGS_communicator_max_merge_var_num) {
+      if (barrier_counter_.load() >= barrier_trigger_.load()) {
         break;
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -314,11 +312,15 @@ void AsyncCommunicator::RecvAll() {
 }
 
 void AsyncCommunicator::Barrier() {
-  BarrierIncrement();
+  { barrier_counter_++; }
   BarrierWait();
 }
 
-void AsyncCommunicator::BarrierIncrement() { barrier_counter_++; }
+void AsyncCommunicator::BarrierTriggerDecrement() { barrier_trigger_--; }
+
+void AsyncCommunicator::BarrierTriggerReset(int initial_val) {
+  barrier_trigger_.store(initial_val);
+}
 
 void AsyncCommunicator::BarrierWait() {
   std::unique_lock<std::mutex> lk(barrier_mutex_);
@@ -337,6 +339,9 @@ void AsyncCommunicator::Start() {
   } else {
     VLOG(1) << "start send thread and recv thread";
     running_ = true;
+
+    BarrierTriggerReset(FLAGS_communicator_min_send_grad_num_before_recv);
+
     // start send and recv thread
     send_thread_.reset(
         new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
