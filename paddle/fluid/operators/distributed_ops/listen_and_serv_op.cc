@@ -30,8 +30,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_int32(rpc_send_thread_num, 12, "number of threads for rpc send");
-DEFINE_int32(rpc_get_thread_num, 12, "number of threads for rpc get");
+DEFINE_int32(rpc_send_thread_num, 18, "number of threads for rpc send");
+DEFINE_int32(rpc_get_thread_num, 18, "number of threads for rpc get");
 DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
 
 namespace paddle {

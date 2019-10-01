@@ -80,6 +80,7 @@ inline std::vector<int> bucket(const int v_size, const int b_size) {
 }
 
 std::once_flag Communicator::init_flag_;
+
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
@@ -115,15 +116,10 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
               FLAGS_communicator_send_queue_size);
     }
-    send_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
 
   if (recv_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be received, will not start recv_thread";
-  } else {
-    recv_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
 }
 
@@ -187,16 +183,13 @@ AsyncCommunicator::~AsyncCommunicator() {
 
 void AsyncCommunicator::SendThread() {
   VLOG(3) << "SendThread start!";
-  while (running_) {
-    std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(3) << "run send graph";
-    auto before_run_send_graph = GetCurrentUS();
-    for (auto &iter : send_varname_to_queue_) {
-      auto &var_name = iter.first;
-      auto &var_queue = iter.second;
-      if (var_queue->Size() > 0) {
-        auto send_task = [this, &var_name, &var_queue] {
+  std::vector<std::thread> send_threads;
+  for (auto &iter : send_varname_to_queue_) {
+    auto &var_name = iter.first;
+    auto &var_queue = iter.second;
+    send_threads.emplace_back(std::thread([this, &var_name, &var_queue](){
+      while(running_) {
+        if(var_queue->Size() > 0) {
           VLOG(3) << var_name << " merge and send";
           std::vector<std::shared_ptr<Variable>> vars;
           size_t merged_var_num = 0;
@@ -212,9 +205,7 @@ void AsyncCommunicator::SendThread() {
               continue;
             } else {
               wait_times = 0;
-
               vars.push_back(var_queue->Pop());
-              // only count the send number of the first var
               if (var_name == send_varname_to_queue_.begin()->first) {
                 grad_num_.fetch_add(1, std::memory_order_relaxed);
               }
@@ -234,38 +225,56 @@ void AsyncCommunicator::SendThread() {
           auto after_send = GetCurrentUS();
           VLOG(3) << "send " << var_name << " use time "
                   << after_send - after_merge;
-        };
-        task_futures.emplace_back(
-            send_threadpool_->enqueue(std::move(send_task)));
-      } else {
-        VLOG(4) << var_name << " queue empty";
+        }
       }
-    }
-    for (auto &task_f : task_futures) {
-      task_f.wait();
-    }
-    auto after_run_send_graph = GetCurrentUS();
-
-    VLOG(3) << "run send graph use time "
-            << after_run_send_graph - before_run_send_graph;
-    Recv();
+    }));
+  }
+  for(auto &send_thread : send_threads) {
+    send_thread.join();
   }
   VLOG(0) << "communicator stopped, send thread exit";
 }
 
 void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
-  while (running_) {
-    auto grad_num = grad_num_.load();
-    if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
-      VLOG(1) << "current grad num " << grad_num;
-      RecvAll();
-      grad_num_.store(0);
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-  }
+  RecvAll();
   VLOG(0) << "communicator stopped, recv thread exit";
+}
+
+void AsyncCommunicator::RecvAll() {
+  VLOG(3) << "parallel run recv graph";
+  if (!running_) return;
+  auto before_send = GetCurrentUS();
+  std::vector<std::thread> recv_threads;
+  for (auto &iter : recv_varname_to_ctx_) {
+    recv_threads.emplace_back(std::thread([this, &iter]() {
+      while(running_) {
+        auto grad_num = grad_num_.load();
+        if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
+          auto &var_name = iter.first;
+          VLOG(1) << "current grad num " << grad_num;
+          VLOG(4) << "recv var " << var_name;
+          auto before_recv = GetCurrentUS();
+          auto recv_functor = distributed::ParameterRecv<float>();
+          if (!FLAGS_communicator_fake_rpc) {
+            recv_functor(iter.second, *recv_scope_);
+          }
+          auto after_recv = GetCurrentUS();
+          VLOG(3) << "recv var " << var_name << " use time " << after_recv - before_recv;
+          if (var_name == recv_varname_to_ctx_.begin()->first) {
+            grad_num_.store(0);
+          }
+        } else {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+      }
+    })); 
+  }
+  for (auto &recv_thread : recv_threads) {
+    recv_thread.join();
+  }
+  auto after_recv = GetCurrentUS();
+  VLOG(1) << "run recv graph use time " << after_recv - before_send;
 }
 
 void AsyncCommunicator::Send(const std::string &var_name,
@@ -302,30 +311,6 @@ void AsyncCommunicator::Recv() {
   } else {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-}
-
-void AsyncCommunicator::RecvAll() {
-  VLOG(3) << "parallel run recv graph";
-  if (!running_) return;
-  auto before_send = GetCurrentUS();
-  std::vector<std::future<void>> task_futures;
-  task_futures.reserve(recv_varname_to_ctx_.size());
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto recv_task = [this, &iter] {
-      auto &var_name = iter.first;
-      VLOG(4) << "recv var " << var_name;
-      auto recv_functor = distributed::ParameterRecv<float>();
-      if (!FLAGS_communicator_fake_rpc) {
-        recv_functor(iter.second, *recv_scope_);
-      }
-    };
-    task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
-  }
-  for (auto &task : task_futures) {
-    task.wait();
-  }
-  auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_send;
 }
 
 void AsyncCommunicator::Start() {

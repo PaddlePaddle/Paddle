@@ -141,16 +141,45 @@ inline void MergeVars(const std::string& var_name,
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
     out_slr->mutable_rows()->clear();
-    out_slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
     std::vector<const paddle::framework::SelectedRows*> inputs;
     inputs.reserve(vars.size());
     for (auto& var : vars) {
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
-    auto dev_ctx = paddle::platform::CPUDeviceContext();
-    math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
-        merge_average;
-    merge_average(dev_ctx, inputs, out_slr);
+    auto input_width = slr0.value().dims()[1];
+    auto input_height = slr0.height();
+    size_t row_num = 0;
+    for(auto* input : inputs) {
+        row_num += input->rows().size();
+    }
+    out_slr->set_height(input_height);
+    out_slr->mutable_value()->mutable_data<float>(
+        framework::make_ddim(
+            {static_cast<int64_t>(row_num), input_width}), 
+        cpu_place);
+
+    std::vector<int64_t> merge_rows;
+    merge_rows.reserve(row_num);
+    // concat rows
+    for (auto* in : inputs) {
+      merge_rows.insert(merge_rows.end(), in->rows().begin(),
+                        in->rows().end());
+    }
+    out_slr->set_rows(merge_rows);
+
+    auto* out_data = out_slr->mutable_value()->data<float>();
+    auto in_place = inputs[0]->place();
+    auto out_place = out_slr->place();
+    int64_t copied_numel = 0;
+    for (auto* in : inputs) {
+      auto* in_data = in->value().data<float>();
+      auto in_numel = in->value().numel();
+      memory::Copy(boost::get<platform::CPUPlace>(out_place),
+                   out_data + copied_numel,
+                   boost::get<platform::CPUPlace>(in_place), in_data,
+                   in_numel * sizeof(float));
+      copied_numel += in_numel;
+    }
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims();
   } else {
@@ -312,8 +341,6 @@ class AsyncCommunicator : public Communicator {
   std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
-  std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
-  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
 };
 
