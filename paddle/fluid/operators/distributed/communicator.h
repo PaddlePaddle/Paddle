@@ -178,9 +178,9 @@ class Communicator {
 
   virtual void Recv() = 0;
 
-  virtual void Barrier() = 0;
-  virtual void BarrierTriggerDecrement() = 0;
-  virtual void BarrierTriggerReset(int init_counter) = 0;
+  virtual void Barrier() {}
+  virtual void BarrierTriggerDecrement() {}
+  virtual void BarrierTriggerReset(int init_counter) {}
 
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
@@ -197,6 +197,11 @@ class Communicator {
       const int& trainers, const int& geo_need_push_nums) = 0;
 
   static Communicator* GetInstance() { return communicator_.get(); }
+
+  template <typename T>
+  static T* GetInstance() {
+    return static_cast<T*>(communicator_.get());
+  }
 
   static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
