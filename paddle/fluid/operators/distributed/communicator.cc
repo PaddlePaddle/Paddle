@@ -241,7 +241,7 @@ void AsyncCommunicator::RecvThread() {
   while (running_) {
     auto grad_num = grad_num_.load();
     if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
-      VLOG(1) << "current grad num " << grad_num;
+      VLOG(4) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
     } else {
@@ -308,7 +308,7 @@ void AsyncCommunicator::RecvAll() {
     task.wait();
   }
   auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_send;
+  VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
 
 void AsyncCommunicator::Barrier() {
@@ -321,14 +321,14 @@ void AsyncCommunicator::Barrier() {
 
 void AsyncCommunicator::BarrierTriggerDecrement() {
   barrier_trigger_--;
-  VLOG(1) << "BarrierTriggerDecrement decrement barrier trigger to "
+  VLOG(3) << "BarrierTriggerDecrement decrement barrier trigger to "
           << barrier_trigger_.load();
 }
 
 void AsyncCommunicator::BarrierTriggerReset(int initial_val) {
   barrier_trigger_.store(initial_val);
 
-  VLOG(1) << "BarrierTriggerReset reset barrier trigger to "
+  VLOG(3) << "BarrierTriggerReset reset barrier trigger to "
           << barrier_trigger_.load();
 }
 
@@ -364,12 +364,12 @@ void AsyncCommunicator::Stop() {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     if (send_thread_) {
-      VLOG(1) << "stop send thread";
+      VLOG(4) << "stop send thread";
       send_thread_->join();
       send_thread_.reset(nullptr);
     }
     if (recv_thread_) {
-      VLOG(1) << "stop recv thread";
+      VLOG(4) << "stop recv thread";
       recv_thread_->join();
       recv_thread_.reset(nullptr);
     }
