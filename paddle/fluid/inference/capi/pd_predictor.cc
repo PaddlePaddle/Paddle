@@ -73,7 +73,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         input_t->copy_from_cpu(static_cast<uint8_t*>(inputs[i].data));
         break;
       default:
-        PADDLE_ENFORCE(false, "Unsupport data type.");
+        CHECK(false) << "Unsupport data type.";
         break;
     }
   }
@@ -127,7 +127,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         output[i].data = static_cast<void*>(out_data.data());
       } break;
       default:
-        PADDLE_ENFORCE(false, "Unsupport data type.");
+        CHECK(false) << "Unsupport data type.";
         break;
     }
   }

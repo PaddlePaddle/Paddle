@@ -38,8 +38,6 @@ void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
 
 void PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
                  const char* params_path) {
-  PADDLE_ENFORCE(model_dir != nullptr,
-                 "Input(model_dir) of PD_SetModel should not be null.");
   LOG(INFO) << model_dir;
   LOG(INFO) << std::string(model_dir);
   if (!params_path) {
@@ -50,21 +48,14 @@ void PD_SetModel(PD_AnalysisConfig* config, const char* model_dir,
 }
 
 void PD_SetProgFile(PD_AnalysisConfig* config, const char* x) {
-  PADDLE_ENFORCE(x != nullptr,
-                 "Input(prog_file) of PD_SetProgFile should not be null.");
   config->config.SetProgFile(std::string(x));
 }
 
 void PD_SetParamsFile(PD_AnalysisConfig* config, const char* x) {
-  PADDLE_ENFORCE(x != nullptr,
-                 "Input(params_file) of PD_SetParamsFile should not be null.");
   config->config.SetParamsFile(std::string(x));
 }
 
 void PD_SetOptimCacheDir(PD_AnalysisConfig* config, const char* opt_cache_dir) {
-  PADDLE_ENFORCE(
-      opt_cache_dir != nullptr,
-      "Input(opt_cache_dir) of PD_SetOptimCacheDir should not be null.");
   config->config.SetOptimCacheDir(std::string(opt_cache_dir));
 }
 

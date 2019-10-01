@@ -60,7 +60,7 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
     case PD_UINT8:
       return PD_PaddleDType::UINT8;
     default:
-      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      CHECK(false) << "Unsupport dtype.";
       return PD_PaddleDType::FLOAT32;
   }
 }
@@ -76,7 +76,7 @@ PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
     case PD_PaddleDType::UINT8:
       return PD_DataType::PD_UINT8;
     default:
-      PADDLE_ENFORCE(false, "Unsupport dtype.");
+      CHECK(false) << "Unsupport dtype.";
       return PD_DataType::PD_UNKDTYPE;
   }
 }
@@ -90,7 +90,7 @@ PD_ACPrecision ConvertToACPrecision(Precision dtype) {
     case Precision::kHalf:
       return PD_ACPrecision::kHalf;
     default:
-      PADDLE_ENFORCE(false, "Unsupport precision.");
+      CHECK(false) << "Unsupport precision.";
       return PD_ACPrecision::kFloat32;
   }
 }
