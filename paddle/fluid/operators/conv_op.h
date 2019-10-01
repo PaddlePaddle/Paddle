@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,8 +40,8 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
                           int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
-  PADDLE_ENFORCE(
-      output_size > 0,
+  PADDLE_ENFORCE_GT(
+      output_size, 0,
       "Due to the settings of padding(%d), filter_size(%d), dilation(%d) and "
       "stride(%d), the output size is less than 0, please check "
       "again. Input_size:%d",
@@ -48,6 +49,62 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
 
   return output_size;
 }
+
+inline int ConvOutputSize(int input_size, int filter_size, int dilation,
+                          int padding_1, int padding_2, int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + padding_1 + padding_2 - dkernel) / stride + 1;
+  PADDLE_ENFORCE_GT(output_size, 0,
+                    "Due to the settings of padding(%d, %d), filter_size(%d), "
+                    "dilation(%d) and "
+                    "stride(%d), the output size is less than 0, please check "
+                    "again. Input_size:%d",
+                    padding_1, padding_2, filter_size, dilation, stride,
+                    input_size);
+
+  return output_size;
+}
+inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
+                                     std::vector<int>* dilation,
+                                     const std::string padding_algorithm,
+                                     const framework::DDim data_dims,
+                                     const std::vector<int>& strides,
+                                     const std::vector<int>& ksize) {
+  // set padding size == data_dims.size() * 2
+  auto data_shape = framework::vectorize<int>(data_dims);
+  if (paddings->size() == data_dims.size()) {
+    for (size_t i = 0; i < data_dims.size(); ++i) {
+      int copy_pad = *(paddings->begin() + 2 * i);
+      paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(
+        data_dims.size() * 2, paddings->size(),
+        "Paddings size should be the same or twice as the input data size.");
+  }
+
+  // when padding_desc is "VALID" or "SAME"
+  if (padding_algorithm == "SAME") {
+    for (size_t i = 0; i < data_dims.size(); ++i) {
+      int out_size = (data_dims[i] + strides[i] - 1) / strides[0];
+      int pad_sum =
+          std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
+      int pad_0 = pad_sum / 2;
+      int pad_1 = pad_sum - pad_0;
+      *(paddings->begin() + i * 2) = pad_0;
+      *(paddings->begin() + i * 2 + 1) = pad_1;
+
+      // dilation
+      *(dilation->begin() + i) = 1;
+    }
+
+  } else if (padding_algorithm == "VALID") {
+    for (auto it = paddings->begin(); it != paddings->end(); it++) {
+      *it = 0;
+    }
+  }
+}
+
 inline bool IsExpand(const std::vector<int64_t>& filter_dim,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings,
@@ -59,9 +116,80 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
     padding_0 = padding_0 && (paddings[j] == 0);
     dilation_1 = dilation_1 && (dilations[j] == 1);
   }
+  if (paddings.size() != strides.size()) {
+    for (size_t j = 0; j < paddings.size(); ++j) {
+      padding_0 = padding_0 && (paddings[j] == 0);
+    }
+  }
   return !(filter_1 && strides_1 && padding_0 && dilation_1);
 }
 
+template <typename DeviceContext, typename T>
+inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
+                                 const Tensor* input,
+                                 Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[4];
+    in_dims_vec[2] = input->dims()[1];
+    in_dims_vec[3] = input->dims()[2];
+    in_dims_vec[4] = input->dims()[3];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+
+  } else if (dim == 2) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[3];
+    in_dims_vec[2] = input->dims()[1];
+    in_dims_vec[3] = input->dims()[2];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+  }
+}
+
+template <typename DeviceContext, typename T>
+inline void TransToChannelFirst(const framework::ExecutionContext& context,
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    std::vector<int> axis{0, 4, 1, 2, 3};
+    math::Transpose<DeviceContext, T, 5> trans5;
+    trans5(dev_ctx, *input, transformed_input, axis);
+
+  } else if (dim == 2) {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    std::vector<int> axis{0, 3, 1, 2};
+    math::Transpose<DeviceContext, T, 4> trans4;
+    trans4(dev_ctx, *input, transformed_input, axis);
+  }
+}
+
+template <typename DeviceContext, typename T>
+inline void TransToChannelLast(const framework::ExecutionContext& context,
+                               const Tensor* input, Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    std::vector<int> axis{0, 2, 3, 4, 1};
+    math::Transpose<DeviceContext, T, 5> trans5;
+    trans5(dev_ctx, *input, transformed_input, axis);
+
+  } else if (dim == 2) {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    std::vector<int> axis{0, 2, 3, 1};
+    math::Transpose<DeviceContext, T, 4> trans4;
+    trans4(dev_ctx, *input, transformed_input, axis);
+  }
+}
 // Define Op classes in .h file so that other conv
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -131,39 +259,82 @@ class GemmConvKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
-    int groups = context.Attr<int>("groups");
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    const int groups = context.Attr<int>("groups");
+    const std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+    const std::string data_format = context.Attr<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    Tensor transformed_input(input->type());
+    Tensor transformed_output(output->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                             &transformed_input);
+      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+
+      ResizeToChannelFirst<DeviceContext, T>(context, output,
+                                             &transformed_output);
+
+    } else {
+      transformed_input = *input;
+      transformed_output = *output;
+    }
+
+    // update padding and dilation
+    auto trans_in_dims = transformed_input.dims();
+    auto filter_dims = filter.dims();
+
+    framework::DDim in_data_dims =
+        framework::slice_ddim(trans_in_dims, 2, trans_in_dims.size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
-    const int batch_size = static_cast<int>(input->dims()[0]);
+    const int batch_size = static_cast<int>(transformed_input.dims()[0]);
 
-    // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
+    // filter_shape_vec:
+    // {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
     std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
-    // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
-    std::vector<int64_t> output_shape_vec(framework::vectorize(output->dims()));
+
+    // output_shape_vec:
+    // {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
+    std::vector<int64_t> output_shape_vec(
+        framework::vectorize(transformed_output.dims()));
 
     // use col_shape in the im2col calculation
-    // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
-    // o_h, o_w}
+    // col_shape_vec:
+    // {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w,
+    // o_d,o_h, o_w}
     size_t data_dim = filter_shape_vec.size() - 2;
+
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    col_shape_vec[0] = input->dims()[1] / groups;
+    col_shape_vec[0] = trans_in_dims[1] / groups;
     for (size_t j = 0; j < data_dim; ++j) {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
     }
+
     framework::DDim col_shape(framework::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
-    // size: (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d *
-    // o_h * o_w)
+    // size:
+    // (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d * o_h *
+    // o_w)
+
     framework::DDim col_matrix_shape =
-        framework::flatten_to_2d(col_shape, data_dim + 1);
+        framework::flatten_to_2d(col_shape, data_dim);
 
     bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+
     Tensor col;
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
@@ -175,28 +346,31 @@ class GemmConvKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
     }
 
-    framework::DDim input_shape =
-        framework::slice_ddim(input->dims(), 1, input->dims().size());
+    framework::DDim in_matrix_shape = framework::slice_ddim(
+        transformed_input.dims(), 1, transformed_input.dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
     filter.Resize(filter_matrix_shape);
 
     framework::DDim output_matrix_shape = {
-        output->dims()[1],
-        output->numel() / (output->dims()[0] * output->dims()[1])};
+        transformed_output.dims()[1],
+        transformed_output.numel() /
+            (transformed_output.dims()[0] * transformed_output.dims()[1])};
 
     // convolution operator: im2col(or vol2col) + gemm
-    int in_step = static_cast<int>(input->dims()[1]) / groups;
-    int out_step = static_cast<int>(output->dims()[1]) / groups;
+    int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
+    int out_step = static_cast<int>(transformed_output.dims()[1]) / groups;
 
     math::Vol2ColFunctor<DeviceContext, T> vol2col;
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
 
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (int i = 0; i < batch_size; i++) {
-      Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
-      Tensor out_batch = output->Slice(i, i + 1).Resize(output_matrix_shape);
+      Tensor in_batch =
+          transformed_input.Slice(i, i + 1).Resize(in_matrix_shape);
+      Tensor out_batch =
+          transformed_output.Slice(i, i + 1).Resize(output_matrix_shape);
 
       for (int g = 0; g < groups; g++) {
         Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
@@ -206,13 +380,12 @@ class GemmConvKernel : public framework::OpKernel<T> {
           col_matrix.ShareDataWith(col);
           col_matrix.Resize(col_matrix_shape);
         } else if (data_dim == 2U) {
-          // im2col
           im2col(dev_ctx, in_slice, dilations, strides,
-                 std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                  paddings[1]},
+                 std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                  paddings[3]},
                  &col);
+
         } else if (data_dim == 3U) {
-          // vol2col
           vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
         }
 
@@ -222,6 +395,10 @@ class GemmConvKernel : public framework::OpKernel<T> {
         blas.MatMul(filter_slice, false, col_matrix, false, T(1.0), &out_slice,
                     T(0.0));
       }
+    }
+    if (channel_last) {
+      TransToChannelLast<DeviceContext, T>(context, &transformed_output,
+                                           output);
     }
   }
 };
@@ -245,11 +422,44 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     if (!input_grad && !filter_grad) return;
 
     int groups = context.Attr<int>("groups");
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    const std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+    const std::string data_format = context.Attr<std::string>("data_format");
 
-    const int batch_size = static_cast<int>(input->dims()[0]);
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    Tensor transformed_input(input->type());
+    Tensor transformed_output_grad(output_grad->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                             &transformed_input);
+      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+
+      ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
+                                             &transformed_output_grad);
+      TransToChannelFirst<DeviceContext, T>(context, output_grad,
+                                            &transformed_output_grad);
+    } else {
+      transformed_input = *input;
+      transformed_output_grad = *output_grad;
+    }
+
+    // update padding and dilation
+    auto in_dims = transformed_input.dims();
+    auto filter_dims = filter.dims();
+    framework::DDim in_data_dims =
+        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    const int batch_size = static_cast<int>(transformed_input.dims()[0]);
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
@@ -257,14 +467,14 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> filter_shape_vec(framework::vectorize(filter.dims()));
     // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
     std::vector<int64_t> output_shape_vec(
-        framework::vectorize(output_grad->dims()));
+        framework::vectorize(transformed_output_grad.dims()));
 
     // use col_shape in the im2col calculation
     // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
     // o_h, o_w}
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    col_shape_vec[0] = input->dims()[1] / groups;
+    col_shape_vec[0] = transformed_input.dims()[1] / groups;
     for (size_t j = 0; j < data_dim; ++j) {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
@@ -278,24 +488,25 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     framework::DDim col_matrix_shape =
         framework::flatten_to_2d(col_shape, data_dim + 1);
 
-    framework::DDim input_shape =
-        framework::slice_ddim(input->dims(), 1, input->dims().size());
+    framework::DDim input_shape = framework::slice_ddim(
+        transformed_input.dims(), 1, transformed_input.dims().size());
 
     framework::DDim filter_matrix_shape = {filter.dims()[0],
                                            filter.numel() / filter.dims()[0]};
     filter.Resize(filter_matrix_shape);
 
     framework::DDim output_matrix_shape = {
-        output_grad->dims()[1],
-        output_grad->numel() /
-            (output_grad->dims()[0] * output_grad->dims()[1])};
+        transformed_output_grad.dims()[1],
+        transformed_output_grad.numel() / (transformed_output_grad.dims()[0] *
+                                           transformed_output_grad.dims()[1])};
 
     // convolution backward input operator:  gemm + col2im(or col2vol)
     // convolution backward weight operator: im2col(or vol2col) + gemm
-    int in_step = static_cast<int>(input->dims()[1]) / groups;
-    int out_step = static_cast<int>(output_grad->dims()[1]) / groups;
+    int in_step = static_cast<int>(transformed_input.dims()[1]) / groups;
+    int out_step = static_cast<int>(transformed_output_grad.dims()[1]) / groups;
 
     bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+
     Tensor col;
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
@@ -312,19 +523,27 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
+      Tensor transformed_input_grad(input_grad->type());
+      if (channel_last) {
+        ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
+                                               &transformed_input_grad);
 
+      } else {
+        transformed_input_grad = *input_grad;
+      }
       // if is_expand is false, the operation of set_zero is unnecessary,
       // because math::matmul will reset input_grad.
       if (is_expand) {
-        set_zero(dev_ctx, input_grad, static_cast<T>(0));
+        set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
       }
       math::Col2VolFunctor<DeviceContext, T> col2vol;
       math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
-            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-        Tensor in_grad_batch = input_grad->Slice(i, i + 1).Resize(input_shape);
+            transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_grad_batch =
+            transformed_input_grad.Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
           // gemm
           Tensor out_grad_slice =
@@ -343,13 +562,17 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
 
           if (is_expand && data_dim == 2U) {
             col2im(dev_ctx, col, dilations, strides,
-                   std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                    paddings[1]},
+                   std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                    paddings[3]},
                    &in_grad_slice);
           } else if (is_expand && data_dim == 3U) {
             col2vol(dev_ctx, col, dilations, strides, paddings, &in_grad_slice);
           }
         }
+      }
+      if (channel_last) {
+        TransToChannelLast<DeviceContext, T>(context, &transformed_input_grad,
+                                             input_grad);
       }
     }
 
@@ -362,8 +585,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; i++) {
         Tensor out_grad_batch =
-            output_grad->Slice(i, i + 1).Resize(output_matrix_shape);
-        Tensor in_batch = input->Slice(i, i + 1).Resize(input_shape);
+            transformed_output_grad.Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor in_batch = transformed_input.Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
           // im2col
           Tensor out_grad_slice =
@@ -376,9 +599,10 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
             col_matrix.Resize(col_matrix_shape);
           } else if (data_dim == 2U) {
             im2col(dev_ctx, in_slice, dilations, strides,
-                   std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                    paddings[1]},
+                   std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                    paddings[3]},
                    &col);
+
           } else if (data_dim == 3U) {
             vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
           }
@@ -412,21 +636,60 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor W = detail::Ref(ctx.Input<Tensor>("Filter"),
                            "Cannot find input Filter(%s) in scope)",
                            ctx.Inputs("Filter")[0]);
-
     if (!ddY && !dW && !dX) return;
-    int groups = ctx.Attr<int>("groups");
-    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
+
+    const int groups = ctx.Attr<int>("groups");
+    const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    const std::string padding_algorithm =
+        ctx.Attr<std::string>("padding_algorithm");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
 
-    const int batch_size = static_cast<int>(X->dims()[0]);
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    // transform Tensor
+    Tensor transformed_X(X->type());
+    Tensor transformed_dY(dY->type());
+    Tensor transformed_ddX(ddX->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
+      TransToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
+
+      ResizeToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
+      TransToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
+
+      ResizeToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
+      TransToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
+
+    } else {
+      transformed_X = *X;
+      transformed_dY = *dY;
+      transformed_ddX = *ddX;
+    }
+
+    // update padding and dilation
+    auto in_dims = transformed_X.dims();
+    auto filter_dims = W.dims();
+
+    framework::DDim in_data_dims =
+        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    const int batch_size = static_cast<int>(transformed_X.dims()[0]);
     std::vector<int64_t> filter_shape_vec(framework::vectorize(W.dims()));
-    std::vector<int64_t> output_shape_vec(framework::vectorize(dY->dims()));
+    std::vector<int64_t> output_shape_vec(
+        framework::vectorize(transformed_dY.dims()));
 
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
     // col_shape [in_channel/group, kh, kw, oh, ow]
-    col_shape_vec[0] = X->dims()[1] / groups;
+    col_shape_vec[0] = transformed_X.dims()[1] / groups;
     for (size_t j = 0; j < data_dim; ++j) {
       col_shape_vec[j + 1] = filter_shape_vec[j + 2];
       col_shape_vec[j + data_dim + 1] = output_shape_vec[j + 2];
@@ -436,17 +699,19 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     framework::DDim col_matrix_shape =
         framework::flatten_to_2d(col_shape, data_dim + 1);
     // input_shape [Cin, H, W]
-    framework::DDim input_shape =
-        framework::slice_ddim(X->dims(), 1, X->dims().size());
+    framework::DDim input_shape = framework::slice_ddim(
+        transformed_X.dims(), 1, transformed_X.dims().size());
     // filter_matrix_shape [Cout, Cin * kh * kw]
     framework::DDim filter_matrix_shape = {W.dims()[0],
                                            W.numel() / W.dims()[0]};
 
     W.Resize(filter_matrix_shape);
     framework::DDim output_matrix_shape = {
-        dY->dims()[1], dY->numel() / (dY->dims()[0] * dY->dims()[1])};
-    int in_step = static_cast<int>(X->dims()[1]) / groups;
-    int out_step = static_cast<int>(dY->dims()[1]) / groups;
+        transformed_dY.dims()[1],
+        transformed_dY.numel() /
+            (transformed_dY.dims()[0] * transformed_dY.dims()[1])};
+    int in_step = static_cast<int>(transformed_X.dims()[1]) / groups;
+    int out_step = static_cast<int>(transformed_dY.dims()[1]) / groups;
 
     bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
     Tensor col;
@@ -466,19 +731,28 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     if (dX && ddW_in) {
       Tensor ddW;
       ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
-
       dX->mutable_data<T>(ctx.GetPlace());
+
+      Tensor transformed_dX(dX->type());
+
+      if (channel_last) {
+        ResizeToChannelFirst<DeviceContext, T>(ctx, dX, &transformed_dX);
+
+      } else {
+        transformed_dX = *dX;
+      }
       // if is_expand is false, the operation of set_zero is unnecessary
       // because math::matmul will reset dx
       if (is_expand) {
-        set_zero(dev_ctx, dX, static_cast<T>(0));
+        set_zero(dev_ctx, &transformed_dX, static_cast<T>(0));
       }
       math::Col2VolFunctor<DeviceContext, T> col2vol;
       math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
 
       for (int i = 0; i < batch_size; i++) {
-        Tensor dy_batch = dY->Slice(i, i + 1).Resize(output_matrix_shape);
-        Tensor dx_batch = dX->Slice(i, i + 1).Resize(input_shape);
+        Tensor dy_batch =
+            transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor dx_batch = transformed_dX.Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; g++) {
           // gemm
           Tensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);
@@ -493,13 +767,16 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
 
           if (is_expand && data_dim == 2U) {
             col2im(dev_ctx, col, dilations, strides,
-                   std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                    paddings[1]},
+                   std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                    paddings[3]},
                    &dx_slice);
           } else if (is_expand && data_dim == 3U) {
             col2vol(dev_ctx, col, dilations, strides, paddings, &dx_slice);
           }
         }
+      }
+      if (channel_last) {
+        TransToChannelLast<DeviceContext, T>(ctx, &transformed_dX, dX);
       }
     }
 
@@ -514,8 +791,9 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; ++i) {
-        Tensor dy_batch = dY->Slice(i, i + 1).Resize(output_matrix_shape);
-        Tensor ddx_batch = ddX->Slice(i, i + 1).Resize(input_shape);
+        Tensor dy_batch =
+            transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor ddx_batch = transformed_ddX.Slice(i, i + 1).Resize(input_shape);
         for (int g = 0; g < groups; ++g) {
           // im2col
           Tensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);
@@ -526,8 +804,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
             col_matrix.Resize(col_matrix_shape);
           } else if (data_dim == 2U) {
             im2col(dev_ctx, ddx_slice, dilations, strides,
-                   std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                    paddings[1]},
+                   std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                    paddings[3]},
                    &col);
           } else if (data_dim == 3U) {
             vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
@@ -545,55 +823,62 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     // ddy convolution double grad: im2col(vol2col) + gemm
     if (ddY) {
       ddY->mutable_data<T>(ctx.GetPlace());
-      set_zero(dev_ctx, ddY, static_cast<T>(0));
+
+      Tensor transformed_ddY(ddY->type());
+      if (channel_last) {
+        ResizeToChannelFirst<DeviceContext, T>(ctx, ddY, &transformed_ddY);
+      } else {
+        transformed_ddY = *ddY;
+      }
+
+      set_zero(dev_ctx, &transformed_ddY, static_cast<T>(0));
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
       for (int i = 0; i < batch_size; ++i) {
-        Tensor ddy_batch = ddY->Slice(i, i + 1).Resize(output_matrix_shape);
+        Tensor ddy_batch =
+            transformed_ddY.Slice(i, i + 1).Resize(output_matrix_shape);
         for (int g = 0; g < groups; ++g) {
+          // gemm
           Tensor ddy_slice = ddy_batch.Slice(g * out_step, (g + 1) * out_step);
+
           if (ddX) {
-            Tensor ddx_batch = ddX->Slice(i, i + 1).Resize(input_shape);
+            Tensor ddx_batch =
+                transformed_ddX.Slice(i, i + 1).Resize(input_shape);
             Tensor ddx_slice = ddx_batch.Slice(g * in_step, (g + 1) * in_step);
             if (!is_expand) {
               col.ShareDataWith(ddx_slice);
               col_matrix.ShareDataWith(col);
               col_matrix.Resize(col_matrix_shape);
             } else if (data_dim == 2U) {
-              // im2col
               im2col(dev_ctx, ddx_slice, dilations, strides,
-                     std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                      paddings[1]},
+                     std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                      paddings[3]},
                      &col);
             } else if (data_dim == 3U) {
-              // vol2col
               vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
             }
-
-            // gemm
-            Tensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
-            blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice,
-                        T(0.0));
           }
 
+          Tensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
+          blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice,
+                      T(0.0));
+
           if (ddW_in) {
-            Tensor ddW;
-            ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
-            Tensor x_batch = X->Slice(i, i + 1).Resize(input_shape);
+            Tensor x_batch = transformed_X.Slice(i, i + 1).Resize(input_shape);
             Tensor x_slice = x_batch.Slice(g * in_step, (g + 1) * in_step);
 
+            Tensor ddW;
+            ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
             if (!is_expand) {
               col.ShareDataWith(x_slice);
               col_matrix.ShareDataWith(col);
               col_matrix.Resize(col_matrix_shape);
             } else if (data_dim == 2U) {
-              // im2col
               im2col(dev_ctx, x_slice, dilations, strides,
-                     std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                      paddings[1]},
+                     std::vector<int>{paddings[0], paddings[2], paddings[1],
+                                      paddings[3]},
                      &col);
             } else if (data_dim == 3U) {
-              // vol2col
               vol2col(dev_ctx, x_slice, dilations, strides, paddings, &col);
             }
 
@@ -603,6 +888,9 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
                         T(1.0));
           }
         }
+      }
+      if (channel_last) {
+        TransToChannelLast<DeviceContext, T>(ctx, &transformed_ddY, ddY);
       }
     }
   }
@@ -617,23 +905,77 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_EQ(
-        output->dims()[1] % input->dims()[1], 0,
-        "The output channels must be a multiple of the input channels");
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    const std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
     bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
+
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+    const std::string data_format = context.Attr<std::string>("data_format");
+
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+    if (channel_last) {
+      PADDLE_ENFORCE_EQ(
+          output->dims()[output->dims().size() - 1] %
+              input->dims()[input->dims().size() - 1],
+          0, "The output channels must be a multiple of the input channels");
+    } else {
+      PADDLE_ENFORCE_EQ(
+          output->dims()[1] % input->dims()[1], 0,
+          "The output channels must be a multiple of the input channels");
+    }
+    // transform tensor
+    Tensor transformed_input(input->type());
+    Tensor transformed_output(output->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                             &transformed_input);
+      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+
+      ResizeToChannelFirst<DeviceContext, T>(context, output,
+                                             &transformed_output);
+
+    } else {
+      transformed_input = *input;
+      transformed_output = *output;
+    }
+
+    // update padding and dilation
+    auto in_dims = transformed_input.dims();
+    auto filter_dims = filter.dims();
+
+    framework::DDim in_data_dims;
+    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    bool is_sys_pad = strides.size() * 2 == paddings.size() ? false : true;
+    if (!is_sys_pad) {
+      for (size_t i = 0; i < strides.size(); ++i) {
+        paddings.erase(paddings.begin() + i + 1);
+      }
+    }
+
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (fuse_relu) {
       math::DepthwiseConvFunctor<DeviceContext, T, true> depthwiseConv;
-      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                    output);
+      depthwiseConv(dev_ctx, transformed_input, filter, strides, paddings,
+                    dilations, &transformed_output);
     } else {
       math::DepthwiseConvFunctor<DeviceContext, T, false> depthwiseConv;
-      depthwiseConv(dev_ctx, *input, filter, strides, paddings, dilations,
-                    output);
+      depthwiseConv(dev_ctx, transformed_input, filter, strides, paddings,
+                    dilations, &transformed_output);
+    }
+    if (channel_last) {
+      TransToChannelLast<DeviceContext, T>(context, &transformed_output,
+                                           output);
     }
   }
 };
@@ -657,24 +999,81 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
     bool fuse_relu = context.Attr<bool>("fuse_relu_before_depthwise_conv");
+    const std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+    const std::string data_format = context.Attr<std::string>("data_format");
 
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    // transform Tensor
+    Tensor transformed_input(input->type());
+    Tensor transformed_output_grad(output_grad->type());
+
+    if (channel_last) {
+      ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                             &transformed_input);
+      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+
+      ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
+                                             &transformed_output_grad);
+      TransToChannelFirst<DeviceContext, T>(context, output_grad,
+                                            &transformed_output_grad);
+
+    } else {
+      transformed_input = *input;
+      transformed_output_grad = *output_grad;
+    }
+
+    // update padding and dilation
+    auto in_dims = transformed_input.dims();
+    auto filter_dims = filter.dims();
+
+    framework::DDim in_data_dims;
+    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    bool is_sys_pad = strides.size() * 2 == paddings.size() ? false : true;
+    if (!is_sys_pad) {
+      for (size_t i = 0; i < strides.size(); ++i) {
+        paddings.erase(paddings.begin() + i + 1);
+      }
+    }
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
-      set_zero(dev_ctx, input_grad, static_cast<T>(0));
+      Tensor transformed_input_grad(input_grad->type());
+      if (channel_last) {
+        ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
+                                               &transformed_input_grad);
+
+      } else {
+        transformed_input_grad = *input_grad;
+      }
+
+      set_zero(dev_ctx, &transformed_input_grad, static_cast<T>(0));
 
       if (fuse_relu) {
         math::DepthwiseConvInputGradFunctor<DeviceContext, T, true>
             depthwiseConvInputGrad;
-        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                               paddings, dilations, input_grad);
+        depthwiseConvInputGrad(dev_ctx, transformed_input, filter,
+                               transformed_output_grad, strides, paddings,
+                               dilations, &transformed_input_grad);
       } else {
         math::DepthwiseConvInputGradFunctor<DeviceContext, T, false>
             depthwiseConvInputGrad;
-        depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
-                               paddings, dilations, input_grad);
+        depthwiseConvInputGrad(dev_ctx, transformed_input, filter,
+                               transformed_output_grad, strides, paddings,
+                               dilations, &transformed_input_grad);
+      }
+      if (channel_last) {
+        TransToChannelLast<DeviceContext, T>(context, &transformed_input_grad,
+                                             input_grad);
       }
     }
 
@@ -684,13 +1083,15 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
       if (fuse_relu) {
         math::DepthwiseConvFilterGradFunctor<DeviceContext, T, true>
             depthwiseConvFilterGrad;
-        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
-                                paddings, dilations, filter_grad);
+        depthwiseConvFilterGrad(dev_ctx, transformed_input,
+                                transformed_output_grad, strides, paddings,
+                                dilations, filter_grad);
       } else {
         math::DepthwiseConvFilterGradFunctor<DeviceContext, T, false>
             depthwiseConvFilterGrad;
-        depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides,
-                                paddings, dilations, filter_grad);
+        depthwiseConvFilterGrad(dev_ctx, transformed_input,
+                                transformed_output_grad, strides, paddings,
+                                dilations, filter_grad);
       }
     }
   }
