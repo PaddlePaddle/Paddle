@@ -162,7 +162,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (is_distributed_) {
-    distributed::Communicator::GetInstance()->BarrierCounterDecrement();
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierCounterDecrement();
   }
 #endif
 }
@@ -193,7 +194,8 @@ void HogwildWorker::TrainFiles() {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (is_distributed_) {
-    distributed::Communicator::GetInstance()->BarrierTriggerDecrement();
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
   }
 #endif
 }

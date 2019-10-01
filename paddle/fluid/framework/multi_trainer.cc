@@ -41,7 +41,8 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (trainer_desc.is_distributed()) {
-    distributed::Communicator::GetInstance()->BarrierTriggerReset(thread_num_);
+    operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+        thread_num_);
   }
 #endif
 
