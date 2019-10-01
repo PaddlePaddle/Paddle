@@ -106,7 +106,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
               FLAGS_communicator_send_queue_size);
     }
-    send_threadpool_.reset(
+    consume_threadpool_.reset(
         new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
 

@@ -350,6 +350,7 @@ class HalfAsyncCommunicator : public Communicator {
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
+  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
 
   // mutex for Wait for barrier
   std::mutex barrier_mutex_;
