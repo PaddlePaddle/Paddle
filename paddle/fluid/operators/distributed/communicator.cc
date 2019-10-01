@@ -479,6 +479,21 @@ void GeoSgdCommunicator::Start() {
     // start send and recv thread
     send_thread_.reset(
         new std::thread(std::bind(&GeoSgdCommunicator::SendThread, this)));
+    for (auto &iter : var_list_) {
+      auto &var_name = iter.first;
+      if (iter.second == true) {
+        for (auto &splited_var_name :
+             send_varname_to_ctx_[VarToDeltaVar(iter.first)]
+                 .splited_var_names) {
+          std::unique_ptr<std::thread> sparse_send_thread{nullptr};
+          sparse_send_thread.reset(
+              new std::thread(std::bind(&GeoSgdCommunicator::SparseSendThread,
+                                        this, &var_name, &splited_var_name)));
+          sparse_send_thread_.push_back(sparse_send_thread);
+          sparse_thread_running_[splited_var_name] = false;
+        }
+      }
+    }
   }
 }
 
@@ -492,6 +507,10 @@ void GeoSgdCommunicator::Stop() {
       VLOG(1) << "stop send thread";
       send_thread_->join();
       send_thread_.reset(nullptr);
+      for (auto sparse_thread : sparse_send_thread_;) {
+        sparse_thread->join();
+        sparse_thread.reset(nullptr);
+      }
     }
   }
   VLOG(0) << "Geo Sgd Communicator stop done";
@@ -521,7 +540,8 @@ void GeoSgdCommunicator::Send(const std::string &var_name,
 void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                               const std::vector<std::string> &sparse_var_tables,
                               const framework::Scope &scope) {
-  // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
+  // SparseIdsMap =
+  // std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
   auto before_run_send = GetCurrentUS();
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
@@ -590,18 +610,7 @@ void GeoSgdCommunicator::SendThread() {
         if (var_list_[DeltaVarToVar(var_name)] == true) {
           // sparse var: merge->send->recv
           for (auto &splited_var_name : iter.second.splited_var_names) {
-            auto send_task = [this, &var_name, &splited_var_name] {
-              auto before_run_geo = GetCurrentUS();
-              auto ids_set =
-                  SparseIdsMerge(ids_send_vec_, var_name, splited_var_name);
-              SendUpdateSparseVars(var_name, splited_var_name, ids_set);
-              RecvUpdateSparseVars(var_name, splited_var_name);
-              auto after_run_geo = GetCurrentUS();
-              VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
-                      << after_run_geo - before_run_geo;
-            };
-            task_futures.emplace_back(
-                send_threadpool_->enqueue(std::move(send_task)));
+            sparse_thread_running_[splited_var_name] = true;
           }
         } else {
           auto send_task = [this, &var_name] {
@@ -619,7 +628,26 @@ void GeoSgdCommunicator::SendThread() {
       for (auto &task_f : task_futures) {
         task_f.wait();
       }
+      SparseThreadCheck();
       ids_send_vec_.clear();
+    }
+  }
+}
+
+void GeoSgdCommunicator::SparseSendThread(const std::string &var_name,
+                                          const std::string &splited_var_name) {
+  auto delta_var_name = VarToDeltaVar(var_name);
+  while (running_) {
+    if (sparse_thread_running_[splited_var_name]) {
+      auto before_run_geo = GetCurrentUS();
+      auto ids_set =
+          SparseIdsMerge(ids_send_vec_, delta_var_name, splited_var_name);
+      SendUpdateSparseVars(delta_var_name, splited_var_name, ids_set);
+      RecvUpdateSparseVars(delta_var_name, splited_var_name);
+      auto after_run_geo = GetCurrentUS();
+      VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
+              << after_run_geo - before_run_geo;
+      sparse_thread_running_[splited_var_name] = false;
     }
   }
 }
