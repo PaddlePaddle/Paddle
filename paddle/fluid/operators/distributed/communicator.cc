@@ -805,7 +805,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   rpc_client->AsyncSendVar(endpoint, cpu_ctx, *delta_scope_.get(),
                            splited_var_name);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(1) << "send " << var_name << " use time "
+  VLOG(1) << "send " << splited_var_name << " use time "
           << after_send_sparse - before_send_sparse;
 }
 
