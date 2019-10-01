@@ -523,6 +523,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                               const framework::Scope &scope) {
   // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  auto before_run_send = GetCurrentUS();
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
@@ -547,6 +548,8 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
     }
   }
   need_push_queue_->Push(ids_table);
+  auto after_run_send = GetCurrentUS();
+  VLOG(1) << "run send_op use time " << after_run_send - before_run_send;
 }
 
 void GeoSgdCommunicator::SendThread() {
@@ -577,7 +580,7 @@ void GeoSgdCommunicator::SendThread() {
 
     if (ids_send_vec_.size() >= geo_need_push_nums_) {
       auto after_run_training = GetCurrentUS();
-      VLOG(3) << "run Training use time "
+      VLOG(1) << "run Training use time "
               << after_run_training - before_run_training;
       before_run_training = GetCurrentUS();
       VLOG(3) << "Start send after get need_push_num";
@@ -588,18 +591,26 @@ void GeoSgdCommunicator::SendThread() {
           // sparse var: merge->send->recv
           for (auto &splited_var_name : iter.second.splited_var_names) {
             auto send_task = [this, &var_name, &splited_var_name] {
+              auto before_run_geo = GetCurrentUS();
               auto ids_set =
                   SparseIdsMerge(ids_send_vec_, var_name, splited_var_name);
               SendUpdateSparseVars(var_name, splited_var_name, ids_set);
               RecvUpdateSparseVars(var_name, splited_var_name);
+              auto after_run_geo = GetCurrentUS();
+              VLOG(1) << "run GEO-SGD var " << var_name << " use time "
+                      << after_run_geo - before_run_geo;
             };
             task_futures.emplace_back(
                 send_threadpool_->enqueue(std::move(send_task)));
           }
         } else {
           auto send_task = [this, &var_name] {
+            auto before_run_geo = GetCurrentUS();
             SendUpdateDenseVars(var_name);
             RecvUpdateDenseVars(var_name);
+            auto after_run_geo = GetCurrentUS();
+            VLOG(1) << "run GEO-SGD var " << var_name << " use time "
+                    << after_run_geo - before_run_geo;
           };
           task_futures.emplace_back(
               send_threadpool_->enqueue(std::move(send_task)));
@@ -629,7 +640,7 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
-  VLOG(3) << "run SparseIdsMerge use time "
+  VLOG(1) << "run SparseIdsMerge " << splited_var_name << " use time "
           << after_run_ids_merge_ - before_run_ids_merge_;
   return ids_set;
 }
@@ -685,7 +696,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
             var_y_tensor.mutable_data<float>(var_y_tensor.place()));
 
   auto after_run_send_dense = GetCurrentUS();
-  VLOG(3) << "run send update dense var " << var_name << " use time "
+  VLOG(1) << "run send update dense var " << var_name << " use time "
           << after_run_send_dense - before_run_send_dense;
 
   auto send_functor = distributed::ParameterSend<float>();
@@ -694,7 +705,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   auto before_send_dense = GetCurrentUS();
   send_functor(ctx, *delta_scope_.get(), true, 1);
   auto after_send_denxe = GetCurrentUS();
-  VLOG(3) << "send " << var_name << " use time "
+  VLOG(1) << "send " << var_name << " use time "
           << after_send_denxe - before_send_dense;
 }
 
@@ -768,7 +779,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
     fs[i].wait();
   }
   auto after_run_send_sparse = GetCurrentUS();
-  VLOG(3) << "run send update sparse var " << var_name << " use time "
+  VLOG(1) << "run send update sparse var " << var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -794,7 +805,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   rpc_client->AsyncSendVar(endpoint, cpu_ctx, *delta_scope_.get(),
                            splited_var_name);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(3) << "send " << var_name << " use time "
+  VLOG(1) << "send " << var_name << " use time "
           << after_send_sparse - before_send_sparse;
 }
 
@@ -810,10 +821,11 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto recv_functor = distributed::ParameterRecv<float>();
   recv_functor(recv_varname_to_ctx_[origin_var_name], *pserver_scope_.get());
   auto after_run_recv = GetCurrentUS();
-  VLOG(3) << "recv var " << origin_var_name << " use time "
+  VLOG(1) << "recv var " << origin_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step2: update dense var
+  auto before_run_update = GetCurrentUS();
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
 
@@ -843,6 +855,9 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
             var_x_tensor.mutable_data<float>(var_x_tensor.place()));
   // calc old = pserver
   framework::CopyVariable(*var_z, var_y);
+  auto after_run_update = GetCurrentUS();
+  VLOG(1) << "dese var update " << origin_splited_var_name << " use time "
+          << after_run_update - before_run_update;
 }
 
 void GeoSgdCommunicator::RecvUpdateSparseVars(
@@ -865,10 +880,11 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
                           origin_splited_var_name, origin_splited_var_name,
                           origin_splited_var_name);
   auto after_run_recv = GetCurrentUS();
-  VLOG(3) << "recv var " << origin_var_name << " use time "
+  VLOG(1) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step 2: update sparse var
+  auto before_run_update = GetCurrentUS();
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
@@ -923,6 +939,9 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   for (size_t i = 0; i < fs.size(); ++i) {
     fs[i].wait();
   }
+  auto after_run_update = GetCurrentUS();
+  VLOG(1) << "sparse var update " << origin_var_name << " use time "
+          << after_run_update - before_run_update;
 }
 
 void GeoSgdCommunicator::GeoSgdSparseParamInit(framework::Scope *scope_x,
