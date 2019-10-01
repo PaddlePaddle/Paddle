@@ -860,6 +860,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
 
   auto before_run_recv = GetCurrentUS();
+  pserver_scope_->Var(origin_splited_var_name);
   rpc_client->AsyncGetVar(endpoint, cpu_ctx, *pserver_scope_.get(),
                           origin_splited_var_name, origin_splited_var_name,
                           origin_splited_var_name);
