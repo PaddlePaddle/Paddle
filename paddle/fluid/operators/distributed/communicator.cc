@@ -526,12 +526,12 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
+      auto splited_var_nums =
+          recv_varname_to_ctx_[sparse_var_tables[i]].splited_var_names.size();
       ids_table->insert(
           std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
               sparse_var_tables[i],
-              std::vector<std::unordered_set<int64_t>>{
-                  send_varname_to_ctx_[sparse_var_tables[i]]
-                      .height_sections.size()}));
+              std::vector<std::unordered_set<int64_t>>{splited_var_nums}));
     }
     auto *var = scope.FindVar(sparse_var_names[i]);
     auto var_tensor = var->Get<framework::LoDTensor>();
@@ -620,10 +620,11 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   VLOG(3) << "Sparse Ids merge var: " << var_name
           << " splited var: " << splited_var_name;
   auto before_run_ids_merge_ = GetCurrentUS();
+  auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
   for (auto ids_map : ids_send_vec) {
-    for (auto id : ids_map[var_name][splited_var_index]) {
+    for (auto id : ids_map[origin_var_name][splited_var_index]) {
       ids_set.insert(id);
     }
   }
