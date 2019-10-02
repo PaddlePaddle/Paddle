@@ -63,23 +63,6 @@ inline void VSUB(int n, const T *x, const T *y, T *z) {
   }
 }
 
-inline std::vector<int> bucket(const int v_size, const int b_size) {
-  int remainder = v_size % b_size;
-  int bucket = v_size / b_size;
-  std::vector<int> ret_vec(b_size, bucket);
-  for (int i = 0; i < remainder; ++i) {
-    ret_vec[i] = ret_vec[i] + 1;
-  }
-  int cur_bucket = 0;
-  for (int j = 0; j < ret_vec.size(); ++j) {
-    int tmp = ret_vec[j];
-    ret_vec[j] = cur_bucket;
-    cur_bucket += tmp;
-  }
-  ret_vec.push_back(cur_bucket);
-  return ret_vec;
-}
-
 std::once_flag Communicator::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
@@ -557,7 +540,6 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
 void GeoSgdCommunicator::SendThread() {
   VLOG(0) << "SendThread start!";
   auto before_run_training = GetCurrentUS();
-  rpc_client_ = distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   while (running_) {
     std::vector<std::future<void>> task_futures;
@@ -770,7 +752,13 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto trainer_id = send_varname_to_ctx_[var_name].trainer_id;
   auto endpoint = send_varname_to_ctx_[var_name].epmap[splited_var_index];
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
   std::vector<int64_t> send_rows;
   send_rows.reserve(new_rows.size());
@@ -781,11 +769,10 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   var_z_select_rows->set_rows(send_rows);
   var_z_select_rows->set_height(
       send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
+
   auto before_send_sparse = GetCurrentUS();
-  rpc_client_->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
-                            splited_var_name);
+  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
+                           splited_var_name);
   auto after_send_sparse = GetCurrentUS();
   VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
@@ -848,15 +835,19 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
+  auto train_id = recv_varname_to_ctx_[origin_var_name].trainer_id;
   auto endpoint =
       recv_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
+
   auto before_run_recv = GetCurrentUS();
   pserver_scope_->Var(origin_splited_var_name);
-  rpc_client_->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
-                           origin_splited_var_name, origin_splited_var_name,
-                           origin_splited_var_name);
+  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
+                          origin_splited_var_name, origin_splited_var_name,
+                          origin_splited_var_name);
   auto after_run_recv = GetCurrentUS();
   VLOG(1) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;

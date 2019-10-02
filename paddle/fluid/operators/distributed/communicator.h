@@ -423,7 +423,6 @@ class GeoSgdCommunicator : public Communicator {
   std::unique_ptr<std::thread> send_thread_{nullptr};
 
   size_t need_thread_nums_{0};
-  distributed::RPCClient* rpc_client_;
 };
 
 }  // namespace distributed
