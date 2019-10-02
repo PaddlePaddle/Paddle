@@ -770,7 +770,6 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  auto trainer_id = send_varname_to_ctx_[var_name].trainer_id;
   auto endpoint = send_varname_to_ctx_[var_name].epmap[splited_var_index];
 
   std::vector<int64_t> send_rows;
@@ -849,7 +848,6 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
-  auto train_id = recv_varname_to_ctx_[origin_var_name].trainer_id;
   auto endpoint =
       recv_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
