@@ -351,8 +351,6 @@ class GeoSgdCommunicator : public Communicator {
 
  private:
   void SendThread();
-  void SparseSendThread(const std::string& var_name,
-                        const std::string& splited_var_name);
   std::unordered_set<int64_t> SparseIdsMerge(
       const std::vector<SparseIdsMap>& ids_send_vec,
       const std::string& var_name, const std::string& splited_var_name);
@@ -401,19 +399,6 @@ class GeoSgdCommunicator : public Communicator {
     return index;
   }
 
-  void SparseThreadCheck() {
-    bool finish = false;
-    while (!finish) {
-      int running_thread = sparse_thread_running_.size();
-      for (auto iter : sparse_thread_running_) {
-        running_thread -= iter.second;
-      }
-      if (running_thread == 0) {
-        finish = true;
-      }
-    }
-  }
-
  private:
   int trainer_nums_ = 1;
   int geo_need_push_nums_ = 100;
@@ -436,8 +421,8 @@ class GeoSgdCommunicator : public Communicator {
 
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};
-  std::vector<std::unique_ptr<std::thread>> sparse_send_thread_;
-  std::unordered_map<std::string, bool> sparse_thread_running_;
+
+  size_t need_thread_nums_{0};
 };
 
 }  // namespace distributed
