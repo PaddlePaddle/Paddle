@@ -30,6 +30,7 @@ def skip_ci(func):
     return __func__
 
 
+@skip_ci
 class TestDistMnist2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -39,7 +40,6 @@ class TestDistMnist2x2(TestFleetBase):
                          delta=1e-3,
                          check_error_log=False,
                          need_envs={}):
-
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
