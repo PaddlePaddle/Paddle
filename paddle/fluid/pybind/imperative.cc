@@ -265,7 +265,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
-             if (grad_var && grad_var->Var().IsInitialized()) {
+             auto *tensor =
+                 grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (grad_var && grad_var->Var().IsInitialized() &&
+                 tensor->IsInitialized()) {
                return grad_var;
              } else {
                return std::shared_ptr<imperative::VarBase>(nullptr);

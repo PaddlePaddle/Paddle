@@ -164,6 +164,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss = case2(v1, v2)
+
             loss.backward()
             self.assertTrue(case2.fc2._w._ivar._grad_ivar() is None)
             self.assertTrue(case2.fc1._w._ivar._grad_ivar() is not None)

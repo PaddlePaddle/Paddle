@@ -111,6 +111,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         }
       }
     }
+
     std::set<OpBase*, OpBaseCmp> visited_preceding_ops;
     for (auto& grad_out_it : grad_out) {
       bool flag_clear_list = false;
@@ -118,7 +119,6 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
         if ((!var_base_it->OverridedStopGradient()) ||
             (grad_out_it.second.size() > 1)) {
           auto preceding_ops = var_base_it->GradOps();
-
           if (!preceding_ops.empty()) {
             for (const auto& op : preceding_ops) {
               visited_preceding_ops.insert(op);
