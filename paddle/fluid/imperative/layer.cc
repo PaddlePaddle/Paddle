@@ -272,7 +272,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
   framework::RuntimeContext runtime_ctx({}, {});
   auto prepared_op =
-      PreparedOp::Prepare(ins, outs, *op_kernel, runtime_place, &attrs_);
+      PreparedOp::Prepare(ins, outs, *op_kernel, runtime_place, &attrs_, ins);
 
   prepared_op.Run(&ins, &outs, &attrs_);
 

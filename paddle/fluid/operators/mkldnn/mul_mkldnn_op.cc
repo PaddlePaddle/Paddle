@@ -107,7 +107,7 @@ class MulPrimitiveFactory {
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
 
     if (out->format() == MKLDNNMemoryFormat::format_undef) {
-      auto output_format = output_->get_primitive_desc().desc().data.format;
+      auto output_format = platform::GetMKLDNNFormat(*output_);
       out->set_format((MKLDNNMemoryFormat)output_format);
     }
   }
@@ -139,8 +139,9 @@ class MulPrimitiveFactory {
     auto buffer_size = dst_prim_desc.get_size();
 
     OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
-    output->set_format((MKLDNNMemoryFormat)dst_prim_desc.desc().data.format);
-    return memory(dst_prim_desc, to_void_cast<OT>(output_data));
+    memory dst_mem(dst_prim_desc, to_void_cast<OT>(output_data));
+    output->set_format(platform::GetMKLDNNFormat(dst_mem));
+    return dst_mem;
   }
 
   memory Reorder(const memory::desc &src_desc, const memory::desc &dst_desc,
@@ -332,33 +333,17 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
   }
 };
 
-static std::string GetHash(const Tensor *input_x, const Tensor *input_y,
-                           const std::string &suffix) {
-  auto dim2str = [](const DDim &operand_dims) {
-    std::string str = "";
-    for (int i = 0; i < operand_dims.size(); ++i) {
-      str += std::to_string(operand_dims[i]) + "-";
-    }
-    return str;
-  };
-
-  std::string hash = std::to_string((unsigned)input_x->format()) +
-                     std::to_string((unsigned)input_x->type()) +
-                     dim2str(input_x->dims()) +
-                     std::to_string((unsigned)input_y->format()) +
-                     std::to_string((unsigned)input_y->type()) +
-                     dim2str(input_y->dims()) + suffix;
-
-  return hash;
-}
-
 /* OT: output data type */
 template <typename XT, typename YT, typename OT>
 std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine, bool enable_quant) {
-  const std::string key = GetHash(input_x, input_y, ctx.OutputName("Out"));
+  const std::string key = platform::CreateKey(
+      input_x->format(), input_x->type(),
+      framework::vectorize<int>(input_x->dims()), input_y->format(),
+      input_y->type(), framework::vectorize<int>(input_y->dims()),
+      ctx.OutputName("Out"));
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
       dev_ctx.GetBlob(key));

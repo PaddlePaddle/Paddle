@@ -27,20 +27,6 @@ using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
-namespace {
-std::string gethash(const mkldnn::memory::dims &operand_dims,
-                    const mkldnn::algorithm algorithm) {
-  auto dim2str = [](const mkldnn::memory::dims &operand_dims) {
-    std::string dstr = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      dstr += std::to_string(operand_dims[i]) + "-";
-    }
-    return dstr;
-  };
-  return dim2str(operand_dims) + std::to_string(algorithm);
-}
-}  // namespace
-
 template <typename Functor>
 class MKLDNNActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -106,7 +92,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   auto dst_memory_p = handler.AcquireDstMemory(y);
-  auto activation_p = handler.AcquireActivation(dst_memory_p, src_memory_p);
+  auto activation_p =
+      handler.AcquireForwardPrimitive(*src_memory_p, *dst_memory_p);
 
   // push primitive to stream and wait until it's executed
   std::vector<primitive> pipeline;
@@ -145,8 +132,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(diff_y);
   auto diff_src_memory_p = handler.AcquireDiffSrcMemory(diff_x);
-  auto activation_backward_p = handler.AcquireActivationBackward(
-      diff_src_memory_p, diff_dst_memory_p, src_memory_p);
+  auto activation_backward_p = handler.AcquireBackwardPrimitive(
+      *src_memory_p, *diff_dst_memory_p, *diff_src_memory_p);
 
   // push primitive to stream and wait until it's executed
   std::vector<primitive> pipeline;

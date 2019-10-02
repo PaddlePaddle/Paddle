@@ -40,7 +40,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block.program.current_block()
+        return var.block
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -143,7 +143,11 @@ def monkey_patch_variable():
                                   reverse=False,
                                   scalar_method=None):
         def __impl__(self, other_var):
-            if scalar_method is not None:
+            # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
+            # which may lose accuracy. This is a hot fix for release 1.6.
+            if scalar_method is not None and not (
+                    op_type == 'elementwise_div' and
+                    self.dtype in _supported_int_dtype_):
                 if isinstance(other_var, float):
                     if self.dtype in _supported_int_dtype_:
                         assert other_var == int(other_var), \

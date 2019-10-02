@@ -20,6 +20,56 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct SameDimsElemwiseMul<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
+
+template <typename T>
+struct SameDimsElemwiseMul<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x * eigen_y;
+  }
+};
+
+class ElementwiseMulOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Mul"; }
+  std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Multiply two tensors element-wise";
+  }
+};
+
 class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -36,12 +86,6 @@ class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
     return op;
   }
-};
-
-class ElementwiseMulOpMaker : public ElementwiseOpMaker {
- protected:
-  virtual std::string GetName() const { return "Mul"; }
-  virtual std::string GetEquation() const { return "Out = X \\\\odot Y"; }
 };
 
 class ElementwiseMulDoubleGradDescMaker
@@ -77,7 +121,8 @@ REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
                   ops::ElementwiseMulOpGradDescMaker);
 REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
                   ops::ElementwiseMulDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+                  ops::ElementwiseMulDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
