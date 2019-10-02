@@ -33,7 +33,8 @@ inline int GetCurrentUS() {
 void HeartBeatMonitor::Update(const int worker_id, std::string be_monitored_var,
                               WorkerStatus status) {
   if (status == UNINITED) {
-    PADDLE_THROW("UNINITED can not be used in Update, something maybe error");
+    LOG(WARNING) << "HeartBeatMonitor receive UNINITED status can not be used "
+                    "in Update, something error";
   }
 
   if (!is_chief_) {
@@ -83,7 +84,7 @@ void HeartBeatMonitor::LostWorkerMonitor() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(60 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30 * 1000));
   }
   VLOG(1) << "worker heartbeat monitor stopped, thread exit";
 }

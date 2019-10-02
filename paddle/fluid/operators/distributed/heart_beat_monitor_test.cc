@@ -15,12 +15,15 @@
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 #include <algorithm>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+void run(HeartBeatMonitor* monitor) { monitor->LostWorkerMonitor(); }
 
 TEST(HeartBeatMonitor, All) {
   int trainers = 10;
@@ -29,6 +32,7 @@ TEST(HeartBeatMonitor, All) {
   std::string var2 = "nce_w@GRAD.block2";
 
   HeartBeatMonitor::Init(trainers, pserver_id == 0, var);
+
   auto* monitor = HeartBeatMonitor::GetInstance();
 
   std::vector<int> ids{1, 3, 5, 7};
@@ -39,6 +43,12 @@ TEST(HeartBeatMonitor, All) {
 
   monitor->Update(9, var2, RUNNING);
   monitor->Update(2, var, COMPLETED);
+
+  std::thread t(run, monitor);
+  t.detach();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(45 * 1000));
+
   monitor->Stop();
 }
 
