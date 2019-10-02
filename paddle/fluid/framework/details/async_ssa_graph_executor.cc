@@ -49,6 +49,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
+  auto is_half_async = false;
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
     if (node && node->IsOp()) {
@@ -78,18 +79,31 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             recv_var_name, recv_varnames, epmap, {}, trainer_id);
         VLOG(3) << "find and remove an recv op: "
                 << recv_varname_to_ctx[recv_var_name];
+      } else if (node->Name() == "send_barrier") {
+        is_half_async =
+            boost::get<bool>(node->Op()->GetNullableAttr("half_async"));
+        VLOG(3) << "find send_barrier in async mode, set half_async="
+                << is_half_async;
       }
     }
   }
 
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
-    VLOG(3) << "this is distribute mode, will use communicator";
+    if (is_half_async) {
+      VLOG(3) << "this is distribute mode, will use HalfAsyncCommunicator";
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::HalfAsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    } else {
+      VLOG(3) << "this is distribute mode, will use AsyncCommunicator";
 
-    auto *instance = operators::distributed::Communicator::InitInstance<
-        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
-                                                   recv_varname_to_ctx, scope);
-    if (!instance->IsRunning()) instance->Start();
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::AsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    }
   }
 #endif
 }
