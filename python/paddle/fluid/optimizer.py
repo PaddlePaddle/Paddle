@@ -109,7 +109,6 @@ class Optimizer(object):
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
 
-            print("set stat", var_temp.numpy(), var_temp.numpy().dtype)
             state_dict['global_step'] = var_temp
         return state_dict
 
@@ -126,7 +125,6 @@ class Optimizer(object):
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
 
-                print("111111", step_np[0], step_np.dtype)
                 self._learning_rate.step_num = int(step_np[0])
             else:
                 raise RuntimeError(
