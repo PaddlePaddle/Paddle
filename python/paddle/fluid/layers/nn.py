@@ -1658,18 +1658,18 @@ def dropout(x,
 
     helper = LayerHelper('dropout', **locals())
 
-    if not isinstance(input, Variable):
+    if not isinstance(x, Variable):
         raise TypeError(
             "The type of 'input' in dropout must be Variable, but received %s" %
-            (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
+            (type(x)))
+    if convert_dtype(x.dtype) in ['float16']:
         warnings.warn(
             "The data type of 'input' in dropout only support float16 on GPU now."
         )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in dropout must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
+            % (convert_dtype(x.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(

@@ -77,13 +77,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                     in_sub_stride_size, in_dims.size(), in_dims,
                     strides.size());
 
-  PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
-                    "ShapeError: Conv paddings dimension and Conv strides "
-                    "dimension should be equal."
-                    "But received: The paddings dimension of Conv is [%d]"
-                    "the stride dimension of Conv is [%d]",
-                    paddings.size(), strides.size());
-
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
 
