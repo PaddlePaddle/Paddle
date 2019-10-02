@@ -84,7 +84,7 @@ class FetchHandlerMonitor(object):
 
                 fetch_tensors = [var.get_tensor() for var in fetch_vars]
 
-                if fetch_handler.return_np:
+                if self.fetch_instance.return_np:
                     fetch_nps = []
 
                     for tensor in fetch_tensors:
