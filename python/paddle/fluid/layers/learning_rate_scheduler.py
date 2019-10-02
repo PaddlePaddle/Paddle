@@ -484,8 +484,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             value=0.0,
             dtype=dtype,
             persistable=True,
-            name="learning_rate_warmup",
-            belong_to_optimizer=True)
+            name="learning_rate_warmup")
 
         global_step = _decay_step_counter()
 
