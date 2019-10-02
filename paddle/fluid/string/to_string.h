@@ -15,10 +15,8 @@ limitations under the License. */
 #pragma once
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <typeindex>
-#ifdef PADDLE_WITH_MKLDNN
-#include <mkldnn.hpp>
-#endif
 
 namespace paddle {
 namespace string {
@@ -27,24 +25,24 @@ inline std::ostream& operator<<(std::ostream& s, const std::type_index& t) {
   return s;
 }
 
-template <typename T>
+template <typename T,
+          typename std::enable_if<!std::is_enum<T>::value, int>::type = 0>
 inline std::string to_string(T v) {
   std::ostringstream sout;
   sout << v;
   return sout.str();
 }
 
+template <typename T,
+          typename std::enable_if<std::is_enum<T>::value, int>::type = 0>
+inline std::string to_string(T v) {
+  return std::to_string(static_cast<int>(v));
+}
+
 template <>
 inline std::string to_string(std::type_index t) {
   return t.name();
 }
-
-#ifdef PADDLE_WITH_MKLDNN
-template <>
-inline std::string to_string(mkldnn::memory::format_tag t) {
-  return std::to_string(static_cast<int>(t));
-}
-#endif
 
 // Faster std::string/const char* type
 template <>
