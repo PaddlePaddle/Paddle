@@ -838,7 +838,8 @@ class DistributeTranspiler(object):
             - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op`` 
         
         Args:
-            wait_port(bool): Whether to wait for the parameter server to be ready before returning to program, default is True
+            wait_port(bool): Whether to wait for the parameter server to be ready before returning to program, 
+            default is True
 
         Returns:
             Program: trainer side program.
