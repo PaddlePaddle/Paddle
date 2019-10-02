@@ -242,6 +242,7 @@ class ExecutionContext {
   virtual ~ExecutionContext() {}
   // const OperatorBase& op() const { return op_; }
 
+  virtual proto::VarType::Type IndicateDataType() const;
   virtual std::string InputName(const std::string& name) const {
     return op_.Input(name);
   }

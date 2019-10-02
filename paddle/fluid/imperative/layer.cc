@@ -232,7 +232,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
 
   // auto input_name_map = CreateVarNameMap(info, type, ins, true);
   // auto output_name_map = CreateVarNameMap(info, type, outs, false);
-  op_ = framework::OpRegistry::CreateOp(type, {}, {}, {});
+  op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
@@ -240,7 +240,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
 OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
                const platform::Place& place)
     : id_(id),
-      op_(framework::OpRegistry::CreateOp(op_desc.Type(), {}, {}, {})),
+      op_(framework::OpRegistry::CreateOp(op_desc.Type(), {}, {}, {}, false)),
       place_(place),
       attrs_(op_desc.GetAttrMap()) {
   const auto& info = framework::OpInfoMap::Instance().Get(op_desc.Type());
@@ -256,10 +256,9 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, op_->Attrs());
+    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, attrs_);
     info.infer_var_type_(&infer_var_type_ctx);
   }
-
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {

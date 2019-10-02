@@ -348,7 +348,9 @@ class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
+    if (ForwardOp().Inputs().count("ShapeTensor")) {
+      grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
+    }
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     grad_op->SetAttrMap(Attrs());

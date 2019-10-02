@@ -55,8 +55,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                 size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    const std::string &input_n = Inputs(in)[i];
-    const std::string &output_n = Outputs(out)[j];
+    std::string input_n = Inputs(in)[i];
+    std::string output_n = Outputs(out)[j];
 
     PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
                    in, i);

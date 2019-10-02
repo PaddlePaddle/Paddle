@@ -196,6 +196,39 @@ class DygraphExecutionContext : public framework::ExecutionContext {
         var_base_map_out_(var_base_map_out),
         attrs_(attrs) {}
 
+  framework::proto::VarType::Type IndicateDataType() const override {
+    framework::proto::VarType::Type dafault_data_type =
+        static_cast<framework::proto::VarType::Type>(-1);
+    framework::proto::VarType::Type data_type = dafault_data_type;
+    for (auto& input : var_base_map_in_) {
+      auto& vars = input.second;
+      for (size_t i = 0; i < vars.size(); ++i) {
+        const framework::Variable* var = vars[i]->MutableVar();
+        if (var != nullptr) {
+          const framework::Tensor* t = nullptr;
+          if (var->IsType<framework::Tensor>()) {
+            t = &var->Get<framework::Tensor>();
+          } else if (var->IsType<framework::LoDTensor>()) {
+            t = &var->Get<framework::LoDTensor>();
+          } else if (var->IsType<framework::SelectedRows>()) {
+            t = &(var->Get<framework::SelectedRows>().value());
+          }
+          if (t != nullptr) {
+            PADDLE_ENFORCE(t->IsInitialized(),
+                           "Input %s(%lu) is not initialized", input.first, i);
+            framework::proto::VarType::Type tmp = t->type();
+            PADDLE_ENFORCE(tmp == data_type || data_type == dafault_data_type,
+                           "DataType %s must be the same. Get (%s) != (%s)",
+                           input.first, framework::DataTypeToString(data_type),
+                           framework::DataTypeToString(tmp));
+            data_type = tmp;
+          }
+        }
+      }
+    }
+    return data_type;
+  }
+
   std::string InputName(const std::string& name) const {
     auto it = var_base_map_in_.find(name);
     PADDLE_ENFORCE(it != var_base_map_in_.end(), "Can not find [%s] in Input",
@@ -241,6 +274,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     auto it = attrs_->find(name);
 
     PADDLE_ENFORCE(it != attrs_->end(), "can not find [%s] in attrs", name);
+
     return it->second;
   }
 

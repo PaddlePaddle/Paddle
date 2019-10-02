@@ -409,6 +409,40 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   }
 }
 
+proto::VarType::Type ExecutionContext::IndicateDataType() const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  for (auto& input : ctx_.inputs) {
+    auto& vars = input.second;
+    for (size_t i = 0; i < vars.size(); ++i) {
+      const Variable* var = vars[i];
+      if (var != nullptr) {
+        const Tensor* t = nullptr;
+        if (var->IsType<Tensor>()) {
+          t = &var->Get<Tensor>();
+        } else if (var->IsType<LoDTensor>()) {
+          t = &var->Get<LoDTensor>();
+        } else if (var->IsType<SelectedRows>()) {
+          t = &(var->Get<SelectedRows>().value());
+        }
+        if (t != nullptr) {
+          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
+                         input.first, i);
+          proto::VarType::Type tmp = t->type();
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == dafault_data_type,
+              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
+              Type(), input.first, DataTypeToString(data_type),
+              DataTypeToString(tmp));
+          data_type = tmp;
+        }
+      }
+    }
+  }
+  return data_type;
+}
+
 bool ExecutionContext::HasInput(const std::string& name) const {
   if (!op_.HasInputs(name)) {
     return false;
@@ -1146,39 +1180,23 @@ Scope* OperatorWithKernel::PrepareData(
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
-  proto::VarType::Type dafault_data_type = static_cast<proto::VarType::Type>(5);
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  // for (auto& input : this->inputs_) {
-  //  const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
-  for (auto& input : ctx.Context().inputs) {
-    auto& vars = input.second;
-    for (size_t i = 0; i < vars.size(); ++i) {
-      const Variable* var = vars[i];
-      if (var != nullptr) {
-        const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
-        } else if (var->IsType<SelectedRows>()) {
-          t = &(var->Get<SelectedRows>().value());
-        }
-        if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
-                         input.first, i);
-          proto::VarType::Type tmp = t->type();
-          PADDLE_ENFORCE(
-              tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
-              Type(), input.first, DataTypeToString(data_type),
-              DataTypeToString(tmp));
-          data_type = tmp;
-        }
-      }
-    }
+  try {
+    data_type = ctx.IndicateDataType();
+  } catch (platform::EnforceNotMet& exp) {
+    PADDLE_THROW("Operator [%s] GetExpectedKernelType Failed, error is: [%s]",
+                 type_, exp.what());
+  } catch (...) {
+    PADDLE_THROW(
+        "Operator [%s] GetExpectedKernelType Failed, error type UnExcepted");
   }
-  // PADDLE_ENFORCE(data_type != dafault_data_type,
-  //               "DataType should be indicated by input");
+
+  PADDLE_ENFORCE(data_type != dafault_data_type,
+                 "Operator [%s] GetExpectedKernelType Failed, the input of the "
+                 "Operator maybe empty",
+                 type_);
   return data_type;
 }
 

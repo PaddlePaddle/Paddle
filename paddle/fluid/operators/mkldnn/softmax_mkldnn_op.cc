@@ -220,7 +220,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
 
     SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc, dev_ctx,
-                                    ctx.GetPlace(), ctx.op().Output("Out"));
+                                    ctx.GetPlace(), ctx.OutputName("Out"));
     // Currently only NC data format is supported
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     auto softmax_dst_memory_p = handler.AcquireDstMemory(output);
@@ -277,7 +277,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     // Normalization is made after innermost dimension eg. C out of NC
     SoftmaxMKLDNNHandler<T> handler(softmax_tz, MKLDNNMemoryFormat::nc,
                                     MKLDNNMemoryFormat::nc, dev_ctx,
-                                    ctx.GetPlace(), ctx.op().InputName("Out"));
+                                    ctx.GetPlace(), ctx.InputName("Out"));
 
     auto dst_memory_p = handler.AcquireDstMemory(output);
     auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);

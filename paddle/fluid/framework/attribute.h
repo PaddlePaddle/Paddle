@@ -219,7 +219,8 @@ class DefaultValueSetter {
  public:
   explicit DefaultValueSetter(T default_value)
       : default_value_(default_value) {}
-  void operator()(T* value) const { *value = default_value_; }
+  // void operator()(T* value) const { *value = default_value_; }
+  const T& operator()() const { return default_value_; }
 
  private:
   T default_value_;
@@ -258,7 +259,7 @@ class EnumInContainer {
 // an attribute can have more than one limits
 template <typename T>
 class TypedAttrChecker {
-  typedef std::function<void(T*)> DefaultValueChecker;
+  typedef std::function<const T&()> DefaultValueChecker;
   typedef std::function<void(const T&)> ValueChecker;
 
  public:
@@ -302,17 +303,18 @@ class TypedAttrChecker {
       PADDLE_ENFORCE(!default_value_setter_.empty(),
                      "Attribute '%s' is required!", attr_name_);
       // default_value_setter_ has no more than one element
+      attr_map->emplace(attr_name_, default_value_setter_[0]());
+      /*
       T val;
       (default_value_setter_[0])(&val);
       (*attr_map)[attr_name_] = val;
-    } else {
-      if (value_checkers_.size() > 0) {
-        ExtractAttribute<T> extract_attr(attr_name_);
-        T* attr_value = extract_attr(it->second);
-        for (const auto& checker : value_checkers_) {
-          checker(*attr_value);
-        }
-      }
+      */
+    }
+    it = attr_map->find(attr_name_);
+    ExtractAttribute<T> extract_attr(attr_name_);
+    T* attr_value = extract_attr(it->second);
+    for (const auto& checker : value_checkers_) {
+      checker(*attr_value);
     }
   }
 
