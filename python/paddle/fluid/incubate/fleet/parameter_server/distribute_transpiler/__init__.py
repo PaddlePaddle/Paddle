@@ -79,7 +79,8 @@ class DistributedTranspiler(Fleet):
             kwargs["push_vars"] = self.vars_info
             mode = AsyncMode.GEO_SGD
 
-        elif self._transpile_config.half_aync:
+        # for async training, use half-async to acquire better performances
+        elif self._transpile_config.ada_optimizer:
             mode = AsyncMode.HALF_ASYNC
         else:
             mode = AsyncMode.ASYNC
@@ -325,6 +326,14 @@ class TranspilerOptimizer(DistributedOptimizer):
         else:
             self._strategy = DistributeTranspilerConfig()
 
+    def is_ada(self):
+        ada_optimizer = [
+            'Adagrad', 'Adam', 'Adamax', 'Adadelta', 'AdagradOptimizer',
+            'AdamOptimizer', 'AdamaxOptimizer', 'AdadeltaOptimizer'
+        ]
+
+        return type(self._optimizer).__name__ in ada_optimizer
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -411,5 +420,8 @@ class TranspilerOptimizer(DistributedOptimizer):
 
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
+
+        self._strategy.ada_optimizer = self.is_ada()
         fleet._transpile(config=self._strategy)
+
         return optimize_ops, params_grads

@@ -176,6 +176,7 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
+    ada_optimizer = False
     # split the send recv var in runtime
     _runtime_split_send_recv = False
     _sync_mode = True
@@ -185,10 +186,10 @@ class DistributeTranspilerConfig(object):
     geo_sgd_need_push_nums = 100
 
     nccl_comm_num = 1
-    #The picture here illustrates the principle:
-    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+    # The picture here illustrates the principle:
+    # https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
+    # Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
@@ -554,10 +555,12 @@ class DistributeTranspiler(object):
                     )
 
                 assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
-                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num,
+                                                                                      self.config.hierarchical_allreduce_inter_nranks)
 
                 assert trainers_num % self.config.hierarchical_allreduce_inter_nranks == 0, \
-                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num,
+                                                                                             self.config.hierarchical_allreduce_inter_nranks)
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = \
                     int(self.config.hierarchical_allreduce_inter_nranks)
@@ -719,18 +722,18 @@ class DistributeTranspiler(object):
                     "is_communicator": False,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
-
-        if not self.sync_mode and self.config.runtime_split_send_recv:
-            program.global_block().append_op(
-                type="send_barrier",
-                inputs={"X": list(input_deps)},
-                outputs={"Out": send_barrier_out},
-                attrs={
-                    "endpoints": pserver_endpoints,
-                    "trainer_id": self.trainer_id,
-                    "is_communicator": True,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
+        else:
+            if self.config.runtime_split_send_recv and self.config.ada_optimizer:
+                program.global_block().append_op(
+                    type="send_barrier",
+                    inputs={"X": list(input_deps)},
+                    outputs={"Out": send_barrier_out},
+                    attrs={
+                        "endpoints": pserver_endpoints,
+                        "trainer_id": self.trainer_id,
+                        "half_async": True,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                    })
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
@@ -2361,7 +2364,7 @@ class DistributeTranspiler(object):
         for op in block.ops:
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)

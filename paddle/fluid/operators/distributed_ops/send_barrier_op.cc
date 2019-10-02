@@ -37,9 +37,9 @@ class SendBarrierOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    auto is_communicator = Attr<bool>("is_communicator");
+    auto is_half_async = Attr<bool>("half_async");
 
-    if (is_communicator) {
+    if (is_half_async) {
       distributed::Communicator::GetInstance()->Barrier();
     } else {
       std::vector<std::string> eps =
@@ -84,10 +84,11 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<bool>("is_communicator",
-                  "(bool, default false)"
-                  "communicator=True is for async mode, this will send signal "
-                  "to Communicator Instance")
+    AddAttr<bool>(
+        "half_async",
+        "(bool, default false)"
+        "half_async=True is for half_async mode, this will send signal "
+        "to HalfAsyncCommunicator Instance")
         .SetDefault(false);
   }
 };
