@@ -636,9 +636,11 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
+
   for (auto &ids_map : ids_send_vec) {
-    ids_set.insert(ids_map[origin_var_name][splited_var_index].begin(),
-                   ids_map[origin_var_name][splited_var_index].end());
+    for (auto &ids : ids_map[origin_var_name][splited_var_index]) {
+      ids_set.insert(ids);
+    }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
   VLOG(1) << "run SparseIdsMerge " << splited_var_name << " has nums "
