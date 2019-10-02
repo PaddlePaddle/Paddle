@@ -32,6 +32,7 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph.learning_rate_scheduler import LearningRateDecay
+from .dygraph.layers import var_base_to_np
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -96,6 +97,72 @@ class Optimizer(object):
         self.helper = None
         self._opti_name_list = []
 
+    def state_dict(self):
+        # state dict from self._accumulators
+        state_dict = {}
+        for k, v in self._accumulators.items():
+            for para_name, var_tmp in v.items():
+                state_dict[var_tmp.name] = var_tmp
+        # global step if use lr decay
+        if isinstance(self._learning_rate, LearningRateDecay):
+            var_temp = Variable(None, name='global_step', dtype='int32')
+            tensor.fill_constant(
+                [1], "int32", self._learning_rate.step_num, out=var_temp)
+
+            print("set stat", var_temp.numpy(), var_temp.numpy().dtype)
+            state_dict['global_step'] = var_temp
+        return state_dict
+
+    def set_dict(self, state_dict):
+        if isinstance(self._learning_rate, LearningRateDecay):
+            assert 'global_step' in state_dict, \
+                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+            global_step = state_dict['global_step']
+            if isinstance(global_step, int):
+                self._learning_rate.step_num = global_step
+            elif isinstance(global_step, core.VarBase):
+                step_np = global_step._copy_to(core.CPUPlace(), True)
+                step_np = np.array(step_np.value().get_tensor())
+                assert step_np.shape == (1,),  \
+                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+
+                print("111111", step_np[0], step_np.dtype)
+                self._learning_rate.step_num = int(step_np[0])
+            else:
+                raise RuntimeError(
+                    "Type not supprt, value in state dict must be [int, VarBase], the type is {}",
+                    type(global_step))
+
+        for k, v in self._accumulators.items():
+            for para_name, var_tmp in v.items():
+                assert var_tmp.name in state_dict, \
+                        "optimizer variable {} not found".format( var_tmp.name )
+                var = var_tmp._ivar.value()
+                tensor = var.get_tensor()
+                model_np = np.array(tensor)
+
+                load_para = state_dict[var_tmp.name]
+
+                if isinstance(load_para, Variable):
+                    load_para_np = load_para.numpy()
+                elif isinstance(load_para, core.VarBase):
+                    load_para_np = var_base_to_np(load_para)
+                elif isinstance(load_para, numpy):
+                    load_para_np = load_para
+                else:
+                    raise RuntimeError("State dict type {} not supprt".format(
+                        str(type(load_para))))
+
+                assert model_np.shape == load_para_np.shape,  \
+                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
+                                                 item.name, model_np.shape, load_para_np.shape)
+
+                assert model_np.dtype == load_para_np.dtype, \
+                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                                                item.name, model_np.dtype, load_para_np.dtype)
+
+                tensor.set(load_para_np, framework._current_expected_place())
+
     def load(self, stat_dict):
         """
         load optimizer with learning rate decay in dygraph mode
@@ -147,6 +214,7 @@ class Optimizer(object):
                     y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                             128, 1)
 
+                    # state dict from a
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
                     label._stop_gradient = True
@@ -198,8 +266,7 @@ class Optimizer(object):
                         shape=[1],
                         value=float(self._learning_rate),
                         dtype='float32' if self._dtype is None else self._dtype,
-                        persistable=True,
-                        belong_to_optimizer=True)
+                        persistable=True)
             # get learning rate Variable from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
                 self._learning_rate_map[framework.default_main_program(

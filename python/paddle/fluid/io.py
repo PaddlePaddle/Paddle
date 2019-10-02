@@ -27,7 +27,7 @@ import paddle
 import paddle.reader
 from paddle.reader import *
 from paddle.fluid import layers
-from paddle.fluid.executor import Executor
+from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
 from paddle.fluid.compiler import CompiledProgram
@@ -1434,10 +1434,9 @@ def save(program, model_path):
     """
 
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != "",
-        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
-    )
+    assert base_name != "", \
+            "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+
     parameter_list = list(filter(is_parameter, program.list_vars()))
     paddle.fluid.core._save_static_dict(model_path + ".pdparams",
                                         parameter_list, global_scope())
@@ -1464,5 +1463,7 @@ def load(program, model_path):
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
-    paddle.fluid.core._load_static_dict(model_path + ".pdopt",
-                                        optimizer_var_list, global_scope())
+
+    if len(optimizer_var_list) > 0:
+        paddle.fluid.core._load_static_dict(model_path + ".pdopt",
+                                            optimizer_var_list, global_scope())

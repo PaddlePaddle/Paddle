@@ -242,7 +242,7 @@ bool SaveTensorToDisk(const std::string& file_name,
   }
 
   // first 256 byte for reserve for fulture upgrade
-  char kReserveBuffer = new char[model_file_reserve_size];
+  char* kReserveBuffer = new char[model_file_reserve_size];
   fout.write(kReserveBuffer, sizeof(char) * model_file_reserve_size);
   delete[] kReserveBuffer;
 
@@ -289,12 +289,12 @@ bool SaveTensorToDisk(const std::string& file_name,
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       data_ptr = temp.data<void>();
-    }
 #else
       PADDLE_THROW(
           "Tensor is in CUDA device, but paddle not compile with CUDA, this "
           "shoul'd not happen");
 #endif
+    }
     fout.write(static_cast<const char*>(data_ptr),
                static_cast<std::streamsize>(data_size));
   }
@@ -354,7 +354,10 @@ bool LoadTensorFromDisk(
                 std::back_inserter(dims));
       auto new_dim = framework::make_ddim(dims);
       tensor_temp->Resize(new_dim);
-      float* buf = tensor_temp->mutable_data<float>(platform::CPUPlace());
+      void* buf;
+      framework::VisitDataType(desc.data_type(),
+                               DeserializedDataFunctor(&buf, tensor_temp.get(),
+                                                       platform::CPUPlace()));
       size_t size =
           tensor_temp->numel() * framework::SizeOfType(desc.data_type());
 

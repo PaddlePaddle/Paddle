@@ -25,7 +25,12 @@ from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 
-__all__ = ['Layer']
+__all__ = ['Layer', 'var_base_to_np']
+
+
+def var_base_to_np(var_base):
+    var = var_base._copy_to(core.CPUPlace(), True)
+    return np.array(var.value().get_tensor())
 
 
 class Layer(core.Layer):
@@ -223,11 +228,35 @@ class Layer(core.Layer):
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
-            if value.name in self._loaddict_holder:
+            if len(self._loaddict_holder) > 0:
+                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                    value.name)
+
+                # check shape and dtype
                 var = value._ivar.value()
                 tensor = var.get_tensor()
-                tensor.set(self._loaddict_holder[value.name].numpy(),
-                           framework._current_expected_place())
+
+                model_np = np.array(tensor)
+                load_para = self._loaddict_holder[item.name]
+
+                if isinstance(load_para, Variable):
+                    load_para_np = load_para.numpy()
+                elif isinstance(load_para, core.VarBase):
+                    load_para_np = var_base_to_np(load_para)
+                elif isinstance(load_para, numpy):
+                    load_para_np = load_para
+                else:
+                    raise RuntimeError("State dict type {} not supprt".format(
+                        str(type(load_para))))
+
+                assert model_np.shape == load_para_np.shape,  \
+                                      "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
+
+                assert model_np.dtype == load_para_np.dtype,  \
+                                      "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {}  but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
+
+                tensor.set(load_para_np, framework._current_expected_place())
+
             if name in params:
                 # remove unused param in tracer
                 if framework._dygraph_tracer_ is not None:
@@ -268,14 +297,42 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
+    def set_dict(self, stat_dict, include_sublayers=True):
+        self.load_dict(stat_dict, include_sublayers=include_sublayers)
+
     def load_dict(self, stat_dict, include_sublayers=True):
         self._loaddict_holder = stat_dict
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
                 var = item._ivar.value()
                 tensor = var.get_tensor()
-                tensor.set(stat_dict[item.name].numpy(),
-                           framework._current_expected_place())
+                model_np = np.array(tensor)
+
+                load_para = stat_dict[item.name]
+
+                if isinstance(load_para, framework.Variable):
+                    load_para_np = load_para.numpy()
+                elif isinstance(load_para, core.VarBase):
+                    load_para_np = var_base_to_np(load_para)
+                elif isinstance(load_para, numpy):
+                    load_para_np = load_para
+                else:
+                    raise RuntimeError("State dict type {} not supprt".format(
+                        str(type(load_para))))
+
+                assert model_np.shape == load_para_np.shape,  \
+                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} " \
+                                          "but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
+
+                assert model_np.dtype == load_para_np.dtype, \
+                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {} " \
+                                          "but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
+
+                tensor.set(load_para_np, framework._current_expected_place())
+            else:
+                raise RuntimeError(
+                    "Parameter not found, Can't not find [ {} ] in stat_dict".
+                    format(item.name))
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():

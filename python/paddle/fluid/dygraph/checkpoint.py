@@ -20,48 +20,43 @@ from ..framework import Variable, default_main_program
 import pickle
 from . import learning_rate_scheduler
 import warnings
+from .. import core
 
 __all__ = [
-    'save_persistables', 'load_persistables', save_parameter, save_optimizer,
-    load_parameter, load_optimizer
+    'save_persistables', 'load_persistables', 'save_parameter',
+    'save_optimizer', 'load_parameter', 'load_optimizer'
 ]
 
 
-def save_parameter(model_dict, model_path):
+def save_parameter(state_dict, model_path):
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != "",
-        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
-    )
+    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
 
-    fluid.core._save_dygraph_dict(model_path + ".pdparams", state)
+    core._save_dygraph_dict(model_path + ".pdparams", state_dict)
 
 
 def save_optimizer(optimizer_dict, model_path):
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != "",
-        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
-    )
+    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
 
-    fluid.core._save_dygraph_dict(model_path + ".pdopt", state)
+    core._save_dygraph_dict(model_path + ".pdopt", optimizer_dict)
 
 
 def load_parameter(model_path):
     params_file_path = model_path + ".pdparams"
-    if os.path.exists(params_file_path):
+    if not os.path.exists(params_file_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
 
-    return fluid.core._load_dygraph_dict(model_path + ".pdparams")
+    return core._load_dygraph_dict(model_path + ".pdparams")
 
 
 def load_optimizer(model_path):
     opt_file_path = model_path + ".pdopt"
-    if os.path.exists(opt_file_path):
+    if not os.path.exists(opt_file_path):
         raise RuntimeError("Optimizer file [ {} ] not exists".format(
             opt_file_path))
-    return fluid.core._load_dygraph_dict(opt_file_path)
+    return core._load_dygraph_dict(opt_file_path)
 
 
 def save_persistables(model_dict, dirname='save_dir', optimizers=None):
