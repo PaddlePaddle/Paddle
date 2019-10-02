@@ -30,7 +30,7 @@ class AsyncMode:
 
 
 class Communicator(object):
-    def __init__(self, program, mode, **kwargs):
+    def __init__(self, program, mode, kwargs=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
