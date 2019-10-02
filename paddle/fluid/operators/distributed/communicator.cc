@@ -447,8 +447,7 @@ HalfAsyncCommunicator::~HalfAsyncCommunicator() {
     fwrite(msg.c_str(), msg.length(), 1, stdout);
   }
   running_ = false;
-  if (send_thread_) send_thread_->join();
-  if (recv_thread_) recv_thread_->join();
+  if (consume_thread_) consume_thread_->join();
   if (FLAGS_v >= 3) {
     std::string msg("~Communicator done");
     fwrite(msg.c_str(), msg.length(), 1, stdout);
@@ -490,12 +489,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
               continue;
             } else {
               wait_times = 0;
-
               vars.push_back(var_queue->Pop());
-              // only count the send number of the first var
-              if (var_name == send_varname_to_queue_.begin()->first) {
-                grad_num_.fetch_add(1, std::memory_order_relaxed);
-              }
               merged_var_num++;
             }
           }
@@ -514,7 +508,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
                   << after_send - after_merge;
         };
         task_futures.emplace_back(
-            send_threadpool_->enqueue(std::move(send_task)));
+            consume_threadpool_->enqueue(std::move(send_task)));
       } else {
         VLOG(4) << var_name << " queue empty";
       }
