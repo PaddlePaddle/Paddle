@@ -809,8 +809,8 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   rpc_client->AsyncSendVar(endpoint, cpu_ctx, *delta_scope_.get(),
                            splited_var_name);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(1) << "send " << splited_var_name << " use time "
-          << after_send_sparse - before_send_sparse;
+  VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
+          << " use time " << after_send_sparse - before_send_sparse;
 }
 
 void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
@@ -902,6 +902,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto row_size = var_z_slr->rows().size();
   std::vector<int64_t> new_rows;
   new_rows.reserve(row_size);
+
   for (auto ids : var_z_slr->rows()) {
     new_rows.push_back(ids +
                        absolute_section_[origin_var_name][splited_var_index]);
@@ -944,7 +945,8 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
     fs[i].wait();
   }
   auto after_run_update = GetCurrentUS();
-  VLOG(1) << "sparse var update " << origin_splited_var_name << " use time "
+  VLOG(1) << "sparse var recv update " << origin_splited_var_name << " has num "
+          << new_rows.size() << " use time "
           << after_run_update - before_run_update;
 }
 
