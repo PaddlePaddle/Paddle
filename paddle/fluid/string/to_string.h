@@ -16,6 +16,9 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <typeindex>
+#ifdef PADDLE_WITH_MKLDNN
+#include <mkldnn.hpp>
+#endif
 
 namespace paddle {
 namespace string {
@@ -35,6 +38,13 @@ template <>
 inline std::string to_string(std::type_index t) {
   return t.name();
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+template <>
+inline std::string to_string(mkldnn::memory::format_tag t) {
+  return std::to_string(static_cast<int>(t));
+}
+#endif
 
 // Faster std::string/const char* type
 template <>
