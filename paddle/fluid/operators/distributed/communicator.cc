@@ -637,9 +637,9 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
 
-  for (auto &ids_map : ids_send_vec) {
-    for (auto &ids : ids_map[origin_var_name][splited_var_index]) {
-      ids_set.insert(ids);
+  for (auto ids_map : ids_send_vec) {
+    for (auto id : ids_map[origin_var_name][splited_var_index]) {
+      ids_set.insert(id);
     }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
