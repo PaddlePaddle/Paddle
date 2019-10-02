@@ -557,6 +557,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
 void GeoSgdCommunicator::SendThread() {
   VLOG(0) << "SendThread start!";
   auto before_run_training = GetCurrentUS();
+  rpc_client_ = distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   while (running_) {
     std::vector<std::future<void>> task_futures;
@@ -772,11 +773,6 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto trainer_id = send_varname_to_ctx_[var_name].trainer_id;
   auto endpoint = send_varname_to_ctx_[var_name].epmap[splited_var_index];
 
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
-  distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-
   std::vector<int64_t> send_rows;
   send_rows.reserve(new_rows.size());
   for (auto idx : new_rows) {
@@ -786,10 +782,11 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   var_z_select_rows->set_rows(send_rows);
   var_z_select_rows->set_height(
       send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
-
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
   auto before_send_sparse = GetCurrentUS();
-  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
-                           splited_var_name);
+  rpc_client_->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
+                            splited_var_name);
   auto after_send_sparse = GetCurrentUS();
   VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
@@ -857,14 +854,11 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
       recv_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
-  distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
-
   auto before_run_recv = GetCurrentUS();
   pserver_scope_->Var(origin_splited_var_name);
-  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
-                          origin_splited_var_name, origin_splited_var_name,
-                          origin_splited_var_name);
+  rpc_client_->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
+                           origin_splited_var_name, origin_splited_var_name,
+                           origin_splited_var_name);
   auto after_run_recv = GetCurrentUS();
   VLOG(1) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
