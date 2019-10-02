@@ -747,43 +747,25 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   std::vector<int64_t> new_rows;
   new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
 
-  // using multi thread speed sparse delta calc
-  std::vector<int> buts =
-      bucket(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);
-  std::vector<std::future<void>> fs;
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+  float avg = 1 / static_cast<float>(trainer_nums_);
+  for (int y = 0; y < new_rows.size(); y++) {
+    auto ids = new_rows[y];
 
-  for (int x = 0; x < buts.size() - 1; x++) {
-    int start = buts[x];
-    int end = buts[x + 1];
-    float avg = 1 / static_cast<float>(trainer_nums_);
+    float *x_val = x_value + ids * row_numel;
+    float *y_val = y_value + ids * row_numel;
+    float *z_val = z_value + y * row_numel;
 
-    fs.push_back(
-        paddle::framework::Async([&x_value, &y_value, &z_value, &new_rows,
-                                  row_numel, start, end, avg]() {
-          auto cpu_ctx = paddle::platform::CPUDeviceContext();
-          auto blas =
-              math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
-
-          for (int y = start; y < end; y++) {
-            auto ids = new_rows[y];
-
-            float *x_val = x_value + ids * row_numel;
-            float *y_val = y_value + ids * row_numel;
-            float *z_val = z_value + y * row_numel;
-
-            std::vector<float> row_delta(row_numel, 0);
-            VSUB<float>(row_numel, x_val, y_val, row_delta.data());
-            blas.SCAL(row_numel, avg, row_delta.data());
-            blas.VADD(row_numel, row_delta.data(), y_val, y_val);
-            blas.VCOPY(row_numel, row_delta.data(), z_val);
-          }
-        }));
+    std::vector<float> row_delta(row_numel, 0);
+    VSUB<float>(row_numel, x_val, y_val, row_delta.data());
+    blas.SCAL(row_numel, avg, row_delta.data());
+    blas.VADD(row_numel, row_delta.data(), y_val, y_val);
+    blas.VCOPY(row_numel, row_delta.data(), z_val);
   }
-  for (size_t i = 0; i < fs.size(); ++i) {
-    fs[i].wait();
-  }
+
   auto after_run_send_sparse = GetCurrentUS();
-  VLOG(1) << "run send update sparse var " << var_name << " use time "
+  VLOG(1) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -911,39 +893,22 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto row_numel = new_value->numel() / new_rows.size();
   auto *z_value = new_value->mutable_data<float>(var_x_tensor.place());
 
-  // using mulit thread to calc delta
-  std::vector<int> buts =
-      bucket(new_rows.size(), FLAGS_communicator_merge_sparse_bucket);
-  std::vector<std::future<void>> fs;
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+  for (int y = 0; y < new_rows.size(); y++) {
+    std::vector<float> row_delta(row_numel, 0);
 
-  for (int x = 0; x < buts.size() - 1; x++) {
-    int start = buts[x];
-    int end = buts[x + 1];
+    auto ids = new_rows[y];
 
-    fs.push_back(paddle::framework::Async(
-        [&x_value, &y_value, &z_value, &new_rows, row_numel, start, end]() {
-          auto cpu_ctx = paddle::platform::CPUDeviceContext();
-          auto blas =
-              math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+    float *x_val = x_value + ids * row_numel;
+    float *y_val = y_value + ids * row_numel;
+    float *z_val = z_value + y * row_numel;
 
-          for (int y = start; y < end; y++) {
-            std::vector<float> row_delta(row_numel, 0);
-
-            auto ids = new_rows[y];
-
-            float *x_val = x_value + ids * row_numel;
-            float *y_val = y_value + ids * row_numel;
-            float *z_val = z_value + y * row_numel;
-
-            VSUB(row_numel, z_val, y_val, row_delta.data());
-            blas.VADD(row_numel, row_delta.data(), x_val, x_val);
-            blas.VCOPY(row_numel, z_val, y_val);
-          }
-        }));
+    VSUB(row_numel, z_val, y_val, row_delta.data());
+    blas.VADD(row_numel, row_delta.data(), x_val, x_val);
+    blas.VCOPY(row_numel, z_val, y_val);
   }
-  for (size_t i = 0; i < fs.size(); ++i) {
-    fs[i].wait();
-  }
+
   auto after_run_update = GetCurrentUS();
   VLOG(1) << "sparse var recv update " << origin_splited_var_name << " has num "
           << new_rows.size() << " use time "
