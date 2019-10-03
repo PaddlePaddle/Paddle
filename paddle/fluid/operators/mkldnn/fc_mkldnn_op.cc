@@ -183,7 +183,7 @@ class FCPrimitiveFactory {
 
   mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc,
                               const void* data) {
-    return memory(desc, engine_, const_cast<void*>(data));
+    return memory(desc, engine_, const_cast<void*>(data)) ;
   }
 
   // Transpose weights through MKL-DNN's reorder from io to oi format.
