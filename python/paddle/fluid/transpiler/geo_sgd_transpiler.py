@@ -179,9 +179,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
         return self.vars_info
 
     def get_trainer_program(self, wait_port=True):
-        # Todo: add wait mehtod
-        # if wait_port
-        #     wait_server_ready(self.pserver_endpoints)
+        if wait_port:
+            wait_server_ready(self.pserver_endpoints)
         return self.origin_program
 
     def get_pserver_programs(self, endpoint):
