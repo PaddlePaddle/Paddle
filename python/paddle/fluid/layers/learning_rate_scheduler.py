@@ -372,8 +372,7 @@ def piecewise_decay(boundaries, values):
                 value=0.0,
                 dtype='float32',
                 persistable=True,
-                name="learning_rate",
-                belong_to_optimize=True)
+                name="learning_rate")
 
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
