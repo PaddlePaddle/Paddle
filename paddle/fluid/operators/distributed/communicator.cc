@@ -706,7 +706,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto before_run_send_sparse = GetCurrentUS();
 
   auto ids_num = ids_table.size();
-  VLOG(3) << "Sparse Ids nums is : " << ids_num;
+  VLOG(4) << "Sparse Ids nums is : " << ids_num;
   auto origin_var_name = DeltaVarToVar(var_name);
 
   auto *var_x = training_scope_->FindVar(origin_var_name);
