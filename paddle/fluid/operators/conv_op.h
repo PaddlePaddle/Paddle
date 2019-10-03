@@ -635,7 +635,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor* dX = ctx.Output<Tensor>("DInput");
     Tensor W = detail::Ref(ctx.Input<Tensor>("Filter"),
                            "Cannot find input Filter(%s) in scope)",
-                           ctx.Inputs("Filter")[0]);
+                           ctx.InputNames("Filter")[0]);
     if (!ddY && !dW && !dX) return;
 
     const int groups = ctx.Attr<int>("groups");

@@ -447,7 +447,7 @@ bool ExecutionContext::HasInput(const std::string& name) const {
   if (!op_.HasInputs(name)) {
     return false;
   }
-  auto& ins = Inputs(name);
+  auto ins = InputNames(name);
   size_t length = ins.size();
   if (length == 0) {
     return false;
@@ -463,7 +463,7 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
   if (!op_.HasOutputs(name)) {
     return false;
   }
-  auto& outs = Outputs(name);
+  auto outs = OutputNames(name);
   size_t length = outs.size();
   if (length == 0) {
     return false;

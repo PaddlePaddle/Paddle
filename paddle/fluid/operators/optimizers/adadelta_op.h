@@ -27,13 +27,13 @@ class AdadeltaOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Param").front(),
+                   ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));
     const auto* grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE(grad_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Grad").front(),
+                   ctx.InputNames("Grad").front(),
                    framework::ToTypeName(grad_var->Type()));
 
     auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");

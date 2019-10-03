@@ -230,8 +230,6 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
     info.Checker()->Check(&attrs_);
   }
 
-  // auto input_name_map = CreateVarNameMap(info, type, ins, true);
-  // auto output_name_map = CreateVarNameMap(info, type, outs, false);
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
@@ -269,10 +267,9 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
   // auto runtime_ctx = PrepareRuntimeContext(ins, outs);
-  auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
   framework::RuntimeContext runtime_ctx({}, {});
   auto prepared_op =
-      PreparedOp::Prepare(ins, outs, *op_kernel, runtime_place, &attrs_, ins);
+      PreparedOp::Prepare(ins, outs, *op_kernel, place(), &attrs_);
 
   prepared_op.Run(&ins, &outs, &attrs_);
 

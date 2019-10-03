@@ -332,7 +332,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     if (it == var_base_map_in_.end()) {
       return nullptr;
     }
-    return it->second[0]->MutableVar();
+
+    return it->second.empty() ? nullptr : it->second[0]->MutableVar();
   }
 
   Variable* OutputVar(const std::string& name) const {
@@ -341,7 +342,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
       return nullptr;
     }
 
-    return it->second[0]->MutableVar();
+    return it->second.empty() ? nullptr : it->second[0]->MutableVar();
   }
 
   const std::vector<Variable*> MultiInputVar(

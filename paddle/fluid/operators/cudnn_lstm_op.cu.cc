@@ -62,7 +62,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       // multi-devices before the first running.
       // use parent scope to make cache persistable
       auto *scope = const_cast<framework::Scope *>(ctx.scope().parent());
-      auto cache_var_name = ctx.Inputs("Cache")[0];
+      auto cache_var_name = ctx.InputNames("Cache")[0];
       cache_var = scope->Var(cache_var_name);
     }
     CudnnRNNCache *cudnn_rnn_cache = nullptr;

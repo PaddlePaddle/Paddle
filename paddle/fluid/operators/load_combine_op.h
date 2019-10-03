@@ -33,7 +33,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     auto filename = ctx.Attr<std::string>("file_path");
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
     auto model_from_memory = ctx.Attr<bool>("model_from_memory");
-    auto &out_var_names = ctx.Outputs("Out");
+    auto out_var_names = ctx.OutputNames("Out");
 
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,

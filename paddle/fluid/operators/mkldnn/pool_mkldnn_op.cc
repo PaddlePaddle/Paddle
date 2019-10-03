@@ -155,7 +155,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         diff_dst_tz, diff_src_tz, ksize, strides, paddings, pooling_type,
         ctx.Attr<bool>("ceil_mode"), in_x->format(), out_grad->format(),
         paddle::framework::ToMKLDNNDataType(out_grad->type()), dev_ctx,
-        ctx.GetPlace(), ctx.op().Input("Out"), ctx.Attr<bool>("exclusive"));
+        ctx.GetPlace(), ctx.InputName("Out"), ctx.Attr<bool>("exclusive"));
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
     auto diff_src_memory = handler.AcquireDiffSrcMemory(in_x_grad);

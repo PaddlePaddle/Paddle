@@ -33,9 +33,8 @@ class PreparedOp {
   static PreparedOp Prepare(const NameVarBaseMap& ins,
                             const NameVarBaseMap& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
-                            const framework::AttributeMap* attrs,
-                            const NameVarBaseMap& ins);
+                            platform::Place place,
+                            const framework::AttributeMap* attrs);
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
 

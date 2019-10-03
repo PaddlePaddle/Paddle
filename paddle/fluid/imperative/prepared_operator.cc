@@ -72,9 +72,8 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
                                const NameVarBaseMap& outs,
                                const framework::OperatorWithKernel& op,
-                               const platform::Place& place,
-                               const framework::AttributeMap* attrs,
-                               const NameVarBaseMap& ins) {
+                               platform::Place place,
+                               const framework::AttributeMap* attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 

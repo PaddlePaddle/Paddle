@@ -47,7 +47,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     auto id_name = context.InputNames("Ids").front();
     auto embedding_name = context.InputNames("W").front();
-    auto out_name = context.Outputs("Out").front();
+    auto out_name = context.OutputNames("Out").front();
 
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");

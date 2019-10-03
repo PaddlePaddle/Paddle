@@ -269,10 +269,18 @@ class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto *bind = new framework::OpDesc();
     bind->SetInput("Input", Input("Input"));
-    bind->SetInput("StartsTensor", Input("StartsTensor"));
-    bind->SetInput("EndsTensor", Input("EndsTensor"));
-    bind->SetInput("StartsTensorList", Input("StartsTensorList"));
-    bind->SetInput("EndsTensorList", Input("EndsTensorList"));
+    if (ForwardOp().Inputs().count("StartsTensor")) {
+      bind->SetInput("StartsTensor", Input("StartsTensor"));
+    }
+    if (ForwardOp().Inputs().count("EndsTensor")) {
+      bind->SetInput("EndsTensor", Input("EndsTensor"));
+    }
+    if (ForwardOp().Inputs().count("StartsTensorList")) {
+      bind->SetInput("StartsTensorList", Input("StartsTensorList"));
+    }
+    if (ForwardOp().Inputs().count("EndsTensorList")) {
+      bind->SetInput("EndsTensorList", Input("EndsTensorList"));
+    }
     bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
     bind->SetAttrMap(Attrs());
