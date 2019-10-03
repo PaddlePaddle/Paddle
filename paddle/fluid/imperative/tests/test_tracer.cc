@@ -190,8 +190,10 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::Tracer tracer;
   std::shared_ptr<imperative::VarBase> x_in(
       new imperative::VarBase(true, "x_in"));
+  x_in->SetOverridedStopGradient(false);  // force to run backward
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
+  y_in->SetOverridedStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
@@ -229,7 +231,6 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::AttributeMap reduce_attr_map;
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
-
   detail::BackwardStrategy back_st;
   imperative::Engine* engine = tracer.GetDefaultEngine();
   engine->Init(reduce_sum_out.get(), back_st);
@@ -245,7 +246,6 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::LoDTensor out_grad;
   framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
                             &out_grad);
-
   for (size_t i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
