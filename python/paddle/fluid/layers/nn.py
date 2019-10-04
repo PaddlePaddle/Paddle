@@ -1645,7 +1645,7 @@ def dropout(x,
 
 
     Returns:
-        Variable: A tensor variable is the shape with `x`.
+        Variable: A Tensor Variable has same shape and data type with `x`.
 
     Examples:
 
@@ -2311,10 +2311,6 @@ def conv2d(input,
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
-    Note:
-        padding mode is 'SAME' and 'VALID' can reference this link<https://github.com/\
-        PaddlePaddle/models/blob/develop/PaddleCV/PaddleGAN/network/base_network.py#L181>`_
-
     Args:
         input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type 
             of input is float16 or float32 or float64.
@@ -2368,9 +2364,10 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, 
-                  the tensor variable storing the convolution result, and if act is not 
-                  None, the tensor variable storing convolution and non-linearity activation result.
+        Variable: A Variable holding Tensor representing the conv2d, whose data type is the 
+                  same with input. If act is None, the tensor variable storing the convolution 
+                  result, and if act is not None, the tensor variable storing convolution 
+                  and non-linearity activation result.
 
     Examples:
         .. code-block:: python
@@ -2616,10 +2613,10 @@ def conv3d(input,
             `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, 
-                  the tensor variable storing the convolution result, and if act is not 
-                  None, the tensor variable storing convolution and non-linearity 
-                  activation result.
+        Variable: A Variable holding Tensor representing the conv3d, whose data type is 
+                  the same with input. If act is None, the tensor variable storing the 
+                  convolution result, and if act is not None, the tensor variable storing 
+                  convolution and non-linearity activation result.
 
     Examples:
         .. code-block:: python
@@ -3714,8 +3711,8 @@ def batch_norm(input,
             and variance are also used during train period.
 
     Returns:
-        Variable: A tensor variable which is the result after applying batch normalization on the input. 
-                  The shape of output equal to the shape of input.
+        Variable: A Variable holding Tensor which is the result after applying batch normalization on the input, 
+                  has same shape and data type with input. 
 
     Examples:
 
@@ -3868,8 +3865,8 @@ def instance_norm(input,
             will be named automatically.
 
     Returns:
-        Variable: A tensor variable which is the result after applying instance normalization 
-                  on the input.
+        Variable: A Variable holding Tensor which is the result after applying instance normalization on the input, 
+                  has same shape and data type with input. 
 
     Examples:
 
@@ -4445,10 +4442,8 @@ def conv2d_transpose(input,
             If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple): The dilation size. It means the spacing between the kernel points. 
-            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ 
-            has a nice visualization of what dilation does. If dilation is a tuple, it must
-            contain two integers, (dilation_height, dilation_width). Otherwise, 
-            dilation_height = dilation_width = dilation. Default: dilation = 1.
+            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
+            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -4473,10 +4468,11 @@ def conv2d_transpose(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, 
-                  the tensor variable storing the transposed convolution result, and 
-                  if act is not None, the tensor variable storing transposed convolution 
-                  and non-linearity activation result.
+        Variable: A Variable holding Tensor representing the conv2d_transpose, whose 
+                  data type is the same with input. If act is None, the tensor variable 
+                  storing the transposed convolution result, and if act is not None, the 
+                  tensor variable storing transposed convolution and non-linearity activation 
+                  result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -4661,10 +4657,9 @@ def conv3d_transpose(input,
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             Default: stride = 1.
         dilation(int|tuple): The dilation size. It means the spacing between the kernel points. 
-            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ has 
-            a nice visualization of what dilation does. If dilation is a tuple, it must
-            contain three integers, (dilation_depth, dilation_height, dilation_width). Otherwise,
-            dilation_depth = dilation_height = dilation_width = dilation. Default: dilation = 1.
+            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            Default: dilation = 1.
         groups(int): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -4689,10 +4684,10 @@ def conv3d_transpose(input,
            None by default.
 
     Returns:
-        Variable: The output tensor and input tensor have same shape. If act is None, 
-                  the tensor variable storing the transposed convolution result, and 
-                  if act is not None, the tensor variable storing transposed convolution 
-                  and non-linearity activation result.
+        Variable: A Variable holding Tensor representing the conv3d_transpose, whose data 
+                  type is the same with input. If act is None, the tensor variable storing 
+                  the transposed convolution result, and if act is not None, the tensor 
+                  variable storing transposed convolution and non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -14284,14 +14279,15 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
   Args:
     anchor(Variable): embedding vector for the anchor image. shape=[batch_size, embedding_dims], 
-                      the data type is float32 or float32.
+                      the data type is float32 or float64.
     positive(Variable): embedding vector for the positive image. shape=[batch_size, embedding_dims], 
-                      the data type is float32 or float32.
-    labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float32 or int64.
+                      the data type is float32 or float64.
+    labels(Variable): 1-D tensor. shape=[batch_size], the data type is float32 or float64 or int64.
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
   Returns:
-    Variable: Tensor, return npair loss, shape=[1]
+    Variable: A Variable holding Tensor representing the npair loss, the data type is the same as 
+              anchor, the shape is [1].
 
   Examples:
     .. code-block:: python
