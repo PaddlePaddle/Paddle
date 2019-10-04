@@ -39,7 +39,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth.");
-    AddInput("length",
+    AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch.")
         .AsDispensable();
@@ -170,12 +170,16 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     auto emission_dims = ctx->GetInputDim("Emission");
     PADDLE_ENFORCE_NE(emission_dims[0], 0,
                       "An empty mini-batch is not allowed.");
-    if (ctx->HasInput("length")) {
+    if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
                         "The Input(Emission) should be a 3-D tensor.");
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 3,
-                        "The Input(Label) should be a 3-D tensor");
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 3UL && label_dims[2] == 1) ||
+              (label_dims.size() == 2UL),
+          true,
+          "The Input(Label) should be a 3-D tensor with last "
+          "dimension fixed to 1 or a 2-D tensor in padding mode.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
           ctx, emission_dims[0], label_dims[0],
           "The batch size of Input(Emission) and Input(Label) "
@@ -250,7 +254,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
     auto label_dims = ctx->GetInputDim("Label");
-    if (ctx->HasInput("length")) {
+    if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 3,
                         "The Input(EmissionExps) should be a 3-D tensor.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
@@ -282,7 +286,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
-      if (ctx->HasInput("length") == false) {
+      if (ctx->HasInput("Length") == false) {
         ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
       }
     }
@@ -321,8 +325,8 @@ class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Alpha", Output("Alpha"));
     op->SetInput("EmissionExps", Output("EmissionExps"));
     op->SetInput("TransitionExps", Output("TransitionExps"));
-    if (ForwardOp().Inputs().count("length") > 0) {
-      op->SetInput("length", Input("length"));
+    if (ForwardOp().Inputs().count("Length") > 0) {
+      op->SetInput("Length", Input("Length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),
                  OutputGrad("LogLikelihood"));
