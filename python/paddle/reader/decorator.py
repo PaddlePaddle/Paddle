@@ -105,7 +105,7 @@ def shuffle(reader, buf_size):
 	    shuffled_reader = fluid.io.shuffle(reader, 3)
 	    for e in shuffled_reader():
                 print(e)
-	    # outputs are 0~4 disordered arrangemen
+	    # outputs are 0~4 disordered arrangemen.
     """
 
     def data_reader():
