@@ -52,13 +52,28 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       decoded_path->Resize({in_dims[0] * in_dims[1], 1});
       for (size_t i = 0; i < seq_num; ++i) {
         if (length_data[i] == 0) continue;
-        int start_pos = i * in_dims[1];
-        int end_pos = start_pos + static_cast<int>(length_data[i]);
+        int64_t start_pos = i * in_dims[1];
+        int64_t end_pos = start_pos + static_cast<int64_t>(length_data[i]);
         Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
         Decode(emission_weights_tmp.Slice(start_pos, end_pos),
                *transition_weights, &decoded_path_one_seq);
       }
       decoded_path->Resize({in_dims[0], in_dims[1]});
+
+      if (label) {
+        const int64_t* label_value = label->data<int64_t>();
+        for (size_t i = 0; i < seq_num; ++i) {
+          for (size_t j = 0; j < in_dims[1]; ++j) {
+            int64_t start_pos = i * in_dims[1];
+            if (j < length_data[i]) {
+              path[start_pos + j] =
+                  label_value[start_pos + j] == path[start_pos + j] ? 1 : 0;
+            } else {
+              path[start_pos + j] = 0;
+            }
+          }
+        }
+      }
     } else {
       PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                         "The Input(Emission) should be a sequence.");
@@ -69,22 +84,20 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
       for (size_t i = 0; i < seq_num; ++i) {
         if (lod[level][i] == lod[level][i + 1]) continue;
-        int start_pos = static_cast<int>(lod[level][i]);
-        int end_pos = static_cast<int>(lod[level][i + 1]);
+        int64_t start_pos = static_cast<int64_t>(lod[level][i]);
+        int64_t end_pos = static_cast<int64_t>(lod[level][i + 1]);
         Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
         Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
                &decoded_path_one_seq);
       }
-    }
-    if (label) {
-      if (!has_length) {
+      if (label) {
         PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
                           "The Input(Label) should be a sequence.");
-      }
-      const int64_t* label_value = label->data<int64_t>();
-      size_t numel = label->numel();
-      for (size_t i = 0; i < numel; ++i) {
-        path[i] = label_value[i] == path[i] ? 1 : 0;
+        const int64_t* label_value = label->data<int64_t>();
+        size_t numel = label->numel();
+        for (size_t i = 0; i < numel; ++i) {
+          path[i] = label_value[i] == path[i] ? 1 : 0;
+        }
       }
     }
   }
