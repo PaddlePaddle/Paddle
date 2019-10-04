@@ -47,6 +47,7 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
+    'load_op_library',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -639,6 +640,45 @@ class Variable(object):
         return np.array(new_ivar.value().get_tensor())
 
     @dygraph_only
+    def set_value(self, value):
+        """
+        Set a new value for this Variable.
+
+        Args:
+            value (Variable|np.ndarray): the new value.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.ones([3, 32, 32], dtype='float32')
+                with fluid.dygraph.guard():
+                    fc = fluid.dygraph.FC("fc", 4)
+                    t = to_variable(data)
+                    fc(t)  # call with default weight
+                    custom_weight = np.random.randn(1024, 4).astype("float32")
+                    fc.weight.set_value(custom_weight)  # change existing weight
+                    out = fc(t)  # call with different weight
+
+        """
+        assert isinstance(value, (Variable, np.ndarray))
+        if list(value.shape) != list(self.shape):
+            raise ValueError(
+                "The shape of the new value must be the same as that of the original Variable."
+            )
+        self_tensor = self._ivar.value().get_tensor()
+        if isinstance(value, Variable):
+            value = value._ivar.value().get_tensor().__array__()
+        self_tensor.set(value, _current_expected_place())
+
+    @dygraph_only
     def backward(self, backward_strategy=None):
         """
         **Notes: This API is ONLY avaliable in Dygraph mode**
@@ -1042,7 +1082,7 @@ class Variable(object):
             if self.shape[axis] < 0:
                 return self._cloneVar(True)
             index = int(item)
-            if (index > 0 and index >= self.shape[axis])\
+            if (index > 0 and index >= self.shape[axis]) \
                     or (index < 0 and (index + self.shape[axis]) < 0):
                 raise IndexError("invalid index")
             return self._sliceVar([axis], [index], [index + 1])
@@ -1260,6 +1300,12 @@ class OpProtoHolder(object):
         if type not in self.op_proto_map:
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
+
+    def update_op_proto(self):
+        op_protos = get_all_op_protos()
+        for proto in op_protos:
+            if proto.type not in self.op_proto_map:
+                self.op_proto_map[proto.type] = proto
 
     @staticmethod
     def generated_op_attr_names():
@@ -2662,10 +2708,10 @@ class IrOpNode(IrNode):
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and \
-            all(isinstance(v, Block) for v in val):
+                all(isinstance(v, Block) for v in val):
             desc.set_blocks_attr(name, [v.desc for v in val])
         elif isinstance(val, core.BlockDesc) or \
-            isinstance(val, core.ProgramDesc):
+                isinstance(val, core.ProgramDesc):
             desc.set_serialized_attr(name, val.serialize_to_string())
         else:
             desc._set_attr(name, val)
@@ -2888,8 +2934,8 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_input_node.node in self.graph.nodes() and new_input_node.node in \
-        self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
+               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            'The three arguments(old_input_node&new_input_node&op_node) must be in the graph nodes.'
         old_input_node.remove_output(op_node)
         op_node.remove_input(old_input_node)
         new_input_node.append_output(op_node)
@@ -3024,7 +3070,7 @@ class IrGraph(object):
         def _convert_to_pdf(dot_file_path):
             pdf_save_path = os.path.splitext(dot_file_path)[0] + '.pdf'
             exited_code = subprocess.call('dot -Tpdf ' + dot_file_path \
-                            + ' -o ' + pdf_save_path, shell=True)
+                                          + ' -o ' + pdf_save_path, shell=True)
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
                 print('The {} is saved as the dot filetype.'.format(
@@ -3551,7 +3597,7 @@ class Program(object):
         p._copy_dist_param_info_from(self)
         return p
 
-    def _prune(self, feeded_var_names, targets):
+    def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -3565,8 +3611,63 @@ class Program(object):
 
         Returns:
             Program:  A new, pruned program.
-
         """
+
+        if not isinstance(targets, list):
+            targets = [targets]
+
+        targets_idx = []
+        for t in targets:
+            if not isinstance(t, Operator):
+                if isinstance(t, Variable):
+                    # After transpiler processing, the op that output this
+                    # variable maybe has been changed, so t.op is not reliable
+                    # and we need to find the current op that generate this
+                    # variable here.
+                    t.op = None
+                    global_block = self.global_block()
+                    for idx, op in enumerate(global_block.ops):
+                        if t.name in op.output_arg_names:
+                            t.op = op
+                            break
+
+                    t = t.op
+                    if t is None:
+                        raise ValueError(
+                            "The target variable must have an "
+                            "associated operator that generates it.")
+                else:
+                    raise ValueError("All targets of prune() can only be "
+                                     "Variable or Operator.")
+
+            targets_idx.append([t.block.idx, t.idx])
+        res = Program()
+        res.desc = core.prune(self.desc, set(), targets_idx)
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
+        res._sync_with_cpp()
+        return res
+
+    def _prune_with_input(self, feeded_var_names, targets):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`targets`. Prune operators and variables which are needed 
+        to generate feeded_var 
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. This API is in flux and not stable.
+
+        Args:
+            feeded_var_names(list|str): A list of variable names from where
+                pruning start. If it is set as [], this API works just like _prune()
+            targets(list|Variable|Operator): A list of variables or operators
+                need to be pruned
+
+        Returns:
+            Program:  A new, pruned program.
+        """
+
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
         if not isinstance(targets, list):
@@ -4288,3 +4389,25 @@ def _dygraph_place_guard(place):
     yield
 
     _dygraph_current_expected_place_ = tmp_place
+
+
+def load_op_library(lib_filename):
+    """
+    Load a dynamic library, including custom operators and kernels.
+    When library is loaded, ops and kernels registered in the library
+    will be available in PaddlePaddle main process.
+    Please note, the type of custom operators cann't have the same type
+    with the existing operators in the framework.
+
+    Args:
+        lib_filename (str): name of dynamic library.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            #fluid.load_op_library('custom_op.so')
+
+    """
+    core.load_op_library(lib_filename)
+    OpProtoHolder.instance().update_op_proto()

@@ -24,6 +24,7 @@ if(NOT WITH_DISTRIBUTE)
     LIST(REMOVE_ITEM TEST_OPS test_nce_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_hsigmoid_remote_table_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_fleet_geo)
 endif(NOT WITH_DISTRIBUTE)
 
 
@@ -265,7 +266,7 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
         set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 100 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-        set_tests_properties(test_listen_and_serv_op test_nce_remote_table_op test_hsigmoid_remote_table_op PROPERTIES LABELS "RUN_TYPE=DIST")
+        set_tests_properties(test_nce_remote_table_op test_hsigmoid_remote_table_op test_dist_ctr test_dist_fleet_ctr test_dist_mnist_batch_merge  PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
 
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
         set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)

@@ -672,64 +672,78 @@ def box_coder(prior_box,
 
     Args:
         prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
-                             [M, 4] holds M boxes, each box is represented as
-                             [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
-                             left top coordinate of the anchor box, if the 
-                             input is image feature map, they are close to 
-                             the origin of the coordinate system. [xmax, ymax]
-                             is the right bottom coordinate of the anchor box.       
-        prior_box_var(Variable|list|None): prior_box_var supports two types 
-                              of input. One is variable with shape [M, 4] 
-                              holds M group. The other one is list consist of 
-                              4 elements shared by all boxes. 
+            [M, 4] holds M boxes and data type is float32 or float64. Each box
+            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+            left top coordinate of the anchor box, if the input is image feature
+            map, they are close to the origin of the coordinate system. 
+            [xmax, ymax] is the right bottom coordinate of the anchor box.       
+        prior_box_var(List|Variable|None): prior_box_var supports three types 
+            of input. One is variable with shape [M, 4] which holds M group and 
+            data type is float32 or float64. The second is list consist of 
+            4 elements shared by all boxes and data type is float32 or float64. 
+            Other is None and not involved in calculation. 
         target_box(Variable): This input can be a 2-D LoDTensor with shape 
-                              [N, 4] when code_type is 'encode_center_size'. 
-                              This input also can be a 3-D Tensor with shape 
-                              [N, M, 4] when code_type is 'decode_center_size'. 
-                              Each box is represented as  
-                              [xmin, ymin, xmax, ymax]. This tensor can 
-                              contain LoD information to represent a batch 
-                              of inputs. 
-        code_type(string): The code type used with the target box. It can be
-                           encode_center_size or decode_center_size
-        box_normalized(int): Whether treat the priorbox as a noramlized box.
-                             Set true by default.
-        name(string): The name of box coder.
+            [N, 4] when code_type is 'encode_center_size'. This input also can 
+            be a 3-D Tensor with shape [N, M, 4] when code_type is 
+            'decode_center_size'. Each box is represented as 
+            [xmin, ymin, xmax, ymax]. The data type is float32 or float64. 
+            This tensor can contain LoD information to represent a batch of inputs. 
+        code_type(str): The code type used with the target box. It can be
+            `encode_center_size` or `decode_center_size`. `encode_center_size` 
+            by default.
+        box_normalized(bool): Whether treat the priorbox as a noramlized box.
+            Set true by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
         axis(int): Which axis in PriorBox to broadcast for box decode, 
-                   for example, if axis is 0 and TargetBox has shape
-                   [N, M, 4] and PriorBox has shape [M, 4], then PriorBox
-                   will broadcast to [N, M, 4] for decoding. It is only valid
-                   when code type is decode_center_size. Set 0 by default. 
+            for example, if axis is 0 and TargetBox has shape [N, M, 4] and 
+            PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
+            for decoding. It is only valid when code type is 
+            `decode_center_size`. Set 0 by default. 
 
     Returns:
+        Variable:
+
         output_box(Variable): When code_type is 'encode_center_size', the 
-                              output tensor of box_coder_op with shape 
-                              [N, M, 4] representing the result of N target 
-                              boxes encoded with M Prior boxes and variances. 
-                              When code_type is 'decode_center_size', 
-                              N represents the batch size and M represents 
-                              the number of deocded boxes.
+        output tensor of box_coder_op with shape [N, M, 4] representing the 
+        result of N target boxes encoded with M Prior boxes and variances. 
+        When code_type is 'decode_center_size', N represents the batch size 
+        and M represents the number of deocded boxes.
 
     Examples:
  
         .. code-block:: python
  
             import paddle.fluid as fluid
-            prior_box = fluid.layers.data(name='prior_box', 
-                                          shape=[512, 4], 
-                                          dtype='float32',
-                                          append_batch_size=False)
-            target_box = fluid.layers.data(name='target_box',
-                                           shape=[512,81,4],
-                                           dtype='float32',
-                                           append_batch_size=False)
-            output = fluid.layers.box_coder(prior_box=prior_box,
-                                            prior_box_var=[0.1,0.1,0.2,0.2],
-                                            target_box=target_box,
-                                            code_type="decode_center_size",
-                                            box_normalized=False,
-                                            axis=1)
-
+            # For encode
+            prior_box_encode = fluid.layers.data(name='prior_box_encode',
+                                  shape=[512, 4],
+                                  dtype='float32',
+                                  append_batch_size=False)
+            target_box_encode = fluid.layers.data(name='target_box_encode',
+                                   shape=[81,4],
+                                   dtype='float32',
+                                   append_batch_size=False)
+            output_encode = fluid.layers.box_coder(prior_box=prior_box_encode,
+                                    prior_box_var=[0.1,0.1,0.2,0.2],
+                                    target_box=target_box_encode,
+                                    code_type="encode_center_size")
+            # For decode
+            prior_box_decode = fluid.layers.data(name='prior_box_decode',
+                                  shape=[512, 4],
+                                  dtype='float32',
+                                  append_batch_size=False)
+            target_box_decode = fluid.layers.data(name='target_box_decode',
+                                   shape=[512,81,4],
+                                   dtype='float32',
+                                   append_batch_size=False)
+            output_decode = fluid.layers.box_coder(prior_box=prior_box_decode,
+                                    prior_box_var=[0.1,0.1,0.2,0.2],
+                                    target_box=target_box_decode,
+                                    code_type="decode_center_size",
+                                    box_normalized=False,
+                                    axis=1)
     """
     helper = LayerHelper("box_coder", **locals())
 
@@ -1105,7 +1119,7 @@ def bipartite_match(dist_matrix,
     also can find the matched row for each column. And this operator only
     calculate matched indices from column to row. For each instance,
     the number of matched indices is the column number of the input distance
-    matrix.
+    matrix. **The OP only supports CPU**.
 
     There are two outputs, matched indices and distance.
     A simple description, this algorithm matched the best (maximum distance)
@@ -1122,33 +1136,35 @@ def bipartite_match(dist_matrix,
 
     Args:
         dist_matrix(Variable): This input is a 2-D LoDTensor with shape
-            [K, M]. It is pair-wise distance matrix between the entities
-            represented by each row and each column. For example, assumed one
-            entity is A with shape [K], another entity is B with shape [M]. The
-            dist_matrix[i][j] is the distance between A[i] and B[j]. The bigger
-            the distance is, the better matching the pairs are.
-
-            NOTE: This tensor can contain LoD information to represent a batch
-            of inputs. One instance of this batch can contain different numbers
-            of entities.
-        match_type(string|None): The type of matching method, should be
-           'bipartite' or 'per_prediction'. [default 'bipartite'].
-        dist_threshold(float|None): If `match_type` is 'per_prediction',
+            [K, M]. The data type is float32 or float64. It is pair-wise 
+            distance matrix between the entities represented by each row and 
+            each column. For example, assumed one entity is A with shape [K], 
+            another entity is B with shape [M]. The dist_matrix[i][j] is the 
+            distance between A[i] and B[j]. The bigger the distance is, the 
+            better matching the pairs are. NOTE: This tensor can contain LoD 
+            information to represent a batch of inputs. One instance of this 
+            batch can contain different numbers of entities.
+        match_type(str, optional): The type of matching method, should be
+           'bipartite' or 'per_prediction'. None ('bipartite') by default.
+        dist_threshold(float32, optional): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
             on the maximum distance, 0.5 by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
+ 
     Returns:
-        tuple: a tuple with two elements is returned. The first is
-        matched_indices, the second is matched_distance.
+        Tuple:
 
-        The matched_indices is a 2-D Tensor with shape [N, M] in int type.
-        N is the batch size. If match_indices[i][j] is -1, it
+        matched_indices(Variable): A 2-D Tensor with shape [N, M]. The data
+        type is int32. N is the batch size. If match_indices[i][j] is -1, it
         means B[j] does not match any entity in i-th instance.
         Otherwise, it means B[j] is matched to row
         match_indices[i][j] in i-th instance. The row number of
         i-th instance is saved in match_indices[i][j].
 
-        The matched_distance is a 2-D Tensor with shape [N, M] in float type
-        . N is batch size. If match_indices[i][j] is -1,
+        matched_distance(Variable): A 2-D Tensor with shape [N, M]. The data
+        type is float32. N is batch size. If match_indices[i][j] is -1,
         match_distance[i][j] is also -1.0. Otherwise, assumed
         match_distance[i][j] = d, and the row offsets of each instance
         are called LoD. Then match_distance[i][j] =
@@ -2028,32 +2044,36 @@ def anchor_generator(input,
     is firstly aspect_ratios loop then anchor_sizes loop.
 
     Args:
-       input(Variable): The input feature map, the format is NCHW.
-       anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
-                                       given in absolute pixels e.g. [64., 128., 256., 512.].
-                                       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
-       aspect_ratios(list|tuple|float): The height / width ratios of generated
-                                        anchors, e.g. [0.5, 1.0, 2.0].
-       variance(list|tuple): The variances to be used in box regression deltas.
-                             Default:[0.1, 0.1, 0.2, 0.2].
-       stride(list|tuple): The anchors stride across width and height,e.g. [16.0, 16.0]
-       offset(float): Prior boxes center offset. Default: 0.5
-       name(str): Name of the prior box op. Default: None.
+       input(Variable): 4-D Tensor with shape [N,C,H,W]. The input feature map.
+       anchor_sizes(float32|list|tuple, optional): The anchor sizes of generated
+          anchors, given in absolute pixels e.g. [64., 128., 256., 512.].
+          For instance, the anchor size of 64 means the area of this anchor 
+          equals to 64**2. None by default.
+       aspect_ratios(float32|list|tuple, optional): The height / width ratios 
+           of generated anchors, e.g. [0.5, 1.0, 2.0]. None by default.
+       variance(list|tuple, optional): The variances to be used in box 
+           regression deltas. The data type is float32, [0.1, 0.1, 0.2, 0.2] by 
+           default.
+       stride(list|tuple, optional): The anchors stride across width and height.
+           The data type is float32. e.g. [16.0, 16.0]. None by default.
+       offset(float32, optional): Prior boxes center offset. 0.5 by default.
+       name(str, optional): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and None 
+           by default. 
 
     Returns:
-        Anchors(Variable),Variances(Variable):  
-        
-              two variables:
-        
-              - Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4]. \
-                H is the height of input, W is the width of input, \
-                num_anchors is the box count of each position.  \
-                Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized. 
-              - Variances(Variable): The expanded variances of anchors \
-                with a layout of [H, W, num_priors, 4]. \
-                H is the height of input, W is the width of input \
-                num_anchors is the box count of each position. \
-                Each variance is in (xcenter, ycenter, w, h) format.
+        Tuple:
+
+        Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4].
+        H is the height of input, W is the width of input,
+        num_anchors is the box count of each position. 
+        Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+ 
+        Variances(Variable): The expanded variances of anchors
+        with a layout of [H, W, num_priors, 4].
+        H is the height of input, W is the width of input
+        num_anchors is the box count of each position.
+        Each variance is in (xcenter, ycenter, w, h) format.
 
 
     Examples:
@@ -2566,15 +2586,22 @@ def box_clip(input, im_info, name=None):
         im_w = round(weight / scale)
 
     Args:
-        input(variable): The input box, the last dimension is 4.
-        im_info(variable): The information of image with shape [N, 3] with 
-                            layout (height, width, scale). height and width
-                            is the input size and scale is the ratio of input
-                            size and original size.
-        name (str): The name of this layer. It is optional.
+        input(Variable): The input Tensor with shape :math:`[N_1, N_2, ..., N_k, 4]`,
+            the last dimension is 4 and data type is float32 or float64.
+        im_info(Variable): The 2-D Tensor with shape [N, 3] with layout 
+            (height, width, scale) represeting the information of image. 
+            height and width is the input size and scale is the ratio of input
+            size and original size. The data type is float32 or float64.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
     
     Returns:
-        Variable: The cliped tensor variable.
+        Variable:
+
+        output(Variable): The cliped tensor with data type float32 or float64. 
+        The shape is same as input.
+
         
     Examples:
         .. code-block:: python
@@ -2984,12 +3011,12 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              name=None):
     """
-    In Feature Pyramid Networks (FPN) models, it is needed to distribute all 
-    proposals into different FPN level, with respect to scale of the proposals,
-    the referring scale and the referring level. Besides, to restore the order
-    of proposals, we return an array which indicates the original index of rois
-    in current proposals. To compute FPN level for each roi, the formula is 
-    given as follows:
+    **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
+    (FPN) models, it is needed to distribute all proposals into different FPN 
+    level, with respect to scale of the proposals, the referring scale and the 
+    referring level. Besides, to restore the order of proposals, we return an 
+    array which indicates the original index of rois in current proposals. 
+    To compute FPN level for each roi, the formula is given as follows:
     
     .. math::
 
@@ -3000,21 +3027,30 @@ def distribute_fpn_proposals(fpn_rois,
     where BBoxArea is a function to compute the area of each roi.
 
     Args:
-        fpn_rois(variable): The input fpn_rois, the second dimension is 4.
-        min_level(int): The lowest level of FPN layer where the proposals come 
-                        from.
-        max_level(int): The highest level of FPN layer where the proposals
-                        come from.
-        refer_level(int): The referring level of FPN layer with specified scale.
-        refer_scale(int): The referring scale of FPN layer with specified level.
-        name(str|None): The name of this operator.        
+
+        fpn_rois(Variable): 2-D Tensor with shape [N, 4] and data type is 
+            float32 or float64. The input fpn_rois.
+        min_level(int32): The lowest level of FPN layer where the proposals come 
+            from.
+        max_level(int32): The highest level of FPN layer where the proposals
+            come from.
+        refer_level(int32): The referring level of FPN layer with specified scale.
+        refer_scale(int32): The referring scale of FPN layer with specified level.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
 
     Returns:
-        tuple: 
-               A tuple(multi_rois, restore_ind) is returned. The multi_rois is 
-               a list of segmented tensor variables. The restore_ind is a 2D 
-               Tensor with shape [N, 1], N is the number of total rois. It is
-               used to restore the order of fpn_rois.
+        Tuple:
+
+        multi_rois(List) : A list of 2-D LoDTensor with shape [M, 4] 
+        and data type of float32 and float64. The length is 
+        max_level-min_level+1. The proposals in each FPN level.
+
+        restore_ind(Variable): A 2-D Tensor with shape [N, 1], N is 
+        the number of total rois. The data type is int32. It is
+        used to restore the order of fpn_rois.
+
 
     Examples:
         .. code-block:: python
@@ -3066,14 +3102,17 @@ def box_decoder_and_assign(prior_box,
         target_box(${target_box_type}): ${target_box_comment}
         box_score(${box_score_type}): ${box_score_comment}
         box_clip(${box_clip_type}): ${box_clip_comment}
-        name(str|None): The name of this operator
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
     Returns:
-        decode_box(Variable), output_assign_box(Variable):
+        Tuple:
 
-            two variables:
+        decode_box(${decode_box_type}): ${decode_box_comment}
 
-            - decode_box(${decode_box_type}): ${decode_box_comment}
-            - output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+        output_assign_box(${output_assign_box_type}): ${output_assign_box_comment}
+
 
     Examples:
         .. code-block:: python
@@ -3122,8 +3161,9 @@ def collect_fpn_proposals(multi_rois,
                           post_nms_top_n,
                           name=None):
     """
-    Concat multi-level RoIs (Region of Interest) and select N RoIs 
-    with respect to multi_scores. This operation performs the following steps:
+    **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
+    (Region of Interest) and select N RoIs with respect to multi_scores. 
+    This operation performs the following steps:
 
     1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
     2. Concat multi-level RoIs and scores
@@ -3132,15 +3172,25 @@ def collect_fpn_proposals(multi_rois,
     5. Re-sort RoIs by corresponding batch_id
 
     Args:
-        multi_ros(list): List of RoIs to collect
-        multi_scores(list): List of scores
+        multi_rois(list): List of RoIs to collect. Element in list is 2-D 
+            LoDTensor with shape [N, 4] and data type is float32 or float64, 
+            N is the number of RoIs.
+        multi_scores(list): List of scores of RoIs to collect. Element in list 
+            is 2-D LoDTensor with shape [N, 1] and data type is float32 or
+            float64, N is the number of RoIs.
         min_level(int): The lowest level of FPN layer to collect
         max_level(int): The highest level of FPN layer to collect
         post_nms_top_n(int): The number of selected RoIs
-        name(str|None): A name for this layer(optional)
-        
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.        
+
     Returns:
-        Variable: Output variable of selected RoIs. 
+        Variable:
+
+        fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
+        float32 or float64. Selected RoIs. 
+
 
     Examples:
         .. code-block:: python
