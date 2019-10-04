@@ -66,10 +66,10 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "Input(X) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
+                      "Input(Y) of %s operator must not be null", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
@@ -93,8 +93,8 @@ class UnaryLogicalOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "Input(X) of %s operator must not be null", comment.type);
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
