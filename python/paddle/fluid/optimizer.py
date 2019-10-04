@@ -1804,7 +1804,9 @@ class AdadeltaOptimizer(Optimizer):
         regularization (WeightDecayRegularizer, optional): A Regularizer, such as
                 fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no
                 regularization.
-        name (str, optional): A optional name prefix for debugging. Default None.
+        name (str, optional): The default value is None. Normally there is no need for user
+                to set this property. For more information, please refer to
+                :ref:`api_guide_Name` .
 
     Examples:
         .. code-block:: python
