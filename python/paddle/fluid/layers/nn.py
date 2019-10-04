@@ -9656,20 +9656,32 @@ def log(x, name=None):
         Out = \\ln(x)
 
     Args:
-        x (Variable): Input tensor.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
 
     Returns:
-        Variable: The natural log of the input tensor computed element-wise.
+        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            output = fluid.layers.log(x)
+            import numpy as np
+
+            # Graph Organizing
+            x = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            res = fluid.layers.log(x)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[1], [2]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[0.], [0.6931472]]
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -10758,8 +10770,8 @@ def leaky_relu(x, alpha=0.02, name=None):
     Args:
         x(${x_type}): ${x_comment}
         alpha(${alpha_type}|0.02): ${alpha_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         output(${out_type}): ${out_comment}
 
@@ -10768,8 +10780,20 @@ def leaky_relu(x, alpha=0.02, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-            y = fluid.layers.leaky_relu(x, alpha=0.01)
+            import numpy as np
+
+            # Graph Organizing
+            x = fluid.layers.data(name="x", shape=[2], dtype="float32")
+            res = fluid.layers.leaky_relu(x, alpha=0.1)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[-1, 2], [3, -4]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12575,26 +12599,47 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 @templatedoc()
 def logical_and(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_and Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = X \&\& Y
 
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_and(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_and(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_and(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[True, False], [False, False]]
     """
 
     return _logical_op(
@@ -12609,21 +12654,35 @@ def logical_or(x, y, out=None, name=None):
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_or(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_or(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_or(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[True, True], [False, True]]
     """
 
     return _logical_op(
@@ -12633,26 +12692,47 @@ def logical_or(x, y, out=None, name=None):
 @templatedoc()
 def logical_xor(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_xor Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = (X || Y) \&\& !(X \&\& Y)
 
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_xor(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_xor(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_xor(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[False, True], [False, True]]
     """
 
     return _logical_op(
@@ -12662,23 +12742,44 @@ def logical_xor(x, y, out=None, name=None):
 @templatedoc()
 def logical_not(x, out=None, name=None):
     """
-    ${comment}
+    logical_not Operator
+
+    It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = !X
 
     Args:
         x(${x_type}): ${x_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor/Tensor): The LoDTensor/Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            result = fluid.layers.logical_not(x=left)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            res = fluid.layers.logical_not(x)
+            # The comment lists another availble method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_not(x, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            x_i = np.array([[1, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[False, True]]
     """
 
     return _logical_op(
