@@ -47,11 +47,6 @@ static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
   return mem_prim_desc;
 }
 
-static MKLDNNMemoryFormat GetDstMemFormat(
-    const concat::primitive_desc& concat_pd) {
-  return (MKLDNNMemoryFormat)concat_pd.dst_primitive_desc().desc().data.format;
-}
-
 static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
   auto place = ctx.GetPlace();
@@ -198,7 +193,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     stream(stream::kind::eager).submit({*concat_p}).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetDstMemFormat(*concat_pd));
+    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
   }
 };
 }  // namespace operators

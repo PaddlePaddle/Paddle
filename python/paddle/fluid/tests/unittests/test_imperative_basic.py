@@ -206,6 +206,59 @@ class TestImperative(unittest.TestCase):
             a = inputs2[0].gradient()
             self.assertTrue(np.allclose(inputs2[0].gradient(), x))
 
+    def test_empty_var(self):
+        with fluid.dygraph.guard():
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(
+                name="X", shape=[-1, 23, 48], dtype='float32')
+            try:
+                new_variable.numpy()
+            except Exception as e:
+                assert type(e) == ValueError
+
+            try:
+                new_variable.backward()
+            except Exception as e:
+                assert type(e) == ValueError
+
+            try:
+                new_variable.clear_gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+    def test_empty_grad(self):
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            new_var = fluid.dygraph.base.to_variable(x)
+            try:
+                new_var.gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+            try:
+                new_var.clear_gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+        with fluid.dygraph.guard():
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(
+                name="X", shape=[-1, 23, 48], dtype='float32')
+            try:
+                new_variable.gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+    def test_set_persistable(self):
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            new_var = fluid.dygraph.base.to_variable(x)
+            self.assertFalse(new_var.persistable)
+            new_var.persistable = True
+            self.assertFalse(new_var.persistable)
+
     def test_layer(self):
         with fluid.dygraph.guard():
             cl = core.Layer()
