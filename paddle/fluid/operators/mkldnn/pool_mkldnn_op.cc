@@ -95,11 +95,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline{*pool_p};
     stream(stream::kind::eager).submit(pipeline).wait();
 
-    auto output_format =
-        (MKLDNNMemoryFormat)dst_memory->get_primitive_desc().desc().data.format;
-
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(output_format);
+    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
 
@@ -179,12 +176,8 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     pipeline.push_back(*pool_bwd_p);
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    auto in_x_grad_format =
-        (MKLDNNMemoryFormat)diff_src_memory->get_primitive_desc()
-            .desc()
-            .data.format;
     in_x_grad->set_layout(DataLayout::kMKLDNN);
-    in_x_grad->set_format(in_x_grad_format);
+    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
   }  // Compute()
 };
 

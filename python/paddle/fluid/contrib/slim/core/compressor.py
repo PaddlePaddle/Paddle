@@ -195,7 +195,7 @@ class Context(object):
                                    cached_id)
 
         if isinstance(reader, Variable) or (isinstance(reader, PyReader) and
-                                            (not reader._iterable)):
+                                            (not reader.iterable)):
             reader.start()
             try:
                 while True:
@@ -486,7 +486,7 @@ class Compressor(object):
 
         if isinstance(context.train_reader, Variable) or (
                 isinstance(context.train_reader,
-                           PyReader) and (not context.train_reader._iterable)):
+                           PyReader) and (not context.train_reader.iterable)):
             context.train_reader.start()
             try:
                 while True:
