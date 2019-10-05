@@ -597,22 +597,34 @@ class Optimizer(object):
                  no_grad_set=None,
                  grad_clip=None):
         """
-        Add operations to minimize `loss` by updating `parameter_list`.
-
-        This method combines interface `backward()` and
-        `apply_gradients()` into one.
+        Add the backward and optimize process to the network, and update
+        Parameters in the `parameter_list` according to gradients to minimize
+        `loss` of current network.
 
         Args:
-            loss (Variable): loss variable to run optimizations.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
-            grad_clip (GradClipBase|None) : Gradient clip strategy
+            loss (Variable): A `Variable` containing the value to minimize.
+            startup_program (Program, optional): :ref:`api_fluid_Program` for
+                initializing parameters in `parameter_list`. The default value
+                is None, and :ref:`api_fluid_default_startup_program` will be used.
+            parameter_list (list, optional): list of `Variable` objects to update
+                to minimize `loss`. The default value is None, and all Parameters
+                will be updated.
+            no_grad_set (set, optional): set of `Variable` objects that don't need
+                to be updated. The default value is None.
+            grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
+                graph mode does not need to use this argument. Currently, this argment
+                only supports gradient clipping in dygraph mode. In the future, this
+                argument my be adjusted. The default value is None.
 
         Returns:
-            tuple: (optimize_ops, params_grads) which are, list of operators appended;
-            and list of (param, grad) Variables pair for optimization.
+            tuple (optimize_ops, params_grads), which are a list of operators appended
+                by minimize and a list of (param, grad) variable pairs, param is
+                Parameter, grad is the gradient value corresponding to the Parameter.
+
+        Return Type: tuple
+
+        Examples:
+            Please refer to the example in the Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
         params_grads = self.backward(
