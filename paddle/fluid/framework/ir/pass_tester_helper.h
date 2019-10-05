@@ -162,6 +162,58 @@ struct Layers {
     return outs;
   }
 
+  VarDesc* matmul(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("matmul");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* transpose(VarDesc* x, std::vector<int> axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("transpose");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* reshape(VarDesc* x, std::vector<int> shape) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("reshape");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("shape", shape);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* softmax(VarDesc* x, int axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("reshape");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* scale(VarDesc* x, float scale, float bias, bool bias_after) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("scale");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("scale", scale);
+    op->SetAttr("bias", bias);
+    op->SetAttr("bias_after_scale", bias_after);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
  private:
   VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
                       bool is_persistable = false) {
