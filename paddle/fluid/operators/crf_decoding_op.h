@@ -63,7 +63,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       if (label) {
         const int64_t* label_value = label->data<int64_t>();
         for (size_t i = 0; i < seq_num; ++i) {
-          for (size_t j = 0; j < in_dims[1]; ++j) {
+          for (int64_t j = 0; j < in_dims[1]; ++j) {
             int64_t start_pos = i * in_dims[1];
             if (j < length_data[i]) {
               path[start_pos + j] =

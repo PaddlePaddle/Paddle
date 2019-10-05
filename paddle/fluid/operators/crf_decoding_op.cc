@@ -38,9 +38,8 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "Label",
         "(Tensor<int64_t>/LoDTensor<int64_t>). The ground truth with shape "
-        "[N x 1] (for LoDTensor) or [B x S x 1] (for Tensor). This input is "
-        "optional. "
-        "See more details in the operator's comments.")
+        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+        "optional. See more details in the operator's comments.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
