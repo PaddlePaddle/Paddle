@@ -617,14 +617,12 @@ class Optimizer(object):
                 argument my be adjusted. The default value is None.
 
         Returns:
-            tuple (optimize_ops, params_grads), which are a list of operators appended
+            tuple (optimize_ops, params_grads): a list of operators appended
                 by minimize and a list of (param, grad) variable pairs, param is
                 Parameter, grad is the gradient value corresponding to the Parameter.
 
-        Return Type: tuple
-
         Examples:
-            Please refer to the example in the Optimizer.
+            Please refer to the example in the current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
         params_grads = self.backward(
@@ -1288,12 +1286,13 @@ class AdagradOptimizer(Optimizer):
 
 class AdamOptimizer(Optimizer):
     """
-    This implements the Adam optimizer from Section 2 of the Adam
-    paper : https://arxiv.org/abs/1412.6980.
-    Adam is a first-order gradient-based optimization method based on
-    adaptive estimates of lower-order moments.
-
-    Adam updates:
+    The Adam optimzier is based on the second section of
+    the `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
+    it can dynamically adjusts the learning rate of each parameter using
+    the first-order moment estimation and second-order moment estimation
+    of the gradient.
+    
+    The calculation formula for its parameter update is as follows:
 
     .. math::
 
@@ -1309,19 +1308,26 @@ class AdamOptimizer(Optimizer):
         param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        beta1 (float): The exponential decay rate for the 1st moment estimates.
-        beta2 (float): The exponential decay rate for the 2nd moment estimates.
-        epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
-        lazy_mode(bool: false): The official Adam algorithm has two moving-average accumulators
-        the accumulators are updated at every step. Every element of the two moving-average is updated
-        in both dense mode and sparse mode. If the size of parameter is very large, then the update
-        may be very slow. The lazy mode only update the element that has gradient is the current
-        mini-batch, so it will be much more faster. But this mode has different semantics with the
-        original Adam algorithm and may lead to different result.
+        learning_rate (float|Variable, optional): the learning rate used to update Parameters.
+            It can be a float value or a Variable with a float type. The default value is 0.001.
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates. 
+            The default value is 0.9.
+        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+            The default value is 0.999.
+        epsilon (float, optional): a small float value for numerical stability.
+            The default value is 1e-08.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            The default value is None.
+        lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
+            The accumulators are updated at every step. Every element of the two moving-average
+            is updated in both dense mode and sparse mode. If the size of parameter is very large,
+            then the update may be very slow. The lazy mode only update the element that has
+            gradient is the current mini-batch, so it will be much more faster. But this mode has
+            different semantics with the original Adam algorithm and may lead to different result.
+            The default value is False.
 
     Examples:
         .. code-block:: python
