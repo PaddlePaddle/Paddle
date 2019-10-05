@@ -606,10 +606,10 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in `parameter_list`. The default value
                 is None, and :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): list of `Variable` objects to update
+            parameter_list (list, optional): List of `Variable` objects to update
                 to minimize `loss`. The default value is None, and all Parameters
                 will be updated.
-            no_grad_set (set, optional): set of `Variable` objects that don't need
+            no_grad_set (set, optional): Set of `Variable` objects that don't need
                 to be updated. The default value is None.
             grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
                 graph mode does not need to use this argument. Currently, this argment
@@ -617,7 +617,7 @@ class Optimizer(object):
                 argument my be adjusted. The default value is None.
 
         Returns:
-            tuple (optimize_ops, params_grads): a list of operators appended
+            tuple (optimize_ops, params_grads): A list of operators appended
                 by minimize and a list of (param, grad) variable pairs, param is
                 Parameter, grad is the gradient value corresponding to the Parameter.
 
@@ -1183,9 +1183,10 @@ class LarsMomentumOptimizer(Optimizer):
 
 class AdagradOptimizer(Optimizer):
     """
-    **Adaptive Gradient Algorithm (Adagrad)**
+    The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
+    different learning rates to individual parameters.
 
-    The update is done as follows:
+    The calculation formula for its parameter update is as follows:
 
     .. math::
 
@@ -1193,32 +1194,39 @@ class AdagradOptimizer(Optimizer):
 
         param\_out &= param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 
-    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-    does not have the epsilon attribute. It is added here in our implementation
-    as also proposed here: http://cs231n.github.io/neural-networks-3/#ada
+    Related paper: `Adaptive Subgradient Methods for Online Learning and
+    Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
+
+    The original paper does not have the `epsilon` attribute. It is added here
+    in our implementation as also proposed `Per-parameter adaptive learning rate
+    methods <http://cs231n.github.io/neural-networks-3/#ada>`_
     for numerical stability to avoid the division by zero error.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
-        initial_accumulator_value (float): Initial value for moment accumulator.
+        learning_rate (float|Variable): The learning rate used to update Parameters.
+            It can be a float value or a Variable with a float type.
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-06.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            The default value is None.
+        initial_accumulator_value (float, optional): Initial value for moment accumulator.
+            The default value is 0.0.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import numpy as np
+            import paddle.fluid as fluid
 
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = fluid.layers.data(
                 name="inp", shape=[2, 2], append_batch_size=False)
             out = fluid.layers.fc(inp, size=3)
             out = fluid.layers.reduce_sum(out)
-            optimizer = fluid.optimizer.Adagrad(learning_rate=0.2)
+            optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(out)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1310,13 +1318,13 @@ class AdamOptimizer(Optimizer):
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|Variable, optional): the learning rate used to update Parameters.
+        learning_rate (float|Variable, optional): The learning rate used to update Parameters.
             It can be a float value or a Variable with a float type. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
-        epsilon (float, optional): a small float value for numerical stability.
+        epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         regularization (WeightDecayRegularizer, optional): A Regularizer, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
@@ -1501,13 +1509,13 @@ class AdamaxOptimizer(Optimizer):
     However, it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|Variable, optional): the learning rate used to update Parameters.
+        learning_rate (float|Variable, optional): The learning rate used to update Parameters.
             It can be a float value or a Variable with a float type. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
-        epsilon (float, optional): a small float value for numerical stability.
+        epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         regularization (WeightDecayRegularizer, optional): A Regularizer, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
@@ -1715,11 +1723,11 @@ class DpsgdOptimizer(Optimizer):
 
 class DecayedAdagradOptimizer(Optimizer):
     """
-    **Decayed Adagrad Optimizer**
+    The Decayed Adagrad optimizer can be seen as an Adagrad algorithm that introduces
+    the decay rate to solve the problem of a sharp drop in the learning rate
+    during model training when using the AdagradOptimizer.
 
-    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-
-    The update is done as follows:
+    The calculation formula for its parameter update is as follows:
 
     .. math::
 
@@ -1727,18 +1735,26 @@ class DecayedAdagradOptimizer(Optimizer):
 
         param\_out & = param - \\frac{learning\_rate * grad}{\sqrt{moment\_out} + \epsilon}
 
-    The original paper(http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf)
-    does not have an epsilon attribute. It is added here for numerical
+    Related paper: `Adaptive Subgradient Methods for Online Learning and Stochastic
+    Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
+
+    The original paper does not have an `epsilon` attribute. It is added here for numerical
     stability to avoid the division by zero error.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        decay (float): decay rate.
-        epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        learning_rate (float|Variable): The learning rate used to update Parameters.
+            It can be a float value or a Variable with a float type.
+        decay (float, optional): The decay rate. The default value is 0.95.
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-06.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            The default value is None.
+
+    Notes:
+        Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
 
     Examples:
         .. code-block:: python
@@ -1750,11 +1766,8 @@ class DecayedAdagradOptimizer(Optimizer):
             x = layers.data( name='x', shape=[-1, 10], dtype='float32' )
             trans = layers.fc( x, 100 )
             cost = layers.reduce_mean( trans )
-            optimizer = fluid.optimizer.DecayedAdagrad(learning_rate=0.2)
+            optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(cost)
-
-    Notes:
-       Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
 
