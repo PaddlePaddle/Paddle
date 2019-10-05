@@ -1307,10 +1307,12 @@ class AdamOptimizer(Optimizer):
 
         param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
 
+    Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
+
     Args:
         learning_rate (float|Variable, optional): the learning rate used to update Parameters.
             It can be a float value or a Variable with a float type. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates. 
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
@@ -1475,11 +1477,11 @@ class AdamOptimizer(Optimizer):
 
 class AdamaxOptimizer(Optimizer):
     """
-    We implement the Adamax optimizer from Section 7 of the Adam
-    paper: https://arxiv.org/abs/1412.6980. Adamax is a variant of the
-    Adam algorithm based on the infinity norm.
+    The Adamax optimizer is implemented based on `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
+    Section 7, Adamax Optimization. The Adamax algorithm is a variant of the Adam algorithm
+    based on the infinite norm, which makes the learning rate update algorithm more stable and simple.
 
-    Adamax updates:
+    The calculation formula for its parameter update is as follows:
 
     .. math::
 
@@ -1493,10 +1495,28 @@ class AdamaxOptimizer(Optimizer):
 
         param\_out & = param - learning\_rate * \\frac{moment\_out}{inf\_norm\_out}
 
+    Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
-    The original paper does not have an epsilon attribute.
-    However, it is added here for numerical stability to prevent the
-    division by 0 error.
+    The original paper does not have an `epsilon` attribute.
+    However, it is added here for numerical stability to prevent the division by 0 error.
+
+    Args:
+        learning_rate (float|Variable, optional): the learning rate used to update Parameters.
+            It can be a float value or a Variable with a float type. The default value is 0.001.
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+            The default value is 0.9.
+        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+            The default value is 0.999.
+        epsilon (float, optional): a small float value for numerical stability.
+            The default value is 1e-08.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            The default value is None.
+
+    Notes:
+        Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
 
     Examples:
         .. code-block:: python
@@ -1514,7 +1534,7 @@ class AdamaxOptimizer(Optimizer):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
-              adam = fluid.optimizer.Adamax(learning_rate=0.2)
+              adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
               adam.minimize(loss)
 
           # Run the startup program once and only once.
@@ -1524,19 +1544,6 @@ class AdamaxOptimizer(Optimizer):
           outs = exe.run(program=train_program,
                         feed={'X': x},
                          fetch_list=[loss.name])
-
-    Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        beta1 (float): The exponential decay rate for the 1st moment estimates.
-        beta2 (float): The exponential decay rate for the 2nd moment estimates.
-        epsilon (float): a small float value for numerical stability.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
-
-    Notes:
-       Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
