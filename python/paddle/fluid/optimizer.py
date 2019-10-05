@@ -617,9 +617,9 @@ class Optimizer(object):
                 argument my be adjusted. The default value is None.
 
         Returns:
-            tuple (optimize_ops, params_grads): A list of operators appended
-                by minimize and a list of (param, grad) variable pairs, param is
-                Parameter, grad is the gradient value corresponding to the Parameter.
+            tuple: (optimize_ops, params_grads), A list of operators appended
+            by minimize and a list of (param, grad) variable pairs, param is
+            Parameter, grad is the gradient value corresponding to the Parameter.
 
         Examples:
             Please refer to the example in the current Optimizer.
@@ -2397,21 +2397,45 @@ Lamb = LambOptimizer
 
 
 class ModelAverage(Optimizer):
-    """Accumulate the average of parameters within sliding window. The average
-    result will be saved in temporary variables which can be applied to
-    parameter variables of current model by calling 'apply()' method. And the
-    'restore()' method is used to restore the parameter values of current model.
+    """
+    The ModelAverage optimizer accumulates specific continuous historical parameters
+    during training. The accumulated historical range can be controlled by the passed
+    `average_window_rate` parameter. The averaged Parameters are used in the prediction,
+    which usually can improve the accuracy of the prediction.
 
-    The size of average window is determined by average_window_rate,
-    min_average_window, max_average_window and current update times.
+    Accumulate the average of the Parameters in the sliding window, the result will be saved
+    in the temporary variable, can be applied to the current model's Parameters by calling
+    the `apply() method, and the current model Parameters can be restored by calling
+    the `restore() method.
+
+    The window size for calculating the average is determined by `average_window_rate,
+    `min_average_window`, `max_average_window` and the current Parameter update times (num_updates).
+
+    When the cumulative times (num_accumulates) is greater than the specific window
+    threshold (average_window), the accumulated Parameters temporary variable is set to 0.0.
+    The effect of these parameters is illustrated by the following sample code:
+
+    .. code-block:: python
+
+        if num_accumulates >= min_average_window and num_accumulates >= min(max_average_window, num_updates * average_window_rate):
+            num_accumulates = 0
+
+    In the above conditional judgment statement, num_accumulates indicates the current
+    accumulated number, which can be abstractly understood as the length of the cumulative window.
+    The length of the window must be at least the length set by the `min_average_window` parameter,
+    and cannot exceed the length specified by the max_average_window parameter or
+    num_updates * average_window_rate, where num_updates indicates The current number of Parameters
+    updates, average_window_rate is a coefficient that calculates the length of the window.
 
     Args:
-        average_window_rate: The rate of average window.
-        min_average_window: The minimum size of average window.
-        max_average_window: The maximum size of average window.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        average_window_rate (float): The Calculate ratio of the window length relative to Parameters update times.
+        min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
+        max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            The default value is None.
 
     Examples:
 
@@ -2437,13 +2461,14 @@ class ModelAverage(Optimizer):
             # build ModelAverage optimizer
             model_average = fluid.optimizer.ModelAverage(0.15,
                                                          min_average_window=10000,
-                                                         max_average_window=20000)
+                                                         max_average_window=12500)
 
             exe.run(startup_program)
-            x = numpy.random.random(size=(10, 1)).astype('float32')
-            outs = exe.run(program=train_program,
-                           feed={'X': x},
-                           fetch_list=[loss.name])
+            for i in range(12500):
+                x = numpy.random.random(size=(10, 1)).astype('float32')
+                outs = exe.run(program=train_program,
+                               feed={'X': x},
+                               fetch_list=[loss.name])
 
             # apply ModelAverage
             with model_average.apply(exe):
@@ -2564,11 +2589,54 @@ class ModelAverage(Optimizer):
 
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
-        """Apply average values to parameters of current model.
+        """
+        Apply the average of the cumulative Parameters to the parameters of the current model.
 
         Args:
-            executor(fluid.Executor): current executor.
-            need_restore(bool): If you finally need to do restore, set it to True. Default is True.
+            executor(fluid.Executor): The current network executor.
+            need_restore(bool): Restore flag variable, if set to True, the network will restore
+                the parameters of the network to the default value, if set to False,
+                it will not be restored. The default value is True.
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy
+
+            # First create the Executor.
+            place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                # build net
+                data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+                optimizer.minimize(loss)
+
+                # build ModelAverage optimizer
+                model_average = fluid.optimizer.ModelAverage(0.15,
+                                                            min_average_window=10000,
+                                                            max_average_window=12500)
+
+                exe.run(startup_program)
+                for i in range(12500):
+                    x = numpy.random.random(size=(10, 1)).astype('float32')
+                    outs = exe.run(program=train_program,
+                                feed={'X': x},
+                                fetch_list=[loss.name])
+
+                # apply ModelAverage
+                with model_average.apply(exe):
+                    x = numpy.random.random(size=(10, 1)).astype('float32')
+                    exe.run(program=train_program,
+                            feed={'X': x},
+                            fetch_list=[loss.name])
         """
         executor.run(self.apply_program)
         try:
@@ -2578,10 +2646,54 @@ class ModelAverage(Optimizer):
                 self.restore(executor)
 
     def restore(self, executor):
-        """Restore parameter values of current model.
+        """
+        Restore parameter values of current model.
         
         Args:
-            executor(fluid.Executor): current executor.
+            executor(fluid.Executor): The current network executor.
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy
+
+            # First create the Executor.
+            place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+
+            train_program = fluid.Program()
+            startup_program = fluid.Program()
+            with fluid.program_guard(train_program, startup_program):
+                # build net
+                data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+                optimizer.minimize(loss)
+
+                # build ModelAverage optimizer
+                model_average = fluid.optimizer.ModelAverage(0.15,
+                                                            min_average_window=10000,
+                                                            max_average_window=12500)
+
+                exe.run(startup_program)
+                for i in range(12500):
+                    x = numpy.random.random(size=(10, 1)).astype('float32')
+                    outs = exe.run(program=train_program,
+                                feed={'X': x},
+                                fetch_list=[loss.name])
+
+                # apply ModelAverage
+                with model_average.apply(exe):
+                    x = numpy.random.random(size=(10, 1)).astype('float32')
+                    exe.run(program=train_program,
+                            feed={'X': x},
+                            fetch_list=[loss.name])
+
+                # restore Parameters
+                model_average.restore(exe)
         """
         executor.run(self.restore_program)
 
