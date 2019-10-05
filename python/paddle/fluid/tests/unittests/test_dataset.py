@@ -18,6 +18,7 @@ including create, config, run, etc.
 
 from __future__ import print_function
 import paddle.fluid as fluid
+import paddle.compat as cpt
 import paddle.fluid.core as core
 import numpy as np
 import os
@@ -469,7 +470,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except RuntimeError as e:
             error_msg = "dataset is need and should be initialized"
-            self.assertEqual(error_msg, e.message)
+            self.assertEqual(error_msg, cpt.get_exception_message(e))
         except Exception as e:
             self.assertTrue(False)
 
@@ -508,7 +509,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except RuntimeError as e:
             error_msg = "dataset is need and should be initialized"
-            self.assertEqual(error_msg, e.message)
+            self.assertEqual(error_msg, cpt.get_exception_message(e))
         except Exception as e:
             self.assertTrue(False)
 
