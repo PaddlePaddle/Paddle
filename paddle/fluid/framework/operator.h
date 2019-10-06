@@ -403,6 +403,8 @@ class ExecutionContext {
 
   const RuntimeContext Context() const { return ctx_; }
 
+  std::string DebugString() const { return op_.DebugString(); }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;

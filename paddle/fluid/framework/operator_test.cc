@@ -135,10 +135,10 @@ template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
   }
 };
 
@@ -146,10 +146,10 @@ template <typename T1, typename T2>
 class CPUKernel2Test : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel2_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
   }
 };
 
@@ -172,7 +172,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    auto xs = ctx.op().Inputs("xs");
+    auto xs = ctx.InputNames("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
@@ -196,10 +196,10 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
-    auto k = ctx.op().Input("k");
+    auto k = ctx.InputName("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op().Outputs("ys");
+    auto ys = ctx.OutputNames("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
