@@ -27,7 +27,7 @@ namespace patterns {
 
 struct MultiHeadMatmulPattern : public PatternBase {
   MultiHeadMatmulPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "multi_head_matmul") {}
+      : PatternBase(pattern, name_scope, "multihead_matmul") {}
 
   PDNode* operator()(PDNode* x);
 

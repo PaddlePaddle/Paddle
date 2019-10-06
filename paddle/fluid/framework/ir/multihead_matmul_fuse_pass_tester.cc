@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/ir/multihead_matmul_fuse_pass.h"  // NOLINT
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
@@ -16,7 +17,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-TEST(MultiheadMatmulFusePass, basic) {
+TEST(MultiHeadMatmulFusePass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
   // (x)           layer_norm               -> fc_out_0
@@ -25,22 +26,20 @@ TEST(MultiheadMatmulFusePass, basic) {
   // (elementwise_out, scale, bias_2) layer_norm       ->
   Layers layers;
   auto* x = layers.data("x", {128, 768});
-  auto* scale = layers.data("scale", {768}, true);
-  auto* bias = layers.data("bias_2", {768}, true);
-  out = layers.layer_norm(x, scale, bias);
-  auto* layer_out = out[0];
+  auto out = layers.layer_norm(x);
+  auto* layer_out = out[2];
 
-  auto* weights_0 = layers.data("weights", {768, 768}, true);
-  auto* weights_1 = layers.data("weights", {768, 768}, true);
-  auto* weights_2 = layers.data("weights", {768, 768}, true);
+  auto* weights_0 = layers.data("weights0", {768, 768}, true);
+  auto* weights_1 = layers.data("weights1", {768, 768}, true);
+  auto* weights_2 = layers.data("weights2", {768, 768}, true);
 
   auto* mul_out_0 = layers.mul(layer_out, weights_0);
   auto* mul_out_1 = layers.mul(layer_out, weights_1);
   auto* mul_out_2 = layers.mul(layer_out, weights_2);
 
   auto* b0 = layers.data("bias_0", {768}, true);
-  auto* b1 = layers.data("bias_0", {768}, true);
-  auto* b2 = layers.data("bias_0", {768}, true);
+  auto* b1 = layers.data("bias_1", {768}, true);
+  auto* b2 = layers.data("bias_2", {768}, true);
 
   auto* elementwise_out_0 = layers.elementwise_add(mul_out_0, b0);
   auto* elementwise_out_1 = layers.elementwise_add(mul_out_1, b1);
@@ -52,23 +51,21 @@ TEST(MultiheadMatmulFusePass, basic) {
   auto* reshape_2 = layers.reshape(elementwise_out_2, shape);
 
   std::vector<int> axis = {0, 2, 1, 3};
-  auto* transpose_0 = layers.transpose(reshape_0);
-  auto* transpose_1 = layers.transpose(reshape_1);
-  auto* transpose_2 = layers.transpose(reshape_2);
+  auto* transpose_0 = layers.transpose(reshape_0, axis);
+  auto* transpose_1 = layers.transpose(reshape_1, axis);
+  auto* transpose_2 = layers.transpose(reshape_2, axis);
 
   auto* scale_0 = layers.scale(transpose_0, 0.125, 0, false);
   auto* matmul_qk = layers.matmul(scale_0, transpose_1);
 
-  auto* bqk = layers.data("bias", {768}, true);
+  auto* bqk = layers.data("biasqk", {768}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
 
   auto* matmul_qkv = layers.matmul(softmax_qk, transpose_2);
 
   auto* transpose_qkv = layers.transpose(matmul_qkv, {0, 2, 1, 3});
-  auto* reshape_qkv = layers.reshape(transpose_qkv, {128, 768});
-
-  // fc_out_1->SetShape({128, 768});
+  layers.reshape(transpose_qkv, {128, 768});
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass");
@@ -77,10 +74,10 @@ TEST(MultiheadMatmulFusePass, basic) {
 
   graph.reset(pass->Apply(graph.release()));
   int num_nodes_after = graph->Nodes().size();
-  int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multihead_matmul");
+  int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 16);
   PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
 }
 

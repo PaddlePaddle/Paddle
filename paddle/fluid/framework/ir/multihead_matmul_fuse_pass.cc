@@ -37,8 +37,7 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
   }
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
-                       Scope* scope) {
+static int BuildFusion(Graph* graph, const std::string& name_scope) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -66,7 +65,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     OpDesc multihead_op_desc;
 
     // create tmp tensor
-
     VarDesc k_var_desc(*mul1_out->Var());
     k_var_desc.SetName("K" + mul1_out->Name());
     auto* k_var_node = graph->CreateVarNode(&k_var_desc);
@@ -432,9 +430,10 @@ PDNode* MultiHeadMatmulPattern::operator()(paddle::framework::ir::PDNode* x) {
 }  // namespace patterns
 
 void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = patterns::BuildFusion(graph, name_scope_, param_scope());
+  int fusion_count = patterns::BuildFusion(graph, name_scope_);
 
   AddStatis(fusion_count);
   // return graph;
