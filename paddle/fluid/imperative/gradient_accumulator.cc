@@ -116,11 +116,21 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
   } else {
     if (!var_->Var().IsInitialized() ||
         !var_->Var().Get<framework::LoDTensor>().IsInitialized()) {
-      VLOG(6) << "Set StopGradient Grad: " << var->Name() << " as zero";
+      VLOG(6) << "Set StopGradient Grad: " << var_->Name() << " as zero ";
+
       auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
-      tensor->mutable_data(place, var->DataType());
-      operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      if (!var_->Var().IsInitialized()) {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        VLOG(6) << "Dims of " << var_->Name() << " is set as: "
+                << var->Var().Get<framework::LoDTensor>().dims();
+        tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      } else {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      }
     }
   }
   ++cur_cnt_;
@@ -162,9 +172,18 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
         !var_->Var().Get<framework::LoDTensor>().IsInitialized()) {
       VLOG(6) << "Set StopGradient Grad: " << var->Name() << " as zero";
       auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
-      tensor->mutable_data(place, var->DataType());
-      operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      if (!var_->Var().IsInitialized()) {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        VLOG(6) << "Dims of " << var_->Name() << " is set as: "
+                << var->Var().Get<framework::LoDTensor>().dims();
+        tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      } else {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      }
     }
     // looks like tmp_grad_vars will not have any member but just in case
     tmp_grad_vars_.clear();
