@@ -1575,7 +1575,7 @@ def cos_sim(X, Y):
         Y (Variable): ${y_comment}.
 
     Returns:
-        Variable: LoDTensor, the output of cosine(X, Y).
+        A Variable holding LoDTensor representing the output of cosine(X, Y).
 
     Examples:
         .. code-block:: python
@@ -1645,7 +1645,7 @@ def dropout(x,
 
 
     Returns:
-        Variable: A Tensor Variable has same shape and data type with `x`.
+        A Variable holding Tensor representing the dropout, has same shape and data type with `x`.
 
     Examples:
 
@@ -2318,8 +2318,8 @@ def conv2d(input,
             image channel.
         filter_size (int|tuple): The filter size. If filter_size 
             is a tuple, it must contain two integers, (filter_size_height, 
-            filter_size_width). Otherwise, filter_size_height = filter_\
-            size_width = filter_size.
+            filter_size_width). Otherwise, filter_size_height = filter_size_width =\
+            filter_size.
         stride (int|tuple): The stride size. It means the stride in convolution. 
             If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
@@ -2328,13 +2328,13 @@ def conv2d(input,
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
             `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when 
-            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0], \
+            `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0], 
             [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel
-            points. If dilation is a tuple, it must contain two integers, (dilation_height, \
+            points. If dilation is a tuple, it must contain two integers, (dilation_height, 
             dilation_width). Otherwise, dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         groups (int): The groups number of the Conv2d Layer. According to grouped
@@ -2364,10 +2364,10 @@ def conv2d(input,
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        Variable: A Variable holding Tensor representing the conv2d, whose data type is the 
-                  same with input. If act is None, the tensor variable storing the convolution 
-                  result, and if act is not None, the tensor variable storing convolution 
-                  and non-linearity activation result.
+        A Variable holding Tensor representing the conv2d, whose data type is the 
+        same with input. If act is None, the tensor variable storing the convolution 
+        result, and if act is not None, the tensor variable storing convolution 
+        and non-linearity activation result.
 
     Examples:
         .. code-block:: python
@@ -2569,9 +2569,6 @@ def conv3d(input,
         stride (int|tuple): The stride size. It means the stride in convolution. If stride is a 
             tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
-            This `link<https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md>`_ 
-            has a nice visualization of what dilation does. If dilation is a tuple, it must
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
             on both sides for each dimention. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
@@ -2583,7 +2580,7 @@ def conv3d(input,
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, \
+            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
         groups (int): The groups number of the Conv3d Layer. According to grouped
@@ -2613,10 +2610,10 @@ def conv3d(input,
             `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
-        Variable: A Variable holding Tensor representing the conv3d, whose data type is 
-                  the same with input. If act is None, the tensor variable storing the 
-                  convolution result, and if act is not None, the tensor variable storing 
-                  convolution and non-linearity activation result.
+        A Variable holding Tensor representing the conv3d, whose data type is 
+        the same with input. If act is None, the tensor variable storing the 
+        convolution result, and if act is not None, the tensor variable storing 
+        convolution and non-linearity activation result.
 
     Examples:
         .. code-block:: python
@@ -3625,7 +3622,7 @@ def batch_norm(input,
     """
     **Batch Normalization Layer**
 
-    Can be used as a normalizer function for convolution and fully_connected operations.
+    Can be used as a normalizer function for convolution or fully_connected operations.
     The required data format for this layer is one of the following:
 
     1. NHWC `[batch, in_height, in_width, in_channels]`
@@ -3648,10 +3645,11 @@ def batch_norm(input,
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum)
-        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
-        moving_mean and moving_var is global mean and global variance.
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum) 
 
+
+    moving_mean is global mean and moving_var is global variance.
 
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
@@ -3711,8 +3709,8 @@ def batch_norm(input,
             and variance are also used during train period.
 
     Returns:
-        Variable: A Variable holding Tensor which is the result after applying batch normalization on the input, 
-                  has same shape and data type with input. 
+        A Variable holding Tensor which is the result after applying batch normalization on the input, 
+        has same shape and data type with input. 
 
     Examples:
 
@@ -3821,7 +3819,7 @@ def instance_norm(input,
     """
     **Instance Normalization Layer**
 
-    Can be used as a normalizer function for conv2d and fully_connected operations.
+    Can be used as a normalizer function for convolution or fully_connected operations.
     The required data format for this layer is one of the following:
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -3835,16 +3833,15 @@ def instance_norm(input,
     ..  math::
 
         \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean of one  feature map in mini-batch \\\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance of one feature map in mini-batch \\\\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
         \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
         \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
 
     Args:
         input(variable): The rank of input variable can be 2, 3, 4, 5. 
@@ -3865,8 +3862,8 @@ def instance_norm(input,
             will be named automatically.
 
     Returns:
-        Variable: A Variable holding Tensor which is the result after applying instance normalization on the input, 
-                  has same shape and data type with input. 
+        A Variable holding Tensor which is the result after applying instance normalization on the input, 
+        has same shape and data type with input. 
 
     Examples:
 
@@ -4468,11 +4465,11 @@ def conv2d_transpose(input,
            None by default.
 
     Returns:
-        Variable: A Variable holding Tensor representing the conv2d_transpose, whose 
-                  data type is the same with input. If act is None, the tensor variable 
-                  storing the transposed convolution result, and if act is not None, the 
-                  tensor variable storing transposed convolution and non-linearity activation 
-                  result.
+        A Variable holding Tensor representing the conv2d_transpose, whose 
+        data type is the same with input. If act is None, the tensor variable 
+        storing the transposed convolution result, and if act is not None, the 
+        tensor variable storing transposed convolution and non-linearity activation 
+        result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -4642,14 +4639,14 @@ def conv3d_transpose(input,
             specified at the same time, They should follow the formula above. Default: None. 
             Output_size and filter_size should not be None at the same time.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_depth, filter_size_height, \
+            it must contain three integers, (filter_size_depth, filter_size_height,
             filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
             filter_size_width = filter_size. None if use output size to
             calculate filter_size. Default: None. filter_size and output_size should not be 
             None at the same time.
         padding(int|tuple): The padding size. The padding argument effectively adds 
             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If padding 
-            is a tuple, it must contain three integers, (padding_depth, padding_height, \
+            is a tuple, it must contain three integers, (padding_depth, padding_height,
             padding_width). Otherwise, padding_depth = padding_height = padding_width = \
             padding. Default: padding = 0.
         stride(int|tuple): The stride size. It means the stride in transposed convolution. 
@@ -4684,10 +4681,10 @@ def conv3d_transpose(input,
            None by default.
 
     Returns:
-        Variable: A Variable holding Tensor representing the conv3d_transpose, whose data 
-                  type is the same with input. If act is None, the tensor variable storing 
-                  the transposed convolution result, and if act is not None, the tensor 
-                  variable storing transposed convolution and non-linearity activation result.
+        A Variable holding Tensor representing the conv3d_transpose, whose data 
+        type is the same with input. If act is None, the tensor variable storing 
+        the transposed convolution result, and if act is not None, the tensor 
+        variable storing transposed convolution and non-linearity activation result.
 
     Raises:
         ValueError: If the shapes of output, input, filter_size, stride, padding and
@@ -14287,7 +14284,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
   **Npair Loss Layer**
 
-  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective 
+  Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
        <http://www.nec-labs.com/uploads/images/Department-Images/MediaAnalytics/\
        papers/nips16_npairmetriclearning.pdf>`_ .
 
@@ -14304,8 +14301,8 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     l2_reg(float32): L2 regularization term on embedding vector, default: 0.002.
 
   Returns:
-    Variable: A Variable holding Tensor representing the npair loss, the data type is the same as 
-              anchor, the shape is [1].
+    A Variable holding Tensor representing the npair loss, the data type is the same as 
+    anchor, the shape is [1].
 
   Examples:
     .. code-block:: python
