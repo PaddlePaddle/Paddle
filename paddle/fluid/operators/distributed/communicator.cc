@@ -53,7 +53,7 @@ namespace distributed {
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
-  return 1e+6 * time.tv_sec + time.tv_usec;
+  return 1e+8 * time.tv_sec + time.tv_usec;
 }
 
 template <typename T>
