@@ -73,7 +73,7 @@ TEST(CUDAPinnedAllocator, Alloc) {
 TEST(GPUAllocator, AllocFailure) {
   paddle::memory::detail::GPUAllocator allocator(0);
   size_t index;
-  size_t alloc_size = -1UL;  // very large size
+  size_t alloc_size = (static_cast<size_t>(1) << 40);  // Very large number
   try {
     allocator.Alloc(&index, alloc_size);
     ASSERT_TRUE(false);

@@ -33,7 +33,7 @@ class TestDistSimnetBowDense2x2(TestDistBase):
         self.check_with_place(
             "dist_simnet_bow.py",
             delta=1e-5,
-            check_error_log=False,
+            check_error_log=True,
             need_envs=need_envs)
 
 

@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
@@ -91,11 +92,6 @@ class AnalysisPredictor : public PaddlePredictor {
   void SaveOptimModel(const std::string &dir);
 
  protected:
-  // For memory optimization.
-  bool need_collect_var_shapes_for_memory_optim();
-  void CollectVarShapes();
-  void SerializeBatchVarShapes(const std::string &path);
-
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   bool CreateExecutor();
@@ -116,6 +112,7 @@ class AnalysisPredictor : public PaddlePredictor {
   // AnalysisPredictor::ZeroRun() now.
   void MkldnnPreSet(const std::vector<PaddleTensor> &inputs);
   void MkldnnPostReset();
+  bool CheckOperatorCompatible();
 
 #if PADDLE_WITH_TENSORRT
   // When we use Paddle-TRT INT8 engine, we need to generate calibration table
@@ -148,6 +145,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
+  framework::OpCompatibleMap op_compatible_map_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.

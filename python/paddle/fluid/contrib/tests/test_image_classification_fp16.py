@@ -22,6 +22,7 @@ import sys
 import numpy
 import unittest
 import os
+import copy
 import numpy as np
 
 
@@ -266,6 +267,132 @@ def main(net_type, use_cuda, is_local=True):
 
 
 class TestImageClassification(unittest.TestCase):
+    def test_amp_lists(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists()
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_1(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 1. w={'exp}, b=None
+        white_list.add('exp')
+        black_list.remove('exp')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'exp'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_2(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 2. w={'tanh'}, b=None
+        white_list.add('tanh')
+        gray_list.remove('tanh')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'tanh'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_3(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 3. w={'lstm'}, b=None
+        white_list.add('lstm')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            {'lstm'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_4(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 4. w=None, b={'conv2d'}
+        white_list.remove('conv2d')
+        black_list.add('conv2d')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'conv2d'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_5(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 5. w=None, b={'tanh'}
+        black_list.add('tanh')
+        gray_list.remove('tanh')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'tanh'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_6(self):
+        white_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.white_list)
+        black_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.black_list)
+        gray_list = copy.copy(
+            fluid.contrib.mixed_precision.fp16_lists.gray_list)
+
+        # 6. w=None, b={'lstm'}
+        black_list.add('lstm')
+
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_list={'lstm'})
+        self.assertEqual(amp_lists.white_list, white_list)
+        self.assertEqual(amp_lists.black_list, black_list)
+        self.assertEqual(amp_lists.gray_list, gray_list)
+
+    def test_amp_lists_7(self):
+        # 7. w={'lstm'} b={'lstm'}
+        # raise ValueError
+        self.assertRaises(ValueError,
+                          fluid.contrib.mixed_precision.AutoMixedPrecisionLists,
+                          {'lstm'}, {'lstm'})
+
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
             main('vgg', use_cuda=True)

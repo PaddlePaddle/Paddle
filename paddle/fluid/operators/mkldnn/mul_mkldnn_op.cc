@@ -107,7 +107,7 @@ class MulPrimitiveFactory {
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
 
     if (out->format() == MKLDNNMemoryFormat::format_undef) {
-      auto output_format = output_->get_primitive_desc().desc().data.format;
+      auto output_format = platform::GetMKLDNNFormat(*output_);
       out->set_format((MKLDNNMemoryFormat)output_format);
     }
   }
@@ -139,8 +139,9 @@ class MulPrimitiveFactory {
     auto buffer_size = dst_prim_desc.get_size();
 
     OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
-    output->set_format((MKLDNNMemoryFormat)dst_prim_desc.desc().data.format);
-    return memory(dst_prim_desc, to_void_cast<OT>(output_data));
+    memory dst_mem(dst_prim_desc, to_void_cast<OT>(output_data));
+    output->set_format(platform::GetMKLDNNFormat(dst_mem));
+    return dst_mem;
   }
 
   memory Reorder(const memory::desc &src_desc, const memory::desc &dst_desc,
