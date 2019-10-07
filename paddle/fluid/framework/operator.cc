@@ -313,8 +313,10 @@ OperatorBase::OperatorBase(const std::string& type,
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
-  // GenerateTemporaryNames();
-  // CheckAllInputOutputSet();
+  if (inputs_.size() > 0 || outputs_.size() > 0) {
+    GenerateTemporaryNames();
+    CheckAllInputOutputSet();
+  }
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
