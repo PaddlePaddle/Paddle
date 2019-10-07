@@ -1491,7 +1491,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             print(transition)
     """
     helper = LayerHelper('linear_chain_crf', **locals())
-    size = input.shape[1]
+    size = input.shape[2] if length else input.shape[1]
     transition = helper.create_parameter(
         attr=helper.param_attr,
         shape=[size + 2, size],
@@ -1510,7 +1510,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
         "Label": [label]
     }
     if length:
-        this_inputs['length'] = [length]
+        this_inputs['Length'] = [length]
     helper.append_op(
         type='linear_chain_crf',
         inputs=this_inputs,
@@ -1525,7 +1525,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
 
 
 @templatedoc()
-def crf_decoding(input, param_attr, label=None):
+def crf_decoding(input, param_attr, label=None, length=None):
     """
     ${comment}
 
@@ -1535,6 +1535,8 @@ def crf_decoding(input, param_attr, label=None):
         param_attr(ParamAttr): The parameter attribute for training.
 
         label(${label_type}): ${label_comment}
+        
+        label(${length_type}): ${length_comment}
 
     Returns:
         Variable: ${viterbi_path_comment}
@@ -1543,23 +1545,41 @@ def crf_decoding(input, param_attr, label=None):
         .. code-block:: python
 
            import paddle.fluid as fluid
-           images = fluid.layers.data(name='pixel', shape=[784], dtype='float32')
-           label = fluid.layers.data(name='label', shape=[1], dtype='int32')
-           hidden = fluid.layers.fc(input=images, size=2)
-           crf = fluid.layers.linear_chain_crf(input=hidden, label=label, 
+
+           # LoDTensor-based example
+           num_labels = 10
+           feature = fluid.layers.data(name='word_emb', shape=[784], dtype='float32', lod_level=1)
+           label = fluid.layers.data(name='label', shape=[1], dtype='int64', lod_level=1)
+           emission = fluid.layers.fc(input=feature, size=num_labels)
+           
+           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label, 
                      param_attr=fluid.ParamAttr(name="crfw"))
-           crf_decode = fluid.layers.crf_decoding(input=hidden, 
+           crf_decode = fluid.layers.crf_decoding(input=emission, 
                      param_attr=fluid.ParamAttr(name="crfw"))
+
+           # Common tensor example
+           num_labels, max_len = 10, 20
+           feature = fluid.layers.data(name='word_emb_pad', shape=[max_len, 784], dtype='float32')
+           label = fluid.layers.data(name='label_pad', shape=[max_len, 1], dtype='int64')
+           length = fluid.layers.data(name='length', shape=[1], dtype='int64')
+           emission = fluid.layers.fc(input=feature, size=num_labels,
+                                      num_flatten_dims=2)
+           
+           crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label, length=length, 
+                     param_attr=fluid.ParamAttr(name="crfw_pad"))
+           crf_decode = fluid.layers.crf_decoding(input=emission, length=length,
+                     param_attr=fluid.ParamAttr(name="crfw_pad"))
     """
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
+    inputs = {"Emission": [input], "Transition": transition, "Label": label}
+    if length:
+        inputs['Length'] = length
     helper.append_op(
         type='crf_decoding',
-        inputs={"Emission": [input],
-                "Transition": transition,
-                "Label": label},
+        inputs=inputs,
         outputs={"ViterbiPath": [viterbi_path]})
 
     return viterbi_path
@@ -5364,6 +5384,15 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     """
     helper = LayerHelper('reduce_sum', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(
+            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in reduce_sum  must be float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(input.dtype)))
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
@@ -5423,6 +5452,15 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_mean must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(
+            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in reduce_mean  must be float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(input.dtype)))
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
