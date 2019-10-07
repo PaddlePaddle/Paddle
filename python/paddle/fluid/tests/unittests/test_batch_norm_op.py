@@ -540,7 +540,8 @@ class TestBatchNormOpError(OpTest):
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
 
-            # the input dtype of batch_norm must be float32 or float64
+            # the input dtype of batch_norm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.batch_norm, x2)
 

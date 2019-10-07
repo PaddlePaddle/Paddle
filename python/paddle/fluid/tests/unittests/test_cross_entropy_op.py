@@ -362,14 +362,27 @@ create_test_class(TestCrossEntropyOp7RemoveLastDim,
 class TestCrossEntropyOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # the input of cross_entropy must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.cross_entropy, x1)
 
-            # the input dtype of cross_entropy must be float32 or float64
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.cross_entropy, x2)
+            def test_Variable():
+                # the input of cross_entropy must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                lab1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.cross_entropy(x1, lab1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of cross_entropy must be float16 or float32 or float64
+                # float16 only can be set on GPU place
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                lab2 = fluid.layers.data(
+                    name='lab2', shape=[3, 4, 5, 6], dtype="int32")
+                fluid.layers.cross_entropy(x2, lab2)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == "__main__":
