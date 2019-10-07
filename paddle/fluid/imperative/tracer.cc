@@ -19,6 +19,37 @@
 namespace paddle {
 namespace imperative {
 
+static framework::VariableNameMap CreateVarNameMap(
+    const framework::OpInfo& op_info, const std::string& op_type,
+    const NameVarBaseMap& varbase_map, bool is_input) {
+  if (op_info.proto_ == nullptr) {
+    return {};
+  }
+
+  framework::VariableNameMap result;
+
+  for (auto& var :
+       is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
+    auto it = varbase_map.find(var.name());
+    if (it == varbase_map.end()) {
+      PADDLE_ENFORCE_EQ(
+          var.dispensable(), true,
+          "Var: %s not dispensable and there are no such var in inputs",
+          var.name());
+      result[var.name()] = {};
+    } else {
+      auto& var_vector = it->second;
+      std::vector<std::string> args;
+      args.reserve(var_vector.size());
+      for (auto& var_base : var_vector) {
+        args.emplace_back(var_base->Name());
+      }
+      result[var.name()] = std::move(args);
+    }
+  }
+  return result;
+}
+
 static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
     const framework::OpInfo& op_info, const framework::OpDesc& op_desc,
     const std::unordered_set<std::string>& no_grad_set,
@@ -52,28 +83,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   op->Run(ins, outs);
 
   // framework::VariableValueMap invars_map;
-  framework::VariableNameMap in_name_map;
-  framework::VariableNameMap out_name_map;
-
-  for (auto& it : ins) {
-    std::vector<std::string> vec_temp;
-    vec_temp.reserve(it.second.size());
-    for (auto& var_base_it : it.second) {
-      vec_temp.push_back(var_base_it->Name());
-    }
-    in_name_map.emplace(it.first, std::move(vec_temp));
-  }
-
-  for (auto& it : outs) {
-    std::vector<std::string> vec_temp;
-    vec_temp.reserve(it.second.size());
-
-    for (auto& var_base_it : it.second) {
-      vec_temp.push_back(var_base_it->Name());
-    }
-
-    out_name_map.emplace(it.first, std::move(vec_temp));
-  }
+  framework::VariableNameMap in_name_map =
+      CreateVarNameMap(op->Info(), type, ins, true);
+  framework::VariableNameMap out_name_map =
+      CreateVarNameMap(op->Info(), type, outs, false);
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     TraceBackward(op, framework::OpDesc(op->Type(), in_name_map, out_name_map,
