@@ -1677,6 +1677,20 @@ def dropout(x,
     """
 
     helper = LayerHelper('dropout', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in dropout must be Variable, but received %s" %
+            (type(x)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in dropout only support float16 on GPU now."
+        )
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in dropout must be float16 or float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
@@ -1749,6 +1763,19 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in cross_entropy must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in cross_entropy only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in cross_entropy must be float16 or float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
@@ -2397,6 +2424,20 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in conv2d must be Variable, but received %s" %
+            (type(input)))
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in conv2d only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in conv2d must be float16 or float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+
+    num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
                          "Attr(use_cudnn): %s. " % str(use_cudnn))
@@ -2427,9 +2468,9 @@ def conv2d(input,
     else:
         if num_channels % groups != 0:
             raise ValueError(
-                "The number of input channels must be divisible by Attr(groups). "
-                "Received: number of channels(%s), groups(%s)." %
-                (str(num_channels), str(groups)))
+                "the channel of input must be divisible by groups,"
+                "received: the channel of input is {}, the shape of input is {}"
+                ", the groups is {}".format(num_channels, input.shape, groups))
         num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
@@ -3740,8 +3781,21 @@ def batch_norm(input,
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
-    dtype = helper.input_dtype()
 
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in batch_norm must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(input.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in batch_norm only support float16 on GPU now."
+        )
+    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in batch_norm must be float16 or float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+
+    dtype = helper.input_dtype()
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
