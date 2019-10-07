@@ -533,7 +533,7 @@ class FakeQAT2MkldnnINT8PerfPass(object):
             if op.name() in self._pool_ops:
                 if op.op().attr("pooling_type") == "avg":
                     ids.append(op.id())
-        return set(ids)
+        return set(ids) if len(ids) else set([-1])
 
     def _transform_to_quantize_mkldnn(self, graph, op_node):
         """
