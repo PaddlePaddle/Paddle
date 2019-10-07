@@ -65,62 +65,51 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     // Because the computation codes only runs on CPU, here the memory for all
     // the outputs is FIXED to be allocated on the CPU memory.
-    auto* emission_exps_data =
-        emission_exps->mutable_data<T>(platform::CPUPlace());
-    auto* alpha_data = alpha->mutable_data<T>(platform::CPUPlace());
+    emission_exps->mutable_data<T>(platform::CPUPlace());
+    alpha->mutable_data<T>(platform::CPUPlace());
     transition_exps->mutable_data<T>(platform::CPUPlace());
-    // Resize the output tensor to its correct dimension.
-    memset(emission_exps_data, 0, emission_exps->numel() * sizeof(T));
-    memset(alpha_data, 0, alpha->numel() * sizeof(T));
     auto emission_dims = emission_weights->dims();
 
     const Tensor* label = ctx.Input<framework::Tensor>("Label");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    Tensor emission_weights_tmp = ctx.AllocateTmpTensor<T, DeviceContext>(
-        emission_weights->dims(), dev_ctx);
-    emission_weights_tmp.ShareDataWith(*emission_weights);
-    Tensor label_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
-    label_tmp.ShareDataWith(*label);
-    Tensor emission_exps_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
-    emission_exps_tmp.ShareDataWith(*emission_exps);
-    Tensor alpha_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
-    alpha_tmp.ShareDataWith(*alpha);
-    size_t seq_num = 0;
-    size_t batch_size;
-    size_t tag_num;
+    Tensor emission_weights_tmp = *emission_weights;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor alpha_tmp = *alpha;
+    int64_t seq_num = 0;
+    int64_t batch_size;
+    int64_t tag_num;
     const int64_t* length_data = nullptr;
-    framework::Vector<size_t> in_lod;
-    if (ctx.HasInput("length")) {
-      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
+    framework::LoD in_lod;
+    if (ctx.HasInput("Length")) {
+      const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
-      batch_size = emission_dims[0] * emission_dims[1];
-      tag_num = emission_dims[2];
-      emission_weights_tmp.Resize(
-          {emission_dims[0] * emission_dims[1], emission_dims[2]});
-      auto label_dims = label->dims();
-      label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
-      alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
-      emission_exps_tmp.Resize(
-          {emission_dims[0] * emission_dims[1], emission_dims[2]});
       PADDLE_ENFORCE_EQ(seq_num, emission_dims[0],
                         "the size of Input(length) must be equal to "
                         "emission_dims[0].");
+      auto label_dims = label->dims();
       PADDLE_ENFORCE_EQ(seq_num, label_dims[0],
                         "the size of Input(length) must be equal to "
                         "label_dims[0].");
+
+      batch_size = emission_dims[0] * emission_dims[1];
+      tag_num = emission_dims[2];
+      emission_weights_tmp.Resize({batch_size, tag_num});
+      label_tmp.Resize({batch_size, 1});
+      alpha_tmp.Resize({batch_size, tag_num});
+      emission_exps_tmp.Resize({batch_size, tag_num});
+      math::set_constant(ctx.device_context(), emission_exps, 0.0);
+      math::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
-      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
+      in_lod = ctx.Input<LoDTensor>("Label")->lod();
+      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
+      seq_num = in_lod[0].size() - 1;
       batch_size = emission_dims[0];
       tag_num = emission_dims[1];
-      in_lod = ctx.Input<LoDTensor>("Label")->lod()[0];
-      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
     }
 
-    ll->Resize({static_cast<int>(seq_num), 1});
+    // Resize the output tensor to its correct dimension.
+    ll->Resize({seq_num, 1});
     ll->mutable_data<T>(platform::CPUPlace());
     // Now, all the inputs and outputs should be on the CPU memory.
     Tensor emission_row_max;
@@ -141,16 +130,15 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     auto w_exps = EigenMatrix<T>::From(*transition_exps);
     w_exps.device(place) = w.exp();
     T* log_likelihood = ll->data<T>();
-    for (size_t i = 0; i < seq_num; ++i) {
-      int start_pos = 0;
-      int end_pos = 0;
-      if (ctx.HasInput("length")) {
-        if (length_data[i] == 0) continue;
+    for (int64_t i = 0; i < seq_num; ++i) {
+      int64_t start_pos = 0;
+      int64_t end_pos = 0;
+      if (ctx.HasInput("Length")) {
         start_pos = i * emission_dims[1];
-        end_pos = start_pos + static_cast<int>(length_data[i]);
+        end_pos = start_pos + length_data[i];
       } else {
-        start_pos = static_cast<int>(in_lod[i]);
-        end_pos = static_cast<int>(in_lod[i + 1]);
+        start_pos = static_cast<int64_t>(in_lod[0][i]);
+        end_pos = static_cast<int64_t>(in_lod[0][i + 1]);
       }
       if (end_pos == start_pos) {
         // If an empty input sequence is given, pad 0 for its cost.
@@ -239,44 +227,35 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     const Tensor* alpha = ctx.Input<Tensor>("Alpha");
     const T* ll_grad =
         ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     Tensor* emission_grad =
         ctx.Output<Tensor>(framework::GradVarName("Emission"));
     auto* emission_grad_data =
         emission_grad->mutable_data<T>(platform::CPUPlace());
     memset(emission_grad_data, 0, emission_grad->numel() * sizeof(T));
-    Tensor alpha_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(alpha->dims(), dev_ctx);
-    alpha_tmp.ShareDataWith(*alpha);
-    Tensor label_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(label->dims(), dev_ctx);
-    label_tmp.ShareDataWith(*label);
-    Tensor emission_exps_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_exps->dims(), dev_ctx);
-    emission_exps_tmp.ShareDataWith(*emission_exps);
-    Tensor emission_grad_tmp =
-        ctx.AllocateTmpTensor<T, DeviceContext>(emission_grad->dims(), dev_ctx);
-    emission_grad_tmp.ShareDataWith(*emission_grad);
+    Tensor alpha_tmp = *alpha;
+    Tensor label_tmp = *label;
+    Tensor emission_exps_tmp = *emission_exps;
+    Tensor emission_grad_tmp = *emission_grad;
     // getting seq_num  using padding or not
-    size_t seq_num = 0;
-    framework::Vector<size_t> lod;
+    int64_t seq_num = 0;
+    framework::LoD in_lod;
     const int64_t* length_data = nullptr;
-    if (ctx.HasInput("length")) {
-      const Tensor* label_length = ctx.Input<framework::Tensor>("length");
+    if (ctx.HasInput("Length")) {
+      const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
       auto emission_dims = emission_grad->dims();
       auto label_dims = label->dims();
       emission_grad_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
-      label_tmp.Resize({label_dims[0] * label_dims[1], label_dims[2]});
+      label_tmp.Resize({label_dims[0] * label_dims[1], 1});
       alpha_tmp.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
-      seq_num = ctx.Input<LoDTensor>("Label")->lod()[0].size() - 1;
-      lod = ctx.Input<LoDTensor>("Label")->lod()[0];
-      PADDLE_ENFORCE_NE(lod.size(), 0, "Input(Label) must be a sequence.");
+      in_lod = ctx.Input<LoDTensor>("Label")->lod();
+      PADDLE_ENFORCE_NE(in_lod.size(), 0, "Input(Label) must be a sequence.");
+      seq_num = static_cast<int64_t>(in_lod[0].size() - 1);
     }
 
     Tensor* transition_grad =
@@ -295,21 +274,24 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // captures the unnormalized probabilities of partial sequences starting
     // at position i.
     Tensor beta;
-    auto* beta_data = beta.mutable_data<T>(emission_dims, platform::CPUPlace());
-    memset(beta_data, 0, beta.numel() * sizeof(T));
-    if (ctx.HasInput("length")) {
+    beta.mutable_data<T>(emission_dims, platform::CPUPlace());
+    if (ctx.HasInput("Length")) {
       beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
     }
-    for (size_t i = 0; i < seq_num; ++i) {
-      int start_pos = 0;
-      int end_pos = 0;
-      if (ctx.HasInput("length")) {
-        if (length_data[i] == 0) continue;
+
+    for (int64_t i = 0; i < seq_num; ++i) {
+      int64_t start_pos = 0;
+      int64_t end_pos = 0;
+      if (ctx.HasInput("Length")) {
         start_pos = i * emission_dims[1];
-        end_pos = start_pos + static_cast<int>(length_data[i]);
+        end_pos = start_pos + length_data[i];
       } else {
-        start_pos = static_cast<int>(lod[i]);
-        end_pos = static_cast<int>(lod[i + 1]);
+        start_pos = static_cast<int64_t>(in_lod[0][i]);
+        end_pos = static_cast<int64_t>(in_lod[0][i + 1]);
+      }
+
+      if (end_pos == start_pos) {
+        continue;
       }
       const Tensor one_seq_emission_exps =
           emission_exps_tmp.Slice(start_pos, end_pos);
