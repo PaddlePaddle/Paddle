@@ -68,5 +68,47 @@ class TestCommunicator2(unittest.TestCase):
         comm.stop()
 
 
+class TestCommunicator3(unittest.TestCase):
+    def net(self):
+        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        return avg_cost
+
+    def test_communicator_init_and_start(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+
+        fleet.init(role)
+        avg_cost = self.net()
+
+        optimizer = fluid.optimizer.SGD(0.01)
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = True
+        strategy.wait_port = False
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        comm = Communicator(fleet.main_program, AsyncMode.HALF_ASYNC)
+        comm.start()
+        time.sleep(10)
+        comm.stop()
+
+
+class TestCommunicator4(unittest.TestCase):
+    def test_communicator_init_and_start(self):
+        prog = fluid.Program()
+        comm = Communicator(prog, AsyncMode.HALF_ASYNC)
+        comm.start()
+        comm.stop()
+
+
 if __name__ == '__main__':
     unittest.main()

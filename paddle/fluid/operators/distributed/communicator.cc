@@ -458,7 +458,7 @@ HalfAsyncCommunicator::~HalfAsyncCommunicator() {
 void HalfAsyncCommunicator::ConsumeThread() {
   VLOG(3) << "ConsumeThread start!";
   while (running_) {
-    while (true) {
+    while (running_) {
       if (barrier_counter_.load() >= barrier_trigger_.load()) {
         break;
       } else {
