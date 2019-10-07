@@ -19,6 +19,7 @@ import time
 
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
+from paddle.fluid.communicator import AsyncMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -53,7 +54,7 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        comm = Communicator(fleet.main_program)
+        comm = Communicator(fleet.main_program, AsyncMode.ASYNC)
         comm.start()
         time.sleep(10)
         comm.stop()
@@ -62,7 +63,7 @@ class TestCommunicator(unittest.TestCase):
 class TestCommunicator2(unittest.TestCase):
     def test_communicator_init_and_start(self):
         prog = fluid.Program()
-        comm = Communicator(prog)
+        comm = Communicator(prog, AsyncMode.ASYNC)
         comm.start()
         comm.stop()
 
