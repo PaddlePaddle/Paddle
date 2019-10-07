@@ -301,7 +301,6 @@ class ExecutionContext {
   }
 
   virtual std::vector<Variable*> MultiOutputVar(const std::string& name) const {
-    auto names = op_.Outputs(name);
     auto it = ctx_.outputs.find(name);
     if (it == ctx_.outputs.end()) {
       return {};
