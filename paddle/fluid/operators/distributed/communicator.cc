@@ -353,7 +353,8 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
   VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
+  PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
+                    "grad var should be inited");
   if (grad_var->IsType<framework::SelectedRows>()) {
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
@@ -534,7 +535,8 @@ void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
   VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
+  PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
+                    "grad var should be inited");
   if (grad_var->IsType<framework::SelectedRows>()) {
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
