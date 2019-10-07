@@ -68,7 +68,7 @@ class TestCommunicator2(unittest.TestCase):
         comm.stop()
 
 
-class TestCommunicator3(unittest.TestCase):
+class TestCommunicatorHalfAsync(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -102,7 +102,7 @@ class TestCommunicator3(unittest.TestCase):
         comm.stop()
 
 
-class TestCommunicator4(unittest.TestCase):
+class TestCommunicatorHalfAsync2(unittest.TestCase):
     def test_communicator_init_and_start(self):
         prog = fluid.Program()
         comm = Communicator(prog, AsyncMode.HALF_ASYNC)
