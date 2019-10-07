@@ -153,8 +153,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto out_tz = in_tz;
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
-  PADDLE_ENFORCE(in_type != memory::data_type::undef,
-                 "Input tensor type is not supported: %s", in.type());
+  PADDLE_ENFORCE_NE(in_type, memory::data_type::undef,
+                    "Input tensor type is not supported: %s", in.type());
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =

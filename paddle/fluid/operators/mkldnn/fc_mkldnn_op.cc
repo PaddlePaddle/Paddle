@@ -123,8 +123,8 @@ class FCPrimitiveFactory {
 
   // Convert data from one data format to another
   mkldnn::memory Reorder(const memory::desc& src_desc,
-                         const memory::desc& dst_desc, const void* src_data) {
-    auto src_mem = memory(src_desc, engine_, const_cast<void*>(src_data));
+                         const memory::desc& dst_desc, void* src_data) {
+    auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = memory(dst_desc, engine_);
 
     auto reorder = mkldnn::reorder(src_mem, dst_mem);
@@ -178,12 +178,7 @@ class FCPrimitiveFactory {
   template <typename T>
   mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc,
                               const Tensor* tensor) {
-    return CreateMemory(desc, tensor->data<T>());
-  }
-
-  mkldnn::memory CreateMemory(const mkldnn::memory::desc& desc,
-                              const void* data) {
-    return memory(desc, engine_, const_cast<void*>(data)) ;
+    return memory(desc, engine_, to_void_cast<T>(tensor->data<T>()));
   }
 
   // Transpose weights through MKL-DNN's reorder from io to oi format.
