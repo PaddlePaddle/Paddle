@@ -101,7 +101,7 @@ TEST(communicator, merge_selected_rows) {
   for (auto i = 0; i < out_slr.rows().size(); ++i) {
     ASSERT_EQ(out_slr.rows()[i], i);
     for (auto j = 0; j < width; ++j) {
-      ASSERT_EQ(out_data[i * width + j], out_values[i]);
+      ASSERT_FLOAT_EQ(out_data[i * width + j], out_values[i]);
     }
   }
 }
