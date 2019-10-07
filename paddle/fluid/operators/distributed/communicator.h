@@ -372,6 +372,14 @@ class GeoSgdCommunicator : public Communicator {
                              framework::Scope* scope_y,
                              const std::string var_name);
 
+  void RpcSend(const std::string& origin_var_name,
+               const std::string& splited_var_name,
+               const size_t& splited_var_index);
+
+  void RpcRecv(const std::string& origin_var_name,
+               const std::string& splited_var_name,
+               const size_t& splited_var_index);
+
   const std::string VarToDeltaVar(const std::string var_name) {
     std::string delta_name = var_name;
     const std::string send_name = delta_name.append(".delta");

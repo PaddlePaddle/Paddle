@@ -752,14 +752,6 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  auto trainer_id = send_varname_to_ctx_[var_name].trainer_id;
-  auto endpoint = send_varname_to_ctx_[var_name].epmap[splited_var_index];
-
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
-  distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-
   std::vector<int64_t> send_rows;
   send_rows.reserve(new_rows.size());
   for (auto idx : new_rows) {
@@ -771,8 +763,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
       send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
 
   auto before_send_sparse = GetCurrentUS();
-  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
-                           splited_var_name);
+  RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
   VLOG(3) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
@@ -835,27 +826,18 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
-  auto train_id = recv_varname_to_ctx_[origin_var_name].trainer_id;
-  auto endpoint =
-      recv_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
-  distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
 
   auto before_run_recv = GetCurrentUS();
-  pserver_scope_->Var(origin_splited_var_name);
-  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
-                          origin_splited_var_name, origin_splited_var_name,
-                          origin_splited_var_name);
+  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
   auto after_run_recv = GetCurrentUS();
-  VLOG(1) << "recv var " << origin_splited_var_name << " use time "
+  VLOG(3) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step 2: update sparse var
   auto before_run_update = GetCurrentUS();
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
+  auto dims = var_x_tensor.dims();
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
 
   auto *var_y = old_scope_->FindVar(origin_var_name);
@@ -865,7 +847,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto *var_z = pserver_scope_.get()->FindVar(origin_splited_var_name);
   auto var_z_slr = var_z->GetMutable<framework::SelectedRows>();
   auto row_size = var_z_slr->rows().size();
-  VLOG(1) << "var_z_slr->row_size(): " << row_size;
+
   std::vector<int64_t> new_rows;
   new_rows.reserve(row_size);
 
@@ -873,13 +855,11 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
     new_rows.push_back(ids +
                        absolute_section_[origin_var_name][splited_var_index]);
   }
-  VLOG(1) << "splited_var_index: " << splited_var_index << " sections: "
-          << absolute_section_[origin_var_name][splited_var_index];
-  VLOG(1) << "new_rows->row_size(): " << new_rows.size();
+
   auto *new_value = var_z_slr->mutable_value();
-  auto row_numel = new_value->numel() / new_rows.size();
+  auto row_numel = dims[1];
   auto *z_value = new_value->mutable_data<float>(var_x_tensor.place());
-  VLOG(1) << "Get z_value";
+
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   for (int y = 0; y < new_rows.size(); y++) {
@@ -897,7 +877,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   }
 
   auto after_run_update = GetCurrentUS();
-  VLOG(1) << "sparse var recv update " << origin_splited_var_name << " has num "
+  VLOG(3) << "sparse var recv update " << origin_splited_var_name << " has num "
           << new_rows.size() << " use time "
           << after_run_update - before_run_update;
 }
@@ -930,6 +910,35 @@ void GeoSgdCommunicator::GeoSgdDenseParamInit(framework::Scope *scope_x,
   auto *var_x = scope_x->Var(var_name);
   auto *var_y = scope_y->Var(var_name);
   framework::CopyVariable(*var_x, var_y);
+}
+
+void GeoSgdCommunicator::RpcSend(const std::string &origin_var_name,
+                                 const std::string &splited_var_name,
+                                 const size_t &splited_var_index) {
+  auto trainer_id = send_varname_to_ctx_[origin_var_name].trainer_id;
+  auto endpoint =
+      send_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
+                           splited_var_name);
+}
+
+void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
+                                 const std::string &splited_var_name,
+                                 const size_t &splited_var_index) {
+  auto train_id = recv_varname_to_ctx_[var_name].trainer_id;
+  auto endpoint = recv_varname_to_ctx_[var_name].epmap[splited_var_index];
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
+  pserver_scope_->Var(splited_var_name);
+  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
+                          splited_var_name, splited_var_name, splited_var_name);
 }
 
 void GeoSgdCommunicator::Recv() {}
