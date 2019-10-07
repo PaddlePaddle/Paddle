@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
@@ -116,6 +117,9 @@ void StartServer(const std::string& rpc_name) {
   g_req_handler->SetExecutor(&exe);
 
   g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
+
+  distributed::HeartBeatMonitor::Init(2, true, "w@grad");
+
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
