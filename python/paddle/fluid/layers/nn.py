@@ -1618,7 +1618,7 @@ def dropout(x,
 
     Args:
         x (Variable): The input tensor variable. The data type is float16 or float32 or float64.
-        dropout_prob (float): Probability of setting units to zero. Default: 0.5.
+        dropout_prob (float): Probability of setting units to zero.
         is_test (bool): A flag indicating whether it is in test phrase or not.
         seed (int): A Python integer used to create random seeds. If this
                     parameter is set to None, a random seed is used.
