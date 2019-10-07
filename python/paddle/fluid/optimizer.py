@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import numpy
 import numpy as np
 from collections import defaultdict
 
@@ -117,18 +118,26 @@ class Optimizer(object):
             assert 'global_step' in state_dict, \
                     'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
             global_step = state_dict['global_step']
-            if isinstance(global_step, int):
-                self._learning_rate.step_num = global_step
-            elif isinstance(global_step, core.VarBase):
+
+            if isinstance(global_step, core.VarBase):
                 step_np = global_step._copy_to(core.CPUPlace(), True)
                 step_np = np.array(step_np.value().get_tensor())
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
 
                 self._learning_rate.step_num = int(step_np[0])
+            elif isinstance(global_step, Variable):
+                step_np = global_step.numpy()
+                assert step_np.shape == (1,),  \
+                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+                self._learning_rate.step_num = step_np[0]
+            elif isinstance(global_step, np.ndarray):
+                assert global_step.shape == (1,),  \
+                        "global step shape is (1,), the shape is {}".format( global_step.shape )
+                self._learning_rate.step_num = global_step[0]
             else:
                 raise RuntimeError(
-                    "Type not supprt, value in state dict must be [int, VarBase], the type is {}",
+                    "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
                     type(global_step))
 
         for k, v in self._accumulators.items():
@@ -145,7 +154,7 @@ class Optimizer(object):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
                     load_para_np = var_base_to_np(load_para)
-                elif isinstance(load_para, numpy):
+                elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
                     raise RuntimeError("State dict type {} not supprt".format(

@@ -24,6 +24,7 @@ from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.framework import Variable
 
 __all__ = ['Layer', 'var_base_to_np']
 
@@ -203,11 +204,33 @@ class Layer(core.Layer):
         """
         assert isinstance(parameter, framework.Parameter)
 
-        if parameter.name in self._loaddict_holder:
+        if len(self._loaddict_holder) > 0:
+            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                parameter.name)
+
             var = parameter._ivar.value()
             tensor = var.get_tensor()
-            tensor.set(self._loaddict_holder[parameter.name].numpy(),
-                       framework._current_expected_place())
+
+            model_np = np.array(tensor)
+            load_para = self._loaddict_holder[parameter.name]
+
+            if isinstance(load_para, Variable):
+                load_para_np = load_para.numpy()
+            elif isinstance(load_para, core.VarBase):
+                load_para_np = var_base_to_np(load_para)
+            elif isinstance(load_para, np.ndarray):
+                load_para_np = load_para
+            else:
+                raise RuntimeError("State dict type {} not supprt".format(
+                    str(type(load_para))))
+
+            assert model_np.shape == load_para_np.shape,  \
+                                      "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
+
+            assert model_np.dtype == load_para_np.dtype,  \
+                                      "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {}  but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
+
+            tensor.set(load_para_np, framework._current_expected_place())
 
         self._parameters[name] = parameter
         return parameter
@@ -243,7 +266,7 @@ class Layer(core.Layer):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
                     load_para_np = var_base_to_np(load_para)
-                elif isinstance(load_para, numpy):
+                elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
                     raise RuntimeError("State dict type {} not supprt".format(
@@ -314,7 +337,7 @@ class Layer(core.Layer):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
                     load_para_np = var_base_to_np(load_para)
-                elif isinstance(load_para, numpy):
+                elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
                     raise RuntimeError("State dict type {} not supprt".format(

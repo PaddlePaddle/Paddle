@@ -211,7 +211,89 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def test_ptb_rnn_cpu_float32(self):
+    def setUp(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+                if i == 0:
+                    for param in ptb_model.parameters():
+                        dy_param_init[param.name] = param.numpy()
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+                if i == batch_num - 1:
+                    for param in ptb_model.parameters():
+                        dy_param_updated[param.name] = param.numpy()
+
+            # check optimizer
+            self.opti_dict = adam.state_dict()
+            self.base_opti = {}
+            for k, v in self.opti_dict.items():
+                self.base_opti[v.name] = v.numpy()
+                self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
+
+            fluid.save_optimizer(self.opti_dict, "./test_dy")
+
+            self.state_dict = ptb_model.state_dict()
+            self.model_base = {}
+            for k, v in self.state_dict.items():
+                np_t = v.numpy()
+                self.model_base[v.name] = np_t
+
+            fluid.save_parameter(self.state_dict, "./test_dy")
+
+    def test_load_base(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -278,12 +360,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             # check optimizer
             opti_dict = adam.state_dict()
-            base_opti = {}
-            for k, v in opti_dict.items():
-                base_opti[v.name] = v.numpy()
-                self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
-
-            fluid.save_optimizer(opti_dict, "./test_dy")
             # set to zero
             for k, v in opti_dict.items():
                 np_t = v.numpy()
@@ -300,18 +376,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(np.array_equal(v.numpy(), base_opti[v.name]))
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
 
             # check parameter
-
             state_dict = ptb_model.state_dict()
-            model_base = {}
-            for k, v in state_dict.items():
-                np_t = v.numpy()
-                model_base[v.name] = np_t
-
-            fluid.save_parameter(state_dict, "./test_dy")
-
             for k, v in state_dict.items():
                 np_t = v.numpy()
                 var = v._ivar.value().get_tensor()
@@ -327,9 +396,454 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in state_dict.items():
                 new_t = v.numpy()
 
-                base_t = model_base[v.name]
+                base_t = self.model_base[v.name]
 
-                self.assertTrue(v.name, np.array_equal(new_t, base_t))
+                self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_load_variable_map(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+                if i == 0:
+                    for param in ptb_model.parameters():
+                        dy_param_init[param.name] = param.numpy()
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+                if i == batch_num - 1:
+                    for param in ptb_model.parameters():
+                        dy_param_updated[param.name] = param.numpy()
+
+            # check optimizer
+            opti_dict = adam.state_dict()
+            # set to zero
+            for k, v in opti_dict.items():
+                np_t = v.numpy()
+                var = v._ivar.value().get_tensor()
+                var.set(np.zeros_like(np_t), place)
+
+                self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+
+            if isinstance(adam._learning_rate, LearningRateDecay):
+                adam._learning_rate.step_num = 0
+
+            adam.set_dict(self.opti_dict)
+
+            opti_dict = adam.state_dict()
+            for k, v in opti_dict.items():
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+
+            # check parameter
+            state_dict = ptb_model.state_dict()
+            for k, v in state_dict.items():
+                np_t = v.numpy()
+                var = v._ivar.value().get_tensor()
+
+                var.set(np.zeros_like(np_t), place)
+
+            ptb_model.set_dict(self.state_dict)
+
+            state_dict = ptb_model.state_dict()
+
+            for k, v in state_dict.items():
+                new_t = v.numpy()
+
+                base_t = self.model_base[v.name]
+
+                self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_load_numpy_map(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+                if i == 0:
+                    for param in ptb_model.parameters():
+                        dy_param_init[param.name] = param.numpy()
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+                if i == batch_num - 1:
+                    for param in ptb_model.parameters():
+                        dy_param_updated[param.name] = param.numpy()
+
+            # check optimizer
+            opti_dict = adam.state_dict()
+            np_opti_dict = {}
+            # set to zero
+            for k, v in opti_dict.items():
+                np_t = v.numpy()
+                np_opti_dict[v.name] = np_t
+                var = v._ivar.value().get_tensor()
+                var.set(np.zeros_like(np_t), place)
+
+                self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
+
+            if isinstance(adam._learning_rate, LearningRateDecay):
+                adam._learning_rate.step_num = 0
+
+            adam.set_dict(np_opti_dict)
+
+            opti_dict = adam.state_dict()
+            for k, v in opti_dict.items():
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+
+            # check parameter
+            state_dict = ptb_model.state_dict()
+            np_state_dict = {}
+            for k, v in state_dict.items():
+                np_t = v.numpy()
+                np_state_dict[v.name] = np_t
+                var = v._ivar.value().get_tensor()
+
+                var.set(np.zeros_like(np_t), place)
+
+            ptb_model.set_dict(np_state_dict)
+
+            state_dict = ptb_model.state_dict()
+
+            for k, v in state_dict.items():
+                new_t = v.numpy()
+
+                base_t = self.model_base[v.name]
+
+                self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_load_before_run(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            adam.set_dict(self.opti_dict)
+            ptb_model.set_dict(self.state_dict)
+
+            for i in range(1):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+
+            opti_dict = adam.state_dict()
+            for k, v in opti_dict.items():
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+
+            # check parameter
+
+            state_dict = ptb_model.state_dict()
+
+            for k, v in state_dict.items():
+                new_t = v.numpy()
+
+                base_t = self.model_base[v.name]
+                self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_load_before_run_var_base(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            opti_dict = fluid.load_optimizer("./test_dy")
+            state_dict = fluid.load_parameter("./test_dy")
+            adam.set_dict(opti_dict)
+            ptb_model.set_dict(state_dict)
+
+            for i in range(1):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+
+            opti_dict = adam.state_dict()
+            for k, v in opti_dict.items():
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+
+            # check parameter
+
+            state_dict = ptb_model.state_dict()
+
+            for k, v in state_dict.items():
+                new_t = v.numpy()
+
+                base_t = self.model_base[v.name]
+                self.assertTrue(np.array_equal(new_t, base_t))
+
+    def test_load_before_run_numpy(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with fluid.dygraph.guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            # TODO: marsyang1993 Change seed to
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            bd = []
+            lr_arr = [1.0]
+            # this a fake lr decay strategy
+            for i in range(1, 10):
+                bd.append(100 * i)
+                new_lr = 1.0
+                lr_arr.append(new_lr)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr_arr))
+            dy_param_updated = dict()
+            dy_param_init = dict()
+            dy_loss = None
+            last_hidden = None
+            last_cell = None
+
+            np_opti_dict = {}
+            np_state_dict = {}
+
+            for k, v in self.opti_dict.items():
+                np_opti_dict[v.name] = v.numpy()
+
+            for k, v in self.state_dict.items():
+                np_state_dict[v.name] = v.numpy()
+
+            adam.set_dict(np_opti_dict)
+            ptb_model.set_dict(np_state_dict)
+
+            for i in range(1):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                x = to_variable(x_data)
+                y = to_variable(y_data)
+                init_hidden = to_variable(init_hidden_data)
+                init_cell = to_variable(init_cell_data)
+                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
+                                                            init_cell)
+
+            opti_dict = adam.state_dict()
+            for k, v in opti_dict.items():
+                self.assertTrue(
+                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+
+            # check parameter
+
+            state_dict = ptb_model.state_dict()
+
+            for k, v in state_dict.items():
+                new_t = v.numpy()
+
+                base_t = self.model_base[v.name]
+                self.assertTrue(np.array_equal(new_t, base_t))
 
 
 if __name__ == '__main__':

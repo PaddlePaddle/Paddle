@@ -217,7 +217,7 @@ bool LoadStaticNameListFromDisk(
     map_load_tensor.erase(it);
   }
 
-  if (map_load_tensor.size() != 0) {
+  if (map_load_tensor.size() > 0) {
     std::string used_tensor_message = "There is [" +
                                       std::to_string(map_load_tensor.size()) +
                                       "] tensor in model file not used: ";
@@ -226,7 +226,7 @@ bool LoadStaticNameListFromDisk(
       used_tensor_message += " " + tensor_temp.first;
     }
 
-    LOG(WARNING) << used_tensor_message;
+    LOG(ERROR) << used_tensor_message;
   }
 
   return true;
@@ -321,9 +321,6 @@ bool LoadTensorFromDisk(
   ReadReserveBuffer(fin);
 
   size_t tensor_number = ReadTensorNumber(fin);
-  PADDLE_ENFORCE_GT(tensor_number, 0U,
-                    "Tensor number must great than 0, file [%s] seems breaken",
-                    file_name);
 
   for (size_t i = 0; i < tensor_number; ++i) {
     std::string str_tensor_name = ReadTensorName(fin);
