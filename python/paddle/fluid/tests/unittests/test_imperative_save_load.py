@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.dygraph.nn import Embedding, FC
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
@@ -164,18 +164,10 @@ class PtbModel(fluid.Layer):
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
-        self.softmax_weight = self.create_parameter(
-            attr=fluid.ParamAttr(),
-            shape=[self.hidden_size, self.vocab_size],
-            dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-self.init_scale, high=self.init_scale))
-        self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
-            shape=[self.vocab_size],
-            dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-self.init_scale, high=self.init_scale))
+
+        self.out_project = FC(self.full_name(),
+                              self.vocab_size,
+                              num_flatten_dims=2)
 
     def forward(self, input, label, init_hidden, init_cell):
         init_h = fluid.layers.reshape(
@@ -196,8 +188,8 @@ class PtbModel(fluid.Layer):
                                                                init_c)
         rnn_out = fluid.layers.reshape(
             rnn_out, shape=[-1, self.num_steps, self.hidden_size])
-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+
+        projection = self.out_project(rnn_out)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(

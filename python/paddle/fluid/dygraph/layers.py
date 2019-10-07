@@ -260,7 +260,7 @@ class Layer(core.Layer):
                 tensor = var.get_tensor()
 
                 model_np = np.array(tensor)
-                load_para = self._loaddict_holder[item.name]
+                load_para = self._loaddict_holder[value.name]
 
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
