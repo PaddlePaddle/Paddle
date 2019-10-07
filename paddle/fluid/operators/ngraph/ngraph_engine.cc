@@ -305,13 +305,13 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
     ++idx;
   }
 
-  auto input_vars = ctx.Inputs("Xs");
+  auto input_vars = ctx.InputNames("Xs");
   if (!input_vars.empty()) {
     feed_vars = input_vars;
     var_in_ = input_vars;
   }
 
-  auto output_vars = ctx.Outputs("Ys");
+  auto output_vars = ctx.OutputNames("Ys");
   if (!output_vars.empty()) {
     var_out_ = output_vars;
   }
