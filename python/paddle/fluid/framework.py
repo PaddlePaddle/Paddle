@@ -685,8 +685,8 @@ class Variable(object):
 
         Run backward of current Graph which starts from current Variable
 
-        Parameter:
-            - **backward_strategy** : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to run backward
+        Args:
+            - backward_strategy : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to run backward
 
         Returns:  None
 
@@ -805,10 +805,10 @@ class Variable(object):
         """
         Get debug string.
 
-        Parameters:
-            - **throw_on_error** (bool): True if raise an exception when self is
+        Args:
+            - throw_on_error (bool): True if raise an exception when self is
                 not initialized.
-            - **with_details** (bool): more details about variables and parameters
+            - with_details (bool): more details about variables and parameters
                 (e.g. trainable, optimize_attr, ...) will be printed when
                 with_details is True. Default False;
 
@@ -859,6 +859,36 @@ class Variable(object):
 
     @property
     def stop_gradient(self):
+        """
+        **Note: This Property has default value as** ``True``
+        **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value
+        is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
+
+        Indicating if we stop gradient from current Variable
+
+        Example:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            with fluid.dygraph.guard():
+                value0 = np.arange(26).reshape(2, 13).astype("float32")
+                value1 = np.arange(6).reshape(2, 3).astype("float32")
+                value2 = np.arange(10).reshape(2, 5).astype("float32")
+                fc = fluid.FC("fc1", size=5, dtype="float32")
+                fc2 = fluid.FC("fc2", size=3, dtype="float32")
+                a = fluid.dygraph.to_variable(value0)
+                b = fluid.dygraph.to_variable(value1)
+                c = fluid.dygraph.to_variable(value2)
+                out1 = fc(a)
+                out2 = fc2(b)
+                out1.stop_gradient = True
+                out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+                out.backward()
+
+                assert (fc._w.gradient() == 0).all()
+                assert (out1.gradient() == 0).all()
+        """
         if in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
@@ -873,6 +903,14 @@ class Variable(object):
 
     @property
     def persistable(self):
+        """
+        **Note: This Property will be deprecated and this API is just to help user understand concept**
+        **1. All Variable's persistable is** ``False`` **except Parameters.**
+        **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+
+        Indicating if we current Variable should be long-term alive
+
+        """
         if in_dygraph_mode():
             return self._ivar.persistable
         else:
@@ -889,6 +927,17 @@ class Variable(object):
 
     @property
     def name(self):
+        """
+        **Note: **
+        **1. If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means**
+            **these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_
+            **mode. This is how we achieve Parameter sharing**
+
+        **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+
+        Indicating name of current Variable
+
+        """
         if in_dygraph_mode():
             return self._ivar.name
         else:
@@ -903,6 +952,12 @@ class Variable(object):
 
     @property
     def shape(self):
+        """
+        **Note: This is a read-only property**
+
+        Indicating shape of current Variable
+
+        """
         # convert to tuple, make it as same as numpy API.
         if in_dygraph_mode():
             return self._ivar.shape
@@ -911,6 +966,12 @@ class Variable(object):
 
     @property
     def dtype(self):
+        """
+        **Note: This is a read-only property**
+
+        Indicating data type of current Variable
+
+        """
         if in_dygraph_mode():
             return self._ivar.dtype
         else:
@@ -919,6 +980,16 @@ class Variable(object):
     @property
     @dygraph_not_support
     def lod_level(self):
+        """
+        **Note: **
+        **1. This is a read-only property**
+        **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's**
+            **value should be** ``0(int)``
+
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
+        of ``LoD``
+
+        """
         # TODO(minqiyang): Support lod_level in dygraph mode
         if in_dygraph_mode():
             raise Exception("Dygraph model DO NOT supprt lod")
@@ -926,6 +997,12 @@ class Variable(object):
 
     @property
     def type(self):
+        """
+        **Note: This is a read-only property**
+
+        Indicating Type of current Variable
+
+        """
         if in_dygraph_mode():
             return self._ivar.type
         else:
@@ -3359,11 +3436,11 @@ class Program(object):
         """
         To debug string.
 
-        Parameters:
-            - **throw_on_error** (bool): raise Value error when any of required fields
+        Args:
+            - throw_on_error (bool): raise Value error when any of required fields
                 is not set.
 
-            - **with_details** (bool): True if more details about variables and
+            - with_details (bool): True if more details about variables and
                 parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
                 to print.
 
@@ -3381,7 +3458,9 @@ class Program(object):
 
                 prog = fluid.default_main_program()
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print(prog_string)
+                print("program string without detial: \n {}".format(prog_string))
+                prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
+                print("program string with detial: \n {}".format(prog_string_with_detail))
 
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
@@ -3431,21 +3510,21 @@ class Program(object):
         * Set for_test to True when we want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
-          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`. For example:
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
+        For Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            test_program = fluid.default_main_program().clone(for_test=True)
-            # Here we use clone before Momentum
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize()
+                test_program = fluid.default_main_program().clone(for_test=True)
+                # Here we use clone before Momentum
+                optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+                optimizer.minimize()
 
-        Parameters:
-            - **for_test** (bool) - True if change the :code:`is_test` attribute of
-                operators to :code:`True`.
+        Args:
+            - for_test (bool) - True if change the :code:`is_test` attribute of operators to :code:`True`.
 
-        Returns:   A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
+        Returns: A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
 
         Return type: Program
 
@@ -3773,10 +3852,10 @@ class Program(object):
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
         This method always use to save and load model
 
-        Parameters:
-            - **binary_str_type** (str) - the binary prootbuf string.
+        Args:
+            - binary_str_type (str) - the binary prootbuf string.
 
-        Returns: Program: A deserialized Program.
+        Returns: (Program) A deserialized Program.
 
         Return type: Program
 
@@ -3916,8 +3995,8 @@ class Program(object):
 
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
-        Parameter:
-            - **index** (int) - The index of  :ref:`api_guide_Block_en`  to get
+        Args:
+            - index (int) - The index of  :ref:`api_guide_Block_en`  to get
 
         Returns: The :code:`index` block
 
