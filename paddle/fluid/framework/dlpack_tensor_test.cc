@@ -77,6 +77,8 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
     CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
   }
   CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
+
+  dl_managed_tensor->deleter(dl_managed_tensor);
 }
 
 template <typename T>
