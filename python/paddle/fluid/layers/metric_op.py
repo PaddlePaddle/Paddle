@@ -52,8 +52,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
             import paddle.fluid as fluid
             import numpy as np
 
-            data = fluid.layers.data(name="input", shape=[-1, 32, 32], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[-1,1], dtype="int")
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1,1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=10)
             predict = fluid.layers.softmax(input=fc_out)
             result = fluid.layers.accuracy(input=predict, label=label, k=5)
@@ -141,8 +141,8 @@ def auc(input,
             import paddle.fluid as fluid
             import numpy as np
 
-            data = fluid.layers.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[1], dtype="int")
+            data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
+            label = fluid.data(name="label", shape=[1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=2)
             predict = fluid.layers.softmax(input=fc_out)
             result=fluid.layers.auc(input=predict, label=label)

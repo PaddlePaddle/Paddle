@@ -1436,8 +1436,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
-                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                input_data = fluid.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
+                label = fluid.data(name='label', shape=[1], dtype='int', lod_level=1)
                 emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
                 crf_cost = fluid.layers.linear_chain_crf(
                     input=emission,
@@ -1460,9 +1460,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
-                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
-                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                input_data2 = fluid.data(name='input_data2', shape=[10,10], dtype='float32')
+                label2 = fluid.data(name='label2', shape=[10,1], dtype='int')
+                label_length = fluid.data(name='length', shape=[1], dtype='int')
                 emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
                 crf_cost2 = fluid.layers.linear_chain_crf(
                     input=emission2,
@@ -2273,7 +2273,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             import paddle.fluid as fluid
             import numpy as np
 
-            data = fluid.layers.data(name="input", shape=[-1, 3],dtype="float32")
+            data = fluid.data(name="input", shape=[-1, 3],dtype="float32")
             result = fluid.layers.softmax(data,axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -7654,8 +7654,8 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
             import paddle.fluid as fluid
             import numpy as np
-            data = fluid.layers.data(name="x", shape=[-1, 3], dtype="float32")
-            label = fluid.layers.data(name="y", shape=[-1, 3], dtype="float32")
+            data = fluid.data(name="x", shape=[-1, 3], dtype="float32")
+            label = fluid.data(name="y", shape=[-1, 3], dtype="float32")
             result = fluid.layers.smooth_l1(data,label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -10811,7 +10811,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
             import paddle.fluid as fluid
             import numpy as np
-            data = fluid.layers.data(name="input", shape=[-1, 3])
+            data = fluid.data(name="input", shape=[-1, 3])
             result = fluid.layers.stanh(data,scale_a=0.67, scale_b=1.72)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
