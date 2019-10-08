@@ -3106,9 +3106,9 @@ def pool2d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
@@ -3311,9 +3311,9 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
@@ -3520,9 +3520,9 @@ def adaptive_pool2d(input,
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: The output tensor of adaptive pooling result. The data type is same 
@@ -3665,9 +3665,9 @@ def adaptive_pool3d(input,
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point will be returned along
             with outputs. It cannot be set in average pooling type. Default False.
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: The output tensor of adaptive pooling result. The data type is same as input tensor.
@@ -4471,9 +4471,9 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         dim(int): ${dim_comment}
         power_iters(int): ${power_iters_comment}
         eps(float): ${eps_comment}
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: A tensor variable of weight parameters after spectral normalization.
@@ -13729,9 +13729,9 @@ def grid_sampler(x, grid, name=None):
                      The data type is float32 or float64.
         grid(Variable): Input grid tensor of shape [N, H, W, 2]. The
                         data type is float32 or float64.
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         Variable: Output of shape [N, C, H, W] data samples input X
@@ -14111,9 +14111,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         x(Variable): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         out(Variable): The temporal shifting result is a tensor variable with the 
@@ -14552,9 +14552,9 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         x (Variable): ${x_comment}
         target (Variable): ${target_comment}
         reduction (Variable): ${reduction_comment}
-	name(str, optional): For detailed information, please refer 
-		     to :ref:`api_guide_Name`. Usually name is no need to set and 
-		     None by default.
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
 
     Returns:
         kldiv\_loss (Variable): The KL divergence loss. The data

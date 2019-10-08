@@ -69,11 +69,11 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of KL divergence loss operator. "
              "This is a tensor with shape of [N, *], where N is the "
-             "batch size, * means any number of additional dimensions."
+             "batch size, * means any number of additional dimensions. "
              "The data type is float32 or flaot64");
     AddInput("Target",
              "The  tensor of KL divergence loss operator. "
-             "This is a tensor with shape of Input(X)."
+             "This is a tensor with shape of Input(X). "
              "The data type is same as Input(X)");
     AddOutput(
         "Loss",
