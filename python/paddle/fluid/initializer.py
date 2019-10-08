@@ -136,7 +136,8 @@ class ConstantInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            B = 16
+            x = fluid.data(name="data", shape=[B, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
             param_attr=fluid.initializer.Constant(value=2.0))
 
@@ -638,7 +639,8 @@ class MSRAInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            B = 16
+            x = fluid.data(name="data", shape=[B, 16, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.MSRA(uniform=False))
 
@@ -744,12 +746,13 @@ class BilinearInitializer(Initializer):
             import paddle.fluid as fluid
             factor = 2
             C = 2
+            B = 16
             H = W = 32
             w_attr = fluid.param_attr.ParamAttr(
                 learning_rate=0.,
                 regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.BilinearInitializer())
-            x = fluid.layers.data(name="data", shape=[3, H, W],
+            x = fluid.data(name="data", shape=[B, 3, H, W],
                                   dtype="float32")
             conv_up = fluid.layers.conv2d_transpose(
                 input=x,
