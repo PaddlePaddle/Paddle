@@ -471,6 +471,39 @@ paddle.fluid.layers.MultivariateNormalDiag.entropy (ArgSpec(args=['self'], varar
 paddle.fluid.layers.MultivariateNormalDiag.kl_divergence (ArgSpec(args=['self', 'other'], varargs=None, keywords=None, defaults=None), ('document', 'd9190d29dbd54c81f747a6436c35f062'))
 paddle.fluid.layers.MultivariateNormalDiag.log_prob (ArgSpec(args=['self', 'value'], varargs=None, keywords=None, defaults=None), ('document', 'c0edd2e2fc76711477b32dc4da9de768'))
 paddle.fluid.layers.MultivariateNormalDiag.sample (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '08a2bbcaa20ee176ee7ec3d05737a0f6'))
+paddle.fluid.layers.RNNCell ('paddle.fluid.layers.rnn.RNNCell', ('document', '2c3a2d3ecb4a3cec130395e7df0bd5c9'))
+paddle.fluid.layers.RNNCell.__init__ 
+paddle.fluid.layers.RNNCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords='kwargs', defaults=None), ('document', '3ac714b638258c520d66f682be67b658'))
+paddle.fluid.layers.RNNCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
+paddle.fluid.layers.GRUCell ('paddle.fluid.layers.rnn.GRUCell', ('document', 'a863bdc9d5ebf375c986697a45447a05'))
+paddle.fluid.layers.GRUCell.__init__ (ArgSpec(args=['self', 'hidden_size', 'param_attr', 'bias_attr', 'gate_activation', 'activation', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, None, None, None, 'float32', 'GRUCell')), ('document', '3624a6c93b4a999d0d809eb1a66d272e'))
+paddle.fluid.layers.GRUCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '6094ab09a56c732c76abb5105327ea54'))
+paddle.fluid.layers.GRUCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
+paddle.fluid.layers.LSTMCell ('paddle.fluid.layers.rnn.LSTMCell', ('document', 'e558f7fd3f0586983f5f77e5c1f7b59b'))
+paddle.fluid.layers.LSTMCell.__init__ (ArgSpec(args=['self', 'hidden_size', 'param_attr', 'bias_attr', 'gate_activation', 'activation', 'forget_bias', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, None, None, None, 1.0, 'float32', 'LSTMCell')), ('document', '9015961869b436d2739a0347618028e3'))
+paddle.fluid.layers.LSTMCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '9c84a477021e4a7d0a497c1e6a31be2d'))
+paddle.fluid.layers.LSTMCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
+paddle.fluid.layers.Decoder ('paddle.fluid.layers.rnn.Decoder', ('document', 'd617988a38a4ff1bab36eed7334fb187'))
+paddle.fluid.layers.Decoder.__init__ 
+paddle.fluid.layers.Decoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', 'cab7fc752a05db18e99258473f50359d'))
+paddle.fluid.layers.Decoder.initialize (ArgSpec(args=['self', 'inits'], varargs=None, keywords=None, defaults=None), ('document', '68cf1846fb58056dbe5a524f1ca9dff5'))
+paddle.fluid.layers.Decoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '151d0229930b9654689f86c85f7c4c3f'))
+paddle.fluid.layers.BeamSearchDecoder ('paddle.fluid.layers.rnn.BeamSearchDecoder', ('document', 'f7eff959b84c9aa89fc857f3e071ccb4'))
+paddle.fluid.layers.BeamSearchDecoder.OutputWrapper ('paddle.fluid.layers.rnn.OutputWrapper', ('document', 'a7141ebf1fb097fa71006cdd35bdc219'))
+paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.__init__ 
+paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.count T.count(value) -> integer -- return number of occurrences of value
+paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.index T.index(value, [start, [stop]]) -> integer -- return first index of value.
+paddle.fluid.layers.BeamSearchDecoder.StateWrapper ('paddle.fluid.layers.rnn.StateWrapper', ('document', '157731f37c88ea01bc746653125a41c8'))
+paddle.fluid.layers.BeamSearchDecoder.StateWrapper.__init__ 
+paddle.fluid.layers.BeamSearchDecoder.StateWrapper.count T.count(value) -> integer -- return number of occurrences of value
+paddle.fluid.layers.BeamSearchDecoder.StateWrapper.index T.index(value, [start, [stop]]) -> integer -- return first index of value.
+paddle.fluid.layers.BeamSearchDecoder.__init__ (ArgSpec(args=['self', 'cell', 'start_token', 'end_token', 'beam_size', 'embedding_fn', 'output_fn'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'd977009cd1b4c693b98436f93391bf4e'))
+paddle.fluid.layers.BeamSearchDecoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', '9a7f0a8fc5802bf860f2ac960466fb45'))
+paddle.fluid.layers.BeamSearchDecoder.initialize (ArgSpec(args=['self', 'initial_cell_states'], varargs=None, keywords=None, defaults=None), ('document', '01ee508a9615e2483fe6ddcf14d5fa25'))
+paddle.fluid.layers.BeamSearchDecoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords='kwargs', defaults=None), ('document', 'fc33127222e9596f69cb025c7aa35648'))
+paddle.fluid.layers.BeamSearchDecoder.tile_beam_merge_with_batch (ArgSpec(args=['x', 'beam_size'], varargs=None, keywords=None, defaults=None), ('document', '1df5864501066793e3af7a0fd75b0cd2'))
+paddle.fluid.layers.dynamic_rnn (ArgSpec(args=['cell', 'inputs', 'initial_states', 'sequence_length', 'time_major', 'is_reverse'], varargs=None, keywords='kwargs', defaults=(None, None, False, False)), ('document', '58edad62c24fb517d6122328e8bc1016'))
+paddle.fluid.layers.dynamic_decode (ArgSpec(args=['decoder', 'inits', 'max_step_num', 'output_time_major'], varargs=None, keywords='kwargs', defaults=(None, None, False)), ('document', 'c2fe354a4051ef98497148788463f749'))
 paddle.fluid.contrib.InitState ('paddle.fluid.contrib.decoder.beam_search_decoder.InitState', ('document', '3afd1f84232718e628e9e566941c5f05'))
 paddle.fluid.contrib.InitState.__init__ (ArgSpec(args=['self', 'init', 'shape', 'value', 'init_boot', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, None, False, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.contrib.StateCell ('paddle.fluid.contrib.decoder.beam_search_decoder.StateCell', ('document', 'ecd0066c02867d445d7b461e28220c50'))
