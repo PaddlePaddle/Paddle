@@ -58,21 +58,6 @@ __all__ += __activations_noattr__
 for _OP in set(__activations_noattr__):
     globals()[_OP] = generate_activation_fn(_OP)
 
-acos.__doc__ += """
-
-        # if data is [-0.8183,  0.4912, -0.6444,  0.0371]
-        # result is [2.5293, 1.0573, 2.2711, 1.5336]
-"""
-
-asin.__doc__ += """
-        # if data is [-0.8183,  0.4912, -0.6444,  0.0371]
-        # result is [-0.9585,  0.5135, -0.7003,  0.0372]
-"""
-
-atan.__doc__ += """
-        # if data is [-0.8183,  0.4912, -0.6444,  0.0371]
-        # result is [-0.6858,  0.4566, -0.5724,  0.0371]
-"""
 __all__ += ['softshrink']
 
 _softshrink_ = generate_layer_fn('softshrink')

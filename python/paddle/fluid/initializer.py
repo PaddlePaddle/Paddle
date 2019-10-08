@@ -510,7 +510,7 @@ class XavierInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            queries = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            queries = fluid.data(name='x', shape=[None,1], dtype='float32')
             fc = fluid.layers.fc(
                 input=queries, size=10,
                 param_attr=fluid.initializer.Xavier(uniform=False))

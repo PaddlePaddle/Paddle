@@ -863,10 +863,10 @@ def yolov3_loss(x,
       .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
-          gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
-          gt_score = fluid.layers.data(name='gt_score', shape=[6], dtype='float32')
+          x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+          gt_box = fluid.data(name='gt_box', shape=[None, 6, 4], dtype='float32')
+          gt_label = fluid.data(name='gt_label', shape=[None, 6], dtype='int32')
+          gt_score = fluid.data(name='gt_score', shape=[None, 6], dtype='float32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
           loss = fluid.layers.yolov3_loss(x=x, gt_box=gt_box, gt_label=gt_label,
@@ -973,8 +973,8 @@ def yolo_box(x,
     .. code-block:: python
 
         import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
+        x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+        img_size = fluid.data(name='img_size',shape=[None, 2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
         boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
@@ -2838,9 +2838,9 @@ def multiclass_nms(bboxes,
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            boxes = fluid.data(name='bboxes', shape=[None,81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = fluid.data(name='scores', shape=[None,81],
                                       dtype='float32', lod_level=1)
             out = fluid.layers.multiclass_nms(bboxes=boxes,
                                               scores=scores,
