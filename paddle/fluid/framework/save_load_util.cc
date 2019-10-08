@@ -157,7 +157,7 @@ bool SaveDygraphVarBaseListToDisk(
 const std::vector<std::shared_ptr<imperative::VarBase>>
 LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
   std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
-  LoadTensorFromDisk(file_name, map_load_tensor);
+  LoadTensorFromDisk(file_name, &map_load_tensor);
 
   std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
   vec_res.reserve(map_load_tensor.size());
@@ -180,7 +180,7 @@ bool LoadStaticNameListFromDisk(
     const std::string& file_name,
     const std::vector<std::string>& vec_tensor_name_list, const Scope& scope) {
   std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
-  LoadTensorFromDisk(file_name, map_load_tensor);
+  LoadTensorFromDisk(file_name, &map_load_tensor);
 
   for (size_t i = 0; i < vec_tensor_name_list.size(); ++i) {
     auto it = map_load_tensor.find(vec_tensor_name_list[i]);
@@ -292,7 +292,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 #else
       PADDLE_THROW(
           "Tensor is in CUDA device, but paddle not compile with CUDA, this "
-          "shoul'd not happen");
+          "should not happen");
 #endif
     }
     fout.write(static_cast<const char*>(data_ptr),
@@ -311,7 +311,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 
 bool LoadTensorFromDisk(
     const std::string& file_name,
-    std::map<std::string, std::shared_ptr<Tensor>>& map_tensor) {  // NOLINT
+    std::map<std::string, std::shared_ptr<Tensor>>* map_tensor) {
   std::ifstream fin(file_name, std::ios::binary);
 
   if (!fin) {
@@ -362,7 +362,7 @@ bool LoadTensorFromDisk(
       CheckInStreamState(fin, size);
     }
 
-    map_tensor[str_tensor_name] = tensor_temp;
+    (*map_tensor)[str_tensor_name] = tensor_temp;
   }
 
   return true;

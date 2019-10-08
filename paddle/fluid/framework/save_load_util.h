@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -47,7 +48,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 
 bool LoadTensorFromDisk(
     const std::string& file_name,
-    std::map<std::string, std::shared_ptr<Tensor>>& map_tensor);  // NOLINT
+    std::map<std::string, std::shared_ptr<Tensor>>* map_tensor);
 
 }  // namespace framework
 }  // namespace paddle
