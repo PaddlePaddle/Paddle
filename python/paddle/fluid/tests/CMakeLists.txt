@@ -11,3 +11,7 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(book)
+
+if(NOT APPLE AND NOT WIN32)
+  add_subdirectory(custom_op)
+endif()
