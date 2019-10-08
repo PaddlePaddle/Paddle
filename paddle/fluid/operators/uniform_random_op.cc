@@ -74,11 +74,12 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<unsigned int>(ctx.Attr<int>("diag_step"));
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
-      PADDLE_ENFORCE_GT(
-          size, (diag_num - 1) * (diag_step + 1),
-          "The index of diagonal elements is out of bounds."
-          "And the diagonal elements's should be smaller than %d, received %d",
-          (diag_num - 1) * (diag_step + 1), size);
+      PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
+                        "ShapeError: the diagonal's elements is equal (num-1) "
+                        "* (step-1) with num %d, step %d,"
+                        "It should be smaller than %d, but received %d",
+                        diag_num, diag_step, (diag_num - 1) * (diag_step + 1),
+                        size);
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data[pos] = diag_val;
@@ -121,7 +122,8 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       PADDLE_ENFORCE_EQ(
           shape_dims.size(), 1,
-          "Input(ShapeTensor)' dimension size of Op(uniform_random) must be 1."
+          "ShapeError: Input(ShapeTensor)' dimension size of "
+          "Op(uniform_random) must be 1."
           "But received ShapeTensor's dimensions = %d, shape = [%s]",
           shape_dims.size(), shape_dims);
       int num_ele = 1;
