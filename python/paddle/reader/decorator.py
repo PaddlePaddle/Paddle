@@ -63,19 +63,19 @@ def map_readers(func, *readers):
     Creates a data reader that outputs return value of function using
     output of each data reader as arguments.
 
-    If input readers output the following data entries: 2, 3
-    and the input func is mul(x, y)
-    The resulted reader will output: 6
+    If input readers output the following data entries: 2 3,
+    and the input func is mul(x, y),
+    the output of the resulted reader will be 6
 
 
     Args:
         func: a function to read data and compute result, the output of this function 
               will be set as the output of the resulted data reader.
         readers : list of readers whose outputs will be used as arguments of func,
-              For more information about Reader, please refer to :ref:`api_guide_python_reader`.
+              For more information about Reader, please refer to :ref:`api_guide_python_reader` .
  
     Returns:
-        the created data reader (Reader)
+        the resulted data reader (Reader)
 
     Examples:
 
