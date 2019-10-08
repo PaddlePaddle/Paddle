@@ -334,12 +334,12 @@ def fc(input,
 
           import paddle.fluid as fluid
           # when input is single tensor
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          data = fluid.data(name="data", shape=[-1, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
 
           # when input are multiple tensors
-          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
-          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
+          data_1 = fluid.data(name="data_1", shape=[-1, 32], dtype="float32")
+          data_2 = fluid.data(name="data_2", shape=[-1, 36], dtype="float32")
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
     helper = LayerHelper("fc", **locals())
@@ -2163,7 +2163,7 @@ def sequence_conv(input,
 
              import paddle.fluid as fluid
 
-             x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
+             x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
              x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
@@ -2957,10 +2957,10 @@ def sequence_concat(input, name=None):
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
-           x = fluid.layers.data(name='x', shape=[10], dtype='float32')
-           y = fluid.layers.data(name='y', shape=[10], dtype='float32')
-           out = fluid.layers.sequence_concat(input=[x, y])
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            y = fluid.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
+            out = fluid.layers.sequence_concat(input=[x, y])
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
