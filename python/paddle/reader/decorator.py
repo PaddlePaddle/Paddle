@@ -61,13 +61,34 @@ def cache(reader):
 def map_readers(func, *readers):
     """
     Creates a data reader that outputs return value of function using
-    output of each data readers as arguments.
+    output of each data reader as arguments.
 
-    :param func: function to use. The type of func should be (Sample) => Sample
-    :type: callable
-    :param readers: readers whose outputs will be used as arguments of func.
-    :return: the created data reader.
-    :rtype: callable
+    If input readers output the following data entries: 2, 3
+    and the input func is mul(x, y)
+    The resulted reader will output: 6
+
+
+    Args:
+        func: a function to read data and compute result, the output of this function 
+              will be set as the output of the resulted data reader.
+        readers : list of readers whose outputs will be used as arguments of func,
+              For more information about Reader, please refer to :ref:`api_guide_python_reader`.
+ 
+    Returns:
+        the created data reader (Reader)
+
+    Examples:
+
+        .. code-block:: python
+
+         import paddle.reader
+         d = {"h": 0, "i": 1}
+         def func(x):
+             return d[x]
+         def reader():
+             yield "h"
+             yield "i"
+         map_reader_result = paddle.reader.map_readers(func, reader)
     """
 
     def reader():
