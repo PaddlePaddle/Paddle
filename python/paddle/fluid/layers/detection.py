@@ -73,100 +73,166 @@ def retinanet_target_assign(bbox_pred,
                             positive_overlap=0.5,
                             negative_overlap=0.4):
     """
-    **Target Assign Layer for Retinanet .**
+    **Notice: this OP supports CPU mode only.**
 
-    This layer can be, for given the Intersection-over-Union (IoU) overlap
-    between anchors and ground truth boxes, to assign classification and
-    regression targets to each anchor, these target labels are used for training
-    retinanet. Every anchor is assigned with a length :attr:`num_classes`
-    one-hot vector of classification targets, and a 4-vector of box regression
-    targets. The assignment rules are as followed:
-    
-    1. Anchors are assigned to ground-truth boxes when: (i) it has the highest
-    IoU overlap with a ground-truth box, or (ii) it has an IoU overlap higher
-    than positive_overlap(0.5) with any ground-truth box.
-    
-    2. Anchors are assigned to background when its IoU ratio is lower than
-    negative_overlap (0.4) for all ground-truth boxes.
-    
-    When an anchor is assigned with a ground-truth box which is the i-th category,
-    the i-th entry in its C vector of targets is set to 1 and all other entries
-    are set to 0. When an anchor is assigned with background, all entries are set
-    to 0. Anchors that are not assigned do not contribute to the training
-    objective. The regression targets are the encoded ground-truth boxes
-    associated with the assigned anchors.
- 
+    This OP finds out positive and negative samples from all anchors
+    for training the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ ,
+    and assigns target labels for classification along with target locations for
+    regression to each sample, then takes out the part belonging to positive and
+    negative samples from category prediction( :attr:`cls_logits`) and location
+    prediction( :attr:`bbox_pred`) which belong to all anchors.
+
+    The searching principles for positive and negative samples are as followed:
+
+    1. Anchors are assigned to ground-truth boxes when it has the highest IoU
+    overlap with a ground-truth box;
+
+    2. Anchors are assigned to ground-truth boxes when it has an IoU overlap
+    higher than :attr:`positive_overlap` with any ground-truth box.
+
+    3. Anchors are assigned to background when its IoU overlap is lower than
+    :attr:`negative_overlap` for all ground-truth boxes.
+
+    4. Anchors which do not meet the above conditions do not participate in
+    the training process.
+
+    Retinanet predicts a :math:`C`-vector for classification and a 4-vector for box
+    regresion for each anchor, hence the target label for each positive(or negative)
+    sample is a :math:`C`-vector and the target locations for each positive sample
+    is a 4-vector. As for a positive sample, if the category of its assigned
+    ground-truth box is class :math:`i`, the corresponding entry in its length
+    :math:`C` label vector is set to 1 and all other entries is set to 0, its box
+    regression targets are computed as the offset between itself and its assigned
+    ground-truth box. As for a negative sample, all entries in its length :math:`C`
+    label vector are set to 0 and box regression targets are omitted because
+    negative samples do not participate in the training process of location
+    regression.
+
+    After the assignment, the part belonging to positive and negative samples is
+    taken out from category prediction( :attr:`cls_logits` ), and the part
+    belonging to positive samples is taken out from location
+    prediction( :attr:`bbox_pred` ).
+
     Args:
-        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. N is the batch size,
-            and each bounding box has four coordinate values and the layout
-            is [xmin, ymin, xmax, ymax].
-        cls_logits(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            number of classes (excluding background), M is number of bounding boxes.
-        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
-            each box is represented as [xmin, ymin, xmax, ymax],
-            [xmin, ymin] is the left top coordinate of the anchor box,
-            if the input is image feature map, they are close to the origin
-            of the coordinate system. [xmax, ymax] is the right bottom
-            coordinate of the anchor box.
-        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
-            variances of anchors.
-        gt_boxes(Variable): The ground-truth bounding boxes (bboxes) are a 2D
-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
-            bboxes of mini-batch input.
-        gt_labels(variable): The ground-truth labels are a 2D LoDTensor with
-            shape [Ng, 1], Ng is the total number of ground-truth labels of
-            mini-batch input.
-        is_crowd(Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
-        im_info(Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
-            3 is the height, width and scale.
-        num_classes(int32): The number of classes.
-        positive_overlap(float): Minimum overlap required between an anchor
-            and ground-truth box for the (anchor, gt box) pair to be a positive
-            example.
-        negative_overlap(float): Maximum overlap allowed between an anchor
-            and ground-truth box for the (anchor, gt box) pair to be a negative
-            examples.
+        bbox_pred(Variable): A 3-D Tensor with shape :math:`[N, M, 4]` represents
+            the predicted locations of all anchors. :math:`N` is the batch size( the
+            number of images in a mini-batch), :math:`M` is the number of all anchors
+            of one image, and each anchor has 4 coordinate values. The data type of
+            :attr:`bbox_pred` is float32 or float64.
+        cls_logits(Variable): A 3-D Tensor with shape :math:`[N, M, C]` represents
+            the predicted categories of all anchors. :math:`N` is the batch size,
+            :math:`M` is the number of all anchors of one image, and :math:`C` is
+            the number of categories (**Notice: excluding background**). The data type
+            of :attr:`cls_logits` is float32 or float64.
+        anchor_box(Variable): A 2-D Tensor with shape :math:`[M, 4]` represents
+            the locations of all anchors. :math:`M` is the number of all anchors of
+            one image, each anchor is represented as :math:`[xmin, ymin, xmax, ymax]`,
+            :math:`[xmin, ymin]` is the left top coordinate of the anchor box,
+            :math:`[xmax, ymax]` is the right bottom coordinate of the anchor box.
+            The data type of :attr:`anchor_box` is float32 or float64. Please refer
+            to the OP :ref:`api_fluid_layers_anchor_generator` 
+            for the generation of :attr:`anchor_box`.
+        anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded 
+            factors of anchor locations used in loss function. :math:`M` is number of
+            all anchors of one image, each anchor possesses a 4-vector expanded factor.
+            The data type of :attr:`anchor_var` is float32 or float64. Please refer
+            to the OP :ref:`api_fluid_layers_anchor_generator`
+            for the generation of :attr:`anchor_var`.
+        gt_boxes(Variable): A 1-level 2-D LoDTensor with shape :math:`[G, 4]` represents
+            locations of all ground-truth boxes. :math:`G` is the total number of
+            all ground-truth boxes in a mini-batch, and each ground-truth box has 4
+            coordinate values. The data type of :attr:`gt_boxes` is float32 or
+            float64.
+        gt_labels(variable): A 1-level 2-D LoDTensor with shape :math:`[G, 1]` represents
+            categories of all ground-truth boxes, and the values are in the range of
+            :math:`[1, C]`. :math:`G` is the total number of all ground-truth boxes
+            in a mini-batch, and each ground-truth box has one category. The data type
+            of :attr:`gt_labels` is int32.
+        is_crowd(Variable): A 1-level 1-D LoDTensor with shape :math:`[G]` which
+            indicates whether a ground-truth box is a crowd. If the value is 1, the
+            corresponding box is a crowd, it is ignored during training. :math:`G` is
+            the total number of all ground-truth boxes in a mini-batch. The data type
+            of :attr:`is_crowd` is int32.
+        im_info(Variable): A 2-D Tensor with shape [N, 3] represents the size
+            information of input images. :math:`N` is the batch size, the size
+            informarion of each image is a 3-vector which are the height and width
+            of the network input along with the factor scaling the origin image to
+            the network input. The data type of :attr:`im_info` is float32.
+        num_classes(int32): The number of categories for classification, the default
+            value is 1.
+        positive_overlap(float32): Minimum overlap required between an anchor
+            and ground-truth box for the anchor to be a positive sample, the default
+            value is 0.5.
+        negative_overlap(float32): Maximum overlap allowed between an anchor
+            and ground-truth box for the anchor to be a negative sample, the default
+            value is 0.4. :attr:`negative_overlap` should be less than or equal to
+            :attr:`positive_overlap`, if not, the actual value of
+            :attr:`positive_overlap` is :attr:`negative_overlap`.
 
     Returns:
-        tuple:
-               A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox, bbox_inside_weight, fg_num) is returned. The
-               predicted_scores and predicted_location are the predicted result
-               of the retinanet.The target_label and target_bbox are the ground
-               truth, respectively. The predicted_location is a 2D Tensor with
-               shape [F, 4], and the shape of target_bbox is same as the shape of
-               the predicted_location, F is the number of the foreground
-               anchors. The predicted_scores is a 2D Tensor with shape
-               [F + B, C], and the shape of target_label is [F + B, 1], B is the
-               number of the background anchors, the F and B is depends on the
-               input of this operator. Bbox_inside_weight represents whether the
-               predicted location is fake foreground or not and the shape is [F, 4].
-               Fg_num is the foreground number (including fake foreground) which
-               is needed by focal loss.
+        A tuple with 6 Variables:
+        
+        **predict_scores** (Variable): A 2-D Tensor with shape :math:`[F+B, C]` represents
+        category prediction belonging to positive and negative samples. :math:`F`
+        is the number of positive samples in a mini-batch, :math:`B` is the number
+        of negative samples, and :math:`C` is the number of categories
+        (**Notice: excluding background**). The data type of :attr:`predict_scores`
+        is float32 or float64.
+
+        **predict_location** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+        location prediction belonging to positive samples. :math:`F` is the number
+        of positive samples. :math:`F` is the number of positive samples, and each
+        sample has 4 coordinate values. The data type of :attr:`predict_location`
+        is float32 or float64.
+
+        **target_label** (Variable): A 2-D Tensor with shape :math:`[F+B, 1]` represents
+        target labels for classification belonging to positive and negative
+        samples. :math:`F` is the number of positive samples, :math:`B` is the
+        number of negative, and each sample has one target category. The data type
+        of :attr:`target_label` is int32.
+
+        **target_bbox** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+        target locations for box regression belonging to positive samples.
+        :math:`F` is the number of positive samples, and each sample has 4
+        coordinate values. The data type of :attr:`target_bbox` is float32 or
+        float64.
+
+        **bbox_inside_weight** (Variable): A 2-D Tensor with shape :math:`[F, 4]`
+        represents whether a positive sample is fake positive, if a positive
+        sample is false positive, the corresponding entries in
+        :attr:`bbox_inside_weight` are set 0, otherwise 1. :math:`F` is the number
+        of total positive samples in a mini-batch, and each sample has 4
+        coordinate values. The data type of :attr:`bbox_inside_weight` is float32
+        or float64.
+
+        **fg_num** (Variable): A 2-D Tensor with shape :math:`[N, 1]` represents the number
+        of positive samples. :math:`N` is the batch size. **Notice: The number
+        of positive samples is used as the denominator of later loss function,
+        to avoid the condition that the denominator is zero, this OP has added 1
+        to the actual number of positive samples of each image.** The data type of
+        :attr:`fg_num` is int32.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          bbox_pred = layers.data(name='bbox_pred', shape=[1, 100, 4],
-                            append_batch_size=False, dtype='float32')
-          cls_logits = layers.data(name='cls_logits', shape=[1, 100, 10],
-                            append_batch_size=False, dtype='float32')
-          anchor_box = layers.data(name='anchor_box', shape=[100, 4],
-                            append_batch_size=False, dtype='float32')
-          anchor_var = layers.data(name='anchor_var', shape=[100, 4],
-                            append_batch_size=False, dtype='float32')
-          gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                            append_batch_size=False, dtype='float32')
-          gt_labels = layers.data(name='gt_labels', shape=[10, 1],
-                            append_batch_size=False, dtype='float32')
-          is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
-                            append_batch_size=False, dtype='float32')
-          im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
-                            append_batch_size=False, dtype='float32')
-          loc_pred, score_pred, loc_target, score_target, bbox_inside_weight, fg_num =
+          bbox_pred = fluid.data(name='bbox_pred', shape=[1, 100, 4],
+                            dtype='float32')
+          cls_logits = fluid.data(name='cls_logits', shape=[1, 100, 10],
+                            dtype='float32')
+          anchor_box = fluid.data(name='anchor_box', shape=[100, 4],
+                            dtype='float32')
+          anchor_var = fluid.data(name='anchor_var', shape=[100, 4],
+                            dtype='float32')
+          gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
+                            dtype='float32')
+          gt_labels = fluid.data(name='gt_labels', shape=[10, 1],
+                            dtype='float32')
+          is_crowd = fluid.data(name='is_crowd', shape=[1],
+                            dtype='float32')
+          im_info = fluid.data(name='im_infoss', shape=[1, 3],
+                            dtype='float32')
+          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num =
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
@@ -374,48 +440,61 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
-    Focal loss is used to address the foreground-background class imbalance existed
-    on the training phase of one-stage detectors. This operator computes the sigmoid
-    value for each element in the input tensor, after which focal loss is measured.
-    
+    `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
+    class imbalance existed on the training phase of many computer vision tasks. This OP computes
+    the sigmoid value for each element in the input tensor :attr:`x`, after which focal loss is
+    measured between the sigmoid value and target label. 
+
     The focal loss is given as followed:
 
     .. math::
-        loss_j = (-label_j * alpha * {(1 - \\sigma(x_j))}^{gamma} * \\log(\\sigma(x_j)) -
-        (1 - labels_j) * (1 - alpha) * {(\sigma(x_j)}^{ gamma} * \\log(1 - \\sigma(x_j)))
-        / fg\_num, j = 1,...,K
+  
+        \\mathop{loss_{i,\\,j}}\\limits_{i\\in\\mathbb{[0,\\,N-1]},\\,j\\in\\mathbb{[0,\\,C-1]}}=\\left\\{
+        \\begin{array}{rcl}
+        - \\frac{1}{fg\_num} * \\alpha * {(1 - \\sigma(x_{i,\\,j}))}^{\\gamma} * \\log(\\sigma(x_{i,\\,j})) & & {(j +1) = label_{i,\\,0}} \\\\
+        - \\frac{1}{fg\_num} * (1 - \\alpha) * {\sigma(x_{i,\\,j})}^{ \\gamma} * \\log(1 - \\sigma(x_{i,\\,j})) & & {(j +1)!= label_{i,\\,0}}
+        \\end{array} \\right.
+
 
     We know that
     
     .. math::
         \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
 
-    Args:
-        x(Variable): A 2-D tensor with shape [N, D], where N is the batch size and D is the number
-            of classes (excluding background). This input is a tensor of logits computed by the
-            previous operator.
-        label(Variable): A 2-D tensor with shape [N, 1], which is the probabilistic labels.
-        fg_num(Variable): A 1-D tensor with shape [1], which is the number of foreground.
 
+    Args:
+        x(Variable): A 2-D tensor with shape :math:`[N, C]` represents the predicted categories of
+            all samples. :math:`N` is the number of all samples responsible for optimization in
+            a mini-batch, for example, samples are anchor boxes for object detection and :math:`N`
+            is the total number of positive and negative samples in a mini-batch; Samples are images
+            for image classification and :math:`N` is the number of images in a mini-batch. :math:`C`
+            is the number of classes (**Notice: excluding background**). The data type of :attr:`x` is
+            float32 or float64.
+        label(Variable): A 2-D tensor with shape :math:`[N, 1]` represents the target labels for
+            classification. :math:`N` is the number of all samples responsible for optimization in a
+            mini-batch, each sample has one target category. The values for positive samples are in the
+            range of :math:`[1, C]`, and the values for negative samples are 0. The data type of :attr:`label`
+            is int32.
+        fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
+            mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
         gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
         alpha(float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
 
     Returns:
-        out(Variable): A 2-D tensor with shape [N, D], which is the focal loss.
+        Variable(the data type is float32 or float64): 
+            A 2-D tensor with shape :math:`[N, C]`, which is the focal loss of each element in the input
+            tensor :attr:`x`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(
-                name='data', shape=[10,80], append_batch_size=False, dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[10,1], append_batch_size=False, dtype='int32')
-            fg_num = fluid.layers.data(
-                name='fg_num', shape=[1], append_batch_size=False, dtype='int32')
+            input = fluid.data(name='data', shape=[10,80], dtype='float32')
+            label = fluid.data(name='label', shape=[10,1], dtype='int32')
+            fg_num = fluid.data(name='fg_num', shape=[1], dtype='int32')
             loss = fluid.layers.sigmoid_focal_loss(x=input,
                                                    label=label,
                                                    fg_num=fg_num,
@@ -2635,78 +2714,109 @@ def retinanet_detection_output(bboxes,
                                nms_threshold=0.3,
                                nms_eta=1.):
     """
-    **Detection Output Layer for Retinanet.**
+    **Notice: this OP supports CPU mode only.**
 
-    This operation is to get the detection results by performing following
-    steps:
+    In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many 
+    `FPN <https://arxiv.org/abs/1612.03144>`_ levels output the category
+    and location predictions, this OP is to get the detection results by
+    performing following steps:
 
-    1. Decode top-scoring bounding box predictions per FPN level according 
-       to the anchor boxes.
+    1. For each FPN level, decode box predictions according to the anchor
+       boxes from at most :attr:`nms_top_k` top-scoring predictions after
+       thresholding detector confidence at :attr:`score_threshold`.
     2. Merge top predictions from all levels and apply multi-class non 
        maximum suppression (NMS) on them to get the final detections.
 
     Args:
-        bboxes(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, 4] representing the
-            predicted locations of Mi bounding boxes. N is the batch size,
-            Mi is the number of bounding boxes from i-th FPN level and each 
-            bounding box has four coordinate values and the layout is
-            [xmin, ymin, xmax, ymax].
-        scores(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, C] representing the
-            predicted confidence predictions. N is the batch size, C is the
-            class number (excluding background), Mi is the number of bounding
-            boxes from i-th FPN level. For each bounding box, there are total
-            C scores.
-        anchors(List): A 2-D Tensor with shape [Mi, 4] represents the locations
-            of Mi anchor boxes from all FPN level. Each bounding box has four
+        bboxes(List): A list of Tensors from multiple FPN levels represents
+            the location prediction for all anchor boxes. Each element is
+            a 3-D Tensor with shape :math:`[N, Mi, 4]`, :math:`N` is the
+            batch size, :math:`Mi` is the number of bounding boxes from
+            :math:`i`-th FPN level and each bounding box has four coordinate
+            values and the layout is [xmin, ymin, xmax, ymax]. The data type
+            of each element is float32 or float64.
+        scores(List): A list of Tensors from multiple FPN levels represents
+            the category prediction for all anchor boxes. Each element is a
+            3-D Tensor with shape :math:`[N, Mi, C]`,  :math:`N` is the batch
+            size, :math:`C` is the class number (**excluding background**),
+            :math:`Mi` is the number of bounding boxes from :math:`i`-th FPN
+            level. The data type of each element is float32 or float64.
+        anchors(List): A list of Tensors from multiple FPN levels represents
+            the locations of all anchor boxes. Each element is a 2-D Tensor
+            with shape :math:`[Mi, 4]`, :math:`Mi` is the number of bounding
+            boxes from :math:`i`-th FPN level, and each bounding box has four
             coordinate values and the layout is [xmin, ymin, xmax, ymax].
-        im_info(Variable): A 2-D LoDTensor with shape [N, 3] represents the
-            image information. N is the batch size, each image information
-            includes height, width and scale.
+            The data type of each element is float32 or float64.
+        im_info(Variable): A 2-D Tensor with shape :math:`[N, 3]` represents the size
+            information of input images. :math:`N` is the batch size, the size
+            informarion of each image is a 3-vector which are the height and width
+            of the network input along with the factor scaling the origin image to
+            the network input. The data type of :attr:`im_info` is float32.
         score_threshold(float): Threshold to filter out bounding boxes
-            with a confidence score.
+            with a confidence score before NMS, default value is set to 0.05.
         nms_top_k(int): Maximum number of detections per FPN layer to be
-            kept according to the confidences before NMS.
+            kept according to the confidences before NMS, default value is set to
+            1000.
         keep_top_k(int): Number of total bounding boxes to be kept per image after
-            NMS step. -1 means keeping all bounding boxes after NMS step.
-        nms_threshold(float): The threshold to be used in NMS.
-        nms_eta(float): The parameter for adaptive NMS.
+            NMS step. Default value is set to 100, -1 means keeping all bounding
+            boxes after NMS step.
+        nms_threshold(float): The Intersection-over-Union(IoU) threshold used to 
+            filter out boxes in NMS.
+        nms_eta(float): The parameter for adjusting :attr:`nms_threshold` in NMS.
+            Default value is set to 1., which represents the value of
+            :attr:`nms_threshold` keep the same in NMS. If :attr:`nms_eta` is set
+            to be lower than 1. and the value of :attr:`nms_threshold` is set to
+            be higher than 0.5, everytime a bounding box is filtered out,
+            the adjustment for :attr:`nms_threshold` like :attr:`nms_threshold`
+            = :attr:`nms_threshold` * :attr:`nms_eta`  will not be stopped until
+            the actual value of :attr:`nms_threshold` is lower than or equal to
+            0.5.
+
+    **Notice**: In some cases where the image sizes are very small, it's possible
+    that there is no detection if :attr:`score_threshold` are used at all
+    levels. Hence, this OP do not filter out anchors from the highest FPN level
+    before NMS. And the last element in :attr:`bboxes`:, :attr:`scores` and
+    :attr:`anchors` is required to be from the hightest FPN level.
 
     Returns:
-        Variable:
-            The detection output is a LoDTensor with shape [No, 6].
+        Variable(The data type is float32 or float64):
+            The detection output is a 1-level LoDTensor with shape :math:`[No, 6]`.
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
-            `No` is the total number of detections in this mini-batch. For each
-            instance, the offsets in first dimension are called LoD, the offset
-            number is N + 1, N is the batch size. The i-th image has
-            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            :math:`No` is the total number of detections in this mini-batch.
+            The :math:`i`-th image has `LoD[i + 1] - LoD[i]` detected
+            results, if `LoD[i + 1] - LoD[i]` is 0, the :math:`i`-th image
             has no detected results. If all images have no detected results,
             LoD will be set to 0, and the output tensor is empty (None).
 
     Examples:
         .. code-block:: python
-        
-            import paddle.fluid as fluid
 
-            bboxes = layers.data(name='bboxes', shape=[1, 21, 4],
-                append_batch_size=False, dtype='float32')
-            scores = layers.data(name='scores', shape=[1, 21, 10],
-                append_batch_size=False, dtype='float32')
-            anchors = layers.data(name='anchors', shape=[21, 4],
-                append_batch_size=False, dtype='float32')
-            im_info = layers.data(name="im_info", shape=[1, 3],
-                append_batch_size=False, dtype='float32')
-            nmsed_outs = fluid.layers.retinanet_detection_output(
-                                                    bboxes=[bboxes, bboxes],
-                                                    scores=[scores, scores],
-                                                    anchors=[anchors, anchors],
-                                                    im_info=im_info,
-                                                    score_threshold=0.05,
-                                                    nms_top_k=1000,
-                                                    keep_top_k=100,
-                                                    nms_threshold=0.3,
-                                                    nms_eta=1.)
+           import paddle.fluid as fluid
+
+           bboxes_low = fluid.data(
+               name='bboxes_low', shape=[1, 44, 4], dtype='float32')
+           bboxes_high = fluid.data(
+               name='bboxes_high', shape=[1, 11, 4], dtype='float32')
+           scores_low = fluid.data(
+               name='scores_low', shape=[1, 44, 10], dtype='float32')
+           scores_high = fluid.data(
+               name='scores_high', shape=[1, 11, 10], dtype='float32')
+           anchors_low = fluid.data(
+               name='anchors_low', shape=[44, 4], dtype='float32')
+           anchors_high = fluid.data(
+               name='anchors_high', shape=[11, 4], dtype='float32')
+           im_info = fluid.data(
+               name="im_info", shape=[1, 3], dtype='float32')
+           nmsed_outs = fluid.layers.retinanet_detection_output(
+                                          bboxes=[bboxes_low, bboxes_high],
+                                          scores=[scores_low, scores_high],
+                                          anchors=[anchors_low, anchors_high],
+                                          im_info=im_info,
+                                          score_threshold=0.05,
+                                          nms_top_k=1000,
+                                          keep_top_k=100,
+                                          nms_threshold=0.45,
+                                          nms_eta=1.)
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
