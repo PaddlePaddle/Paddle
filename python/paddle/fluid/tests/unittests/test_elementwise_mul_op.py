@@ -160,5 +160,22 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         self.dtype = np.float16
 
 
+class TestElementwiseMulOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of elementwise_mul must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elementwise_mul, x1, y1)
+
+            # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.elementwise_mul, x2, y2)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -52,8 +52,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       auto x_dim = ctx->GetInputDim("X");
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                        "Rank of first input must >= rank of second input.");
+      PADDLE_ENFORCE_GE(
+          x_dim.size(), y_dim.size(),
+          "ShapeError: the dimension of input X must greater than or equal to "
+          "the one of input Y. But received: the shape of input X = [%s], the "
+          "dimension of input X = %d, the shape of input Y = [%s], the "
+          "dimension of input Y = %d",
+          x_dim, x_dim.size(), y_dim, y_dim.size());
     } else if (ctx->GetInputsVarType("X").front() ==
                framework::proto::VarType::SELECTED_ROWS) {
       PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&

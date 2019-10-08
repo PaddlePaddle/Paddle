@@ -71,7 +71,12 @@ inline void get_mid_dims(const framework::DDim &x_dims,
         // only support single y_dims[i] = 1 now.
         PADDLE_ENFORCE_EQ(*mid_flag, 0,
                           "Broadcast support y_dims with single 1.");
-        PADDLE_ENFORCE_EQ(y_dims[i], 1, "Broadcast dimension mismatch.");
+        PADDLE_ENFORCE_EQ(y_dims[i], 1,
+                          "ShapeError: broadcast dimension mismatch. Operands "
+                          "could not be broadcast together with the shape of "
+                          "X = [%s] and the shape of Y = [%s]. Received [%d] "
+                          "in X is not equal to [%d] in Y",
+                          x_dims, y_dims, x_dims[i + axis], y_dims[i]);
         // m*n*k m*1*k
         for (int j = 0; j < i; ++j) {
           (*pre) *= y_dims[j];
