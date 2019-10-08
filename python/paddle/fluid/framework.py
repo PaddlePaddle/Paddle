@@ -62,17 +62,23 @@ _dygraph_current_expected_place_ = None
 
 def in_dygraph_mode():
     """
-    Check program status(tracer), Whether it runs in dygraph mode or not
+    This function checks whether the program runs in dynamic graph mode.
+    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
 
     Returns:
-        out (boolean): True if the program is running in dynamic graph mode
+        Whether the program is running in dynamic graph mode.
+
+    Return type:
+        boolean
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
-                pass
+                print('running in dygraph mode')
+            else:
+                print('not running in dygraph mode')
 
     """
     return _dygraph_tracer_ is not None
