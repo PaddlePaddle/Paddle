@@ -11067,8 +11067,9 @@ def soft_relu(x, threshold=40.0, name=None):
 
 def flatten(x, axis=1, name=None):
     """
-    **Flatten layer**
-    Flattens the input tensor into a 2D matrix.
+    **Flatten op**
+
+    Flatten the input tensor into a 2D matrix.
 
     For Example:
 
@@ -11097,21 +11098,20 @@ def flatten(x, axis=1, name=None):
             Out.shape = (1, 3 * 100 * 100 * 4)
 
     Args:
-        x (Variable): A tensor of rank >= axis.
+        x (Variable): A tensor of rank >= axis. A tensor with type float32,
+                      float64, int8, int32, int64.
         axis (int): Indicate up to which input dimensions (exclusive) should
                     be flattened to the outer dimension of the output.
                     The value for axis must be in the range [0, R], where R
-                    is the rank of the input tensor. When axis = 0, the shape
-                    of the output tensor is (1, (d_0 X d_1 ... d_n), where the
-                    shape of the input tensor is (d_0, d_1, ... d_n).
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                    is the rank of the input tensor. Default: 1.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
 
     Returns:
         Variable: A 2D tensor with the contents of the input tensor, with input \
                   dimensions up to axis flattened to the outer dimension of \
                   the output and remaining input dimensions flattened into the \
-                  inner dimension of the output.
+                  inner dimension of the output. A Tensor with type same as input x.
 
     Raises:
         ValueError: If x is not a variable.
@@ -11122,8 +11122,10 @@ def flatten(x, axis=1, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[4, 4, 3], dtype="float32")
+            x = fluid.layers.data(name="x", shape=[4, 4, 3], append_batch_size=False, dtype="float32")
+            # x shape is [4, 4, 3]
             out = fluid.layers.flatten(x=x, axis=2)
+            # out shape is [16, 3]
     """
     helper = LayerHelper('flatten', **locals())
 
@@ -14618,7 +14620,7 @@ def fsp_matrix(x, y):
 
     **FSP matrix op**
 
-    This op is used to calculate the flow of solution procedure (FSP) matrix of two feature maps.
+    This op is used to calculate the flow of solution procedure (FSP) matrix of two 4-D Tensor feature maps.
     Given feature map x with shape [x_channel, h, w] and feature map y with shape
     [y_channel, h, w], we can get the fsp matrix of x and y in two steps:
 
@@ -14630,15 +14632,18 @@ def fsp_matrix(x, y):
 
     Args:
 
-        x (Variable): A feature map with shape [batch_size, x_channel, height, width].
-        y (Variable): A feature map with shape [batch_size, y_channel, height, width].
+        x (Variable): A 4-D Tensor feature map with shape [batch_size, x_channel, height, width].
+                      A Tensor with type float32, float64.
+        y (Variable): A 4-D Tensor feature map with shape [batch_size, y_channel, height, width].
                       The y_channel can be different with the x_channel of Input(X)
-                      while the other dimensions must be the same with Input(X)'s.
+                      while the other dimensions must be the same with Input(X)'s. A Tensor with
+                      type float32, float64.
 
     Returns:
 
         fsp matrix (Variable): The output of FSP op with shape [batch_size, x_channel, y_channel].
-        The x_channel is the channel of x and the y_channel is the channel of y.
+        The x_channel is the channel of x and the y_channel is the channel of y. A Tensor with
+        type float32, float64.
 
     Examples:
 
@@ -14900,7 +14905,7 @@ def deformable_conv(input,
                     modulated=True,
                     name=None):
     """
-    **Deformable Convolution Layer**
+    **Deformable Convolution op**
 
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
@@ -14919,7 +14924,7 @@ def deformable_conv(input,
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
     
     Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location, 
-    which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
+    Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
     <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
     
     Example:
@@ -14945,12 +14950,16 @@ def deformable_conv(input,
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format.
+        input (Variable): The input image with [N, C, H, W] format. A Tensor with type
+            float32, float64.
         offset (Variable): The input coordinate offset of deformable convolution layer.
-        Mask (Variable): The input mask of deformable covolution layer.
+            A Tensor with type float32, float64.
+        Mask (Variable, Optional): The input mask of deformable covolution layer.
+            A Tensor with type float32, float64.It should be None when you use
+            deformable_conv_v2.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+        filter_size (int|tuple): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
         stride (int|tuple): The stride size. If stride is a tuple, it must
@@ -14974,24 +14983,24 @@ def deformable_conv(input,
             than this value; if you face out of memory problem, you can try
             to use a smaller value here.
             Default: im2col_step = 64.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, Optional): The parameter attribute for learnable parameters/weights
             of deformable conv. If it is set to None or one attribute of ParamAttr,
             deformable conv will create ParamAttr as param_attr.
             If the Initializer of the param_attr is not set, the parameter is
             initialized with :math:`Normal(0.0, std)`, and the 
             :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of
+        bias_attr (ParamAttr|bool, Optional): The parameter attribute for the bias of
             deformable conv layer. If it is set to False, no bias will be added
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         modulated (bool): Make sure which version should be used between v1 and v2, where v2 is \
             used while True. Default: True.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
     Returns:
         Variable: The tensor variable storing the deformable convolution \
-                  result.
+                  result. A Tensor with type float32, float64.
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
@@ -15001,19 +15010,23 @@ def deformable_conv(input,
           #deformable conv v2:
          
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
-          mask = fluid.layers.data(name='mask', shape=[9, 32, 32], dtype='float32')
+          C_in, H_in, W_in = 3, 32, 32
+          filter_size, deformable_groups = 3, 1
+          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
+          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          mask = fluid.layers.data(name='mask', shape=[deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=3, padding=1, modulated=True)
+                                             num_filters=2, filter_size=filter_size, padding=1, modulated=True)
 
           #deformable conv v1:
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[18, 32, 32], dtype='float32')
+          C_in, H_in, W_in = 3, 32, 32
+          filter_size, deformable_groups = 3, 1
+          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
+          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
-                                             num_filters=2, filter_size=3, padding=1, modulated=False)
+                                             num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
 
     num_channels = input.shape[1]
