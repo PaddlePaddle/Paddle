@@ -22,16 +22,6 @@ namespace operators {
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-<<<<<<< 0ec2c081d9627e20ece7d6745ae54e79bdc38306
-    AddInput(
-        "Emission",
-        "(LoDTensor/Tensor<float>). When a LoDTensor input, A 2-D LoDTensor"
-        " with shape [N x D], where N is the size of the "
-        "mini-batch and D is the total tag number. The unscaled emission "
-        "weight matrix for the linear chain CRF. When a Tensor input,"
-        "A Tensor with shape [N x S x D], where N is batch size,"
-        "S is max length of sequences, D is the total tag number.");
-=======
     AddInput("Emission",
              "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
              " with shape [N x D], where N is the size of the "
@@ -40,7 +30,6 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "A Tensor with shape [N x S x D], where N is batch number,"
              "S is max length of sequences, D is the total tag number."
              "A LoDTensor or Tensor with type float32, float64.");
->>>>>>> fix APIs,test=develop,test=document_fix
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
@@ -50,54 +39,60 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
-<<<<<<< 0ec2c081d9627e20ece7d6745ae54e79bdc38306
-             "S is max length of sequences. The ground truth.");
-    AddInput("Length",
-=======
              "S is max length of sequences. The ground truth."
              "A  LoDTensor or Tensor with int64.");
-    AddInput("length",
->>>>>>> fix APIs,test=develop,test=document_fix
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
              "A Tensor with type int64.")
         .AsDispensable();
-    AddOutput(
-        "Alpha",
-        "(Tensor, default Tensor<float>), the same shape with Emission. "
-        "The forward vectors for the entire batch. Denote it as $\alpha$. "
-        "$\alpha$ is a memo table used to calculate the normalization "
-        "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
-        "probabilites of all possible unfinished sequences of tags that end at "
-        "position $k$ with tag $v$. For each $k$, "
-        "$\alpha[k, v]$ is a vector of length $D$ with a component for "
-        "each tag value $v$. This vector is called a forward vecotr and "
-        "will also be used in backward computations.")
-        .AsIntermediate();
-    AddOutput(
-        "EmissionExps",
-        "(Tensor, default Tensor<float>), the same shape with Emission. "
-        "The exponentials of Input(Emission). This is an intermediate "
-        "computational result in forward computation, and will be reused in "
-        "backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
-        .AsIntermediate();
-    AddOutput(
-        "TransitionExps",
-        "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
-        "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
-        "intermediate computational result in forward computation, and "
-        "will be reused in backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
-        .AsIntermediate();
-    AddOutput(
-        "LogLikelihood",
-        "(Tensor, default Tensor<float>) The logarithm of the conditional "
-        "likelihood of each training sample in a mini-batch. This is a 2-D "
-        "tensor with shape [S x 1], where S is the sequence number in a "
-        "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
-        "A Tensor with type float32, float64.");
-    AddComment(R"DOC(
+             AddOutput(
+                 "Alpha",
+                 "(Tensor, default Tensor<float>), the same shape with "
+                 "Emission. "
+                 "The forward vectors for the entire batch. Denote it as "
+                 "$\alpha$. "
+                 "$\alpha$ is a memo table used to calculate the normalization "
+                 "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
+                 "probabilites of all possible unfinished sequences of tags "
+                 "that end at "
+                 "position $k$ with tag $v$. For each $k$, "
+                 "$\alpha[k, v]$ is a vector of length $D$ with a component "
+                 "for "
+                 "each tag value $v$. This vector is called a forward vecotr "
+                 "and "
+                 "will also be used in backward computations.")
+                 .AsIntermediate();
+             AddOutput(
+                 "EmissionExps",
+                 "(Tensor, default Tensor<float>), the same shape with "
+                 "Emission. "
+                 "The exponentials of Input(Emission). This is an intermediate "
+                 "computational result in forward computation, and will be "
+                 "reused in "
+                 "backward computation."
+                 "A LoDTensor or Tensor with type float32, float64.")
+                 .AsIntermediate();
+             AddOutput(
+                 "TransitionExps",
+                 "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
+                 "[(D + 2) x D]. The exponentials of Input(Transition). This "
+                 "is an "
+                 "intermediate computational result in forward computation, "
+                 "and "
+                 "will be reused in backward computation."
+                 "A LoDTensor or Tensor with type float32, float64.")
+                 .AsIntermediate();
+             AddOutput("LogLikelihood",
+                       "(Tensor, default Tensor<float>) The logarithm of the "
+                       "conditional "
+                       "likelihood of each training sample in a mini-batch. "
+                       "This is a 2-D "
+                       "tensor with shape [S x 1], where S is the sequence "
+                       "number in a "
+                       "mini-batch. Note: S is equal to the sequence number in "
+                       "a mini-batch. "
+                       "A Tensor with type float32, float64.");
+             AddComment(R"DOC(
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
 variables. CRF learns the conditional probability $P(Y|X)$, where
