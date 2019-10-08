@@ -157,8 +157,8 @@ def compose(*readers, **kwargs):
     (1, 2, 3, 4, 5)
 
     Args:
-        readers (Reader|list of Reader): readers that will be composed together.
-        For more information about Reader, please refer to :ref:`api_guide_python_reader`.
+        readers (Reader|list of Reader): readers that will be composed together.For more information 
+                              about Reader, please refer to :ref:`api_guide_python_reader` .
         check_alignment(bool, optional): Indicates whether the input readers are checked for
                               alignment. If True, will check if input readers are aligned
                               correctly. If False, will not check alignment and trailing outputs
@@ -168,7 +168,7 @@ def compose(*readers, **kwargs):
         the new data reader (Reader).
 
     Raises:
-        ComposeNotAligned: outputs of readers are not aligned. Will not raise if check_alignment is set to False.
+        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
   
     Examples:
         .. code-block:: python
