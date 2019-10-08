@@ -2237,8 +2237,6 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                  dtype='float32', lod_level=1)
              x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
 
-
-            x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
