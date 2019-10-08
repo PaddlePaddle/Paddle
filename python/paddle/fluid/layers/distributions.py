@@ -208,7 +208,7 @@ class Uniform(Distribution):
             return nn.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
-            output = ops.uniform_random(
+            output = nn.uniform_random(
                 output_shape, seed=seed) * (tensor.zeros(
                     output_shape, dtype=self.low.dtype) +
                                             (self.high - self.low)) + self.low

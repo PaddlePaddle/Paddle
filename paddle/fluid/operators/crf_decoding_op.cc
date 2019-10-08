@@ -39,8 +39,7 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "Label",
         "(Tensor<int64_t>/LoDTensor<int64_t>). The ground truth with shape "
         "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
-        "optional. "
-        "See more details in the operator's comments.")
+        "optional. See more details in the operator's comments.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
@@ -126,12 +125,24 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
-                        "The Input(Label) should be a 2-D tensor");
+      if (ctx->HasInput("Length")) {
+        PADDLE_ENFORCE_EQ(
+            (label_dims.size() == 3UL && label_dims[2] == 1) ||
+                label_dims.size() == 2UL,
+            true,
+            "The Input(Label) should be a 3-D tensor with last dimension "
+            "fixed to 1 or a 2-D tensor in padding mode.");
+      } else {
+        PADDLE_ENFORCE_EQ((label_dims.size() == 2UL && label_dims[1] == 1) ||
+                              label_dims.size() == 1UL,
+                          true,
+                          "The Input(Label) should be a 2-D tensor with last "
+                          "dimension fixed to 1 or a 1-D tensor.");
+      }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
-            "The height of Input(Emission) and the height of Input(Label) "
+            "The first dimension of Input(Emission) and Input(Label) "
             "should be the same.");
       }
     }

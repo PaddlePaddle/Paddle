@@ -29,9 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
+#include "paddle/fluid/framework/load_op_lib.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
@@ -39,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
@@ -170,6 +173,12 @@ PYBIND11_MODULE(core_noavx, m) {
   BindException(&m);
 
   m.def("set_num_threads", &platform::SetNumThreads);
+
+  m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
+    framework::OpCompatibleMap op_compatible_map;
+    op_compatible_map.InitOpCompatibleMap();
+    return op_compatible_map.ConvertToProto(desc.OpCompatibleMap());
+  });
 
   m.def(
       "_append_python_callable_object_and_return_id",
@@ -1006,11 +1015,31 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
       .def(py::init<const ProgramDesc &, size_t>());
 
+  py::class_<framework::TrainerBase, std::shared_ptr<framework::TrainerBase>>(
+      m, "TrainerBase")
+      .def("get_worker_scope",
+           [](TrainerBase &self, int thread_id) -> Scope * {
+             return self.GetWorkerScope(thread_id);
+           },
+           py::return_value_policy::reference)
+      .def("finalize", &TrainerBase::Finalize);
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("init_for_dataset",
+           [](Executor &self, const ProgramDesc &prog,
+              const std::string &trainer_desc, Scope *scope,
+              Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             return self.InitForDataset(prog, trainer_desc, scope, dataset);
+           })
+      .def("run_from_dataset",
+           [](Executor &self, std::shared_ptr<TrainerBase> trainer) {
+             pybind11::gil_scoped_release release;
+             self.RunFromDataset(trainer);
+           })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               std::map<std::string, const LoDTensor *> *feed_targets,
@@ -1046,6 +1075,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_dgc", framework::InitDGC);
+  m.def("load_op_library", framework::LoadOpLib);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
