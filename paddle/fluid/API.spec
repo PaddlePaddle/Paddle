@@ -1047,7 +1047,7 @@ paddle.fluid.regularizer.L1DecayRegularizer ('paddle.fluid.regularizer.L1DecayRe
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer ('paddle.fluid.regularizer.L2DecayRegularizer', ('document', 'b94371c3434d7f695bc5b2d6fb5531fd'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.LoDTensor ('paddle.fluid.core_avx.LoDTensor', ('document', '25e8432ed1b9a375868bc8911359aa0d'))
+paddle.fluid.LoDTensor ('paddle.fluid.core_avx.LoDTensor', ('document', '8ee00d246c952b92e5e8ca2d92a4fc00'))
 paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_avx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_avx.LoDTensor) -> None
 paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> bool
 paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
@@ -1055,7 +1055,7 @@ paddle.fluid.LoDTensor.recursive_sequence_lengths recursive_sequence_lengths(sel
 paddle.fluid.LoDTensor.set_lod set_lod(self: paddle.fluid.core_avx.LoDTensor, lod: List[List[int]]) -> None
 paddle.fluid.LoDTensor.set_recursive_sequence_lengths set_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor, recursive_sequence_lengths: List[List[int]]) -> None
 paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_avx.Tensor) -> List[int]
-paddle.fluid.LoDTensorArray ('paddle.fluid.core_avx.LoDTensorArray', ('document', 'e9895b67ba54438b9c0f7053e18966f5'))
+paddle.fluid.LoDTensorArray ('paddle.fluid.core_avx.LoDTensorArray', ('document', '54b28e608be8c035f2bbe18a5c12cfd2'))
 paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTensorArray) -> None
 paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
 paddle.fluid.CPUPlace ('paddle.fluid.core_avx.CPUPlace', ('document', '6014005ef2649045b77d502aeb6cd7f9'))

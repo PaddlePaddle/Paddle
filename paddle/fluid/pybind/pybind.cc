@@ -337,10 +337,8 @@ PYBIND11_MODULE(core_noavx, m) {
            Return the shape of LoDTensor.
 
            Returns:
-               The shape of LoDTensor.
-              
-           Return Type:
-                List[int].
+               list[int]: The shape of LoDTensor.
+
 
            Examples:
                .. code-block:: python
@@ -369,7 +367,7 @@ PYBIND11_MODULE(core_noavx, m) {
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
     LoDTensor is a Tensor with optional LoD (Level of Details) information, 
     it can be used for variable-length sequences, 
-    see :ref:`en_user_guide_lod_tensor` for details.
+    see :ref:`user_guide_lod_tensor` for details.
 
     LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
@@ -392,8 +390,8 @@ PYBIND11_MODULE(core_noavx, m) {
     
     Logically, we can represent the variable-length sequence in two ways: one 
     is in the form of recursive sequence lengths, that is, 
-    x.recursive_sequence_lengths=[[2, 3]; the other is in the form of offsets, 
-    that is, x.lod=[[0, 2, 2+3]. These two representations are equivalent, and 
+    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
+    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
     you can set and retrieve recursive_sequence_lengths or LoD through the 
     corresponding interfaces of LoDTensor introduced later.
 
@@ -428,7 +426,7 @@ PYBIND11_MODULE(core_noavx, m) {
       
     Therefore, the LoDTensor is represented in the form of recursive sequence 
     lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
-    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7].
+    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
 
     .. code-block:: python
 
@@ -486,7 +484,7 @@ PYBIND11_MODULE(core_noavx, m) {
            Set LoD of the LoDTensor.
 
            Args:
-               lod (List[List[int]]): The lod to set.
+               lod (list[list[int]]): The lod to set.
 
            Returns:
                 None.
@@ -526,7 +524,7 @@ PYBIND11_MODULE(core_noavx, m) {
            corresponding lod would be [[0, 2, 2+3]], i.e., [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): The recursive sequence lengths.
+                recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
            
            Returns:
                 None.
@@ -556,11 +554,8 @@ PYBIND11_MODULE(core_noavx, m) {
            Return the LoD of the LoDTensor.
 
            Returns:
-               The lod of the LoDTensor.
+               list[list[int]]: The lod of the LoDTensor.
            
-           Return Type:
-                list[list[int]].
-
            Examples:
                .. code-block:: python
 
@@ -587,10 +582,7 @@ PYBIND11_MODULE(core_noavx, m) {
            of the LoDTensor.
 
            Returns:
-               The recursive sequence lengths.
-
-           Return Type:
-               List[List[int].
+                list[list[int]]: The recursive sequence lengths.
 
            Examples:
                .. code-block:: python
@@ -613,7 +605,7 @@ PYBIND11_MODULE(core_noavx, m) {
            Check whether the LoD of the LoDTensor is valid.
 
            Returns:
-               out (bool): Whether the LoD is valid.
+               bool: Whether the LoD is valid.
 
            Examples:
                .. code-block:: python
@@ -1257,7 +1249,7 @@ All parameter, weight, gradient are variables in Paddle.
                    tensor (LoDTensor): The LoDTensor to be appended.
 
              Returns:
-                   Void.
+                   None.
 
              Examples:
                  .. code-block:: python
