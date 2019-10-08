@@ -80,6 +80,9 @@ class TestSqueezeOpError(OpTest):
             # The input axes of squeeze must be list.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.squeeze, x2, axes=0)
+            # The input dtype of squeeze not support float16.
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
+            self.assertRaises(TypeError, fluid.layers.squeeze, x3, axes=0)
 
 
 if __name__ == "__main__":
