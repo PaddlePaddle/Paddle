@@ -156,16 +156,29 @@ def compose(*readers, **kwargs):
     The composed reader will output:
     (1, 2, 3, 4, 5)
 
-    :param readers: readers that will be composed together.
-    :param check_alignment: if True, will check if input readers are aligned
-        correctly. If False, will not check alignment and trailing outputs
-        will be discarded. Defaults to True.
-    :type check_alignment: bool
+    Args:
+        readers (generator): readers that will be composed together.
+        check_alignment(bool): Indicates whether the input readers are checked for 
+                              alignment. If True, will check if input readers are aligned
+                              correctly. If False, will not check alignment and trailing outputs
+                              will be discarded. Defaults to True.
 
-    :return: the new data reader.
+    Returns: 
+        the new data reader (Reader).
 
-    :raises ComposeNotAligned: outputs of readers are not aligned.
-        Will not raise when check_alignment is set to False.
+    Raises:
+        ComposeNotAligned: outputs of readers are not aligned. Will not raise if check_alignment is set to False.
+  
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          def reader_creator_10(dur):
+              def reader():
+                 for i in range(10):
+                     yield i
+              return reader
+          reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
