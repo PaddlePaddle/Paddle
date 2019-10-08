@@ -93,7 +93,7 @@ def one_hot(input, depth, allow_out_of_range=False):
 
             import paddle.fluid as fluid
             # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
-            label = fluid.layers.data(name="label", shape=[4], append_batch_size=False, dtype="int64")
+            label = fluid.data(name="label", shape=[4], dtype="int64")
             one_hot_label = fluid.one_hot(input=label, depth=4)
     """
     helper = LayerHelper("one_hot_v2", **locals())
@@ -214,7 +214,8 @@ def embedding(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          import numpy as np
+          data = fluid.data(name='x', shape=[-1, 10], dtype='int64')
 
           # exampel 1
           emb_1 = fluid.embedding(input=data, size=[128, 64])
