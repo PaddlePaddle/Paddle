@@ -21,6 +21,8 @@ import six
 import logging
 from functools import reduce
 
+import numpy as np
+
 import paddle
 import paddle.reader
 from paddle.reader import *
@@ -217,6 +219,13 @@ def save_vars(executor,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
+        # give warning when there is no var in model
+        if len(list(vars)) == 0:
+            warnings.warn(
+                "no variable in your model, please ensure there are any variables in your model to save"
+            )
+            return None
+
         save_program = Program()
         save_block = save_program.global_block()
 
@@ -642,11 +651,19 @@ def load_vars(executor,
         if not isinstance(main_program, Program):
             raise TypeError("program should be as Program type or None")
 
+        #save origin param shape
+        orig_para_shape = {}
         load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
+
+            if isinstance(each_var, Parameter):
+                var_temp = paddle.fluid.global_scope().find_var(each_var.name)
+                assert var_temp != None, "can't not find var: " + each_var.name
+                orig_para_shape[each_var.name] = (
+                    np.array(var_temp.get_tensor())).shape
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
                 load_block.append_op(
@@ -670,6 +687,21 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(load_dirname, filename)})
         executor.run(load_prog)
+
+        #check var shape
+        for each_var in vars:
+            if not isinstance(each_var, Parameter):
+                continue
+            var_temp = paddle.fluid.global_scope().find_var(each_var.name)
+            assert var_temp != None, "can't not find var: " + each_var.name
+            new_shape = (np.array(var_temp.get_tensor())).shape
+            assert each_var.name in orig_para_shape, earch_var.name + "MUST in var list"
+            orig_shape = orig_para_shape.get(each_var.name)
+            if new_shape != orig_shape:
+                raise RuntimeError(
+                    "Shape not matching: the Program requires a parameter with a shape of ({}), "
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
+                    format(orig_shape, each_var.name, new_shape))
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
@@ -1031,6 +1063,15 @@ def save_inference_model(dirname,
 
     main_program = _get_valid_program(main_program)
 
+    # remind user to set auc_states to zeros if the program contains auc op 
+    all_ops = main_program.global_block().ops
+    for op in all_ops:
+        if op.type == 'auc':
+            warnings.warn(
+                "please ensure that you have set the auc states to zeros before saving inference model"
+            )
+            break
+
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
     # TODO(Superjomn) add an IR pass to remove 1-scale op.
@@ -1080,13 +1121,16 @@ def save_inference_model(dirname,
 
         main_program.desc.flush()
 
-        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._prune_with_input(
+            feeded_var_names=feeded_var_names, targets=target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
+        main_program.desc._set_version()
+        paddle.fluid.core.save_op_compatible_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(main_program.desc.serialize_to_string())
     else:

@@ -41,6 +41,7 @@ void SoftmaxEigen(const DeviceContext& context, const int axis_dim,
                   const framework::Tensor* X, framework::Tensor* Y) {
   constexpr int kBatchDim = 0;
   constexpr int kClassDim = 1;
+  constexpr int kAxisDim = 1;
 
   auto logits = EigenMatrix<T>::From(*X);
   auto softmax = EigenMatrix<T>::From(*Y);
@@ -49,23 +50,44 @@ void SoftmaxEigen(const DeviceContext& context, const int axis_dim,
   const int num_classes = logits.dimension(kClassDim);
   const int num_remain = num_classes / axis_dim;
 
-  Eigen::DSizes<int, 1> along_class(kClassDim);
+  Eigen::DSizes<int, 1> along_axis(kAxisDim);
+  Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
   Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
   Eigen::DSizes<int, 2> one_by_class(1, num_classes);
-  Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+  Eigen::DSizes<int, 3> batch_one_remain(batch_size, 1, num_remain);
+  Eigen::DSizes<int, 3> one_axis_one(1, axis_dim, 1);
   Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+  Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
 
-  auto shifted_logits = (logits -
-                         logits.maximum(along_class)
-                             .eval()
-                             .reshape(batch_by_one)
-                             .broadcast(one_by_class))
-                            .unaryExpr(ValueClip<T>());
+  // For numerical stability, logits should be shifted by maximum number along
+  // axis, calculate shifted_logits into softmax tensor for memory reuse.
+  if (num_remain == 1) {
+    // axis == -1, axis and class in same dimension, calculate along
+    // class dimension directly for higher performance
+    softmax.device(*context.eigen_device()) = (logits -
+                                               logits.maximum(along_axis)
+                                                   .eval()
+                                                   .reshape(batch_by_one)
+                                                   .broadcast(one_by_class))
+                                                  .unaryExpr(ValueClip<T>());
+  } else {
+    // axis != -1, class dimension split into (axis, remain), max and sum
+    // should be calculated along axis dimension
+    softmax.device(*context.eigen_device()) =
+        (logits.reshape(batch_axis_remain) -
+         logits.reshape(batch_axis_remain)
+             .maximum(along_axis)
+             .eval()
+             .reshape(batch_one_remain)
+             .broadcast(one_axis_one)
+             .reshape(batch_classes))
+            .unaryExpr(ValueClip<T>());
+  }
 
-  softmax.device(*context.eigen_device()) = shifted_logits.exp();
+  softmax.device(*context.eigen_device()) = softmax.exp();
   softmax.device(*context.eigen_device()) = (softmax *
                                              softmax.reshape(batch_axis_remain)
-                                                 .sum(along_class)
+                                                 .sum(along_axis)
                                                  .inverse()
                                                  .eval()
                                                  .broadcast(one_axis));

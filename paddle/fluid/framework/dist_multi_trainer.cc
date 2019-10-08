@@ -148,11 +148,18 @@ void DistMultiTrainer::Finalize() {
       if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
-#define MergeCallback(cpp_type, proto_type)                   \
-  do {                                                        \
-    if (root_tensor->type() == proto_type) {                  \
-      MergeToRootScope<cpp_type>(root_tensor, thread_tensor); \
-    }                                                         \
+#define MergeCallback(cpp_type, proto_type)                                    \
+  do {                                                                         \
+    if (root_tensor->type() == proto_type) {                                   \
+      if (thread_tensor->type() != proto_type) {                               \
+        VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
+                << "] " << need_merge_var_names_[i]                            \
+                << ", root tensor type=" << root_tensor->type()                \
+                << ", thread tensor type=" << thread_tensor->type();           \
+        exit(-1);                                                              \
+      }                                                                        \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
+    }                                                                          \
   } while (0)
       _ForEachDataType_(MergeCallback);
     }
@@ -163,6 +170,10 @@ void DistMultiTrainer::Finalize() {
   }
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
+
+  // flush local client push queue
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  fleet_ptr_->ClientFlush();
 }
 
 template <typename T>

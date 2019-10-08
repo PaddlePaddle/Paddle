@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
@@ -338,14 +339,15 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   bool sync_mode = Attr<bool>("sync_mode");
   bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
+  auto pserver_id = Attr<int>("pserver_id");
   auto inputs = Inputs("X");
 
   PADDLE_ENFORCE(!rpc_service_);
   std::string endpoint = Attr<std::string>("endpoint");
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
 
-  VLOG(4) << "sync_mode:" << sync_mode << ", fan_in:" << fan_in
-          << ", end_point:" << endpoint
+  VLOG(4) << "pserver_id: " << pserver_id << ", sync_mode:" << sync_mode
+          << ", fan_in:" << fan_in << ", end_point:" << endpoint
           << ", checkpoint_block_id: " << checkpoint_block_id;
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
@@ -466,6 +468,18 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   } else {
     distributed::AsyncSparseParamUpdateRecorder::Init(
         fan_in, sparse_grad_name_to_param_name);
+
+    VLOG(2) << "RunAsyncLoop";
+    auto grad_to_block_id_str =
+        Attr<std::vector<std::string>>("grad_to_block_id");
+
+    if (grad_to_block_id_str.size() == 0) {
+      VLOG(0) << "there are no gradients on this parameter server";
+    } else {
+      std::vector<std::string> pieces;
+      split(grad_to_block_id_str[0], ':', &pieces);
+      distributed::HeartBeatMonitor::Init(fan_in, pserver_id == 0, pieces[0]);
+    }
     RunAsyncLoop(&executor, program, &recv_scope);
   }
 }
@@ -482,6 +496,9 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
+    AddAttr<int>("pserver_id",
+                 "(int, default -1), the parameter server index id")
+        .SetDefault(-1);
     AddAttr<std::vector<std::string>>(
         "grad_to_block_id",
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "

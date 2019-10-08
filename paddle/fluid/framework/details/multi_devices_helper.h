@@ -42,6 +42,8 @@ typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";
 
+constexpr char kNRanks[] = "nranks";
+
 constexpr char kPlaces[] = "places";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
@@ -67,6 +69,9 @@ constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
 
 typedef std::vector<ProgramDesc> ProgramDescs;
 constexpr char kProgramDescs[] = "program_descs";
+
+typedef std::unordered_set<std::string> PinnedVars;
+constexpr char kPinnedVars[] = "pinned_vars";
 
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;

@@ -47,11 +47,6 @@ static memory::primitive_desc CreateMemPrimDesc(const Tensor& input,
   return mem_prim_desc;
 }
 
-static MKLDNNMemoryFormat GetDstMemFormat(
-    const concat::primitive_desc& concat_pd) {
-  return (MKLDNNMemoryFormat)concat_pd.dst_primitive_desc().desc().data.format;
-}
-
 static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
   auto place = ctx.GetPlace();
@@ -64,29 +59,6 @@ static const mkldnn::engine& GetMKLDNNEngine(
     const paddle::framework::ExecutionContext& ctx) {
   auto& dev_ctx = ctx.template device_context<platform::MKLDNNDeviceContext>();
   return dev_ctx.GetEngine();
-}
-
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const std::vector<const Tensor*> multi_input,
-                      const int64_t& concat_axis, const memory::data_type& dt) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  for (size_t i = 0; i < multi_input.size(); i++) {
-    platform::MKLDNNHandler::AppendKeyDims(
-        &key, paddle::framework::vectorize<int>(multi_input[i]->dims()));
-  }
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(concat_axis));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Out"));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(dt));
-  platform::MKLDNNHandler::AppendKey(&key,
-                                     std::to_string(multi_input[0]->format()));
-  if (platform::get_cur_mkldnn_session_id() ==
-      platform::kMKLDNNSessionID_Default) {
-    platform::MKLDNNHandler::AppendKey(&key, "-t:");
-    platform::MKLDNNHandler::AppendKey(
-        &key, platform::MKLDNNHandler::ThreadIDasStr());
-  }
-  return key;
 }
 
 template <typename T>
@@ -177,7 +149,10 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(multi_input[0]->type());
 
     ConcatPrimitiveFactory<T> prim_creator;
-    std::string key = CreateKey(ctx, multi_input, concat_axis, dt);
+    std::string key = platform::CreateKey(
+        paddle::framework::vectorize<int>(multi_input[0]->dims()), concat_axis,
+        ctx.op().Output("Out"), dt, multi_input[0]->format(),
+        platform::ThreadIDasStr());
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
     const std::string key_srcs = key + "@concat_srcs";
@@ -218,7 +193,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     stream(stream::kind::eager).submit({*concat_p}).wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetDstMemFormat(*concat_pd));
+    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
   }
 };
 }  // namespace operators

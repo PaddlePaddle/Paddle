@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 #include "math/math_function.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -170,9 +171,8 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
     v_output_dims[i] = static_cast<int>(output_dims[i]);
   }
   auto& dev_ctx = context.cuda_device_context();
-  auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
   int bytes = output_dims_size * sizeof(int);
-  auto output_dims_ptr = allocator.Allocate(bytes);
+  auto output_dims_ptr = memory::Alloc(dev_ctx, bytes);
   int* g_output_dims = reinterpret_cast<int*>(output_dims_ptr->ptr());
   memory::Copy(gplace, g_output_dims, cplace, v_output_dims.data(), bytes,
                ctx.stream());

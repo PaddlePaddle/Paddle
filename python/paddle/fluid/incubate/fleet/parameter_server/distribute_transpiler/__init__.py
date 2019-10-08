@@ -13,14 +13,20 @@
 # limitations under the License.
 import os
 import warnings
-
+"""
+Convert the fluid program to distributed data-parallelism programs.
+"""
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
@@ -61,7 +67,13 @@ class DistributedTranspiler(Fleet):
             wait_server_ready(fleet.server_endpoints(to_string=False))
 
         if not self._transpile_config.sync_mode:
-            self._communicator = Communicator(self.main_program)
+            if self._transpile_config.geo_sgd_mode:
+                self._communicator = Communicator(
+                    self.main_program, self.vars_info,
+                    fleet.worker_num(),
+                    self._transpile_config.geo_sgd_need_push_nums)
+            else:
+                self._communicator = Communicator(self.main_program)
 
             if not self._communicator.is_running():
                 self._communicator.start()
@@ -121,7 +133,6 @@ class DistributedTranspiler(Fleet):
         ):
             self._communicator.stop()
         self._executor.close()
-
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
 
@@ -134,7 +145,7 @@ class DistributedTranspiler(Fleet):
 
         Args:
             optimizer(Optimizer): The executor to run for init server.
-            strategy(dict): Extra properties for distributed optimizer.
+            strategy(DistributeTranspilerConfig): Extra properties for distributed optimizer.
 
         Returns:
             TranspilerOptimizer: subclass of DistributedOptimizer.
@@ -156,7 +167,21 @@ class DistributedTranspiler(Fleet):
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
         """
+        if isinstance(executor, ParallelExecutor):
+            raise TypeError(
+                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
+            )
+
+        if not isinstance(executor, Executor):
+            raise TypeError(
+                "in fleet.save_inference_model() function, executor must be as Executor type"
+            )
+
         if main_program is not None:
+            if isinstance(main_program, CompiledProgram):
+                raise TypeError(
+                    "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
+                )
             io.save_inference_model(dirname, feeded_var_names, target_vars,
                                     executor, main_program, None, None,
                                     export_for_deployment)
@@ -186,9 +211,23 @@ class DistributedTranspiler(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
+        if isinstance(executor, ParallelExecutor):
+            raise TypeError(
+                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
+            )
+
+        if not isinstance(executor, Executor):
+            raise TypeError(
+                "in fleet.save_persistables() function, executor must be as Executor type"
+            )
 
         if main_program is None:
             main_program = self.main_program
+
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
+            )
 
         if not main_program._is_distributed:
             raise ValueError(
@@ -198,7 +237,7 @@ class DistributedTranspiler(Fleet):
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):
-            raise ValueError(
+            raise TypeError(
                 "config must be an instance of DistributeTranspilerConfig")
 
         if not config.sync_mode:
@@ -208,7 +247,10 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         self._transpile_config = config
-        self._transpiler = OriginTranspiler(config)
+        if config.geo_sgd_mode:
+            self._transpiler = GeoSgdTranspiler(config)
+        else:
+            self._transpiler = OriginTranspiler(config)
 
         if self.is_worker():
             self._transpiler.transpile(
@@ -223,6 +265,9 @@ class DistributedTranspiler(Fleet):
             self.main_program = self._transpiler.get_trainer_program(
                 wait_port=config.wait_port)
             self.startup_program = default_startup_program()
+            if self._transpile_config.geo_sgd_mode:
+                self.vars_info = self._transpiler._get_vars_info()
+                self.startup_program = self._transpiler.trainer_startup_program
         else:
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
@@ -231,7 +276,8 @@ class DistributedTranspiler(Fleet):
                 sync_mode=config.sync_mode,
                 current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
+                self._transpiler.get_pserver_programs(
+                    self.server_endpoints()[self.server_index()])
 
 
 fleet = DistributedTranspiler()
@@ -260,7 +306,7 @@ class TranspilerOptimizer(DistributedOptimizer):
 
         if strategy:
             if not isinstance(strategy, DistributeTranspilerConfig):
-                raise ValueError(
+                raise TypeError(
                     "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
                     format(fleet._mode))
             else:
@@ -321,17 +367,34 @@ class TranspilerOptimizer(DistributedOptimizer):
 
     def minimize(self,
                  loss,
-                 scope=None,
+                 scopes=None,
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+        """
+        Add operations to minimize `loss` by updating `parameter_list`.
 
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            scopes (None): TranspilerOptimizer doesn't need scope parameter.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
         if isinstance(loss, list):
-            raise ValueError(
+            raise TypeError(
                 "DistributedTranspiler's minimize can not accept loss with list")
 
         if isinstance(startup_program, list):
-            raise ValueError(
+            raise TypeError(
                 "DistributedTranspiler's minimize can not accept program with list"
             )
 

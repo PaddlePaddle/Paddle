@@ -133,7 +133,7 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
         x = fluid.layers.data(name='x', shape=[1], lod_level=1)
         row = fluid.layers.data(name='row', shape=[10], lod_level=1)
         col = fluid.layers.data(name='col', shape=[10], lod_level=1)
-        topk_avg = fluid.layers.sequence_topk_avg_pooling(
+        topk_avg = fluid.contrib.sequence_topk_avg_pooling(
             input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5)
 
         place = fluid.CPUPlace()

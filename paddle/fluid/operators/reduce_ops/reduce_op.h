@@ -75,7 +75,8 @@ class ReduceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Functor>
+template <typename DeviceContext, typename T, typename Functor,
+          bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -87,6 +88,17 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
+
+    // NOTE: EigenTensor::From() uses tensor->data()
+    // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
+    // kNoNeedBufferY should set true
+    // and use fake var that has same dims.
+    if (kNoNeedBufferX) {
+      input0 = output;
+    }
+    if (kNoNeedBufferY) {
+      input1 = input2;
+    }
 
     // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
     // not be set as Input in grad Maker, use Out_grad to replace here
@@ -153,13 +165,20 @@ class ReduceOp : public framework::OperatorWithKernel {
                    "Output(Out) of ReduceOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
+    PADDLE_ENFORCE_LE(x_rank, 6,
+                      "ShapeError: The input tensor X's dimensions of Reduce "
+                      "should be less equal than 6. But received X's "
+                      "dimensions = %d, X's shape = [%s].",
+                      x_rank, x_dims);
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+
     for (size_t i = 0; i < dims.size(); ++i) {
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        "ShapeError: The reduce dim index %d should be in the "
+                        "range [-dimension(X), dimension(X)]."
+                        "which dimesion = %d, But received dim index = %d",
+                        i, x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          "The dim should be in the range [-rank(input), rank(input)).");
     }
     sort(dims.begin(), dims.end());
     bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
@@ -185,9 +204,12 @@ class ReduceOp : public framework::OperatorWithKernel {
             remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
             dims_vector.end());
       }
+      if (!keep_dim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
       auto out_dims = framework::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
-      if (dims[0] != 0) {
+      if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
         ctx->ShareLoD("X", /*->*/ "Out");
       }
@@ -208,10 +230,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        "ShapeError: The reduce dim index %d should be in the "
+                        "range [-dimension(X), dimension(X)]."
+                        "which dimesion = %d, But received dim index = %d",
+                        i, x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          "The dim should be in the range [-rank(input), rank(input)).");
     }
     sort(dims.begin(), dims.end());
     auto x_grad_name = framework::GradVarName("X");
@@ -219,6 +243,14 @@ class ReduceGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
       ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.GetPlace());
   }
 };
 

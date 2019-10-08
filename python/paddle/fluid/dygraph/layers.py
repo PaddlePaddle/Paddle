@@ -150,20 +150,20 @@ class Layer(core.Layer):
             if p.trainable:
                 p.clear_gradient()
 
-    def _build_once(self, *args):
+    def _build_once(self, *args, **kwargs):
         pass
 
-    def __call__(self, *inputs):
+    def __call__(self, *inputs, **kwargs):
         if not self._built:
-            self._build_once(*inputs)
+            self._build_once(*inputs, **kwargs)
             if parallel_helper._is_data_parallel_mode():
                 parallel_helper._broadcast_parameters(self._parameters.values())
 
-        outputs = self.forward(*inputs)
+        outputs = self.forward(*inputs, **kwargs)
         self._built = True
         return outputs
 
-    def forward(self, *inputs):
+    def forward(self, *inputs, **kwargs):
         raise NotImplementedError
 
     def backward(self, *inputs):
@@ -216,6 +216,8 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
+        if isinstance(getattr(type(self), name, None), property):
+            object.__setattr__(self, name, value)
         if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
@@ -226,6 +228,11 @@ class Layer(core.Layer):
                 tensor = var.get_tensor()
                 tensor.set(self._loaddict_holder[value.name].numpy(),
                            framework._current_expected_place())
+            if name in params:
+                # remove unused param in tracer
+                if framework._dygraph_tracer_ is not None:
+                    framework._dygraph_tracer_._vars.pop(params[name].name,
+                                                         None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)

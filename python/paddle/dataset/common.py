@@ -72,6 +72,9 @@ def download(url, module_name, md5sum, save_name=None):
                             url.split('/')[-1]
                             if save_name is None else save_name)
 
+    if os.path.exists(filename) and md5file(filename) == md5sum:
+        return filename
+
     retry = 0
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):

@@ -123,8 +123,8 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope
-  glog box_wrapper shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 
@@ -179,7 +179,7 @@ if(WITH_DISTRIBUTE)
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper box_wrapper lodtensor_printer
+  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
@@ -190,7 +190,7 @@ else()
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper box_wrapper lodtensor_printer feed_fetch_method
+  lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
@@ -202,7 +202,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(prune SRCS prune.cc DEPS framework_proto)
+cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
@@ -222,6 +222,9 @@ endif (NOT WIN32)
 
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
+
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
 # Get the current working branch
 execute_process(
@@ -243,3 +246,35 @@ message(STATUS "commit: ${PADDLE_COMMIT}")
 message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+if(WIN32)
+  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+else(WIN32)
+  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+endif(WIN32)
+
+cc_library(paddle_framework_shared
+    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    DEPS ${FLUID_FRAMEWORK_MODULES})
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
+target_link_libraries(paddle_framework_shared ${os_dependency_modules})
+
+if (LINUX)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.so
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if (WIN32)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dll
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if(APPLE)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
+      CACHE INTERNAL "Fluid framework lib")
+endif()

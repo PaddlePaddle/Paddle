@@ -20,11 +20,13 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <utility>
-
-#include "paddle/fluid/framework/block_desc.h"
+#include <vector>
+#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -44,16 +46,27 @@ class Layer : public imperative::Layer {
       const std::vector<std::shared_ptr<imperative::VarBase>> &inputs)
       override {
     PYBIND11_OVERLOAD(std::vector<std::shared_ptr<imperative::VarBase>>, Layer,
-                      Forward,
-                      inputs);  // NOLINT
+                      Forward, inputs);  // NOLINT
   }
 };
 
-class PYBIND11_HIDDEN PyOpBase : public imperative::OpBase {
+// warper for pyobject to avoid imperative module depend on python
+// TODO(jiabin) Add OpBase's pybind interface back to enable backward hook
+class PYBIND11_HIDDEN PyCallableObject {
  public:
-  using imperative::OpBase::OpBase;  // Inherit constructors
+  PyCallableObject(std::shared_ptr<py::object> py_obj_ptr)
+      : py_obj_ptr_(std::move(py_obj_ptr)) {}
+  ~PyCallableObject() {
+    py::call_guard<py::gil_scoped_acquire>();
+    py_obj_ptr_.reset();
+  }
+  void operator()() {
+    py::call_guard<py::gil_scoped_acquire>();
+    py_obj_ptr_->operator()(this);
+  }
 
-  PyOpBase(const std::string &name) : OpBase(name) {}
+ private:
+  std::shared_ptr<py::object> py_obj_ptr_;
 };
 
 // Function like obj.attr_name in Python.
@@ -125,33 +138,43 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     }
   } else {
     PADDLE_THROW(
-        "unsupported type %s, must be Variable, List[Variable] or "
+        "unsupported type %s, must be Variable, list[Variable] or "
         "tuple[Variable]",
         py::str(handle));
   }
 
-  PADDLE_ENFORCE(PyErr_Occurred() == nullptr,
-                 py::str(py::handle(PyErr_Occurred())));
-
   return result;
 }
 
-using PyVarBaseMap = std::unordered_map<std::string, py::handle>;
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
-static imperative::VarBasePtrMap ConvertToVarBasePtrMap(
-    const PyVarBaseMap &map) {
-  imperative::VarBasePtrMap result;
+static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
+    const PyNameVarBaseMap &map) {
+  imperative::NameVarBaseMap result;
   for (auto &pair : map) {
     auto var_vec = GetVarBaseListFromPyHandle(pair.second);
     if (!var_vec.empty()) {
       result.emplace(pair.first, std::move(var_vec));
     }
   }
+
+  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
+                    py::str(py::handle(PyErr_Occurred())));
   return result;
 }
 
+static std::string GetTypeName(const imperative::VarBase &var) {
+  if (var.Type() == framework::proto::VarType::RAW) {
+    return "RAW";
+  } else if (!var.Var().IsInitialized()) {
+    return "nullptr";
+  } else {
+    return framework::ToTypeName(var.Var().Type());
+  }
+}
+
 // Bind Methods
-void BindImperative(pybind11::module *m_ptr) {
+void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
@@ -200,68 +223,86 @@ void BindImperative(pybind11::module *m_ptr) {
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
-      m, "VarBase", R"DOC()DOC")
+      m, "VarBase",
+      R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>, const paddle::platform::CPUPlace,
-                   bool, bool>())
-      .def(
-          py::init<const std::string &, paddle::framework::proto::VarType::Type,
-                   const std::vector<int64_t>,
-                   const paddle::platform::CUDAPlace, bool, bool>())
+      .def("__init__",
+           [](imperative::VarBase &self, const std::string &name,
+              framework::proto::VarType::Type type,
+              framework::proto::VarType::Type dtype,
+              const std::vector<int> &dims, bool persistable) {
+             new (&self) imperative::VarBase(name);
+             self.SetPersistable(persistable);
+             self.SetType(type);
+             self.SetDataType(dtype);
+             if (type == framework::proto::VarType::LOD_TENSOR) {
+               auto *tensor =
+                   self.MutableVar()->GetMutable<framework::LoDTensor>();
+               tensor->Resize(framework::make_ddim(dims));
+             }
+           })
       .def("_run_backward",
            [](imperative::VarBase &self,
-              const imperative::detail::BackwardStrategy &bckst) {
-             self.RunBackward(bckst);
-           })
-      .def("_grad_name", &imperative::VarBase::GradName)
-      .def("_grad_value", &imperative::VarBase::GradValue)
+              const imperative::detail::BackwardStrategy &bckst,
+              const imperative::Tracer &tracer) {
+             // TODO(jiabin): when we impl more backward execution we can select
+             // them
+
+             imperative::Engine *engine = tracer.GetDefaultEngine();
+             VLOG(3) << "Start backward";
+             engine->Init(&self, bckst);
+             engine->Execute();
+             VLOG(3) << "Finish backward";
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("_grad_name", &imperative::VarBase::GradVarName)
+      .def("_grad_value",
+           [](imperative::VarBase &self) {
+             return self.MutableGradVar()->Get<framework::LoDTensor>();
+           },
+           py::return_value_policy::reference)
       .def("_clear_gradient", &imperative::VarBase::ClearGradient)
       .def("_grad_ivar",
-           [](const imperative::VarBase &self) { return self.grads_; },
-           py::return_value_policy::reference)
+           [](const imperative::VarBase &self) {
+             auto &grad_var = self.GradVarBase();
+             if (grad_var && grad_var->Var().IsInitialized()) {
+               return grad_var;
+             } else {
+               return std::shared_ptr<imperative::VarBase>(nullptr);
+             }
+           },
+           py::return_value_policy::copy)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
-              bool blocking) {
-             return self.NewVarBase(place, blocking).release();
-           },
-           py::return_value_policy::take_ownership)
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CUDAPlace &place,
-              bool blocking) {
-             return self.NewVarBase(place, blocking).release();
-           },
-           py::return_value_policy::take_ownership)
-      .def("value",
-           [](const imperative::VarBase &self) { return self.var_.get(); },
+              bool blocking) { return self.NewVarBase(place, blocking); },
+           py::return_value_policy::copy)
+      .def("value", [](imperative::VarBase &self) { return self.MutableVar(); },
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
-      .def_property_readonly("shape", &imperative::VarBase::Shape)
+      .def_property_readonly(
+          "shape",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::LoDTensor>().dims());
+            } else {
+              VLOG(2) << "It is meaningless to get shape of variable type "
+                      << GetTypeName(self);
+              return std::vector<int>();
+            }
+          })
+      .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType)
-      .def_property("persistable", &imperative::VarBase::IsPersistable,
+      .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property("stop_gradient", &imperative::VarBase::IsStopGradient,
-                    &imperative::VarBase::SetStopGradient);
-
-  py::class_<imperative::OpBase, PyOpBase>(m, "OpBase", R"DOC()DOC")
-      .def(py::init<const std::string &>())
-      .def("register_backward_hooks",
-           [](imperative::OpBase &self, const py::object &callable) {
-             self.RegisterBackwardHooks(callable);
-           })
-      .def_property("_trace_id",
-                    [](const imperative::OpBase &self) {
-                      py::gil_scoped_release release;
-                      return self.trace_id_;
-                    },
-                    [](imperative::OpBase &self, int trace_id) {
-                      py::gil_scoped_release release;
-                      self.trace_id_ = trace_id;
-                    },
-                    py::return_value_policy::reference)
-      .def_property_readonly("type", &imperative::OpBase::Type);
+      .def_property("stop_gradient",
+                    &imperative::VarBase::OverridedStopGradient,
+                    &imperative::VarBase::SetOverridedStopGradient);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
@@ -271,42 +312,35 @@ void BindImperative(pybind11::module *m_ptr) {
              return self.Forward(inputs);
            });
 
-  // NOTE(zjl): Tracer use PyVarBaseMap as its parameter but not VarBasePtrMap.
-  // We call Python C-API to convert PyVarBaseMap to VarBasePtrMap, instead
-  // making conversion in Python code. This speed up Tracer.trace() about 6%
-  // in ptb model and make time cost in Python to be nearly zero.
   py::class_<imperative::Tracer>(m, "Tracer", "")
       .def("__init__",
-           [](imperative::Tracer &self, framework::BlockDesc *root_block) {
-             new (&self) imperative::Tracer(root_block);
-           })
+           [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
       .def("trace",
-           [](imperative::Tracer &self, imperative::OpBase *op,
-              const PyVarBaseMap &inputs, const PyVarBaseMap &outputs,
-              framework::AttributeMap attrs_map,
-              const platform::CPUPlace expected_place,
-              const bool stop_gradient = false) {
-             auto ins = ConvertToVarBasePtrMap(inputs);
-             auto outs = ConvertToVarBasePtrMap(outputs);
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CUDAPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.Trace(op, std::move(ins), &outs, attrs_map, expected_place,
-                          stop_gradient);
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
              }
            })
-      .def("trace", [](imperative::Tracer &self, imperative::OpBase *op,
-                       const PyVarBaseMap &inputs, const PyVarBaseMap &outputs,
-                       framework::AttributeMap attrs_map,
-                       const platform::CUDAPlace expected_place,
-                       const bool stop_gradient = false) {
-        auto ins = ConvertToVarBasePtrMap(inputs);
-        auto outs = ConvertToVarBasePtrMap(outputs);
-        {
-          py::gil_scoped_release release;
-          self.Trace(op, std::move(ins), &outs, attrs_map, expected_place,
-                     stop_gradient);
-        }
-      });
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CPUPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
+           });
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(
