@@ -65,7 +65,7 @@ def map_readers(func, *readers):
 
     If input readers output the following data entries: 2 3,
     and the input func is mul(x, y),
-    the output of the resulted reader will be 6
+    the output of the resulted reader will be 6.
 
 
     Args:
