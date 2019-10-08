@@ -47,6 +47,17 @@ class TestTransposeOp(OpTest):
         self.shape = (3, 4)
         self.axis = (1, 0)
 
+class TestTransposeOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of transpose_op must be Variable.
+            perm = [3, 4]
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.transpose, x1, perm)
+            # The input dtype of softmax_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4, 6], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.transpose, x2, perm)
 
 class TestCase0(TestTransposeOp):
     def initTestCase(self):
