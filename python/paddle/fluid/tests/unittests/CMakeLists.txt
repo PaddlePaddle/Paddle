@@ -111,10 +111,8 @@ function(bash_test_modules TARGET_NAME)
 
     set(options SERIAL)
     set(oneValueArgs "")
-    set(multiValueArgs MODULES DEPS ENVS)
+    set(multiValueArgs MODULES DEPS ENVS LABELS)
     cmake_parse_arguments(bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
 
     set(timeout 350)
     if(${bash_test_modules_TIMEOUT})
