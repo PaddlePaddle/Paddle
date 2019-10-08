@@ -87,7 +87,7 @@ class TestExpandAsOpRank3(OpTest):
 class TestExpandAsOpRank4(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(2, 3, 3, 16).astype("float64")
+        x = np.random.rand(1, 1, 3, 16).astype("float64")
         target_tensor = np.random.rand(4, 6, 6, 32).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
