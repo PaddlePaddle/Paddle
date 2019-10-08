@@ -11751,21 +11751,19 @@ def sum(x):
     return out
 
 
-@templatedoc()
 def slice(input, axes, starts, ends):
     """
-    Slice Operator.
-
-    Produces a slice of the input tensor along multiple axes. Similar to numpy:
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
     https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-    Slice uses `axes`, `starts` and `ends` attributes to specify the start and
-    end dimension for each axis in the list of axes, it uses this information
-    to slice the input data tensor. If a negative value is passed for any of
-    the start or end indices, it represents number of elements before the end
-    of that dimension. If the value passed to start or end is larger than
-    the n (the number of elements in this dimension), it represents n.
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` (here 0 is the initial position).
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
     For slicing to the end of a dimension with unknown size, it is recommended
-    to pass in INT_MAX. The size of axes must be equal to starts\' and ends\'.
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
     Following examples will explain how slice works:
 
     .. code-block:: text
@@ -11784,17 +11782,26 @@ def slice(input, axes, starts, ends):
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
                 starts = [0, 1]
-                ends = [-1, 1000]
+                ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
             Then:
-                result = [ [2, 3, 4], ]
+                result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
     Args:
-        input (Variable): ${input_comment}.
-        axes (List): ${axes_comment}
-        starts (List|Variable): ${starts_comment}
-        ends (List|Variable): ${ends_comment}
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Variable.
+        TypeError: The type of ``ends`` must be list, tuple or Variable.
 
     Examples:
         .. code-block:: python
@@ -11810,11 +11817,14 @@ def slice(input, axes, starts, ends):
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
             sliced_1 = fluid.layers.slice(input, axes=axes, starts=starts, ends=ends)
+            # sliced_1 is input[:, 0:3, 0:2, 2:4].
+
 
             # example 2:
             # attr starts is a list which contain tensor Variable.
             minus_3 = fluid.layers.fill_constant([1], "int32", -3)
             sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
+            # sliced_2 is input[:, 0:3, 0:2, 2:4].
     """
 
     if not isinstance(starts, (list, tuple, Variable)):
