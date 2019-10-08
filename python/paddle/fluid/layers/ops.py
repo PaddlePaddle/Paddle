@@ -79,19 +79,19 @@ softshrink.__doc__ = """
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases}
-            x - \alpha, \text{if } x > \alpha \\
-            x + \alpha, \text{if } x < -\alpha \\
-            0,  \text{otherwise}
-            \end{cases}
+    out = \\begin{cases}
+           x - \\alpha, \\text{if } x > \\alpha \\\\
+           x + \\alpha, \\text{if } x < -\\alpha \\\\
+           0,  \\text{otherwise}
+          \\end{cases}
 
 
 Args:
-    x: Input of Softshrink operator
-    alpha (FLOAT): non-negative offset
+    x: A Variable holding input tensor of Softsign operator
+    alpha (float): the alpha value of the formula
     
 Returns:
-    Output of Softshrink operator
+    A Variable holding output tensor of softshrink operator with the sampe type of input tensor. 
 
 Examples:
     .. code-block:: python

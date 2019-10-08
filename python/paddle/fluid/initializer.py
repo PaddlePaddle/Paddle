@@ -315,6 +315,9 @@ class NormalInitializer(Initializer):
         loc (float): mean of the normal distribution
         scale (float): standard deviation of the normal distribution
         seed (int): random seed
+    
+    Return:
+        One object of param attribute.
 
     Examples:
         .. code-block:: python
@@ -344,7 +347,8 @@ class NormalInitializer(Initializer):
                    should be added
 
         Returns:
-            the initialization op
+            One object of param attribute
+
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
@@ -398,6 +402,9 @@ class TruncatedNormalInitializer(Initializer):
         loc (float): mean of the normal distribution
         scale (float): standard deviation of the normal distribution
         seed (int): random seed
+    
+    Return:
+        One object of param attribute
 
     Examples:
         .. code-block:: python
