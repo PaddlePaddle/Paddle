@@ -41,8 +41,10 @@ static constexpr bool CanInplaceAct() {
       : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
    public:                                                                   \
     void Make() override {                                                   \
-      AddInput("X", "Input of " #OP_NAME " operator");                       \
-      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddInput("X",                                                          \
+               "A Variable holding input tensor of " #OP_NAME " operator");  \
+      AddOutput("Out", "A Variable holding output tensor of " #OP_NAME       \
+                       " operator with the same type of input tensor");      \
       AddAttr<bool>("use_mkldnn",                                            \
                     "(bool, default false) Only used in mkldnn kernel")      \
           .SetDefault(false);                                                \
