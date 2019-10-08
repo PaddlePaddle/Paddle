@@ -238,24 +238,24 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    This function creates a fully connected layer in the network. It can take
-    one or multiple tensors as its inputs(input can be a list of Variable, see
-    Args in detail). It creates a variable called weights for each input tensor,
+    This operator creates a fully connected layer in the network. It can take
+    a Tensor(or LoDTensor) or a list of Tensor(or LoDTensor) as its inputs(see
+    Args in detail). It creates a variable called weight for each input Tensor,
     which represents a fully connected weight matrix from each input unit to
-    each output unit. The fully connected layer multiplies each input tensor
-    with its corresponding weight to produce an output Tensor with shape [M, `size`],
-    where M is batch size. If multiple input tensors are given, the results of
-    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
+    each output unit. The fully connected layer multiplies each input Tensor
+    with its corresponding weight to produce an output Tensor with shape :math:`[M, size]` ,
+    where M is batch size. If a list of Tensor is given, the results of
+    multiple output Tensors with shape :math:`[M, size]` will be summed up. If :attr:`bias_attr`
     is not None, a bias variable will be created and added to the output.
-    Finally, if activation is not None, it will be applied to the output as well.
+    Finally, if :attr:`act` is not None, it will be applied to the output as well.
 
-    When the input is single tensor:
+    When the input is a single Tensor(or LoDTensor):
 
     .. math::
 
         Out = Act({XW + b})
 
-    When the input are multiple tensors:
+    When the input is a list of Tensor(or LoDTensor):
 
     .. math::
 
@@ -268,13 +268,24 @@ def fc(input,
     * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
     * :math:`b`: The bias parameter created by this layer (if needed).
     * :math:`Act`: The activation function.
-    * :math:`Out`: The output tensor.
-
-    See below for an example.
+    * :math:`Out`: The output Tensor.
 
     .. code-block:: text
 
-        Given:
+        Case 1:
+        Given a single Tensor data_1, and num_flatten_dims = 2:
+            data_1.data = [[[0.1, 0.2],
+                            [0.3, 0.4]]]
+            data_1.shape = (1, 2, 2) # 1 is batch_size
+
+            out = fluid.layers.fc(input=data_1, size=1, num_flatten_dims=2)
+
+        Then output is:
+            out.data = [[0.83234344], [0.34936576]]
+            out.shape = (1, 2, 1)
+
+        Case 2:
+        Given a list of Tensor:
             data_1.data = [[[0.1, 0.2],
                            [0.3, 0.4]]]
             data_1.shape = (1, 2, 2) # 1 is batch_size
@@ -289,31 +300,34 @@ def fc(input,
             out.shape = (1, 2)
 
     Args:
-        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
-            the input tensor(s) is at least 2.
-        size(int): The number of output units in this layer.
-        num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
+        input (Variable|list of Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` or
+            a list of Tensor(or LoDTensor). The dimensions of the input Tensor is at least 2 and the data
+            type should be float32 or float64.
+        size(int): The number of output units in this layer, which also means the feature size of ouput
+            Tensor(or LoDTensor).
+        num_flatten_dims (int): The fc layer can accept an input Tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
-            into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
-            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
+            into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
+            Tensor is flattened: the first :attr:`num_flatten_dims` (inclusive, index starts from 1)
             dimensions will be flatten to form the first dimension of the final matrix (height of
-            the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
-            form the second dimension of the final matrix (width of the matrix). For example, suppose
-            `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
-            parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        act (str, default None): Activation to be applied to the output of this layer.
-        name (str, default None): The name of this layer.
+            the matrix), and the rest :math:`rank(X) - num\_flatten\_dims` dimensions are flattened to
+            form the second dimension of the final matrix (width of the matrix). For example, assuming that
+            X is a 5-dimensional Tensor with a shape [2, 3, 4, 5, 6], and :attr:`num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1.
+        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+            sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The transformation result.
+        Variable: Tensor or LoDTensor calculated by fc layer. The data type is same with input.
 
     Raises:
-        ValueError: If rank of the input tensor is less than 2.
+        ValueError: If dimensions of the input Tensor is less than 2.
 
     Examples:
         .. code-block:: python
@@ -2062,24 +2076,25 @@ def sequence_conv(input,
                   act=None,
                   name=None):
     """
-    The sequence_conv receives input sequences with variable length and other convolutional
-    configuration parameters for the filter and stride to apply the convolution operation.
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+
+    This operator receives input sequences with variable length and other convolutional
+    configuration parameters(num_filters, filter_size) to apply the convolution operation.
     It fills all-zero padding data on both sides of the sequence by default to ensure that
     the output is the same length as the input. You can customize the padding behavior by
-    configuring the parameter :attr:`padding\_start`.
+    configuring the parameter :attr:`padding\_start` .
     
     **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
 
     .. code-block:: text
 
-            Here we'll illustrate the details of the padding operation:
+            Here we will illustrate the details of the padding operation:
             For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
-            Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
-            Besides, for the sake of simplicity, we assume M=1 and N=2.
-            X = [[a1, a2;
-                  b1, b2;
-                  c1, c2]
-                 [d1, d2]]
+            Assumed input (X) is a [4, N] float LoDTensor, and for the sake of simplicity, we assume N=2.
+            input.data = [[1, 1],
+                          [2, 2],
+                          [3, 3],
+                          [4, 4]]
 
             This is to say that input (X) has 4 words and the dimension of each word
             representation is 2.
@@ -2092,25 +2107,36 @@ def sequence_conv(input,
                 down_pad_len = max(0, filter_size + padding_start - 1) = 1
 
                 The output of the input sequence after padding is:
-                data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
-                                       a1, a2, b1, b2, c1, c2;
-                                       b1, b2, c1, c2, 0,  0 ]
-                                      [0,  0,  d1, d2, 0,  0 ]]
+                data_aftet_padding = [[0, 0, 1, 1, 2, 2],
+                                      [1, 1, 2, 2, 3, 3],
+                                      [2, 2, 3, 3, 0, 0],
+                                      [0, 0, 4, 4, 0, 0]]
 
                 It will be multiplied by the filter weight to get the final output.
+                Assume num_filters = 3
+                output.data = [[ 0.3234, -0.2334,  0.7433],
+                               [ 0.5646,  0.9464, -0.1223],
+                               [-0.1343,  0.5653,  0.4555],
+                               [ 0.9954, -0.1234, -0.1234]]
+                output.shape = [4, 3]     # 3 = num_filters
+                output.lod = [[0, 3, 4]]  # Remain the same
+
 
     Args:
-        input (Variable): ${x_comment}
+        input (Variable): LoDTensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
+            and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
+            float64.
         num_filters (int): the number of filters.
-        filter_size (int): the height of filter, the width is hidden size by default.
+        filter_size (int): the height of filter. Specified filter width is not supported, the width is
+            hidden_size by default. Default: 3.
         filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
         padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
             future. Currently, it will always pad input to make sure the length of the output is
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
-            while trainnig. 
-        padding_start (int|None): It is used to indicate the start index for padding the input
+            while trainnig. Default: True.
+        padding_start (int): It is used to indicate the start index for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
             The positive number means to skip :attr:`padding_start` time-steps of each instance,
@@ -2118,23 +2144,18 @@ def sequence_conv(input,
             at the end of the sequence to ensure that the output is the same length as the input.
             If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
-            is padded at the end of each input sequence.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, sequence_conv
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-            of sequence_conv. If it is set to None or one attribute of ParamAttr, sequence_conv
-            will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
+            is padded at the end of each input sequence. Default: None.
+        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+            sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: output of sequence_conv
+        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
 
     Examples:
 
@@ -2900,15 +2921,38 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 @templatedoc()
 def sequence_concat(input, name=None):
     """
-    ${comment}
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
+
+    This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
+    and outputs the concatenated LoDTensor.
+
+    .. code-block:: text
+
+        input is a list of LoDTensor:
+            input = [x1, x2]
+        where:
+            x1.lod = [[0, 3, 5]]
+            x1.data = [[1], [2], [3], [4], [5]]
+            x1.shape = [5, 1]
+
+            x2.lod = [[0, 2, 4]]
+            x2.data = [[6], [7], [8], [9]]
+            x2.shape = [4, 1]
+        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
+
+        output is LoDTensor:
+            out.lod = [[0, 3+2, 5+4]]
+            out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
+            out.shape = [9, 1]
 
     Args:
-        input(list): List of Variables to be concatenated.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor should be same.
+            The data type can be float32, float64 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Output variable of the concatenation.
+        Variable: Output the concatenated LoDTensor. The data type is same as input.
 
     Examples:
         .. code-block:: python
@@ -13877,14 +13921,30 @@ def bilinear_tensor_product(x,
 @templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
-    ${comment}
+    This operator gets tensor data from input with SelectedRows type, and outputs a LoDTensor.
+
+    .. code-block:: text
+
+        input x is SelectedRows:
+           x.rows = [0, 5, 5, 4, 19]
+           x.height = 20
+           x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
+
+        Ouput is LoDTensor:
+           out.shape = [5, 2]
+           out.data = [[1, 1],
+                       [2, 2],
+                       [2, 2],
+                       [3, 3],
+                       [6, 6]]
 
     Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
+        x(SelectedRows): Input with SelectedRows type. The data type is float32, float64, int32 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable: LoDTensor transformed from SelectedRows. The data type is same with input.
 
     Examples:
         .. code-block:: python
