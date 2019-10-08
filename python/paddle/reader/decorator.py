@@ -209,9 +209,6 @@ def buffered(reader, size):
     Return:
         Variable: The buffered data reader.
 
-    Return type:
-        Callable.
-
     Examples:
         .. code-block:: python
 
@@ -303,9 +300,6 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
 
     Returns:
         A decorated reader with data mapping.
-
-    Return type:
-        Callable.
 
     Example:
 

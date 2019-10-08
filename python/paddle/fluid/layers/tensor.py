@@ -830,9 +830,6 @@ def isfinite(x):
     Returns:
         Variable: The tensor variable storing the output, contains a bool value.
 
-    Return type:
-        Variable (Tensor / LoDTensor).
-
     Examples:
 
         .. code-block:: python

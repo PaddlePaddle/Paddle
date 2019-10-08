@@ -13154,9 +13154,6 @@ def merge_selected_rows(x, name=None):
     Returns:
         out(${out_type}): ${out_comment}
 
-    Return type:
-        Variable.
-
     Examples:
         .. code-block:: python
 
