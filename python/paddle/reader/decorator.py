@@ -82,6 +82,9 @@ def map_readers(func, *readers):
 
 def shuffle(reader, buf_size):
     """
+    paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
+    and paddle.reader.shuffle is an alias.
+
     Creates a decorated reader that outputs the shuffled data.
 
     The output data from the origin reader will be saved into a buffer, 
@@ -250,6 +253,9 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
+    paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
+    and paddle.reader.firstn is an alias.
+    
     Creates a decorated reader, and limits the max number of samples that reader could return.
 
     :param reader: the input reader.
