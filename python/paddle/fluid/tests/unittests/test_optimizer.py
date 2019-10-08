@@ -653,7 +653,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out})
 
         if return_input == True:
-            return mul_x, mul_y, mul_out, b1_out, b2_out, mean_out
+            return mul_x, mul_out, b1_out, b2_out, mean_out
         return mul_out, b1_out, b2_out, mean_out
 
     def test_no_checkpoint(self):
@@ -744,8 +744,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         ])
 
     def test_input_as_checkpoints(self):
-        mul_x, mul_y, mul_out, b1_out, b2_out, mean_out = self.net(
-            return_input=True)
+        mul_x, mul_out, b1_out, b2_out, mean_out = self.net(return_input=True)
         self.assertEqual(len(mean_out.block.ops), 4)
         self.assertEqual([op.type for op in mean_out.block.ops],
                          ["mul", "elementwise_add", "elementwise_add", "mean"])
