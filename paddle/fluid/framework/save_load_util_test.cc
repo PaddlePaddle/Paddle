@@ -52,7 +52,7 @@ TEST(test_save_load_util, test_save_load) {
 
   std::map<std::string, std::shared_ptr<Tensor>> load_map_tensor;
 
-  LoadTensorFromDisk("test_1", load_map_tensor);
+  LoadTensorFromDisk("test_1", &load_map_tensor);
 
   ASSERT_TRUE(load_map_tensor.find("t1") != load_map_tensor.end());
   ASSERT_TRUE(load_map_tensor.find("t2") != load_map_tensor.end());
