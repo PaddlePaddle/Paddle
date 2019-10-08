@@ -3856,7 +3856,8 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
-    if act in [None, '', 'elu', 'leaky_relu']:
+    if act in [None, '', 'elu', 'leaky_relu'] and \
+            convert_dtype(input.dtype) in ['float32', 'float64']:
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
         fuse_with_relu = False

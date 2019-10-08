@@ -629,11 +629,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           dy_mul_x_sub_mean_mul_invstd_sum_arr +=
               (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
         }
-        const auto d_y_row_sum = d_y_arr.rowwise().sum().eval();
-        const auto x_minus_mean = x_arr.colwise() - mean_arr;
-        const auto d_y_mul_x_minus_mean_row_sum =
-            (d_y_arr * x_minus_mean).rowwise().sum().eval();
-        const auto inv_var_sqr = inv_var_arr * inv_var_arr;
 
         if (d_scale && d_bias) {
           d_bias_arr = dy_sum_arr;
@@ -693,19 +688,9 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-<<<<<<< HEAD
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
-<<<<<<< HEAD
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
-=======
-// ops::BatchNormInplaceInToOut);
-=======
                   ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
                   paddle::framework::SingleOpInplaceInToOut);
->>>>>>> fa5d46f... inplace_abn forward and backward right. test=develop
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
-//                  ops::BatchNormGradInplaceInToOut);
->>>>>>> d870177... test=develop
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,
