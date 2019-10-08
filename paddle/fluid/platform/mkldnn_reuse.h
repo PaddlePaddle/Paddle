@@ -140,6 +140,9 @@ class MKLDNNHandlerT {
 
   template <typename... Args>
   void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
+    const std::string key_fwd_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_fwd_pd));
     PADDLE_ENFORCE_NOT_NULL(fwd_pd_);
     const std::string key_pd = key_ + "@backward_pd";
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
@@ -445,8 +448,6 @@ class ActivationMKLDNNHandler
     auto src_md =
         platform::MKLDNNMemDesc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
-                                            algorithm, src_md, alpha, beta);
     this->AcquireBackwardPrimitiveDescriptor(algorithm, diff_dst_md, src_md,
                                              alpha, beta);
   }
@@ -496,9 +497,6 @@ class LRNMKLDNNHandler
     auto diff_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
-                                            mkldnn::lrn_across_channels, src_md,
-                                            n, alpha, beta, k);
     this->AcquireBackwardPrimitiveDescriptor(
         mkldnn::lrn_across_channels, src_md, diff_md, n, alpha, beta, k);
   }
@@ -520,175 +518,101 @@ class LRNMKLDNNHandler
   }
 };
 
-class PoolingMKLDNNHandler : public MKLDNNHandler {
+template <typename T>
+class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
+                                                   mkldnn::pooling_backward> {
  public:
-  PoolingMKLDNNHandler(const std::string& pooling_type,
-                       mkldnn::memory::data_type dt, bool is_test,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        dt_(dt),
-        pooling_type_(pooling_type),
-        is_test_(is_test) {}
-
-  std::shared_ptr<mkldnn::pooling_forward::primitive_desc>
-  AcquirePoolingPrimitiveDescriptor(
-      const std::vector<int>& src_tz, const std::vector<int>& dst_tz,
-      const mkldnn::memory::desc& src_md, const mkldnn::memory::desc& dst_md,
+  PoolingMKLDNNHandler(
+      const std::vector<int>& src_dims, const std::vector<int>& dst_dims,
       const std::vector<int>& ksize, const std::vector<int>& strides,
-      const std::vector<int>& paddings, bool ceil_mode) {
-    // Pooling PD has to be passed to Grad op that
-    // may be executed by diffrent thread, hence
-    // for that one we use key that does not contain TID
-    const std::string key_pooling_pd = key_common_ + "@pooling_pd";
-    fwd_pd_ = std::static_pointer_cast<mkldnn::pooling_forward::primitive_desc>(
-        dev_ctx_.GetBlob(key_pooling_pd));
-    if (fwd_pd_ == nullptr) {
-      static std::mutex acquire_barrier;
-      std::lock_guard<std::mutex> block_threads_until_finish_this_job(
-          acquire_barrier);
-      fwd_pd_ =
-          std::static_pointer_cast<mkldnn::pooling_forward::primitive_desc>(
-              dev_ctx_.GetBlob(key_pooling_pd));
-      if (fwd_pd_ == nullptr) {
-        std::vector<int> padding_left_top(paddings);
-        std::vector<int> padding_right_bottom(paddings);
-        if (ceil_mode) {
-          CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
-                            padding_right_bottom);
-        }
-        auto mkldnn_forward_prop_kind =
-            is_test_ ? mkldnn::prop_kind::forward_inference
-                     : mkldnn::prop_kind::forward_training;
-        auto pooling_desc = mkldnn::pooling_forward::desc(
-            mkldnn_forward_prop_kind,
-            pooling_type_ == "max" ? mkldnn::algorithm::pooling_max
-                                   : mkldnn::algorithm::pooling_avg,
-            src_md, dst_md, strides, ksize, padding_left_top,
-            padding_right_bottom, mkldnn::padding_kind::zero);
+      const std::vector<int>& paddings, const std::string& pooling_type,
+      bool ceil_mode, const MKLDNNMemoryFormat fmt,
+      mkldnn::memory::data_type dt, bool is_test,
+      const platform::MKLDNNDeviceContext& dev_ctx, platform::Place cpu_place,
+      const std::string& unique_name, bool exclude_padding)
+      : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
+                                 mkldnn::pooling_backward>(
+            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            platform::CreateKey(src_dims, pooling_type, ksize, strides,
+                                paddings, dt, fmt, unique_name)) {
+    auto src_md = mkldnn::memory::desc(src_dims, dt, fmt);
+    /* create memory descriptor for pooling without specified format
+     * ('any') which lets a primitive (pooling in this case) choose
+     * the memory format preferred for best performance
+     */
+    auto dst_md =
+        platform::MKLDNNMemDesc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
-        fwd_pd_.reset(
-            new mkldnn::pooling_forward::primitive_desc(pooling_desc, engine_));
-        dev_ctx_.SetBlob(key_pooling_pd, fwd_pd_);
-      }
+    std::vector<int> padding_left_top(paddings);
+    std::vector<int> padding_right_bottom(paddings);
+    if (ceil_mode) {
+      CorrectOutputSize(src_dims, dst_dims, ksize, paddings, strides,
+                        padding_right_bottom);
     }
-    return fwd_pd_;
+
+    this->AcquireForwardPrimitiveDescriptor(
+        is_test ? mkldnn::prop_kind::forward_inference
+                : mkldnn::prop_kind::forward_training,
+        pooling_type == "max"
+            ? mkldnn::algorithm::pooling_max
+            : (exclude_padding
+                   ? mkldnn::algorithm::pooling_avg_exclude_padding
+                   : mkldnn::algorithm::pooling_avg_include_padding),
+        src_md, dst_md, strides, ksize, padding_left_top, padding_right_bottom,
+        mkldnn::padding_kind::zero);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireDstMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_primitive_desc(), ptr,
-                                            "@dst_mem_p");
+  PoolingMKLDNNHandler(
+      const std::vector<int>& diff_dst_dims,
+      const std::vector<int>& diff_src_dims, const std::vector<int>& ksize,
+      const std::vector<int>& strides, const std::vector<int>& paddings,
+      const std::string& pooling_type, bool ceil_mode,
+      const MKLDNNMemoryFormat fmt, const MKLDNNMemoryFormat diff_dst_fmt,
+      mkldnn::memory::data_type dt,
+      const platform::MKLDNNDeviceContext& dev_ctx, platform::Place cpu_place,
+      const std::string& unique_name, bool exclude_padding)
+      : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
+                                 mkldnn::pooling_backward>(
+            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            platform::CreateKey(diff_src_dims, pooling_type, ksize, strides,
+                                paddings, dt, fmt, unique_name)) {
+    auto diff_dst_md = mkldnn::memory::desc(
+        diff_dst_dims, platform::MKLDNNGetDataType<T>(), diff_dst_fmt);
+    auto diff_src_md =
+        mkldnn::memory::desc(diff_src_dims, platform::MKLDNNGetDataType<T>(),
+                             MKLDNNMemoryFormat::any);
+
+    this->AcquireBackwardPrimitiveDescriptor(
+        pooling_type == "max"
+            ? mkldnn::algorithm::pooling_max
+            : (exclude_padding
+                   ? mkldnn::algorithm::pooling_avg_exclude_padding
+                   : mkldnn::algorithm::pooling_avg_include_padding),
+        diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
+        mkldnn::padding_kind::zero);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
     mkldnn::memory::primitive_desc workspace_mpd =
-        pooling_type_ == "max"
-            ? fwd_pd_->workspace_primitive_desc()
-            : mkldnn::memory::primitive_desc(
-                  {{}, dt_, MKLDNNMemoryFormat::nchw}, engine_);
+        this->fwd_pd_->workspace_primitive_desc();
     // Pooling PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
-    auto local_key = key_common_ + "@workspace";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    auto local_key = this->key_common_ + "@workspace";
+    auto mem_p = std::static_pointer_cast<mkldnn::memory>(
+        this->dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
       static std::mutex acquire_barrier;
       std::lock_guard<std::mutex> block_threads_until_finish_this_job(
           acquire_barrier);
-      mem_p =
-          std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+      mem_p = std::static_pointer_cast<mkldnn::memory>(
+          this->dev_ctx_.GetBlob(local_key));
       if (mem_p == nullptr) {
         mem_p = std::make_shared<mkldnn::memory>(workspace_mpd);
-        dev_ctx_.SetBlob(local_key, mem_p);
+        this->dev_ctx_.SetBlob(local_key, mem_p);
       }
     }
     return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::pooling_forward> AcquirePooling(
-      std::shared_ptr<mkldnn::memory> dst_memory,
-      std::shared_ptr<mkldnn::memory> src_memory) {
-    auto prim_key = key_ + "@pooling_p";
-
-    auto pooling_p = std::static_pointer_cast<mkldnn::pooling_forward>(
-        dev_ctx_.GetBlob(prim_key));
-    if (pooling_p == nullptr) {
-      if (is_test_) {
-        pooling_p = std::make_shared<mkldnn::pooling_forward>(
-            *fwd_pd_, *(src_memory), *(dst_memory));
-      } else {
-        // For training we need to create workspace
-        // to store indices from backward
-        auto workspace_memory = this->AcquireWorkspaceMemory();
-
-        pooling_p = std::make_shared<mkldnn::pooling_forward>(
-            *fwd_pd_, *src_memory, *dst_memory, *workspace_memory);
-      }
-      dev_ctx_.SetBlob(prim_key, pooling_p);
-    }
-    return pooling_p;
-  }
-
-  std::shared_ptr<mkldnn::pooling_backward::primitive_desc>
-  AcquirePoolingBackwardPrimitiveDescriptor(
-      const mkldnn::memory::desc& diff_dst_md,
-      const mkldnn::memory::desc& diff_src_md, const std::vector<int>& ksize,
-      const std::vector<int>& strides, const std::vector<int>& paddings) {
-    const std::string key_pooling_pd = key_common_ + "@pooling_pd";
-    const std::string key_pooling_bwd_pd = key_ + "@pooling_bwd_pd";
-    bwd_pd_ =
-        std::static_pointer_cast<mkldnn::pooling_backward::primitive_desc>(
-            dev_ctx_.GetBlob(key_pooling_bwd_pd));
-    if (bwd_pd_ == nullptr) {
-      fwd_pd_ =
-          std::static_pointer_cast<mkldnn::pooling_forward::primitive_desc>(
-              dev_ctx_.GetBlob(key_pooling_pd));
-      // PD from FWD op has to exist.
-      PADDLE_ENFORCE(fwd_pd_ != nullptr, "Pooling MKL-DNN not found in cache!");
-
-      auto backward_desc = mkldnn::pooling_backward::desc(
-          pooling_type_ == "max" ? mkldnn::algorithm::pooling_max
-                                 : mkldnn::algorithm::pooling_avg,
-          diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
-          mkldnn::padding_kind::zero);
-      bwd_pd_.reset(new mkldnn::pooling_backward::primitive_desc(
-          backward_desc, engine_, *fwd_pd_));
-
-      dev_ctx_.SetBlob(key_pooling_bwd_pd, bwd_pd_);
-    }
-    return bwd_pd_;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemoryFromDataPrimitive(
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    auto diff_dst_pd = bwd_pd_->diff_dst_primitive_desc();
-    auto user_pd = user_memory_p->get_primitive_desc();
-    return this->AcquireMemory(diff_dst_pd, user_pd, user_memory_p,
-                               "@diff_dst_mem_p", pipeline);
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemoryFromPrimitive(void* ptr) {
-    return this->AcquireMemoryFromPrimitive(bwd_pd_->diff_src_primitive_desc(),
-                                            ptr, "@diff_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::pooling_backward> AcquirePoolingBackward(
-      std::shared_ptr<mkldnn::memory> diff_dst_memory,
-      std::shared_ptr<mkldnn::memory> workspace,
-      std::shared_ptr<mkldnn::memory> diff_src_memory) {
-    auto prim_key = key_ + "@pooling_bwd_p";
-
-    auto pooling_bwd_p = std::static_pointer_cast<mkldnn::pooling_backward>(
-        dev_ctx_.GetBlob(prim_key));
-    if (pooling_bwd_p == nullptr) {
-      pooling_bwd_p = std::make_shared<mkldnn::pooling_backward>(
-          *bwd_pd_, *diff_dst_memory, *workspace, *diff_src_memory);
-      dev_ctx_.SetBlob(prim_key, pooling_bwd_p);
-    }
-
-    return pooling_bwd_p;
   }
 
  private:
@@ -710,13 +634,6 @@ class PoolingMKLDNNHandler : public MKLDNNHandler {
       }
     }
   }
-
- private:
-  mkldnn::memory::data_type dt_;
-  std::string pooling_type_;
-  bool is_test_;
-  std::shared_ptr<mkldnn::pooling_forward::primitive_desc> fwd_pd_;
-  std::shared_ptr<mkldnn::pooling_backward::primitive_desc> bwd_pd_;
 };
 
 class TransposeMKLDNNHandler : public MKLDNNHandler {

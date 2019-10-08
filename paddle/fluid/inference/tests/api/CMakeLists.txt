@@ -124,11 +124,6 @@ set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
 download_model_and_data(${LAC_INSTALL_DIR} "lac_model.tar.gz" "lac_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc)
 
-# MM DNN
-set(MM_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mm_dnn")
-download_model_and_data(${MM_DNN_INSTALL_DIR} "MM_DNN_model.tar.gz" "MM_DNN_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_mm_dnn ${MM_DNN_INSTALL_DIR} analyzer_mm_dnn_tester.cc)
-
 # Pyramid DNN
 set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
@@ -288,4 +283,29 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_cascade_rcnn_test SRCS trt_cascade_rcnn_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
 endif()
+
+set(CAPI_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_tests_models")
+if (NOT EXISTS ${CAPI_MODEL_INSTALL_DIR})
+    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
+endif()
+inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${CAPI_MODEL_INSTALL_DIR}/trt_inference_test_models)
+
+set(CAPI_MODEL_INSTALL_PD_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_mobilenet")
+if (NOT EXISTS ${CAPI_MODEL_INSTALL_PD_DIR})
+    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_PD_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+endif()
+inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${CAPI_MODEL_INSTALL_PD_DIR}/model)
+
+if(WITH_MKLDNN)
+  inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+            ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
+ endif()
