@@ -248,7 +248,7 @@ if(WITH_DISTRIBUTE)
         bash_test_modules(test_launch MODULES test_launch.sh)
 
         foreach(TEST_OP ${DIST_TEST_OPS})
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh LABELS "RUN_TYPE=EXCLUSIVE")
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE")
         endforeach(TEST_OP)
     endif(NOT APPLE)
 endif()
