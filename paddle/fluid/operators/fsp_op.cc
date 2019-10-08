@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fsp_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -113,12 +114,29 @@ class FSPOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class FSPGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("fsp_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fsp, ops::FSPOp, ops::FSPOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(fsp, ops::FSPOp, ops::FSPOpMaker, ops::FSPGradOpDescMaker);
 REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
 REGISTER_OP_CPU_KERNEL(
     fsp, ops::FSPOpKernel<paddle::platform::CPUDeviceContext, float>,
