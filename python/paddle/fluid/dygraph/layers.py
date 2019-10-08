@@ -26,12 +26,7 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.framework import Variable
 
-__all__ = ['Layer', 'var_base_to_np']
-
-
-def var_base_to_np(var_base):
-    var = var_base._copy_to(core.CPUPlace(), True)
-    return np.array(var.value().get_tensor())
+__all__ = ['Layer']
 
 
 class Layer(core.Layer):
@@ -208,29 +203,7 @@ class Layer(core.Layer):
             assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
                 parameter.name)
 
-            var = parameter._ivar.value()
-            tensor = var.get_tensor()
-
-            model_np = np.array(tensor)
-            load_para = self._loaddict_holder[parameter.name]
-
-            if isinstance(load_para, Variable):
-                load_para_np = load_para.numpy()
-            elif isinstance(load_para, core.VarBase):
-                load_para_np = var_base_to_np(load_para)
-            elif isinstance(load_para, np.ndarray):
-                load_para_np = load_para
-            else:
-                raise RuntimeError("State dict type {} not supprt".format(
-                    str(type(load_para))))
-
-            assert model_np.shape == load_para_np.shape,  \
-                                      "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
-
-            assert model_np.dtype == load_para_np.dtype,  \
-                                      "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {}  but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
-
-            tensor.set(load_para_np, framework._current_expected_place())
+            parameter.set_value(self._loaddict_holder[parameter.name])
 
         self._parameters[name] = parameter
         return parameter
@@ -255,30 +228,7 @@ class Layer(core.Layer):
                 assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
                     value.name)
 
-                # check shape and dtype
-                var = value._ivar.value()
-                tensor = var.get_tensor()
-
-                model_np = np.array(tensor)
-                load_para = self._loaddict_holder[value.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = var_base_to_np(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError("State dict type {} not supprt".format(
-                        str(type(load_para))))
-
-                assert model_np.shape == load_para_np.shape,  \
-                                      "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
-
-                assert model_np.dtype == load_para_np.dtype,  \
-                                      "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {}  but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                value.set_value(self._loaddict_holder[value.name])
 
             if name in params:
                 # remove unused param in tracer
@@ -327,31 +277,7 @@ class Layer(core.Layer):
         self._loaddict_holder = stat_dict
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
-                var = item._ivar.value()
-                tensor = var.get_tensor()
-                model_np = np.array(tensor)
-
-                load_para = stat_dict[item.name]
-
-                if isinstance(load_para, framework.Variable):
-                    load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
-                    load_para_np = var_base_to_np(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError("State dict type {} not supprt".format(
-                        str(type(load_para))))
-
-                assert model_np.shape == load_para_np.shape,  \
-                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} " \
-                                          "but load tensor with shape {}".format( item.name, model_np.shape, load_para_np.shape)
-
-                assert model_np.dtype == load_para_np.dtype, \
-                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with shape {} " \
-                                          "but load tensor with shape {}".format( item.name, model_np.dtype, load_para_np.dtype)
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                item.set_value(stat_dict[item.name])
             else:
                 raise RuntimeError(
                     "Parameter not found, Can't not find [ {} ] in stat_dict".

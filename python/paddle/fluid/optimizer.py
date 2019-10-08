@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import numpy
 import numpy as np
 from collections import defaultdict
 
@@ -33,7 +32,7 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph.learning_rate_scheduler import LearningRateDecay
-from .dygraph.layers import var_base_to_np
+from .framework import _var_base_to_np
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -97,9 +96,26 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
+        self._accumulators_holder = {}
 
+    @framework.dygraph_only
     def state_dict(self):
-        # state dict from self._accumulators
+        '''
+        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        If the optimzier never be called(minimize function), the state_dict is empty.
+
+        Args: None
+        Return:
+            state_dict(dict) : dict contains all the variablel used by optimizer
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                adam = fluid.optimizer.Adam(0.001)
+                state_dict = adam.state_dict()
+
+        '''
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
@@ -113,7 +129,29 @@ class Optimizer(object):
             state_dict['global_step'] = var_temp
         return state_dict
 
+    @framework.dygraph_only
     def set_dict(self, state_dict):
+        '''
+        Load optimizer state dict. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+
+        Args: 
+            state_dict(dict) : Dict contains all the Variable needed by optimizer
+        Return:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                adam = fluid.optimizer.Adam(0.001)
+                state_dict = adam.state_dict()
+                fluid.save_optimizer( state_dict, "opt_adam")
+                load_state_dict = fluid.load_optimizer( "opt_adam")
+
+                adam.set_dict( load_state_dict ) 
+
+        '''
+
         if isinstance(self._learning_rate, LearningRateDecay):
             assert 'global_step' in state_dict, \
                     'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
@@ -140,6 +178,7 @@ class Optimizer(object):
                     "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
                     type(global_step))
 
+        self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
@@ -153,7 +192,7 @@ class Optimizer(object):
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
-                    load_para_np = var_base_to_np(load_para)
+                    load_para_np = _var_base_to_np(load_para)
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -169,91 +208,6 @@ class Optimizer(object):
                                                 item.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
-
-    def load(self, stat_dict):
-        """
-        load optimizer with learning rate decay in dygraph mode
-        :return: None
-
-        Args:
-            stat_dict: the dict load by load_persistable method
-
-        Examples:
-
-        .. code-block:: python
-
-            from __future__ import print_function
-            import numpy as np
-            import paddle
-            import paddle.fluid as fluid
-            from paddle.fluid.optimizer import SGDOptimizer
-            from paddle.fluid.dygraph.nn import FC
-            from paddle.fluid.dygraph.base import to_variable
-
-            class MLP(fluid.Layer):
-                def __init__(self, name_scope):
-                    super(MLP, self).__init__(name_scope)
-
-                    self._fc1 = FC(self.full_name(), 10)
-                    self._fc2 = FC(self.full_name(), 10)
-
-                def forward(self, inputs):
-                    y = self._fc1(inputs)
-                    y = self._fc2(y)
-                    return y
-
-            with fluid.dygraph.guard():
-                mlp = MLP('mlp')
-                optimizer2 = SGDOptimizer(
-                    learning_rate=fluid.layers.natural_exp_decay(
-                    learning_rate=0.1,
-                    decay_steps=10000,
-                    decay_rate=0.5,
-                    staircase=True))
-
-                train_reader = paddle.batch(
-                        paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
-
-                for batch_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                            [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-
-                    y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                            128, 1)
-
-                    # state dict from a
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-                    label._stop_gradient = True
-                    cost = mlp(img)
-                    avg_loss = fluid.layers.reduce_mean(cost)
-                    avg_loss.backward()
-                    optimizer.minimize(avg_loss)
-                    mlp.clear_gradients()
-                    fluid.dygraph.save_persistables(
-                            mlp.state_dict(), [optimizer, optimizer2], "save_dir_2")
-                    if batch_id == 2:
-                            break
-
-            with fluid.dygraph.guard():
-                mlp_load = MLP('mlp')
-                optimizer_load2 = SGDOptimizer(
-                        learning_rate=fluid.layers.natural_exp_decay(
-                        learning_rate=0.1,
-                        decay_steps=10000,
-                        decay_rate=0.5,
-                        staircase=True))
-                parameters, optimizers = fluid.dygraph.load_persistables(
-                    "save_dir_2")
-                mlp_load.load_dict(parameters)
-                optimizer_load2.load(optimizers)
-            self.assertTrue(optimizer2._learning_rate.__dict__ == optimizer_load2._learning_rate.__dict__)
-
-        """
-        if framework.in_dygraph_mode():
-            self._learning_rate = stat_dict[self._name]
-        else:
-            raise TypeError("load can only be used under DyGraph mode")
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -394,6 +348,13 @@ class Optimizer(object):
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
+
+        if framework.in_dygraph_mode():
+            if len(self._accumulators_holder) > 0:
+                assert var_name in self._accumulators_holder, \
+                        "Optimizer set error, {} should in state dict".format( var_name )
+                var.set_value(self._accumulators_holder[var_name])
+
         self._accumulators[name][param.name] = var
         return var
 

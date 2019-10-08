@@ -147,6 +147,19 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+def _var_base_to_np(var_base):
+    """
+    convert VarBase tp numpy
+    
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
+
+    """
+    var = var_base._copy_to(core.CPUPlace(), True)
+    return np.array(var.value().get_tensor())
+
+
 def cuda_places(device_ids=None):
     """
     Create a list of :code:`fluid.CUDAPlace` objects.
@@ -671,15 +684,25 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray))
-        if list(value.shape) != list(self.shape):
-            raise ValueError(
-                "The shape of the new value must be the same as that of the original Variable."
-            )
-        self_tensor = self._ivar.value().get_tensor()
+        assert isinstance(value, (Variable, np.ndarray, core.VarBase)), \
+                "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+
+        value_np = value
         if isinstance(value, Variable):
-            value = value._ivar.value().get_tensor().__array__()
-        self_tensor.set(value, _current_expected_place())
+            value_np = value.numpy()
+        elif isinstance(value, core.VarBase):
+            value_np = _var_base_to_np(value)
+        self_tensor = self._ivar.value().get_tensor()
+
+        self_tensor_np = np.array(self_tensor)
+
+        assert self_tensor_np.shape == value_np.shape,  \
+                                      "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self._ivar.name, self_tensor_np.shape, value_np.shape)
+
+        assert self_tensor_np.dtype == value_np.dtype,  \
+                                      "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self._ivar.name, self_tensor_np.dtype, value_np.dtype)
+
+        self_tensor.set(value_np, _current_expected_place())
 
     @dygraph_only
     def backward(self, backward_strategy=None):

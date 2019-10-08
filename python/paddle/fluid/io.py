@@ -1430,9 +1430,9 @@ def save(program, model_path):
     """
     This function save parameters, optimizer information and network description to  model_path.
 
-    The parameters contains all the trainable Variable, will save to a file with shuffix ".pdparams".
-    The optimizer information contains all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with shuffix ".pdopt". (If the optimizer have no variable need to save (like SGD), the fill will not generated).
-    The network description is the description of the program. It's only used for deployment. The description  will save to a file with a shuffix ".pdmodel".
+    The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
+    The optimizer information contains all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no variable need to save (like SGD), the fill will not generated).
+    The network description is the description of the program. It's only used for deployment. The description  will save to a file with a suffix ".pdmodel".
     
     Args:
         program(Program) : The program to saved.

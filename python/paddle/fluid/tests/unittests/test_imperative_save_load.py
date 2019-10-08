@@ -285,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             fluid.save_parameter(self.state_dict, "./test_dy")
 
-    def test_load_base(self):
+    def testLoadAndSetVarBase(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -392,7 +392,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def test_load_variable_map(self):
+    def testSetVariable(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -496,7 +496,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def test_load_numpy_map(self):
+    def testSetNumpy(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -604,7 +604,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def test_load_before_run(self):
+    def testSetVariableBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -631,13 +631,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # this a fake lr decay strategy
             for i in range(1, 10):
                 bd.append(100 * i)
-                new_lr = 1.0
+                #set lr to 0.0, not udpate parameter
+                new_lr = 0.0
                 lr_arr.append(new_lr)
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                beta1=0.8,
+                beta2=0.6)
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -663,10 +667,24 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                             init_cell)
 
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if k == "global_step":
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+
+                if k.find("beta1_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta1))
+                if k.find("beta2_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta2))
 
             # check parameter
 
@@ -678,7 +696,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[v.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def test_load_before_run_var_base(self):
+    def testLoadAndSetVarBaseBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -705,13 +723,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # this a fake lr decay strategy
             for i in range(1, 10):
                 bd.append(100 * i)
-                new_lr = 1.0
+                # set lr to zero not update parameter
+                new_lr = 0.0
                 lr_arr.append(new_lr)
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                beta1=0.8,
+                beta2=0.6)
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -739,10 +761,24 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                             init_cell)
 
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if k == "global_step":
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+
+                if k.find("beta1_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta1))
+                if k.find("beta2_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta2))
 
             # check parameter
 
@@ -754,7 +790,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[v.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def test_load_before_run_numpy(self):
+    def testSetNumpyBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -781,13 +817,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # this a fake lr decay strategy
             for i in range(1, 10):
                 bd.append(100 * i)
-                new_lr = 1.0
+                # set lr to 0.0, not update parameter
+                new_lr = 0.0
                 lr_arr.append(new_lr)
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                beta1=0.8,
+                beta2=0.6)
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -822,12 +862,26 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
                                                             init_cell)
 
+                dy_loss.backward()
+                adam.minimize(dy_loss)
+                ptb_model.clear_gradients()
+
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                self.assertTrue(
-                    np.array_equal(v.numpy(), self.base_opti[v.name]))
+                if k == "global_step":
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
 
-            # check parameter
+                if k.find("beta1_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta1))
+                if k.find("beta2_pow_acc_0") > 0:
+                    self.assertTrue(
+                        np.array_equal(v.numpy(), self.base_opti[v.name] *
+                                       adam._beta2))
+
+# check parameter
 
             state_dict = ptb_model.state_dict()
 
@@ -836,7 +890,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[v.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
-
 
 if __name__ == '__main__':
     unittest.main()
