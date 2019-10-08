@@ -409,7 +409,7 @@ def rnn(cell,
         return new_state
 
     def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + range(2, len(x.shape)))
+        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
@@ -657,14 +657,15 @@ class BeamSearchDecoder(Decoder):
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = nn.expand(x, expand_times)  # [batch_size, beam_size, ...]
-        x = nn.transpose(
-            x, range(2, len(x.shape)) + [0, 1])  # [..., batch_size, beam_size]
+        x = nn.transpose(x, list(range(2, len(x.shape))) +
+                         [0, 1])  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = nn.reshape(
             x, shape=[0] *
             (len(x.shape) - 2) + [-1])  # [..., batch_size * beam_size]
-        x = nn.transpose(x, [len(x.shape) - 1] + range(
-            0, len(x.shape) - 1))  # [batch_size * beam_size, ...]
+        x = nn.transpose(
+            x, [len(x.shape) - 1] +
+            list(range(0, len(x.shape) - 1)))  # [batch_size * beam_size, ...]
         return x
 
     def _split_batch_beams(self, x):
@@ -1108,7 +1109,7 @@ def dynamic_decode(decoder,
         return new_state
 
     def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + range(2, len(x.shape)))
+        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     # While
     with while_op.block():
