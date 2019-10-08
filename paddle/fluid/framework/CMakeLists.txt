@@ -123,7 +123,7 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog data_feed_proto
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -223,7 +223,7 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
 cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
 # Get the current working branch
