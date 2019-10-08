@@ -162,7 +162,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
   } else {
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
-    const int bytes = (C * 2 + 1) * sizeof(T);
+    const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
     alloc_ptr = memory::Alloc(dev_ctx, bytes);
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
@@ -186,18 +186,18 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 
 #ifndef WIN32
     auto *comm = dev_ctx.nccl_comm();
-    int dtype = platform::ToNCCLDataType(x->type());
+    int dtype = platform::ToNCCLDataType(mean_out->type());
     // In-place operation
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
         comm, stream));
 #endif
 
-    T *est_mean_data = mean_out->mutable_data<T>(ctx.GetPlace());
-    T *est_var_data = variance_out->mutable_data<T>(ctx.GetPlace());
+    T *est_mean_data = mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    T *est_var_data = variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
-    T *sv_mean_data = saved_mean->mutable_data<T>(ctx.GetPlace());
-    T *sv_inv_var_data = saved_variance->mutable_data<T>(ctx.GetPlace());
+    T *sv_mean_data = saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    T *sv_inv_var_data = saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')
@@ -389,9 +389,9 @@ void SyncBatchNormGradFunctor(
   auto &dev_ctx = ctx.cuda_device_context();
   auto stream = dev_ctx.stream();
 
-  const T *saved_mean = mean->data<T>();
-  const T *saved_inv_var = variance->data<T>();
-  const int bytes = (C * 2 + 1) * sizeof(T);
+  const T *saved_mean = mean->data<BatchNormParamType<T>>();
+  const T *saved_inv_var = variance->data<BatchNormParamType<T>>();
+  const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
   auto alloc_ptr = memory::Alloc(dev_ctx, bytes);
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
 
@@ -405,15 +405,15 @@ void SyncBatchNormGradFunctor(
 
   if (is_inplace) {
     if (layout == framework::DataLayout::kNCHW) {
-      KeBNRestoreData<
-          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
-          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+//      KeBNRestoreData<
+//          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+//          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
+//          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
-      KeBNRestoreData<
-          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
-          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+//      KeBNRestoreData<
+//          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+//          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
+//          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
     }
   }
 
@@ -429,7 +429,7 @@ void SyncBatchNormGradFunctor(
 
 #ifndef WIN32
   auto *comm = dev_ctx.nccl_comm();
-  int dtype = platform::ToNCCLDataType(x->type());
+  int dtype = platform::ToNCCLDataType(scale->type());
   // In-place operation
   PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
       stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
