@@ -650,7 +650,7 @@ class BeamSearchDecoder(Decoder):
             beam_size(int): The beam width used in beam search.
 
         Returns:
-            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose
+            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
         x = nn.unsqueeze(x, [1])  # [batch_size, 1, ...]
@@ -677,7 +677,7 @@ class BeamSearchDecoder(Decoder):
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
-            Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose
+            Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
@@ -693,7 +693,7 @@ class BeamSearchDecoder(Decoder):
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
-            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose
+            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
@@ -715,9 +715,8 @@ class BeamSearchDecoder(Decoder):
                 should be bool.
 
         Returns:
-            Variable: A tensor with the same shape and data type as `x`, \
-                where unfinished beams stay unchanged and finished beams are \
-                replaced with a tensor with all probability on the EOS token.
+            Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
+                data type is same as `x`.
         """
         x = nn.unsqueeze(x, [1])
         expand_times = [1] * len(x.shape)

@@ -501,7 +501,7 @@ paddle.fluid.layers.BeamSearchDecoder.__init__ (ArgSpec(args=['self', 'cell', 's
 paddle.fluid.layers.BeamSearchDecoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', '9a7f0a8fc5802bf860f2ac960466fb45'))
 paddle.fluid.layers.BeamSearchDecoder.initialize (ArgSpec(args=['self', 'initial_cell_states'], varargs=None, keywords=None, defaults=None), ('document', '01ee508a9615e2483fe6ddcf14d5fa25'))
 paddle.fluid.layers.BeamSearchDecoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords='kwargs', defaults=None), ('document', 'fc33127222e9596f69cb025c7aa35648'))
-paddle.fluid.layers.BeamSearchDecoder.tile_beam_merge_with_batch (ArgSpec(args=['x', 'beam_size'], varargs=None, keywords=None, defaults=None), ('document', '1df5864501066793e3af7a0fd75b0cd2'))
+paddle.fluid.layers.BeamSearchDecoder.tile_beam_merge_with_batch (ArgSpec(args=['x', 'beam_size'], varargs=None, keywords=None, defaults=None), ('document', 'ce7ffacba6f56f57acbf5d4dd82fe04d'))
 paddle.fluid.layers.dynamic_rnn (ArgSpec(args=['cell', 'inputs', 'initial_states', 'sequence_length', 'time_major', 'is_reverse'], varargs=None, keywords='kwargs', defaults=(None, None, False, False)), ('document', '58edad62c24fb517d6122328e8bc1016'))
 paddle.fluid.layers.dynamic_decode (ArgSpec(args=['decoder', 'inits', 'max_step_num', 'output_time_major'], varargs=None, keywords='kwargs', defaults=(None, None, False)), ('document', 'c2fe354a4051ef98497148788463f749'))
 paddle.fluid.contrib.InitState ('paddle.fluid.contrib.decoder.beam_search_decoder.InitState', ('document', '3afd1f84232718e628e9e566941c5f05'))
