@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
+import six
 import unittest
 
 os.environ['CPU_NUM'] = str(4)
@@ -73,29 +74,41 @@ class TestFeedData(unittest.TestCase):
                     'use_cuda': use_cuda,
                     'use_parallel_executor': use_parallel_executor,
                 })
+                # Test feeding without error
                 self._test_feed_data_match_shape_type(use_cuda,
                                                       use_parallel_executor)
                 self._test_feed_data_contains_neg_one(use_cuda,
                                                       use_parallel_executor)
 
+                # Test exception message when feeding with error 
                 batch_size = self._get_batch_size(use_cuda,
                                                   use_parallel_executor)
+                if six.PY2:
+                    in_shape_tuple = (long(-1), long(3), long(4), long(8))
+                    feed_shape_list = [
+                        long(batch_size), long(3), long(4), long(5)
+                    ]
+                else:
+                    in_shape_tuple = (-1, 3, 4, 8)
+                    feed_shape_list = [batch_size, 3, 4, 5]
+
                 with self.assertRaises(ValueError) as shape_mismatch_err:
                     self._test_feed_data_shape_mismatch(use_cuda,
                                                         use_parallel_executor)
-                self.assertEqual(shape_mismatch_err.exception.message,
-                                 "ShapeError: The feeded Variable u'data' "
-                                 "should have dimensions = 4, shape = "
-                                 "(-1L, 3L, 4L, 8L), but received feeded "
-                                 "shape [%dL, 3L, 4L, 5L]" % batch_size)
+                self.assertEqual(
+                    str(shape_mismatch_err.exception),
+                    "ShapeError: The feeded Variable %r should have dimensions"
+                    " = %r, shape = %r, but received feeded shape %r" %
+                    (u'data', len(in_shape_tuple), in_shape_tuple,
+                     feed_shape_list))
 
                 with self.assertRaises(ValueError) as dtype_mismatch_err:
                     self._test_feed_data_dtype_mismatch(use_cuda,
                                                         use_parallel_executor)
                 self.assertEqual(
-                    dtype_mismatch_err.exception.message,
-                    "The data type of feeded Variable u'label' must be "
-                    "VarType.INT64, but received VarType.FP64")
+                    str(dtype_mismatch_err.exception),
+                    "The data type of feeded Variable %r must be "
+                    "VarType.INT64, but received VarType.FP64" % (u'label'))
 
     def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
