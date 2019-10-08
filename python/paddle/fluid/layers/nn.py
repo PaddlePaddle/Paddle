@@ -5035,21 +5035,27 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     Computes the sum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the sum is performed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool|False): Whether to reserve the reduced dimension in the
+        keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, which performs sum operation on the specified dim of input tensor,
+        has the same data type with input data type.
 
+    Raises:
+        TypeError, if out data type is different with the input data type.
+    
     Examples:
         .. code-block:: python
 
@@ -5058,7 +5064,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -5094,8 +5100,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimension along which the mean is computed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimension along which the mean is computed. If
             `None`, compute the mean over all elements of :attr:`input`
             and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
@@ -5103,13 +5110,18 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             :math:`rank(input) + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set `None`, the layer
-                       will be named automatically.
-
+            than the :attr:`input` unless :attr:`keep_dim` is true, default 
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        Variable: The reduced mean Variable.
-
+        Variable: Tensor, which performs average operation on the specified dim of input tensor,
+        has the same data type with input data type.
+    
+    Raises:
+        TypeError, if out data type is different with the input data type.
+    
     Examples:
         .. code-block:: python
 
@@ -5118,7 +5130,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
@@ -5153,20 +5165,23 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     Computes the maximum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimension along which the maximum is computed.
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimension along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, which performs max operation on the specified dim of input tensor,
+        has the same data type with input data type.
 
     Examples:
         .. code-block:: python
@@ -5176,7 +5191,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_max(x)  # [0.9]
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
@@ -5211,20 +5226,23 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     Computes the minimum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the minimum is computed.
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
         keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, which performs min operation on the specified dim of input tensor,
+        has the same data type with input data type.
 
     Examples:
         .. code-block:: python
@@ -5234,7 +5252,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_min(x)  # [0.1]
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
@@ -5269,21 +5287,24 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Computes the product of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the product is performed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the product is performed. If
             :attr:`None`, multipy all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool|False): Whether to reserve the reduced dimension in the
+        keep_dim (bool): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the
-            layer will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
-
+        Variable: Tensor, which performs prob operation on the specified dim of input tensor,
+        has the same data type with input data type.
+    
     Examples:
         .. code-block:: python
 
@@ -5292,7 +5313,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
