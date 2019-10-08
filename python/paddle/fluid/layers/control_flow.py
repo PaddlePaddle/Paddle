@@ -1057,10 +1057,10 @@ def less_equal(x, y, cond=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid.layers as layers
+          import paddle.fluid as fluid
           import numpy as np
-          label = layers.assign(np.array([1, 3], dtype='int32'))
-          limit = layers.assign(np.array([1, 2], dtype='int32'))
+          label = fluid.layers.assign(np.array([1, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([1, 2], dtype='int32'))
           out = fluid.layers.less_equal(x=label, y=limit) #out=[True, False]
           out1 = label<= limit #out1=[True, False]
 
@@ -1101,10 +1101,10 @@ def greater_than(x, y, cond=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid.layers as layers
+          import paddle.fluid as fluid
           import numpy as np
-          label = layers.assign(np.array([2, 3], dtype='int32'))
-          limit = layers.assign(np.array([3, 2], dtype='int32'))
+          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
@@ -1147,8 +1147,8 @@ def greater_equal(x, y, cond=None):
           import paddle.fluid as fluid
           import numpy as np
 
-          label = layers.assign(np.array([2, 2], dtype='int32'))
-          limit = layers.assign(np.array([2, 3], dtype='int32'))
+          label = fluid.layers.assign(np.array([2, 2], dtype='int32'))
+          limit = fluid.layers.assign(np.array([2, 3], dtype='int32'))
           out = fluid.layers.greater_equal(x=label, y=limit) #out=[True, False]
           out_1 = label >= limit #out1=[True, False]
 
