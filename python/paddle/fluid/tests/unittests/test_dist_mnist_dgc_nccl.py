@@ -16,7 +16,6 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import os
-from dist_test_utils import *
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -41,5 +40,3 @@ class TestDistMnistNCCL2DGC(TestDistBase):
 
 if __name__ == "__main__":
     unittest.main()
-    print("gen nccl flag")
-    gen_complete_file_flag(flag_name + ".flag")

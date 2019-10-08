@@ -236,6 +236,10 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 if(WITH_DISTRIBUTE)
+    # FIXME(typhoonzero): add these tests back
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
+
     py_test_modules(test_recv_op MODULES test_recv_op ENVS ${dist_ENVS})
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
@@ -244,17 +248,13 @@ if(WITH_DISTRIBUTE)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        foreach(TEST_OP ${DIST_TEST_OPS})
-            bash_test_modules(${TEST_OP} MODULES ${TEST_OP} LABELS "RUN_TYPE=EXCLUSIVE")
-        endforeach(TEST_OP)
-
+        bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
         bash_test_modules(test_launch MODULES test_launch.sh)
 
-        # FIXME(typhoonzero): add these tests back
-        # py_test_modules(test_dist_transformer MODULES test_dist_transformer)
-        # set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
+        foreach(TEST_OP ${DIST_TEST_OPS})
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh LABELS "RUN_TYPE=EXCLUSIVE")
+        endforeach(TEST_OP)
     endif(NOT APPLE)
-    # py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
