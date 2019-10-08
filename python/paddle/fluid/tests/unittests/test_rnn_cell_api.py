@@ -12,164 +12,238 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import unittest
+import numpy
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.layers.rnn import LSTMCell, dynamic_rnn, RNNCell, BeamSearchDecoder, dynamic_decode
+import paddle.fluid.core as core
+
+from paddle.fluid.executor import Executor
+from paddle.fluid import framework
+
+from paddle.fluid.layers.rnn import LSTMCell, GRUCell, dynamic_rnn, RNNCell, BeamSearchDecoder, dynamic_decode
+from paddle.fluid import contrib
 from paddle.fluid.contrib.layers import basic_lstm
 
-
-class EncoderCell(RNNCell):
-    def __init__(self, num_layers, hidden_size, dropout_prob=0.):
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.dropout_prob = dropout_prob
-        self.lstm_cells = []
-        for i in range(num_layers):
-            self.lstm_cells.append(LSTMCell(hidden_size))
-
-    def call(self, step_input, states):
-        new_states = []
-        for i in range(self.num_layers):
-            out, new_state = self.lstm_cells[i](step_input, states[i])
-            step_input = layers.dropout(
-                out, self.dropout_prob) if self.dropout_prob > 0 else out
-            new_states.append(new_state)
-        return step_input, new_states
-
-    @property
-    def state_shape(self):
-        return [cell.state_shape for cell in self.lstm_cells]
+import numpy as np
 
 
-class DecoderCell(RNNCell):
-    def __init__(self, num_layers, hidden_size, dropout_prob=0.):
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.dropout_prob = dropout_prob
-        self.lstm_cells = []
-        for i in range(num_layers):
-            self.lstm_cells.append(LSTMCell(hidden_size))
+class TestLSTMCell(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 4
+        self.input_size = 16
+        self.hidden_size = 16
 
-    def attention(self, hidden, encoder_output, encoder_padding_mask):
-        query = layers.fc(hidden,
-                          size=encoder_output.shape[-1],
-                          bias_attr=False)
-        attn_scores = layers.matmul(
-            layers.unsqueeze(query, [1]), encoder_output, transpose_y=True)
-        if encoder_padding_mask is not None:
-            attn_scores = layers.elementwise_add(attn_scores,
-                                                 encoder_padding_mask)
-        attn_scores = layers.softmax(attn_scores)
-        attn_out = layers.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1])
-        attn_out = layers.concat([attn_out, hidden], 1)
-        attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
-        return attn_out
+    def test_run(self):
+        print("Test lstm.")
 
-    def call(self,
-             step_input,
-             states,
-             encoder_output,
-             encoder_padding_mask=None):
-        lstm_states, input_feed = states
-        new_lstm_states = []
-        step_input = layers.concat([step_input, input_feed], 1)
-        for i in range(self.num_layers):
-            out, new_lstm_state = self.lstm_cells[i](step_input, lstm_states[i])
-            step_input = layers.dropout(
-                out, self.dropout_prob) if self.dropout_prob > 0 else out
-            new_lstm_states.append(new_lstm_state)
-        out = self.attention(step_input, encoder_output, encoder_padding_mask)
-        return out, [new_lstm_states, out]
+        inputs = layers.data(
+            name='inputs',
+            shape=[self.batch_size, self.input_size],
+            append_batch_size=False,
+            dtype='float32')
+        pre_hidden = layers.data(
+            name='pre_hidden',
+            shape=[self.batch_size, self.hidden_size],
+            append_batch_size=False,
+            dtype='float32')
+        pre_cell = layers.data(
+            name='pre_cell',
+            shape=[self.batch_size, self.hidden_size],
+            append_batch_size=False,
+            dtype='float32')
+
+        cell = LSTMCell(self.hidden_size)
+        lstm_hidden_new, lstm_states_new = cell(inputs, [pre_hidden, pre_cell])
+
+        lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
+            "basicLSTM", self.hidden_size, None, None, None, None, 1.0,
+            "float32")
+        lstm_hidden, lstm_cell = lstm_unit(inputs, pre_hidden, pre_cell)
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = Executor(place)
+        exe.run(framework.default_startup_program())
+
+        inputs_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.input_size)).astype('float32')
+        pre_hidden_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+        pre_cell_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+
+        param_names = [[
+            "LSTMCell/BasicLSTMUnit_0.w_0", "basicLSTM/BasicLSTMUnit_0.w_0"
+        ], ["LSTMCell/BasicLSTMUnit_0.b_0", "basicLSTM/BasicLSTMUnit_0.b_0"]]
+
+        for names in param_names:
+            param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
+            ))
+            param = np.random.uniform(
+                -0.1, 0.1, size=param.shape).astype('float32')
+            fluid.global_scope().find_var(names[0]).get_tensor().set(param,
+                                                                     place)
+            fluid.global_scope().find_var(names[1]).get_tensor().set(param,
+                                                                     place)
+
+        out = exe.run(feed={
+            'inputs': inputs_np,
+            'pre_hidden': pre_hidden_np,
+            'pre_cell': pre_cell_np
+        },
+                      fetch_list=[lstm_hidden_new, lstm_hidden])
+
+        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
 
 
-start_token = 0
-end_token = 1
-src_vocab_size = 10000
-trg_vocab_size = 10000
-num_layers = 2
-hidden_size = 512
-dropout_prob = 0.2
-max_grad_norm = 5.0
-learning_rate = 0.001
-beam_size = 4
-max_length = 100
+class TestGRUCell(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 4
+        self.input_size = 16
+        self.hidden_size = 16
 
-src = layers.data(name="src", shape=[-1, 1, 1], dtype='int64')
-src_len = layers.data(name="src_len", shape=[-1], dtype='int32')
+    def test_run(self):
+        print("Test gru.")
 
-trg = layers.data(name="trg", shape=[-1, 1, 1], dtype='int64')
-trg_len = layers.data(name="trg_len", shape=[-1], dtype='int32')
-label = layers.data(name="label", shape=[-1, 1, 1], dtype='int64')
+        inputs = layers.data(
+            name='inputs',
+            shape=[self.batch_size, self.input_size],
+            append_batch_size=False,
+            dtype='float32')
+        pre_hidden = layers.data(
+            name='pre_hidden',
+            shape=[self.batch_size, self.hidden_size],
+            append_batch_size=False,
+            dtype='float32')
 
-src_embeder = lambda x: layers.embedding(x,
-                                         size=[src_vocab_size, hidden_size],
-                                         param_attr=fluid.ParamAttr(
-                                             name="src_embedding"))
+        cell = GRUCell(self.hidden_size)
+        gru_hidden_new, _ = cell(inputs, pre_hidden)
 
-trg_embeder = lambda x: layers.embedding(x,
-                                         size=[trg_vocab_size, hidden_size],
-                                         param_attr=fluid.ParamAttr(
-                                             name="trg_embedding"))
+        gru_unit = contrib.layers.rnn_impl.BasicGRUUnit(
+            "basicGRU", self.hidden_size, None, None, None, None, "float32")
+        gru_hidden = gru_unit(inputs, pre_hidden)
 
-# use basic_lstm
-encoder_cell = EncoderCell(num_layers, hidden_size, dropout_prob)
-encoder_output, encoder_final_state = dynamic_rnn(
-    cell=encoder_cell,
-    inputs=src_embeder(src),
-    sequence_length=src_len,
-    is_reverse=False)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = Executor(place)
+        exe.run(framework.default_startup_program())
 
-src_mask = layers.sequence_mask(
-    src_len, maxlen=layers.shape(src)[1], dtype='float32')
-encoder_padding_mask = (src_mask - 1.0) * 1000000000
-encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
+        inputs_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.input_size)).astype('float32')
+        pre_hidden_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-decoder_cell = DecoderCell(num_layers, hidden_size, dropout_prob)
-decoder_initial_states = [
-    encoder_final_state, decoder_cell.get_initial_states(
-        batch_ref=encoder_output, shape=[hidden_size])
-]
+        param_names = [
+            ["GRUCell/BasicGRUUnit_0.w_0", "basicGRU/BasicGRUUnit_0.w_0"],
+            ["GRUCell/BasicGRUUnit_0.w_1", "basicGRU/BasicGRUUnit_0.w_1"],
+            ["GRUCell/BasicGRUUnit_0.b_0", "basicGRU/BasicGRUUnit_0.b_0"],
+            ["GRUCell/BasicGRUUnit_0.b_1", "basicGRU/BasicGRUUnit_0.b_1"]
+        ]
 
-decoder_output, _ = dynamic_rnn(
-    cell=decoder_cell,
-    inputs=trg_embeder(trg),
-    initial_states=decoder_initial_states,
-    sequence_length=None,
-    encoder_output=encoder_output,
-    encoder_padding_mask=encoder_padding_mask)
+        for names in param_names:
+            param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
+            ))
+            param = np.random.uniform(
+                -0.1, 0.1, size=param.shape).astype('float32')
+            fluid.global_scope().find_var(names[0]).get_tensor().set(param,
+                                                                     place)
+            fluid.global_scope().find_var(names[1]).get_tensor().set(param,
+                                                                     place)
 
-output_layer = lambda x: layers.fc(x,
-                                   size=trg_vocab_size,
-                                   num_flatten_dims=len(x.shape) - 1,
-                                   param_attr=fluid.ParamAttr(name="output_w"),
-                                   bias_attr=False)
+        out = exe.run(feed={'inputs': inputs_np,
+                            'pre_hidden': pre_hidden_np},
+                      fetch_list=[gru_hidden_new, gru_hidden])
 
-loss = layers.softmax_with_cross_entropy(
-    logits=output_layer(decoder_output), label=label, soft_label=False)
-loss = layers.reduce_mean(loss)
+        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
 
-fluid.clip.set_gradient_clip(clip=fluid.clip.GradientClipByGlobalNorm(
-    clip_norm=max_grad_norm))
-optimizer = fluid.optimizer.Adam(learning_rate=learning_rate)
-optimizer.minimize(loss)
 
-# inference
-encoder_output = BeamSearchDecoder.tile_beam_merge_with_batch(encoder_output,
-                                                              beam_size)
-encoder_padding_mask = BeamSearchDecoder.tile_beam_merge_with_batch(
-    encoder_padding_mask, beam_size)
-beam_search_decoder = BeamSearchDecoder(
-    decoder_cell,
-    start_token,
-    end_token,
-    beam_size,
-    trg_vocab_size,
-    embedding_fn=trg_embeder,
-    output_fn=output_layer)
-outputs, _ = dynamic_decode(
-    beam_search_decoder,
-    inits=decoder_initial_states,
-    max_step_num=max_length,
-    encoder_output=encoder_output,
-    encoder_padding_mask=encoder_padding_mask)
+class Test_dynamic_rnn(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 4
+        self.input_size = 16
+        self.hidden_size = 16
+        self.seq_len = 4
+
+    def test_run(self):
+        print("Test dynamic_rnn.")
+
+        inputs_basic_lstm = layers.data(
+            name='inputs_basic_lstm',
+            shape=[self.seq_len, self.batch_size, self.input_size],
+            append_batch_size=False,
+            dtype='float32')
+        sequence_length = layers.data(
+            name="sequence_length", shape=[-1], dtype='int64')
+
+        inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
+        cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
+        output, final_state = dynamic_rnn(
+            cell=cell,
+            inputs=inputs_dynamic_rnn,
+            sequence_length=sequence_length,
+            is_reverse=False)
+        output_new = layers.transpose(output, perm=[1, 0, 2])
+
+        rnn_out, last_hidden, last_cell = basic_lstm(inputs_basic_lstm, None, None, self.hidden_size, num_layers=1, \
+                batch_first = False, bidirectional=False, sequence_length=sequence_length, forget_bias = 1.0)
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = Executor(place)
+        exe.run(framework.default_startup_program())
+
+        inputs_basic_lstm_np = np.random.uniform(
+            -0.1, 0.1,
+            (self.seq_len, self.batch_size, self.input_size)).astype('float32')
+        sequence_length_np = np.ones(
+            self.batch_size, dtype='int64') * self.seq_len
+
+        inputs_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.input_size)).astype('float32')
+        pre_hidden_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+        pre_cell_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+
+        param_names = [[
+            "LSTMCell_for_rnn/BasicLSTMUnit_0.w_0",
+            "basic_lstm_layers_0/BasicLSTMUnit_0.w_0"
+        ], [
+            "LSTMCell_for_rnn/BasicLSTMUnit_0.b_0",
+            "basic_lstm_layers_0/BasicLSTMUnit_0.b_0"
+        ]]
+
+        for names in param_names:
+            param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
+            ))
+            param = np.random.uniform(
+                -0.1, 0.1, size=param.shape).astype('float32')
+            fluid.global_scope().find_var(names[0]).get_tensor().set(param,
+                                                                     place)
+            fluid.global_scope().find_var(names[1]).get_tensor().set(param,
+                                                                     place)
+
+        out = exe.run(feed={
+            'inputs_basic_lstm': inputs_basic_lstm_np,
+            'sequence_length': sequence_length_np,
+            'inputs': inputs_np,
+            'pre_hidden': pre_hidden_np,
+            'pre_cell': pre_cell_np
+        },
+                      fetch_list=[output_new, rnn_out])
+
+        self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4))
+
+
+if __name__ == '__main__':
+    unittest.main()
