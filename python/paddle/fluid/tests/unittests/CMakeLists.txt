@@ -135,8 +135,14 @@ function(bash_test_modules TARGET_NAME)
 
     message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
 
+    set(timeout 350)
+    if(${bash_test_modules_TIMEOUT})
+        set(timeout ${bash_test_modules_TIMEOUT})
+    endif()
+
     add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python TEST_TARGET_NAME=${TARGET_NAME} ${bash_test_modules_ENVS}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
         bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -144,7 +150,7 @@ function(bash_test_modules TARGET_NAME)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
 
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
