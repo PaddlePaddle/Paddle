@@ -1147,7 +1147,7 @@ All parameter, weight, gradient are variables in Paddle.
                    tensor (LoDTensor): The LoDTensor to be appended.
 
              Returns:
-                   Void.
+                   None.
 
              Examples:
                  .. code-block:: python
