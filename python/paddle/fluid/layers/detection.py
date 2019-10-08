@@ -600,17 +600,27 @@ def iou_similarity(x, y, name=None):
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
+
+            use_gpu = True
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
 
             x = fluid.data(name='x', shape=[-1, 4], dtype='float32')
             y = fluid.data(name='y', shape=[-1, 4], dtype='float32')
             iou = fluid.layers.iou_similarity(x=x, y=y)
 
-            # if x is [[0.5, 0.5, 2. , 2. ],
-            #          [0. , 0. , 1. , 1. ]] with shape: [2, 4]
-            #    y is [[1. , 1. , 2.5, 2.5]] with shape: [1, 4]
-            # result is [[0.2857143],
-            #           [0.       ]] with shape: [2, 1]
+            exe.run(fluid.default_startup_program())
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            [out_iou] = exe.run(test_program,
+                    fetch_list=iou,
+                    feed={'x': np.array([[0.5, 0.5, 2.0, 2.0],
+                                         [0., 0., 1.0, 1.0]]).astype('float32'),
+                          'y': np.array([[1.0, 1.0, 2.5, 2.5]]).astype('float32')})
+            # out_iou is [[0.2857143],
+            #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
