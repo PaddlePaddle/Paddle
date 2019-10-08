@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
