@@ -144,7 +144,11 @@ paddle.fluid.layers.conv2d (ArgSpec(args=['input', 'num_filters', 'filter_size',
 paddle.fluid.layers.conv3d (ArgSpec(args=['input', 'num_filters', 'filter_size', 'stride', 'padding', 'dilation', 'groups', 'param_attr', 'bias_attr', 'use_cudnn', 'act', 'name', 'data_format'], varargs=None, keywords=None, defaults=(1, 0, 1, None, None, None, True, None, None, 'NCDHW')), ('document', 'a7e4573745c40b8b1d726709f209b6e4'))
 paddle.fluid.layers.sequence_pool (ArgSpec(args=['input', 'pool_type', 'is_test', 'pad_value'], varargs=None, keywords=None, defaults=(False, 0.0)), ('document', '5a709f7ef3fdb8fc819d09dc4fbada9a'))
 paddle.fluid.layers.sequence_softmax (ArgSpec(args=['input', 'use_cudnn', 'name'], varargs=None, keywords=None, defaults=(False, None)), ('document', 'eaa9d0bbd3d4e017c8bc4ecdac483711'))
+<<<<<<< HEAD
 paddle.fluid.layers.softmax (ArgSpec(args=['input', 'use_cudnn', 'name', 'axis'], varargs=None, keywords=None, defaults=(False, None, -1)), ('document', '7ccaea1b93fe4f7387a6036692986c6b'))
+=======
+paddle.fluid.layers.softmax (ArgSpec(args=['input', 'use_cudnn', 'name', 'axis'], varargs=None, keywords=None, defaults=(False, None, -1)), ('document', '0c29b89792c81253ffc38a60ebd50ce5'))
+>>>>>>> 35b79abd... fix API.spec, test=develop, test=document_fix
 paddle.fluid.layers.pool2d (ArgSpec(args=['input', 'pool_size', 'pool_type', 'pool_stride', 'pool_padding', 'global_pooling', 'use_cudnn', 'ceil_mode', 'name', 'exclusive', 'data_format'], varargs=None, keywords=None, defaults=(-1, 'max', 1, 0, False, True, False, None, True, 'NCHW')), ('document', '630cae697d46b4b575b15d56cf8be25a'))
 paddle.fluid.layers.pool3d (ArgSpec(args=['input', 'pool_size', 'pool_type', 'pool_stride', 'pool_padding', 'global_pooling', 'use_cudnn', 'ceil_mode', 'name', 'exclusive', 'data_format'], varargs=None, keywords=None, defaults=(-1, 'max', 1, 0, False, True, False, None, True, 'NCDHW')), ('document', 'db0035a3132b1dfb12e53c57591fb9f6'))
 paddle.fluid.layers.adaptive_pool2d (ArgSpec(args=['input', 'pool_size', 'pool_type', 'require_index', 'name'], varargs=None, keywords=None, defaults=('max', False, None)), ('document', '52343203de40afe29607397e13aaf0d2'))
