@@ -930,8 +930,8 @@ def append_backward(loss,
     It will be automatically invoked by the optimizer's `minimize` function.
 
     Parameters:
-        **loss**( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        **parameter_list**(list of str, optional): Names of parameters that need
+        loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
+        parameter_list(list of str, optional): Names of parameters that need
                                            to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
@@ -967,11 +967,8 @@ def append_backward(loss,
                                                Default: None.
 
     Returns:
-        Pairs of parameter and its corresponding gradients.
+        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ): Pairs of parameter and its corresponding gradients.
         The key is the parameter and the value is gradient variable.
-
-    Return type:
-        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` )
 
     Raises:
         AssertionError: If `loss` is not an instance of Variable.
