@@ -22,13 +22,14 @@ namespace operators {
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Emission",
-             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
-             " with shape [N x D], where N is the size of the "
-             "mini-batch and D is the total tag number. The unscaled emission "
-             "weight matrix for the linear chain CRF. When a Tensor input,"
-             "A Tensor with shape [N x S x D], where N is batch number,"
-             "S is max length of sequences, D is the total tag number.");
+    AddInput(
+        "Emission",
+        "(LoDTensor/Tensor<float>). When a LoDTensor input, A 2-D LoDTensor"
+        " with shape [N x D], where N is the size of the "
+        "mini-batch and D is the total tag number. The unscaled emission "
+        "weight matrix for the linear chain CRF. When a Tensor input,"
+        "A Tensor with shape [N x S x D], where N is batch size,"
+        "S is max length of sequences, D is the total tag number.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
@@ -38,7 +39,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth.");
-    AddInput("length",
+    AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch.")
         .AsDispensable();
@@ -169,12 +170,16 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     auto emission_dims = ctx->GetInputDim("Emission");
     PADDLE_ENFORCE_NE(emission_dims[0], 0,
                       "An empty mini-batch is not allowed.");
-    if (ctx->HasInput("length")) {
+    if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
                         "The Input(Emission) should be a 3-D tensor.");
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 3,
-                        "The Input(Label) should be a 3-D tensor");
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 3UL && label_dims[2] == 1) ||
+              (label_dims.size() == 2UL),
+          true,
+          "The Input(Label) should be a 3-D tensor with last "
+          "dimension fixed to 1 or a 2-D tensor in padding mode.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
           ctx, emission_dims[0], label_dims[0],
           "The batch size of Input(Emission) and Input(Label) "
@@ -249,7 +254,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
     auto label_dims = ctx->GetInputDim("Label");
-    if (ctx->HasInput("length")) {
+    if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 3,
                         "The Input(EmissionExps) should be a 3-D tensor.");
       PADDLE_INFERSHAPE_ENFORCE_EQ(
@@ -281,7 +286,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
-      if (ctx->HasInput("length") == false) {
+      if (ctx->HasInput("Length") == false) {
         ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
       }
     }
@@ -321,8 +326,8 @@ class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Alpha", this->Output("Alpha"));
     op->SetInput("EmissionExps", this->Output("EmissionExps"));
     op->SetInput("TransitionExps", this->Output("TransitionExps"));
-    if (this->HaveInput("length")) {
-      op->SetInput("length", this->Input("length"));
+    if ( this->HaveInput("Length" ) {
+      op->SetInput("Length", Input("Length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),
                  this->OutputGrad("LogLikelihood"));
