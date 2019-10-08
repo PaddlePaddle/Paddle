@@ -36,27 +36,33 @@ static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == kDepOut || GradFunctor::FwdDeps() == kNoDeps;
 }
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
-  class OP_NAME##OpMaker                                                     \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
-   public:                                                                   \
-    void Make() override {                                                   \
-      AddInput("X", "Input of " #OP_NAME " operator");                       \
-      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
-      AddAttr<bool>("use_mkldnn",                                            \
-                    "(bool, default false) Only used in mkldnn kernel")      \
-          .SetDefault(false);                                                \
-      AddAttr<bool>("use_cudnn",                                             \
-                    "(bool, default false) Only used in cudnn kernel, need " \
-                    "install cudnn")                                         \
-          .SetDefault(false);                                                \
-      AddAttr<bool>(                                                         \
-          "is_test",                                                         \
-          "(bool, default false) Set to true for inference only, false "     \
-          "for training. Some layers may run faster when this is true.")     \
-          .SetDefault(false);                                                \
-      AddComment(OP_COMMENT);                                                \
-    }                                                                        \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                     \
+  class OP_NAME##OpMaker                                                      \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                  \
+   public:                                                                    \
+    void Make() override {                                                    \
+      AddInput(                                                               \
+          "X",                                                                \
+          "Input of " #OP_NAME                                                \
+          " operator. A LoDTensor or Tensor with type float32, float64. ");   \
+      AddOutput(                                                              \
+          "Out",                                                              \
+          "A LoDTensor or Tensor with the same shape and type as input. ");   \
+      AddAttr<bool>(                                                          \
+          "use_mkldnn",                                                       \
+          "(bool, optional) Only used in mkldnn kernel. Default is false. ")  \
+          .SetDefault(false);                                                 \
+      AddAttr<bool>("use_cudnn",                                              \
+                    "(bool, optional) Only used in cudnn kernel, need "       \
+                    "install cudnn. Default is false. ")                      \
+          .SetDefault(false);                                                 \
+      AddAttr<bool>("is_test",                                                \
+                    "(bool, optional) Set to true for inference only, false " \
+                    "for training. Some layers may run faster when this is "  \
+                    "true. Default is false. ")                               \
+          .SetDefault(false);                                                 \
+      AddComment(OP_COMMENT);                                                 \
+    }                                                                         \
   }
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -466,14 +472,18 @@ $out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of Relu6 operator");
-    AddOutput("Out", "Output of Relu6 operator");
-    AddAttr<float>("threshold", "The threshold value of Relu6")
+    AddInput("X",
+             "Input of Relu6 operator. A LoDTensor or Tensor with type "
+             "float32, float64. ");
+    AddOutput("Out",
+              "A LoDTensor or Tensor with the same shape and type as input. ");
+    AddAttr<float>("threshold",
+                   "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);
     AddComment(R"DOC(
 Relu6 Activation Operator.
 
-$out = \min(\max(0, x), 6)$
+$out = \min(\max(0, x), threshold)$
 
 )DOC");
   }

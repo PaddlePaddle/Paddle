@@ -147,23 +147,45 @@ def create_global_var(shape,
 
 def cast(x, dtype):
     """
-    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`. It's meaningless if the output
-    dtype equals the input dtype, but it's fine if you do so.
+    This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
+    to the output with :attr:`dtype`. It's meaningless if the output dtype
+    equals the input dtype, but it's fine if you do so.
 
     Args:
-        x (Variable): The input Variable for casting.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Variable.
+        x (Variable): An input Tensor or LoDTensor with type bool, float16,
+            float32, float64, int32, int64, uint8.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
+            bool, float15, float32, float64, int8, int32, int64, uint8.
 
     Returns:
-        Variable: The output Variable after casting.
+        Variable: A Tensor or LoDTensor with the same shape and type as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            result = fluid.layers.cast(x=data, dtype='float64')
+            import numpy as np
+
+            place = fluid.core.CPUPlace()
+
+            x_lod = fluid.layers.data(name="x", shape=[1], lod_level=1)
+            cast_res1 = fluid.layers.cast(x=x_lod, dtype="uint8")
+            cast_res2 = fluid.layers.cast(x=x_lod, dtype=np.int32)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            x_i_lod = fluid.core.LoDTensor()
+            x_i_lod.set(np.array([[1.3,-2.4],[0,4]]).astype("float32"), place)
+            x_i_lod.set_recursive_sequence_lengths([[0,2]])
+            res1 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res1], return_numpy=False)
+            res2 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res2], return_numpy=False)
+            print(np.array(res1[0]), np.array(res1[0]).dtype)
+            # [[  1 254]
+            #  [  0   4]] uint8
+            print(np.array(res2[0]), np.array(res2[0]).dtype)
+            # [[ 1 -2]
+            #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -180,27 +202,46 @@ def concat(input, axis=0, name=None):
     """
     **Concat**
 
-    This function concatenates the input along the axis mentioned
-    and returns that as the output.
+    This function concatenates the input along the axis.
 
     Args:
-        input(list): List of tensors to be concatenated
-        axis(int): Integer axis along which the tensors will be concatenated
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        input(list): List of tensors with type float32, float64, int32, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Output variable of the concatenation
+        Variable: A tensor with the same type as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
-            b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
-            c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
-            d = fluid.layers.data(name='d', shape=[2, 5], dtype='float32')
-            out = fluid.layers.concat(input=[a, b, c, d], axis=2)
+            import numpy as np
+
+            in1 = np.array([[1,2,3],
+                            [4,5,6]])
+            in2 = np.array([[11,12,13],
+                            [14,15,16]])
+            in3 = np.array([[21,22],
+                            [23,24]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                x2 = fluid.dygraph.to_variable(in2)
+                x3 = fluid.dygraph.to_variable(in3)
+                out1 = fluid.layers.concat(input=[x1,x2,x3], axis=-1)
+                out2 = fluid.layers.concat(input=[x1,x2], axis=0)
+                print(out1.numpy())
+                # [[ 1  2  3 11 12 13 21 22]
+                #  [ 4  5  6 14 15 16 23 24]]
+                print(out2.numpy())
+                # [[ 1  2  3]
+                #  [ 4  5  6]
+                #  [11 12 13]
+                #  [14 15 16]]
     """
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -214,47 +255,48 @@ def concat(input, axis=0, name=None):
 
 def tensor_array_to_tensor(input, axis=1, name=None):
     """
-    This function concatenates the input LodTensorArray along the axis mentioned
-    and returns that as the output.
-
-    A simple example as below:
-
-    .. code-block:: text
-
-        Given:
-
-        input.data = {[[0.6, 0.1, 0.3],
-                       [0.5, 0.3, 0.2]],
-                      [[1.3],
-                       [1.8]],
-                      [[2.3, 2.1],
-                       [2.5, 2.4]]}
-
-        axis = 1
-
-        Then:
-
-        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
-                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
-
-        output_index.data = [3, 1, 2]
+    This OP concatenates the input LodTensorArray along the axis.
 
     Args:
-        input(list): Input LodTensorArray
-        axis(int): Integer axis along which the tensors will be concatenated
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        input(list): A LodTensorArray with type float32, float64, int23, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 1.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Output variable of the concatenation
-        Variable: The input LodTensorArray items' dims along the axis
+        Variable: LoDTensor
+        Variable: The input LodTensorArray items' dims along the axis.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import numpy as np
+
+            place = fluid.CPUPlace()
+
+            x1 = fluid.layers.data(name="x", shape=[2,2], lod_level=0)
+            tmp = fluid.layers.fill_constant(shape=[2,3], dtype="float32", value=1)
+            x_arr = fluid.layers.create_array(dtype="float32")
+            c0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            fluid.layers.array_write(x=tmp, i=c0, array=x_arr)
+            c1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+            fluid.layers.array_write(x=x1, i=c1, array=x_arr)
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=x_arr, axis=1)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            feedx = fluid.LoDTensor()
+            feedx.set(np.array([[1.3,-2.4],[0,4]]).astype("float32"), place)
+            res = exe.run(fluid.default_main_program(), feed={'x':feedx}, fetch_list=[output], return_numpy=False)
+            print(np.array(res[0]))
+            # [[ 1.   1.   1.   1.3 -2.4]
+            #  [ 1.   1.   1.   0.   4. ]]
+
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -487,24 +529,50 @@ def argmin(x, axis=0):
     """
     **argmin**
 
-    This function computes the indices of the min elements
-    of the input tensor's element along the provided axis.
+    This OP computes the indices of the min elements of the input tensor's
+    element along the provided axis.
 
     Args:
-        x(Variable): The input to compute the indices of
-                     the min elements.
-        axis(int): Axis to compute indices along.
+        x(Variable): A input Tensor with type float32, float64, int8, int16,
+            int32, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A Tensor with type int64.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out = fluid.layers.argmin(x, axis=0)
-            out = fluid.layers.argmin(x, axis=-1)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]],
+                            [[5,2,4,2],
+                             [4,7,7,9],
+                             [1,7,0,6]]])
+            with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(in1)
+            out1 = fluid.layers.argmin(x=x, axis=-1)
+            out2 = fluid.layers.argmin(x=x, axis=0)
+            out3 = fluid.layers.argmin(x=x, axis=1)
+            out4 = fluid.layers.argmin(x=x, axis=2)
+            print(out1.numpy())
+            # [[0 0 2]
+            #  [1 0 2]]
+            print(out2.numpy())
+            # [[0 1 1 1]
+            #  [0 0 0 0]
+            #  [1 1 1 0]]
+            print(out3.numpy())
+            # [[1 1 1 2]
+            #  [2 0 2 0]]
+            print(out4.numpy())
+            # [[0 0 2]
+            #  [1 0 2]]
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -520,24 +588,50 @@ def argmax(x, axis=0):
     """
     **argmax**
 
-    This function computes the indices of the max elements
-    of the input tensor's element along the provided axis.
+    This OP computes the indices of the max elements of the input tensor's
+    element along the provided axis.
 
     Args:
-        x(Variable): The input to compute the indices of
-                     the max elements.
-        axis(int): Axis to compute indices along.
+        x(Variable): A input Tensor with type float32, float64, int8, int16,
+            int32, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A Tensor with type int64.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out = fluid.layers.argmax(x, axis=0)
-            out = fluid.layers.argmax(x, axis=-1)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]],
+                            [[5,2,4,2],
+                             [4,7,7,9],
+                             [1,7,0,6]]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.argmax(x=x, axis=-1)
+                out2 = fluid.layers.argmax(x=x, axis=0)
+                out3 = fluid.layers.argmax(x=x, axis=1)
+                out4 = fluid.layers.argmax(x=x, axis=2)
+                print(out1.numpy())
+                # [[2 3 1]
+                #  [0 3 1]]
+                print(out2.numpy())
+                # [[0 0 0 0]
+                #  [1 1 1 1]
+                #  [0 0 0 1]]
+                print(out3.numpy())
+                # [[2 2 0 1]
+                #  [0 1 1 1]]
+                print(out4.numpy())
+                # [[2 3 1]
+                #  [0 3 1]]
     """
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -551,44 +645,70 @@ def argmax(x, axis=0):
 
 def argsort(input, axis=-1, name=None):
     """
-    Performs sorting on the input Variable along the given axis, and outputs
-    sorted data Varibale and its corresponding index Variable with the same
-    shape as :attr:`input`.
-
-    .. code-block:: text
-
-        For example, the given axis is -1 and the input Variable
-
-            input = [[0.15849551, 0.45865775, 0.8563702 ],
-                     [0.12070083, 0.28766365, 0.18776911]],
-
-        after argsort, the sorted Vairable becomes
-
-            out = [[0.15849551, 0.45865775, 0.8563702 ],
-                   [0.12070083, 0.18776911, 0.28766365]],
-
-        and the sorted indices along the given axis turn outs to be
-
-            indices = [[0, 1, 2],
-                       [0, 2, 1]]
+    This OP sorts the input along the given axis, and returns sorted output
+    data Varibale and its corresponding index Variable with the same shape as
+    :attr:`input`.
 
     Args:
-        input(Variable): The input Variable for sorting.
-        axis(int): The axis along which to sort the input Variable. When
-                   :attr:`axis` < 0, the actual axis will be :attr:`axis` +
-                   rank(:attr:`input`). Default -1, the last dimension.
-        name(str|None): (optional) A name for this layer. If set None, the
-                   layer will be named automatically.
+        x(Variable): A input Tensor with type float32, float64, int8, int16,
+            int32, int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        tuple: A tuple of sorted data Variable and the sorted indices.
+        tuple: A tuple of sorted data Variable(with the same shape and type as
+        input) and the sorted indices(with the same shape as input and with
+        type int64).
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out, indices = fluid.layers.argsort(input=x, axis=0)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]],
+                            [[5,2,4,2],
+                             [4,7,7,9],
+                             [1,7,0,6]]]).astype(np.float32)
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.argsort(input=x, axis=-1)
+                out2 = fluid.layers.argsort(input=x, axis=0)
+                out3 = fluid.layers.argsort(input=x, axis=1)
+                print(out1[0].numpy())
+                # [[[5. 5. 8. 9.]
+                #   [0. 0. 1. 7.]
+                #   [2. 4. 6. 9.]]
+                #  [[2. 2. 4. 5.]
+                #   [4. 7. 7. 9.]
+                #   [0. 1. 6. 7.]]]
+                print(out1[1].numpy())
+                # [[[0 3 1 2]
+                #   [0 1 2 3]
+                #   [2 3 0 1]]
+                #  [[1 3 2 0]
+                #   [0 1 2 3]
+                #   [2 0 3 1]]]
+                print(out2[0].numpy())
+                # [[[5. 2. 4. 2.]
+                #   [0. 0. 1. 7.]
+                #   [1. 7. 0. 4.]]
+                #  [[5. 8. 9. 5.]
+                #   [4. 7. 7. 9.]
+                #   [6. 9. 2. 6.]]]
+                print(out3[0].numpy())
+                # [[[0. 0. 1. 4.]
+                #   [5. 8. 2. 5.]
+                #   [6. 9. 9. 7.]]
+                #  [[1. 2. 0. 2.]
+                #   [4. 7. 4. 6.]
+                #   [5. 7. 7. 9.]]]
     """
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
