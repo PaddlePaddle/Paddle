@@ -180,6 +180,10 @@ class DistributeTranspilerConfig(object):
     _runtime_split_send_recv = False
     _sync_mode = True
 
+    # Geo-sgd algorithm
+    geo_sgd_mode = False
+    geo_sgd_need_push_nums = 100
+
     nccl_comm_num = 1
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
@@ -1189,6 +1193,7 @@ class DistributeTranspiler(object):
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
+            "pserver_id": self.pserver_endpoints.index(endpoint),
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
