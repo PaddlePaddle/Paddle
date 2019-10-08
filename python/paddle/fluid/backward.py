@@ -926,8 +926,8 @@ def append_backward(loss,
     specify its forward part. This function uses the chain rule to automatically
     generate the backward part according to the forward part.
 
-    In most cases, users do not need to invoke this function manually. It
-    will be automatically invoked by the optimizer's `minimize` function.
+    In most cases, users do not need to invoke this function manually.
+    It will be automatically invoked by the optimizer's `minimize` function.
 
     Parameters:
         **loss**( :ref:`api_guide_Variable_en` ): The loss variable of the network.
