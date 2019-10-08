@@ -3083,10 +3083,11 @@ def pool2d(input,
     ${comment}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is `"NCHW"` or `"NHWC"`, where `N` is batch size, `C` is
-                          the number of channels, `H` is the height of the
-                          feature, and `W` is the width of the feature.
+        input (Variable): The input tensor of pooling operator which is a 4-D tensor with
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
+                          `"NHWC"`, where `N` is batch size, `C` is the number of channels,
+                          `H` is the height of the feature, and `W` is the width of the
+                          feature. The data type if float32 or float64.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
@@ -3105,8 +3106,9 @@ def pool2d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        name (str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
@@ -3114,7 +3116,7 @@ def pool2d(input,
                 `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        Variable: The pooling result.
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
         ValueError: If `pool_type` is not "max" nor "avg"
@@ -3130,7 +3132,30 @@ def pool2d(input,
           data = fluid.layers.data(
               name='data', shape=[10, 3, 32, 32], append_batch_size=False, dtype='float32')
 
-          # example 1:
+          # max pool2d
+          pool2d = fludi.layers.pool2d()
+            input = data,
+            pool_size = 2,
+            pool_type = "max",
+            pool_stride = 1,
+            global_pooling=False)
+
+          # average pool2d
+          pool2d = fludi.layers.pool2d()
+            input = data,
+            pool_size = 2,
+            pool_type = "avg",
+            pool_stride = 1,
+            global_pooling=False)
+
+          # global average pool2d
+          pool2d = fludi.layers.pool2d()
+            input = data,
+            pool_size = 2,
+            pool_type = "avg",
+            pool_stride = 1,
+            global_pooling=True)
+
           # Attr(pool_padding) is a list with 4 elements, Attr(data_format) is "NCHW".
           out_1 = fluid.layers.pool2d(
             input = data,
@@ -3140,7 +3165,6 @@ def pool2d(input,
             pool_padding = [1, 2, 1, 0],
             data_format = "NCHW")
 
-          # example 2:
           # Attr(pool_padding) is a string, Attr(data_format) is "NCHW".
           out_2 = fluid.layers.pool2d(
             input = data,
@@ -3262,7 +3286,8 @@ def pool3d(input,
     ${comment}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
+        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with
+                          shape [N, C, D, H, W]. The format of
                           input tensor is `"NCDHW"` or `"NDHWC"`, where `N` is batch size, `C` is
                           the number of channels, `D` is the depth of the feature,
                           `H` is the height of the feature, and `W` is the width
@@ -3286,8 +3311,9 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        name (str): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is true.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
@@ -3295,7 +3321,7 @@ def pool3d(input,
                 `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
-        Variable: output of pool3d layer.
+        Variable: The output tensor of pooling result. The data type is same as input tensor.
 
     Examples:
 
@@ -3305,6 +3331,30 @@ def pool3d(input,
 
           data = fluid.layers.data(
               name='data', shape=[10, 3, 32, 32, 32], append_batch_size=False, dtype='float32')
+
+          # max pool3d
+          pool3d = fludi.layers.pool3d()
+            input = data,
+            pool_size = 2,
+            pool_type = "max",
+            pool_stride = 1,
+            global_pooling=False)
+
+          # average pool3d
+          pool3d = fludi.layers.pool3d()
+            input = data,
+            pool_size = 2,
+            pool_type = "avg",
+            pool_stride = 1,
+            global_pooling=False)
+
+          # global average pool3d
+          pool3d = fludi.layers.pool3d()
+            input = data,
+            pool_size = 2,
+            pool_type = "avg",
+            pool_stride = 1,
+            global_pooling=True)
 
           # example 1:
           # Attr(pool_padding) is a list with 6 elements, Attr(data_format) is "NCDHW".
@@ -3437,12 +3487,13 @@ def adaptive_pool2d(input,
                     name=None):
     """
     **Adaptive Pool2d Operator**
-    The adaptive_pool2d operation calculates the output based on the input, pool_size,
+    This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCHW format, where N is batch
     size, C is the number of channels, H is the height of the feature, and W is
     the width of the feature. Parameters(pool_size) should contain two elements which
     represent height and width, respectively. Also the H and W dimensions of output(Out)
-    is same as Parameter(pool_size).
+    is same as Parameter(pool_size). The output tensor shape will be 
+    :math:`\left (N, C, pool_size[0], pool_size[1] \right )`
 
     For average adaptive pool2d:
 
@@ -3459,20 +3510,23 @@ def adaptive_pool2d(input,
        Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCHW, where N is batch size, C is
-                          the number of channels, H is the height of the
-                          feature, and W is the width of the feature.
+        input (Variable): The input tensor of pooling operator, which is a 4-D tensor
+                          with shape [N, C, H, W].  The format of input tensor is NCHW,
+                          where N is batch size, C is the number of channels, H is the
+                          height of the feature, and W is the width of the feature.
+                          The data type is float32 or float64.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point will be returned along
-            with outputs. It cannot be set in average pooling type.
-        name (str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+            with outputs. It cannot be set in average pooling type. Default False.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
-        Variable: The pooling result.
+        Variable: The output tensor of adaptive pooling result. The data type is same 
+                  as input tensor.
 
     Raises:
         ValueError: 'pool_type' is not 'max' nor 'avg'.
@@ -3482,6 +3536,7 @@ def adaptive_pool2d(input,
     Examples:
         .. code-block:: python
 
+          # average adaptive pool2d
           # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n],
           # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
           # of input data into m * n grids averagely and performs poolings in each
@@ -3503,6 +3558,29 @@ def adaptive_pool2d(input,
                             input=data,
                             pool_size=[3, 3],
                             pool_type='avg')
+
+          # max adaptive pool2d
+          # suppose input data in shape of [N, C, H, W], `pool_size` is [m, n],
+          # output shape is [N, C, m, n], adaptive pool divide H and W dimentions
+          # of input data into m * n grids averagely and performs poolings in each
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          #
+          #     for i in range(m):
+          #         for j in range(n):
+          #             hstart = floor(i * H / m)
+          #             hend = ceil((i + 1) * H / m)
+          #             wstart = floor(i * W / n)
+          #             wend = ceil((i + 1) * W / n)
+          #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
+          #
+          import paddle.fluid as fluid
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool2d(
+                            input=data,
+                            pool_size=[3, 3],
+                            pool_type='max')
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -3550,12 +3628,13 @@ def adaptive_pool3d(input,
                     name=None):
     """
     **Adaptive Pool3d Operator**
-    The adaptive_pool3d operation calculates the output based on the input, pool_size,
+    This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCDHW format, where N is batch
     size, C is the number of channels, D is the depth of the feature, H is the height of
     the feature, and W is the width of the feature. Parameters(pool_size) should contain
     three elements which represent height and width, respectively. Also the D, H and W
-    dimensions of output(Out) is same as Parameter(pool_size).
+    dimensions of output(Out) is same as Parameter(pool_size). The output tensor shape
+    will be :math:`\left (N, C, pool_size[0], pool_size[1], pool_size[2] \right )`
 
     For average adaptive pool3d:
 
@@ -3576,20 +3655,22 @@ def adaptive_pool3d(input,
       Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
-        input (Variable): The input tensor of pooling operator. The format of
-                          input tensor is NCDHW, where N is batch size, C is
-                          the number of channels, D is the depth of the feature,
+        input (Variable): The input tensor of pooling operator, which is a 5-D tensor with 
+                          shape [N, C, D, H, W]. The format of input tensor is NCDHW, where
+                          N is batch size, C is the number of channels, D is the depth of the feature,
                           H is the height of the feature, and W is the width of the feature.
+                          The data type is float32 or float64.
         pool_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain three integers, (Depth, Height, Width).
         pool_type: ${pooling_type_comment}
         require_index (bool): If true, the index of max pooling point will be returned along
-            with outputs. It cannot be set in average pooling type.
-        name (str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+            with outputs. It cannot be set in average pooling type. Default False.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
-        Variable: The pooling result.
+        Variable: The output tensor of adaptive pooling result. The data type is same as input tensor.
 
     Raises:
         ValueError: 'pool_type' is not 'max' nor 'avg'.
@@ -3599,6 +3680,7 @@ def adaptive_pool3d(input,
     Examples:
         .. code-block:: python
 
+          # average adaptive pool3d
           # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
           # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
           # of input data into l * m * n grids averagely and performs poolings in each
@@ -3626,6 +3708,35 @@ def adaptive_pool3d(input,
                             input=data,
                             pool_size=[3, 3, 3],
                             pool_type='avg')
+
+          # max adaptive pool3d
+          # suppose input data in shape of [N, C, D, H, W], `pool_size` is [l, m, n],
+          # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimentions
+          # of input data into l * m * n grids averagely and performs poolings in each
+          # grid to get output.
+          # adaptive average pool performs calculations as follow:
+          #
+          #     for i in range(l):
+          #         for j in range(m):
+          #             for k in range(n):
+          #                 dstart = floor(i * D / l)
+          #                 dend = ceil((i + 1) * D / l)
+          #                 hstart = floor(j * H / m)
+          #                 hend = ceil((j + 1) * H / m)
+          #                 wstart = floor(k * W / n)
+          #                 wend = ceil((k + 1) * W / n)
+          #                 output[:, :, i, j, k] =
+          #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
+          #
+
+          import paddle.fluid as fluid
+
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          pool_out = fluid.layers.adaptive_pool3d(
+                            input=data,
+                            pool_size=[3, 3, 3],
+                            pool_type='max')
     """
     if pool_type not in ["max", "avg"]:
         raise ValueError(
@@ -4322,9 +4433,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     """
     **Spectral Normalization Layer**
 
-    This layer calculates the spectral normalization value of weight parameters of
+    This operation calculates the spectral normalization value of weight parameters of
     fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
-    Parameters. Calculations are showed as follows.
+    Parameters. Output tensor will be in same shape with input tensor.
+    Calculations are showed as follows.
 
     Step 1:
     Generate vector U in shape of [H], and V in shape of [W].
@@ -4333,7 +4445,8 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
 
     Step 2:
     :attr:`power_iters` shoule be a positive interger, do following
-    calculations with U and V for :attr:`power_iters` rounds.
+    calculations with U and V for :attr:`power_iters` rounds. Calculations
+    as follows:
 
     .. math:: 
 
@@ -4358,10 +4471,13 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
         dim(int): ${dim_comment}
         power_iters(int): ${power_iters_comment}
         eps(float): ${eps_comment}
-        name (str): The name of this layer. It is optional.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
         Variable: A tensor variable of weight parameters after spectral normalization.
+                  The data type and shape is same as input tensor.
 
     Examples:
        .. code-block:: python
@@ -13557,19 +13673,22 @@ def grid_sampler(x, grid, name=None):
     """
     This operation samples input X by using bilinear interpolation based on
     flow field grid, which is usually gennerated by :code:`affine_grid` . The grid of
-    shape [N, H, W, 2] is the concatenation of (grid_x, grid_y) coordinates
-    with shape [N, H, W] each, where grid_x is indexing the 4th dimension
-    (in width dimension) of input data x and grid_y is indexng the 3rd
+    shape [N, H, W, 2] is the concatenation of (x, y) coordinates
+    with shape [N, H, W] each, where x is indexing the 4th dimension
+    (in width dimension) of input data x and y is indexng the 3rd
     dimention (in height dimension), finally results is the bilinear
-    interpolation value of 4 nearest corner points.
+    interpolation value of 4 nearest corner points. The output tensor 
+    shape will be [N, C, H, W].
 
     .. code-block:: text
 
         Step 1:
         Get (x, y) grid coordinates and scale to [0, H-1/W-1].
 
-        grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
-        grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
+        .. code-block:: text
+
+            grid_x = 0.5 * (grid[:, :, :, 0] + 1) * (W - 1)
+            grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
         Step 2:
         Indices input data X with grid (x, y) in each [H, W] area, and bilinear
@@ -13604,13 +13723,20 @@ def grid_sampler(x, grid, name=None):
                + ws * d_e * d_n + es * d_w * d_n
 
     Args:
-        x(Variable): Input data of shape [N, C, H, W].
-        grid(Variable): Input grid tensor of shape [N, H, W, 2].
-        name (str, default None): The name of this layer.
+        x(Variable): The input tensor, which is a 4-D tensor with shape
+                     [N, C, H, W], N is the batch size, C is the channel
+                     number, H and W is the feature height and width.
+                     The data type is float32 or float64.
+        grid(Variable): Input grid tensor of shape [N, H, W, 2]. The
+                        data type is float32 or float64.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
         Variable: Output of shape [N, C, H, W] data samples input X
-        using bilnear interpolation based on input grid.
+                  using bilnear interpolation based on input grid.
+                  The data type is same as input tensor.
 
     Examples:
 
@@ -13618,6 +13744,7 @@ def grid_sampler(x, grid, name=None):
 
             import paddle.fluid as fluid
 
+            # use with affine_grid
             x = fluid.layers.data(name='x', shape=[10, 32, 32], dtype='float32')
             theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
             grid = fluid.layers.affine_grid(theta=theta, out_shape=[3, 10, 32, 32])
@@ -13984,11 +14111,13 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         x(Variable): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
-        name (str, default None): The name of this layer.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
         out(Variable): The temporal shifting result is a tensor variable with the 
-        same shape and same type as the input.
+        same shape and same data type as the input.
 
     Raises:
         TypeError: seg_num must be int type.
@@ -14423,10 +14552,13 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         x (Variable): ${x_comment}
         target (Variable): ${target_comment}
         reduction (Variable): ${reduction_comment}
-        name (str, default None): The name of this layer.
+	name(str, optional): For detailed information, please refer 
+		     to :ref:`api_guide_Name`. Usually name is no need to set and 
+		     None by default.
 
     Returns:
-        kldiv\_loss (Variable): The KL divergence loss.
+        kldiv\_loss (Variable): The KL divergence loss. The data
+                                type is same as input tensor
 
     Examples:
         .. code-block:: python

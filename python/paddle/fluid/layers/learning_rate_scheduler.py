@@ -109,17 +109,22 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
 
+    Decayed learning rate calcualtes as follows:
+
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
     >>> else:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by `decay_rate` every
+                         `decay_steps`. If False, learning rate will be decayed continuously
+                         and following the formula above. Default: False
 
     Returns:
         Variable: The decayed learning rate
@@ -156,17 +161,26 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """Applies natural exponential decay to the initial learning rate.
 
+    When training a model, it is often recommended to lower the learning rate as the
+    training progresses. By using this function, the learning rate will be decayed by
+    natural exponential power 'decay_rate' every 'decay_steps' steps.
+
+    Decayed learning rate calcualtes as follows:
+
     >>> if not staircase:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
     >>> else:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        decay_steps: A Python `int32` number.
-        decay_rate: A Python `float` number.
-        staircase: Boolean. If set true, decay the learning rate every decay_steps.
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by natual exponential power
+                         `decay_rate` every `decay_steps`. If False, learning rate will be
+                         decayed continuously and following the formula above. Default: False
 
     Returns:
         The decayed learning rate
@@ -208,17 +222,22 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, an inverse decay function will be
     applied to the initial learning rate.
 
+    Decayed learning rate calcualtes as follows:
+
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
     >>> else:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by `decay_rate` times 
+                         every `decay_steps`. If False, learning rate will be decayed 
+                         continuously and following the formula above. Default: False
 
     Returns:
         Variable: The decayed learning rate
