@@ -828,8 +828,13 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
       x, y, z, ctx.template device_context<DeviceContext>(), func);
   auto x_dims = x->dims();
   auto y_dims_untrimed = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
-                    "Rank of first input must >= rank of second input.");
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), y_dims_untrimed.size(),
+      "ShapeError: the dimension of input X must greater than or equal to "
+      "the one of input Y. But received: the shape of input X = [%s], the "
+      "dimension of input X = %d, the shape of input Y = [%s], the dimension "
+      "of of input Y = %d",
+      x_dims, x_dims.size(), y_dims_untrimed, y_dims_untrimed.size());
   if (x_dims == y_dims_untrimed) {
     functor.Run();
     return;
