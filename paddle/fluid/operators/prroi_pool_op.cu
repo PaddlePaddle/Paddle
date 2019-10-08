@@ -184,12 +184,12 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
-    auto output_channels = ctx.Attr<int>("output_channels");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
     int input_channels = in_dims[1];
+    auto output_channels = input_channels;
     int height = in_dims[2];
     int width = in_dims[3];
 
@@ -246,11 +246,11 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
-    auto output_channels = ctx.Attr<int>("output_channels");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
     int rois_num = rois->dims()[0];
     int input_channels = in->dims()[1];
+    auto output_channels = input_channels;
     int height = in->dims()[2];
     int width = in->dims()[3];
 
