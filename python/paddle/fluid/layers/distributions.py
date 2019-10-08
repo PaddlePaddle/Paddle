@@ -135,8 +135,8 @@ class Uniform(Distribution):
     broadcasting (e.g., `high - low` is a valid operation).
 
     Args:
-        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.
-        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.
+        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.The data type is float32
+        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.The data type is float32
 
     Examples:
         .. code-block:: python
@@ -194,7 +194,7 @@ class Uniform(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.
+          Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         batch_shape = list((self.low + self.high).shape)
@@ -225,7 +225,7 @@ class Uniform(Distribution):
           value (Variable): The input tensor.
 
         Returns:
-          Variable: log probability.
+          Variable: log probability.The data type is same with value.
 
         """
         lb_bool = control_flow.less_than(self.low, value)
@@ -238,7 +238,7 @@ class Uniform(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of uniform distribution.
+          Variable: Shannon entropy of uniform distribution.The data type is float32.
 
         """
         return nn.log(self.high - self.low)
@@ -266,8 +266,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.
-        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.
+        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.The data type is float32.
+        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -329,7 +329,7 @@ class Normal(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.
+          Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         batch_shape = list((self.loc + self.scale).shape)
@@ -355,7 +355,7 @@ class Normal(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of normal distribution.
+          Variable: Shannon entropy of normal distribution.The data type is float32.
 
         """
         batch_shape = list((self.loc + self.scale).shape)
@@ -371,7 +371,7 @@ class Normal(Distribution):
           value (Variable): The input tensor.
 
         Returns:
-          Variable: log probability.
+          Variable: log probability.The data type is same with value.
 
         """
         var = self.scale * self.scale
@@ -386,7 +386,7 @@ class Normal(Distribution):
             other (Normal): instance of Normal.
 
         Returns:
-            Variable: kl-divergence between two normal distributions.
+            Variable: kl-divergence between two normal distributions.The data type is float32.
 
         """
         assert isinstance(other, Normal), "another distribution must be Normal"

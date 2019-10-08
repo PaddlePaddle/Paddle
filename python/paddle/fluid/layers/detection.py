@@ -591,11 +591,11 @@ def iou_similarity(x, y, name=None):
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+        x (Variable): ${x_comment}.The data type is float32 or float64.
+        y (Variable): ${y_comment}.The data type is float32 or float64.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable: ${out_comment}.The data type is same with x.
 
     Examples:
         .. code-block:: python

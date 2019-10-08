@@ -13318,19 +13318,21 @@ def affine_channel(x,
     Args:
         x (Variable): Feature map input can be a 4D tensor with order NCHW
             or NHWC. It also can be a 2D tensor and the affine transformation
-            is applied in the second dimension.
+            is applied in the second dimension.The data type is float32 or float64.
         scale (Variable): 1D input of shape (C), the c-th element is the scale
             factor of the affine transformation for the c-th channel of
-            the input.
+            the input.The data type is float32 or float64.
         bias (Variable): 1D input of shape (C), the c-th element is the bias
             of the affine transformation for the c-th channel of the input.
-        data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
+            The data type is float32 or float64.
+        data_layout (str, default NCHW): NCHW or NHWC. If input is 2D
             tensor, you can ignore data_layout.
-        name (str, default None): The name of this layer.
+        name (str, default None): The name of this layer. For more information,
+            please refer to: ref:`api_guide_Name` .
         act (str, default None): Activation to be applied to the output of this layer.
 
     Returns:
-        out (Variable): A tensor of the same shape and data layout with x.
+        Variable: A tensor which has the same shape, data layout and data type with x.
 
     Examples:
         .. code-block:: python
