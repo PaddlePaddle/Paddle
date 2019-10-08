@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from functools import partial
+from functools import partial, reduce
 
 from . import nn
 from . import tensor
