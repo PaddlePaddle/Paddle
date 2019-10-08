@@ -7267,7 +7267,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         >>> # for LodTensor
         >>> import paddle.fluid as fluid
         >>> x = fluid.layers.data(name='x', shape=[16],
-        >>>                        dtype='float32', lod_level=3)
+        >>>                        dtype='float32', lod_level=1)
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
         >>> # for Tensor
         >>> x = fluid.layers.data(name='x', shape=[9, 4, 16],
