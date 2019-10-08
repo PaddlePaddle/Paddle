@@ -2175,10 +2175,13 @@ def sequence_conv(input,
 
 def sequence_softmax(input, use_cudnn=False, name=None):
     """
-    This function computes the softmax activation among all time-steps for each
-    sequence. The dimension of each time-step should be 1. Thus, the shape of
-    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
-    is the sum of the length of all sequences.
+    **Note**:
+
+    **The input type of the OP must be LoDTensor. If the input type to be processed is Tensor, use:**  :ref:`api_fluid_layers_softmax` 
+
+    The OP divides the input dimension 0 according to LoD information, and calculates within each interval.
+    The shape of input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
+    is the sum of the length of all sequences. Recommended use of :math:`[N]`.
 
     For i-th sequence in a mini-batch:
 
@@ -2186,20 +2189,40 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
-    For example, for a mini-batch of 3 sequences with variable-length,
-    each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
-    then softmax will be computed among :math:`X[0:2, :]`, :math:`X[2:5, :]`,
-    :math:`X[5:7, :]`, and :math:`N` turns out to be 7.
+    For example, for a mini-batch of 6 sequences with variable-length,
+    each containing 2, 3, 4, 1, 2, 3 time-steps, the lod of which is [[0, 3, 5, 9, 10, 12, 15]],
+    then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
+    and :math:`N` turns out to be 15.
+
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input.data = [0.7, 1, 0.6,
+                              1.5, 1.1,
+                              1.2, 0.2, 0.6, 1.9,
+                              3.1,
+                              2.5, 0.8,
+                              0.1, 2.4, 1.3]
+                input.lod = [[0, 3, 5, 9, 10, 12, 15]]
+            then:
+                 output.data = [0.30724832, 0.41474187, 0.2780098,
+                                0.59868765, 0.40131235,
+                                0.2544242, 0.09359743, 0.13963096, 0.5123474, 
+                                1.,
+                                0.84553474, 0.15446526,
+                                0.06995796, 0.69777346, 0.23226859]
+                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]    
+    
 
     Args:
-        input (Variable): The input variable which is a LoDTensor.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed. Default: False.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
+        input (Variable):It's a LoDTensor whose shape is  :math:`[N, 1]` or  :math:`[N]`, recommended use of :math:`[N]`. It refers to the data type of input LodTensor, It must be float32 or float64. 
+        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle library is installed and GPU is used for training or reasoning. Default: False.
+        name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
     Returns:
-        Variable: output of sequence_softmax
+        Variable: It is a LoDTensor whose shape is the same as that of input, and its data type is the same as that of input.
 
     Examples:
 
@@ -2208,7 +2231,14 @@ def sequence_softmax(input, use_cudnn=False, name=None):
              import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
+             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x) 
+
+             y = fluid.layers.data(name='y', shape=[7],
+                 dtype='float32', lod_level=1)
+             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
+
+
+            x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
