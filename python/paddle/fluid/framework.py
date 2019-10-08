@@ -62,7 +62,7 @@ _dygraph_current_expected_place_ = None
 
 def in_dygraph_mode():
     """
-    This function checks whether the program runs in dynamic graph mode.
+    This function checks whether the program runs in dynamic graph mode or not.
     You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
 
     Returns:
