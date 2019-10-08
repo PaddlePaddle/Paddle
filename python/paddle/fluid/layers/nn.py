@@ -13328,7 +13328,7 @@ def affine_channel(x,
         data_layout (str, default NCHW): NCHW or NHWC. If input is 2D
             tensor, you can ignore data_layout.
         name (str, default None): The name of this layer. For more information,
-            please refer to: ref:`api_guide_Name` .
+            please refer to :ref:`api_guide_Name` .
         act (str, default None): Activation to be applied to the output of this layer.
 
     Returns:
