@@ -457,12 +457,12 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` objects to update
+            parameter_list (list, optional): List of ``Variable`` names to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable`` objects that don't need
                 to be updated. The default value is None.
-            callbacks (list, optional): list of callables to run when appending backward
+            callbacks (list, optional): list of callable objects to run when appending backward
                 operator for one parameter. The default value is None.
 
         Return:
@@ -609,7 +609,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` objects to update
+            parameter_list (list, optional): List of ``Variable`` names to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable`` objects that don't need
@@ -1225,8 +1225,7 @@ class AdagradOptimizer(Optimizer):
             import paddle.fluid as fluid
 
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = fluid.layers.data(
-                name="inp", shape=[2, 2], append_batch_size=False)
+            inp = fluid.data(name="inp", shape=[2, 2], append_batch_size=False)
             out = fluid.layers.fc(inp, size=3)
             out = fluid.layers.reduce_sum(out)
             optimizer = fluid.optimizer.AdagradOptimizer(learning_rate=0.2)
@@ -1350,8 +1349,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = fluid.data(name='x', shape=[13], dtype='float32')
+                y = fluid.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
@@ -1526,8 +1525,8 @@ class AdamaxOptimizer(Optimizer):
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
-    Notes:
-        Currently, AdamaxOptimizer doesn't support sparse parameter optimization.
+    **Notes**:
+        **Currently, AdamaxOptimizer doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
@@ -1542,7 +1541,7 @@ class AdamaxOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
@@ -1756,19 +1755,17 @@ class DecayedAdagradOptimizer(Optimizer):
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
-    Notes:
-        Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.
+    **Notes**:
+        **Currently, DecayedAdagradOptimizer doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            from paddle.fluid.optimizer import DecayedAdagrad
 
-            x = layers.data( name='x', shape=[-1, 10], dtype='float32' )
-            trans = layers.fc( x, 100 )
-            cost = layers.reduce_mean( trans )
+            x = fluid.data( name='x', shape=[-1, 10], dtype='float32' )
+            trans = fluid.layers.fc( x, 100 )
+            cost = fluid.layers.reduce_mean( trans )
             optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
             optimizer.minimize(cost)
     """
@@ -2418,7 +2415,7 @@ class ModelAverage(Optimizer):
     threshold (average_window), the accumulated ``Parameter`` temporary variable is set to 0.0.
     The following example will help to understand the role of these arguments:
 
-    .. code-block:: python
+    ::
 
         if num_accumulates >= min_average_window and num_accumulates >= min(max_average_window, num_updates * average_window_rate):
             num_accumulates = 0
@@ -2455,7 +2452,7 @@ class ModelAverage(Optimizer):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             # build net
-            data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            data = fluid.data(name='X', shape=[1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             loss = fluid.layers.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -2616,7 +2613,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                data = fluid.data(name='X', shape=[1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -2670,7 +2667,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                data = fluid.data(name='X', shape=[1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
