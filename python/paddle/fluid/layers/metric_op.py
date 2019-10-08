@@ -142,7 +142,7 @@ def auc(input,
             import numpy as np
 
             data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = fluid.data(name="label", shape=[1], dtype="int")
+            label = fluid.data(name="label", shape=[-1], dtype="int")
             fc_out = fluid.layers.fc(input=data, size=2)
             predict = fluid.layers.softmax(input=fc_out)
             result=fluid.layers.auc(input=predict, label=label)

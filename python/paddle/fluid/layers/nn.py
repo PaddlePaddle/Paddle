@@ -1436,8 +1436,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data = fluid.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
-                label = fluid.data(name='label', shape=[1], dtype='int', lod_level=1)
+                input_data = fluid.data(name='input_data', shape=[-1,10], dtype='float32')
+                label = fluid.data(name='label', shape=[-1,1], dtype='int')
                 emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
                 crf_cost = fluid.layers.linear_chain_crf(
                     input=emission,
@@ -1460,9 +1460,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data2 = fluid.data(name='input_data2', shape=[10,10], dtype='float32')
-                label2 = fluid.data(name='label2', shape=[10,1], dtype='int')
-                label_length = fluid.data(name='length', shape=[1], dtype='int')
+                input_data2 = fluid.data(name='input_data2', shape=[-1,10,10], dtype='float32')
+                label2 = fluid.data(name='label2', shape=[-1,10,1], dtype='int')
+                label_length = fluid.data(name='length', shape=[-1,1], dtype='int')
                 emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
                 crf_cost2 = fluid.layers.linear_chain_crf(
                     input=emission2,
@@ -1480,7 +1480,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #define data, using padding
             cc=np.random.rand(4,10,10).astype('float32')
             dd=np.random.rand(4,10,1).astype('int64')
-            ll=np.array([[3,3,4,2]])
+            ll=np.array([[3],[3],[4],[2]])
             feed2 = {'input_data2':cc,'label2':dd,'length':ll}
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
@@ -1488,7 +1488,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #        [ 7.3602567],
             #        [ 10.004011],
             #        [ 5.86721  ]], dtype=float32)]
-           
+
             #you can use find_var to get transition parameter.
             transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
             print(transition)
