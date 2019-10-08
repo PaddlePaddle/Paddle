@@ -602,9 +602,15 @@ def iou_similarity(x, y, name=None):
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            x = fluid.data(name='x', shape=[-1, 4], dtype='float32')
+            y = fluid.data(name='y', shape=[-1, 4], dtype='float32')
             iou = fluid.layers.iou_similarity(x=x, y=y)
+
+            # if x is [[0.5, 0.5, 2. , 2. ],
+            #          [0. , 0. , 1. , 1. ]] with shape: [2, 4]
+            #    y is [[1. , 1. , 2.5, 2.5]] with shape: [1, 4]
+            # result is [[0.2857143],
+            #           [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
