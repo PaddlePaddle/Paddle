@@ -10725,15 +10725,15 @@ def relu6(x, threshold=6.0, name=None):
 @templatedoc()
 def pow(x, factor=1.0, name=None):
     """
-    ${comment}
+    This is Pow Activation Operator.
+
     Args:
-        x(${x_type}): ${x_comment}
-        factor(float|Variable|1.0): The exponential factor of Pow.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        x(Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
+        factor(float32|Variable, optional): A scalar whit type ``float32`` or a ``Tensor`` with shape [1].  The exponential factor of Pow. Default 1.0.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:api_guide_Name .
 
     Returns:
-        output(${out_type}): ${out_comment}
+        Variable: A ``Tensor`` or ``LoDTensor`` with the same dimension as ``x``. The data type is same as ``x``.
 
     Examples:
 
@@ -10745,10 +10745,12 @@ def pow(x, factor=1.0, name=None):
 
             # example 1: argument factor is float
             y_1 = fluid.layers.pow(x, factor=2.0)
+            # y_1 is x^{2.0}
 
             # example 2: argument factor is Variable
             factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
             y_2 = fluid.layers.pow(x, factor=factor_tensor)
+            # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
     inputs = {'X': x}
