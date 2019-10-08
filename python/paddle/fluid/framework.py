@@ -149,25 +149,29 @@ def is_compiled_with_cuda():
 
 def cuda_places(device_ids=None):
     """
-    Create a list of :code:`fluid.CUDAPlace` objects.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    This function creates a list of :code:`fluid.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus` would be checked first. For example, if
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.  
+    gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     
-    Args: 
-        device_ids (None|list(int)|tuple(int)): gpu device id list.
+    Parameters:
+        device_ids (list or tuple of int, optional): list of GPU device ids.
 
     Returns:
-        out (list(fluid.CUDAPlace)): gpu place list.
+        list of fluid.CUDAPlace: Created GPU place list.
 
     Examples:
         .. code-block:: python
@@ -187,18 +191,20 @@ def cuda_places(device_ids=None):
 
 def cpu_places(device_count=None):
     """
-    Create a list of :code:`fluid.CPUPlace` objects.
+    This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CPUPlace)): cpu place list.
+        list of fluid.CPUPlace: Created list of CPU places.
 
     Examples:
         .. code-block:: python
@@ -214,18 +220,20 @@ def cpu_places(device_count=None):
 
 def cuda_pinned_places(device_count=None):
     """
-    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+    This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+        list of fluid.CUDAPinnedPlace: Created list of CUDA pinned places.
 
     Examples:
         .. code-block:: python
