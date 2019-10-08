@@ -3129,8 +3129,7 @@ def pool2d(input,
 
           import paddle.fluid as fluid
 
-          data = fluid.layers.data(
-              name='data', shape=[10, 3, 32, 32], append_batch_size=False, dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
 
           # max pool2d
           pool2d = fludi.layers.pool2d()
@@ -3329,8 +3328,7 @@ def pool3d(input,
 
           import paddle.fluid as fluid
 
-          data = fluid.layers.data(
-              name='data', shape=[10, 3, 32, 32, 32], append_batch_size=False, dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
 
           # max pool3d
           pool3d = fludi.layers.pool3d()
@@ -3552,8 +3550,7 @@ def adaptive_pool2d(input,
           #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
           #
           import paddle.fluid as fluid
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool2d(
                             input=data,
                             pool_size=[3, 3],
@@ -3575,8 +3572,7 @@ def adaptive_pool2d(input,
           #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
           #
           import paddle.fluid as fluid
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool2d(
                             input=data,
                             pool_size=[3, 3],
@@ -3702,8 +3698,8 @@ def adaptive_pool3d(input,
 
           import paddle.fluid as fluid
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          data = fluid.data(
+              name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3, 3],
@@ -3731,8 +3727,8 @@ def adaptive_pool3d(input,
 
           import paddle.fluid as fluid
 
-          data = fluid.layers.data(
-              name='data', shape=[3, 32, 32, 32], dtype='float32')
+          data = fluid.data(
+              name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
           pool_out = fluid.layers.adaptive_pool3d(
                             input=data,
                             pool_size=[3, 3, 3],
@@ -4484,8 +4480,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
 
             import paddle.fluid as fluid
 
-            weight = fluid.layers.data(name='weight', shape=[2, 8, 32, 32], 
-                                       append_batch_size=False, dtype='float32')
+            weight = fluid.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
@@ -13745,7 +13740,7 @@ def grid_sampler(x, grid, name=None):
             import paddle.fluid as fluid
 
             # use with affine_grid
-            x = fluid.layers.data(name='x', shape=[10, 32, 32], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 10, 32, 32], dtype='float32')
             theta = fluid.layers.data(name='theta', shape=[2, 3], dtype='float32')
             grid = fluid.layers.affine_grid(theta=theta, out_shape=[3, 10, 32, 32])
             out = fluid.layers.grid_sampler(x=x, grid=grid)
@@ -14126,7 +14121,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
@@ -14564,7 +14559,7 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[4,2,2], dtype='float32')
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32')
             target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
     """
