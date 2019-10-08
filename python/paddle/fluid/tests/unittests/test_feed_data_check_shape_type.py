@@ -97,8 +97,8 @@ class TestFeedData(unittest.TestCase):
                                                         use_parallel_executor)
                 self.assertEqual(
                     str(shape_mismatch_err.exception),
-                    "ShapeError: The feeded Variable %r should have dimensions"
-                    " = %r, shape = %r, but received feeded shape %r" %
+                    "The feeded Variable %r should have dimensions = %r, "
+                    "shape = %r, but received feeded shape %r" %
                     (u'data', len(in_shape_tuple), in_shape_tuple,
                      feed_shape_list))
 
@@ -107,8 +107,8 @@ class TestFeedData(unittest.TestCase):
                                                         use_parallel_executor)
                 self.assertEqual(
                     str(dtype_mismatch_err.exception),
-                    "The data type of feeded Variable %r must be "
-                    "VarType.INT64, but received VarType.FP64" % (u'label'))
+                    "The data type of feeded Variable %r must be 'int64', but "
+                    "received 'float64'" % (u'label'))
 
     def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)

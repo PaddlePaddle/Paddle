@@ -22,6 +22,7 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
+from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
@@ -205,13 +206,17 @@ def check_feed_shape_type(var, feed):
     if var.desc.need_check_feed():
         if not dimension_is_compatible_with(feed.shape(), var.shape):
             raise ValueError(
-                'ShapeError: The feeded Variable %r should have dimensions = '
-                '%d, shape = %r, but received feeded shape %r' %
+                'The feeded Variable %r should have dimensions = %d, shape = '
+                '%r, but received feeded shape %r' %
                 (var.name, len(var.shape), var.shape, feed.shape()))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
+            var_dtype_format = convert_dtype(var.dtype) if isinstance(
+                var.dtype, core.VarDesc.VarType) else var.dtype
+            feed_dtype_format = convert_dtype(feed._dtype()) if isinstance(
+                feed._dtype(), core.VarDesc.VarType) else feed._dtype()
             raise ValueError(
                 'The data type of feeded Variable %r must be %r, but received %r'
-                % (var.name, var.dtype, feed._dtype()))
+                % (var.name, var_dtype_format, feed_dtype_format))
     return True
 
 
