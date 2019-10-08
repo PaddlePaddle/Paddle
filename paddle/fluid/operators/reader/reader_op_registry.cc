@@ -20,14 +20,15 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-std::vector<framework::DDim> RestoreShapes(const std::vector<int>& shape_concat,
-                                           const std::vector<int>& ranks) {
+static std::vector<framework::DDim> RestoreShapes(
+    const std::vector<int64_t>& shape_concat,
+    const std::vector<int64_t>& ranks) {
   std::vector<framework::DDim> res;
   int offset = 0;
-  for (int len : ranks) {
+  for (auto len : ranks) {
     auto start_it = shape_concat.begin() + offset;
     auto end_it = start_it + len;
-    res.push_back(framework::make_ddim(std::vector<int>(start_it, end_it)));
+    res.push_back(framework::make_ddim(std::vector<int64_t>(start_it, end_it)));
     offset += len;
   }
   return res;
@@ -40,8 +41,9 @@ std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
 
 void FileReaderMakerBase::Make() {
   AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
-  AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
-  AddAttr<std::vector<int>>(
+  AddAttr<std::vector<int64_t>>("shape_concat",
+                                "The concat of all data's shapes.");
+  AddAttr<std::vector<int64_t>>(
       "ranks",
       "The ranks of each data."
       "e.g."
@@ -49,7 +51,7 @@ void FileReaderMakerBase::Make() {
       "ranks = [3,2]"
       "It means the reader will generate two data each time,"
       "whose shapes are [2,3,4] and [5,6] respectively.");
-  AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
+  AddAttr<std::vector<int32_t>>("lod_levels", "The LoD levels of each data.");
   AddAttr<bool>(
       "use_data_config",
       "Use the config of all datas like shape_concat/ranks/lod_levels")
@@ -67,12 +69,13 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
   bool use_data_config = ctx->Attrs().Get<bool>("use_data_config");
   if (use_data_config) {
     const auto shape_concat =
-        ctx->Attrs().Get<std::vector<int>>("shape_concat");
-    const auto ranks = ctx->Attrs().Get<std::vector<int>>("ranks");
+        ctx->Attrs().Get<std::vector<int64_t>>("shape_concat");
+    const auto ranks = ctx->Attrs().Get<std::vector<int64_t>>("ranks");
     std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     ctx->SetReaderDims("Out", shapes);
 
-    const auto lod_levels = ctx->Attrs().Get<std::vector<int>>("lod_levels");
+    const auto lod_levels =
+        ctx->Attrs().Get<std::vector<int32_t>>("lod_levels");
     PADDLE_ENFORCE_EQ(lod_levels.size(), shapes.size(),
                       "The number of 'lod_levels'(%d) doesn't match the number "
                       "of 'shapes'(%d).",
