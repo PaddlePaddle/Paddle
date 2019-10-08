@@ -195,10 +195,10 @@ class WeightNormParamAttr(ParamAttr):
             number which is less than the rank of weight Tensor. For Example, dim can
             be choosed from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
             and rank is 4. Default None, meaning that all elements will be normalized.
-        name(None|str): The parameter's name. Default None, meaning that the name would
-            be created automatically.
+        name(str, optional): The parameter's name. Default None, meaning that the name would
+            be created automatically. Please refer to :ref:`api_guide_Name` for more details.
         initializer(Initializer): The method to initialize this parameter, such as
-             ``initializer = fluid.initializer.ConstantInitializer(1.0)``. Default None,
+            ``initializer = fluid.initializer.ConstantInitializer(1.0)``. Default None,
             meaning that the weight parameter is initialized by Xavier initializer, and
             the bias parameter is initialized by 0.
         learning_rate(float32): The parameter's learning rate when
@@ -207,11 +207,11 @@ class WeightNormParamAttr(ParamAttr):
         regularizer(WeightDecayRegularizer): Regularization factor, such as
             ``regularizer = fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1)``.
             Default None, meaning that there is no regularization.
-        trainable(bool): Whether this parameter is trainable. Default True.
+        trainable(bool, optional): Whether this parameter is trainable. Default True.
         gradient_clip: The method to clip this parameter's gradient, such as
             ``gradient_clip = fluid.clip.GradientClipByNorm(clip_norm=2.0))`` .
             Default None, meaning that there is no gradient clip.
-        do_model_average(bool): Whether this parameter should do model average.
+        do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
 
     Examples:
