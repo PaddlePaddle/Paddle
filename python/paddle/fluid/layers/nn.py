@@ -2918,7 +2918,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
             import paddle.fluid as fluid
 
-            x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
             avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
             sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
             sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
@@ -3051,7 +3051,7 @@ def sequence_first_step(input):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
     return sequence_pool(input=input, pool_type="first")
@@ -3104,7 +3104,7 @@ def sequence_last_step(input):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
     return sequence_pool(input=input, pool_type="last")
@@ -6813,7 +6813,7 @@ def sequence_reshape(input, new_dim):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2, 6], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
             x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
     """
     assert not in_dygraph_mode(), (
@@ -13493,7 +13493,7 @@ def sequence_reverse(x, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[-1, 6], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
             x_reversed = fluid.layers.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
