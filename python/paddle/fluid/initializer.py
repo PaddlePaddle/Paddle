@@ -54,7 +54,7 @@ def force_init_on_cpu():
 @signature_safe_contextmanager
 def init_on_cpu():
     """
-    Force the variable to be inited on CPU.
+    Force the variable to be initialized on CPU.
 
     Examples:
         .. code-block:: python
@@ -130,15 +130,15 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float): constant value to initialize the variable
+        value (float32): constant value to initialize the variable
 
     Examples:
         .. code-block:: python
 
-    	    import paddle.fluid as fluid
+            import paddle.fluid as fluid
             x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Constant(value=2.0))
+            fc = fluid.layers.fc(input=x, size=10,
+            param_attr=fluid.initializer.Constant(value=2.0))
 
     """
 
@@ -221,7 +221,7 @@ class UniformInitializer(Initializer):
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
+            param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
 
     def __init__(self,
@@ -627,9 +627,9 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool): whether to use uniform or normal distribution
-        fan_in (float): fan_in for MSRAInitializer. If None, it is\
-        inferred from the variable.
-        seed (int): random seed
+        fan_in (float16|float32): fan_in for MSRAInitializer. If None, it is\
+        inferred from the variable. default is None
+        seed (int32): random seed
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -744,11 +744,12 @@ class BilinearInitializer(Initializer):
             import paddle.fluid as fluid
             factor = 2
             C = 2
+            H = W = 32
             w_attr = fluid.param_attr.ParamAttr(
-                learning_rate=0., 
+                learning_rate=0.,
                 regularizer=fluid.regularizer.L2Decay(0.),
-                initializer=fluid.initializer.Bilinear())
-            x = fluid.layers.data(name="data", shape=[3, 32, 32], 
+                initializer=fluid.initializer.BilinearInitializer())
+            x = fluid.layers.data(name="data", shape=[3, H, W],
                                   dtype="float32")
             conv_up = fluid.layers.conv2d_transpose(
                 input=x,

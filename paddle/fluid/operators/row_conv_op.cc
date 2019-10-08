@@ -89,9 +89,7 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "future_context is the future context length and N is the data "
              "dimension.");
     AddOutput("Out",
-              "the output(Out) is a LodTensor, which supports "
-              "variable time-length input sequences. The underlying tensor "
-              "in this LodTensor is a matrix with shape T x N, i.e., the "
+              "the output(Out) is a LodTensor or Tensor, which has"
               "same shape as X.");
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
