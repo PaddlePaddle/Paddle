@@ -50,7 +50,7 @@ class SumOp : public framework::OperatorWithKernel {
     auto N = x_dims.size();
     PADDLE_ENFORCE_GT(N, 0,
                       "ShapeError: The input tensor X's dimensions of SumOp "
-                      "shoud be larger than 0."
+                      "should be larger than 0."
                       "But received X's dimensions %d.",
                       N);
     if (N == 1) {
