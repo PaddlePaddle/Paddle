@@ -147,7 +147,25 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 dataset=dataset,
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
-                print_period=100,
+                print_period=2,
+                debug=False)
+            pass_time = time.time() - pass_start
+
+        class FH(fluid.executor.FetchHandler):
+            def handler(self, fetch_target_vars):
+                for i in range(len(fetch_target_vars)):
+                    print("{}: \n {}\n".format(self.fetch_target_names[0],
+                                               fetch_target_vars[0]))
+
+        for epoch_id in range(2):
+            pass_start = time.time()
+            dataset.set_filelist(filelist)
+            exe.train_from_dataset(
+                program=fleet.main_program,
+                dataset=dataset,
+                fetch_handler=FH([self.avg_cost.name],
+                                 period_secs=2,
+                                 return_np=True),
                 debug=False)
             pass_time = time.time() - pass_start
 

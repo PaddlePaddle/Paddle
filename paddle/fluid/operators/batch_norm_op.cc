@@ -58,8 +58,18 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
-  PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                 "Input X must have 2 to 5 dimensions.");
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), 2,
+      "ShapeError: the dimension of input X must greater than or equal to 2."
+      "But received: the shape of input X = [%s], the dimension of input X ="
+      "[%d]",
+      x_dims, x_dims.size());
+  PADDLE_ENFORCE_LE(
+      x_dims.size(), 5,
+      "ShapeError: the dimension of input X must smaller than or equal to 5."
+      "But received: the shape of input X = [%s], the dimension of input X ="
+      "[%d]",
+      x_dims, x_dims.size());
 
   const int64_t C =
       (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -68,8 +78,16 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
 
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL,
+                    "ShapeError: the dimension of scale must equal to 1."
+                    "But received: the shape of scale is [%s], the dimension "
+                    "of scale is [%d]",
+                    scale_dim, scale_dim.size());
+  PADDLE_ENFORCE_EQ(
+      bias_dim.size(), 1UL,
+      "ShapeError: the dimension of bias must equal to 1."
+      "But received: the shape of bias is [%s],the dimension of bias is [%d]",
+      bias_dim, bias_dim.size());
 
   bool check = true;
   if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
@@ -78,8 +96,14 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C,
+                      "ShapeError: the shape of scale must equal to [%d]"
+                      "But received: the shape of scale is [%d]",
+                      C, scale_dim[0]);
+    PADDLE_ENFORCE_EQ(bias_dim[0], C,
+                      "ShapeError: the shape of bias must equal to [%d]"
+                      "But received: the shape of bias is [%d]",
+                      C, bias_dim[0]);
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});

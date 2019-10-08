@@ -66,9 +66,88 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["sequence_pad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
   op_compatible_map_["sequence_unpad"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
 
-  op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["center_loss"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["coalesce_tensor"] = {"1.6.0",
+                                           OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["crop_tensor"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["deformable_conv"] = {"1.6.0",
+                                           OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["deformable_conv_v1"] = {"1.6.0",
+                                              OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["dpsgd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["eye"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["fill_any_like"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["filter_by_instag"] = {"1.6.0",
+                                            OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["hard_swish"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["gather_nd"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["instance_norm"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["lookup_table_v2"] = {"1.6.0",
+                                           OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["match_matrix_tensor"] = {"1.6.0",
+                                               OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["multiclass_nms2"] = {"1.6.0",
+                                           OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["prroi_pool"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["pull_box_sparse"] = {"1.6.0",
+                                           OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["scatter_nd_add"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["sequence_topk_avg_pooling"] = {
+      "1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["shard_index"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["size"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["strided_slice"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["trilinear_interp"] = {"1.6.0",
+                                            OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["unfold"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["unique"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["unique_with_counts"] = {"1.6.0",
+                                              OpCompatibleType::DEFIN_NOT};
+  op_compatible_map_["var_conv_2d"] = {"1.6.0", OpCompatibleType::DEFIN_NOT};
+
+  op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["slice"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["expand"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["bilinear_interp"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["chunk_eval"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["conditional_block"] = {"1.6.0",
+                                             OpCompatibleType::possible};
+  op_compatible_map_["conditional_block_infer"] = {"1.6.0",
+                                                   OpCompatibleType::possible};
+  op_compatible_map_["conv2d"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["conv2d_transpose"] = {"1.6.0",
+                                            OpCompatibleType::possible};
+  op_compatible_map_["conv3d"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["conv3d_transpose"] = {"1.6.0",
+                                            OpCompatibleType::possible};
+  op_compatible_map_["crf_decoding"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["ctc_align"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["data_norm"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["depthwise_conv2d"] = {"1.6.0",
+                                            OpCompatibleType::possible};
+  op_compatible_map_["depthwise_conv2d_transpose"] = {
+      "1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["edit_distance"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["fc"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["fused_embedding_seq_pool"] = {"1.6.0",
+                                                    OpCompatibleType::possible};
+  op_compatible_map_["group_norm"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["hash"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["leaky_relu"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["linear_chain_crf"] = {"1.6.0",
+                                            OpCompatibleType::possible};
+  op_compatible_map_["lod_reset"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["matmul"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["mul"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["nearest_interp"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["one_hot"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["pow"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["prior_box"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["uniform_random"] = {"1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["uniform_random_batch_size_like"] = {
+      "1.6.0", OpCompatibleType::possible};
+  op_compatible_map_["warpctc"] = {"1.6.0", OpCompatibleType::possible};
 
   op_compatible_map_["layer_norm"] = {"1.6.0", OpCompatibleType::bug_fix};
 }
