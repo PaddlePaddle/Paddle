@@ -13340,7 +13340,7 @@ def affine_channel(x,
             import numpy as np
             import paddle.fluid as fluid
 
-            use_gpu = True
+            use_gpu = False
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
 
