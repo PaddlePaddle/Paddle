@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 def bcast(x, target_tensor):
@@ -99,6 +100,30 @@ class TestExpandAsOpRank4(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+# Test python API
+class TestExpandAPI(OpTest):
+    def test_api(self):
+        input1 = np.random.random([12, 14]).astype("float32")
+        input2 = np.random.random([48, 14]).astype("float32")
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32")
+
+        y = fluid.layers.data(
+            name='target_tensor',
+            shape=[48, 14],
+            append_batch_size=False,
+            dtype="float32")
+
+        out_1 = fluid.layers.expand_as(x, target_tensor=y)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1 = exe.run(fluid.default_main_program(),
+                        feed={"x": input1,
+                              "target_tensor": input2},
+                        fetch_list=[out_1])
+        assert np.array_equal(res_1[0], np.tile(input1, (4, 1)))
 
 
 if __name__ == "__main__":
