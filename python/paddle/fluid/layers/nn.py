@@ -9047,10 +9047,13 @@ def image_resize(input,
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
-        if isinstance(scale, float):
+        elif isinstance(scale, float) or isinstance(scale, int):
             if scale <= 0:
-                raise ValueError("scale should be greater than zero.")
+                raise ValueError("Attr(scale) should be greater than zero.")
             attrs['scale'] = float(scale)
+        else:
+            raise TypeError(
+                "Attr(scale)'s type should be float, int or Variable.")
 
     if isinstance(actual_shape, Variable):
         warnings.warn(
