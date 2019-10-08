@@ -261,7 +261,7 @@ Examples:
     .. code-block:: python
 
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[32, 784])
+        data = fluid.data(name="input", shape=[32, 784])
         result = fluid.layers.%s(data)
 """ % op_type
     return func

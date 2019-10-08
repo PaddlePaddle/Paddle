@@ -214,12 +214,15 @@ class UniformInitializer(Initializer):
             which is generally the width of the square matrix.
         diag_val (float): the value of the diagonal element to be initialized,
             default 1.0. It takes effect only if the diag_num is greater than 0.
+    
+    Return:
+        One object of param attribute.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
@@ -315,12 +318,15 @@ class NormalInitializer(Initializer):
         loc (float): mean of the normal distribution
         scale (float): standard deviation of the normal distribution
         seed (int): random seed
+    
+    Return:
+        One object of param attribute.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
@@ -344,7 +350,8 @@ class NormalInitializer(Initializer):
                    should be added
 
         Returns:
-            the initialization op
+            One object of param attribute
+
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
@@ -398,12 +405,15 @@ class TruncatedNormalInitializer(Initializer):
         loc (float): mean of the normal distribution
         scale (float): standard deviation of the normal distribution
         seed (int): random seed
+    
+    Return:
+        One object of param attribute
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
