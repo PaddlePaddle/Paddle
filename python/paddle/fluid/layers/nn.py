@@ -14730,7 +14730,7 @@ def sign(x):
           import numpy as np
 
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='float32')) 
 
     """
 
