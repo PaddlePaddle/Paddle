@@ -51,9 +51,9 @@ class SumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         N, 0,
         "ShapeError: The input tensor X's dimensions of SumOp "
-        "should be larger than 0. But received X's dimensions %d. "
-        "X's shape = %s.",
-        N, x_dims);
+        "should be larger than 0. But received X's dimensions %d, "
+        "X's shape = [%s].",
+        N, &x_dims);
     if (N == 1) {
       VLOG(3) << "Warning: SumOp have only one input, may waste memory";
     }
@@ -76,15 +76,15 @@ class SumOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_EQ(
               in_dim, x_dim,
               "ShapeError: The input tensor X of SumOp must have same shape."
-              "But received X[0]'s shape = %s, X[%d]'s shape = %s.",
+              "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
               in_dim, i, x_dim);
         } else {
           PADDLE_ENFORCE_EQ(
               in_dim.size(), x_dim.size(),
               "ShapeError: The input tensor X of SumOp must have same "
-              "dimensions."
-              "But received X[0]'s dimensions = %d, X[%d]'s dimensions = %d.",
-              in_dim.size(), i, x_dim.size());
+              "dimensions. But received X[0]'s dimensions = %d, X[0]'s shape = "
+              "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
+              in_dim.size(), in_dim, i, x_dim.size(), i, x_dim);
           // if in_dim or x_dim has -1, not check equal
           for (int j = 0; j < x_dim.size(); ++j) {
             if (x_dim[j] == -1 || in_dim[j] == -1) {
@@ -94,7 +94,7 @@ class SumOp : public framework::OperatorWithKernel {
                 in_dim[j], x_dim[j],
                 "ShapeError: The input tensor X of SumOp must have same shape "
                 "if not -1."
-                "But received X[0]'s shape = %s, X[%d]'s shape = %s.",
+                "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
                 in_dim, i, x_dim);
           }
         }
