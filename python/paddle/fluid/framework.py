@@ -66,10 +66,7 @@ def in_dygraph_mode():
     You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
 
     Returns:
-        Whether the program is running in dynamic graph mode.
-
-    Return type:
-        boolean
+        bool: Whether the program is running in dynamic graph mode.
 
     Examples:
         .. code-block:: python
