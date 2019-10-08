@@ -184,27 +184,24 @@ class GradientClipByValue(BaseGradientClipAttr):
 
 class GradientClipByNorm(BaseGradientClipAttr):
     """ 
-    Clips tensor values to a maximum L2-norm.
-    
-    Convert the input tensor :math:`X` to a tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`max\_norm` ). 
-    
-    (The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.)
+    Convert the input multidimensional tensor :math:`X` to a multidimensional tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`clip\_norm` ). (The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.)
 
-    This class limits the L2 norm of the input :math:`X` within :math:`max\_norm`.
+    This class limits the L2 norm of the input :math:`X` within :math:`clip\_norm`.
 
     .. math::
-  	Out=
-  	\left\{
-  	\begin{aligned}
-  	& X & & if (norm(X) \leq clip\_norm)\\
-  	& \frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\
-  	\end{aligned}
-  	\right.
+        Out =
+  	\\left \{
+  	\\begin{aligned}
+  	& X & & if (norm(X) \\leq clip\_norm) \\\\
+  	& \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
+  	\\end{aligned}
+  	\\right.
+
 
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
 
     .. math::
- 	norm(X) = (\sum_{i=1}^{n}|x_i|^2)^{frac{1}{2}}
+ 	norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
 
     Args:
         clip_norm (float): The maximum norm value
