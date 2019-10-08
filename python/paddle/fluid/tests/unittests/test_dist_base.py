@@ -572,7 +572,7 @@ class TestDistBase(unittest.TestCase):
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
-                   log_name=log_name):
+                   log_name=""):
 
         cmd = self._python_interp
 
@@ -847,14 +847,14 @@ class TestDistBase(unittest.TestCase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "10"
-            required_envs[
-                "GLOG_vmodule"] = "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
+            required_envs["GLOG_vmodule"] = \
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses \
             = self._run_local(model_file, required_envs,
                               check_error_log, log_name=log_name)
+
         if self._nccl2_mode:
             if self._nccl2_reduce_layer:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(

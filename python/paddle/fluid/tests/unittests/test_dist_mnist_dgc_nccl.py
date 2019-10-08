@@ -18,7 +18,7 @@ from test_dist_base import TestDistBase
 import os
 from dist_test_utils import *
 
-flag_name = os.path.basename(__file__)
+flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistMnistNCCL2DGC(TestDistBase):
