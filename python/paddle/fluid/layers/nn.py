@@ -8587,10 +8587,10 @@ def roi_align(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(
-                name='data', shape=[256, 32, 32], dtype='float32')
-            rois = fluid.layers.data(
-                name='rois', shape=[4], dtype='float32')
+            x = fluid.data(
+                name='data', shape=[None, 256, 32, 32], dtype='float32')
+            rois = fluid.data(
+                name='rois', shape=[None, 4], dtype='float32')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
@@ -10941,7 +10941,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
             import paddle.fluid as fluid
             from paddle.fluid.param_attr import ParamAttr
-            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
+            x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
             mode = 'channel'
             output = fluid.layers.prelu(
                      x,mode,param_attr=ParamAttr(name='alpha'))
@@ -13004,8 +13004,8 @@ def clip_by_norm(x, max_norm, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
-                name='data', shape=[1], dtype='float32')
+            input = fluid.data(
+                name='data', shape=[None, 1], dtype='float32')
             reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
     """
 
@@ -13219,9 +13219,9 @@ def maxout(x, groups, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', 
-                shape=[256, 32, 32], 
+                shape=[None, 256, 32, 32], 
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
