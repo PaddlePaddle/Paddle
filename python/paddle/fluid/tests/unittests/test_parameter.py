@@ -54,6 +54,12 @@ class TestParameter(unittest.TestCase):
         with self.assertRaises(ValueError):
             b.create_parameter(
                 name='test', shape=[1], dtype=None, initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[], dtype='float32', initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[-1], dtype='float32', initializer=None)
 
 
 if __name__ == '__main__':
