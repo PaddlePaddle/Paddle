@@ -11419,9 +11419,10 @@ def unstack(x, axis=0, num=None):
 
 
 def expand(x, expand_times, name=None):
-    """Expand operator tiles the input by given times number. You should set times
-    number for each dimension by providing attribute 'expand_times'. The rank of X
-    should be in [1, 6]. Please note that size of 'expand_times' must be the same
+    """
+    This operation tiles ``x`` multiple times according to the parameter ``expand_times``.
+    The times number for each dimension of ``x`` is set by the parameter ``expand_times``.
+    The rank of ``x`` should be less than or equal to 6. Please note that size of ``expand_times`` must be the same
     with X's rank. Following is a using case:
 
 
@@ -11444,12 +11445,19 @@ def expand(x, expand_times, name=None):
                 ]
 
     Args:
-        x (Variable): A tensor with rank in [1, 6].
-        expand_times (list|tuple|Variable): Expand times number for each dimension.
+        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``,``float64`` or ``int32`` .
+        expand_times (list|tuple|Variable): The data type is ``int32`` . If ``expand_times`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``expand_times`` is an Variable, it should be an 1-D Tensor.
+                Expand times number for each dimension of ``x`` .
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:api_guide_Name .
 
     Returns:
-        Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
+        Variable: A ``Tensor`` or ``LoDTensor`` with the same dimension as ``x``. The data type is same as ``x``.
+                After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
 
+    Raises:
+        TypeError: The type of ``expand_times`` must be list, tuple or Variable.
+        ValueError: The elements of ``expand_times`` cannot be negative.
 
     Examples:
         .. code-block:: python
@@ -11459,11 +11467,13 @@ def expand(x, expand_times, name=None):
             # example 1:
             data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
             expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
+            # the shape of expanded_1 is [2, 6, 2].
 
             # example 2:
             data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
             expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
+            # the shape of expanded_2 is [48, 56].
     """
 
     if not isinstance(expand_times, (list, tuple, Variable)):
