@@ -41,30 +41,56 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(label_dims, 0, rank - 1),
-                        "Input(X) and Input(Label) shall have the same shape "
-                        "except the last dimension.");
+      PADDLE_ENFORCE_EQ(
+          framework::slice_ddim(x_dims, 0, rank - 1),
+          framework::slice_ddim(label_dims, 0, rank - 1),
+          "ShapeError: Input(X) and Input(Label) shall have the same shape "
+          "except the last dimension. But received: the shape of Input(X) is "
+          "[%s],"
+          "the shape of Input(Label) is [%s].",
+          x_dims, label_dims);
     }
 
     if (IsSoftLabel(ctx)) {
       PADDLE_ENFORCE_EQ(
           rank, label_dims.size(),
-          "If Attr(soft_label) == true, Input(X) and Input(Label) "
-          "shall have the same rank.");
+          "ShapeError: If Attr(soft_label) == true, Input(X) and Input(Label) "
+          "shall have the same dimensions. But received: the dimensions of "
+          "Input(X) is [%d],"
+          "the shape of Input(X) is [%s], the dimensions of Input(Label) is "
+          "[%d], the shape of"
+          "Input(Label) is [%s]",
+          rank, x_dims, label_dims.size(), label_dims);
+
       if (check) {
-        PADDLE_ENFORCE_EQ(x_dims[rank - 1], label_dims[rank - 1],
-                          "If Attr(soft_label) == true, the last dimension of "
-                          "Input(X) and Input(Label) should be equal.");
+        PADDLE_ENFORCE_EQ(
+            x_dims[rank - 1], label_dims[rank - 1],
+            "ShapeError: If Attr(soft_label) == true, the last dimension of "
+            "Input(X) and Input(Label) should be equal. But received: the"
+            "last dimension of Input(X) is [%d], the shape of Input(X) is [%s],"
+            "the last dimension of Input(Label) is [%d], the shape of "
+            "Input(Label)"
+            "is [%s], the last dimension is [%d].",
+            x_dims[rank - 1], x_dims, label_dims[rank - 1], label_dims,
+            rank - 1);
       }
     } else {
       if (rank == label_dims.size()) {
-        PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1UL,
-                          "the last dimension of Input(Label) should be 1.");
-      } else {
         PADDLE_ENFORCE_EQ(
-            rank, label_dims.size() + 1,
-            "The rank of Input(X) should be equal to Input(Label) plus 1.");
+            label_dims[rank - 1], 1UL,
+            "ShapeError: the last dimension of Input(Label) should be 1."
+            "But received: the last dimension of Input(Label) is [%d],"
+            "the last dimension is [%d]",
+            label_dims[rank - 1], rank - 1);
+      } else {
+        PADDLE_ENFORCE_EQ(rank, label_dims.size() + 1,
+                          "ShapeError: The rank of Input(X) should be equal to "
+                          "Input(Label) plus 1."
+                          "But received: The dimension of Input(X) is [%d], "
+                          "the shape of Input(X) is [%s],"
+                          "the dimension of Input(Label) is [%d], the shape of "
+                          "Input(Label) is [%s]",
+                          rank, x_dims, label_dims.size(), label_dims);
       }
     }
 
