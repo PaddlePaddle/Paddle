@@ -449,23 +449,28 @@ class Optimizer(object):
                  no_grad_set=None,
                  callbacks=None):
         """
-        First part of `minimize`, do auto-diff to append backward ops for
+        The first part of ``minimize``, do auto-diff to append backward operations for
         the current program.
 
         Args:
-            loss (Variable): loss variable to run optimizations.
-            startup_program (Program): startup_program for initializing parameters
-                in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
-            callbacks (list|None): list of callables to run when appending backward
-                operator for one parameter.
+            loss (Variable): ``loss`` variable to run optimizations.
+            startup_program (Program, optional): :ref:`api_fluid_Program` for
+                initializing parameters in ``parameter_list``. The default value
+                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+            parameter_list (list, optional): List of ``Variable`` objects to update
+                to minimize ``loss``. The default value is None, at this time all parameters
+                will be updated.
+            no_grad_set (set, optional): Set of ``Variable`` objects that don't need
+                to be updated. The default value is None.
+            callbacks (list, optional): list of callables to run when appending backward
+                operator for one parameter. The default value is None.
 
         Return:
-            list: list of (param, grad) pair, grad is the output of backward.
+            list: list of (param, grad) variable pairs, param is ``Parameter``,
+                grad is the gradient value corresponding to the parameter.
 
         Examples:
-            See examples in `apply_gradients`.
+            See examples in ``apply_gradients``.
         """
         no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
@@ -597,32 +602,30 @@ class Optimizer(object):
                  no_grad_set=None,
                  grad_clip=None):
         """
-        Add the backward and optimize process to the network, and update
-        Parameters in the `parameter_list` according to gradients to minimize
-        `loss` of current network.
+        Add operations to minimize ``loss`` by updating ``parameter_list``.
 
         Args:
-            loss (Variable): A `Variable` containing the value to minimize.
+            loss (Variable): A ``Variable`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
-                initializing parameters in `parameter_list`. The default value
-                is None, and :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of `Variable` objects to update
-                to minimize `loss`. The default value is None, and all Parameters
+                initializing parameters in ``parameter_list``. The default value
+                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+            parameter_list (list, optional): List of ``Variable`` objects to update
+                to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
-            no_grad_set (set, optional): Set of `Variable` objects that don't need
+            no_grad_set (set, optional): Set of ``Variable`` objects that don't need
                 to be updated. The default value is None.
             grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
-                graph mode does not need to use this argument. Currently, this argment
+                graph mode does not need to use this argument. Currently, this argument
                 only supports gradient clipping in dygraph mode. In the future, this
                 argument my be adjusted. The default value is None.
 
         Returns:
-            tuple: (optimize_ops, params_grads), A list of operators appended
+            tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
-            Parameter, grad is the gradient value corresponding to the Parameter.
+            ``Parameter``, grad is the gradient value corresponding to the parameter.
 
         Examples:
-            Please refer to the example in the current Optimizer.
+            Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
         params_grads = self.backward(
@@ -1186,7 +1189,7 @@ class AdagradOptimizer(Optimizer):
     The Adaptive Gradient optimizer (Adagrad for short) can adaptively assign
     different learning rates to individual parameters.
 
-    The calculation formula for its parameter update is as follows:
+    The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
 
@@ -1197,20 +1200,20 @@ class AdagradOptimizer(Optimizer):
     Related paper: `Adaptive Subgradient Methods for Online Learning and
     Stochastic Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
-    The original paper does not have the `epsilon` attribute. It is added here
+    The original paper does not have the ``epsilon`` attribute. It is added here
     in our implementation as also proposed `Per-parameter adaptive learning rate
     methods <http://cs231n.github.io/neural-networks-3/#ada>`_
     for numerical stability to avoid the division by zero error.
 
     Args:
-        learning_rate (float|Variable): The learning rate used to update Parameters.
-            It can be a float value or a Variable with a float type.
+        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
         initial_accumulator_value (float, optional): Initial value for moment accumulator.
             The default value is 0.0.
@@ -1294,13 +1297,12 @@ class AdagradOptimizer(Optimizer):
 
 class AdamOptimizer(Optimizer):
     """
-    The Adam optimzier is based on the second section of
-    the `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
+    The Adam optimzier uses an optimization described at the end
+    of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
-    the first-order moment estimation and second-order moment estimation
-    of the gradient.
+    the 1st moment estimates and the 2nd moment estimates of the gradient.
     
-    The calculation formula for its parameter update is as follows:
+    The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
 
@@ -1318,24 +1320,24 @@ class AdamOptimizer(Optimizer):
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update Parameters.
-            It can be a float value or a Variable with a float type. The default value is 0.001.
+        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
             then the update may be very slow. The lazy mode only update the element that has
-            gradient is the current mini-batch, so it will be much more faster. But this mode has
+            gradient in current mini-batch, so it will be much more faster. But this mode has
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
 
@@ -1485,11 +1487,12 @@ class AdamOptimizer(Optimizer):
 
 class AdamaxOptimizer(Optimizer):
     """
-    The Adamax optimizer is implemented based on `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
-    Section 7, Adamax Optimization. The Adamax algorithm is a variant of the Adam algorithm
-    based on the infinite norm, which makes the learning rate update algorithm more stable and simple.
+    The Adamax optimizer is implemented based on the Adamax Optimization 
+    in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
+    The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
+    which makes the learning rate update algorithm more stable and simple.
 
-    The calculation formula for its parameter update is as follows:
+    The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
 
@@ -1505,22 +1508,22 @@ class AdamaxOptimizer(Optimizer):
 
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
-    The original paper does not have an `epsilon` attribute.
-    However, it is added here for numerical stability to prevent the division by 0 error.
+    The original paper does not have an ``epsilon`` attribute,
+    it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|Variable, optional): The learning rate used to update Parameters.
-            It can be a float value or a Variable with a float type. The default value is 0.001.
+        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
     Notes:
@@ -1727,7 +1730,7 @@ class DecayedAdagradOptimizer(Optimizer):
     the decay rate to solve the problem of a sharp drop in the learning rate
     during model training when using the AdagradOptimizer.
 
-    The calculation formula for its parameter update is as follows:
+    The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
 
@@ -1738,19 +1741,19 @@ class DecayedAdagradOptimizer(Optimizer):
     Related paper: `Adaptive Subgradient Methods for Online Learning and Stochastic
     Optimization <http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf>`_.
 
-    The original paper does not have an `epsilon` attribute. It is added here for numerical
+    The original paper does not have an ``epsilon`` attribute. It is added here for numerical
     stability to avoid the division by zero error.
 
     Args:
-        learning_rate (float|Variable): The learning rate used to update Parameters.
-            It can be a float value or a Variable with a float type.
+        learning_rate (float|Variable): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Variable`` with a float type.
         decay (float, optional): The decay rate. The default value is 0.95.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
     Notes:
@@ -2400,41 +2403,41 @@ class ModelAverage(Optimizer):
     """
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
-    `average_window_rate` parameter. The averaged Parameters are used in the prediction,
+    ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
     which usually can improve the accuracy of the prediction.
 
-    Accumulate the average of the Parameters in the sliding window, the result will be saved
-    in the temporary variable, can be applied to the current model's Parameters by calling
-    the `apply() method, and the current model Parameters can be restored by calling
-    the `restore() method.
+    Accumulate the average of the ``Parameter`` in the sliding window, the result will be saved
+    in a temporary variable, can be applied to the current model's ``Parameter`` by calling
+    the ``apply()`` method, and the current model ``Parameter`` can be restored by calling
+    the ``restore()`` method.
 
-    The window size for calculating the average is determined by `average_window_rate,
-    `min_average_window`, `max_average_window` and the current Parameter update times (num_updates).
+    The window size for calculating the average is determined by ``average_window_rate``,
+    ``min_average_window``, ``max_average_window`` and the current ``Parameter`` update times (num_updates).
 
     When the cumulative times (num_accumulates) is greater than the specific window
-    threshold (average_window), the accumulated Parameters temporary variable is set to 0.0.
-    The effect of these parameters is illustrated by the following sample code:
+    threshold (average_window), the accumulated ``Parameter`` temporary variable is set to 0.0.
+    The following example will help to understand the role of these arguments:
 
     .. code-block:: python
 
         if num_accumulates >= min_average_window and num_accumulates >= min(max_average_window, num_updates * average_window_rate):
             num_accumulates = 0
 
-    In the above conditional judgment statement, num_accumulates indicates the current
+    In the above conditional judgment statement, ``num_accumulates`` indicates the current
     accumulated number, which can be abstractly understood as the length of the cumulative window.
-    The length of the window must be at least the length set by the `min_average_window` parameter,
-    and cannot exceed the length specified by the max_average_window parameter or
-    num_updates * average_window_rate, where num_updates indicates The current number of Parameters
-    updates, average_window_rate is a coefficient that calculates the length of the window.
+    The length of the window must be at least the length set by the ``min_average_window`` argument,
+    and cannot exceed the length specified by the ``max_average_window`` argument or
+    ``num_updates * average_window_rate``, where ``num_updates`` indicates the current ``Parameter``
+    update times, ``average_window_rate`` is a coefficient that calculates the length of the window.
 
     Args:
-        average_window_rate (float): The Calculate ratio of the window length relative to Parameters update times.
+        average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
     Examples:
@@ -2590,7 +2593,7 @@ class ModelAverage(Optimizer):
     @signature_safe_contextmanager
     def apply(self, executor, need_restore=True):
         """
-        Apply the average of the cumulative Parameters to the parameters of the current model.
+        Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
         Args:
             executor(fluid.Executor): The current network executor.
@@ -2647,7 +2650,7 @@ class ModelAverage(Optimizer):
 
     def restore(self, executor):
         """
-        Restore parameter values of current model.
+        Restore ``Parameter`` values of current model.
         
         Args:
             executor(fluid.Executor): The current network executor.
@@ -2686,7 +2689,7 @@ class ModelAverage(Optimizer):
                                 fetch_list=[loss.name])
 
                 # apply ModelAverage
-                with model_average.apply(exe):
+                with model_average.apply(exe, False):
                     x = numpy.random.random(size=(10, 1)).astype('float32')
                     exe.run(program=train_program,
                             feed={'X': x},
