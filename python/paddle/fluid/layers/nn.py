@@ -6154,9 +6154,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     Returns:
         Variable: The product Tensor (or LoDTensor) variable.
 
-    Return type:
-        Variable.
-
     Examples:
         .. code-block:: python
 
@@ -13102,9 +13099,6 @@ def mean(x, name=None):
 
     Returns:
         out(${out_type}): ${out_comment}
-
-    Return type:
-        Variable (Tensor / LoDTensor)
 
     Examples:
         .. code-block:: python
