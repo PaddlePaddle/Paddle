@@ -1823,7 +1823,7 @@ def bpr_loss(input, label, name=None):
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
-                                batch size and D is the number of classes.
+                                batch size and D is the number of positive classes and negative classes
                                 This input is not probability but logits.
         label (Variable|list):  the ground truth which is a 2-D tensor.  `label`
                                 is a tensor<int64> with shape [N x 1].
@@ -1838,10 +1838,10 @@ def bpr_loss(input, label, name=None):
           import paddle.fluid as fluid
 
           neg_size = 10
-          label = fluid.layers.data(
-                    name="label", shape=[1], dtype="int64")
-          predict = fluid.layers.data(
-                    name="predict", shape=[neg_size + 1], dtype="float32")
+          label = fluid.data(
+                    name="label", shape=[3, 1], dtype="int64")
+          predict = fluid.data(
+                    name="predict", shape=[3, neg_size + 1], dtype="float32")
           cost = fluid.layers.bpr_loss(input=predict, label=label)
     """
     helper = LayerHelper('bpr_loss', **locals())
@@ -4014,7 +4014,7 @@ def data_norm(input,
     """
     **Data Normalization Layer**
 
-    Can be used as a normalizer function for conv2d and fully_connected operations.
+    This op can be used as a normalizer function for conv2d and fully_connected operations.
     The required data format for this layer is one of the following:
 
     1. NHWC `[batch, in_height, in_width, in_channels]`
@@ -4055,7 +4055,7 @@ def data_norm(input,
             
             import paddle.fluid as fluid
 
-            hidden1 = fluid.layers.data(name="hidden1", shape=[200])
+            hidden1 = fluid.data(name="hidden1", shape=[64, 200])
             hidden2 = fluid.layers.data_norm(name="hidden2", input=hidden1)
     """
     helper = LayerHelper('data_norm', **locals())
@@ -13740,7 +13740,9 @@ def teacher_student_sigmoid_loss(input,
     **Teacher Student Log Loss Layer**
 
     This layer accepts input predictions and target label and returns the
-    teacher_student loss.
+    teacher_student loss. Z is click or not, z' is value of teacher loss, label = {-2, -1, [0, 2]}
+    when z' is not exist, clk = 0 : label = -2; when z' is not exist, clk = 1 : label = -1;
+    when z' is exist    , clk = 0 : label = 0 + z'; when z' is exist    , clk = 1 : label = 1 + z'
 
     .. math::
         loss = max(x, 0) - x * z + log(1 + exp(-abs(x))) + max(x, 0) - x * z' + log(1 + exp(-abs(x)))
@@ -13763,10 +13765,10 @@ def teacher_student_sigmoid_loss(input,
           import paddle.fluid as fluid
 
           batch_size = 64
-          label = fluid.layers.data(
-                    name="label", shape=[batch_size, 1], dtype="int64", append_batch_size=False)
-          similarity = fluid.layers.data(
-                    name="similarity", shape=[batch_size, 1], dtype="float32", append_batch_size=False)
+          label = fluid.data(
+                    name="label", shape=[batch_size, 1], dtype="int64")
+          similarity = fluid.data(
+                    name="similarity", shape=[batch_size, 1], dtype="float32")
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
