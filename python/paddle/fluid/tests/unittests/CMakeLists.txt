@@ -3,6 +3,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(dist_ENVS http_proxy="" https_proxy="")
 
+LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_dgc_nccl)
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
     list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
@@ -10,7 +11,6 @@ if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_fleetapi)
-    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_dgc_nccl)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_hallreduce)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_multi_comm)
     LIST(REMOVE_ITEM TEST_OPS test_dist_mnist_ring_allreduce)
@@ -136,13 +136,15 @@ function(bash_test_modules TARGET_NAME)
     message(STATUS "CMAKE_CURRENT_BINARY_DIR:" ${CMAKE_CURRENT_BINARY_DIR})
 
     add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${bash_test_modules_ENVS}
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python TEST_TARGET_NAME=${TARGET_NAME} ${bash_test_modules_ENVS}
         bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
     if (bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
@@ -259,17 +261,16 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
-    #py_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv_op ENVS ${dist_ENVS})
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
     endif()
     if(NOT APPLE)
-        bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
-        set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 100 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+        bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh SERIAL)
+        bash_test_modules(test_dist_mnist_dgc_nccl MODULES dist_test.sh SERIAL)
+
         set_tests_properties(test_nce_remote_table_op test_hsigmoid_remote_table_op test_dist_ctr test_dist_fleet_ctr test_dist_mnist_batch_merge  PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
 
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-        set_tests_properties(test_dist_mnist_dgc_nccl PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
         set_tests_properties(test_dist_mnist_hallreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
         set_tests_properties(test_dist_mnist_multi_comm PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
         set_tests_properties(test_dist_mnist_ring_allreduce PROPERTIES TIMEOUT 350 LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
