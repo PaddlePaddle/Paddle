@@ -818,24 +818,40 @@ def has_nan(x):
 
 def isfinite(x):
     """
-    Test if any of x contains an infinity/NAN number. If all the elements are finite,
+    Test if any of x contains an infinity / nan number. If all the elements are finite,
     returns true, else false.
 
+    Note: The input to this operator Tensor / LoDTensor data type must be one of
+    int32 / float / double.
+
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x(Variable): The Tensor / LoDTensor to be checked.
 
     Returns:
         Variable: The tensor variable storing the output, contains a bool value.
+
+    Return type:
+        Variable (Tensor / LoDTensor).
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            var = fluid.layers.data(name="data",
-                                    shape=(4, 6),
-                                    dtype="float32")
-            out = fluid.layers.isfinite(var)
+            import numpy
+
+            # Graph Organizing
+            var = fluid.layers.data(name="data", shape=(4, 6), dtype="float32")
+            output = fluid.layers.isfinite(var)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            # Execute
+            img = numpy.array((4, 6)).astype(numpy.float32)
+            res, = exe.run(fluid.default_main_program(), feed={'data':img}, fetch_list=[output])
+            print(res)  # Output Value: [ True]
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
