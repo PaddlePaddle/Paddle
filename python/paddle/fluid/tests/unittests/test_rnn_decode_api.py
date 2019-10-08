@@ -24,7 +24,8 @@ import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid import framework
 
-from paddle.fluid.layers.rnn import LSTMCell, GRUCell, dynamic_rnn, RNNCell, BeamSearchDecoder, dynamic_decode
+from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell, BeamSearchDecoder, dynamic_decode
+from paddle.fluid.layers import rnn as dynamic_rnn
 from paddle.fluid import contrib
 from paddle.fluid.contrib.layers import basic_lstm
 
@@ -96,7 +97,7 @@ class DecoderCell(RNNCell):
         return out, [new_lstm_states, out]
 
 
-class Test_dynamic_decode(unittest.TestCase):
+class TestDynamicDecode(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.input_size = 16
@@ -104,8 +105,6 @@ class Test_dynamic_decode(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-        print("Test dynamic_decode.")
-
         start_token = 0
         end_token = 1
         src_vocab_size = 10

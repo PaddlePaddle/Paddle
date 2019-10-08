@@ -28,7 +28,7 @@ __all__ = [
     'LSTMCell',
     'Decoder',
     'BeamSearchDecoder',
-    'dynamic_rnn',
+    'rnn',
     'dynamic_decode',
 ]
 
@@ -339,15 +339,15 @@ class LSTMCell(RNNCell):
         return [[self.hidden_size], [self.hidden_size]]
 
 
-def dynamic_rnn(cell,
-                inputs,
-                initial_states=None,
-                sequence_length=None,
-                time_major=False,
-                is_reverse=False,
-                **kwargs):
+def rnn(cell,
+        inputs,
+        initial_states=None,
+        sequence_length=None,
+        time_major=False,
+        is_reverse=False,
+        **kwargs):
     """
-    dynamic_rnn creates a recurrent neural network specified by RNNCell `cell`, 
+    rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` repeatedly until reachs to the maximum
     length of `inputs`.
 
@@ -394,11 +394,11 @@ def dynamic_rnn(cell,
             
             import paddle.fluid as fluid
 
-            inputs = fluid.layers.data(name="inputs",
-                                    shape=[-1, 32, 128],
-                                    dtype="float32")
+            inputs = fluid.data(name="inputs",
+                                shape=[-1, 32, 128],
+                                dtype="float32")
             cell = fluid.layers.GRUCell(hidden_size=128)
-            outputs = fluid.layers.dynamic_rnn(cell=cell, inputs=inputs)
+            outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
     """
 
     def _maybe_copy(state, new_state, step_mask):
@@ -936,7 +936,7 @@ class BeamSearchDecoder(Decoder):
             states(Variable): A structure of tensor variables.
                 It is same as the `initial_states` returned by `initialize()` for
                 the first decoding step and `beam_search_state` returned by
-                `initialize()` for the others.
+                `step()` for the others.
             **kwargs: Additional keyword arguments, provided by the caller. 
         
         Returns:
@@ -1060,7 +1060,7 @@ def dynamic_decode(decoder,
             import paddle.fluid as fluid
             from paddle.fluid.layers import GRUCell, BeamSearchDeocder, dynamic_decode
 
-            encoder_output = fluid.layers.data(name="encoder_output",
+            encoder_output = fluid.data(name="encoder_output",
                                     shape=[-1, 32, 128],
                                     dtype="float32")
             trg_embeder = lambda x: layers.embedding(

@@ -35,7 +35,7 @@ from .metric_op import *
 from .learning_rate_scheduler import *
 from .collective import *
 from .distributions import *
-from .rnn import *
+from . import rnn
 
 __all__ = []
 __all__ += nn.__all__
@@ -49,3 +49,5 @@ __all__ += metric_op.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += distributions.__all__
 __all__ += rnn.__all__
+
+from .rnn import *

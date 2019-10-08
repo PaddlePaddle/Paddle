@@ -24,7 +24,8 @@ import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid import framework
 
-from paddle.fluid.layers.rnn import LSTMCell, GRUCell, dynamic_rnn, RNNCell, BeamSearchDecoder, dynamic_decode
+from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell
+from paddle.fluid.layers import rnn as dynamic_rnn
 from paddle.fluid import contrib
 from paddle.fluid.contrib.layers import basic_lstm
 
@@ -38,8 +39,6 @@ class TestLSTMCell(unittest.TestCase):
         self.hidden_size = 16
 
     def test_run(self):
-        print("Test lstm.")
-
         inputs = layers.data(
             name='inputs',
             shape=[self.batch_size, self.input_size],
@@ -109,8 +108,6 @@ class TestGRUCell(unittest.TestCase):
         self.hidden_size = 16
 
     def test_run(self):
-        print("Test gru.")
-
         inputs = layers.data(
             name='inputs',
             shape=[self.batch_size, self.input_size],
@@ -165,7 +162,7 @@ class TestGRUCell(unittest.TestCase):
         self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
 
 
-class Test_dynamic_rnn(unittest.TestCase):
+class TestRnn(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
         self.input_size = 16
@@ -173,8 +170,6 @@ class Test_dynamic_rnn(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-        print("Test dynamic_rnn.")
-
         inputs_basic_lstm = layers.data(
             name='inputs_basic_lstm',
             shape=[self.seq_len, self.batch_size, self.input_size],
