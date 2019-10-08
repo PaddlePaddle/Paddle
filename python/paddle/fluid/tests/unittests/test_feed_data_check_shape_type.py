@@ -65,8 +65,8 @@ class TestFeedData(unittest.TestCase):
         return in_data, label, loss
 
     def test(self):
-        for use_cuda in [True, False] if core.is_compiled_with_cuda(
-        ) else [False]:
+        for use_cuda in [True,
+                         False] if core.is_compiled_with_cuda() else [False]:
             for use_parallel_executor in [False, True]:
                 print('Test Parameters:'),
                 print({
@@ -77,9 +77,36 @@ class TestFeedData(unittest.TestCase):
                                                       use_parallel_executor)
                 self._test_feed_data_contains_neg_one(use_cuda,
                                                       use_parallel_executor)
-                with self.assertRaises(ValueError):
+
+                batch_size = self._get_batch_size(use_cuda,
+                                                  use_parallel_executor)
+                with self.assertRaises(ValueError) as shape_mismatch_err:
                     self._test_feed_data_shape_mismatch(use_cuda,
                                                         use_parallel_executor)
+                self.assertEqual(shape_mismatch_err.exception.message,
+                                 "ShapeError: The feeded Variable u'data' "
+                                 "should have dimensions = 4, shape = "
+                                 "(-1L, 3L, 4L, 8L), but received feeded "
+                                 "shape [%dL, 3L, 4L, 5L]" % batch_size)
+
+                with self.assertRaises(ValueError) as dtype_mismatch_err:
+                    self._test_feed_data_dtype_mismatch(use_cuda,
+                                                        use_parallel_executor)
+                self.assertEqual(
+                    dtype_mismatch_err.exception.message,
+                    "The data type of feeded Variable u'label' must be "
+                    "VarType.INT64, but received VarType.FP64")
+
+    def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
+        batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
+        in_size = [batch_size, 3, 4, 5]
+        feed_in_data = np.random.uniform(
+            size=[batch_size, 3, 4, 5]).astype(np.float32)
+        label_size = [batch_size, 1]
+        feed_label = np.random.randint(
+            low=0, high=self.class_num, size=[batch_size, 1]).astype(np.float64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
 
     def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
