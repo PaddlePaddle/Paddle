@@ -48,11 +48,12 @@ class SumOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputsDim("X");
 
     auto N = x_dims.size();
-    PADDLE_ENFORCE_GT(N, 0,
-                      "ShapeError: The input tensor X's dimensions of SumOp "
-                      "should be larger than 0."
-                      "But received X's dimensions %d.",
-                      N);
+    PADDLE_ENFORCE_GT(
+        N, 0,
+        "ShapeError: The input tensor X's dimensions of SumOp "
+        "should be larger than 0. But received X's dimensions %d. "
+        "X's shape = %s.",
+        N, x_dims);
     if (N == 1) {
       VLOG(3) << "Warning: SumOp have only one input, may waste memory";
     }
