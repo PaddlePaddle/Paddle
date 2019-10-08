@@ -708,8 +708,8 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            probs(Variable): A tensor with shape `[batch_size, beam_size, vocab_size]`,
-                representing the log probabilities. Its data type should be float32.
+            probs(Variable): A tensor with shape `[batch_size, ...]`, representing
+                the log probabilities. Its data type should be float32.
             finished(Variable): A tensor with shape `[batch_size, beam_size]`,
                 representing the finished status for all beams. Its data type
                 should be bool.
