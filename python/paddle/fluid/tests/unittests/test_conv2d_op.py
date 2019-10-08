@@ -18,8 +18,9 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
 import paddle.fluid as fluid
+from op_test import OpTest
+from paddle.fluid import Program, program_guard
 
 
 def conv2d_forward_naive(input,
@@ -645,6 +646,28 @@ class TestCUDNNExhaustiveSearch(TestConv2dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
         self.exhaustive_search = True
+
+
+class TestConv2dOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                # the input of conv2d must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.conv2d(x1, 1, 1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of conv2d must be float16 or float32 or float64
+                # float16 only can be set on GPU place
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                fluid.layers.conv2d(x2, 1, 1)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 # Please Don't remove the following code.
