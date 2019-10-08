@@ -402,16 +402,14 @@ class FetchHandlerExamlpe(FetchHandler):
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. Python executor takes a program,
-    adds feed operators and fetch operators to this program according
-    to feed map and fetch_list. Feed map provides input data for the
-    program. fetch_list provides the variables(or names) that user wants
-    to get after program runs. Note: the executor will run all operators
-    in the program but not only the operators dependent by the fetch_list.
-    It stores the global variables into the global scope, and creates a
-    local scope for the temporary variables. The contents in local scope
-    may be discarded after every minibatch forward/backward finished.
-    But the global scope variables will be persistent through different runs.
+    and single/multiple-CPU running. When construction the Executor,
+    the device is required.
+
+    Args:
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): indicate the executor run on which device.
+
+    Returns:
+        Executor
 
     Examples:
         .. code-block:: python
@@ -461,10 +459,6 @@ class Executor(object):
           loss_data, = exe.run(compiled_prog,
                                feed={"X": x},
                                fetch_list=[loss.name])
-
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the executor run on which device.
-
     """
 
     def __init__(self, place):
@@ -579,11 +573,13 @@ class Executor(object):
 
     def close(self):
         """
-        Close this executor.
+        Close the executor. This interface is used for distributed training.
+        This executor can not be used after calling the interface, because
+        in PServers mode, this interface releases resources associated with
+        the current Trainer.
 
-        You can no longer use this executor after calling this method.
-        For the distributed training, this method would free the resource
-        on PServers related to the current Trainer.
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
@@ -667,14 +663,49 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run program by this Executor. Feed data by feed map, fetch result by
-        fetch_list. Python executor takes a program, add feed operators and
-        fetch operators to this program according to feed map and fetch_list.
-        Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run.
+        Run the specified Program or Compiled Program. It should be noted that
+        the executor will execute all the operators in Program or Compiled
+        Program without tailoring some operators of the Program or Compiled
+        Program according to fetch_list. And you could specify the scope that
+        storing the Variables during the executor running, if the scope is not set,
+        the executor will use the global scope, fluid. global_scope().
 
-        Note: the executor will run all operators in the program but not
-        only the operators dependent by the fetch_list.
+        Args:
+            program(Program|CompiledProgram): This parameter represents the Program or
+                CompiledProgram to be executed. If this parameter is not provided, that
+                parameter is None, the program will be set to fluid.default_main_program().
+                The default is: None.
+            feed(list|dict): This parameter represents the input variables of the model.
+                If it is single card training, the feed is dict type, and if it is multi-card
+                training, the parameter feed can be dict or list type variable. If the
+                parameter type is dict, the data in the feed will be split and sent to
+                multiple devices (CPU/GPU), that is to say, the input data will be evenly
+                sent to different devices, so you should make sure the number of samples of
+                the current mini-batch must be greater than the number of places;
+                if the parameter type is list, those data are copied directly to each device,
+                so the length of this list should be equal to the number of places.
+                The default is: None.
+            fetch_list(list): This parameter represents the variables that need to be returned
+                after the model runs. The default is: None.
+            feed_var_name(str): This parameter represents the name of the input variable of
+                the feed operator. The default is "feed".
+            fetch_var_name(str): This parameter represents the name of the output variable of
+                the fetch operator. The default is "fetch".
+            scope(Scope): the scope used to run this program, you can switch 
+                it to different scope. default is fluid.global_scope()
+            return_numpy(bool): This parameter indicates whether convert the fetched variables
+                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+                the type of the return value is a list of LoDTensor. The default is: True.
+            use_program_cache(bool): This parameter indicates whether the input Program is cached.
+                If the parameter is True, the model may run faster in the following cases:
+                the input program is fluid.Program, and the parameters(program, feed variable name
+                and fetch_list variable) of this interface remains unchanged during running.
+                The default is: False.
+                
+        Returns:
+
+            list(numpy.array): fetch result according to fetch_list.
+
 
         Examples:
             .. code-block:: python
@@ -698,29 +729,6 @@ class Executor(object):
               x = numpy.random.random(size=(10, 1)).astype('float32')
               outs = exe.run(feed={'X': x},
                              fetch_list=[loss.name])
-
-        Args:
-            program(Program|CompiledProgram): the program that need to run,
-                if not provided, then default_main_program (not compiled) will be used.
-            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LabelData}
-            fetch_list(list): a list of variable or variable names that user 
-                wants to get, this method will return them according to this list.
-            feed_var_name(str): the name for the input variable of 
-                feed Operator.
-            fetch_var_name(str): the name for the output variable of 
-                fetch Operator.
-            scope(Scope): the scope used to run this program, you can switch 
-                it to different scope. default is global_scope
-            return_numpy(bool): if convert the fetched tensor to numpy
-            use_program_cache(bool): whether to use the cached program 
-                settings across batches. Setting it be true would be faster 
-                only when (1) the program is not compiled with data parallel, 
-                and (2) program, feed variable names and fetch_list variable 
-                names do not changed compared to the last step. 
-                
-        Returns:
-
-            list(numpy.array): fetch result according to fetch_list.
         """
         try:
             return self._run_impl(
