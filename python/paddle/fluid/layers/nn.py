@@ -14696,8 +14696,8 @@ def continuous_value_model(input, cvm, use_cvm=True):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")
-          label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
+          input = fluid.data(name="input", shape=[-1, 1], lod_level=1, dtype="int64")
+          label = fluid.data(name="label", shape=[-1, 1], dtype="int64")
           embed = fluid.layers.embedding(
                             input=input,
                             size=[100, 11],
