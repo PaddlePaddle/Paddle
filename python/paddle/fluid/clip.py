@@ -185,20 +185,17 @@ class GradientClipByValue(BaseGradientClipAttr):
 class GradientClipByNorm(BaseGradientClipAttr):
     """
     Clips tensor values to a maximum L2-norm.
-Convert the input tensor :math:`X` to a tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`max\_norm` ). 
+    Convert the input tensor :math:`X` to a tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`max\_norm` ). 
     (The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.)
-
-
 
     This class limits the L2 norm of the input :math:`X` within :math:`max\_norm`.
 
-    .. math::
-
+ .. math::
   	Out=
   	\left\{
   	\begin{aligned}
-  	&  X & & if (norm(X) \leq clip\_norm)\\
-  	&  \frac{clip\_norm∗X}{norm(X)} & & if (norm(X) > clip\_norm) \\
+  	& X & & if (norm(X) \leq clip\_norm)\\
+  	& \frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\
   	\end{aligned}
   	\right.
 
@@ -209,9 +206,9 @@ Convert the input tensor :math:`X` to a tensor whose L2 norm does not exceed the
 
     Args:
         clip_norm (float): The maximum norm value
-
     Examples:
         .. code-block:: python
+
 	  import paddle.fluid as fluid
   	  import paddle.fluid.core as core
   	  import paddle
@@ -255,9 +252,9 @@ Convert the input tensor :math:`X` to a tensor whose L2 norm does not exceed the
       	     out = exe.run(prog, feed=feeder.feed(data), fetch_list=grad_list)
       	     out_clip = exe.run(prog_clip,
                          feed=feeder.feed(data),
-                         fetch_list=grad_clip_list)    
+                         fetch_list=grad_clip_list)
 
-"""
+    """
 
     def __init__(self, clip_norm):
         self.clip_norm = clip_norm
