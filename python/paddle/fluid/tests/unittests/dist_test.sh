@@ -33,7 +33,7 @@ echo "${name} log"
 cat -n ${name}*.log
 
 #display system context
-for i in {1..4}; do 
+for i in {1..2}; do 
     sleep 2 
     ps -ef | grep -E "(test_|_test)"
 
