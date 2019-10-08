@@ -1828,7 +1828,7 @@ def bpr_loss(input, label, name=None):
         name (str|None):        A name for this layer(optional). If set None, the
                                 layer will be named automatically. Default: None.
     Returns:
-        A 2-D tensor with shape [N x 1], the bpr loss.
+        A 2-D Tensor with shape [N x 1], the bpr loss.
 
     Examples:
         .. code-block:: python
