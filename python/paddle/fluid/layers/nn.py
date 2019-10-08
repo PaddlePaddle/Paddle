@@ -2844,63 +2844,87 @@ def conv3d(input,
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
-    This function add the operator for sequence pooling.
-    It pools features of all time-steps of each instance, and is applied
-    on top of the input using pool_type mentioned in the parameters.
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
-    It supports four pool_type:
+    This operator only supports LoDTensor as input. It will apply specified pooling
+    operation on the input LoDTensor. It pools features of all time-steps of each
+    sequence at the last lod_level using :attr:`pool_type` mentioned in the parameters,
+    such as sum, average, sqrt, etc.
+
+    It supports six pool_type:
 
     - average: :math:`Out[i] = \\frac{\sum_i X_i}{N}`
     - sum:     :math:`Out[i] = \sum_jX_{ij}`
     - sqrt:    :math:`Out[i] = \\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}`
     - max:     :math:`Out[i] = max(X_i)`
+    - last:    :math:`Out[i] = X_{N_i}`
+    - first:   :math:`Out[i]` = X_0
+
+    where :math:`N_i` is the length of i-th input sequence.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor and **pad_value** = 0.0:
-         x.lod = [[2, 3, 2, 0]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+        Case 1:
+        input is a 1-level LoDTensor and pad_value = 0.0:
+            input.lod = [[0, 2, 5, 7, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [4, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
+        output is LoDTensor:
+            out.shape = [4, 1]
+            with condition out.shape[0] == len(x.lod[-1]) == 4
 
-       for different pool_type:
-         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
-                    6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+        for different pool_type:
+            average: out.data = [[2.], [4.], [3.], [0.0]], where 2.=(1. + 3.)/2, 4.=(2. + 4. + 6.)/3, 3.=(5. + 1.)/2
+            sum    : out.data = [[4.], [12.], [6.], [0.0]], where 4.=1. + 3., 12.=2. + 4. + 6., 6.=5. + 1.
+            sqrt   : out.data = [[2.82], [6.93], [4.24], [0.0]], where 2.82=(1. + 3.)/sqrt(2), 6.93=(2. + 4. + 6.)/sqrt(3), 4.24=(5. + 1.)/sqrt(2)
+            max    : out.data = [[3.], [6.], [5.], [0.0]], where 3.=max(1., 3.), 6.=max(2., 4., 6.), 5.=max(5., 1.)
+            last   : out.data = [[3.], [6.], [1.], [0.0]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
+            first  : out.data = [[1.], [2.], [5.], [0.0]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
 
-         and all above 0.0 = **pad_value**.
+            and all above [0.0] at last of out.data is padding data.
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        If pool_typ = sum, it will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            where out.shape[0] == len(x.lod[-1]) == 5
+            sum: out.data = [[1.], [5.], [4.], [0.0], [12.]]
+            where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
 
     Args:
-        input (variable): The input variable which is a LoDTensor.
-        pool_type (string): The pooling type of sequence_pool.
-            It supports average, sum, sqrt and max.
-        is_test (bool): Used to distinguish training from scoring mode. Default False.
-        pad_value (float): Used to pad the pooling result for empty input sequence.
+        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
+        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
+            created to record the index information corresponding to the maximum value, which is used for backward
+            gradient calculation in the training phase. Default: False.
+        pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        The sequence pooling variable which is a Tensor.
+        Variable: LoDTensor after pooling with data type float32.
 
     Examples:
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
-             avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
-             sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
-             sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
-             max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
-             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
-             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
+            x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
+            avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
+            sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
+            sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
+            max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+            last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+            first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -2983,33 +3007,51 @@ def sequence_concat(input, name=None):
 
 def sequence_first_step(input):
     """
-    This function gets the first step of sequence.
+    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    select first time-step feature of each sequence as output.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+       Case 1:
+        input is 1-level LoDTensor:
+            input.lod = [[0, 2, 5, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [3, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
-         out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+        output is a LoDTensor:
+            out.shape = [3, 1]
+            out.shape[0] == len(x.lod[-1]) == 3
+            out.data = [[1.], [2.], [5.]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is a LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            out.shape[0] == len(x.lod[-1]) == 5
+            out.data = [[1.], [3.], [4.], [0.0], [6.]]
+            where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        The sequence's first step variable which is a Tensor.
+        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
     return sequence_pool(input=input, pool_type="first")
@@ -3017,33 +3059,52 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
-    This function gets the last step of sequence.
+    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    select last time-step feature of each sequence as output.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+        Case 1:
+        input is 1-level LoDTensor:
+            input.lod = [[0, 2, 5, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [3, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
-         out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+        output is a LoDTensor:
+            out.shape = [3, 1]
+            out.shape[0] == len(x.lod[-1]) == 3
+            out.data = [[3.], [6.], [1.]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is a LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            out.shape[0] == len(x.lod[-1]) == 5
+            out.data = [[1.], [2.], [4.], [0.0], [1.]]
+            where 1.=last(1.), 2.=last(3., 2.), 4.=last(4.), 0.0 = pad_value, 1=last(6., 5., 1.)
+
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        The sequence's last step variable which is a Tensor.
+        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
     return sequence_pool(input=input, pool_type="last")
@@ -6712,51 +6773,47 @@ def warpctc(input,
 
 def sequence_reshape(input, new_dim):
     """
-    **Sequence Reshape Layer**
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
-    This layer will rearrange the input sequences. The new dimension is set by
-    user. Length of each sequence is computed according to original length,
-    original dimension and new dimension. The following example will help to
-    illustrate the function of this layer:
+    This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
+    it will compute new shape according to original length of each sequence,
+    original dimensions and :attr:`new_dim` . Then it will output a new LoDTensor
+    containing :attr:`new_dim` . Currently it only supports 1-level LoDTensor.
+    Please make sure that (original length * original dimensions) can be divided
+    by the :attr:`new_dim` with no remainder for each sequence.
 
     .. code-block:: text
 
-        x is a LoDTensor:
-            x.lod  = [[0, 2, 6]]
-            x.data = [[1,  2], [3,  4],
-                      [5,  6], [7,  8],
-                      [9, 10], [11, 12]]
-            x.dims = [6, 2]
+        input is a LoDTensor:
+            input.lod  = [[0, 2, 6]]
+            input.data = [[1,  2], [3,  4],
+                          [5,  6], [7,  8],
+                          [9, 10], [11, 12]]
+            input.shape = [6, 2]
 
         set new_dim = 4
-
-        then out is a LoDTensor:
-
+        out is a LoDTensor:
             out.lod  = [[0, 1, 3]]
-
             out.data = [[1,  2,  3,  4],
                         [5,  6,  7,  8],
                         [9, 10, 11, 12]]
-            out.dims = [3, 4]
+            out.shape = [3, 4]
 
-    Currently, only 1-level LoDTensor is supported and please make sure
-    (original length * original dimension) can be divided by new dimension with
-    no remainder for each sequence.
 
     Args:
 
-       input (Variable): A 2-D LoDTensor with shape being [N, M] where M for dimension.
+       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type should
+            be int32, int64, float32 or float64.
        new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
     Returns:
-
-        Variable: Reshaped LoDTensor according to new dimension.
+        Variable: Reshaped LoDTensor according to new dimension. The data type is same as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], append_batch_size=False, dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[2, 6], dtype='float32', lod_level=1)
             x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
     """
     assert not in_dygraph_mode(), (
@@ -13397,20 +13454,46 @@ def space_to_depth(x, blocksize, name=None):
 @templatedoc()
 def sequence_reverse(x, name=None):
     """
-    ${comment}
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
+
+    This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
+    Currently it only supports 1-level LoDTensor. This operator is very useful when building a
+    reverse :ref:`api_fluid_layers_DynamicRNN` network.
+
+    .. code-block:: text
+
+        input(x) is a LoDTensor:
+            x.lod  = [[0, 2, 5]]
+            x.data = [[1,  2,  3,  4],
+                      [5,  6,  7,  8],
+                      [9, 10, 11, 12],
+                      [13,14, 15, 16],
+                      [17,18, 19, 20]]
+            x.shape = [5, 4]
+
+        output LoDTensor with same shape and LoD info:
+            out.lod  = [[0, 2, 5]]
+            out.data = [[5,  6,  7,  8],
+                        [1,  2,  3,  4],
+                        [17,18, 19, 20],
+                        [13,14, 15, 16],
+                        [9, 10, 11, 12]]
+            out.shape = [5, 4]
 
     Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
+        x(Variable): LoDTensor with 1-level LoD info. Currently it only supports 1-level LoDTensor.
+            The data type should be float32, float64, int8, int32 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        out(${y_type}): ${y_comment}
+        Variable: LoDTensor reversed from input. The data type is same with input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], dtype='float32')
+            x = fluid.data(name='x', shape=[-1, 6], dtype='float32', lod_level=1)
             x_reversed = fluid.layers.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
