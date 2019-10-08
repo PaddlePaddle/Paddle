@@ -14,6 +14,8 @@
 
 #pragma once
 
+#pragma comment(lib, "shlwapi.lib")
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
