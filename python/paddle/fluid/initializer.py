@@ -130,7 +130,7 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float32): constant value to initialize the variable
+        value (float32): constant value to initialize the variable 
 
     Examples:
         .. code-block:: python
