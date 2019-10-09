@@ -180,7 +180,6 @@ class TestQatInt8Comparison(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
                 graph.draw('.', 'qat_orig', graph.all_op_nodes())
-            graph = self._prepare_for_fp32_mkldnn(graph)
             if (transform_to_int8):
                 if (test_case_args.qat2):
                     transform_to_mkldnn_int8_pass = FakeQAT2MkldnnINT8PerfPass(
@@ -193,6 +192,9 @@ class TestQatInt8Comparison(unittest.TestCase):
                     mkldnn_int8_pass = FakeQAT2MkldnnINT8KernelPass(
                         _scope=inference_scope, _place=place)
                     graph = mkldnn_int8_pass.apply(graph)
+
+            else:
+                graph = self._prepare_for_fp32_mkldnn(graph)
 
             inference_program = graph.to_program()
 
