@@ -1349,8 +1349,8 @@ class AdamOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.data(name='x', shape=[-1, 13], dtype='float32')
-                y = fluid.data(name='y', shape=[-1, 1], dtype='float32')
+                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
@@ -1541,7 +1541,7 @@ class AdamaxOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.data(name='X', shape=[-1, 1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
@@ -1763,7 +1763,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
             import paddle.fluid as fluid
 
-            x = fluid.data( name='x', shape=[-1, 10], dtype='float32' )
+            x = fluid.data( name='x', shape=[None, 10], dtype='float32' )
             trans = fluid.layers.fc( x, 100 )
             cost = fluid.layers.reduce_mean( trans )
             optimizer = fluid.optimizer.DecayedAdagradOptimizer(learning_rate=0.2)
@@ -2452,7 +2452,7 @@ class ModelAverage(Optimizer):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             # build net
-            data = fluid.data(name='X', shape=[-1, 1], dtype='float32')
+            data = fluid.data(name='X', shape=[None, 1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             loss = fluid.layers.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -2613,7 +2613,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[-1, 1], dtype='float32')
+                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
@@ -2667,7 +2667,7 @@ class ModelAverage(Optimizer):
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
                 # build net
-                data = fluid.data(name='X', shape=[-1, 1], dtype='float32')
+                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
