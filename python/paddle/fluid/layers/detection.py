@@ -2135,25 +2135,28 @@ def roi_perspective_transform(input,
                               transformed_width,
                               spatial_scale=1.0):
     """
-    ROI perspective transform op.
+    **The** `rois` **of this op should be a LoDTensor.**
 
-    Args:
-        input (Variable): The input of ROIPerspectiveTransformOp. The format of 
+    ROI perspective transform op applies perspective transform to map each roi into an 
+    rectangular region. Perspective transform is a type of transformation in linear algebra.
+
+    Parameters:
+        input (Variable): 4-D Tensor, input of ROIPerspectiveTransformOp. The format of 
                           input tensor is NCHW. Where N is batch size, C is the
                           number of input channels, H is the height of the feature,
-                          and W is the width of the feature.
-        rois (Variable):  ROIs (Regions of Interest) to be transformed. It should be
-                          a 2-D LoDTensor of shape (num_rois, 8). Given as 
+                          and W is the width of the feature. The dtype is float32.
+        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed. 
+                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as 
                           [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
                           top left coordinates, and (x2, y2) is the top right 
                           coordinates, and (x3, y3) is the bottom right coordinates, 
                           and (x4, y4) is the bottom left coordinates.
-        transformed_height (integer): The height of transformed output.
-        transformed_width (integer): The width of transformed output.
+        transformed_height (int): The height of transformed output.
+        transformed_width (int): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
 
     Returns:
-            tuple: A tuple with three Variables. (out, mask, transform_matrix)
+            A tuple with three Variables. (out, mask, transform_matrix)
 
             out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
             (num_rois, channels, transformed_h, transformed_w).
@@ -2164,13 +2167,16 @@ def roi_perspective_transform(input,
             transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
             a 2-D tensor with shape (num_rois, 9).
 
+    Return Type:
+        tuple
+
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
