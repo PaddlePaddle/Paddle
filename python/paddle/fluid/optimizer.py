@@ -472,6 +472,15 @@ class Optimizer(object):
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
             if parameter_list is not None:
+                if not isinstance(parameter_list, list):
+                    raise TypeError(
+                        "The type of parameter_list argument must be list, but received %s."
+                        % (type(parameter_list)))
+                for i, param_name in enumerate(parameter_list):
+                    if not isinstance(param_name, str):
+                        raise TypeError(
+                            "The type of parameter_list's member must be str, but received %s."
+                            % (type(param_name)))
                 parameters = parameter_list
             else:
                 parameters = framework._dygraph_tracer().all_parameters()
@@ -614,7 +623,10 @@ class Optimizer(object):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         """
-        assert isinstance(loss, Variable), "The loss should be an Variable."
+        if not isinstance(loss, Variable):
+            raise TypeError(
+                "The loss should be an paddle.fluid.Variable, but received %s" %
+                type((loss)))
         params_grads = self.backward(
             loss,
             startup_program=startup_program,

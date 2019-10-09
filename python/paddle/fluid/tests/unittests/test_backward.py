@@ -84,5 +84,35 @@ class TestBackward(unittest.TestCase):
         self.check_backward(case4_with_no_grad_op_maker, {})
 
 
+class TestBackwardInputsCheck(unittest.TestCase):
+    def check_backward_with_error_param_list(self, parameter_list):
+        batch_size = 2
+        img, label = init_data(batch_size, img_shape=[784], label_range=9)
+        feed_dict = {'image': img, 'label': label}
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        main = fluid.Program()
+        startup = fluid.Program()
+
+        with fluid.program_guard(main, startup):
+            loss = case1_fill_grad_vars()
+
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss, parameter_list=parameter_list)
+
+            exe.run(fluid.default_startup_program())
+            exe.run(feed=feed_dict)
+
+    def test_parameter_list_type_error(self):
+        # The type of parameter_list argument must be list
+        self.assertRaises(TypeError, self.check_backward_with_error_param_list,
+                          "test")
+        # The type of parameter_list's member must be str
+        self.assertRaises(TypeError, self.check_backward_with_error_param_list,
+                          ["test", 3])
+
+
 if __name__ == '__main__':
     unittest.main()

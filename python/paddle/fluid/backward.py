@@ -1066,6 +1066,15 @@ def append_backward(loss,
     program._sync_with_cpp()
 
     if parameter_list is not None:
+        if not isinstance(parameter_list, list):
+            raise TypeError(
+                "The type of parameter_list argument must be list, but received %s."
+                % (type(parameter_list)))
+        for i, param_name in enumerate(parameter_list):
+            if not isinstance(param_name, str):
+                raise TypeError(
+                    "The type of parameter_list's member must be str, but received %s."
+                    % (type(param_name)))
         parameters = parameter_list
     else:
         params = program.global_block().all_parameters()
