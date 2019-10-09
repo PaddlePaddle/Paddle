@@ -64,20 +64,21 @@ def _prune_feed_ops(program):
 
 class CompiledProgram(object):
     """
-    CompiledProgram optimizes the input Program or Graph according
-    to the configuration of build_strategy. For example, the operators' fusion
-    in the computation graph, memory optimization during the execution of the
-    computation graph, etc. For more information about build_strategy,
-    please refer to fluid.BuildStrategy.
+    The CompiledProgram is used to transform a program or graph for
+    various optimizations according to the configuration of build_strategy,
+    for example, the operators' fusion in the computation graph, memory
+    optimization during the execution of the computation graph, etc.
+    For more information about build_strategy, please refer to
+    :code:`fluid.BuildStrategy`.
 
     Args:
         program_or_graph (Graph|Program): This parameter is the Program or Graph
             being executed.
-        build_strategy(BuildStrategy): By configuring build_strategy, we can
-            optimize the computational graph, such as operators' fusion in the
-            computational graph and memory optimization during the execution
+        build_strategy(BuildStrategy): This parameter is used to compile the
+            program or graph with the specified options, such as operators' fusion
+            in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
-            please refer to fluid.BuildStrategy.  The default is None.
+            please refer to :code:`fluid.BuildStrategy`. The default is None.
 
     Returns:
         CompiledProgram
@@ -141,7 +142,7 @@ class CompiledProgram(object):
                            share_vars_from=None,
                            places=None):
         """
-        This interface is used to convert the input Program or Graph to a multi-graph
+        This interface is used to transform the input Program or Graph to a multi-graph
         to run the model in data parallel mode. Users can use the build_strategy and
         exec_strategy to set some optimizations that can be applied during the construction
         and computation of the Graph, such as reducing the number of AllReduce operations,
@@ -155,22 +156,22 @@ class CompiledProgram(object):
             loss_name (str): This parameter is the name of the loss variable of the model.
                 **Note: If it is model training, you must set loss_name, otherwise the
                 result may be problematic**. The default is None.
-            build_strategy(BuildStrategy): By configuring build_strategy, we can
-                optimize the computational graph, such as operators' fusion in the
-                computational graph and memory optimization during the execution
+            build_strategy(BuildStrategy): This parameter is used to compile the
+                program or graph with the specified options, such as operators' fusion
+                in the computational graph and memory optimization during the execution
                 of the computational graph. For more information about build_strategy,
-                please refer to fluid.BuildStrategy.  The default is None.
+                please refer to :code:`fluid.BuildStrategy`. The default is None.
             exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
                 be changed when running the current model, such as the thread pool size.
-                For more information about exec_strategy, please refer to fluid.ExecutionStrategy.
+                For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
                 The default is None.
             share_vars_from(CompiledProgram): If share_vars_from is set, the current
-                ParallelExecutor will share the parameter value with the ParallelExecutor
+                CompiledProgram will share the parameter value with the CompiledProgram
                 specified by share_vars_from. This parameter needs to be set when model testing
                 is required during model training, and the data parallel mode is used for
-                training and testing. Since ParallelExecutor will only distribute parameter
-                variables to other devices when it is first executed, the ParallelExecutor
-                specified by share_vars_from must be run before the current ParallelExecutor.
+                training and testing. Since CompiledProgram will only distribute parameter
+                variables to other devices when it is first executed, the CompiledProgram
+                specified by share_vars_from must be run before the current CompiledProgram.
                 The default is None.
             places(list(CUDAPlace)|list(CPUPlace)|None): This parameter specifies the device
                 on which the model is running. If you want to run on GPU0 and GPU1, places are

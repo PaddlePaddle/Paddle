@@ -27,7 +27,7 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor is an upgraded version of Executor that supports multi-node model
+    The ParallelExecutor is an upgraded version of :code:`fluid.Executor` that supports multi-node model
     training and testing based on the data-parallel mode. In data-parallel mode,
     ParallelExecutor will broadcast the parameters from Node0 to other nodes during
     construction and copy the input Program to other nodes from Node0 to make sure
@@ -37,7 +37,7 @@ class ParallelExecutor(object):
     the GPU to run the model, i.e. use_cuda=True, the node refers to the GPU,
     ParallelExecutor will automatically get the GPU resources available on the
     current machine, users can also set the available GPU resources in the environment
-    variable, for example: want to use GPU0, GPU1computation, export CUDA_VISIBLEDEVICES=0,1;
+    variable, for example: want to use GPU0, GPU1, export CUDA_VISIBLEDEVICES=0,1;
     If the operation is performed on the CPU, i.e. use_cuda=False, the node refers to the CPU.
     **Note: At this time, the user needs to manually add CPU_NUM to the environment variable
     and set the number of CPU devices. For example, export CPU_NUM=4, if the environment
@@ -52,7 +52,7 @@ class ParallelExecutor(object):
             otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
             If this parameter is not provided, that parameter is None, the program will
-            be set to fluid.default_main_program(). The default is None.
+            be set to :code:`fluid.default_main_program()`. The default is None.
         share_vars_from(ParallelExecutor): If share_vars_from is set, the current
             ParallelExecutor will share the parameters with the ParallelExecutor
             specified by share_vars_from. This parameter needs to be set when model testing
@@ -63,20 +63,20 @@ class ParallelExecutor(object):
             The default is None.
         exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
             be changed when running the current model, such as the thread pool size.
-            For more information about exec_strategy, please refer to fluid.ExecutionStrategy.
+            For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
             The default is None.
         build_strategy(BuildStrategy): By configuring build_strategy, we can
             optimize the computational graph, such as operators' fusion in the
             computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
-            please refer to fluid.BuildStrategy.  The default is None.
+            please refer to :code:`fluid.BuildStrategy`.  The default is None.
         num_trainers(int): This parameter needs to be set in GPU distributed training.
             If the parameter value is greater than 1, NCCL will be initialized by multi-level
             nodes. Each node should have the same number of GPUs. The default is 1.
         trainer_id(int): This parameter needs to be set when performing GPU distributed
             training. This parameter must be used with the num_trainers parameter.
-            Trainer_id indicates the "rank" of the current node. The trainer_id starts counting
-            from 0. The default is 0.
+            Trainer_id indicates the "rank" of the current node. The trainer_id starts
+            counting from 0. The default is 0.
         scope(Scope): Specifies the scope in which the program is executed.
             The default is fluid.global_scope().
 
@@ -227,7 +227,7 @@ class ParallelExecutor(object):
                 This parameter has been deprecated. Default None.
             return_numpy(bool): This parameter indicates whether convert the fetched variables
                 (the variable specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of LoDTensor. The default is True.
+                the type of the return value is a list of :code:`LoDTensor`. The default is True.
 
         Returns:
             List: The fetched result list.
@@ -316,12 +316,11 @@ class ParallelExecutor(object):
 
     def drop_local_exe_scopes(self):
         """
-
-        Drop the local execution scopes immediately. In order to avoid frequent
+        Drop the local execution scopes immediately. In order to avoid frequently
         application and release of temporary variables, the strategy adopted by
         ParallelExecutor is to drop the local execution scopes after several iterations.
         ParallelExecutor provides the num_iteration_per_drop_scope option in
-        ExecutionStrategy, which indicates how many iterations are intervened to
+        :code:`fluid.ExecutionStrategy`, which indicates how many iterations are intervened to
         drop the local execution scopes. If the num_iteration_per_drop_scope value
         is 100, but you want to drop the local execution scopes after 50 iterations,
         you can call the interface manually.
