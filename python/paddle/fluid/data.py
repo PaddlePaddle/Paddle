@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import six
 
 from . import core
 from .layer_helper import LayerHelper
@@ -86,6 +87,11 @@ def data(name, shape, dtype='float32', lod_level=0):
 
     """
     helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in six.moves.range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
     return helper.create_global_variable(
         name=name,
         shape=shape,
