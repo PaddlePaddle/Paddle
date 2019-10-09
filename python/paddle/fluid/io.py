@@ -717,7 +717,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
 
     **Note**:
         Some variables are not Parameter while they are necessary for
-        training, such learning rate, global step, etc. So you cannot save and
+        training, such as learning rate, global step, etc. So you cannot save and
         continue your training just by using :ref:`api_fluid_io_save_params` and
         :ref:`api_fluid_io_load_params`. Please use :ref:`api_fluid_io_save_persistables`
         and :ref:`api_fluid_io_load_persistables` instead.

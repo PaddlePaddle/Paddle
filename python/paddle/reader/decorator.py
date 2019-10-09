@@ -129,7 +129,7 @@ def chain(*readers):
     [10, 10, 10],
     [20, 20, 20].
     The chained reader will output:
-    [0, 0, 0][10, 10, 10] [20, 20, 20].
+    [[0, 0, 0], [10, 10, 10], [20, 20, 20]].
 
     Args:
         readers(list): input data readers.
