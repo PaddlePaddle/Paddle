@@ -105,7 +105,7 @@ paddle.fluid.io.PipeReader.get_line (ArgSpec(args=['self', 'cut_lines', 'line_br
 paddle.fluid.io.multiprocess_reader (ArgSpec(args=['readers', 'use_pipe', 'queue_size'], varargs=None, keywords=None, defaults=(True, 1000)), ('document', '7d8b3a96e592107c893d5d51ce968ba0'))
 paddle.fluid.io.Fake ('paddle.reader.decorator.Fake', ('document', '0d8f4847b99bed6d456ade0d903202e1'))
 paddle.fluid.io.Fake.__init__ (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.initializer.ConstantInitializer ('paddle.fluid.initializer.ConstantInitializer', ('document', 'b55f94f54e2396285b33fd65df086f0f'))
+paddle.fluid.initializer.ConstantInitializer ('paddle.fluid.initializer.ConstantInitializer', ('document', '911263fc30c516c55e89cd72086a23f8'))
 paddle.fluid.initializer.ConstantInitializer.__init__ (ArgSpec(args=['self', 'value', 'force_cpu'], varargs=None, keywords=None, defaults=(0.0, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.initializer.UniformInitializer ('paddle.fluid.initializer.UniformInitializer', ('document', '587b7035cd1d56f76f2ded617b92521d'))
 paddle.fluid.initializer.UniformInitializer.__init__ (ArgSpec(args=['self', 'low', 'high', 'seed', 'diag_num', 'diag_step', 'diag_val'], varargs=None, keywords=None, defaults=(-1.0, 1.0, 0, 0, 0, 1.0)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
