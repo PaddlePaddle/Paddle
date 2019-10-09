@@ -14771,14 +14771,24 @@ def sign(x):
           import numpy as np
 
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='float32')) 
 
     """
 
     helper = LayerHelper("sign", **locals())
 
     if not isinstance(x, Variable):
-        x = assign(x)
+        if isinstance(x, np.ndarray):
+            x = assign(x)
+        else:
+            raise TypeError(
+                "The type of 'x' in sign_op must be Variable or numpy.ndarray, but received %s."
+                % (type(x)))
+
+    if convert_dtype(x.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in sign_op must be float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
