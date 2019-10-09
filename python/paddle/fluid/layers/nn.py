@@ -15290,7 +15290,7 @@ def deformable_roi_pooling(input,
                            shape=[2, 192, 64, 64], 
                            dtype='float32')                   
         rois = fluid.data(name="rois",
-                          shape=[10, 4],
+                          shape=[-1, 4],
                           dtype='float32', 
                           lod_level=1)
         trans = fluid.data(name="trans",
@@ -15315,7 +15315,7 @@ def deformable_roi_pooling(input,
                            shape=[2, 192, 64, 64], 
                            dtype='float32')                   
         rois = fluid.data(name="rois",
-                          shape=[10, 4],
+                          shape=[-1, 4],
                           dtype='float32', 
                           lod_level=1)
         trans = fluid.data(name="trans",
