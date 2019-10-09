@@ -573,10 +573,9 @@ class Executor(object):
 
     def close(self):
         """
-        Close the executor. This interface is used for distributed training.
+        Close the executor. This interface is used for distributed training (PServers mode).
         This executor can not be used after calling the interface, because
-        in PServers mode, this interface releases resources associated with
-        the current Trainer.
+        this interface releases resources associated with the current Trainer.
 
         Returns:
             None
@@ -665,7 +664,7 @@ class Executor(object):
         """
         Run the specified Program or Compiled Program. It should be noted that
         the executor will execute all the operators in Program or Compiled
-        Program without tailoring some operators of the Program or Compiled
+        Program without pruning some operators of the Program or Compiled
         Program according to fetch_list. And you could specify the scope that
         storing the Variables during the executor running, if the scope is not set,
         the executor will use the global scope, fluid. global_scope().
