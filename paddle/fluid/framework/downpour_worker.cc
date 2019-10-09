@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "io/fs.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "io/fs.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -172,8 +172,8 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
 
 void DownpourWorker::DumpParam() {
   int err_no = 0;
-  std::string path = string::format_string(
-      "%s/part-%03d", dump_param_path_.c_str(), mpi_rank_);
+  std::string path = string::format_string("%s/part-%03d", 
+                                           dump_param_path_.c_str(), mpi_rank_);
   std::shared_ptr<FILE> param_fd = fs_open_write(path, &err_no, "");
   std::string os;
   for (auto& param : dump_param_) {
