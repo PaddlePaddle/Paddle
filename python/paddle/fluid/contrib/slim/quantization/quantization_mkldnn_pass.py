@@ -351,8 +351,8 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                 use_unsigned_int = False
                 self._var_quant_scales[input_name] = (use_unsigned_int,
                                                       lod_tensor)
-                self._var_quant_scales[scale_name.replace(".scale", "")] = (use_unsigned_int,
-                                                      lod_tensor)
+                self._var_quant_scales[scale_name.replace(".scale", "")] = (
+                    use_unsigned_int, lod_tensor)
 
             if op.name() in self._fake_dequantize_types:
                 input_name = op.input("X")[0]
