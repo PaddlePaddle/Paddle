@@ -384,12 +384,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Args:
         shape(tuple|list): Shape of the LoDTensor or SelectedRows to be created.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
-        be float16, float32, float64, int32, int64.
+            be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the LoDTensor or SelectedRows to be created.
         force_cpu(True): data should be on CPU if set true, defalut value is False.
         out(Variable, optional): Optional output which can be any created 
-        Variable that meets the requirements to store the result of operation.
-        if out is None, a new Varibale will be create to store the result.
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
 
     Returns:
         Variable: LoDTensor or SelectedRows which is created according the shape and dtype.
@@ -454,15 +454,15 @@ def fill_constant_batch_size_like(input,
     Args:
         input(Variable): Tensor which data type is float32, float64, int32 and int64.
         shape(list): The shape of Tensor to be created, Tensor's shape may be changed
-        according the input.
+            according the input.
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of created Tensor which
-        can be float32, float64, int32, int64.
+            can be float32, float64, int32, int64.
         value(float|int): The constant value used to initialize the Tensor to be created. 
         input_dim_idx(int): When the value is 0 and the input is LoDTensor, the output_dim_idx
-        dimension of the created Tensor is set to the batch_size value of input.
-        The default value is 0.
+            dimension of the created Tensor is set to the batch_size value of input.
+            The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
-        the value of batch_size of input Tensor. The default value is 0.
+            the value of batch_size of input Tensor. The default value is 0.
 
     Returns:
         Variable: the created Tensor which data type si dtype.
