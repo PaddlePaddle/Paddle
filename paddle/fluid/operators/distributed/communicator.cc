@@ -72,8 +72,6 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   // get all send information from graph, build vars_to_send
   VLOG(0) << "communicator_send_queue_size: "
           << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << FLAGS_communicator_min_send_grad_num_before_recv;
   VLOG(0) << "communicator_thread_pool_size: "
           << FLAGS_communicator_thread_pool_size;
   VLOG(0) << "communicator_send_wait_times: "
@@ -90,6 +88,9 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
               FLAGS_communicator_send_queue_size);
     }
+
+    this->BarrierTriggerReset(FLAGS_communicator_max_merge_var_num);
+
     consume_threadpool_.reset(
         new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
