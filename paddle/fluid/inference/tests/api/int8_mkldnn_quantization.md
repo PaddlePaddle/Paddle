@@ -105,7 +105,7 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 | Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :------------:             | :------------:            | :------------:  |
-| Mobilenet-SSD    |    51.14       | 150.01 |2.93 |
+| Mobilenet-SSD    |    37.8180       | 115.0604 |3.04 |
 
 * ## Prepare dataset
 

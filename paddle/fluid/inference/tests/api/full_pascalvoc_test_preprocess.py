@@ -271,20 +271,20 @@ def main_pascalvoc_preprocess(args):
         '--choice', choices=['local', 'VOC_test_2007'], required=True)
     parser.add_argument(
         "--data_dir",
-        default="./third_party/inference_demo/int8v2/pascalvoc_small",
+        default="/home/li/AIPG-Paddle/paddle/build/third_party/inference_demo/int8v2/pascalvoc_small",
         type=str,
         help="Dataset root directory")
     parser.add_argument(
         "--img_annotation_list",
         type=str,
         default="test_100.txt",
-        help="A file containing the image file path and corresponding annotation file path"
+        help="A file containing the image file path and relevant annotation file path"
     )
     parser.add_argument(
         "--label_file",
         type=str,
         default="label_list",
-        help="List of object labels with same sequence as denoted in the annotation file"
+        help="List the labels in the same sequence as denoted in the annotation file"
     )
     parser.add_argument(
         "--output_file",
