@@ -1684,7 +1684,7 @@ class GRUUnit(layers.Layer):
 class NCE(layers.Layer):
     """
     This interface is used to construct a callable object of the ``NCE`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It implements the function of the ``NCE`` loss function.
     By default this function uses a uniform distribution for sampling, and it
     compute and return the noise-contrastive estimation training loss. See
@@ -1693,11 +1693,11 @@ class NCE(layers.Layer):
     Parameters:
         name_scope(str): The name of this class.
         num_total_classes (int): Total number of classes in all samples
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
              of nce. If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr or bool, optional): The parameter attribute for the bias of nce.
+        bias_attr (ParamAttr or bool, optional): The attribute for the bias of nce.
              If it is set to False, no bias will be added to the output units.
              If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
@@ -1714,9 +1714,9 @@ class NCE(layers.Layer):
         is_sparse(bool, optional): The flag indicating whether to use sparse update. If is_sparse is True, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
 
     Attribute:
-        **weight**(Parameter): the learnable weights of this layer.
+        **weight** (Parameter): the learnable weights of this layer.
 
-        **bias**(Parameter or None): the learnable bias of this layer.
+        **bias** (Parameter or None): the learnable bias of this layer.
     
     Returns:
         None
@@ -1937,7 +1937,7 @@ class NCE(layers.Layer):
 class PRelu(layers.Layer):
     """
     This interface is used to construct a callable object of the ``PRelu`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It implements three activation methods of the ``PRelu`` activation function.
 
     Equation:
@@ -1955,7 +1955,7 @@ class PRelu(layers.Layer):
           weight (alpha). Default: None.
 
     Attribute:
-        **weight**(Parameter): the learnable weights of this layer.
+        **weight** (Parameter): the learnable weights of this layer.
     
     Returns:
         None
