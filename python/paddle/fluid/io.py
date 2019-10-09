@@ -1072,7 +1072,7 @@ def save_inference_model(dirname,
 
     main_program = _get_valid_program(main_program)
 
-    # remind user to set auc_states to zeros if the program contains auc op
+    # remind user to set auc_states to zeros if the program contains auc op 
     all_ops = main_program.global_block().ops
     for op in all_ops:
         if op.type == 'auc':

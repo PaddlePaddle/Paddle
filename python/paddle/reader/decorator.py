@@ -36,14 +36,14 @@ import paddle.compat as cpt
 
 def cache(reader):
     """
-    Cache the reader data into memory.
+    Cache the reader data into memory. 
 
-    Be careful that this method may take long time to process,
-    and consume lots of memory. :code:`reader()` would only
-    call once.
+    Be careful that this method may take long time to process, 
+    and consume lots of memory. :code:`reader()` would only 
+    call once. 
 
     Args:
-        reader (generator): a reader object which yields
+        reader (generator): a reader object which yields 
             data each time.
 
     Returns:
@@ -303,14 +303,14 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
 
     Args:
         mapper (callable): a function to map the data from reader.
-        reader (callable): a data reader which yields the data.
+        reader (callable): a data reader which yields the data. 
         process_num (int): thread number to handle original sample.
-        buffer_size (int): size of the queue to read data in.
-        order (bool): whether to keep the data order from original reader.
+        buffer_size (int): size of the queue to read data in. 
+        order (bool): whether to keep the data order from original reader. 
             Default False.
 
     Returns:
-        callable: a decorated reader with data mapping.
+        callable: a decorated reader with data mapping. 
     """
     end = XmapEndSignal()
 
