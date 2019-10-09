@@ -73,7 +73,7 @@ def retinanet_target_assign(bbox_pred,
                             positive_overlap=0.5,
                             negative_overlap=0.4):
     """
-    **Notice: this OP supports CPU mode only.**
+    **Target Assign Layer for the detector RetinaNet.**
 
     This OP finds out positive and negative samples from all anchors
     for training the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ ,
@@ -2714,7 +2714,7 @@ def retinanet_detection_output(bboxes,
                                nms_threshold=0.3,
                                nms_eta=1.):
     """
-    **Notice: this OP supports CPU mode only.**
+    **Detection Output Layer for the detector RetinaNet.**
 
     In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many 
     `FPN <https://arxiv.org/abs/1612.03144>`_ levels output the category
