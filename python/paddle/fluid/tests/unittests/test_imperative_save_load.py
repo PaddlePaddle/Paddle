@@ -878,7 +878,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         np.array_equal(v.numpy(), self.base_opti[v.name] *
                                        adam._beta2))
 
-# check parameter
+            # check parameter
 
             state_dict = ptb_model.state_dict()
 
@@ -887,6 +887,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 base_t = self.model_base[v.name]
                 self.assertTrue(np.array_equal(new_t, base_t))
+
+    def testOnlyLoadParams(self):
+        with fluid.dygraph.guard():
+            emb = fluid.dygraph.Embedding("emb", [10, 10])
+            state_dict = emb.state_dict()
+            fluid.save_dygraph(state_dict, "emb_dy")
+
+            para_state_dict, opti_state_dict = fluid.load_dygraph("emb_dy")
+
+            self.assertTrue(opti_state_dict == None)
+
 
 if __name__ == '__main__':
     unittest.main()
