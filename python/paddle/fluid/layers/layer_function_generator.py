@@ -261,8 +261,17 @@ Examples:
     .. code-block:: python
 
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[32, 784])
-        result = fluid.layers.%s(data)
+        import numpy as np
+
+        inputs = fluid.layers.data(name="x", shape = [1], dtype='float32')
+        output = fluid.layers.%s(inputs)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        img = np.array([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
+        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+        print(res)
 """ % op_type
     return func
 
