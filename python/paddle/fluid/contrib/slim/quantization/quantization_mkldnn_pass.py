@@ -560,16 +560,6 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph.safe_remove_nodes(op_node)
         return quant_op_node
 
-    def _transform_to_mul_mkldnn(self, graph, op_node, quantize_node):
-        output_name = op_node.output("Out")[0]
-        scale_in = quantize_node.op().attr("Scale")
-        self._dequantize_mul_weights(graph, op_node)
-        op_node.set_attr("scale_y",
-                         [self._weight_scales[output_name] / self._s8_max])
-        op_node.set_attr("scale_x", self._s8_max / scale_in)
-        op_node.set_attr("scale_out", 1.0)
-        op_node.set_attr("force_fp32_output", True)
-
     def _update_conv_relu_scales(self, graph):
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops:
