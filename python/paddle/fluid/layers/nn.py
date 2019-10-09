@@ -7353,8 +7353,8 @@ def im2sequence(input,
                 name=None):
     """
     Extracts image patches from the input tensor to form a tensor of shape
-    {input.batch_size * output_height * output_width, filter_size_H *
-    filter_size_W * input.channels}.This op use filter / kernel to scan images
+    {input.batch_size * output_height * output_width, filter_size_height *
+    filter_size_width * input.channels}. This op use filter to scan images
     and convert these images to sequences. After expanding, the number of time step are
     output_height * output_width for an image, in which output_height and
     output_width are calculated by below equation:
@@ -7362,7 +7362,7 @@ def im2sequence(input,
     .. math::
 
         output\_height  = 1 + \
-            (padding\_up + padding\_down + input\_height  - filter\_size\_height  + stride\_height - 1) / stride\_height \\
+            (padding\_up + padding\_down + input\_height  - filter\_size\_height  + stride\_height - 1) / stride\_height \\\\
         output\_width  = 1 + \
             (padding\_left + padding\_right + input\_width  - filter\_size\_width  + stride\_width - 1) / stride\_width
 
@@ -7372,34 +7372,34 @@ def im2sequence(input,
         input (Variable): The input should be a 4-D Tensor in :math:`NCHW` format. The data type is float32.
 
         filter_size(int32 | List[int32]): The filter size. If filter_size is a List,
-            it must contain two integers, :math: `[filter_size_height, filter_size_width]` .
-            Otherwise, the filter size will be a square :math: `[filter_size, filter_size]` . Default is 1.
+            it must contain two integers, :math:`[filter\_size\_height, filter\_size\_width]` .
+            Otherwise, the filter size will be a square :math:`[filter\_size, filter\_size]` . Default is 1.
 
         stride(int32 | List[int32]): The stride size. If stride is a List, it must
-            contain two integers, :math: `[stride_height, stride_width]` . Otherwise, the stride size will be a square :math: `[stride_size, stride_size]` . Default is 1.
+            contain two integers, :math:`[stride\_height, stride\_width]` . Otherwise, the stride size will be a square :math:`[stride\_size, stride\_size]` . Default is 1.
 
         padding(int32 | List[int32]): The padding size. If padding is a List, it can
-            contain four integers like :math: `[padding_up, padding_left, padding_down, padding_right]` to indicate
-            paddings of four direction.  Or it can contain two integers :math: `[padding_height, padding_width]` which means
+            contain four integers like :math:`[padding\_up, padding\_left, padding\_down, padding\_right]` to indicate
+            paddings of four direction.  Or it can contain two integers :math:`[padding\_height, padding\_width]` which means
             padding_up = padding_down = padding_height and
             padding_left = padding_right = padding_width. Otherwise, a scalar padding means
-            padding_up = padding_down = padding_left = padding_right = padding
+            padding_up = padding_down = padding_left = padding_right = padding. 
             Default is 0.
 
         input_image_size(Variable, optional): the input contains image real size.It's dim
-            is :math: `[batchsize, 2]` . It is just for batch inference when not None. Default is None.
+            is :math:`[batchsize, 2]` . It is just for batch inference when not None. Default is None.
 
         out_stride(int32 | List[int32]): The scaling of image through CNN. It is valid only when input_image_size is not None.
             If out_stride is List,  it must contain two intergers,
-            :math: `[out_stride_height, out_stride_W]` . Otherwise,
+            :math:`[out\_stride\_height, out\_stride\_W]` . Otherwise,
             the out_stride_height = out_stride_width = out_stride. Default is 1.
 
         name (str, optional): The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns: The output is a 2-D LoDTensor with shape
-        :math: `{input.batch_size * output_height * output_width,
-        filter_size_height * filter_size_width * input.channels}` . The data type is float32.
+    
+    Returns: 
+            The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \ 
+            filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
 
     Return Type: Variable
 
@@ -10306,11 +10306,16 @@ def mean_iou(input, label, num_classes):
                            Its shape should be the same as input.
         num_classes (int32): The possible number of labels.
 
-    Returns:
-        mean_iou(Variable) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. Data type is float32.
-        out_wrong(Variable) : A 1-D Tensor with shape [num_classes]. Data type is int32. The wrong numbers of each class.
-        out_correct(Variable): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
+    Returns: 
+	Three Variables.
 
+        - mean_iou(Variable) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. \
+			    Data type is float32.
+        - out_wrong(Variable) : A 1-D Tensor with shape [num_classes]. Data type is int32. \
+			     The wrong numbers of each class.
+        - out_correct(Variable): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
+ 
+   
     Examples:
 
         .. code-block:: python
@@ -10886,18 +10891,17 @@ def pad2d(input,
     than height-1. And the width dimension has the same condition.
 
     Parameters:
-        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format,
-        which is a 4-D Tensor with data type float32.
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
         paddings (Variable | List[int32]): The padding size. If padding is a List, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Otherwise, it is a 1-D Tensor with shape [4]. Data type is int32.
             Default is [0, 0, 0, 0].
-        mode (str): Three modes: :math: `constant` (default), :math: `reflect` , :math: `edge` .
-        When in :math: `constant` mode, this op uses a constant value to pad the input tensor.
-        When in :math: `reflect` mode, uses reflection of the input boundaries to pad the input tensor.
-        When in :math: `edge` mode, uses input boundaries to pad the input tensor.
-        Default is :math: `constant`
-        pad_value (float32): The value to fill the padded areas in :math: `constant mode` . Default is 0.0
+        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
+        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
+        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+        	When in 'edge' mode, uses input boundaries to pad the input tensor.
+        	Default is 'constant'
+        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
         data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
                            the input data.
                            Default is  "NCHW"
