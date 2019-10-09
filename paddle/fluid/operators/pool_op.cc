@@ -93,7 +93,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     for (size_t i = 0; i < data_dims.size(); ++i) {
       if ((!ctx->IsRuntime()) && (data_dims[i] < 0)) {
-        output_shape.push_back(in_x_dims[i]);
+        output_shape.push_back(data_dims[i]);
       } else {
         output_shape.push_back(
             PoolOutputSize(data_dims[i], ksize[i], paddings[2 * i],
@@ -118,8 +118,6 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  // std::string data_format = ctx.Attr<std::string>("data_format");  // change:
-  // delete
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
@@ -150,8 +148,6 @@ void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  // std::string data_format = ctx.Attr<std::string>("data_format");  //
-  // change:delete
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
