@@ -177,7 +177,7 @@ class TestExpandOpBoolean(OpTest):
         self.check_output()
 
 
-# Situation 4: input x is Integer
+# Situation 56: input x is Integer
 class TestExpandOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand"
@@ -191,6 +191,7 @@ class TestExpandOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
 
 class TestExpandError(OpTest):
     def test_errors(self):
