@@ -1041,7 +1041,7 @@ paddle.fluid.optimizer.RecomputeOptimizer.backward (ArgSpec(args=['self', 'loss'
 paddle.fluid.optimizer.RecomputeOptimizer.get_opti_var_name_list (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RecomputeOptimizer.load (ArgSpec(args=['self', 'stat_dict'], varargs=None, keywords=None, defaults=None), ('document', '7b2b8ae72011bc4decb67e97623f2c56'))
 paddle.fluid.optimizer.RecomputeOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'grad_clip'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks', 'checkpoints'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '52488008103886c793843a3828bacd5e'))
+paddle.fluid.backward.append_backward (ArgSpec(args=['loss', 'parameter_list', 'no_grad_set', 'callbacks', 'checkpoints'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', 'c68fe1cb95d90762b57c309cae9b99d9'))
 paddle.fluid.backward.gradients (ArgSpec(args=['targets', 'inputs', 'target_gradients', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'e2097e1e0ed84ae44951437bfe269a1b'))
 paddle.fluid.regularizer.L1DecayRegularizer ('paddle.fluid.regularizer.L1DecayRegularizer', ('document', '34603757e70974d2fcc730643b382925'))
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
