@@ -282,7 +282,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph(path, show=False)
 
 
-def prepare_fast_nan_inf_debug(_program):
+def prepare_fast_nan_inf_debug(_program, skip_list=[]):
     """
     Given a program to run, insert a (reduce) sum op for every var in that program.
     Instead of checking all vars originally defined in the program,
@@ -300,15 +300,20 @@ def prepare_fast_nan_inf_debug(_program):
         # fetch vars in the current block
         _vars_in_prog = []
         for _var_name in _block.vars:
+            _skip_it = False
+            for item in skip_list:
+                if _var_name.find(item) >= 0:
+                    _skip_it = True
+
+            if _skip_it:
+                continue
+
             _vars_in_prog.append((_var_name, _block.vars[_var_name]))
 
         # append sum_op in the current block
         for _var_name, _var in _vars_in_prog:
 
             try:
-
-                if _var.dtype == -1:
-                    continue
 
                 ## create a var for holding sum output
                 _output_var = _block.create_var(
@@ -325,43 +330,3 @@ def prepare_fast_nan_inf_debug(_program):
                     inputs={'X': [_var]})
             except Exception as e:
                 pass
-
-
-def run_fast_nan_inf_debug(executor,
-                           program=None,
-                           feed=None,
-                           fetch_list=None,
-                           feed_var_name='feed',
-                           fetch_var_name='fetch',
-                           scope=None,
-                           return_numpy=True,
-                           use_program_cache=False,
-                           dump_core=True):
-    """
-    Run a program by the given executor. Catch the exception of NAN and INF, and save persistbales into the dumped core.
-    """
-
-    assert (executor is not None)
-
-    try:
-        output = executor.run(program=program,
-                              feed=feed,
-                              fetch_list=fetch_list,
-                              feed_var_name=feed_var_name,
-                              fetch_var_name=fetch_var_name,
-                              scope=scope,
-                              return_numpy=return_numpy,
-                              use_program_cache=use_program_cache)
-
-        return output
-
-    except Exception as e:
-
-        print("catch an exception:")
-        print(e)
-
-        core_filename = "core" + str(int(random.random() * 10000)) + ".pdckpt"
-        io.save_persistables(
-            executor, "./", main_program=program, filename=core_filename)
-
-        print("dumping a core into ./%s" % core_filename)

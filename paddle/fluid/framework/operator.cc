@@ -835,10 +835,21 @@ static void CheckTensorNANOrInf(const std::string& op_type,
       tensor.type() != proto::VarType::FP64) {
     return;
   }
-  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Operator %s output Tensor %s contains Inf", op_type, name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Operator %s output Tensor %s contains NAN", op_type, name);
+  if (FLAGS_fast_check_nan_inf) {
+    PADDLE_ENFORCE_NOTNANINF(!framework::TensorContainsInf(tensor),
+                             "Operator %s output Tensor %s contains Inf",
+                             op_type, name);
+    PADDLE_ENFORCE_NOTNANINF(!framework::TensorContainsNAN(tensor),
+                             "Operator %s output Tensor %s contains NAN",
+                             op_type, name);
+  } else {
+    PADDLE_ENFORCE_EQ(framework::TensorContainsInf(tensor), false,
+                      "Operator %s output Tensor %s contains Inf", op_type,
+                      name);
+    PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(tensor), false,
+                      "Operator %s output Tensor %s contains NAN", op_type,
+                      name);
+  }
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -886,54 +897,69 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
+  try {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
 
-  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    ChooseKernel(*runtime_ctx, scope, place);
-  }
+    if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+      ChooseKernel(*runtime_ctx, scope, place);
+    }
 
-  std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
+    std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
 
-  // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
+    // do data transformScope &transfer_scope;
+    std::vector<std::string> transfered_inplace_vars;
+    auto* transfer_scope = PrepareData(scope, *kernel_type_,
+                                       &transfered_inplace_vars, runtime_ctx);
 
-  // exec scope is the scope that kernel actually executed on.
-  const Scope& exec_scope =
-      (transfer_scope == nullptr ? scope : *transfer_scope);
+    // exec scope is the scope that kernel actually executed on.
+    const Scope& exec_scope =
+        (transfer_scope == nullptr ? scope : *transfer_scope);
 
-  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(kernel_type_->place_);
-  }
+    if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+      dev_ctx = pool.Get(kernel_type_->place_);
+    }
 
-  if (!all_kernels_must_compute_runtime_shape_) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
-    this->InferShape(&infer_shape_ctx);
-  }
-  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
-  // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
+    if (!all_kernels_must_compute_runtime_shape_) {
+      RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+      this->InferShape(&infer_shape_ctx);
+    }
+    // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+    // not Scope. Imperative mode only pass inputs and get outputs.
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
 
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
+    if (!transfered_inplace_vars.empty()) {
+      // there is inplace variable has been transfered.
+      TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+    }
 
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-  }
+    /*For profiling/benchmark only*/
+    if (FLAGS_benchmark) {
+      dev_ctx->Wait();
+    }
 
-  if (FLAGS_fast_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      // only check inserted vars,
-      // please see executor.py for details of fast_check_nan_inf
-      if (vname.rfind("debug_var") == 0) {
-        VLOG(3) << "debugging nan/inf in var " << vname;
+    if (FLAGS_fast_check_nan_inf) {
+      for (auto& vname : OutputVars(true)) {
+        // only check inserted vars,
+        // please see executor.py for details of fast_check_nan_inf
+        if (vname.rfind("debug_var") == 0) {
+          VLOG(3) << "debugging nan/inf in var " << vname;
 
+          auto* var = exec_scope.FindVar(vname);
+          if (var == nullptr) continue;
+          if (var->IsType<framework::LoDTensor>()) {
+            CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+          } else if (var->IsType<framework::SelectedRows>()) {
+            CheckTensorNANOrInf(type_, vname,
+                                var->Get<framework::SelectedRows>().value());
+          }
+        }
+      }
+    }
+
+    if (FLAGS_check_nan_inf) {
+      for (auto& vname : OutputVars(true)) {
         auto* var = exec_scope.FindVar(vname);
         if (var == nullptr) continue;
         if (var->IsType<framework::LoDTensor>()) {
@@ -944,26 +970,22 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         }
       }
     }
-  }
 
-  if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(type_, vname,
-                            var->Get<framework::SelectedRows>().value());
-      }
+    // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+    // do not cache transfer scope, hence in this case delete transfer scope
+    // after run to avoid memory leak
+    if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
+      scope.DeleteScope(transfer_scope);
     }
-  }
-
-  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
-  // do not cache transfer scope, hence in this case delete transfer scope
-  // after run to avoid memory leak
-  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
-    scope.DeleteScope(transfer_scope);
+  } catch (platform::NANINFException exception) {
+    std::rethrow_exception(std::current_exception());
+  } catch (...) {
+    if (FLAGS_fast_check_nan_inf) {
+      // exception sometimes happens in fast_check_nan_inf, which is ok for now.
+      // fix this issue in the next version
+    } else {
+      std::rethrow_exception(std::current_exception());
+    }
   }
 }
 

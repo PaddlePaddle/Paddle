@@ -135,6 +135,22 @@ struct EOFException : public std::exception {
   const char* what() const noexcept override { return err_str_.c_str(); }
 };
 
+struct NANINFException : public std::exception {
+  std::string err_str_;
+  NANINFException(std::exception_ptr e, const char* file, int line) {
+    try {
+      std::rethrow_exception(e);
+    } catch (std::exception& e) {
+      err_str_ = GetTraceBackString(e.what(), file, line);
+    }
+  }
+
+  NANINFException(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {}
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+};
+
 // Because most enforce conditions would evaluate to true, we can use
 // __builtin_expect to instruct the C++ compiler to generate code that
 // always forces branch prediction of true.
@@ -307,6 +323,31 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
   } while (0)
 #endif
 
+#if defined(__CUDA_ARCH__)
+#define PADDLE_ENFORCE_NOTNANINF(_IS_NOT_ERROR, __FORMAT, ...)         \
+  do {                                                                 \
+    if (!(_IS_NOT_ERROR)) {                                            \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
+      asm("trap;");                                                    \
+    }                                                                  \
+  } while (0)
+#else
+#define PADDLE_ENFORCE_NOTNANINF(COND, ...)                                 \
+  do {                                                                      \
+    auto __cond__ = (COND);                                                 \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {                 \
+      try {                                                                 \
+        ::paddle::platform::throw_on_error(                                 \
+            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));              \
+      } catch (...) {                                                       \
+        throw ::paddle::platform::NANINFException(std::current_exception(), \
+                                                  __FILE__, __LINE__);      \
+      }                                                                     \
+    }                                                                       \
+  } while (0)
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \
   do {                                                                    \
@@ -338,6 +379,12 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #define PADDLE_THROW_BAD_ALLOC(...)                                  \
   do {                                                               \
     throw ::paddle::memory::allocation::BadAlloc(                    \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
+
+#define PADDLE_THROW_NANINF(...)                                     \
+  do {                                                               \
+    throw ::paddle::platform::NANINFException(                       \
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
