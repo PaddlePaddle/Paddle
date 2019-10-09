@@ -1,5 +1,6 @@
 cos_sim
 flatten
+fsp
 gru
 lrn
 lstm_unit
