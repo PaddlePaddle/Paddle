@@ -184,7 +184,8 @@ class GradientClipByValue(BaseGradientClipAttr):
 
 class GradientClipByNorm(BaseGradientClipAttr):
     """ 
-    Convert the input multidimensional tensor :math:`X` to a multidimensional tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`clip\_norm` ). (The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.)
+    Convert the input multidimensional tensor :math:`X` to a multidimensional tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`clip\_norm` ). 
+    The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.
 
     This class limits the L2 norm of the input :math:`X` within :math:`clip\_norm`.
 
@@ -204,7 +205,7 @@ class GradientClipByNorm(BaseGradientClipAttr):
  	norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
 
     Args:
-        clip_norm (float): The maximum norm value
+        clip_norm(float): The maximum norm value
     
     Examples:
         .. code-block:: python
@@ -217,8 +218,8 @@ class GradientClipByNorm(BaseGradientClipAttr):
   	  startup_program = fluid.framework.Program()
   	  with fluid.program_guard(
           	    main_program=prog, startup_program=startup_program):
-      	      image = fluid.layers.data(name='x', shape=[784], dtype='float32')
-      	      label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+      	      image = fluid.data(name='x', shape=[None, 784], dtype='float32')
+      	      label = fluid.data(name='y', shape=[None, 1], dtype='int64')
       	      hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
       	      hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
       	      predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
