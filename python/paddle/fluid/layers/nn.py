@@ -7270,57 +7270,55 @@ def im2sequence(input,
                 name=None):
     """
     Extracts image patches from the input tensor to form a tensor of shape
-    {input.batch_size * output_height * output_width, filter_size_H *
-    filter_size_W * input.channels} which is similar with im2col.
-    This op use filter / kernel to scan images and convert these images to
-    sequences. After expanding, the number of time step are
+    {input.batch_size * output_height * output_width, filter_size_height *
+    filter_size_width * input.channels}. This op use filter to scan images
+    and convert these images to sequences. After expanding, the number of time step are
     output_height * output_width for an image, in which output_height and
     output_width are calculated by below equation:
 
     .. math::
 
-        output\_size = 1 + \
-            (2 * padding + img\_size - block\_size + stride - 1) / stride
+        output\_height  = 1 + \
+            (padding\_up + padding\_down + input\_height  - filter\_size\_height  + stride\_height - 1) / stride\_height \\\\
+        output\_width  = 1 + \
+            (padding\_left + padding\_right + input\_width  - filter\_size\_width  + stride\_width - 1) / stride\_width
 
-    And the dimension of each time step is block_y * block_x * input.channels.
+    And the dimension of each time step is filter_size_height * filter_size_width * input.channels.
 
-    Args:
-        input (Variable): The input should be a tensor in NCHW format.
+    Parameters:
+        input (Variable): The input should be a 4-D Tensor in :math:`NCHW` format. The data type is float32.
 
-        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
+        filter_size(int32 | List[int32]): The filter size. If filter_size is a List,
+            it must contain two integers, :math:`[filter\_size\_height, filter\_size\_width]` .
+            Otherwise, the filter size will be a square :math:`[filter\_size, filter\_size]` . Default is 1.
 
-        stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+        stride(int32 | List[int32]): The stride size. If stride is a List, it must
+            contain two integers, :math:`[stride\_height, stride\_width]` . Otherwise, the stride size will be a square :math:`[stride\_size, stride\_size]` . Default is 1.
 
-        padding(int|tuple): The padding size. If padding is a tuple, it can
-            contain two integers like (padding_H, padding_W) which means
-            padding_up = padding_down = padding_H and
-            padding_left = padding_right = padding_W. Or it can use
-            (padding_up, padding_left, padding_down, padding_right) to indicate
-            paddings of four direction. Otherwise, a scalar padding means
-            padding_up = padding_down = padding_left = padding_right = padding
-            Default: padding = 0.
+        padding(int32 | List[int32]): The padding size. If padding is a List, it can
+            contain four integers like :math:`[padding\_up, padding\_left, padding\_down, padding\_right]` to indicate
+            paddings of four direction.  Or it can contain two integers :math:`[padding\_height, padding\_width]` which means
+            padding_up = padding_down = padding_height and
+            padding_left = padding_right = padding_width. Otherwise, a scalar padding means
+            padding_up = padding_down = padding_left = padding_right = padding. 
+            Default is 0.
 
-        input_image_size(Variable): the input contains image real size.It's dim
-            is [batchsize, 2]. It is dispensable.It is just for batch inference.
+        input_image_size(Variable, optional): the input contains image real size.It's dim
+            is :math:`[batchsize, 2]` . It is just for batch inference when not None. Default is None.
 
-        out_stride(int|tuple): The scaling of image through CNN. It is
-            dispensable. It is valid only when input_image_size is not null.
-            If out_stride is tuple,  it must contain two intergers,
-            (out_stride_H, out_stride_W). Otherwise,
-            the out_stride_H = out_stride_W = out_stride.
+        out_stride(int32 | List[int32]): The scaling of image through CNN. It is valid only when input_image_size is not None.
+            If out_stride is List,  it must contain two intergers,
+            :math:`[out\_stride\_height, out\_stride\_W]` . Otherwise,
+            the out_stride_height = out_stride_width = out_stride. Default is 1.
 
-        name (int): The name of this layer. It is optional.
+        name (str, optional): The default value is None.  Normally there is no need for
+                    user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+    
+    Returns: 
+            The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \ 
+            filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
 
-    Returns:
-        output: The output is a LoDTensor with shape
-        {input.batch_size * output_height * output_width,
-        filter_size_H * filter_size_W * input.channels}.
-        If we regard output as a matrix, each row of this matrix is
-        a step of a sequence.
+    Return Type: Variable
 
     Examples:
 
@@ -7372,7 +7370,7 @@ def im2sequence(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32],
+            data = fluid.data(name='data', shape=[None, 3, 32, 32],
                                      dtype='float32')
             output = fluid.layers.im2sequence(
                 input=data, stride=[1, 1], filter_size=[2, 2])
@@ -10182,31 +10180,32 @@ def mean_iou(input, label, num_classes):
     is then calculated from it.
 
 
-    Args:
-        input (Variable): A Tensor of prediction results for semantic labels with type int32 or int64.
+    Parameters:
+        input (Variable): A n-D Tensor of prediction results for semantic labels with type int32 or int64.
         label (Variable): A Tensor of ground truth labels with type int32 or int64.
                            Its shape should be the same as input.
-        num_classes (int): The possible number of labels.
+        num_classes (int32): The possible number of labels.
 
-    Returns:
-        mean_iou (Variable),out_wrong(Variable),out_correct(Variable):
+    Returns: 
+	Three Variables.
 
-                     Three variables:
-
-                     - mean_iou : A Tensor representing the mean intersection-over-union with shape [1].
-                     - out_wrong: A Tensor with shape [num_classes]. The wrong numbers of each class.
-                     - out_correct: A Tensor with shape [num_classes]. The correct numbers of each class.
-
+        - mean_iou(Variable) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. \
+			    Data type is float32.
+        - out_wrong(Variable) : A 1-D Tensor with shape [num_classes]. Data type is int32. \
+			     The wrong numbers of each class.
+        - out_correct(Variable): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
+ 
+   
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            iou_shape = [32, 32]
+            iou_shape = [None, 32, 32]
             num_classes = 5
-            predict = fluid.layers.data(name='predict', shape=iou_shape)
-            label = fluid.layers.data(name='label', shape=iou_shape)
-            iou, wrongs, corrects = fluid.layers.mean_iou(predict, label,
+            predict = fluid.data(name='predict', shape=iou_shape, dtype='int64')
+            label = fluid.data(name='label', shape=iou_shape, dtype='int64')
+            mean_iou, out_wrong, out_correct = fluid.layers.mean_iou(predict, label,
                                                           num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
@@ -10771,7 +10770,30 @@ def pad2d(input,
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
 
-    Example:
+    Parameters:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
+        paddings (Variable | List[int32]): The padding size. If padding is a List, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Otherwise, it is a 1-D Tensor with shape [4]. Data type is int32.
+            Default is [0, 0, 0, 0].
+        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
+        	When in 'constant' mode, this op uses a constant value to pad the input tensor.
+        	When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+        	When in 'edge' mode, uses input boundaries to pad the input tensor.
+        	Default is 'constant'
+        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
+        data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default is  "NCHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+                    user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns: a 4-D Tensor padded accordding to paddings and mode and data type is same as input.
+
+    Return Type: Variable
+
+
+    Examples:
         .. code-block:: text
 
 	      Given that X is a channel of image from input:
@@ -10807,29 +10829,11 @@ def pad2d(input,
 		       [4, 4, 4, 5, 6, 6]
 		       [4, 4, 4, 5, 6, 6]]
 
-
-    Args:
-        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
-        paddings (tuple|list|Variable): The padding size. If padding is a tuple, it must
-            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
-            Default: padding = [0, 0, 0, 0].
-        mode (str): Three modes: constant(default), reflect, edge. Default: constant
-        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
-        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
-                           the input data.
-                           Default: "NCHW"
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-
-    Returns:
-        Variable: The tensor variable padded accordding to paddings and mode.
-
-
-    Examples:
+    Code Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32],
+          data = fluid.data(name='data', shape=[None, 3, 32, 32],
                                    dtype='float32')
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
@@ -11338,7 +11342,7 @@ def flatten(x, axis=1, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[4, 4, 3], append_batch_size=False, dtype="float32")
+            x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
@@ -14943,7 +14947,7 @@ def fsp_matrix(x, y):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32])
+            data = fluid.data(name='data', shape=[None, 3, 32, 32])
             feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
                                                 filter_size=3)
             feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
@@ -15317,9 +15321,9 @@ def deformable_conv(input,
           import paddle.fluid as fluid
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
-          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          mask = fluid.layers.data(name='mask', shape=[deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          mask = fluid.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=True)
 
@@ -15328,8 +15332,8 @@ def deformable_conv(input,
           import paddle.fluid as fluid
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
-          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
