@@ -12063,7 +12063,7 @@ def strided_slice(input, axes, starts, ends, strides):
     end dimension for each axis in the list of axes and Slice uses this information
     to slice the input data tensor. If a negative value is passed to
     ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
-    axis :math:`i-1`th(here 0 is the initial position). The ``strides`` represents steps of
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
     slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
     If the value passed to ``starts`` or ``ends`` is greater than n
     (the number of elements in this dimension), it represents n.

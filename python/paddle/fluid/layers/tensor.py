@@ -35,11 +35,11 @@ __all__ = [
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    Create an variable, which will hold a LoDTensor with data type dtype.
+    Create a variable, which will hold a LoDTensor with data type dtype.
 
     Args:
         dtype(string|numpy.dtype): the data type of Tensor to be created, the
-            data type is bool float16, float32, float64, int8, int16, int32 and int64.
+            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
         name(string, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
         persistable(bool): Set the persistable flag of the create tensor.
