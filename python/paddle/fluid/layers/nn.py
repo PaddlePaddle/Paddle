@@ -14704,32 +14704,34 @@ def continuous_value_model(input, cvm, use_cvm=True):
 
     **continuous_value_model layers**
 
-    continuous value model(cvm). Now, it only considers show and click value in CTR project.
-    We assume that input is an embedding vector with cvm_feature, whose shape is [N * D] (D is 2 + embedding dim).
-    If use_cvm is True, it will log(cvm_feature), and output shape is [N * D].
-    If use_cvm is False, it will remove cvm_feature from input, and output shape is [N * (D - 2)].
-    
-    This layer accepts a tensor named input which is ID after embedded(lod level is 1), cvm is a show_click info.
+    Now, this OP is used in CTR project to remove or dispose show and click value in :attr:`input`.
+
+    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (N is batch size. D is `2 + embedding dim` ).
+    Show and click at first two dims of embedding vector D.
+    If :attr:`use_cvm` is True, it will caculate :math:`log(show)` and :math:`log(click)` , and output shape is :math:`[N, D]` .
+    If :attr:`use_cvm` is False, it will remove show and click from :attr:`input` , and output shape is :math:`[N, D - 2]` .
+    :attr:`cvm` is show_click info, whose shape is :math:`[N, 2]` .
 
     Args:
-
-        input (Variable): a 2-D LodTensor with shape [N x D], where N is the batch size, D is 2 + the embedding dim. lod level = 1.
-        cvm (Variable):   a 2-D Tensor with shape [N x 2], where N is the batch size, 2 is show and click.
-        use_cvm  (bool):  use cvm or not. if use cvm, the output dim is the same as input
-                          if don't use cvm, the output dim is input dim - 2(remove show and click)
-                          (cvm op is a customized op, which input is a sequence has embed_with_cvm default, so we need an op named cvm to decided whever use it or not.)
+        input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        A Tensor with type float32, float64.
+        cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
+        A Tensor with type float32, float64.
+        use_cvm  (bool):  Use show_click or not. if use, the output dim is the same as input.
+                          if not use, the output dim is `input dim - 2` (remove show and click)
 
     Returns:
 
-        Variable: A 2-D LodTensor with shape [N x D], if use cvm, D is equal to input dim, if don't use cvm, D is equal to input dim - 2. 
+        Variable: A 2-D LodTensor with shape :math:`[N, M]` . if :attr:`use_cvm` = True, M is equal to input dim D. if False, M is equal to `D - 2`. \
+        A Tensor with same type as input.
 
     Examples:
 
         .. code-block:: python
 
           import paddle.fluid as fluid
-          input = fluid.layers.data(name="input", shape=[-1, 1], lod_level=1, append_batch_size=False, dtype="int64")#, stop_gradient=False)
-          label = fluid.layers.data(name="label", shape=[-1, 1], append_batch_size=False, dtype="int64")
+          input = fluid.data(name="input", shape=[64, 1], dtype="int64")
+          label = fluid.data(name="label", shape=[64, 1], dtype="int64")
           embed = fluid.layers.embedding(
                             input=input,
                             size=[100, 11],
