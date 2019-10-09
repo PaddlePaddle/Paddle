@@ -129,7 +129,7 @@ function(bash_test_modules TARGET_NAME)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
 
-    if(${bash_test_modules_LABELS})
+    if(bash_test_modules_LABELS)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${bash_test_modules_LABELS})
     else()
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})

@@ -100,7 +100,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
                          model_file,
                          delta=1e-3,
                          check_error_log=False,
-                         need_envs={}):
+                         need_envs={},
+                         log_name=""):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
