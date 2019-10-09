@@ -713,27 +713,23 @@ def box_coder(prior_box,
  
             import paddle.fluid as fluid
             # For encode
-            prior_box_encode = fluid.layers.data(name='prior_box_encode',
+            prior_box_encode = fluid.data(name='prior_box_encode',
                                   shape=[512, 4],
-                                  dtype='float32',
-                                  append_batch_size=False)
-            target_box_encode = fluid.layers.data(name='target_box_encode',
-                                   shape=[81,4],
-                                   dtype='float32',
-                                   append_batch_size=False)
+                                  dtype='float32')
+            target_box_encode = fluid.data(name='target_box_encode',
+                                   shape=[81, 4],
+                                   dtype='float32')
             output_encode = fluid.layers.box_coder(prior_box=prior_box_encode,
                                     prior_box_var=[0.1,0.1,0.2,0.2],
                                     target_box=target_box_encode,
                                     code_type="encode_center_size")
             # For decode
-            prior_box_decode = fluid.layers.data(name='prior_box_decode',
+            prior_box_decode = fluid.data(name='prior_box_decode',
                                   shape=[512, 4],
-                                  dtype='float32',
-                                  append_batch_size=False)
-            target_box_decode = fluid.layers.data(name='target_box_decode',
-                                   shape=[512,81,4],
-                                   dtype='float32',
-                                   append_batch_size=False)
+                                  dtype='float32')
+            target_box_decode = fluid.data(name='target_box_decode',
+                                   shape=[512, 81, 4],
+                                   dtype='float32')
             output_decode = fluid.layers.box_coder(prior_box=prior_box_decode,
                                     prior_box_var=[0.1,0.1,0.2,0.2],
                                     target_box=target_box_decode,
@@ -1171,8 +1167,8 @@ def bipartite_match(dist_matrix,
     Examples:
 
         >>> import paddle.fluid as fluid
-        >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-        >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+        >>> x = fluid.data(name='x', shape=[None, 4], dtype='float32')
+        >>> y = fluid.data(name='y', shape=[None, 4], dtype='float32')
         >>> iou = fluid.layers.iou_similarity(x=x, y=y)
         >>> matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
     """
@@ -2079,7 +2075,7 @@ def anchor_generator(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            conv1 = fluid.layers.data(name='conv1', shape=[48, 16, 16], dtype='float32')
+            conv1 = fluid.data(name='conv1', shape=[None, 48, 16, 16], dtype='float32')
             anchor, var = fluid.layers.anchor_generator(
                 input=conv1,
                 anchor_sizes=[64, 128, 256, 512],
@@ -2613,9 +2609,9 @@ def box_clip(input, im_info, name=None):
         .. code-block:: python
         
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(
-                name='boxes', shape=[8, 4], dtype='float32', lod_level=1)
-            im_info = fluid.layers.data(name='im_info', shape=[3])
+            boxes = fluid.data(
+                name='boxes', shape=[None, 8, 4], dtype='float32', lod_level=1)
+            im_info = fluid.data(name='im_info', shape=[-1 ,3])
             out = fluid.layers.box_clip(
                 input=boxes, im_info=im_info)
     """
@@ -3062,8 +3058,8 @@ def distribute_fpn_proposals(fpn_rois,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            fpn_rois = fluid.layers.data(
-                name='data', shape=[4], dtype='float32', lod_level=1)
+            fpn_rois = fluid.data(
+                name='data', shape=[None, 4], dtype='float32', lod_level=1)
             multi_rois, restore_ind = fluid.layers.distribute_fpn_proposals(
                 fpn_rois=fpn_rois,
                 min_level=2,
@@ -3124,15 +3120,14 @@ def box_decoder_and_assign(prior_box,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            pb = fluid.layers.data(
-                name='prior_box', shape=[4], dtype='float32')
-            pbv = fluid.layers.data(
-                name='prior_box_var', shape=[4], 
-                dtype='float32', append_batch_size=False)
-            loc = fluid.layers.data(
-                name='target_box', shape=[4*81], dtype='float32')
-            scores = fluid.layers.data(
-                name='scores', shape=[81], dtype='float32')
+            pb = fluid.data(
+                name='prior_box', shape=[None, 4], dtype='float32')
+            pbv = fluid.data(
+                name='prior_box_var', shape=[4], dtype='float32')
+            loc = fluid.data(
+                name='target_box', shape=[None, 4*81], dtype='float32')
+            scores = fluid.data(
+                name='scores', shape=[None, 81], dtype='float32')
             decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
                 pb, pbv, loc, scores, 4.135)
 
@@ -3205,11 +3200,11 @@ def collect_fpn_proposals(multi_rois,
             multi_rois = []
             multi_scores = []
             for i in range(4):
-                multi_rois.append(fluid.layers.data(
-                    name='roi_'+str(i), shape=[4], dtype='float32', lod_level=1))
+                multi_rois.append(fluid.data(
+                    name='roi_'+str(i), shape=[None, 4], dtype='float32', lod_level=1))
             for i in range(4):
-                multi_scores.append(fluid.layers.data(
-                    name='score_'+str(i), shape=[1], dtype='float32', lod_level=1))
+                multi_scores.append(fluid.data(
+                    name='score_'+str(i), shape=[None, 1], dtype='float32', lod_level=1))
 
             fpn_rois = fluid.layers.collect_fpn_proposals(
                 multi_rois=multi_rois, 
