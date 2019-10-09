@@ -11,9 +11,9 @@ paddle.fluid.default_startup_program (ArgSpec(args=[], varargs=None, keywords=No
 paddle.fluid.default_main_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '853718df675e59aea7104f3d61bbf11d'))
 paddle.fluid.program_guard (ArgSpec(args=['main_program', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '78fb5c7f70ef76bcf4a1862c3f6b8191'))
 paddle.fluid.name_scope (ArgSpec(args=['prefix'], varargs=None, keywords=None, defaults=(None,)), ('document', '917d313881ff990de5fb18d98a9c7b42'))
-paddle.fluid.cuda_places (ArgSpec(args=['device_ids'], varargs=None, keywords=None, defaults=(None,)), ('document', '1f2bb6ece651e44117652d2d7bedecf5'))
-paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', '956bab564ebc69ffd17195c08cc8ffa0'))
-paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c2562241744aabe3fff1b59af22dd281'))
+paddle.fluid.cuda_places (ArgSpec(args=['device_ids'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ab9bd2079536114aa7c1488a489ee87f'))
+paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'a7352a3dd39308fde4fbbf6421a4193d'))
+paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', '567ac29567716fd8e7432b533337d529'))
 paddle.fluid.in_dygraph_mode (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', 'df1f4d1ed7e1eefe04f6361efda6b75a'))
 paddle.fluid.is_compiled_with_cuda (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '60c7f107a5050aeb58bb74eb175672b5'))
 paddle.fluid.Variable ('paddle.fluid.framework.Variable', ('document', '65ff735c2b96673d7131f5ff6b0db40c'))
@@ -1058,11 +1058,11 @@ paddle.fluid.LoDTensor.shape shape(self: paddle.fluid.core_avx.Tensor) -> List[i
 paddle.fluid.LoDTensorArray ('paddle.fluid.core_avx.LoDTensorArray', ('document', 'e9895b67ba54438b9c0f7053e18966f5'))
 paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTensorArray) -> None
 paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
-paddle.fluid.CPUPlace ('paddle.fluid.core_avx.CPUPlace', ('document', '6014005ef2649045b77d502aeb6cd7f9'))
+paddle.fluid.CPUPlace ('paddle.fluid.core_avx.CPUPlace', ('document', 'd269ec68ce9b102ab10610e89ffa06e1'))
 paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_avx.CPUPlace) -> None
-paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', '6a6cd8ed607beb951692c4b066d08c94'))
+paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', 'f862cb3e5596a3920102f1b1238c223b'))
 paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
-paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', 'afd58ea5d390b5ea06ca70291a266d45'))
+paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', '1320ef739c81c95385330dab3fe6e80b'))
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
 paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', 'a4d4d13ce9eeb86bbaa7ab935c207577'))
 paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
