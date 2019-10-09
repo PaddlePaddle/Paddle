@@ -6729,12 +6729,13 @@ def warpctc(input,
         The date type is the same as input.
 
     Examples:
+
         .. code-block:: python
 
+            # using LoDTensor
             import paddle.fluid as fluid
             import numpy as np
             
-            # using LoDTensor
             predict = fluid.data(name='predict', 
                                         shape=[None, 5],
                                         dtype='float32',lod_level=1)
@@ -6755,8 +6756,13 @@ def warpctc(input,
             output= exe.run(feed={"predict": x,"label": y},
                                          fetch_list=[cost.name])
             print output
-            
+
+        .. code-block:: python
+
             # using Tensor
+            import paddle.fluid as fluid
+            import numpy as np
+            
             # length of the longest logit sequence
             max_seq_length = 5
             # number of logit sequences
