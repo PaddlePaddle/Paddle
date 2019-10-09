@@ -1688,7 +1688,7 @@ def dropout(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name="data", shape=[-1, 32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
@@ -1774,8 +1774,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
             import paddle.fluid as fluid
             class_num = 7
-            x = fluid.data(name='x', shape=[-1, 3, 10], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+            x = fluid.data(name='x', shape=[None, 3, 10], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
@@ -2443,7 +2443,7 @@ def conv2d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[-1, 3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -2703,7 +2703,7 @@ def conv3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[-1, 3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -4614,7 +4614,7 @@ def conv2d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[-1, 3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
@@ -4886,7 +4886,7 @@ def conv3d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[-1, 3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
