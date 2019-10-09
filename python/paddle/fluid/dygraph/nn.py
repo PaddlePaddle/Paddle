@@ -1697,7 +1697,7 @@ class NCE(layers.Layer):
              of nce. If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of nce.
+        bias_attr (ParamAttr or bool, optional): The parameter attribute for the bias of nce.
              If it is set to False, no bias will be added to the output units.
              If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
@@ -1713,6 +1713,11 @@ class NCE(layers.Layer):
         seed (int, optional): The seed used in sampler. Default: 0.
         is_sparse(bool, optional): The flag indicating whether to use sparse update. If is_sparse is True, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
 
+    Attribute:
+        **weight**(Parameter): the learnable weights of this layer.
+
+        **bias**(Parameter or None): the learnable bias of this layer.
+    
     Returns:
         None
 
@@ -1759,9 +1764,6 @@ class NCE(layers.Layer):
 
                 nce_loss3 = nce(embs3, words[label_word])
 
-    Attributes:
-        weight(Parameter): the learnable weights of this layer.
-        bias(Parameter|None): the learnable bias of this layer.
     """
 
     def __init__(self,
@@ -1950,8 +1952,11 @@ class PRelu(layers.Layer):
           channel:elements in a channel share same weight
           element:each element has a weight
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
-          weight (alpha).
+          weight (alpha). Default: None.
 
+    Attribute:
+        **weight**(Parameter): the learnable weights of this layer.
+    
     Returns:
         None
 
@@ -1973,8 +1978,6 @@ class PRelu(layers.Layer):
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
               dy_rlt = prelu(inp_np)
 
-    Attributes:
-        weight(Parameter): the learnable weights of this layer.
     """
 
     def __init__(self, name_scope, mode, param_attr=None):
