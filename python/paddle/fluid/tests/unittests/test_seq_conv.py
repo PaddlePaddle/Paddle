@@ -122,8 +122,7 @@ class TestSeqProject(OpTest):
 
     def test_check_grad(self):
         if self.padding_trainable:
-            self.check_grad(
-                set(self.inputs_val), 'Out', max_relative_error=0.05)
+            self.check_grad(self.inputs_val, 'Out', max_relative_error=0.05)
 
     def test_check_grad_input(self):
         self.check_grad(

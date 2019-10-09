@@ -186,13 +186,10 @@ class TestConv2dTransposeOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.02)
+                place, ['Input', 'Filter'], 'Output', max_relative_error=0.02)
         else:
             self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+                ['Input', 'Filter'], 'Output', max_relative_error=0.02)
 
     def init_test_case(self):
         self.pad = [0, 0]

@@ -151,13 +151,10 @@ class TestConv3dTransposeOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.03)
+                place, ['Input', 'Filter'], 'Output', max_relative_error=0.03)
         else:
             self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
+                ['Input', 'Filter'], 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:

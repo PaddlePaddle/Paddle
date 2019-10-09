@@ -150,7 +150,7 @@ class TestModulatedDeformableConvOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            {'Input', 'Offset', 'Mask', 'Filter'},
+            ['Input', 'Offset', 'Mask', 'Filter'],
             'Output',
             max_relative_error=0.05)
 

@@ -259,9 +259,9 @@ class TestPool3d_Op(OpTest):
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=0.07)
+                place, ['X'], 'Out', max_relative_error=0.07)
         elif self.pool_type != "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
+            self.check_grad(['X'], 'Out', max_relative_error=0.07)
 
     def init_data_format(self):
         self.data_format = "NCDHW"
@@ -647,9 +647,9 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=1.00)
+                place, ['X'], 'Out', max_relative_error=1.00)
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad(['X'], 'Out', max_relative_error=1.00)
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):
