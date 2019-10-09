@@ -5064,7 +5064,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -5074,7 +5074,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
@@ -5130,7 +5130,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
@@ -5140,7 +5140,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
@@ -5191,7 +5191,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_max(x)  # [0.9]
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
@@ -5201,7 +5201,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
@@ -5252,7 +5252,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_min(x)  # [0.1]
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
@@ -5262,7 +5262,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
             fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
@@ -5313,7 +5313,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[2, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
@@ -5324,7 +5324,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
