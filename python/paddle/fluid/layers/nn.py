@@ -11680,12 +11680,13 @@ def expand(x, expand_times, name=None):
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
-    if convert_dtype(x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(
+            x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
         raise TypeError(
             "The data type of 'input' in expand  must be one of bool float32, float64, int32 or int64, but received %s."
             % (convert_dtype(x.dtype)))
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient==True:
-        raise ValueError("expand bool date type must set the stop gradient to be False")
+        raise ValueError("expand op bool date type must set the stop gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
     inputs = {"X": x}
