@@ -28,6 +28,7 @@ from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell
 from paddle.fluid.layers import rnn as dynamic_rnn
 from paddle.fluid import contrib
 from paddle.fluid.contrib.layers import basic_lstm
+import paddle.fluid.layers.utils as utils
 
 import numpy as np
 
@@ -238,6 +239,23 @@ class TestRnn(unittest.TestCase):
                       fetch_list=[output_new, rnn_out])
 
         self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4))
+
+
+class TestRnnUtil(unittest.TestCase):
+    """
+    Test cases for rnn apis' utility methods for coverage.
+    """
+
+    def test_case(self):
+        inputs = {"key1": 1, "key2": 2}
+        func = lambda x: x + 1
+        outputs = utils.map_structure(func, inputs)
+        utils.assert_same_structure(inputs, outputs)
+        try:
+            inputs["key3"] = 3
+            utils.assert_same_structure(inputs, outputs)
+        except ValueError as identifier:
+            pass
 
 
 if __name__ == '__main__':
