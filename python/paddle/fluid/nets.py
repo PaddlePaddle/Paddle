@@ -193,7 +193,7 @@ def img_conv_group(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
