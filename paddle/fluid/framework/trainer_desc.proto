@@ -39,6 +39,8 @@ message TrainerDesc {
   optional string dump_fields_path = 12;
   repeated string dump_fields = 13;
   optional string dump_converter = 14;
+  optional string dump_param_path = 15;
+  repeated string dump_param = 16;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

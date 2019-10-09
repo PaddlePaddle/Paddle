@@ -94,6 +94,13 @@ class TrainerDesc(object):
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
+    def _set_dump_param(self, dump_param):
+        for param in dump_param:
+            self.proto_desc.dump_param.append(param)
+
+    def _set_dump_param_path(self, path):
+        self.proto_desc.dump_param_path = path
+
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
                 config_dict.get("need_adjust", False)
