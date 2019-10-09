@@ -7422,9 +7422,13 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         ${out_comment}.
 
     Examples:
+        >>>  # for LodTensor inputs
         >>> import paddle.fluid as fluid
-        >>> x = fluid.layers.data(name='x', shape=[16],
+        >>> x = fluid.data(name='x', shape=[9, 16],
         >>>                        dtype='float32', lod_level=1)
+        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+        >>> # for Tensor inputs
+        >>> x = fluid.data(name='x', shape=[9, 4, 16], dtype='float32')
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
@@ -11286,7 +11290,7 @@ def flatten(x, axis=1, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[4, 4, 3], append_batch_size=False, dtype="float32")
+            x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
@@ -14858,7 +14862,7 @@ def fsp_matrix(x, y):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32])
+            data = fluid.data(name='data', shape=[None, 3, 32, 32])
             feature_map_0 = fluid.layers.conv2d(data, num_filters=2,
                                                 filter_size=3)
             feature_map_1 = fluid.layers.conv2d(feature_map_0, num_filters=2,
@@ -15232,9 +15236,9 @@ def deformable_conv(input,
           import paddle.fluid as fluid
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
-          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          mask = fluid.layers.data(name='mask', shape=[deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          mask = fluid.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=True)
 
@@ -15243,8 +15247,8 @@ def deformable_conv(input,
           import paddle.fluid as fluid
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
-          data = fluid.layers.data(name='data', shape=[C_in, H_in, W_in], dtype='float32')
-          offset = fluid.layers.data(name='offset', shape=[2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
