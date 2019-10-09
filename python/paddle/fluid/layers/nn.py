@@ -6047,16 +6047,16 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
-    Split the input tensor into multiple sub-tensors.
+    Split the input tensor into multiple sub-Tensors.
 
     Args:
         input (Variable): The input variable which is an N-D Tensor or LoDTensor, dtype being float32, float64, int32 or int64.
         num_or_sections (int|list): Integer or list of Integers. If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-tensors
-            that the tensor will be divided into. If :attr:`num_or_sections`
+            then the integer indicates the number of equal sized sub-Tensors
+            that the Tensor will be divided into. If :attr:`num_or_sections`
             is a list of integers, the length of list indicates the number of
-            sub-tensors and the integers indicate the sizes of sub-tensors'
-            :attr:`dim` dimension orderly. The the length of list mustn't be larger than tensor's size of :attr:`dim` .
+            sub-Tensors and the integers indicate the sizes of sub-Tensors'
+            :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
         dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
@@ -10064,10 +10064,22 @@ def relu(x, name=None):
     return out
 
 
-@templatedoc()
 def selu(x, scale=None, alpha=None, name=None):
     """
-    ${comment}
+    Selu Operator.
+
+    The equation is:
+    
+    .. math::
+        selu= \\lambda*
+        \\begin{cases}
+            x                      &\\quad \\text{ if } x>0 \n
+            \\alpha * e^x - \\alpha  &\\quad \\text{ if } x<=0
+        \\end{cases}
+    
+
+    The input `X` can carry the LoD (Level of Details) information,
+    or not. And the output shares the LoD information with input `X`.
 
     Args:
         x (Variable): The input N-D Tensor.
@@ -11154,13 +11166,15 @@ def leaky_relu(x, alpha=0.02, name=None):
     return out
 
 
-@templatedoc()
 def soft_relu(x, threshold=40.0, name=None):
     """
-    ${comment}
+    SoftRelu Activation Operator.
+
+    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
+
     Args:
-        x(${x_type}): Input of soft_relu operator. Data type can be float32, float64.
-        threshold(${threshold_type}): The threshold value of soft_relu, default value being 40.0.
+        x(Variable): Input of soft_relu operator. Data type can be float32, float64.
+        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -12369,7 +12383,6 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-@templatedoc()
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Scale operator.
@@ -12387,15 +12400,15 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                             Out=scale*(X+bias)
 
     Args:
-        x(${x_type}): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(${scale_type}): ${scale_comment}
-        bias(${bias_type}): ${bias_comment}
-        bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
+        x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale(float): The scale factor of the input.
+        bias(float): The bias to be put on the input.
+        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        Variable(Tensor|LoDTensor): ${out_comment}
+        Variable(Tensor|LoDTensor): Output tensor of scale operator.
 
     Examples:
         .. code-block:: python
