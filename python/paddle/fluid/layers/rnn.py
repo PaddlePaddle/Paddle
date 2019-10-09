@@ -184,7 +184,7 @@ class GRUCell(RNNCell):
         .. code-block:: python
 
             import paddle.fluid.layers as layers
-            cell = layers.rnn.GRUCell(hidden_size=256)
+            cell = layers.GRUCell(hidden_size=256)
     """
 
     def __init__(self,
@@ -269,7 +269,7 @@ class LSTMCell(RNNCell):
         .. code-block:: python
 
             import paddle.fluid.layers as layers
-            cell = layers.rnn.LSTMCell(hidden_size=256)
+            cell = layers.LSTMCell(hidden_size=256)
     """
 
     def __init__(self,
@@ -584,7 +584,7 @@ class BeamSearchDecoder(Decoder):
         .. code-block:: python
             
             import paddle.fluid as fluid
-            from paddle.fluid.layers import GRUCell, BeamSearchDeocder
+            from paddle.fluid.layers import GRUCell, BeamSearchDecoder
 
             trg_embeder = lambda x: layers.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
@@ -1059,7 +1059,8 @@ def dynamic_decode(decoder,
         .. code-block:: python
             
             import paddle.fluid as fluid
-            from paddle.fluid.layers import GRUCell, BeamSearchDeocder, dynamic_decode
+            import paddle.fluid.layers as layers
+            from paddle.fluid.layers import GRUCell, BeamSearchDecoder, dynamic_decode
 
             encoder_output = fluid.data(name="encoder_output",
                                     shape=[-1, 32, 128],
@@ -1077,7 +1078,6 @@ def dynamic_decode(decoder,
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
-                                        vocab_size=10000,
                                         embedding_fn=trg_embeder,
                                         output_fn=output_layer)
 
