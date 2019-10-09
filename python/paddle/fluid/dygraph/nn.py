@@ -45,7 +45,7 @@ class Conv2D(layers.Layer):
     and W is the width of the filter. If the groups is greater than 1,
     C will equal the number of input feature map divided by the groups.
     Please refer to UFLDL's `convolution
-    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`
+    <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
     for more detials.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
@@ -86,45 +86,46 @@ class Conv2D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Parameters:
-        name_scope(str) : The name for this class.
+        name_scope(str): The name for this class.
         num_filters(int): The number of filter. It is as same as the output
             feature map.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
+        filter_size (int or tuple): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square.
-        stride (int|tuple, optional): The stride size. If stride is a tuple, it must
+        stride (int or tuple, optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple, optional): The padding size. If padding is a tuple, it must
+            stride_H = stride_W = stride. Default: 1.
+        padding (int or tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
+            padding_H = padding_W = padding. Default: 0.
+        dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            dilation_H = dilation_W = dilation. Default: 1.
         groups (int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
+            connected to the second half of the input channels. Default: 1.
         param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
+        bias_attr (ParamAttr or bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
+            library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None
+            Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
-    Attributes:
-        weight (Parameter): the learnable weights of filter of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of filter of this layer.
+
+        **bias** (Parameter or None): the learnable bias of this layer.
 
     Returns:
         None
@@ -768,7 +769,7 @@ class Pool2D(layers.Layer):
             hend   &= hstart + ksize[0] \\\\
             wstart &= j * strides[1] - paddings[1] \\\\
             wend   &= wstart + ksize[1] \\\\
-            Output(i ,j) &= \frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]
+            Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{ksize[0] * ksize[1]}
 
         If ``exclusive`` = True:
 
@@ -778,19 +779,19 @@ class Pool2D(layers.Layer):
             hend &= min(H, hstart + ksize[0]) \\\\
             wstart &= max(0, j * strides[1] - paddings[1]) \\\\
             wend & = min(W, wstart + ksize[1]) \\\\
-            Output(i ,j) & = \frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+            Output(i ,j) & = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
     Parameters:
         name_scope(str) : The name of this class.
-        pool_size (int|list|tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
+        pool_size (int or list or tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int. Default: -1.
         pool_type(str, optional) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling. 
             Default: max.
-        pool_stride (int|list|tuple, optional): The pool stride size. If pool stride size is a tuple or list,
+        pool_stride (int or list or tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
             the pool stride size will be a square of an int. Default: 1.
-        pool_padding (int|list|tuple, optional): The pool padding size. If pool padding size is a tuple,
+        pool_padding (int or list or tuple, optional): The pool padding size. If pool padding size is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
             Otherwise, the pool padding size will be a square of an int. Default: 0.
         global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
@@ -944,7 +945,7 @@ class FC(layers.Layer):
         name_scope(str): The name of this class.
         size(int): The number of output units in this layer.
         num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
-            two dimensions. If this happens, the multidimensional tensor will first be flattened
+            two dimensions. If this happens, the multi-dimension tensor will first be flattened
             into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
             tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
             dimensions will be flatten to form the first dimension of the final matrix (height of
@@ -952,18 +953,19 @@ class FC(layers.Layer):
             form the second dimension of the final matrix (width of the matrix). For example, suppose
             `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
             Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1
-        param_attr (ParamAttr|list of ParamAttr, optional): The parameter attribute for learnable
-            parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, optional): The parameter attribute for the bias
+        param_attr (ParamAttr or list of ParamAttr, optional): The parameter attribute for learnable
+            parameters/weights of this layer. Default: None.
+        bias_attr (ParamAttr or list of ParamAttr, optional): The parameter attribute for the bias
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, optional): Activation to be applied to the output of this layer. Default: None.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default: False.
         dtype(str, optional): Dtype used for weight, it can be "float32" or "float64". Default: "float32".
 
-    Attributes:
-        weight (list of Parameter): the learnable weights of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (list of Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter|None): the learnable bias of this layer.
 
     Returns:
         None
@@ -2204,7 +2206,7 @@ class Conv2DTranspose(layers.Layer):
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     The details of convolution transpose layer, please refer to the following explanation and references
-    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    `conv2dtranspose <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_ .
 
     For each input :math:`X`, the equation is:
 
@@ -2246,30 +2248,30 @@ class Conv2DTranspose(layers.Layer):
         name_scope(str): The name of this class.
         num_filters(int): The number of the filter. It is as same as the output
             feature map.
-        output_size(int|tuple, optional): The output image size. If output size is a
+        output_size(int or tuple, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above. Default: None.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
+        filter_size(int or tuple, optional): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
             calculate filter_size. Default: None.
-        padding(int|tuple, optional): The padding size. If padding is a tuple, it must
+        padding(int or tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        stride(int|tuple, optional): The stride size. If stride is a tuple, it must
+            padding_H = padding_W = padding. Default: 0.
+        stride(int or tuple, optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
+            stride_H = stride_W = stride. Default: 1.
+        dilation(int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            dilation_H = dilation_W = dilation. Default: 1.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
-            Default: groups = 1.
+            Default: 1.
         param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -2284,9 +2286,10 @@ class Conv2DTranspose(layers.Layer):
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
 
-    Attributes:
-        weight (Parameter): the learnable weights of filters of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter or None): the learnable bias of this layer.
 
     Returns:
         None
@@ -2815,48 +2818,48 @@ class SpectralNorm(layers.Layer):
 
 class TreeConv(layers.Layer):
     """
-        ***Tree-Based Convolution Operator***
+    ***Tree-Based Convolution Operator***
 
-        This interface is used to construct a callable object of the ``TreeConv`` class.
-        For specific usage, refer to code examples.
-        Tree-Based Convolution is a kind of convolution based on tree structure.
-        Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
-        which is used to classify tree structures, such as Abstract Syntax Tree.
-        Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
-        which regards multiway tree as binary tree.
-        The paper of Tree-Based Convolution Operator is here: https://arxiv.org/abs/1409.5718v1
+    This interface is used to construct a callable object of the ``TreeConv`` class.
+    For specific usage, refer to code examples.
+    Tree-Based Convolution is a kind of convolution based on tree structure.
+    Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
+    which is used to classify tree structures, such as Abstract Syntax Tree.
+    Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
+    which regards multiway tree as binary tree.
+    The paper of Tree-Based Convolution Operator is here: `tree-based convolution <https://arxiv.org/abs/1409.5718v1/>`_ .
+    
+    Parameters:
+        name_scope(str): The name of this class.
+        output_size(int): output feature width.
+        num_filters(int, optional): number of filters, Default: 1.
+        max_depth(int, optional): max depth of filters, Default: 2.
+        act(str, optional): activation function, Default: tanh.
+        param_attr(ParamAttr, optional): the parameter attribute for the filters, Default: None.
+        bias_attr(ParamAttr, optional): the parameter attribute for the bias of this layer, Default: None.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
-        Parameters:
-            name_scope(str): The name of this class.
-            output_size(int): output feature width.
-            num_filters(int, optional): number of filters, Default: 1.
-            max_depth(int, optional): max depth of filters, Default: 2.
-            act(str, optional): activation function, Default: tanh.
-            param_attr(ParamAttr, optional): the parameter attribute for the filters, Default: None.
-            bias_attr(ParamAttr, optional): the parameter attribute for the bias of this layer, Default: None.
-            name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+    Attribute:
+        **weight** (Parameter): the learnable weights of filters of this layer.
 
-        Attributes:
-            weight (Parameter): the learnable weights of filters of this layer.
-            bias (Parameter|None): the learnable bias of this layer.
+        **bias** (Parameter|None): the learnable bias of this layer.
 
-        Returns:
-            None
+    Returns:
+        None
 
-        Examples:
+    Examples:
 
-            .. code-block:: python
+        .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy
+          import paddle.fluid as fluid
+          import numpy
 
-              with fluid.dygraph.guard():
-                  nodes_vector = numpy.random.random((1, 10, 5)).astype('float32')
-                  edge_set = numpy.random.random((1, 9, 2)).astype('int32')
-                  treeConv = fluid.dygraph.nn.TreeConv(
-                    'TreeConv', output_size=6, num_filters=1, max_depth=2)
-                  ret = treeConv(fluid.dygraph.base.to_variable(nodes_vector), fluid.dygraph.base.to_variable(edge_set))
-
+          with fluid.dygraph.guard():
+              nodes_vector = numpy.random.random((1, 10, 5)).astype('float32')
+              edge_set = numpy.random.random((1, 9, 2)).astype('int32')
+              treeConv = fluid.dygraph.nn.TreeConv(
+                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+              ret = treeConv(fluid.dygraph.base.to_variable(nodes_vector), fluid.dygraph.base.to_variable(edge_set))
     """
 
     def __init__(self,
