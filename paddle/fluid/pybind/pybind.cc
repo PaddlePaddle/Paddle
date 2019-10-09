@@ -848,7 +848,7 @@ All parameter, weight, gradient are variables in Paddle.
     and the logical ID is the same as the actual ID.
 
     Parameters:
-        id (int, optional): GPU device ID. If it is None, the device with ID 0 will be used by default. Default: None.
+        id (int): GPU device ID.
 
     Examples:
         .. code-block:: python
