@@ -11673,10 +11673,19 @@ def expand(x, expand_times, name=None):
             expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
     """
-
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(x)))
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
+    if convert_dtype(x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in expand  must be one of bool float32, float64, int32 or int64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient==True:
+        raise ValueError("expand bool date type must set the stop gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
     inputs = {"X": x}
