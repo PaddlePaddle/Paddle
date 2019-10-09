@@ -2144,7 +2144,7 @@ def reorder_lod_tensor_by_rank(x, rank_table):
         rank_table(${rank_table_type}): ${rank_table_comment}.
     
     Returns:
-        ${out_comment}.
+        out(${out_type}): ${out_comment}.
 
     Examples:
         .. code-block:: python

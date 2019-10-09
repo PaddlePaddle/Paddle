@@ -30,7 +30,7 @@ class ReorderLoDTensorByRankTableOpProtoMaker
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "(LoDTensor), the reordered lod tensor.");
+    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
