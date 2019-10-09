@@ -82,6 +82,34 @@ class LayerTest(unittest.TestCase):
 
 
 class TestLayer(LayerTest):
+    def test_custom_layer_with_kwargs(self):
+        class CustomLayer(fluid.Layer):
+            def __init__(self, name_scope, fc1_size=4):
+                super(CustomLayer, self).__init__(name_scope)
+                self.fc1 = nn.FC('fc1',
+                                 size=fc1_size,
+                                 bias_attr=False,
+                                 num_flatten_dims=1)
+                self.fc2 = nn.FC('fc2',
+                                 size=1,
+                                 bias_attr=False,
+                                 num_flatten_dims=1)
+
+            def forward(self, x, do_fc2=False):
+                ret = self.fc1(x)
+                if do_fc2:
+                    ret = self.fc2(ret)
+                return ret
+
+        with self.dynamic_graph():
+            inp = np.ones([3, 3], dtype='float32')
+            x = base.to_variable(inp)
+            custom = CustomLayer('custom', fc1_size=2)
+            ret = custom(x, do_fc2=False)
+            self.assertTrue(np.array_equal(ret.numpy().shape, [3, 2]))
+            ret = custom(x, do_fc2=True)
+            self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
+
     def test_fc(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -112,9 +140,66 @@ class TestLayer(LayerTest):
             fc2 = nn.FC('fc2', size=4)
             ret = fc1(t)
             dy_ret = fc2(ret)
+            dy_ret_value = dy_ret.numpy()
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
-        self.assertTrue(np.array_equal(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(1024, 4).astype("float32")
+            weight_attr1 = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            fc1 = fluid.dygraph.FC("fc1",
+                                   4,
+                                   num_flatten_dims=1,
+                                   param_attr=weight_attr1)
+            out1 = fc1(base.to_variable(inp))
+            loss1 = fluid.layers.reduce_mean(out1)
+
+            fc1_weight_init = fc1.weight.detach()
+            fc1_bias_init = fc1.bias.detach()
+
+            loss1.backward()
+            optimizer1 = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer1.minimize(loss1)
+
+            fc1_weight_updated = fc1.weight.detach()
+
+        with self.dynamic_graph():
+            weight_attr2 = fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform())
+            fc2 = fluid.dygraph.FC("fc2",
+                                   4,
+                                   num_flatten_dims=1,
+                                   param_attr=weight_attr2)
+            out2 = fc2(base.to_variable(inp))
+
+            self.assertFalse(
+                np.array_equal(fc1_weight_init.numpy(), fc2.weight.numpy()))
+            self.assertFalse(np.array_equal(out1.numpy(), out2.numpy()))
+
+            mismatched_weight = np.random.randn(4, 4).astype("float32")
+            with self.assertRaises(ValueError):
+                fc2.weight.set_value(mismatched_weight)
+            fc2.weight.set_value(fc1_weight_init)
+            fc2.bias.set_value(fc1_bias_init)
+
+            out2 = fc2(base.to_variable(inp))
+            loss2 = fluid.layers.reduce_mean(out2)
+            loss2.backward()
+            optimizer2 = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer2.minimize(loss2)
+
+            self.assertTrue(
+                np.array_equal(fc2.weight.numpy(), fc1_weight_updated.numpy()))
+            self.assertTrue(np.array_equal(out1.numpy(), out2.numpy()))
+
+            fc2.weight = fc1.weight
+            fc2.bias = fc1.bias
+            self.assertTrue(
+                np.array_equal(fc2.weight.numpy(), fc1.weight.numpy()))
+            self.assertTrue(np.array_equal(fc2.bias.numpy(), fc1.bias.numpy()))
 
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
@@ -149,6 +234,7 @@ class TestLayer(LayerTest):
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_ret = lm(base.to_variable(inp))
+            dy_ret_value = dy_ret.numpy()
         with self.dynamic_graph():
             lm = nn.LayerNorm(
                 'layer_norm',
@@ -163,7 +249,7 @@ class TestLayer(LayerTest):
             self.assertFalse(hasattr(lm, "_bias_w"))
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
-        self.assertTrue(np.array_equal(dy_ret.numpy(), static_ret2))
+        self.assertTrue(np.array_equal(dy_ret_value, static_ret2))
 
     def test_relu(self):
         with self.static_graph():
@@ -176,8 +262,9 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.relu(base.to_variable(t))
+            dy_ret_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
     def test_matmul(self):
         with self.static_graph():
@@ -197,8 +284,9 @@ class TestLayer(LayerTest):
             t = np.ones([3, 3], dtype='float32')
             t2 = np.ones([3, 3], dtype='float32')
             dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
+            dy_ret_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
     def test_conv2d(self):
         with self.static_graph():
@@ -222,6 +310,7 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
+            dy_ret_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
@@ -230,8 +319,43 @@ class TestLayer(LayerTest):
             dy_ret = conv2d(base.to_variable(images))
             self.assertTrue(conv2d._bias_param is None)
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            conv2d1 = nn.Conv2D('conv2d1', num_filters=3, filter_size=[2, 2])
+            conv2d2 = nn.Conv2D(
+                'conv2d2',
+                num_filters=3,
+                filter_size=[2, 2],
+                param_attr=weight_attr)
+            dy_ret1 = conv2d1(base.to_variable(images))
+            dy_ret2 = conv2d2(base.to_variable(images))
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv2d1_weight_np = conv2d1.weight.numpy()
+            conv2d1_bias = conv2d1.bias
+            self.assertFalse(
+                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy()))
+            conv2d2.weight.set_value(conv2d1_weight_np)
+            self.assertTrue(
+                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy()))
+            conv2d2.bias.set_value(conv2d1_bias)
+            dy_ret1 = conv2d1(base.to_variable(images))
+            dy_ret2 = conv2d2(base.to_variable(images))
+            self.assertTrue(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv2d2.weight = conv2d1.weight
+            conv2d2.bias = conv2d1.bias
+            self.assertTrue(
+                np.array_equal(conv2d1.weight.numpy(), conv2d2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(conv2d1.bias.numpy(), conv2d2.bias.numpy()))
 
     def test_gru_unit(self):
         lod = [[2, 4, 3]]
@@ -269,10 +393,44 @@ class TestLayer(LayerTest):
             gru = nn.GRUUnit('gru', size=D * 3)
             dy_ret = gru(
                 base.to_variable(input), base.to_variable(hidden_input))
+            dy_ret_value = []
+            for i in range(len(static_ret)):
+                dy_ret_value.append(dy_ret[i].numpy())
 
         for i in range(len(static_ret)):
             self.assertTrue(np.allclose(static_ret[i], static_ret2[i]))
-            self.assertTrue(np.allclose(static_ret[i], dy_ret[i].numpy()))
+            self.assertTrue(np.allclose(static_ret[i], dy_ret_value[i]))
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(D, D * 3).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            gru1 = nn.GRUUnit('gru1', size=D * 3)
+            gru2 = nn.GRUUnit('gru2', size=D * 3, param_attr=weight_attr)
+            dy_ret1 = gru1(
+                base.to_variable(input), base.to_variable(hidden_input))
+            dy_ret2 = gru2(
+                base.to_variable(input), base.to_variable(hidden_input))
+            self.assertFalse(
+                np.array_equal(gru1.weight.numpy(), gru2.weight.numpy()))
+            for o1, o2 in zip(dy_ret1, dy_ret2):
+                self.assertFalse(np.array_equal(o1.numpy(), o2.numpy()))
+            gru2.weight.set_value(gru1.weight.numpy())
+            gru2.bias.set_value(gru1.bias)
+            dy_ret1 = gru1(
+                base.to_variable(input), base.to_variable(hidden_input))
+            dy_ret2 = gru2(
+                base.to_variable(input), base.to_variable(hidden_input))
+            for o1, o2 in zip(dy_ret1, dy_ret2):
+                self.assertTrue(np.array_equal(o1.numpy(), o2.numpy()))
+
+            gru2.weight = gru1.weight
+            gru2.bias = gru1.bias
+            self.assertTrue(
+                np.array_equal(gru1.weight.numpy(), gru2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(gru1.bias.numpy(), gru2.bias.numpy()))
 
     def test_elementwise_math(self):
         n = np.ones([3, 3], dtype='float32')
@@ -313,9 +471,8 @@ class TestLayer(LayerTest):
             ret = layers.elementwise_div(ret, n4)
             ret = layers.elementwise_sub(ret, n5)
             dy_ret = layers.elementwise_mul(ret, n6)
-        self.assertTrue(
-            np.allclose(static_ret, dy_ret.numpy()),
-            '%s vs %s' % (static_ret, dy_ret.numpy()))
+            dy_ret_value = dy_ret.numpy()
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
     def test_elementwise_minmax(self):
         n = np.ones([3, 3], dtype='float32')
@@ -324,9 +481,11 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             min_ret = layers.elementwise_min(n, n2)
             max_ret = layers.elementwise_max(n, n2)
+            min_ret_value = min_ret.numpy()
+            max_ret_value = max_ret.numpy()
 
-        self.assertTrue(np.allclose(n, min_ret.numpy()))
-        self.assertTrue(np.allclose(n2, max_ret.numpy()))
+        self.assertTrue(np.allclose(n, min_ret_value))
+        self.assertTrue(np.allclose(n2, max_ret_value))
 
     def test_sequence_conv(self):
         inp_np = np.arange(12).reshape([3, 4]).astype('float32')
@@ -404,8 +563,45 @@ class TestLayer(LayerTest):
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
+            dy_rlt_value = dy_rlt.numpy()
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt2))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt2))
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 5, 5], dtype='float32')
+            custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            conv2d1 = nn.Conv2DTranspose(
+                'conv2d1', num_filters=3, filter_size=[2, 2])
+            conv2d2 = nn.Conv2DTranspose(
+                'conv2d2',
+                num_filters=3,
+                filter_size=[2, 2],
+                param_attr=weight_attr)
+            dy_ret1 = conv2d1(base.to_variable(images))
+            dy_ret2 = conv2d2(base.to_variable(images))
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv2d1_weight_np = conv2d1.weight.numpy()
+            conv2d1_bias = conv2d1.bias
+            self.assertFalse(
+                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy()))
+            conv2d2.weight.set_value(conv2d1_weight_np)
+            self.assertTrue(
+                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy()))
+            conv2d2.bias.set_value(conv2d1_bias)
+            dy_ret1 = conv2d1(base.to_variable(images))
+            dy_ret2 = conv2d2(base.to_variable(images))
+            self.assertTrue(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv2d2.weight = conv2d1.weight
+            conv2d2.bias = conv2d1.bias
+            self.assertTrue(
+                np.array_equal(conv2d1.weight.numpy(), conv2d2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(conv2d1.bias.numpy(), conv2d2.bias.numpy()))
 
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
@@ -460,12 +656,12 @@ class TestLayer(LayerTest):
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
-
+            dy_rlt_value = dy_rlt.numpy()
         with self.dynamic_graph():
             btp2 = nn.BilinearTensorProduct('btp', 6, act='sigmoid')
             dy_rlt2 = btp2(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y))
-
+            dy_rlt2_value = dy_rlt2.numpy()
         with self.static_graph():
             data_x2 = layers.data(
                 name='x',
@@ -484,13 +680,40 @@ class TestLayer(LayerTest):
                 feed={'x': inp_np_x,
                       'y': inp_np_y}, fetch_list=[out2])[0]
 
-        self.assertTrue(np.array_equal(dy_rlt2.numpy(), static_rlt3))
+        self.assertTrue(np.array_equal(dy_rlt2_value, static_rlt3))
         self.assertTrue(np.array_equal(static_rlt2, static_rlt))
-        self.assertTrue(np.array_equal(dy_rlt.numpy(), static_rlt))
+        self.assertTrue(np.array_equal(dy_rlt_value, static_rlt))
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(6, 3, 3).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            btp1 = nn.BilinearTensorProduct('btp1', 6, act='sigmoid')
+            btp2 = nn.BilinearTensorProduct(
+                'btp2', 6, act='sigmoid', param_attr=weight_attr)
+            dy_rlt1 = btp1(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+            dy_rlt2 = btp2(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+            self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
+            btp2.weight.set_value(btp1.weight.numpy())
+            btp2.bias.set_value(btp1.bias)
+            dy_rlt1 = btp1(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+            dy_rlt2 = btp2(
+                base.to_variable(inp_np_x), base.to_variable(inp_np_y))
+            self.assertTrue(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
+
+            btp2.weight = btp1.weight
+            btp2.bias = btp1.bias
+            self.assertTrue(
+                np.array_equal(btp1.weight.numpy(), btp2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(btp1.bias.numpy(), btp2.bias.numpy()))
 
     def test_prelu(self):
         inp_np = np.ones([5, 200, 100, 100]).astype('float32')
-
         with self.static_graph():
             data_t = layers.data(
                 name="input",
@@ -525,9 +748,36 @@ class TestLayer(LayerTest):
                 mode=mode,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt = prelu(base.to_variable(inp_np))
+            dy_rlt_value = dy_rlt.numpy()
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+
+        with self.dynamic_graph():
+            inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
+            inp = base.to_variable(inp_np)
+            mode = 'channel'
+            prelu1 = nn.PRelu(
+                'prelu1',
+                mode=mode,
+                param_attr=ParamAttr(initializer=Constant(2.0)))
+            prelu2 = nn.PRelu(
+                'prelu2',
+                mode=mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)))
+            dy_rlt1 = prelu1(inp)
+            dy_rlt2 = prelu2(inp)
+            self.assertFalse(
+                np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy()))
+            self.assertFalse(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
+            prelu2.weight.set_value(prelu1.weight.numpy())
+            dy_rlt1 = prelu1(inp)
+            dy_rlt2 = prelu2(inp)
+            self.assertTrue(np.array_equal(dy_rlt1.numpy(), dy_rlt2.numpy()))
+
+            prelu2.weight = prelu1.weight
+            self.assertTrue(
+                np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy()))
 
     def test_embeding(self):
         inp_word = np.array([[[1]]]).astype('int64')
@@ -557,10 +807,36 @@ class TestLayer(LayerTest):
                 size=[dict_size, 32],
                 param_attr='emb.w',
                 is_sparse=False)
-            static_rlt3 = emb2(base.to_variable(inp_word))
+            dy_rlt = emb2(base.to_variable(inp_word))
+            dy_rlt_value = dy_rlt.numpy()
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(static_rlt3.numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(dict_size, 32).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            emb1 = nn.Embedding(
+                name_scope='embedding', size=[dict_size, 32], is_sparse=False)
+            emb2 = nn.Embedding(
+                name_scope='embedding',
+                size=[dict_size, 32],
+                param_attr=weight_attr,
+                is_sparse=False)
+            rep1 = emb1(base.to_variable(inp_word))
+            rep2 = emb2(base.to_variable(inp_word))
+            self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
+            self.assertTrue(np.array_equal(emb2.weight.numpy(), custom_weight))
+            self.assertFalse(np.array_equal(rep1.numpy(), rep2.numpy()))
+            emb2.weight.set_value(emb1.weight.numpy())
+            rep2 = emb2(base.to_variable(inp_word))
+            self.assertTrue(np.array_equal(rep1.numpy(), rep2.numpy()))
+
+            emb2.weight = emb1.weight
+            self.assertTrue(
+                np.array_equal(emb1.weight.numpy(), emb2.weight.numpy()))
 
     def test_nce(self):
         window_size = 5
@@ -677,10 +953,74 @@ class TestLayer(LayerTest):
                          bias_attr='nce.b',
                          sample_weight=sample_weights)
 
-            nce_loss3 = nce(embs3, words[label_word])
+            dy_rlt = nce(embs3, words[label_word])
+            dy_rlt_value = dy_rlt.numpy()
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(nce_loss3.numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+
+        with self.dynamic_graph(force_to_use_cpu=True):
+            custom_weight = np.random.randn(dict_size, 128).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            words = []
+            for i in range(window_size):
+                words.append(base.to_variable(inp_word[i]))
+            sample_weights = layers.fill_constant(
+                shape=[5, 1], dtype='float32', value=1)
+            emb = nn.Embedding(
+                'embedding',
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=False)
+
+            embs3 = []
+            for i in range(window_size):
+                if i == label_word:
+                    continue
+
+                emb_rlt = emb(words[i])
+                embs3.append(emb_rlt)
+
+            embs3 = layers.concat(input=embs3, axis=1)
+            nce1 = nn.NCE('nce1',
+                          num_total_classes=dict_size,
+                          num_neg_samples=2,
+                          sampler="custom_dist",
+                          custom_dist=nid_freq_arr.tolist(),
+                          seed=seed,
+                          param_attr='nce1.w',
+                          bias_attr='nce1.b',
+                          sample_weight=sample_weights)
+
+            nce2 = nn.NCE('nce2',
+                          param_attr=weight_attr,
+                          num_total_classes=dict_size,
+                          num_neg_samples=2,
+                          sampler="custom_dist",
+                          custom_dist=nid_freq_arr.tolist(),
+                          seed=seed,
+                          bias_attr='nce2.b',
+                          sample_weight=sample_weights)
+
+            nce1_loss = nce1(embs3, words[label_word])
+            nce2_loss = nce2(embs3, words[label_word])
+            self.assertFalse(
+                np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
+            nce2.weight.set_value(nce1.weight.numpy())
+            nce2.bias.set_value(nce1.bias)
+            nce1_loss = nce1(embs3, words[label_word])
+            nce2_loss = nce2(embs3, words[label_word])
+            self.assertTrue(
+                np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
+
+            nce2.weight = nce1.weight
+            nce2.bias = nce1.bias
+            self.assertTrue(
+                np.array_equal(nce1.weight.numpy(), nce2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(nce1.bias.numpy(), nce2.bias.numpy()))
 
     def test_conv3d(self):
         with self.static_graph():
@@ -706,9 +1046,42 @@ class TestLayer(LayerTest):
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
             dy_ret = conv3d(base.to_variable(images))
+            dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 6, 6, 6], dtype='float32')
+            custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            conv3d1 = nn.Conv3D('conv3d1', num_filters=3, filter_size=2)
+            conv3d2 = nn.Conv3D(
+                'conv3d2', num_filters=3, filter_size=2, param_attr=weight_attr)
+            dy_ret1 = conv3d1(base.to_variable(images))
+            dy_ret2 = conv3d2(base.to_variable(images))
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv3d1_weight_np = conv3d1.weight.numpy()
+            conv3d1_bias = conv3d1.bias
+            self.assertFalse(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy()))
+            conv3d2.weight.set_value(conv3d1_weight_np)
+            self.assertTrue(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy()))
+            conv3d1.bias.set_value(conv3d1_bias)
+            dy_ret1 = conv3d1(base.to_variable(images))
+            dy_ret2 = conv3d2(base.to_variable(images))
+            self.assertTrue(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv3d2.weight = conv3d1.weight
+            conv3d2.bias = conv3d1.bias
+            self.assertTrue(
+                np.array_equal(conv3d1.weight.numpy(), conv3d2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(conv3d1.bias.numpy(), conv3d2.bias.numpy()))
 
     def test_row_conv(self):
         input = np.arange(15).reshape([3, 5]).astype('float32')
@@ -800,8 +1173,9 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             groupNorm = nn.GroupNorm('GroupNorm', groups=2)
             dy_ret = groupNorm(base.to_variable(input))
+            dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_spectral_norm(self):
@@ -850,8 +1224,9 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
+            dy_rlt_value = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
     def test_tree_conv(self):
@@ -922,9 +1297,49 @@ class TestLayer(LayerTest):
             treeConv = nn.TreeConv(
                 'SpectralNorm', output_size=6, num_filters=1, max_depth=2)
             dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
+            dy_rlt_value = dy_ret.numpy()
 
         self.assertTrue(np.allclose(static_ret, static_ret2))
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
+
+        with self.dynamic_graph():
+            custom_weight = np.random.randn(5, 3, 6, 1).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            treeConv1 = nn.TreeConv(
+                'SpectralNorm1',
+                output_size=6,
+                num_filters=1,
+                max_depth=2,
+                bias_attr='tc1_b')
+            treeConv2 = nn.TreeConv(
+                'SpectralNorm2',
+                output_size=6,
+                num_filters=1,
+                max_depth=2,
+                param_attr=weight_attr,
+                bias_attr='tc2_b')
+            dy_ret1 = treeConv1(
+                base.to_variable(vectors), base.to_variable(adj))
+            dy_ret2 = treeConv2(
+                base.to_variable(vectors), base.to_variable(adj))
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+            treeConv2.weight.set_value(treeConv1.weight.numpy())
+            treeConv2.bias.set_value(treeConv1.bias)
+            dy_ret1 = treeConv1(
+                base.to_variable(vectors), base.to_variable(adj))
+            dy_ret2 = treeConv2(
+                base.to_variable(vectors), base.to_variable(adj))
+            self.assertTrue(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            treeConv2.weight = treeConv1.weight
+            treeConv2.bias = treeConv1.bias
+            self.assertTrue(
+                np.array_equal(treeConv1.weight.numpy(),
+                               treeConv2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(treeConv1.bias.numpy(), treeConv2.bias.numpy()))
 
     def test_conv3d_transpose(self):
         input_array = np.arange(0, 48).reshape(
@@ -953,8 +1368,51 @@ class TestLayer(LayerTest):
                 filter_size=12,
                 use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
+            dy_rlt_value = dy_rlt.numpy()
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt.numpy(), static_rlt))
+        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+
+        with self.dynamic_graph():
+            images = np.ones([2, 3, 6, 6, 6], dtype='float32')
+            custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
+            weight_attr = fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    custom_weight))
+            conv3d1 = nn.Conv3DTranspose(
+                'conv3d1',
+                num_filters=3,
+                filter_size=2,
+                bias_attr='conv3d1_b',
+                use_cudnn=False)
+            conv3d2 = nn.Conv3DTranspose(
+                'conv3d2',
+                num_filters=3,
+                filter_size=2,
+                param_attr=weight_attr,
+                bias_attr='conv3d2_b',
+                use_cudnn=False)
+            dy_ret1 = conv3d1(base.to_variable(images))
+            dy_ret2 = conv3d2(base.to_variable(images))
+            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv3d1_weight_np = conv3d1.weight.numpy()
+            conv3d1_bias = conv3d1.bias
+            self.assertFalse(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy()))
+            conv3d2.weight.set_value(conv3d1_weight_np)
+            self.assertTrue(
+                np.array_equal(conv3d1_weight_np, conv3d2.weight.numpy()))
+            conv3d1.bias.set_value(conv3d1_bias)
+            dy_ret1 = conv3d1(base.to_variable(images))
+            dy_ret2 = conv3d2(base.to_variable(images))
+            self.assertTrue(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
+
+            conv3d2.weight = conv3d1.weight
+            conv3d2.bias = conv3d1.bias
+            self.assertTrue(
+                np.array_equal(conv3d1.weight.numpy(), conv3d2.weight.numpy()))
+            self.assertTrue(
+                np.array_equal(conv3d1.bias.numpy(), conv3d2.bias.numpy()))
 
     def test_eye_op(self):
         np_eye = np.eye(3, 2)
@@ -972,11 +1430,14 @@ class TestLayer(LayerTest):
                                          num_columns=2,
                                          batch_shape=[4, 3])
             diag_tensor = layers.eye(20)
-
-        self.assertTrue(np.allclose(eye_tensor.numpy(), np_eye))
-        self.assertTrue(np.allclose(eye_tensor_rlt1.numpy(), stack_rlt1))
-        self.assertTrue(np.allclose(eye_tensor_rlt2.numpy(), stack_rlt2))
-        self.assertTrue(np.allclose(diag_tensor.numpy(), np.eye(20)))
+            eye_tensor_value = eye_tensor.numpy()
+            eye_tensor_rlt1_value = eye_tensor_rlt1.numpy()
+            eye_tensor_rlt2_value = eye_tensor_rlt2.numpy()
+            diag_tensor_value = diag_tensor.numpy()
+        self.assertTrue(np.allclose(eye_tensor_value, np_eye))
+        self.assertTrue(np.allclose(eye_tensor_rlt1_value, stack_rlt1))
+        self.assertTrue(np.allclose(eye_tensor_rlt2_value, stack_rlt2))
+        self.assertTrue(np.allclose(diag_tensor_value, np.eye(20)))
 
         with self.assertRaises(TypeError):
             layers.eye(num_rows=3.1)
@@ -998,8 +1459,9 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.hard_swish(base.to_variable(t))
+            dy_ret_rlt = dy_ret.numpy()
 
-        self.assertTrue(np.allclose(static_ret, dy_ret.numpy()))
+        self.assertTrue(np.allclose(static_ret, dy_ret_rlt))
 
     def test_compare(self):
         value_a = np.arange(3)
@@ -1017,8 +1479,8 @@ class TestLayer(LayerTest):
             db = base.to_variable(value_b)
             dcond = layers.less_than(x=da, y=db)
 
-        for i in range(len(static_ret)):
-            self.assertTrue(dcond.numpy()[i] == static_ret[i])
+            for i in range(len(static_ret)):
+                self.assertTrue(dcond.numpy()[i] == static_ret[i])
 
         # less equal
         with self.static_graph():
@@ -1160,8 +1622,9 @@ class TestBook(LayerTest):
                 dy_result = method()
                 if isinstance(dy_result, tuple):
                     dy_result = dy_result[0]
+                dy_result_value = dy_result.numpy()
 
-        self.assertTrue(np.array_equal(static_result[0], dy_result.numpy()))
+        self.assertTrue(np.array_equal(static_result[0], dy_result_value))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
@@ -1353,6 +1816,25 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
             return (layers.pool2d(
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)))
+
+    def make_pool2d_infershape(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            theta = self._get_data("theta", shape=[2, 3], dtype='float32')
+            x = fluid.layers.affine_grid(theta, out_shape=[2, 3, 244, 244])
+            return (layers.pool2d(
+                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)))
+
+    def make_pool3d(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(
+                name='x', shape=[3, 244, 244, 244], dtype='float32')
+            return (layers.pool3d(
+                x,
+                pool_size=[5, 3, 2],
+                pool_stride=[1, 2, 3],
+                pool_padding=(2, 1, 1)))
 
     def make_adaptive_pool2d(self):
         with program_guard(fluid.default_main_program(),
@@ -2074,21 +2556,46 @@ class TestBook(LayerTest):
                     input=fc_out, size=4 * hidden_dim, proj_size=proj_dim))
 
     def test_linear_chain_crf(self):
-        # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             label_dict_len = 10
-            images = layers.data(name='pixel', shape=[784], dtype='float32')
-            label = layers.data(name='label', shape=[1], dtype='int32')
-            hidden = layers.fc(input=images, size=2)
+            feature = layers.data(name='feature', shape=[784], dtype='float32')
+            label = layers.data(name='label', shape=[1], dtype='int64')
+            emission = layers.fc(input=feature, size=10)
             crf = layers.linear_chain_crf(
-                input=hidden, label=label, param_attr=ParamAttr(name="crfw"))
+                input=emission, label=label, param_attr=ParamAttr(name="crfw"))
             crf_decode = layers.crf_decoding(
-                input=hidden, param_attr=ParamAttr(name="crfw"))
+                input=emission, param_attr=ParamAttr(name="crfw"))
             self.assertFalse(crf is None)
             self.assertFalse(crf_decode is None)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
+                chunk_scheme="IOB",
+                num_chunk_types=(label_dict_len - 1) // 2)
+
+    def test_linear_chain_crf_padding(self):
+        with self.static_graph():
+            label_dict_len, max_len = 10, 20
+            feature = layers.data(
+                name='feature', shape=[max_len, 784], dtype='float32')
+            label = layers.data(name='label', shape=[max_len], dtype='int64')
+            length = layers.data(name='length', shape=[1], dtype='int64')
+            emission = layers.fc(input=feature, size=10, num_flatten_dims=2)
+            crf = layers.linear_chain_crf(
+                input=emission,
+                label=label,
+                length=length,
+                param_attr=ParamAttr(name="crfw"))
+            crf_decode = layers.crf_decoding(
+                input=emission,
+                length=length,
+                param_attr=ParamAttr(name="crfw"))
+            self.assertFalse(crf is None)
+            self.assertFalse(crf_decode is None)
+            return layers.chunk_eval(
+                input=crf_decode,
+                label=label,
+                seq_length=length,
                 chunk_scheme="IOB",
                 num_chunk_types=(label_dict_len - 1) // 2)
 
