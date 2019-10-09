@@ -31,20 +31,18 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
 
-  imperative::StrVarBaseNode empty_str;
-
   if (type == "conv2d") {
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2)
       op->SetInput("Bias", {inputs[2]});
     else
-      op->SetInput("Bias", empty_str);
+      op->SetInput("Bias", {});
     if (inputs.size() > 3) {
       op->SetInput("ResidualData", {inputs[3]});
       op->SetAttr("fuse_residual_connection", true);
     } else {
-      op->SetInput("ResidualData", empty_str);
+      op->SetInput("ResidualData", {});
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});

@@ -255,9 +255,8 @@ class FusedElemwiseActivationGradMaker
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
                          this->OutputGrad("IntermediateOut"));
     } else {
-      grad_op->SetInput("IntermediateOut", this->Empty());
-      grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
-                         this->Empty());
+      grad_op->SetInput("IntermediateOut", {});
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
     }
 
     return std::unique_ptr<T>(grad_op);

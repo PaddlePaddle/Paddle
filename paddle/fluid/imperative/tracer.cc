@@ -99,7 +99,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     std::shared_ptr<OpBase> grad_op = std::move(grad_op_bases_[i]);
     grad_op->SetId(trace_id);
     grad_op->SetPlace(fwd_op->place());
-    grad_op->create_operator_base();
+    grad_op->CreateOperatorBase();
 
     auto& grad_in = *(grad_op->GetMutableInsMap());
     auto& grad_out = *(grad_op->GetMutableOutsMap());

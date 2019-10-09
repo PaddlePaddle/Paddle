@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {

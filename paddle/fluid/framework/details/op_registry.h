@@ -205,13 +205,6 @@ struct OpInfoFiller<T, kGradOpBaseMaker> {
       T maker(fw_op_base, var_base_map_in, var_base_map_out);
       return maker();
     };
-
-    /*info->use_default_grad_op_desc_maker_ =
-        std::is_base_of<DefaultGradOpDescMaker<imperative::OpBase, true>,
-       T>::value ||
-        std::is_base_of<DefaultGradOpDescMaker<imperative::OpBase, false>,
-       T>::value;
-    */
   }
 };
 

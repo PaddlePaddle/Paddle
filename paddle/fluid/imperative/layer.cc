@@ -255,7 +255,7 @@ OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
   VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
 }
 
-bool OpBase::create_operator_base() {
+void OpBase::CreateOperatorBase() {
   const auto& info = framework::OpInfoMap::Instance().Get(type_);
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs_);
@@ -266,8 +266,6 @@ bool OpBase::create_operator_base() {
   op_ = framework::OpRegistry::CreateOp(type_, std::move(input_name_map),
                                         std::move(output_name_map),
                                         std::move(attrs_));
-
-  return true;
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {

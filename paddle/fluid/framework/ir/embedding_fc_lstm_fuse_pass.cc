@@ -137,9 +137,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     scope->Var(BatchedCellPreAct)->GetMutable<framework::LoDTensor>();
     scope->Var(BatchedGate)->GetMutable<framework::LoDTensor>();
 
-    imperative::StrVarBaseNode empty_str;
-    op_desc.SetInput("H0", empty_str);
-    op_desc.SetInput("C0", empty_str);
+    op_desc.SetInput("H0", {});
+    op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetOutput("Cell", {cell->Name()});
     op_desc.SetOutput("XX", {xx->Name()});

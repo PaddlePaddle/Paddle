@@ -41,14 +41,10 @@ class GradOpDescMakerBase {
   explicit GradOpDescMakerBase(
       const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
-      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>(),
-      const imperative::NameVarBaseMap* var_base_in = NULL,
-      const imperative::NameVarBaseMap* var_base_out = NULL)
+      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>())
       : fwd_op_(fwd_op),
         no_grad_set_(no_grad_set),
         grad_to_var_(grad_to_var),
-        var_base_in_(var_base_in),
-        var_base_out_(var_base_out),
         grad_block_(grad_block) {}
 
   virtual ~GradOpDescMakerBase() = default;
@@ -104,6 +100,8 @@ class GradOpDescMakerBase {
     return ret_val;
   }
 
+  std::vector<std::string> Empty() const { return {}; }
+
   std::vector<std::string> InputNames() const {
     return this->fwd_op_.InputNames();
   }
@@ -119,8 +117,6 @@ class GradOpDescMakerBase {
   std::vector<std::string> Output(const std::string& name) const {
     return fwd_op_.Output(name);
   }
-
-  std::vector<std::string> Empty() const { return {}; }
 
   const std::unordered_map<std::string, Attribute>& Attrs() const {
     return fwd_op_.GetAttrMap();
@@ -141,16 +137,8 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  protected:
-  // const OpDesc& ForwardOp() const { return fwd_op_; }
-
   bool HaveInput(const std::string& name) const {
-    if (var_base_in_ != nullptr && var_base_out_ != nullptr) {
-      // dygraph mode
-      auto it = var_base_in_->find(name);
-      return it != var_base_in_->end();
-    } else {
-      return (fwd_op_.Inputs().count(name) > 0);
-    }
+    return (fwd_op_.Inputs().count(name) > 0);
   }
 
  private:
@@ -159,8 +147,6 @@ class GradOpDescMakerBase {
   std::unordered_map<std::string, std::string>* grad_to_var_;
 
  protected:
-  const imperative::NameVarBaseMap* var_base_in_;
-  const imperative::NameVarBaseMap* var_base_out_;
   std::vector<BlockDesc*> grad_block_;
 };
 

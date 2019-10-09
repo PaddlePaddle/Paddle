@@ -192,16 +192,6 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
     return ret;
   }
 
-  static std::string DebugString(imperative::StrVarBaseNode strs) {
-    if (strs.empty()) return "";
-    std::string ret = strs.vec_name_[0];
-    for (size_t i = 1; i < strs.size(); ++i) {
-      ret += " ";
-      ret += strs.vec_name_[i];
-    }
-    return ret;
-  }
-
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 

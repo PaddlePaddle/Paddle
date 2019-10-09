@@ -442,11 +442,13 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   void SetAttr(const std::string& name, const framework::Attribute& v) {
     attrs_[name] = v;
   }
-  void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {}
+  void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {
+    PADDLE_THROW("SetBlockAttr is not support in dygraph OpBase");
+  }
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  bool create_operator_base();
+  void CreateOperatorBase();
 
   void SetId(size_t id) { id_ = id; }
   void SetPlace(platform::Place place) { place_ = place; }
@@ -455,7 +457,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return attrs_.find(name) != attrs_.end();
   }
 
-  framework::Attribute GetAttr(const std::string& name) const {
+  const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     PADDLE_ENFORCE(it != attrs_.end(), "can not find attribute [%s]", name);
 
