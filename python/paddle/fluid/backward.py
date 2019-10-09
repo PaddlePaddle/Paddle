@@ -936,29 +936,31 @@ def append_backward(loss,
                     callbacks=None,
                     checkpoints=None):
     """
-    Append backward part to main_program.
+    This function appends backward part to main_program.
 
     A complete neural network training is made up of forward and backward
     propagation. However, when we configure a network, we only need to
-    specify its forwrd part. The backward part is generated automatically
-    according to the forward part by this function.
+    specify its forward part. This function uses the chain rule to automatically
+    generate the backward part according to the forward part.
 
-    In most cases, users do not need to invoke this function manually. It
-    will be automatically invoked by the optimizer's `minimize` function.
+    In most cases, users do not need to invoke this function manually.
+    It will be automatically invoked by the optimizer's `minimize` function.
 
-    Args:
-        loss(Variable): The loss variable of the network.
-        parameter_list(list[string]|None): Names of parameters that need
+    Parameters:
+        loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
+        parameter_list(list of str, optional): Names of parameters that need
                                            to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
-                                           Default: None
-        no_grad_set(set|None): Variables in the Block 0 whose gradients
+                                           Default: None.
+        no_grad_set(set of str, optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               Default: None
-        callbacks(list[callable object]|None): The callbacks are used for
+                               If this parameter is not None, the names in this set will be added to the default set.
+                               Default: None.
+        callbacks(list of callable object, optional): List of callback functions.
+                                               The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
                                                callable objects in it will
@@ -967,23 +969,23 @@ def append_backward(loss,
                                                into the program. The callable
                                                object must has two input
                                                parameters: 'block' and 'context'.
-                                               The 'block' is the block which
+                                               The 'block' is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will
                                                be added to. The 'context' is a
                                                map, whose keys are gradient
                                                variable names and values are
-                                               corresponding original variables.
+                                               corresponding original :ref:`api_guide_Variable_en` .
                                                In addition to this, the 'context'
                                                has another special key-value pair:
                                                the key is string '__current_op_desc__'
                                                and the value is the op_desc of the
                                                gradient operator who has just
                                                triggered the callable object.
+                                               Default: None.
 
     Returns:
-        list[(Variable,Variable)]: Pairs of parameter and its
-        corresponding gradients. The key is the parameter and the
-        value is gradient variable.
+        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ): Pairs of parameter and its corresponding gradients.
+        The key is the parameter and the value is gradient variable.
 
     Raises:
         AssertionError: If `loss` is not an instance of Variable.
@@ -991,17 +993,20 @@ def append_backward(loss,
     Examples:
         .. code-block:: python
 
-            # network configuration code
-            # loss from ...
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
 
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             loss = fluid.layers.square_error_cost(input=y_predict, label=y)
 
             avg_loss = fluid.layers.mean(loss)
             param_grad_list = fluid.backward.append_backward(loss=avg_loss)
+            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # len(p_g_list1) == 2
+            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name])  # len(p_g_list1) == 1
+            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 1
+            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name], no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 0
+
     """
     assert isinstance(loss, framework.Variable)
 
