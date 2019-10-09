@@ -2201,11 +2201,12 @@ def sequence_conv(input,
 def sequence_softmax(input, use_cudnn=False, name=None):
     """
     **Note**:
-    The input type of the OP must be LoDTensor. If the input type to be processed is Tensor, use: :ref:`cn_api_fluid_layers_softmax` 
+    
+    **The input type of the OP must be LoDTensor. If the input type to be processed is Tensor, use:** :ref:`api_fluid_layers_softmax` 
 
     The OP divides the input dimension 0 according to LoD information, and calculates within each interval.
     The shape of input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
-    is the sum of the length of all sequences. Recommended use of :math:`[N]`.
+    is the sum of the length of all sequences. Recommended usage: :math:`[N]`.
 
     For i-th sequence in a mini-batch:
 
@@ -2214,7 +2215,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
     For example, for a mini-batch of 6 sequences with variable-length,
-    each containing 2, 3, 4, 1, 2, 3 time-steps, the lod of which is [[0, 3, 5, 9, 10, 12, 15]],
+    each containing 3, 2, 4, 1, 2, 3 time-steps, the lod of which is [[0, 3, 5, 9, 10, 12, 15]],
     then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
     and :math:`N` turns out to be 15.
 
@@ -2241,12 +2242,12 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     
 
     Args:
-        input (Variable):It's a LoDTensor whose shape is  :math:`[N, 1]` or  :math:`[N]`, recommended use of :math:`[N]. It refers to the data type of input LodTensor, It must be float32 or float64. 
+        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. Supported data types: float32, float64. 
         use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle library is installed and GPU is used for training or reasoning. Default: False.
         name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
     Returns:
-        Variable: LoDTensor returned from softmax calculation of each interval  has the same dimension as input, and its data type is the same as input's.
+        Variable: A LoD-Tensor which has the same shape and data type with input.
 
     Examples:
 
@@ -2255,11 +2256,11 @@ def sequence_softmax(input, use_cudnn=False, name=None):
              import paddle.fluid as fluid
              x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  #shape :math:`[N, 1]`
+             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
 
              y = fluid.layers.data(name='y', shape=[7],
                  dtype='float32', lod_level=1)
-             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  #shape :math:`[N]`
+             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -5259,7 +5260,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 def sequence_unpad(x, length, name=None):
     """
     **Note**:
-    The input of the OP is Tensor and the output is LoDTensor.  
+    
+    **The input of the OP is Tensor and the output is LoDTensor.**  
      
     The OP removes the filled element from the input based on the length information and returns a LoDTensor.
 
@@ -5284,12 +5286,12 @@ def sequence_unpad(x, length, name=None):
 	    out.lod = [[0, 2, 5, 9]]
 
     Args:
-        x(Variable): It is a Tensor, which contains filler elements, and its shape size can not be less than 2. It supports data types such as float32, float64, int32, int64.
-        length(Variable): It is a 1D Tensor that stores the actual length of each sample. The shape of the Tensor must be consistent with the 0th dimension of the X parameter. Its data type must be int64.
+        x(Variable): A Tensor which contains filler elements, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
+        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor has the same shape with the 0th dimension of the X . Supported data types: int64.
         name(str|None):  See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
     Returns:
-        Variable: It is a LoDTensor whose recursive sequence length is consistent with the information of the length parameter and its data type is the same as that of the input data type.
+        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
 
     Examples:
         .. code-block:: python
@@ -9906,16 +9908,11 @@ def scatter_nd(index, updates, shape, name=None):
 def sequence_scatter(input, index, updates, name=None):
     """
     **Note**:
-    The index and updates parameters of the OP must be LoDTensor.
+    
+    **The index and updates parameters of the OP must be LoDTensor.**
      
     The OP updates the information in the updates parameter to the output based on the location provided by index.
    
-    For example, the shape of input in the sample is [3,6], and the LOD information of index is divided into three intervals, 
-    corresponding to the three input samples. Among them, out[i][j] is the j + 1 element in the i + 1 sample. First, 
-    we find out whether there is corresponding data j + 1 in the i + 1 interval of index. If there is, 
-    we use updates to update the value of corresponding position in the corresponding interval. On the contrary, 
-    out[i][j] is equal to the value of input corresponding position. Thus, out[1][5] = input[0][0]+updates[4][0]，out[2][1]=input[2,1]
-
     Here is an example:
 
     Given the following input:
@@ -9943,13 +9940,13 @@ def sequence_scatter(input, index, updates, name=None):
         out.dims = X.dims = [3, 6]
 
     Args:
-        input (Variable): It is a Tensor whose shape is math:`[N, k_1... k_n].` Its data type support float32, float64, int32, int64.
-        index (Variable): It is a LoDTensor that contains index information. Its LoD level must be 1 and its data type must be int64.
-        updates (Variable): It is a LodTensor that contains updates information. Its LoD level must be consistent with the index parameter, and its data type must be consistent with the input parameter, its data type support float32, float64, int32, int64.
+        input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
+        index (Variable):  A LoDTensor that contains index information. Its LoD level must be 1 and its data type must be int64.
+        updates (Variable): It is a LodTensor that contains updates information. It has the same  LoD level with the index and has the same data type  with the input. Supported data types: float32, float64, int32, int64.
         name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
     Returns:
-        Variable: It is a Tensor, which contains information after updates. Its shape is exactly the same as the input dimension, and its data type is the same as the input data type.
+        Variable: A Tensor which contains information after updates. It has the same shape and data type with input.
 
     Examples:
 
