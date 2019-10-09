@@ -218,8 +218,8 @@ class GradientClipByNorm(BaseGradientClipAttr):
   	  startup_program = fluid.framework.Program()
   	  with fluid.program_guard(
           	    main_program=prog, startup_program=startup_program):
-      	      image = fluid.data(name='x', shape=[None, 784], dtype='float32')
-      	      label = fluid.data(name='y', shape=[None, 1], dtype='int64')
+      	      image = fluid.data(name='x', shape=[None, 784], dtype='float32', lod_level=0)
+      	      label = fluid.data(name='y', shape=[None, 1], dtype='int64', lod_level=0)
       	      hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
       	      hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
       	      predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
