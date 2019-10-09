@@ -8382,10 +8382,10 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     In the above equation:
 
-      - :math:`n` : The number of channels to sum over.
-      - :math:`k` : The offset (avoid being divided by 0).
-      - :math:`\\alpha` : The scaling parameter.
-      - :math:`\\beta` : The exponent parameter.
+    - :math:`n` : The number of channels to sum over.
+    - :math:`k` : The offset (avoid being divided by 0).
+    - :math:`\\alpha` : The scaling parameter.
+    - :math:`\\beta` : The exponent parameter.
 
 
     Args:
@@ -15705,11 +15705,17 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     This operator implements the hard_swish activation function.
     Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
     For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
-    
-     :math:`out = \\frac{x * (min(max(0, x+offset), threshold))}{scale}`
-    
-     ``threshold`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
-    
+
+    The formula is as follows:
+
+    .. math::
+
+        out = \\frac{x * (min(max(0, x+offset), threshold))}{scale}
+
+    In the above equation:
+
+    ``threshold`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
+
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type should be float32 or float64.
         threshold (float, optional): The threshold in Relu function. Default: 6.0
