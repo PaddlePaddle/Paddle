@@ -894,26 +894,24 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments the value in the
-    input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default. Notice that
-    the number of elements in :math:`x` must be equal to 1.
+    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    Notice that the number of elements in :attr:`x` must be equal to 1.
 
-    Args:
-        x (Variable|list): The tensor that has the input values.
-        value (float): The amount by which the values should be incremented.
-        in_place (bool): If the increment should be performed in-place.
+    Parameters:
+        x (Variable): A tensor that must alway contain only one element, its data type supports
+            float32, float64, int32 and int64.
+        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
 
     Returns:
-        Variable: The elementwise-incremented object.
+        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
-                                   append_batch_size=False)
-          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
+          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
+          fluid.layers.increment(counter) # [1.]
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
