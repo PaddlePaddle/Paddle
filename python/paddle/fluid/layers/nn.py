@@ -6113,9 +6113,7 @@ def split(input, num_or_sections, dim=-1, name=None):
 
 def l2_normalize(x, axis, epsilon=1e-12, name=None):
     """
-    **L2 normalize Layer**
-
-    The l2 normalize layer normalizes `x` along dimension `axis` using an L2
+    This op normalizes `x` along dimension `axis` using an L2
     norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
 
     .. math::
@@ -6126,17 +6124,16 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     slice along dimension `axis`.
 
     Args:
-        x(Variable|list): The input tensor to l2_normalize layer.
+        x(Variable|list): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
             the default value is 1e-12.
-        name(str|None): A name for this layer(optional). If set None, the layer \
-            will be named automatically.
-
+	name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        Variable: The output tensor variable is the same shape with `x`.
+        Variable: The output has the same shape with `x`.
 
     Examples:
 
@@ -14674,9 +14671,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 def pixel_shuffle(x, upscale_factor):
     """
 
-    **Pixel Shuffle Layer**
-
-    This layer rearranges elements in a tensor of shape [N, C, H, W]
+    This op rearranges elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/r**2, H*r, W*r].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/r.
@@ -14684,23 +14679,16 @@ def pixel_shuffle(x, upscale_factor):
     Using an Efficient Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_ .
     by Shi et. al (2016) for more details.
 
-        .. code-block:: text
-        
-            Given a 4-D tensor with the shape:
-                x.shape = [1, 9, 4, 4]
-            Given upscale_factor:
-                upscale_factor= 3
-            output shape is:
-                [1, 1, 12, 12]
-    
-    Args:
+    Parameters:
 
-        x(Variable): The input tensor variable.
-        upscale_factor(int): factor to increase spatial resolution
+        x(Variable): 4-D tensor, the data type should be float32 or float64.
+        upscale_factor(int): factor to increase spatial resolution。
 
     Returns:
 
         Out(Variable): Reshaped tensor according to the new dimension.
+
+    Return type: Variable
 
     Raises:
 
@@ -14710,9 +14698,32 @@ def pixel_shuffle(x, upscale_factor):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[9,4,4])
-            output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
+	    # declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[2,9,4,4])
+	    output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    input_data = np.random.rand(2,9,4,4).astype("float32")
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data},
+                fetch_list=[output],
+                return_numpy=True)
+ 
+ 	    print(output.shape)
+	    # (2L, 1L, 12L, 12L)
+
+	    # imperative mode
+     	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
+    		print(output.shape)
+	    # [2L, 1L, 12L, 12L]
 
     """
 

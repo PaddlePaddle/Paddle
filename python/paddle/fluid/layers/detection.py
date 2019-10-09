@@ -1547,41 +1547,39 @@ def prior_box(input,
               name=None,
               min_max_aspect_ratios_order=False):
     """
-    **Prior Box Operator**
-
-    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
     box is in range(min_size, max_size) interval, which is generated in
     sequence according to the aspect_ratios.
 
-    Args:
-       input(Variable): The Input Variables, the format is NCHW.
-       image(Variable): The input image data of PriorBoxOp,
-            the layout is NCHW.
-       min_sizes(list|tuple|float value): min sizes of generated prior boxes.
-       max_sizes(list|tuple|None): max sizes of generated prior boxes.
+    Parameters:
+       input(Variable): 4-D tenosr(NCHW), the data type should be float32 or float64.
+       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp,
+            the data type should be float32 or float64.
+       min_sizes(list|tuple|float): the min sizes of generated prior boxes.
+       max_sizes(list|tuple|None): the max sizes of generated prior boxes.
             Default: None.
-       aspect_ratios(list|tuple|float value): the aspect ratios of generated
+       aspect_ratios(list|tuple|float): the aspect ratios of generated
             prior boxes. Default: [1.].
        variance(list|tuple): the variances to be encoded in prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
        flip(bool): Whether to flip aspect ratios. Default:False.
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
        step(list|tuple): Prior boxes step across width and height, If
-            step[0] == 0.0/step[1] == 0.0, the prior boxes step across
-            height/weight of the input will be automatically calculated.
+            step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
+            height or weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
-       name(str): Name of the prior box op. Default: None.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
+       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        tuple: A tuple with two Variable (boxes, variances)
+        A tuple with two Variable (boxes, variances)
 
         boxes: the output prior boxes of PriorBox.
         The layout is [H, W, num_priors, 4].
@@ -1595,19 +1593,56 @@ def prior_box(input,
         num_priors is the total
         box count of each position of input
 
+    Returns type: Tuple.
 
     Examples:
         .. code-block:: python
+	    #declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[None,3,6,9])
+	    image = fluid.data(name="image", shape=[None,3,9,12])
+	    box, var = fluid.layers.prior_box(
+                 input=input,
+                 image=image,
+		 min_sizes=[100.],
+                 clip=True,
+                 flip=True)
 
-            import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[3,6,9])
-            images = fluid.layers.data(name="images", shape=[3,9,12])
-            box, var = fluid.layers.prior_box(
-                input=input,
-                image=images,
-                min_sizes=[100.],
-                flip=True,
-                clip=True)
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    # prepare a batch of data
+	    input_data = np.random.rand(1,3,6,9).astype("float32")
+	    image_data = np.random.rand(1,3,9,12).astype("float32")
+ 
+	    box_out, var_out = exe.run(fluid.default_main_program(),
+                feed={"input":input_data,"image":image_data},
+                fetch_list=[box,var],
+                return_numpy=True)
+ 
+	    print(box_out.shape)
+	    # (6, 9, 1, 4)
+	    print(var_out.shape)
+	    # (6, 9, 1, 4)
+
+	    # imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		image = dg.to_variable(image_data)
+    		box, var = fluid.layers.prior_box(
+		    input=input,
+		    image=image,
+		    min_sizes=[100.],
+		    clip=True,
+	            flip=True)
+    	    	print(box.shape)
+		# [6L, 9L, 1L, 4L]
+		print(var.shape)
+		# [6L, 9L, 1L, 4L]
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -1669,9 +1704,8 @@ def density_prior_box(input,
                       flatten_to_2d=False,
                       name=None):
     """
-    **Density Prior Box Operator**
 
-    Generate density prior boxes for SSD(Single Shot MultiBox Detector) 
+    This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
     algorithm. Each position of the input produce N prior boxes, N is 
     determined by the count of densities, fixed_sizes and fixed_ratios. 
     Boxes center at grid points around each input position is generated by 
@@ -1681,47 +1715,48 @@ def density_prior_box(input,
     For densities_i in densities:
     N_density_prior_box =sum(N_fixed_ratios * densities_i^2),
 
-    Args:
-       input(Variable): The Input Variables, the format is NCHW.
-       image(Variable): The input image data of PriorBoxOp,
+    which N_density_prior_box is the number of density_prior_box and N_fixed_ratios is the number of fixed_ratios.
+
+    Parameters:
+       input(Variable): 4-D tensor(NCHW), the data type should be float32 of float64.
+       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp, the data type should be float32 or float64.
             the layout is NCHW.
-       densities(list|tuple|None): the densities of generated density prior 
+       densities(list|tuple|None): The densities of generated density prior 
             boxes, this attribute should be a list or tuple of integers. 
             Default: None.
-       fixed_sizes(list|tuple|None): the fixed sizes of generated density
+       fixed_sizes(list|tuple|None): The fixed sizes of generated density
             prior boxes, this attribute should a list or tuple of same 
             length with :attr:`densities`. Default: None.
-       fixed_ratios(list|tuple|None): the fixed ratios of generated density
+       fixed_ratios(list|tuple|None): The fixed ratios of generated density
             prior boxes, if this attribute is not set and :attr:`densities`
             and :attr:`fix_sizes` is set, :attr:`aspect_ratios` will be used
             to generate density prior boxes.
-       variance(list|tuple): the variances to be encoded in density prior boxes.
+       variance(list|tuple): The variances to be encoded in density prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
-       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
+       clip(bool): Whether to clip out of boundary boxes. Default: False.
        step(list|tuple): Prior boxes step across width and height, If
-            step[0] == 0.0/step[1] == 0.0, the density prior boxes step across
-            height/weight of the input will be automatically calculated.
+            step[0] equals 0.0 or step[1] equals 0.0, the density prior boxes step across
+            height or weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
        flatten_to_2d(bool): Whether to flatten output prior boxes and variance
            to 2D shape, the second dim is 4. Default: False.
-       name(str): Name of the density prior box op. Default: None.
-
+       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        tuple: A tuple with two Variable (boxes, variances)
+        A tuple with two Variable (boxes, variances)
 
         boxes: the output density prior boxes of PriorBox.
-            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
-            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
-            H is the height of input, W is the width of input,
-            num_priors is the total box count of each position of input.
+            4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
 
         variances: the expanded variances of PriorBox.
-            The layout is [H, W, num_priors, 4] when flatten_to_2d is False.
-            The layout is [H * W * num_priors, 4] when flatten_to_2d is True.
-            H is the height of input, W is the width of input
-            num_priors is the total box count of each position of input.
+            4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+            2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+            H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
 
+    Return type: Tuple.
 
     Examples:
         .. code-block:: python
