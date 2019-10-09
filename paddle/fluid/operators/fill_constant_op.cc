@@ -87,4 +87,5 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<double>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
+                       ops::FillConstantKernel<bool>,
                        ops::FillConstantKernel<paddle::platform::float16>);
