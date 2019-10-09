@@ -869,6 +869,13 @@ def load(out, file_path, load_as_fp16=None):
         load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}
