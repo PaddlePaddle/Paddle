@@ -796,10 +796,13 @@ def polygon_box_transform(input, name=None):
     ${comment}
 
     Args:
-        input(${input_type}): ${input_comment}
+        input(Variable): The input with shape [batch_size, geometry_channels, height, width].
+                         A Tensor with type float32, float64.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
 
     Returns:
-        output(${output_type}): ${output_comment}
+        Variable: The output with the same shape as input. A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
