@@ -20,6 +20,7 @@ include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/dlpack")
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
@@ -71,5 +72,5 @@ target_link_libraries(demo_trainer
         ${ARCHIVE_END}
         ${MATH_LIB}
         ${MKLDNN_LIB}
-        glog gflags protobuf z xxhash dlpack
+        glog gflags protobuf z xxhash
         ${EXTERNAL_LIB})
