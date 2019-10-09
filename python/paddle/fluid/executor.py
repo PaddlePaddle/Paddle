@@ -406,7 +406,8 @@ class Executor(object):
     the device is required.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): indicate the executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents the
+            executor run on which device.
 
     Returns:
         Executor
@@ -662,18 +663,17 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run the specified Program or Compiled Program. It should be noted that
-        the executor will execute all the operators in Program or Compiled
-        Program without pruning some operators of the Program or Compiled
-        Program according to fetch_list. And you could specify the scope that
-        storing the Variables during the executor running, if the scope is not set,
-        the executor will use the global scope, fluid. global_scope().
+        Run the specified Program or Compiled Program. It should be noted that the executor
+        will execute all the operators in Program or Compiled Program without pruning some
+        operators of the Program or Compiled  Program according to fetch_list. And you could
+        specify the scope to store the Variables during the executor running if the scope
+        is not set,  the executor will use the global scope, i.e. fluid.global_scope().
 
         Args:
             program(Program|CompiledProgram): This parameter represents the Program or
                 CompiledProgram to be executed. If this parameter is not provided, that
                 parameter is None, the program will be set to fluid.default_main_program().
-                The default is: None.
+                The default is None.
             feed(list|dict): This parameter represents the input variables of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
                 training, the parameter feed can be dict or list type variable. If the
@@ -683,9 +683,9 @@ class Executor(object):
                 the current mini-batch must be greater than the number of places;
                 if the parameter type is list, those data are copied directly to each device,
                 so the length of this list should be equal to the number of places.
-                The default is: None.
+                The default is None.
             fetch_list(list): This parameter represents the variables that need to be returned
-                after the model runs. The default is: None.
+                after the model runs. The default is None.
             feed_var_name(str): This parameter represents the name of the input variable of
                 the feed operator. The default is "feed".
             fetch_var_name(str): This parameter represents the name of the output variable of
@@ -694,16 +694,16 @@ class Executor(object):
                 it to different scope. default is fluid.global_scope()
             return_numpy(bool): This parameter indicates whether convert the fetched variables
                 (the variable specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of LoDTensor. The default is: True.
+                the type of the return value is a list of LoDTensor. The default is True.
             use_program_cache(bool): This parameter indicates whether the input Program is cached.
                 If the parameter is True, the model may run faster in the following cases:
                 the input program is fluid.Program, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
-                The default is: False.
+                The default is False.
                 
         Returns:
 
-            list(numpy.array): fetch result according to fetch_list.
+            List: The fetched result list.
 
 
         Examples:

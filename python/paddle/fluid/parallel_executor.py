@@ -27,57 +27,58 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor is an upgraded version of Executor that supports multi-node
-    model training and testing based on data parallelism. In data parallel mode,
-    ParallelExecutor will distribute the parameters to different nodes during
-    construction and copy the input Program to different nodes. Each node runs
-    the model independently and the parameters' gradient is aggregated between
-    multiple nodes during backward computation, and then each node independently
-    updates their parameters. If you use the GPU to run the model, ie use_cuda=True,
-    the node refers to the GPU, ParallelExecutor will automatically get the GPU
-    resources available on the current machine, users can also set the available
-    GPU resources in the environment variable, for example: want to use GPU0,
-    GPU1computation, export CUDA_VISIBLEDEVICES=0,1; If the operation is performed
-    on the CPU, ie use_cuda=False, the node refers to the CPU. Note: At this time,
-    the user needs to manually add CPU_NUM to the environment variable and set
-    the value to the number of CPU devices. , for example, export CPU_NUM=4,
-    if the environment variable is not set, the executor will add the variable
-    to the environment variable and set its value to 1.
+    ParallelExecutor is an upgraded version of Executor that supports multi-node model
+    training and testing based on the data-parallel mode. In data-parallel mode,
+    ParallelExecutor will broadcast the parameters from Node0 to other nodes during
+    construction and copy the input Program to other nodes from Node0 to make sure
+    that the initial state on each node is the same. Each node runs the model independently
+    and the parameters' gradient is aggregated between those nodes during backward
+    computation, and then each node independently updates its parameters. If you use
+    the GPU to run the model, i.e. use_cuda=True, the node refers to the GPU,
+    ParallelExecutor will automatically get the GPU resources available on the
+    current machine, users can also set the available GPU resources in the environment
+    variable, for example: want to use GPU0, GPU1computation, export CUDA_VISIBLEDEVICES=0,1;
+    If the operation is performed on the CPU, i.e. use_cuda=False, the node refers to the CPU.
+    **Note: At this time, the user needs to manually add CPU_NUM to the environment variable
+    and set the number of CPU devices. For example, export CPU_NUM=4, if the environment
+    variable is not set, the executor will add the variable to the environment variable
+    and set it to 1.**
 
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.
         loss_name (str): This parameter is the name of the loss variable of the
-            model. Note: If it is data parallel model training, you must set loss_name,
-            otherwise the results may be problematic. The default is: None.
+            model. **Note: If it is data-parallel model training, you must set loss_name,
+            otherwise, the results may be wrong**. The default is None.
         main_program (Program): This parameter represents the Program to be executed.
             If this parameter is not provided, that parameter is None, the program will
-            be set to fluid.default_main_program(). The default is: None.
+            be set to fluid.default_main_program(). The default is None.
         share_vars_from(ParallelExecutor): If share_vars_from is set, the current
-            ParallelExecutor will share the parameter value with the ParallelExecutor
+            ParallelExecutor will share the parameters with the ParallelExecutor
             specified by share_vars_from. This parameter needs to be set when model testing
             is required during model training, and the data parallel mode is used for
             training and testing. Since ParallelExecutor will only distribute parameter
             variables to other devices when it is first executed, the ParallelExecutor
             specified by share_vars_from must be run before the current ParallelExecutor.
-            The default is: None.
+            The default is None.
         exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
-            be changed when running this Program, such as the thread pool size. For more
-            information on exec_strategy, see fluid.ExecutionStrategy. The default is: None.
-        build_strategy(BuildStrategy): By configuring build_strategy, we can transform and
-            optimize computational graphs, such as operator fusion in computational graphs
-            and memory/display optimization during execution of computational graphs.
-            For more information on build_strategy, see fluid. Build Strategy.
-            The default is: None.
+            be changed when running the current model, such as the thread pool size.
+            For more information about exec_strategy, please refer to fluid.ExecutionStrategy.
+            The default is None.
+        build_strategy(BuildStrategy): By configuring build_strategy, we can
+            optimize the computational graph, such as operators' fusion in the
+            computational graph and memory optimization during the execution
+            of the computational graph. For more information about build_strategy,
+            please refer to fluid.BuildStrategy.  The default is None.
         num_trainers(int): This parameter needs to be set in GPU distributed training.
             If the parameter value is greater than 1, NCCL will be initialized by multi-level
-            nodes. Each node should have the same number of GPUs. The default is: 1.
+            nodes. Each node should have the same number of GPUs. The default is 1.
         trainer_id(int): This parameter needs to be set when performing GPU distributed
             training. This parameter must be used with the num_trainers parameter.
             Trainer_id indicates the "rank" of the current node. The trainer_id starts counting
             from 0. The default is 0.
         scope(Scope): Specifies the scope in which the program is executed.
-            The default is: fluid.global_scope().
+            The default is fluid.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -85,13 +86,14 @@ class ParallelExecutor(object):
     Raises:
         TypeError: If share_vars_from is provided, but not ParallelExecutor object.
 
-    Note:
+    NOTES:
 
-        - If you use ParallelExecutor to do multi-card test, you don't need to set loss_name
-            and share_vars_from.
-        - If you need to train and test the model with ParallelExecutor, the share_vars_from
-            must be set when building the ParallelExecutor corresponding to the model test.
-            Otherwise, the parameters used in the model test and the model training are inconsistent.
+        1. If you only use ParallelExecutor to do multi-card test, you don't need to set loss_name
+           and share_vars_from.
+
+        2. If you need to train and test the model with ParallelExecutor, the share_vars_from
+           must be set when building the ParallelExecutor corresponding to the model test.
+           Otherwise, the parameters used in the model test and the model training are inconsistent.
 
     Examples:
         .. code-block:: python
@@ -210,7 +212,7 @@ class ParallelExecutor(object):
 
         Args:
             fetch_list(list): This parameter represents the variables that need to be returned
-                after the model runs. The default is: None.
+                after the model runs. The default is None.
             feed(list|dict): This parameter represents the input variables of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
                 training, the parameter feed can be dict or list type variable. If the
@@ -220,12 +222,12 @@ class ParallelExecutor(object):
                 the current mini-batch must be greater than the number of places;
                 if the parameter type is list, those data are copied directly to each device,
                 so the length of this list should be equal to the number of places.
-                The default is: None.
+                The default is None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
             return_numpy(bool): This parameter indicates whether convert the fetched variables
                 (the variable specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of LoDTensor. The default is: True.
+                the type of the return value is a list of LoDTensor. The default is True.
 
         Returns:
             List: The fetched result list.
