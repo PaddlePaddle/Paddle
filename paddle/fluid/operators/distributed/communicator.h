@@ -363,7 +363,7 @@ class HalfAsyncCommunicator : public Communicator {
 };
 
 using SparseIdsMap =
-    std::unordered_map<std::string, std::unordered_set<int64_t>>;
+    std::unordered_map<std::string, std::vector<std::unordered_set<int64_t>>>;
 
 class GeoSgdCommunicator : public Communicator {
  public:
