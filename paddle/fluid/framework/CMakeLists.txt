@@ -123,7 +123,7 @@ cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_co
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
-cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog data_feed_proto
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -223,8 +223,8 @@ endif (NOT WIN32)
 cc_library(dlpack_tensor SRCS dlpack_tensor.cc DEPS tensor dlpack)
 cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
-cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper)
-cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info string_helper glog)
+cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
+cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
 
 # Get the current working branch
 execute_process(
@@ -246,3 +246,35 @@ message(STATUS "commit: ${PADDLE_COMMIT}")
 message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+if(WIN32)
+  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+else(WIN32)
+  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+endif(WIN32)
+
+cc_library(paddle_framework_shared
+    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    DEPS ${FLUID_FRAMEWORK_MODULES})
+get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)
+target_link_libraries(paddle_framework_shared ${os_dependency_modules})
+
+if (LINUX)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.so
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if (WIN32)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dll
+      CACHE INTERNAL "Fluid framework lib")
+endif()
+
+if(APPLE)
+  set(FLUID_FRAMEWORK_SHARED_LIB
+      ${PADDLE_BINARY_DIR}/paddle/fluid/framework/libpaddle_framework.dylib
+      CACHE INTERNAL "Fluid framework lib")
+endif()
