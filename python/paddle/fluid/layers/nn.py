@@ -3540,14 +3540,12 @@ def adaptive_pool2d(input,
                     require_index=False,
                     name=None):
     """
-    **Adaptive Pool2d Operator**
     This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCHW format, where N is batch
     size, C is the number of channels, H is the height of the feature, and W is
     the width of the feature. Parameters(pool_size) should contain two elements which
     represent height and width, respectively. Also the H and W dimensions of output(Out)
-    is same as Parameter(pool_size). The output tensor shape will be 
-    :math:`\left (N, C, pool_size[0], pool_size[1] \right )`
+    is same as Parameter(pool_size). The output tensor shape will be [N, C, pool_size[0], pool_size[1]]
 
     For average adaptive pool2d:
 
@@ -3679,14 +3677,13 @@ def adaptive_pool3d(input,
                     require_index=False,
                     name=None):
     """
-    **Adaptive Pool3d Operator**
     This operation calculates the output based on the input, pool_size,
     pool_type parameters. Input(X) and output(Out) are in NCDHW format, where N is batch
     size, C is the number of channels, D is the depth of the feature, H is the height of
     the feature, and W is the width of the feature. Parameters(pool_size) should contain
     three elements which represent height and width, respectively. Also the D, H and W
     dimensions of output(Out) is same as Parameter(pool_size). The output tensor shape
-    will be :math:`\left (N, C, pool_size[0], pool_size[1], pool_size[2] \right )`
+    will be [N, C, pool_size[0], pool_size[1], pool_size[2]]
 
     For average adaptive pool3d:
 
