@@ -780,17 +780,19 @@ def polygon_box_transform(input, name=None):
     ${comment}
 
     Args:
-        input(${input_type}): ${input_comment}
+        input(Variable): The input with shape [batch_size, geometry_channels, height, width].
+                         A Tensor with type float32, float64.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
 
     Returns:
-        output(${output_type}): ${output_comment}
+        Variable: The output with the same shape as input. A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
             
             import paddle.fluid as fluid
-            input = fluid.layers.data(name='input', shape=[4, 10, 5, 5],
-                                      append_batch_size=False, dtype='float32')
+            input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
     helper = LayerHelper("polygon_box_transform", **locals())
