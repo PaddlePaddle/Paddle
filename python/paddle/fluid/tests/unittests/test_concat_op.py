@@ -123,8 +123,8 @@ class TestConcatOpError(OpTest):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.concat, x1)
             # The input dtype of concat_op must be float16(only support on GPU), float32, float64, int32, int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float16')
-            self.assertRaises(TypeError, fluid.layers.softmax, x2)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='uint8')
+            self.assertRaises(TypeError, fluid.layers.concat, x2)
 
 
 if __name__ == '__main__':
