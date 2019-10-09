@@ -172,7 +172,7 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
 
 void DownpourWorker::DumpParam() {
   int err_no = 0;
-  std::string path = string::format_string("%s/part-%03d", 
+  std::string path = string::format_string("%s/part-%03d",
                                            dump_param_path_.c_str(), mpi_rank_);
   std::shared_ptr<FILE> param_fd = fs_open_write(path, &err_no, "");
   std::string os;
