@@ -40,12 +40,13 @@ template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "Tensor, the input of clip op, dtype should be float32 or float64.");
-    AddOutput("Out",
-              "Tensor, the clipped tensor, with the same shape and dtype as "
-              "input(x)");
+    AddInput("X",
+             "Tensor, the input of clip op, data type should be float32 or "
+             "float64.");
+    AddOutput(
+        "Out",
+        "Tensor, the clipped tensor, with the same shape and data type as "
+        "input(x)");
     AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
     AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
     AddComment(R"DOC(

@@ -6548,27 +6548,28 @@ def ctc_greedy_decoder(input,
                          where Lp is the sum of all input sequences' length and
                          num_classes is the true number of classes. When in padding mode,
                          it is a 3-D Tensor with padding, It's shape is [batch_size, N, num_classes + 1].
-                         (not including the blank label). Dtype can be float32 or float64.
+                         (not including the blank label). The data type can be float32 or float64.
         blank(int): the blank label index of Connectionist Temporal
                     Classification (CTC) loss, which is in the half-opened
                     interval [0, num_classes + 1).
-        input_length(Variable, optional): 2-D LoDTensor, shape is [batch_size, 1].
+        input_length(Variable, optional): 2-D LoDTensor, shape is [batch_size, 1], data type is int64.
                                  It is used for padding mode. In lod mode, input_length is None.
         padding_value(int): padding value.
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        For lod mode, returns the result of CTC greedy decoder, 2-D LoDTensor, shape is [Lp, 1]. \
-        'Lp' is the sum of all output sequences' length. If all the sequences \
+        For lod mode, returns the result of CTC greedy decoder, 2-D LoDTensor, shape is [Lp, 1], \
+        data type is int64. 'Lp' is the sum of all output sequences' length. If all the sequences \
         in result were empty, the result LoDTensor will be [-1] with  empty \
         LoD [[]].
 
         For padding mode, returns a tuple of (output, output_length), which was describled as below: 
 
-        output, 2-D Tensor, shape is [batch_size, N].
+        output, 2-D Tensor, shape is [batch_size, N], data type is int64.
 
-        output_length, 2-D Tensor, shape is [batch_size, 1], it is the length of \
+        output_length, 2-D Tensor, shape is [batch_size, 1], data type is int64. It is the length of \
                            each sequence of output for padding mode.
 
     Return type:
@@ -8396,17 +8397,18 @@ def pad(x, paddings, pad_value=0., name=None):
                    [0, 0, 0, 0, 0]]
 
     Args:
-        x (Variable): Tensor, dtype is float32.
+        x (Variable): Tensor, data type is float32.
         paddings (list): A list of integers. Its elements specify the padded
                          width before and after each dimension in turn.
                          The length of :attr:`paddings` must be equal to 
                          :math:`rank(x) \\times 2`.
         pad_value (float): The constant value used to pad.
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The padded tensor, with the same dtype and rank as :attr:`x`
+        The padded tensor, with the same data type and rank as :attr:`x`
 
     Return Type:
         Variable
@@ -8484,13 +8486,14 @@ def pad_constant_like(x, y, pad_value=0., name=None):
     Args:
         x (Variable): Tensor, its shape spicifies the shape of output.
         y (Variable): Tensor, its rank is the same with :attr:`x`, and for each dimension :math:`i` , 
-                      :math:`y\_shape[i] <= x\_shape[i]` . The dtype can be float32 or float64.
+                      :math:`y\_shape[i] <= x\_shape[i]` . The data type can be float32 or float64.
         pad_value (float): The constant value used to pad.
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The padded tensor, with the same shape as :attr:`x` and the same dtype as :attr:`y`
+        The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
 
     Return Type:
         Variable
@@ -8721,16 +8724,18 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     Parameters:
         input (Variable): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
                           the batch_size, :math:`N_D` is 1. It is usually the output predictions of sigmoid activation.
+                          The data type can be float32 or float64.
         label (Variable): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`. 
-                          where :math:`N_1` is the batch_size, :math:`N_D` is 1.
+                          where :math:`N_1` is the batch_size, :math:`N_D` is 1. The data type can be float32 or float64.
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
                          Default: 0.00001
-        name(str|None, optional): Name for this layer. If set None, this layer
-                         will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The dice loss with shape [1], dtype is the same as :math:`input` .
+        The dice loss with shape [1], data type is the same as `input` .
     Return Type:
         Varaible
 
@@ -10200,7 +10205,7 @@ def crop(x, shape=None, offsets=None, name=None):
                        [3, 4, 6]].
 
     Parameters:
-        x (Variable): Tensor, dtype can be float32 or float64.
+        x (Variable): Tensor, data type can be float32 or float64.
         shape (Variable|list/tuple of integers): The output shape is specified
             by `shape`, which can be a Tensor or a list/tuple of integers.
             If it is a Tensor, it's rank must be the same as `x` , only 
@@ -10214,11 +10219,12 @@ def crop(x, shape=None, offsets=None, name=None):
             This way is suitable for the case that the offsets may be changed
             each iteration. If it is a list/tuple of integers, it's length must be the
             same as the rank of `x`. If None, the offsets are 0 at each dimension.
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name` . Usually name is no need to set and 
+            None by default. 
 
     Returns:
-        The cropped Tensor, which has the same rank and dtype with `x`
+        The cropped Tensor, which has the same rank and data type with `x`
 
     Return Type:
         Variable
@@ -13057,8 +13063,9 @@ def clip(x, min, max, name=None):
         x(${x_type}): ${x_comment}
         min(float): ${min_comment}
         max(float): ${max_comment}
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         ${out_comment}
@@ -14423,13 +14430,14 @@ def psroi_pool(input,
                          a 2-D LoDTensor of shape (num_rois, 4), the lod level
                          is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                          the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates. The dtype is the same as `input`
+                         right coordinates. The data type is the same as `input`
         output_channels (int): ${output_channels_comment}
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
         pooled_height (int): ${pooled_height_comment} Default: 1
         pooled_width (int): ${pooled_width_comment} Default: 1
-        name(str|None, optional): Name for this layer. If set None, this layer
-                        will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         ${out_comment}.
@@ -15269,7 +15277,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     Parameters:
         x(Varaible):              4-D Tensor, input tensor of format [N, C, H, W], 
-                                  dtype can be float32 or float64
+                                  data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list):        The strides, should be [stride_h, stride_w]
@@ -15285,8 +15293,9 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         dilations(int|list):      the dilations of convolution kernel, shold be
                                   [dilation_h, dilation_w], or an integer dialtion treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
-        name(str|None, optional): Name for this layer. If set None, this layer
-                                  will be named automatically. Default: None
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     
     Returns:
@@ -15294,7 +15303,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         The output shape is [N, Cout, Lout] as decribled above. 
         Cout is the  total number of values within each block, 
         and Lout is the total number of such blocks. 
-        The dtype of output is the same as the input :math:`x`
+        The data type of output is the same as the input :math:`x`
 
     Return Type:
         Variable

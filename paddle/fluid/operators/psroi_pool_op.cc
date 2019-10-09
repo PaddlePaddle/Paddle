@@ -30,7 +30,7 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "The format of input tensor is NCHW. Where N is the batch size, "
              "C is the number of input channels, "
              "H is the height of the input feature map, and "
-             "W is the width. The dtype can be float32 or float64");
+             "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
              "LoDTensor, "
              "ROIs (Regions of Interest) to pool over. "
@@ -43,7 +43,7 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "Tensor, "
               "the output of PSROIPoolOp is a 4-D Tensor with shape "
               "(num_rois, output_channels, pooled_h, pooled_w). "
-              "The dtype is the same as `x` ");
+              "The data type is the same as `x` ");
     AddAttr<int>(
         "output_channels",
         "(int), "

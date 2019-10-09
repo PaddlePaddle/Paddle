@@ -45,7 +45,7 @@ def simple_img_conv_pool(input,
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
 
     Args:
-        input (Variable): 4-D Tensor, shape is [N, C, H, W], dtype can be float32 or float64.
+        input (Variable): 4-D Tensor, shape is [N, C, H, W], data type can be float32 or float64.
         num_filters(int): The number of filters. It is the same as the output channels.
         filter_size (int|list|tuple): The filter size. If filter_size is a list or
             tuple, it must contain two integers, (filter_size_H, filter_size_W). Otherwise,
@@ -94,7 +94,7 @@ def simple_img_conv_pool(input,
             library is installed. Default: True
 
     Return:
-        4-D Tensor, the result of input after conv2d and pool2d, with the same dtype as :attr:`input`
+        4-D Tensor, the result of input after conv2d and pool2d, with the same data type as :attr:`input`
 
     Return Type:
         Variable
@@ -267,7 +267,7 @@ def sequence_conv_pool(input,
             which supports variable-time length input sequence. 
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
-            the input_hidden_size. The dtype is float32 or float64.
+            the input_hidden_size. The data type is float32 or float64.
         num_filters(int): The number of filter.
         filter_size (int): The filter size.
         param_attr (ParamAttr): The parameters of the sequence_conv Layer. Default: None.
@@ -284,7 +284,7 @@ def sequence_conv_pool(input,
 
     Returns:
         The final result after sequence_conv and sequence_pool. 
-        It is a 2-D Tensor, with the same dtype as :attr:`input`
+        It is a 2-D Tensor, with the same data type as :attr:`input`
 
     Return Type:
         Variable
