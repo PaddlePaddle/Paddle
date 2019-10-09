@@ -62,6 +62,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
 }
 
+Scope* MultiTrainer::GetWorkerScope(int thread_id) {
+  return workers_[thread_id]->GetThreadScope();
+}
+
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
   for (int thidx = 0; thidx < thread_num_; ++thidx) {

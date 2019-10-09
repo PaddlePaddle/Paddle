@@ -281,6 +281,7 @@ class UniformInitializer(Initializer):
 
         op = block._prepend_op(
             type="uniform_random",
+            inputs={},
             outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
@@ -565,6 +566,7 @@ class XavierInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
@@ -691,6 +693,7 @@ class MSRAInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
