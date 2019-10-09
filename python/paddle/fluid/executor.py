@@ -406,8 +406,8 @@ class Executor(object):
     the device is required.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents the
-            executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
+            the executor run on which device.
 
     Returns:
         Executor
@@ -663,16 +663,16 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run the specified Program or Compiled Program. It should be noted that the executor
-        will execute all the operators in Program or Compiled Program without pruning some
-        operators of the Program or Compiled  Program according to fetch_list. And you could
-        specify the scope to store the Variables during the executor running if the scope
-        is not set,  the executor will use the global scope, i.e. fluid.global_scope().
+        Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
+        will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
+        operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
+        specify the scope to store the :code:`Variables` during the executor running if the scope
+        is not set, the executor will use the global scope, i.e. :code:`fluid.global_scope()`.
 
         Args:
-            program(Program|CompiledProgram): This parameter represents the Program or
-                CompiledProgram to be executed. If this parameter is not provided, that
-                parameter is None, the program will be set to fluid.default_main_program().
+            program(Program|CompiledProgram): This parameter represents the :code:`Program` or
+                :code:`CompiledProgram` to be executed. If this parameter is not provided, that
+                parameter is None, the program will be set to :code:`fluid.default_main_program()`.
                 The default is None.
             feed(list|dict): This parameter represents the input variables of the model.
                 If it is single card training, the feed is dict type, and if it is multi-card
@@ -691,13 +691,13 @@ class Executor(object):
             fetch_var_name(str): This parameter represents the name of the output variable of
                 the fetch operator. The default is "fetch".
             scope(Scope): the scope used to run this program, you can switch 
-                it to different scope. default is fluid.global_scope()
+                it to different scope. default is :code:`fluid.global_scope()`
             return_numpy(bool): This parameter indicates whether convert the fetched variables
                 (the variable specified in the fetch list) to numpy.ndarray. if it is False,
-                the type of the return value is a list of LoDTensor. The default is True.
-            use_program_cache(bool): This parameter indicates whether the input Program is cached.
+                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+            use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
                 If the parameter is True, the model may run faster in the following cases:
-                the input program is fluid.Program, and the parameters(program, feed variable name
+                the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
                 The default is False.
                 
@@ -705,6 +705,19 @@ class Executor(object):
 
             List: The fetched result list.
 
+        NOTES:
+            1. If it is multi-card running and the feed parameter is dict type, the input data
+               will be evenly sent to different cards. For example, using two GPUs to run the model,
+               the input sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
+               that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
+               If the number of samples is less than the number of devices, the program will
+               throw an exception, so when running the model, you should make sure that the
+               number of samples of the last batch of the data set should be greater than the
+               number of CPU cores or GPU cards, if it is less than, it is recommended that
+               the batch be discarded.
+            2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
+               results are spliced together in dimension 0 for the same variable values
+               (variables in fetch_list) on different devices.
 
         Examples:
             .. code-block:: python
