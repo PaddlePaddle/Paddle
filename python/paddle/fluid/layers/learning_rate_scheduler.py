@@ -127,7 +127,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                          and following the formula above. Default: False
 
     Returns:
-        Variable: The decayed learning rate
+        Variable: The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -183,7 +183,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                          decayed continuously and following the formula above. Default: False
 
     Returns:
-        The decayed learning rate
+        The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -240,7 +240,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                          continuously and following the formula above. Default: False
 
     Returns:
-        Variable: The decayed learning rate
+        Variable: The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -248,7 +248,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
           import paddle.fluid as fluid
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
-	      learning_rate=fluid.layers.natural_exp_decay(
+	      learning_rate=fluid.layers.inverse_time_decay(
 		    learning_rate=base_lr,
 		    decay_steps=10000,
 		    decay_rate=0.5,

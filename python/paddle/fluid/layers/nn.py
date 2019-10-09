@@ -14801,8 +14801,7 @@ def kldiv_loss(x, target, reduction='mean', name=None):
                              None by default.
 
     Returns:
-        kldiv\_loss (Variable): The KL divergence loss. The data
-                                type is same as input tensor
+        Variable(Tensor): The KL divergence loss. The data type is same as input tensor
 
     Examples:
         .. code-block:: python
