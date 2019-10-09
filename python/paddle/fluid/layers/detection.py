@@ -607,8 +607,8 @@ def iou_similarity(x, y, name=None):
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
 
-            x = fluid.data(name='x', shape=[-1, 4], dtype='float32')
-            y = fluid.data(name='y', shape=[-1, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 4], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 4], dtype='float32')
             iou = fluid.layers.iou_similarity(x=x, y=y)
 
             exe.run(fluid.default_startup_program())

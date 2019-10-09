@@ -13344,7 +13344,7 @@ def affine_channel(x,
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
 
-            data = fluid.data(name='data', shape=[-1, 1, 2, 2], dtype='float32')
+            data = fluid.data(name='data', shape=[None, 1, 2, 2], dtype='float32')
             input_scale = fluid.layers.create_parameter(shape=[1], dtype="float32",
                                     default_initializer=fluid.initializer.Constant(2.0))
             input_bias = fluid.layers.create_parameter(shape=[1],dtype="float32",
