@@ -11070,7 +11070,7 @@ def swish(x, beta=1.0, name=None):
             import numpy as np
             from paddle import fluid
             
-            x = fluid.layers.data(name="x", shape=(3,), dtype="float32")
+            x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
             y = fluid.layers.swish(x, beta=2.0)
             
             place = fluid.CPUPlace()
@@ -11098,6 +11098,7 @@ def swish(x, beta=1.0, name=None):
             import paddle.fluid.dygraph as dg
             
             data = np.random.randn(2, 3).astype("float32")
+            place = fluid.CPUPlace()
             with dg.guard(place) as g:
                 x = dg.to_variable(data)
                 y = fluid.layers.swish(x)
