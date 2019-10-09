@@ -1060,7 +1060,7 @@ paddle.fluid.LoDTensorArray.__init__ __init__(self: paddle.fluid.core_avx.LoDTen
 paddle.fluid.LoDTensorArray.append append(self: paddle.fluid.core_avx.LoDTensorArray, tensor: paddle.fluid.core_avx.LoDTensor) -> None
 paddle.fluid.CPUPlace ('paddle.fluid.core_avx.CPUPlace', ('document', 'd269ec68ce9b102ab10610e89ffa06e1'))
 paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core_avx.CPUPlace) -> None
-paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', '209a64d5d8d6cd1402e7bf134690082e'))
+paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', 'f862cb3e5596a3920102f1b1238c223b'))
 paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
 paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', '1320ef739c81c95385330dab3fe6e80b'))
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
