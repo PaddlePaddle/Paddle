@@ -130,13 +130,13 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float): constant value to initialize the variable
+        value (float32): constant value to initialize the variable 
 
     Examples:
         .. code-block:: python
 
     	    import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Constant(value=2.0))
 
@@ -281,6 +281,7 @@ class UniformInitializer(Initializer):
 
         op = block._prepend_op(
             type="uniform_random",
+            inputs={},
             outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
@@ -565,6 +566,7 @@ class XavierInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
@@ -625,9 +627,9 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool): whether to use uniform or normal distribution
-        fan_in (float): fan_in for MSRAInitializer. If None, it is\
-        inferred from the variable.
-        seed (int): random seed
+        fan_in (float32|None): fan_in for MSRAInitializer. If None, it is\
+        inferred from the variable. default is None.
+        seed (int32): random seed
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -636,7 +638,7 @@ class MSRAInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.MSRA(uniform=False))
 
@@ -691,6 +693,7 @@ class MSRAInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
@@ -741,11 +744,13 @@ class BilinearInitializer(Initializer):
             import paddle.fluid as fluid
             factor = 2
             C = 2
+            B = 8
+            H = W = 32
             w_attr = fluid.param_attr.ParamAttr(
                 learning_rate=0., 
                 regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.Bilinear())
-            x = fluid.layers.data(name="data", shape=[3, 32, 32], 
+            x = fluid.data(name="data", shape=[B, 3, H, W], 
                                   dtype="float32")
             conv_up = fluid.layers.conv2d_transpose(
                 input=x,
@@ -858,15 +863,20 @@ class BilinearInitializer(Initializer):
 
 class NumpyArrayInitializer(Initializer):
     """Init an parameter with an numpy array
+    This op initialize the variable by numpy array.
 
     Args:
         value (numpy): numpy array to initialize the variable
+
+    Returns:
+        A Tensor variable initialized by numpy.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[5], dtype='float32')
+            import numpy
+            x = fluid.data(name="x", shape=[2, 1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """

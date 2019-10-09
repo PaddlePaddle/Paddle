@@ -27,7 +27,17 @@ __all__ = ['DataFeeder']
 
 
 def convert_dtype(dtype):
-    if dtype == core.VarDesc.VarType.BOOL:
+    if isinstance(dtype, str):
+        if dtype in [
+                'bool', 'float16', 'float32', 'float64', 'int32', 'int64',
+                'uint8'
+        ]:
+            return dtype
+        else:
+            raise ValueError(
+                "dtype must be any of [bool, float16, float32, float64, int32,"
+                " int64, uint8]")
+    elif dtype == core.VarDesc.VarType.BOOL:
         return 'bool'
     elif dtype == core.VarDesc.VarType.FP16:
         return 'float16'
@@ -43,8 +53,8 @@ def convert_dtype(dtype):
         return 'uint8'
     else:
         raise ValueError(
-            "dtype must be any of [bool, float16, float32, float64, int32, int64, uint8]"
-        )
+            "dtype must be any of [bool, float16, float32, float64, int32, "
+            "int64, uint8]")
 
 
 class DataToLoDTensorConverter(object):

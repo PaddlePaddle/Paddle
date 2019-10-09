@@ -277,22 +277,18 @@ TEST(CpuQuantizeSquashPass, equal_scales) {
 
 // From Conv1->d->Dequant->e->Quant->f->Conv2
 // First change to Conv1->d->Requant->f->Conv2
-// Then Conv1->f->Conv2
 TEST(CpuQuantizeSquashPass, unequal_scales) {
   auto scale_out = 1.0f;
   auto scale1 = 1.2345f;
   auto scale2 = 21.0f;
   auto use_mkldnn = true;
-  // Remove 4 nodes: Dequant, Quant, e, d
-  auto remove_nodes = 4;
+  // Remove 3 nodes: Dequant, Quant, e
+  // Insert 1 node: Requant
+  auto remove_nodes = 2;
 
   CountNodeTest(
       BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
       remove_nodes);
-
-  EqualScaleOutTest(
-      BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
-      "Conv1", scale2);
 }
 
 // from
@@ -320,29 +316,6 @@ TEST(CpuQuantizeSquashPass, branch_to_equal_unequal_and_fp32) {
   CheckRequantScalesTest(BuildConvMultiOutputProgramDesc(use_mkldnn, scale_out,
                                                          scale, scale, scale2),
                          scale, scale2);
-}
-
-//  a->Conv1->b->Requant->c
-//  d->Conv2->e->Requant->f
-//  {c,f}->Concat
-TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
-  // Delete both requantize op
-  auto scale_out = 1.0f;
-  auto scale = 1.2345f;
-  auto use_mkldnn = true;
-  // Remove 4 nodes: b, Requant1, e, Requant2
-  auto remove_nodes = 4;
-  CountNodeTest(
-      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
-      remove_nodes);
-
-  // check equal scale conv->scale_out and requant->scale_out
-  EqualScaleOutTest(
-      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
-      "Conv1", scale);
-  EqualScaleOutTest(
-      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
-      "Conv2", scale);
 }
 
 // a->Concat->b->Dequant->c->Quant->d->Conv->e
