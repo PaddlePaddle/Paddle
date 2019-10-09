@@ -160,10 +160,43 @@ def thresholded_relu(x, threshold=None):
     return _thresholded_relu_(**kwargs)
 
 
-thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
+thresholded_relu.__doc__ = """
+:strong:`Thresholded ReLU Activation Operator`
+
+Equation:
+    ..  math::
+        out = \\begin{cases}
+            x, &if x > threshold \\\\
+            0, &otherwise
+            \\end{cases}
+
+Args:
+    x(Variable): The input tensor of Thresholded ReLU op. dtype: float32 or float64.
+        
+    threshold(float, optional): The threshold value. Note that if threshold is not set, the threshold is 1.0.
+
+Returns:
+
+    Variable: The output tensor of Thresholded RELU op, dtype: float32 or float64, the same as the input, shape: the same as the input.
+
 Examples:
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[1])
-    >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
+     >>> import numpy as np
+     >>> from paddle import fluid
+     >>> x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
+     >>> y = fluid.layers.thresholded_relu(x, threshold=0.1)
+     >>> place = fluid.CPUPlace()
+     >>> exe = fluid.Executor(place)
+     >>> start = fluid.default_startup_program()
+     >>> main = fluid.default_main_program()
+     >>> data = np.random.randn(2, 3).astype("float32")
+     >>> exe.run(start)
+     >>> y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+     >>> data
+     # array([[ 0.43060726, -0.8275702 , -0.74713653],
+     #        [-0.8739619 ,  0.485993  , -0.7506466 ]], dtype=float32)
+     >>> y_np
+     # array([[ 0.43060726, -0.        , -0.        ],
+     #        [-0.        ,  0.485993  , -0.        ]], dtype=float32)
+
 """
