@@ -75,7 +75,7 @@ class DownpourServer(Server):
                     'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
                     'sparse_weight_bounds', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
                     'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
-                    'sparse_show_click_decay_rate', 'sparse_delete_threshold']
+                    'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold']
 
         for key in strategy:
             if key not in support_sparse_key_list:

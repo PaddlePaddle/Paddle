@@ -22,11 +22,13 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+
+#include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 namespace paddle {
 namespace operators {
@@ -51,6 +53,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
+    HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
     rpc_server_->Complete();
   } else {
     // Async
@@ -61,6 +64,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
+      HeartBeatMonitor::GetInstance()->Update(trainer_id, varname, RUNNING);
 
       std::string run_varname = varname;
 
@@ -82,6 +86,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       }
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
+
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
