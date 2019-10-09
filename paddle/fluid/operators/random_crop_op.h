@@ -60,7 +60,16 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ASSERT(x_stride == 1 && out_stride == 1);
+    PADDLE_ENFORCE(x_stride == 1,
+                   "When i:%d == rank:%d - 1, x_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, x_stride);
+    PADDLE_ENFORCE(out_stride == 1,
+                   "When i:%d == rank:%d - 1, out_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, out_stride);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
@@ -121,7 +130,7 @@ struct RandomCropFunctor {
   HOSTDEVICE void operator()(size_t ins_idx) {
     typename Random<DeviceContext>::Engine engine(seed_);
     engine.discard(ins_idx * (rank_ - num_batchsize_dims_));
-    size_t offsets[9];
+    size_t offsets[9] = {};
     for (int i = num_batchsize_dims_; i < rank_; ++i) {
       typename Random<DeviceContext>::template UniformIntDist<size_t> dist(
           0, x_dims_[i] - out_dims_[i]);
@@ -142,16 +151,22 @@ template <typename DeviceContext, typename T>
 class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
     int64_t seed = 0;
-    if (platform::is_cpu_place(seed_tensor.place())) {
-      seed = *seed_tensor.data<int64_t>();
+    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
+    if (seed_tensor.IsInitialized()) {
+      if (platform::is_cpu_place(seed_tensor.place())) {
+        seed = *seed_tensor.data<int64_t>();
+      } else {
+        LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
+                        "your program";
+        framework::LoDTensor cpu_seed;
+        framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
+        seed = *cpu_seed.data<int64_t>();
+      }
     } else {
-      LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
-                      "your program";
-      framework::LoDTensor cpu_seed;
-      framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
-      seed = *cpu_seed.data<int64_t>();
+      VLOG(5) << "WARNING: The input 'Seed' is not initialized, use attribute "
+                 "'startup_seed' instead.";
+      seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
@@ -171,7 +186,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
     *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(
-        platform::CPUPlace()) = engine();
+        framework::make_ddim({1}), platform::CPUPlace()) = engine();
   }
 };
 

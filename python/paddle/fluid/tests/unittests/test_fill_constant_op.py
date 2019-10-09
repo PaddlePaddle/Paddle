@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
+
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestFillConstantOp1(OpTest):
@@ -43,6 +50,96 @@ class TestFillConstantOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestFillConstantOp3(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified int64 value
+        '''
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 10000000000}
+        self.outputs = {'Out': np.full((123, 92), 10000000000)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFillConstantOp4(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified int value
+        '''
+        self.op_type = "fill_constant"
+
+        self.inputs = {}
+        self.attrs = {'shape': [123, 92], 'value': 3}
+        self.outputs = {'Out': np.full((123, 92), 3)}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestFillConstantOpWithSelectedRows(OpTest):
+    def check_with_place(self, place):
+        scope = core.Scope()
+        # create Out Variable
+        out = scope.var('Out').get_selected_rows()
+
+        # create and run fill_constant_op operator
+        fill_constant_op = Operator(
+            "fill_constant", shape=[123, 92], value=3.8, Out='Out')
+        fill_constant_op.run(scope, place)
+
+        # get result from Out
+        result_array = np.array(out.get_tensor())
+        full_array = np.full((123, 92), 3.8, 'float32')
+
+        self.assertTrue(np.array_equal(result_array, full_array))
+
+    def test_fill_constant_with_selected_rows(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            self.check_with_place(place)
+
+
+class TestFillConstantOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            #for ci coverage 
+            x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
+            self.assertRaises(
+                ValueError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='uint4')
+            self.assertRaises(
+                ValueError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='int16',
+                out=x1)
+            # The input dtype of fill_constant must be one of bool, float16, 
+            #float32, float64, int32 or int64
+            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='uint8')
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[1],
+                value=5,
+                dtype='float64',
+                out=x2)
 
 
 if __name__ == "__main__":

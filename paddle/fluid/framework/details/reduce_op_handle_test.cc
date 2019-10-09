@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+#include <unordered_map>
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -30,12 +31,12 @@ struct TestReduceOpHandle {
   Scope g_scope_;
   std::vector<Scope *> local_scopes_;
   std::vector<Scope *> param_scopes_;
-  std::unique_ptr<OpHandleBase> op_handle_;
-  std::vector<std::unique_ptr<VarHandleBase>> vars_;
+  OpHandleBase *op_handle_;
+  std::vector<VarHandleBase *> vars_;
   std::vector<p::Place> gpu_list_;
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -43,7 +44,7 @@ struct TestReduceOpHandle {
     for (size_t j = 0; j < ctxs_.size(); ++j) {
       ctxs_[j]->Wait();
     }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -53,7 +54,7 @@ struct TestReduceOpHandle {
   void InitCtxOnGpu(bool use_gpu) {
     use_gpu_ = use_gpu;
     if (use_gpu) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -77,40 +78,44 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       nccl_ctxs_.reset(nullptr);
 #endif
     }
   }
 
   void InitReduceOp(size_t out_scope_idx) {
+    std::vector<std::unique_ptr<ir::Node>> nodes;
     // init scope
+    std::unordered_map<Scope *, Scope *> scope_map;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope &local_scope = local_scopes_.back()->NewScope();
-      *local_scopes_.back()
-           ->Var(details::kLocalExecScopeName)
-           ->GetMutable<Scope *>() = &local_scope;
       local_scope.Var("input");
       param_scopes_.emplace_back(&local_scope);
+      scope_map.emplace(local_scopes_.back(), param_scopes_.back());
     }
     param_scopes_[out_scope_idx]->Var("out");
 
+    nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
-#ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(
-          new ReduceOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
+                                          gpu_list_, nccl_ctxs_.get()));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-#ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(
-          new ReduceOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+      op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
+                                          gpu_list_, nccl_ctxs_.get()));
 #else
-      op_handle_.reset(new ReduceOpHandle(local_scopes_, gpu_list_));
+      op_handle_.reset(
+          new ReduceOpHandle(nodes.back().get(), local_scopes_, gpu_list_));
 #endif
     }
+
+    op_handle_->SetLocalExecScopes(scope_map);
 
     // init op handle
     // add input
@@ -118,8 +123,10 @@ struct TestReduceOpHandle {
       if (!use_gpu_) {
         op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       }
-      auto *in_var_handle = new VarHandle(1, j, "input", gpu_list_[j]);
-      in_var_handle->generated_op_ = nullptr;
+      nodes.emplace_back(new ir::Node("node1"));
+      auto *in_var_handle =
+          new VarHandle(nodes.back().get(), 1, j, "input", gpu_list_[j]);
+      in_var_handle->ClearGeneratedOp();
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
     }
@@ -128,12 +135,13 @@ struct TestReduceOpHandle {
     vars_.emplace_back(new DummyVarHandle());
     DummyVarHandle *in_dummy_var_handle =
         static_cast<DummyVarHandle *>(vars_.back().get());
-    in_dummy_var_handle->generated_op_ = nullptr;
+    in_dummy_var_handle->ClearGeneratedOp();
     op_handle_->AddInput(in_dummy_var_handle);
 
     // add output
-    auto *out_var_handle =
-        new VarHandle(2, out_scope_idx, "out", gpu_list_[out_scope_idx]);
+    nodes.emplace_back(new ir::Node("node2"));
+    auto *out_var_handle = new VarHandle(nodes.back().get(), 2, out_scope_idx,
+                                         "out", gpu_list_[out_scope_idx]);
     vars_.emplace_back(out_var_handle);
     op_handle_->AddOutput(out_var_handle);
 

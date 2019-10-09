@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -70,8 +72,9 @@ class TestNormalization(unittest.TestCase):
     def l2_normalize(self, data, axis, epsilon):
         """ Compute the groundtruth.
         """
-        output = data * np.reciprocal(
-            np.sum(np.square(data), axis=axis, keepdims=True))
+        output = data / np.broadcast_to(
+            np.sqrt(np.sum(np.square(data), axis=axis, keepdims=True)),
+            data.shape)
         return output
 
     def test_l2_normalize(self):

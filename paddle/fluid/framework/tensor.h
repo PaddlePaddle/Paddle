@@ -18,10 +18,11 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -34,6 +35,28 @@ namespace framework {
 class LoDTensor;
 
 class Tensor {
+#ifdef PADDLE_WITH_MKLDNN
+
+ public:
+  inline mkldnn::memory::format format() const { return format_; }
+
+  inline void set_format(const mkldnn::memory::format format) {
+    format_ = format;
+  }
+
+ protected:
+  /**
+   * @brief the detail format of memory block which have layout as kMKLDNN
+   *
+   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
+   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+
+  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+#endif
+
  public:
   template <typename T, size_t D, int MajorType, typename IndexType>
   friend struct EigenTensor;
@@ -45,58 +68,55 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : offset_(0) {}
+  Tensor() : type_(proto::VarType::FP32), offset_(0) {}
 
-  /*! Constructor with place should only be used in pybind. */
-  explicit Tensor(const platform::Place& place) : offset_(0) {
-    holder_->set_place(place);
-  }
+  explicit Tensor(const proto::VarType::Type&);
 
   /*! Return a pointer to mutable memory block. */
   template <typename T>
-  inline T* data();
+  T* data();
 
   /*! Return a pointer to constant memory block. */
   template <typename T>
-  inline const T* data() const;
+  const T* data() const;
 
   inline bool IsInitialized() const;
-
-  inline void switch_place(platform::Place new_place);
 
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(platform::Place place);
+  T* mutable_data(platform::Place place, size_t requested_size = 0);
 
-  inline void* mutable_data(platform::Place place, std::type_index type);
+  void* mutable_data(platform::Place place, proto::VarType::Type type,
+                     size_t requested_size = 0);
 
-  inline void* mutable_data(platform::Place place);
+  void* mutable_data(platform::Place place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
    *
-   * @param[in] dims    The dimensions of the memory block.
-   * @param[in] place   The place of the memory block.
+   * @param[in] dims           The dimensions of the memory block.
+   * @param[in] place          The place of the memory block.
+   * @param[in] requested_size The size of the block in bytes.
    *
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(DDim dims, platform::Place place);
+  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
-  inline const DDim& dims() const;
+  const DDim& dims() const;
 
   /*! Return the numel of the memory block. */
-  inline int64_t numel() const;
+  int64_t numel() const;
 
   /*! Resize the dimensions of the memory block. */
-  inline Tensor& Resize(const DDim& dims);
+  Tensor& Resize(const DDim& dims);
 
   /*! The internal of two tensors share the same memory block. */
-  inline Tensor& ShareDataWith(const Tensor& src);
+  Tensor& ShareDataWith(const Tensor& src);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.
@@ -106,7 +126,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  inline Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -114,71 +134,44 @@ class Tensor {
     return holder_->place();
   }
 
-  std::type_index type() const {
+  proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::type() is called.");
-    return holder_->type();
+    return type_;
   }
 
   // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
-  inline void check_memory_size() const;
+  void check_memory_size() const;
 
-  inline DataLayout layout() const { return layout_; }
+  DataLayout layout() const { return layout_; }
 
-  inline void set_layout(const DataLayout layout) { layout_ = layout; }
+  void set_layout(const DataLayout layout) { layout_ = layout; }
+
+  void clear() {
+    holder_ = nullptr;
+    offset_ = 0;
+  }
+
+  void ShareBufferWith(const Tensor& tensor) {
+    holder_ = tensor.holder_;
+    offset_ = tensor.offset_;
+  }
+
+  const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
+  size_t offset() const { return offset_; }
+
+  std::shared_ptr<memory::Allocation> MoveMemoryHolder() {
+    return std::move(holder_);
+  }
+
+  void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
  private:
-  /**
-   * @note    Placeholder hides type T, so it doesn't appear as a template
-   *          parameter of Variable.
-   */
-  struct Placeholder {
-    virtual ~Placeholder() = default;
-    virtual void* ptr() const = 0;
-    virtual size_t size() const = 0;
-    virtual std::type_index type() const = 0;
-    virtual platform::Place place() const = 0;
-    virtual void set_type(std::type_index type) = 0;
-    virtual void set_place(platform::Place place) = 0;
-  };
-
-  template <typename Place>
-  struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(Place place, size_t size, std::type_index type)
-        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
-               memory::PODDeleter<uint8_t, Place>(place)),
-          place_(place),
-          size_(size),
-          type_(type) {
-      PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
-                              (is_cpu_place(place_) ? "CPU" : "GPU"));
-    }
-
-    virtual size_t size() const { return size_; }
-    virtual platform::Place place() const { return place_; }
-    virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
-    virtual std::type_index type() const { return type_; }
-    virtual void set_type(std::type_index type) { type_ = type; }
-    virtual void set_place(platform::Place place) { place_ = place; }
-
-    /*! the pointer of memory block. */
-    std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;
-
-    /*! the place of memory block. */
-    platform::Place place_;
-
-    /*! the size of memory block. */
-    size_t size_;
-
-    /* the current type of memory */
-    std::type_index type_;
-  };
-
   /*! holds the memory block if allocated. */
-  std::shared_ptr<Placeholder> holder_;
-
+  std::shared_ptr<memory::Allocation> holder_;
+  proto::VarType::Type type_;
   /**
    * @brief points to elements dimensions.
    *
@@ -197,8 +190,10 @@ class Tensor {
    *       N,C,H,W for respectively the batch size, the number of
    *       feature maps, the height.
    */
-
-  DataLayout layout_ = DataLayout::kNHWC;
+  // Fix me: here just change the default layout to kNCHW
+  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // according to actual input data
+  DataLayout layout_ = DataLayout::kNCHW;
 
   /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
@@ -209,15 +204,6 @@ class Tensor {
    */
   size_t offset_;
 };
-
-inline void Tensor::switch_place(platform::Place new_place) {
-  if (holder_->place() == new_place) {
-    return;
-  }
-
-  // TODO(tonyyang-svail): do memcpy here.
-  PADDLE_THROW("Not Implemented");
-}
 
 }  // namespace framework
 }  // namespace paddle

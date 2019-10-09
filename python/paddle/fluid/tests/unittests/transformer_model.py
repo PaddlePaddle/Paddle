@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from functools import partial
 import numpy as np
 
+import os
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
@@ -22,7 +25,7 @@ pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 64
+batch_size = 2
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -118,8 +121,9 @@ def multi_head_attention(queries,
         # FIXME(guosheng): Decouple the program desc with batch_size.
         return layers.reshape(
             x=trans_x,
-            shape=map(int,
-                      [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]]))
+            shape=list(
+                map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]
+                          ])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -131,7 +135,7 @@ def multi_head_attention(queries,
         # The current implementation of softmax_op only supports 2D tensor,
         # consequently it cannot be directly used here.
         # If to use the reshape_op, Besides, the shape of product inferred in
-        # compile-time is not the actual shape in run-time. It cann't be used
+        # compile-time is not the actual shape in run-time. It can't be used
         # to set the attribute of reshape_op.
         # So, here define the softmax for temporary solution.
 
@@ -242,6 +246,7 @@ def prepare_encoder(src_word,
         padding_idx=pos_pad_idx,
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name, trainable=False))
+    src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.
@@ -388,6 +393,51 @@ def decoder(dec_input,
     return dec_output
 
 
+def build_inputs(max_length, n_head):
+    names = [
+        'src_word',
+        'src_pos',
+        'trg_word',
+        'trg_pos',
+        'src_slf_attn_bias',
+        'trg_slf_attn_bias',
+        'trg_src_attn_bias',
+        'gold',
+        'weights',
+    ]
+
+    shapes = [
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+    ]
+
+    dtypes = [
+        'int64',
+        'int64',
+        'int64',
+        'int64',
+        'float32',
+        'float32',
+        'float32',
+        'int64',
+        'float32',
+    ]
+
+    all_inputs = []
+    for name, shape, dtype in zip(names, shapes, dtypes):
+        all_inputs.append(
+            fluid.layers.data(
+                name=name, shape=shape, dtype=dtype, append_batch_size=False))
+    return all_inputs
+
+
 def transformer(
         src_vocab_size,
         trg_vocab_size,
@@ -402,34 +452,9 @@ def transformer(
         src_pad_idx,
         trg_pad_idx,
         pos_pad_idx, ):
-    file_obj = fluid.layers.open_recordio_file(
-        filename='./wmt16.recordio',
-        shapes=[
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-        ],
-        dtypes=[
-            'int64',
-            'int64',
-            'int64',
-            'int64',
-            'float32',
-            'float32',
-            'float32',
-            'int64',
-            'float32',
-        ],
-        lod_levels=[0] * 9)
 
-    src_word, src_pos, trg_word, trg_pos, src_slf_attn_bias, trg_slf_attn_bias, trg_src_attn_bias, gold, weights = fluid.layers.read_file(
-        file_obj)
+    src_word, src_pos, trg_word, trg_pos, src_slf_attn_bias, trg_slf_attn_bias, trg_src_attn_bias, gold, weights = build_inputs(
+        max_length, n_head)
 
     enc_input = prepare_encoder(
         src_word,

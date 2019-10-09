@@ -40,7 +40,6 @@ The lastest pre-built build environment images are:
 | Image | Tag |
 | ----- | --- |
 | paddlepaddle/paddle | latest-dev |
-| paddlepaddle/paddle | latest-dev-android |
 
 ### Start Build
 
@@ -67,14 +66,10 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `WITH_AVX` | OFF | Set to "ON" to enable AVX support. |
 | `WITH_TESTING` | OFF | Build unit tests binaries. |
 | `WITH_MKL` | ON | Build with [Intel® MKL](https://software.intel.com/en-us/mkl) and [Intel® MKL-DNN](https://github.com/01org/mkl-dnn) support. |
-| `WITH_GOLANG` | OFF | Build fault-tolerant parameter server written in go. |
-| `WITH_SWIG_PY` | ON | Build with SWIG python API support. |
-| `WITH_C_API` | OFF | Build capi libraries for inference. |
 | `WITH_PYTHON` | ON | Build with python support. Turn this off if build is only for capi. |
 | `WITH_STYLE_CHECK` | ON | Check the code style when building. |
 | `PYTHON_ABI` | "" | Build for different python ABI support, can be cp27-cp27m or cp27-cp27mu |
 | `RUN_TEST` | OFF | Run unit test immediently after the build. |
-| `WITH_DOC` | OFF | Build docs after build binaries. |
 | `WOBOQ` | OFF | Generate WOBOQ code viewer under `build/woboq_out` |
 
 ## Docker Images
@@ -112,6 +107,14 @@ RUN pip install /paddlepaddle-0.10.0-cp27-cp27mu-linux_x86_64.whl && rm -f /*.wh
 
 Then build the image by running `docker build -t [REPO]/paddle:[TAG] .` under
 the directory containing your own `Dockerfile`.
+
+We also release a script and Dockerfile for building PaddlePaddle docker images
+across different cuda versions. To build these docker images, run:
+
+```bash
+bash ./build_docker_images.sh
+docker build -t [REPO]/paddle:tag -f [generated_docker_file] .
+```
 
 - NOTE: note that you can choose different base images for your environment, you can find all the versions [here](https://hub.docker.com/r/nvidia/cuda/).
 

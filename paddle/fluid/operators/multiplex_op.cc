@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/multiplex_op.h"
+#include <memory>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -53,35 +55,54 @@ class MultiplexOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
-        ctx.device_context());
+    return framework::OpKernelType(ctx.MultiInput<Tensor>("X")[0]->type(),
+                                   ctx.device_context());
   }
 };
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Ids", "The index tensor of multiplex operator.");
-    AddInput("X", "The candidate tensors of multiplex operator.")
+    AddInput("Ids",
+             "Tensor<int32>, index variable which is a 2-D tensor with shape "
+             "[M, 1] where M is the batch size.");
+    AddInput("X",
+             "A list of variables to gather from. All variables have the same "
+             "shape and the rank is at least 2.")
         .AsDuplicable();
     AddOutput("Out", "The output tensor of multiplex operator.");
     AddComment(R"DOC(
-Multiplex Operator.
+Referring to the given index variable, this layer selects rows from the
+input variables to construct a multiplex variable. Assuming that there are
+:math:`m` input variables and :math:`I_i` represents the i-th input
+variable and :math:`i` is in [0, :math:`m`). All input variables are
+tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
+Please note that rank of the input tensor should be at least 2. Each input
+variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
+where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
+* ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
+variable. The given index variable should be a 2-D tensor with shape
+[:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+Then the output variable will be a tensor with shape [:math:`d_0`,
+:math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
+matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
+row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
 
-Multiplex multiple tensors according to the index provided by the index tensor.
+* Ids: the index tensor.
 
-Ids: the index tensor.
-X[0 : N - 1]: the candidate tensors for output (N >= 2).
-For each index i from 0 to batchSize - 1, the output is the i-th row of the
+* X[0 : N - 1]: the candidate tensors for output (N >= 2).
+
+* For each index i from 0 to batchSize - 1, the output is the i-th row of the
 the (Ids[i])-th tensor.
 
 For i-th row of the output tensor:
 
-$$y[i] = x_{k}[i]$$
+$$
+y[i] = x_{k}[i]
+$$
 
-where `y` is the output tensor, `x_{k}` is the k-th input tensor,
-and `k = Ids[i]`.
+where $y$ is the output tensor, $x_{k}$ is the k-th input tensor,
+and $k = Ids[i]$.
 
 )DOC");
   }
@@ -92,29 +113,47 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(!ctx->Inputs("X").empty(), "Input(X) should not be null.");
-    PADDLE_ENFORCE(!ctx->Outputs(framework::GradVarName("X")).empty(),
-                   "Output(X@Grad) should not be null.");
+    auto& dxs = ctx->Outputs(framework::GradVarName("X"));
+    PADDLE_ENFORCE(!dxs.empty(), "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
-    ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
+    auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputsDim(framework::GradVarName("X"),
+                       std::vector<framework::DDim>(dxs.size(), dout_dim));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
         ctx.device_context());
+  }
+};
+
+class MultiplexGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("multiplex_grad");
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<false>);
+                  ops::MultiplexGradDescMaker);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex,

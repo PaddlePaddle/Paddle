@@ -12,32 +12,96 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class ReluOpConverter : public OpConverter {
+class ActivationOpConverter : public OpConverter {
  public:
-  ReluOpConverter() {}
-  void operator()(const framework::proto::OpDesc& op) override {
+  ActivationOpConverter() {}
+  void operator()(const framework::proto::OpDesc& op,
+                  const framework::Scope& scope, bool test_mode) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
-    framework::OpDesc op_desc(op, nullptr, nullptr);
-    LOG(INFO) << "convert a fluid relu op to tensorrt activation layer whose "
-                 "type is Relu";
+    framework::OpDesc op_desc(op, nullptr);
+    VLOG(3)
+        << "convert a fluid Activation op to tensorrt activation layer whose "
+           "type is "
+        << op_type_;
     const nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
+
+    auto op_pair = ops.find(op_type_);
+    if (op_pair == ops.end()) {
+      PADDLE_THROW("Wrong activation op type!");
+    }
+
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
-        nvinfer1::ActivationType::kRELU);
-    engine_->SetITensor(op_desc.Output("Out")[0], layer->getOutput(0));
+        op_pair->second);
+
+#if IS_TRT_VERSION_GE(5130)
+    // max(alpha, min(beta, x))
+    if (op_type_ == "relu6") {
+      layer->setAlpha(0.);
+      layer->setBeta(6.);
+    }
+#endif
+
+    auto output_name = op_desc.Output("Out")[0];
+
+    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    if (op_desc.HasAttr("out_scale")) {
+#if IS_TRT_VERSION_GE(5130)
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+#endif
+    }
   }
+
+ protected:
+  std::string op_type_;
+  static const std::unordered_map<std::string, nvinfer1::ActivationType> ops;
 };
 
-REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
+const std::unordered_map<std::string, nvinfer1::ActivationType>
+    ActivationOpConverter::ops = {
+        {"relu", nvinfer1::ActivationType::kRELU},
+        {"sigmoid", nvinfer1::ActivationType::kSIGMOID},
+        {"tanh", nvinfer1::ActivationType::kTANH},
+#if IS_TRT_VERSION_GE(5130)
+        {"relu6", nvinfer1::ActivationType::kCLIP},
+#endif
+};
+
+class ReluOpConverter : public ActivationOpConverter {
+ public:
+  ReluOpConverter() { op_type_ = "relu"; }
+};
+
+class SigmoidOpConverter : public ActivationOpConverter {
+ public:
+  SigmoidOpConverter() { op_type_ = "sigmoid"; }
+};
+
+class TanhOpConverter : public ActivationOpConverter {
+ public:
+  TanhOpConverter() { op_type_ = "tanh"; }
+};
+
+class Relu6OpConverter : public ActivationOpConverter {
+ public:
+  Relu6OpConverter() { op_type_ = "relu6"; }
+};
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
+
+REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
+REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
+REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);

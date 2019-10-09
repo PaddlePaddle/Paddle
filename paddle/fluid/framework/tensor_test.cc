@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include <gtest/gtest.h>
 #include <string>
+#include "paddle/fluid/platform/float16.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -37,13 +38,11 @@ TEST(Tensor, DataAssert) {
     src_tensor.data<double>();
   } catch (platform::EnforceNotMet err) {
     caught = true;
-    std::string msg =
-        "holder_ should not be null\nTensor holds no memory. Call "
-        "Tensor::mutable_data first.";
-    const char* what = err.what();
-    for (size_t i = 0; i < msg.length(); ++i) {
-      ASSERT_EQ(what[i], msg[i]);
-    }
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
+                            "memory. Call "
+                            "Tensor::mutable_data first.") !=
+                std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -56,23 +55,61 @@ TEST(Tensor, MutableData) {
     // initialization
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
                                         platform::CPUPlace());
+    auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
                                         platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
-    EXPECT_NE(p1, p2);
+    auto p2_holder1 = src_tensor.Holder();
+    EXPECT_NE(p1_holder.get(), p2_holder1.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
                                         platform::CPUPlace());
-    EXPECT_EQ(p1, p2);
+    auto p2_holder2 = src_tensor.Holder();
+    EXPECT_EQ(p2_holder1.get(), p2_holder2.get());
     // set src_tensor a new dim with smaller size
     // momery block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2}),
                                         platform::CPUPlace());
+    auto p2_holder3 = src_tensor.Holder();
     EXPECT_EQ(p1, p2);
+    EXPECT_EQ(p2_holder2.get(), p2_holder3.get());
+
+    float* p3 = nullptr;
+    float* p4 = nullptr;
+    // set src_tensor a different type but smaller size.
+    // memory block is supposed to be unchanged.
+    auto* tmp = src_tensor.mutable_data<uint8_t>(framework::make_ddim({2, 2}),
+                                                 platform::CPUPlace());
+    p3 = reinterpret_cast<float*>(tmp);
+    auto p3_holder1 = src_tensor.Holder();
+    EXPECT_EQ(p1, p3);
+    EXPECT_EQ(p2_holder3.get(), p3_holder1.get());
+
+    // set src_tensor a different type but bigger size.
+    // memory block is supposed to be changed.
+    auto* tmp2 = src_tensor.mutable_data<double>(
+        framework::make_ddim({2, 2, 3}), platform::CPUPlace());
+    auto p3_holder2 = src_tensor.Holder();
+    p4 = reinterpret_cast<float*>(tmp2);
+    EXPECT_NE(p1, p4);
+    EXPECT_NE(p3_holder1.get(), p3_holder2.get());
+  }
+  // Not sure if it's desired, but currently, Tensor type can be changed.
+  {
+    framework::Tensor src_tensor;
+    int8_t* p1 = src_tensor.mutable_data<int8_t>(framework::make_ddim({1}),
+                                                 platform::CPUPlace());
+    EXPECT_NE(p1, nullptr);
+    *p1 = 1;
+
+    uint8_t* p2 = src_tensor.mutable_data<uint8_t>(framework::make_ddim({1}),
+                                                   platform::CPUPlace());
+    EXPECT_NE(p2, nullptr);
+    EXPECT_EQ(static_cast<int>(p2[0]), 1);
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -83,13 +120,15 @@ TEST(Tensor, MutableData) {
     // initialization
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({1, 2, 3}),
                                         platform::CUDAPlace());
+    auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
     // momery is supposed to be re-allocated
-    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 4}),
+    p2 = src_tensor.mutable_data<float>(framework::make_ddim({3, 1024}),
                                         platform::CUDAPlace());
+    auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
-    EXPECT_NE(p1, p2);
+    EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
     // momery block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(framework::make_ddim({2, 2, 3}),
@@ -114,13 +153,11 @@ TEST(Tensor, ShareDataWith) {
       dst_tensor.ShareDataWith(src_tensor);
     } catch (paddle::platform::EnforceNotMet err) {
       caught = true;
-      std::string msg =
-          "holder_ should not be null\nTensor holds no memory. Call "
-          "Tensor::mutable_data first.";
-      const char* what = err.what();
-      for (size_t i = 0; i < msg.length(); ++i) {
-        ASSERT_EQ(what[i], msg[i]);
-      }
+      std::string ex_msg = err.what();
+      EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
+                              "memory. Call "
+                              "Tensor::mutable_data first.") !=
+                  std::string::npos);
     }
     ASSERT_TRUE(caught);
 
@@ -209,7 +246,21 @@ TEST(Tensor, ReshapeToMatrix) {
 
 TEST(Tensor, Layout) {
   framework::Tensor src;
-  ASSERT_EQ(src.layout(), framework::DataLayout::kNHWC);
+  ASSERT_EQ(src.layout(), framework::DataLayout::kNCHW);
   src.set_layout(framework::DataLayout::kAnyLayout);
   ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
+}
+
+TEST(Tensor, FP16) {
+  using platform::float16;
+  framework::Tensor src;
+  float16* src_ptr = src.mutable_data<float16>({2, 3}, platform::CPUPlace());
+  for (int i = 0; i < 2 * 3; ++i) {
+    src_ptr[i] = static_cast<float16>(i);
+  }
+  EXPECT_EQ(src.memory_size(), 2 * 3 * sizeof(float16));
+  // EXPECT a human readable error message
+  // src.data<uint8_t>();
+  // Tensor holds the wrong type, it holds N6paddle8platform7float16E at
+  // [/paddle/Paddle/paddle/fluid/framework/tensor_impl.h:43]
 }

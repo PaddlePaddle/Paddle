@@ -56,7 +56,11 @@ limitations under the License. */
 #include <immintrin.h>
 #endif  // PADDLE_ARM
 
+#if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
 
 namespace paddle {
 namespace platform {
@@ -67,8 +71,8 @@ struct float16;
 }  // namespace platform
 }  // namespace paddle
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace platform {
@@ -899,6 +903,30 @@ struct is_pod<paddle::platform::float16> {
 };
 
 template <>
+struct is_floating_point<paddle::platform::float16>
+    : std::integral_constant<
+          bool, std::is_same<paddle::platform::float16,
+                             typename std::remove_cv<
+                                 paddle::platform::float16>::type>::value> {};
+template <>
+struct is_signed<paddle::platform::float16> {
+  static const bool value = true;
+};
+
+template <>
+struct is_unsigned<paddle::platform::float16> {
+  static const bool value = false;
+};
+
+inline bool isnan(const paddle::platform::float16& a) {
+  return paddle::platform::isnan(a);
+}
+
+inline bool isinf(const paddle::platform::float16& a) {
+  return paddle::platform::isinf(a);
+}
+
+template <>
 struct numeric_limits<paddle::platform::float16> {
   static const bool is_specialized = true;
   static const bool is_signed = true;
@@ -1006,6 +1034,11 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
 template <>
 HOSTDEVICE inline float16 exp(const float16& a) {
   return float16(::expf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 erf(const float16& a) {
+  return float16(::erff(static_cast<float>(a)));
 }
 
 template <>

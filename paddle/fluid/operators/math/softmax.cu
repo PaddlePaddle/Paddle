@@ -11,9 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
-
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
@@ -38,7 +35,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(X->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -52,7 +49,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
@@ -67,7 +64,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize<int>(Y->dims());
   DataLayout layout = DataLayout::kNCHW;
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
@@ -83,7 +80,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
@@ -96,12 +93,20 @@ template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<double>;
+template class SoftmaxGradCUDNNFunctor<platform::float16>;
 
-template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
-template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+                              false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16,
+                              true>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, float, false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, double, false>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, float, true>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, double, true>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
+template class SoftmaxGradFunctor<platform::CUDADeviceContext,
+                                  platform::float16>;
 
 }  // namespace math
 }  // namespace operators

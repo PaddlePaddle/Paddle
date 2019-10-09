@@ -1,17 +1,68 @@
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor init)
-cc_library(analysis SRCS dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc fluid_to_data_flow_graph_pass.cc
-  DEPS paddle_fluid)
-cc_test(test_node SRCS node_tester.cc DEPS analysis)
+unset(analysis_deps CACHE)
+set(analysis_deps # analysis_deps can be extended accross the project
+        framework_proto proto_desc graph pass paddle_fluid_api executor pretty_log
+        ir_pass_manager
+        CACHE INTERNAL "")
+
+add_subdirectory(ir_passes)
+add_subdirectory(passes)
+
+cc_library(analysis_helper SRCS helper.cc DEPS framework_proto proto_desc graph paddle_fluid_api)
+
+cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES} analysis_helper)
+
+cc_library(argument SRCS argument.cc DEPS scope proto_desc)
+cc_library(analysis_pass SRCS analysis_pass.cc DEPS proto_desc)
+
+cc_library(analysis SRCS
+  analyzer.cc
+  analysis_pass
+  DEPS ${analysis_deps} analysis_helper
+  ${INFER_IR_PASSES}
+  )
+
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 
-set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
+function(inference_analysis_test_build TARGET)
+  if(WITH_TESTING)
+     set(options "")
+     set(oneValueArgs "")
+     set(multiValueArgs SRCS EXTRA_DEPS)
+     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+     inference_base_test_build(${TARGET}
+             SRCS ${analysis_test_SRCS}
+             DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS})
+  endif()
+endfunction()
 
-cc_test(test_data_flow_graph SRCS data_flow_graph_tester.cc DEPS analysis ${FLUID_CORE_MODULES} paddle_fluid
-  ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
-set_tests_properties(test_data_flow_graph PROPERTIES DEPENDS test_word2vec)
+function(inference_analysis_test_run TARGET)
+  if(WITH_TESTING)
+     set(options "")
+     set(oneValueArgs "")
+     set(multiValueArgs COMMAND ARGS)
+     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+     inference_base_test_run(${TARGET}
+	     COMMAND ${analysis_test_COMMAND}
+             ARGS ${analysis_test_ARGS})
+  endif()
+endfunction()
 
-cc_test(test_subgraph_splitter
-        SRCS subgraph_splitter_tester.cc
-        DEPS analysis paddle_fluid tensor
-        ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
-set_tests_properties(test_subgraph_splitter PROPERTIES DEPENDS test_word2vec)
+function(inference_analysis_test TARGET)
+  if(WITH_TESTING)
+     set(options "")
+     set(oneValueArgs "")
+     set(multiValueArgs SRCS ARGS EXTRA_DEPS)
+     cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+     inference_base_test_build(${TARGET}
+             SRCS ${analysis_test_SRCS}
+             DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS})
+     inference_base_test_run(${TARGET}
+	     COMMAND ${TARGET}
+             ARGS ${analysis_test_ARGS})
+  endif()
+endfunction(inference_analysis_test)
+
+inference_analysis_test(test_analyzer
+	SRCS analyzer_tester.cc
+	EXTRA_DEPS reset_tensor_array paddle_inference_api
+	ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR})

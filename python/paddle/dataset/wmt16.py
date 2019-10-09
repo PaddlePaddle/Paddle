@@ -28,24 +28,26 @@ Multi30K: Multilingual English-German Image Descriptions.
 }
 """
 
+from __future__ import print_function
+
 import os
+import six
 import tarfile
 import gzip
 from collections import defaultdict
 
 import paddle.dataset.common
+import paddle.compat as cpt
 
 __all__ = [
     "train",
     "test",
     "validation",
-    "convert",
     "fetch",
     "get_dict",
 ]
 
-DATA_URL = ("http://cloud.dlnel.org/filepub/"
-            "?uuid=46a0808e-ddd8-427c-bacd-0dbc6d045fed")
+DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 
 TOTAL_EN_WORDS = 11250
@@ -60,35 +62,39 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
+            line = cpt.to_text(line)
             line_split = line.strip().split("\t")
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
                 word_dict[w] += 1
 
-    with open(save_path, "w") as fout:
-        fout.write("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK))
+    with open(save_path, "wb") as fout:
+        fout.write(
+            cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
         for idx, word in enumerate(
                 sorted(
-                    word_dict.iteritems(), key=lambda x: x[1], reverse=True)):
+                    six.iteritems(word_dict), key=lambda x: x[1],
+                    reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write("%s\n" % (word[0]))
+            fout.write(cpt.to_bytes(word[0]))
+            fout.write(cpt.to_bytes('\n'))
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
     dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
     if not os.path.exists(dict_path) or (
-            len(open(dict_path, "r").readlines()) != dict_size):
+            len(open(dict_path, "rb").readlines()) != dict_size):
         __build_dict(tar_file, dict_size, dict_path, lang)
 
     word_dict = {}
-    with open(dict_path, "r") as fdict:
+    with open(dict_path, "rb") as fdict:
         for idx, line in enumerate(fdict):
             if reverse:
-                word_dict[idx] = line.strip()
+                word_dict[idx] = cpt.to_text(line.strip())
             else:
-                word_dict[line.strip()] = idx
+                word_dict[cpt.to_text(line.strip())] = idx
     return word_dict
 
 
@@ -118,6 +124,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
+                line = cpt.to_text(line)
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
@@ -317,33 +324,3 @@ def fetch():
     """
     paddle.v4.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
                                       "wmt16.tar.gz")
-
-
-def convert(path, src_dict_size, trg_dict_size, src_lang):
-    """Converts dataset to recordio format.
-    """
-
-    paddle.dataset.common.convert(
-        path,
-        train(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_train")
-    paddle.dataset.common.convert(
-        path,
-        test(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_test")
-    paddle.dataset.common.convert(
-        path,
-        validation(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_validation")

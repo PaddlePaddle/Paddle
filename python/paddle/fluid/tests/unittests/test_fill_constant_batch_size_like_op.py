@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -55,7 +57,7 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
         self.op_type = "fill_constant_batch_size_like"
         self.inputs = {
             'Input': (np.random.random((31, 28)).astype("float32"),
-                      [[0, 9, 23, 31]])
+                      [[9, 14, 8]])
         }
         self.attrs = {
             'value': 3.5,

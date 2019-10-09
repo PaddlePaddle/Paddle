@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 from paddle.fluid.framework import default_main_program
 import paddle.fluid.core as core
@@ -43,6 +45,21 @@ class TestParameter(unittest.TestCase):
         self.assertTrue(np.allclose(p, np.ones(shape) * val))
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         self.assertTrue(np.allclose(np.array(p), np.ones(shape) * val))
+
+    def test_exceptions(self):
+        b = main_program.global_block()
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=None, dtype='float32', initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[1], dtype=None, initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[], dtype='float32', initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[-1], dtype='float32', initializer=None)
 
 
 if __name__ == '__main__':

@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
+
+#include <memory>
 #include <string>
+
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -41,14 +45,39 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
     AddComment(R"DOC(
-Scale operator
+**Scale operator**
 
-$$Out = scale*X$$
+Apply scaling and bias addition to the input tensor.
+
+if bias_after_scale=True:
+
+$$Out = scale*X + bias$$
+
+else:
+
+$$Out = scale*(X + bias)$$
 )DOC");
-    AddAttr<float>("scale",
-                   "(float, default 1.0)"
-                   "The scaling factor of the scale operator.")
+    AddAttr<float>("scale", "The scaling factor of the scale operator.")
         .SetDefault(1.0);
+    AddAttr<float>("bias", "The bias of the scale operator.").SetDefault(0.0);
+    AddAttr<bool>(
+        "bias_after_scale",
+        "Apply bias addition after or before scaling. It is useful for "
+        "numeric stability in some circumstances.")
+        .SetDefault(true);
+  }
+};
+
+class ScaleOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto &in_var_name = ctx->Input("X").front();
+    auto out_var_name = ctx->Output("Out").front();
+
+    if (in_var_name != out_var_name) {
+      ctx->SetType(out_var_name, ctx->GetType(in_var_name));
+      ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
+    }
   }
 };
 
@@ -62,18 +91,25 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", GetAttr("scale"));
+    grad_op->SetAttr("bias", 0.0f);
+    grad_op->SetAttr("bias_after_scale", true);
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
+using ScaleOpInplace = framework::SingleOpInplaceInToOut;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker);
+REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker,
+                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);

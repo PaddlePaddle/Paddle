@@ -16,12 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-#define FLT_MAX __FLT_MAX__
 
 template <typename DeviceContext, typename T>
 class MaxOutFunctor {

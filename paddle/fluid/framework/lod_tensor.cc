@@ -20,12 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/version.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
 
 namespace paddle {
 namespace framework {
@@ -51,27 +50,8 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
-
-  if (!platform::is_cpu_place(t.place())) {
-    LoDTensor tt;
-    framework::TensorCopy(t, platform::CPUPlace(), &tt);
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(t.place());
-    dev_ctx.Wait();
-
-    os << tt;
-    return os;
-  }
-
-  os << "dim: " << t.dims() << "\n";
-  os << "lod: " << t.lod() << "\n";
-
-  // only print first ten elements
-  int64_t size = t.numel() < 10 ? t.numel() : 10;
-  for (int64_t i = 0; i < size; ++i) {
-    os << t.data<float>()[i] << " ";
-  }
+  os << "\tlod: " << t.lod() << "\n";
+  os << static_cast<Tensor>(t) << "\n";
 
   return os;
 }
@@ -85,6 +65,7 @@ std::string LoDToString(const LoD &lod) {
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size());
+  PADDLE_ENFORCE_LT(elem_begin, elem_end);
   PADDLE_ENFORCE_LT(elem_end, in[level].size());
 
   LoD res;
@@ -150,13 +131,8 @@ bool CheckLoD(const LoD &in, int tensor_height) {
     if (level.size() < 2) return false;
     // check: the first offset(the begin offset) of each level should be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be ascending(no same items
-    // allows).
-    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
-          if (a < b) return true;
-          return false;
-        })) {
-      LOG(INFO) << "ascending error";
+    // check: all the offsets in a level should be non-descending
+    if (!std::is_sorted(level.begin(), level.end())) {
       return false;
     }
   }
@@ -179,7 +155,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
   if (in.empty()) return true;
   for (const auto &level : in) {
     // check: all the offsets in a level should be ascending(no same items
-    // allows).
+    // allowed).
     if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
           if (a < b) return true;
           return false;
@@ -243,8 +219,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
   {  // the 1st field, uint32_t version for LoDTensor
-    constexpr uint32_t version = 0;
-    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+    os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
+             sizeof(kCurTensorVersion));
   }
   {
     // the 2st field, LoD information
@@ -273,6 +249,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
+                   "tensor version %u is not supported.", version);
     PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
   }
   {
@@ -294,33 +272,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-void WriteToRecordIO(recordio::Writer *writer,
-                     const std::vector<LoDTensor> &tensor,
-                     const platform::DeviceContext &dev_ctx) {
-  std::stringstream buffer;
-  size_t sz = tensor.size();
-  buffer.write(reinterpret_cast<const char *>(&sz), sizeof(uint32_t));
-  for (auto &each : tensor) {
-    SerializeToStream(buffer, each, dev_ctx);
-  }
-  writer->Write(buffer.str());
-}
-
-std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner *scanner, const platform::DeviceContext &dev_ctx) {
-  std::vector<LoDTensor> result;
-  if (scanner->HasNext()) {
-    std::istringstream sin(scanner->Next());
-    uint32_t sz;
-    sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-    result.resize(sz);
-    for (uint32_t i = 0; i < sz; ++i) {
-      DeserializeFromStream(sin, &result[i], dev_ctx);
-    }
-  }
-  return result;
-}
-
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
@@ -331,6 +282,21 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
 
   std::vector<LoDTensor> results;
   results.reserve(result_size);
+
+  // if result_size(batch_size) is 0, just return #places.size() copys of empty
+  // tensors.
+  if (result_size == 0) {
+    for (size_t i = 0; i < places.size(); ++i) {
+      LoDTensor dst;
+      dst.Resize(dims());
+      dst.mutable_data(places[i], type());
+      if (!lod().empty()) {
+        dst.set_lod(lod());
+      }
+      results.emplace_back(dst);
+    }
+    return results;
+  }
 
   int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
@@ -375,22 +341,34 @@ void LoDTensor::MergeLoDTensor(
   PADDLE_ENFORCE(!lod_tensors.empty());
 
   framework::DDim new_dim = lod_tensors[0]->dims();
-  std::type_index new_type = lod_tensors[0]->type();
+  proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout = lod_tensors[0]->layout();
+  for (auto *t : lod_tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = t->type();
+      new_layout = t->layout();
+      break;
+    }
+  }
+
   LoD new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
-    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
-    PADDLE_ENFORCE_EQ(new_layout, t->layout());
-
-    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
-                      framework::product(t->dims()) / t->dims()[0]);
-    new_dim[0] += t->dims()[0];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(new_type, t->type());
+      PADDLE_ENFORCE_EQ(new_layout, t->layout());
+      PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                        framework::product(t->dims()) / t->dims()[0]);
+      new_dim[0] += t->dims()[0];
+    }
 
     auto &lod = t->lod();
+    PADDLE_ENFORCE_EQ(new_lod.size(), lod.size());
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
-      auto &offset = sub_lod.back();
+      size_t offset = sub_lod.back();
       for (size_t k = 1; k < lod[j].size(); ++k) {
         sub_lod.push_back(lod[j][k] + offset);
       }
@@ -404,10 +382,46 @@ void LoDTensor::MergeLoDTensor(
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
+    if (end == begin) {
+      continue;
+    }
     auto dst = Slice(begin, end);
     framework::TensorCopy(*src, dst_place, &dst);
     begin = end;
   }
+}
+
+LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
+  LoD length_lod;
+  length_lod.reserve(offset_lod.size());
+  for (size_t lvl = 0; lvl < offset_lod.size(); ++lvl) {
+    std::vector<size_t> level;
+    if (offset_lod[lvl].size() > 0) {
+      level.reserve(offset_lod[lvl].size() - 1);
+    }
+    for (size_t idx = 0; idx < offset_lod[lvl].size() - 1; ++idx) {
+      level.push_back(offset_lod[lvl][idx + 1] - offset_lod[lvl][idx]);
+    }
+    length_lod.push_back(level);
+  }
+  return length_lod;
+}
+
+LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
+  LoD offset_lod;
+  offset_lod.reserve(length_lod.size());
+  for (size_t lvl = 0; lvl < length_lod.size(); ++lvl) {
+    std::vector<size_t> level;
+    level.reserve(length_lod[lvl].size() + 1);
+    size_t tmp = 0;
+    level.push_back(tmp);
+    for (size_t idx = 0; idx < length_lod[lvl].size(); ++idx) {
+      tmp += length_lod[lvl][idx];
+      level.push_back(tmp);
+    }
+    offset_lod.push_back(level);
+  }
+  return offset_lod;
 }
 
 }  // namespace framework

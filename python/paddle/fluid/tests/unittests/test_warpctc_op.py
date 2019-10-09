@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import sys
 import unittest
 import numpy as np
@@ -34,8 +36,8 @@ class CTCForward(object):
 
         self.level = 0
         self.num_classes = softmax.shape[1]
-        self.batch_size = len(softmax_lod[self.level]) - 1
-        assert self.batch_size == len(labels_lod[self.level]) - 1
+        self.batch_size = len(softmax_lod[self.level])
+        assert self.batch_size == len(labels_lod[self.level])
 
         self.loss = np.zeros([self.batch_size, 1], dtype="float32")
         self.gradient = np.zeros(self.softmax.shape, dtype="float32")
@@ -132,7 +134,7 @@ class CTCForward(object):
             for k in range(end - start):
                 j = k + start
                 if j & 1 == 1:
-                    label_idx = j / 2
+                    label_idx = j // 2
                     label_val = labels_a_sequence[label_idx, 0]
                     fv = self.log_add(forward_vars[i - 1, j],
                                       forward_vars[i - 1, j - 1])
@@ -156,16 +158,20 @@ class CTCForward(object):
         return -log_prob
 
     def forward(self):
+        softmax_offset = 0
+        labels_offset = 0
         for i in range(self.batch_size):
-            softmax_start_i = self.softmax_lod[self.level][i]
-            softmax_end_i = self.softmax_lod[self.level][i + 1]
-            labels_start_i = self.labels_lod[self.level][i]
-            labels_end_i = self.labels_lod[self.level][i + 1]
+            softmax_start_i = softmax_offset
+            softmax_end_i = softmax_offset + self.softmax_lod[self.level][i]
+            labels_start_i = labels_offset
+            labels_end_i = labels_offset + self.labels_lod[self.level][i]
 
             softmax_a_sequence = self.softmax[softmax_start_i:softmax_end_i, :]
             labels_a_sequence = self.labels[labels_start_i:labels_end_i, :]
             self.loss[i] = self.forward_a_sequence(softmax_a_sequence,
                                                    labels_a_sequence)
+            softmax_offset += self.softmax_lod[self.level][i]
+            labels_offset += self.labels_lod[self.level][i]
         return self.loss
 
 
@@ -173,8 +179,8 @@ class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
         self.num_classes = 8
-        self.logits_lod = [[0, 4, 5, 8, 11]]
-        self.labels_lod = [[0, 3, 4, 8, 12]]
+        self.logits_lod = [[4, 1, 3, 3]]
+        self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
         self.norm_by_times = False
 
@@ -184,11 +190,13 @@ class TestWarpCTCOp(OpTest):
 
         logits = np.random.uniform(
             0.1, 1.0,
-            [self.logits_lod[0][-1], self.num_classes]).astype("float32")
+            [sum(self.logits_lod[0]), self.num_classes]).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
         # labels should not be blank
         labels = np.random.randint(
-            0, self.num_classes - 1, [self.labels_lod[0][-1], 1], dtype="int32")
+            0,
+            self.num_classes - 1, [sum(self.labels_lod[0]), 1],
+            dtype="int32")
 
         ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
                          self.blank, self.norm_by_times)
@@ -196,9 +204,8 @@ class TestWarpCTCOp(OpTest):
 
         max_sequence_length = 0
         for i in range(self.batch_size):
-            max_sequence_length = max(
-                max_sequence_length,
-                self.logits_lod[0][i + 1] - self.logits_lod[0][i])
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_lod[0][i])
         self.gradient = np.zeros(
             [max_sequence_length, self.batch_size, self.num_classes],
             dtype="float32")
@@ -208,7 +215,10 @@ class TestWarpCTCOp(OpTest):
             "Label": (labels, self.labels_lod)
         }
         self.outputs = {"Loss": loss}
-        self.attrs = {"blank": self.blank, "norm_by_times": self.norm_by_times}
+        self.attrs = {
+            "blank": self.blank,
+            "norm_by_times": self.norm_by_times,
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -222,8 +232,103 @@ class TestWarpCTCOpCase1(TestWarpCTCOp):
     def config(self):
         self.batch_size = 4
         self.num_classes = CUDA_BLOCK_SIZE + 2
-        self.logits_lod = [[0, 4, 5, 8, 11]]
-        self.labels_lod = [[0, 3, 4, 8, 12]]
+        self.logits_lod = [[4, 1, 3, 3]]
+        self.labels_lod = [[3, 1, 4, 4]]
+        self.blank = 0
+        self.norm_by_times = False
+
+
+class TestWarpCTCOpWithPadding(OpTest):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[4, 1, 3, 3]]
+        self.labels_lod = [[3, 1, 4, 4]]
+        self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
+
+    def setUp(self):
+        self.op_type = "warpctc"
+        self.config()
+
+        logits = np.random.uniform(
+            0.1, 1.0,
+            [sum(self.logits_length), self.num_classes]).astype("float32")
+        softmax = np.apply_along_axis(stable_softmax, 1, logits)
+        # labels should not be blank
+        labels = np.random.randint(
+            0,
+            self.num_classes - 1, [sum(self.labels_length), 1],
+            dtype="int32")
+
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.blank, self.norm_by_times)
+        loss = ctc.forward()
+
+        max_sequence_length = 0
+        for i in range(self.batch_size):
+            max_sequence_length = max(max_sequence_length,
+                                      self.logits_length[i])
+        # reshape logits to T*N*S
+        new_logits = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype="float32")
+
+        cur = 0
+        for batch_id in range(self.batch_size):
+            for i in range(self.logits_length[batch_id]):
+                for j in range(self.num_classes):
+                    new_logits[i, batch_id, j] = logits[cur + i, j]
+            cur = cur + self.logits_length[batch_id]
+
+        # reshape labels to N*S
+        max_target_seq_length = 0
+        for i in range(self.batch_size):
+            max_target_seq_length = max(max_target_seq_length,
+                                        self.labels_length[i])
+        new_labels = np.zeros(
+            [self.batch_size, max_target_seq_length], dtype="int32")
+
+        cur = 0
+        for batch_id in range(self.batch_size):
+            for i in range(self.labels_length[batch_id]):
+                new_labels[batch_id, i] = labels[cur + i]
+            cur = cur + self.labels_length[batch_id]
+
+        self.gradient = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype="float32")
+
+        self.inputs = {
+            "Logits": new_logits,
+            "Label": labels,
+            "LogitsLength": self.logits_length,
+            "LabelLength": self.labels_length
+        }
+        self.outputs = {"Loss": loss}
+        self.attrs = {
+            "blank": self.blank,
+            "norm_by_times": self.norm_by_times,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
+
+
+class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = CUDA_BLOCK_SIZE + 2
+        self.logits_lod = [[4, 1, 3, 3]]
+        self.labels_lod = [[3, 1, 4, 4]]
+        self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
+        self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
         self.blank = 0
         self.norm_by_times = False
 

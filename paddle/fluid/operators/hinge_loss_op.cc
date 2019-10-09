@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hinge_loss_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -88,7 +91,6 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
                    "Input(Logits@GRAD) should not be null.");
 
     auto pred_dims = ctx->GetInputDim("Logits");
-    auto lab_dims = ctx->GetInputDim("Labels");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
 
     PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
@@ -98,12 +100,29 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class HingeLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("hinge_loss_grad");
+    op->SetInput("Logits", Input("Logits"));
+    op->SetInput("Labels", Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::HingeLossGradOpDescMaker);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,

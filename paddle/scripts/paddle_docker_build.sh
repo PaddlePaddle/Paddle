@@ -26,9 +26,7 @@ function start_build_docker() {
         -e WITH_GPU=ON \
         -e CUDA_ARCH_NAME=Auto \
         -e WITH_AVX=ON \
-        -e WITH_GOLANG=OFF \
         -e WITH_TESTING=ON \
-        -e WITH_C_API=OFF \
         -e WITH_COVERAGE=ON \
         -e COVERALLS_UPLOAD=ON \
         -e WITH_DEB=OFF \
@@ -36,7 +34,6 @@ function start_build_docker() {
         -e PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15 \
         -e CUDA_VISIBLE_DEVICES=0,1 \
         -e WITH_DISTRIBUTE=ON \
-        -e WITH_FLUID_ONLY=ON \
         -e RUN_TEST=ON
 EOL
     )
@@ -52,6 +49,9 @@ EOL
     ${DOCKER_CMD} run -it \
         ${DOCKER_ENV} \
         -e SCRIPT_NAME=$0 \
+        -e CONTENT_DEC_PASSWD=$CONTENT_DEC_PASSWD \
+        -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
+        -e TRAVIS_PULL_REQUEST=$TRAVIS_PULL_REQUEST \
         -v $PADDLE_ROOT:/paddle \
         -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \
@@ -64,9 +64,6 @@ function main() {
     DOCKER_REPO="paddlepaddle/paddle"
     VERSION="latest-dev"
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-    if [ "$1" == "build_android" ]; then
-        VERSION="latest-dev-android"
-    fi
     IMG=${DOCKER_REPO}:${VERSION}
     start_build_docker $@
 }

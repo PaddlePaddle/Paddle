@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestDropoutOp(OpTest):
@@ -25,7 +29,7 @@ class TestDropoutOp(OpTest):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64)).astype('float32')
+            'Mask': np.ones((32, 64)).astype('uint8')
         }
 
     def test_check_output(self):
@@ -42,7 +46,7 @@ class TestDropoutOp2(TestDropoutOp):
         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': np.zeros((32, 64)).astype('float32'),
-            'Mask': np.zeros((32, 64)).astype('float32')
+            'Mask': np.zeros((32, 64)).astype('uint8')
         }
 
 
@@ -53,7 +57,7 @@ class TestDropoutOp3(TestDropoutOp):
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
             'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64, 2)).astype('float32')
+            'Mask': np.ones((32, 64, 2)).astype('uint8')
         }
 
 
@@ -78,6 +82,69 @@ class TestDropoutOp5(OpTest):
         self.outputs = {
             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
         }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestDropoutOp6(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 1.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': np.zeros((32, 64)).astype('float32'),
+            'Mask': np.zeros((32, 64)).astype('uint8')
+        }
+
+
+class TestDropoutOp7(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64, 2)).astype('uint8')
+        }
+
+
+class TestDropoutOp8(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.35,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestDropoutOp9(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.75,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+        self.outputs = {'Out': self.inputs['X']}
 
     def test_check_output(self):
         self.check_output()
@@ -113,6 +180,28 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.input_size = [32, 64, 3]
         self.prob = 0.75
         self.fix_seed = False
+
+
+class TestDropoutOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                # the input of dropout must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.dropout(x1, dropout_prob=0.5)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of dropout must be float16 or float32 or float64
+                # float16 only can be set on GPU place
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="int32")
+                fluid.layers.dropout(x2, dropout_prob=0.5)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

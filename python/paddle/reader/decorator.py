@@ -13,17 +13,49 @@
 # limitations under the License.
 
 __all__ = [
-    'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader'
+    'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
+    'multiprocess_reader', 'Fake'
 ]
 
 from threading import Thread
 import subprocess
+import multiprocessing
+import six
+import sys
 
-from Queue import Queue
+from six.moves.queue import Queue
+from six.moves import zip_longest
+from six.moves import map
+from six.moves import zip
 import itertools
 import random
 import zlib
+import paddle.compat as cpt
+
+
+def cache(reader):
+    """
+    Cache the reader data into memory. 
+
+    Be careful that this method may take long time to process, 
+    and consume lots of memory. :code:`reader()` would only 
+    call once. 
+
+    Args:
+        reader (generator): a reader object which yields 
+            data each time.
+
+    Returns:
+        generator: a decorated reader object which yields data from cached memory.
+    """
+    all_data = tuple(reader())
+
+    def __impl__():
+        for item in all_data:
+            yield item
+
+    return __impl__
 
 
 def map_readers(func, *readers):
@@ -42,7 +74,7 @@ def map_readers(func, *readers):
         rs = []
         for r in readers:
             rs.append(r())
-        for e in itertools.imap(func, *rs):
+        for e in map(func, *rs):
             yield e
 
     return reader
@@ -148,16 +180,16 @@ def compose(*readers, **kwargs):
         for r in readers:
             rs.append(r())
         if not check_alignment:
-            for outputs in itertools.izip(*rs):
-                yield sum(map(make_tuple, outputs), ())
+            for outputs in zip(*rs):
+                yield sum(list(map(make_tuple, outputs)), ())
         else:
-            for outputs in itertools.izip_longest(*rs):
+            for outputs in zip_longest(*rs):
                 for o in outputs:
                     if o is None:
                         # None will be not be present if compose is aligned
                         raise ComposeNotAligned(
                             "outputs of readers are not aligned.")
-                yield sum(map(make_tuple, outputs), ())
+                yield sum(list(map(make_tuple, outputs)), ())
 
     return reader
 
@@ -235,20 +267,18 @@ class XmapEndSignal():
 
 def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     """
-    Use multiprocess to map samples from reader by a mapper defined by user.
-    And this function contains a buffered decorator.
-    :param mapper:  a function to map sample.
-    :type mapper: callable
-    :param reader: the data reader to read from
-    :type reader: callable
-    :param process_num: process number to handle original sample
-    :type process_num: int
-    :param buffer_size: max buffer size
-    :type buffer_size: int
-    :param order: keep the order of reader
-    :type order: bool
-    :return: the decarated reader
-    :rtype: callable
+    Use multi-threads to map samples from reader by a mapper defined by user.
+
+    Args:
+        mapper (callable): a function to map the data from reader.
+        reader (callable): a data reader which yields the data. 
+        process_num (int): thread number to handle original sample.
+        buffer_size (int): size of the queue to read data in. 
+        order (bool): whether to keep the data order from original reader. 
+            Default False.
+
+    Returns:
+        callable: a decorated reader with data mapping. 
     """
     end = XmapEndSignal()
 
@@ -306,7 +336,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         args = (in_queue, out_queue, mapper, out_order) if order else (
             in_queue, out_queue, mapper)
         workers = []
-        for i in xrange(process_num):
+        for i in range(process_num):
             worker = Thread(target=target, args=args)
             worker.daemon = True
             workers.append(worker)
@@ -328,6 +358,115 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     return xreader
 
 
+def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
+    """
+    multiprocess_reader use python multi process to read data from readers
+    and then use multiprocess.Queue or multiprocess.Pipe to merge all
+    data. The process number is equal to the number of input readers, each
+    process call one reader.
+
+    Multiprocess.Queue require the rw access right to /dev/shm, some
+    platform does not support.
+
+    you need to create multiple readers first, these readers should be independent
+    to each other so that each process can work independently.
+
+    An example:
+
+    .. code-block:: python
+
+        reader0 = reader(["file01", "file02"])
+        reader1 = reader(["file11", "file12"])
+        reader1 = reader(["file21", "file22"])
+        reader = multiprocess_reader([reader0, reader1, reader2],
+            queue_size=100, use_pipe=False)
+    """
+
+    try:
+        import ujson as json
+    except Exception as e:
+        sys.stderr.write("import ujson error: " + str(e) + " use json\n")
+        import json
+
+    assert type(readers) is list and len(readers) > 0
+
+    def _read_into_queue(reader, queue):
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None")
+                queue.put(sample)
+            queue.put(None)
+        except:
+            queue.put("")
+            six.reraise(*sys.exc_info())
+
+    def queue_reader():
+        queue = multiprocessing.Queue(queue_size)
+        for reader in readers:
+            p = multiprocessing.Process(
+                target=_read_into_queue, args=(reader, queue))
+            p.start()
+
+        reader_num = len(readers)
+        finish_num = 0
+        while finish_num < reader_num:
+            sample = queue.get()
+            if sample is None:
+                finish_num += 1
+            elif sample == "":
+                raise ValueError("multiprocess reader raises an exception")
+            else:
+                yield sample
+
+    def _read_into_pipe(reader, conn):
+        try:
+            for sample in reader():
+                if sample is None:
+                    raise ValueError("sample has None!")
+                conn.send(json.dumps(sample))
+            conn.send(json.dumps(None))
+            conn.close()
+        except:
+            conn.send(json.dumps(""))
+            conn.close()
+            six.reraise(*sys.exc_info())
+
+    def pipe_reader():
+        conns = []
+        for reader in readers:
+            parent_conn, child_conn = multiprocessing.Pipe()
+            conns.append(parent_conn)
+            p = multiprocessing.Process(
+                target=_read_into_pipe, args=(reader, child_conn))
+            p.start()
+
+        reader_num = len(readers)
+        finish_num = 0
+        conn_to_remove = []
+        while finish_num < reader_num:
+            for conn in conn_to_remove:
+                conns.remove(conn)
+            conn_to_remove = []
+            for conn in conns:
+                sample = json.loads(conn.recv())
+                if sample is None:
+                    finish_num += 1
+                    conn.close()
+                    conn_to_remove.append(conn)
+                elif sample == "":
+                    conn.close()
+                    conn_to_remove.append(conn)
+                    raise ValueError("multiprocess reader raises an exception")
+                else:
+                    yield sample
+
+    if use_pipe:
+        return pipe_reader
+    else:
+        return queue_reader
+
+
 def _buf2lines(buf, line_break="\n"):
     # FIXME: line_break should be automatically configured.
     lines = buf.split(line_break)
@@ -336,7 +475,7 @@ def _buf2lines(buf, line_break="\n"):
 
 class PipeReader:
     """
-        PipeReader read data by stream from a command, take it's 
+        PipeReader read data by stream from a command, take it's
         stdout into a pipe buffer and redirect it to the parser to
         parse, then yield data as your desired format.
 
@@ -352,7 +491,7 @@ class PipeReader:
         An example:
 
         .. code-block:: python
-    
+
            def example_reader():
                for f in myfiles:
                    pr = PipeReader("cat %s"%f)
@@ -376,7 +515,7 @@ class PipeReader:
         """
         :param cut_lines: cut buffer to lines
         :type cut_lines: bool
-        :param line_break: line break of the file, like \n or \r
+        :param line_break: line break of the file, like '\\\\n' or '\\\\r'
         :type line_break: string
 
         :return: one line or a buffer of bytes
@@ -387,9 +526,9 @@ class PipeReader:
             buff = self.process.stdout.read(self.bufsize)
             if buff:
                 if self.file_type == "gzip":
-                    decomp_buff = self.dec.decompress(buff)
+                    decomp_buff = cpt.to_text(self.dec.decompress(buff))
                 elif self.file_type == "plain":
-                    decomp_buff = buff
+                    decomp_buff = cpt.to_text(buff)
                 else:
                     raise TypeError("file_type %s is not allowed" %
                                     self.file_type)
@@ -403,3 +542,39 @@ class PipeReader:
                     yield decomp_buff
             else:
                 break
+
+
+class Fake(object):
+    """
+    fake reader will cache the first data it read and yield it out for data_num times.
+    It is used to cache a data from real reader and use it for speed testing.
+
+    :param reader: the origin reader
+    :param data_num: times that this reader will yield data.
+
+    :return: a fake reader.
+
+    Examples:
+        .. code-block:: python
+
+            def reader():
+                for i in range(10):
+                    yield i
+
+            fake_reader = Fake()(reader, 100)
+    """
+
+    def __init__(self):
+        self.data = None
+        self.yield_num = 0
+
+    def __call__(self, reader, data_num):
+        def fake_reader():
+            if self.data is None:
+                self.data = next(reader())
+            while self.yield_num < data_num:
+                yield self.data
+                self.yield_num += 1
+            self.yield_num = 0
+
+        return fake_reader

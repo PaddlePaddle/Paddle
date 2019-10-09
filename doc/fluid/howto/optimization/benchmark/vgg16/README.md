@@ -1,1 +1,0 @@
-../../../../../../benchmark/cluster/vgg16/README.md

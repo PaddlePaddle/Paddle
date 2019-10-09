@@ -16,6 +16,13 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
+// Any incompatible changes to ProgramDesc and its dependencies should
+// raise the version defined version.h.
+//
+// Serailization and Deserialization codes should be modified in a way
+// that supports old versions following the version and compatibility policy.
+message Version { optional int64 version = 1 [ default = 0 ]; }
+
 enum AttrType {
   INT = 0;
   FLOAT = 1;
@@ -27,6 +34,8 @@ enum AttrType {
   BOOLEANS = 7;
   BLOCK = 8;
   LONG = 9;
+  BLOCKS = 10;
+  LONGS = 11;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -46,6 +55,8 @@ message OpDesc {
     repeated bool bools = 11;
     optional int32 block_idx = 12;
     optional int64 l = 13;
+    repeated int32 blocks_idx = 14;
+    repeated int64 longs = 15;
   };
 
   message Var {
@@ -104,6 +115,7 @@ message VarType {
     // Tensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
+    INT8 = 21;
 
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;
@@ -115,7 +127,6 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
-    CHANNEL = 16;
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
     // in operators like nccl_op
@@ -147,12 +158,6 @@ message VarType {
   message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
   optional ReaderDesc reader = 5;
 
-  message ChannelDesc {
-    required Type data_type = 1;
-    required int64 capacity = 2;
-  }
-  optional ChannelDesc channel = 6;
-
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
 }
@@ -161,6 +166,9 @@ message VarDesc {
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
+  // True if the variable is an input data and
+  // have to check the feed data shape and dtype
+  optional bool need_check_feed = 4 [ default = false ];
 }
 
 message BlockDesc {
@@ -171,9 +179,39 @@ message BlockDesc {
   optional int32 forward_block_idx = 5 [ default = -1 ];
 }
 
+// CompatibleInfo is used to determine if a feature is compatible and
+// provides the information.
+message CompatibleInfo {
+  enum Type {
+    COMPATIBLE = 0;
+    DEFINITELY_NOT = 1;
+    POSSIBLE = 2;
+    BUG_FIX = 3;
+    PRECISION_CHANGE = 4;
+  }
+  required string version = 1;
+  required Type type = 2;
+}
+
+// In some cases, Paddle Fluid may perform operator definition iterations,
+// and the operator uses OpCompatibleMap for compatibility testing.
+message OpCompatibleMap {
+  message OpCompatiblePair {
+    required string op_name = 1;
+    required CompatibleInfo compatible_info = 2;
+  }
+  repeated OpCompatiblePair pair = 1;
+  optional string default_required_version = 2;
+}
+
 // Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
-message ProgramDesc { repeated BlockDesc blocks = 1; }
+message ProgramDesc {
+  reserved 2; // For backward compatibility.
+  repeated BlockDesc blocks = 1;
+  optional Version version = 4;
+  optional OpCompatibleMap op_compatible_map = 3;
+}

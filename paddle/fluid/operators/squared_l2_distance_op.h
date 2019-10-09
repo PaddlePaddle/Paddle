@@ -77,6 +77,9 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
     auto* x_g = context.Output<Tensor>(framework::GradVarName("X"));
     auto* y_g = context.Output<Tensor>(framework::GradVarName("Y"));
 
+    PADDLE_ENFORCE_NOT_NULL(x_g);
+    PADDLE_ENFORCE_NOT_NULL(y_g);
+
     auto sub_result = EigenMatrix<T>::From(*in0);
     auto out_grad = EigenMatrix<T>::From(*in1);
 
@@ -92,31 +95,28 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
     // propagate back to input
     auto& eigen_place =
         *context.template device_context<DeviceContext>().eigen_device();
-    if (x_g) {
-      x_g->mutable_data<T>(context.GetPlace());
-      // eigen matrix
-      auto x_grad =
-          EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
-      // dimensions are same with subResult
-      x_grad.device(eigen_place) = grad_mat;
-    }
 
-    if (y_g) {
-      y_g->mutable_data<T>(context.GetPlace());
+    x_g->mutable_data<T>(context.GetPlace());
+    // eigen matrix
+    auto x_grad =
+        EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
+    // dimensions are same with subResult
+    x_grad.device(eigen_place) = grad_mat;
 
-      PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
-                        "First dimension of gradient must be greater or "
-                        "equal than first dimension of target.");
+    y_g->mutable_data<T>(context.GetPlace());
 
-      if (sub_result.dimensions()[0] == y_dims[0]) {
-        auto y_grad =
-            EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
-        y_grad.device(eigen_place) = -1 * grad_mat;
-      } else {
-        auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
-        auto y_grad = EigenVector<T>::Flatten(*y_g);
-        y_grad.device(eigen_place) = col_sum_res;
-      }
+    PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
+                      "First dimension of gradient must be greater or "
+                      "equal than first dimension of target.");
+
+    if (sub_result.dimensions()[0] == y_dims[0]) {
+      auto y_grad =
+          EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
+      y_grad.device(eigen_place) = -1 * grad_mat;
+    } else {
+      auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
+      auto y_grad = EigenVector<T>::Flatten(*y_g);
+      y_grad.device(eigen_place) = col_sum_res;
     }
   }
 };

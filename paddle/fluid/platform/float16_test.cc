@@ -12,9 +12,11 @@ limitations under the License. */
 
 #include <vector>
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace platform {
@@ -141,9 +143,35 @@ TEST(float16, lod_tensor_cpu) {
   }
 }
 
+TEST(float16, floating) {
+  // compile time assert.
+  PADDLE_ENFORCE_EQ(std::is_floating_point<float16>::value, true);
+}
+
 TEST(float16, print) {
   float16 a = float16(1.0f);
   std::cout << a << std::endl;
+}
+
+// CPU test
+TEST(float16, isinf) {
+  float16 a;
+  a.x = 0x7c00;
+  float16 b = float16(INFINITY);
+  float16 c = static_cast<float16>(INFINITY);
+  EXPECT_EQ(std::isinf(a), true);
+  EXPECT_EQ(std::isinf(b), true);
+  EXPECT_EQ(std::isinf(c), true);
+}
+
+TEST(float16, isnan) {
+  float16 a;
+  a.x = 0x7fff;
+  float16 b = float16(NAN);
+  float16 c = static_cast<float16>(NAN);
+  EXPECT_EQ(std::isnan(a), true);
+  EXPECT_EQ(std::isnan(b), true);
+  EXPECT_EQ(std::isnan(c), true);
 }
 
 }  // namespace platform
