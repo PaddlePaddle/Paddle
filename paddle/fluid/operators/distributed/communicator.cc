@@ -338,18 +338,12 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
                     "grad var should be inited");
-  if (grad_var->IsType<framework::SelectedRows>()) {
-    auto send_functor = distributed::ParameterSend<float>();
-    auto &ctx = send_varname_to_ctx_.at(var_name);
-    send_functor(ctx, scope, true, 1);
 
-  } else {
-    auto tmp_grad_var = std::make_shared<Variable>();
-    framework::CopyVariable(*grad_var, tmp_grad_var.get());
-    auto &queue = send_varname_to_queue_.at(var_name);
-    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-    queue->Push(tmp_grad_var);
-  }
+  auto tmp_grad_var = std::make_shared<Variable>();
+  framework::CopyVariable(*grad_var, tmp_grad_var.get());
+  auto &queue = send_varname_to_queue_.at(var_name);
+  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+  queue->Push(tmp_grad_var);
 }
 
 void AsyncCommunicator::Recv() {
@@ -520,18 +514,11 @@ void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
                     "grad var should be inited");
-  if (grad_var->IsType<framework::SelectedRows>()) {
-    auto send_functor = distributed::ParameterSend<float>();
-    auto &ctx = send_varname_to_ctx_.at(var_name);
-    send_functor(ctx, scope, true, 1);
-
-  } else {
-    auto tmp_grad_var = std::make_shared<Variable>();
-    framework::CopyVariable(*grad_var, tmp_grad_var.get());
-    auto &queue = send_varname_to_queue_.at(var_name);
-    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-    queue->Push(tmp_grad_var);
-  }
+  auto tmp_grad_var = std::make_shared<Variable>();
+  framework::CopyVariable(*grad_var, tmp_grad_var.get());
+  auto &queue = send_varname_to_queue_.at(var_name);
+  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+  queue->Push(tmp_grad_var);
 }
 
 void HalfAsyncCommunicator::Recv() {
