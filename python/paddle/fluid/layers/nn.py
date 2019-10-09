@@ -8078,6 +8078,23 @@ def squeeze(input, axes, name=None):
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
+
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in squeeze must be Variable, but received %s" %
+            (type(input)))
+
+    if convert_dtype(input.dtype
+                     ) not in ['float32', 'float64', 'int8', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in squeeze must be float32, float64, int8, int32,"
+            "int64, but received %s." % (convert_dtype(input.dtype)))
+
+    if not isinstance(axes, list):
+        raise TypeError(
+            "The type of 'axes' in squeeze must be list, but received %s" %
+            (type(axes)))
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -12442,12 +12459,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_add(x, y)
 
         place = fluid.CPUPlace()
@@ -12469,8 +12486,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12493,8 +12510,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12519,12 +12536,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_div(x, y)
 
         place = fluid.CPUPlace()
@@ -12546,8 +12563,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12570,8 +12587,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12596,12 +12613,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y)
 
         place = fluid.CPUPlace()
@@ -12623,8 +12640,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12647,8 +12664,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12673,12 +12690,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y)
 
         place = fluid.CPUPlace()
@@ -12700,8 +12717,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12724,8 +12741,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12750,12 +12767,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
 
         place = fluid.CPUPlace()
@@ -12777,8 +12794,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12804,12 +12821,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
 
         place = fluid.CPUPlace()
@@ -12830,8 +12847,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12857,12 +12874,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_pow(x, y)
 
         place = fluid.CPUPlace()
@@ -14953,14 +14970,24 @@ def sign(x):
           import numpy as np
 
           # [1, 0, -1]
-          data = fluid.layers.sign(np.array([3, 0, -2], dtype='int32')) 
+          data = fluid.layers.sign(np.array([3, 0, -2], dtype='float32')) 
 
     """
 
     helper = LayerHelper("sign", **locals())
 
     if not isinstance(x, Variable):
-        x = assign(x)
+        if isinstance(x, np.ndarray):
+            x = assign(x)
+        else:
+            raise TypeError(
+                "The type of 'x' in sign_op must be Variable or numpy.ndarray, but received %s."
+                % (type(x)))
+
+    if convert_dtype(x.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in sign_op must be float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
