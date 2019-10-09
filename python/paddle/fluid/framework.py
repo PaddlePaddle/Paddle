@@ -62,20 +62,17 @@ _dygraph_current_expected_place_ = None
 
 def in_dygraph_mode():
     """
-    This function checks whether the program runs in dynamic graph mode or not.
-    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
+    Check program status(tracer), Whether it runs in dygraph mode or not
 
     Returns:
-        bool: Whether the program is running in dynamic graph mode.
+        out (boolean): True if the program is running in dynamic graph mode
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
-                print('running in dygraph mode')
-            else:
-                print('not running in dygraph mode')
+                pass
 
     """
     return _dygraph_tracer_ is not None
@@ -4120,20 +4117,15 @@ class Parameter(Variable):
     """
 
     def __init__(self, block, shape, dtype, **kwargs):
-        if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
-        if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
-
+        if shape is None or dtype is None:
+            raise ValueError("Parameter must set shape and dtype")
         if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
+            raise ValueError("Parameter shape cannot be empty")
 
         for each in shape:
             if each < 0:
-                raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape))
+                raise ValueError("Parameter shape should not be related with "
+                                 "batch-size")
 
         Variable.__init__(
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
@@ -4315,6 +4307,12 @@ def program_guard(main_program, startup_program=None):
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
+    Args:
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program, optianal): New startup program inside `"with"` 
+        statement. None means not changing startup program, default_startup_program 
+        is still used. Default: None.
+
     Examples:
        .. code-block:: python
        
@@ -4337,12 +4335,8 @@ def program_guard(main_program, startup_program=None):
          main_program = fluid.Program()
          # does not care about startup program. Just pass a temporary value.
          with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+             data = fluid.data(name='image', shape=[784, 784], dtype='float32')
 
-    Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program): New startup program inside `"with"` statement.
-            None means not changing startup program.
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
