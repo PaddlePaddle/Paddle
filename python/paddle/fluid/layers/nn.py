@@ -15529,7 +15529,7 @@ def mse_loss(input, label):
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
-    This operator initializes a variable with random values sampled from a
+    This OP initializes a variable with random values sampled from a
     uniform distribution. The random result is in set [min, max).
 
     Examples:
@@ -15542,11 +15542,11 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
-                                     and if the shape type is list or tuple, its elements can be an integer
-                                     or a tensor with the shape [1], the data type of the tensor is int64. 
-                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output tensor, such as float32, float64.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape type is list or tuple, 
+                                     its elements can be an integer
+                                     or a Tensor with the shape [1], the data type of the Tensor is int64. 
+                                     If the shape type is Variable,it ia a 1D Tensor, the data type of the Tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output Tensor, such as float32, float64.
                                                   Default: float32.
         min (float, optional): Minimum value of uniform random, It's a closed interval. Default -1.0.
         max (float, optional): Maximun value of uniform random, It's an open interval. Default 1.0.
@@ -15555,9 +15555,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             operator will always generate the same random numbers every time.
             Default 0.
 
-    Returns: a Tensor with randomly initialized results whose data type is determined by the dtype parameter 
-                and whose dimension is determined by the shape parameter.
-    Return type: Variable
+    Returns: 
+        Variable: A Tensor with randomly initialized results whose data type is determined by the dtype parameter and whose shape is determined by the shape parameter.
 
     Throw exception:
         TypeError: The shape type should be list or tupple or variable.
