@@ -393,6 +393,43 @@ class RequestCheckpointNotify final : public RequestBase {
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
+class RequestNotify final : public RequestBase {
+ public:
+  explicit RequestNotify(GrpcService::AsyncService* service,
+                         ::grpc::ServerCompletionQueue* cq,
+                         RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx()));
+    int method_id = static_cast<int>(distributed::GrpcMethod::kRequestNotify);
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestNotify() {}
+
+  std::string GetReqName() override { return request_->Varname(); }
+
+  void Process() override {
+    auto scope = request_->GetMutableLocalScope();
+
+    std::string varname = request_->Varname();
+    int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestNotify notify: " << varname
+            << ", trainer id: " << trainer_id;
+
+    request_handler_->Handle(varname, scope, nullptr, nullptr, trainer_id);
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  std::shared_ptr<GRPCVariableResponse> request_;
+  sendrecv::VoidMessage reply_;
+  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+};
+
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer is waiting server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -526,6 +563,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestPrefetch(&service_, cq.get(), handler, req_id);
   } else if (rpc_name == kRequestCheckpoint) {
     b = new RequestCheckpointNotify(&service_, cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestNotify) {
+    b = new RequestNotify(&service_, cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }
