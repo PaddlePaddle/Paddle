@@ -872,10 +872,11 @@ class Variable(object):
 
         **Notes: This Property has default value as** ``True`` **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
 
-        Example:
+        Examples:
           .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
             with fluid.dygraph.guard():
                 value0 = np.arange(26).reshape(2, 13).astype("float32")
@@ -919,6 +920,16 @@ class Variable(object):
 
             **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("persistable of current Var is: {}".format(new_variable.persistable))
         """
         if in_dygraph_mode():
             return self._ivar.persistable
@@ -941,6 +952,16 @@ class Variable(object):
 
         **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("name of current Var is: {}".format(new_variable.name))
         """
         if in_dygraph_mode():
             return self._ivar.name
@@ -961,6 +982,17 @@ class Variable(object):
 
         **Notes: This is a read-only property**
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("shape of current Var is: {}".format(new_variable.shape))
+
         """
         # convert to tuple, make it as same as numpy API.
         if in_dygraph_mode():
@@ -975,6 +1007,16 @@ class Variable(object):
 
         **Notes: This is a read-only property**
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
         if in_dygraph_mode():
             return self._ivar.dtype
@@ -994,6 +1036,16 @@ class Variable(object):
 
             **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value should be** ``0(int)``
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("LoD Level of current Var is: {}".format(new_variable.lod_level))
         """
         # TODO(minqiyang): Support lod_level in dygraph mode
         if in_dygraph_mode():
@@ -1007,6 +1059,16 @@ class Variable(object):
 
         **Notes: This is a read-only property**
 
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("Type of current Var is: {}".format(new_variable.type))
         """
         if in_dygraph_mode():
             return self._ivar.type
@@ -3516,7 +3578,6 @@ class Program(object):
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         For Example:
-
             .. code-block:: python
 
                 test_program = fluid.default_main_program().clone(for_test=True)
@@ -3539,7 +3600,6 @@ class Program(object):
         example we give you an simple method** :code:`print_prog(program)` **to
         print Program Descs inorder to make sure you have same print result
         after** :code:`clone`:
-
             .. code-block:: python
 
                 import paddle.fluid as fluid
