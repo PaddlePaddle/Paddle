@@ -703,6 +703,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   // calc var_old += var_delta
   // var_name: param.delta, splited_var_name: param.block0.delta
   // origin_var_name: param
+
   auto before_run_send_sparse = GetCurrentUS();
 
   auto ids_num = ids_table.size();
