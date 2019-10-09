@@ -254,6 +254,27 @@ class Layer(core.Layer):
             object.__delattr__(self, name)
 
     def state_dict(self, destination=None, include_sublayers=True):
+        '''
+        Get all parameter of current and sub-layers. And set all the parameters into a dict
+
+        Args:
+            destination(dict|optical) : If provide, all the parameter will set to this dict . Defaul is None
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+
+        Retruns:
+            state_dict(dict) : dict contains all the parameters
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+
+        '''
+
         if destination is None:
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
@@ -271,9 +292,58 @@ class Layer(core.Layer):
         return destination
 
     def set_dict(self, stat_dict, include_sublayers=True):
+        '''
+        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+
+        Args:
+            state_dict(dict) : Dict contains all the Parameter
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.set_dict( para_state_dict )
+
+        '''
         self.load_dict(stat_dict, include_sublayers=include_sublayers)
 
     def load_dict(self, stat_dict, include_sublayers=True):
+        '''
+        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+
+        This api will be Deprecated. Please use set_dict
+
+        Args:
+            state_dict(dict) : Dict contains all the Parameter
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.load_dict( para_state_dict )
+
+        '''
+
         self._loaddict_holder = stat_dict
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:

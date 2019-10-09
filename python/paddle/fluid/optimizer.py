@@ -142,13 +142,19 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                adam = fluid.optimizer.Adam(0.001)
-                state_dict = adam.state_dict()
-                fluid.save_optimizer( state_dict, "opt_adam")
-                load_state_dict = fluid.load_optimizer( "opt_adam")
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
 
-                adam.set_dict( load_state_dict ) 
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+
+                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
+                    state_dict = adam.state_dict()
+                    fluid.save_dygraph( state_dict, "padle_dy")
+
+                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+
+                    adam.set_dict( opti_state_dict )
 
         '''
 

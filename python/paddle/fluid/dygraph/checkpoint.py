@@ -16,19 +16,20 @@ from __future__ import print_function
 
 import os
 import collections
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only
+from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter
 import pickle
 from . import learning_rate_scheduler
 import warnings
 from .. import core
 
 __all__ = [
-    'save_parameter', 'save_optimizer', 'load_parameter', 'load_optimizer'
+    'save_dygraph',
+    'load_dygraph',
 ]
 
 
 @dygraph_only
-def save_parameter(state_dict, model_path):
+def save_dygraph(state_dict, model_path):
     '''
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
     
@@ -50,55 +51,31 @@ def save_parameter(state_dict, model_path):
                 emb = fluid.dygraph.Embedding( "emb", [10, 10])
 
                 state_dict = emb.state_dict()
-                fluid.save_parameter( state_dict, "dy_emb")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
-    '''
-
-    assert in_dygraph_mode(), "save_parameter only work in dygraph mode"
-
-    base_name = os.path.basename(model_path)
-    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
-
-    core._save_dygraph_dict(model_path + ".pdparams", state_dict)
-
-
-@dygraph_only
-def save_optimizer(optimizer_dict, model_path):
-    '''
-    Save Optimizer's state_dict to disk. This will generate a file with suffix ".pdopt"
-    
-    The state_dict is get from optimzier.state_dict function
-    
-    Args:
-        state_dict(dict) : The state dict to be saved.
-        model_path(str) : the file prefix to save the state_dict. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            with fluid.dygraph.guard():
-                adam = fluid.optimizer.Adam(0.001)
+                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
 
                 state_dict = adam.state_dict()
-                fluid.save_optimizer( state_dict, "opt_adam")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
     '''
-
-    assert in_dygraph_mode(), "save_optimizer only work in dygraph mode"
 
     base_name = os.path.basename(model_path)
     assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
 
-    core._save_dygraph_dict(model_path + ".pdopt", optimizer_dict)
+    suffix = ".pdparams"
+    assert len(state_dict) > 0, "state_dict is empty, no need to save"
+
+    for k, v in state_dict.items():
+        if not isinstance(v, Parameter):
+            suffix = ".pdopt"
+        break
+
+    core._save_dygraph_dict(model_path + suffix, state_dict)
 
 
 @dygraph_only
-def load_parameter(model_path):
+def load_dygraph(model_path):
     '''
     Load parameter state_dict from disk.
 
@@ -112,24 +89,34 @@ def load_parameter(model_path):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            
             with fluid.dygraph.guard():
                 emb = fluid.dygraph.Embedding( "emb", [10, 10])
 
                 state_dict = emb.state_dict()
-                fluid.save_parameter( state_dict, "dy_emb")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
-                state_dict = fluid.load_parameter( "dy_emb")
-        
+                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
+                state_dict = adam.state_dict()
+                fluid.save_dygraph( state_dict, "padle_dy")
+
+                para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+
     '''
 
-    assert in_dygraph_mode(), "load_parameter only work in dygraph mode"
     params_file_path = model_path + ".pdparams"
     if not os.path.exists(params_file_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
 
-    return core._load_dygraph_dict(model_path + ".pdparams")
+    para_dict = core._load_dygraph_dict(params_file_path)
+
+    opti_dict = None
+    opti_file_path = model_path + ".pdopt"
+    if os.path.exists(opti_file_path):
+        opti_dict = core._load_dygraph_dict(opti_file_path)
+
+    return para_dict, opti_dict
 
 
 @dygraph_only

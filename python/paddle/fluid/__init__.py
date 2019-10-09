@@ -87,7 +87,7 @@ from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
 from .io import save, load
-from .dygraph.checkpoint import save_parameter, save_optimizer, load_parameter, load_optimizer
+from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
 
