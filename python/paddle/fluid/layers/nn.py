@@ -375,8 +375,10 @@ def center_loss(input,
     """
     **Center loss Cost layer**
     
-    This layer accepts input (deep features,the output of the last hidden layer)
-    and target label and return the center loss cost
+    This OP accepts input (deep features,the output of the last hidden layer)
+    and target label and return the center loss cost. The average of the 
+    distances of each sample in the mini-batch from the center of the 
+    corresponding category is calculated as the center loss.
     
     For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
     
@@ -385,9 +387,9 @@ def center_loss(input,
         Out = \\frac{1}{2}(X - Y)^2
 
     Args:
-        input (Variable): a 2-D tensor with shape[N x M].
+        input (Variable): a 2-D tensor with shape[N x M]. Its dtype should be float32 or float64.
         label (Variable): the groud truth which is a 2-D tensor
-                         with shape[N x 1],where N is the batch size.
+                         with shape[N x 1],where N is the batch size. Its dtype should be int32.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
         param_attr (ParamAttr): Attribute initializer of centers. 
@@ -401,8 +403,8 @@ def center_loss(input,
 
           import paddle.fluid as fluid 
 
-          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
-          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          input = fluid.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.data(name='y',shape=[20,1],dtype='int64')
           num_classes = 1000
           alpha = 0.01
           param_attr = fluid.initializer.Xavier(uniform=False)
@@ -9573,10 +9575,11 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Variable): The source input
-        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank
+        input (Variable): The source input. Its dtype should be int32, int64, float32, float64.
+        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank.
+                          Its dtype should be int32, int64.
         name (str|None): A name for this layer(optional). If set None, the
-                         layer will be named automatically
+                         layer will be named automatically.
 
     Returns:
         output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
@@ -9586,8 +9589,8 @@ def gather_nd(input, index, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 4, 5], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[2, 2], dtype='int32')
+            x = fluid.data(name='x', shape=[3, 4, 5], dtype='float32')
+            index = fluid.data(name='index', shape=[2, 2], dtype='int32')
             output = fluid.layers.gather_nd(x, index)
 
     """
@@ -9662,11 +9665,14 @@ def scatter_nd_add(ref, index, updates, name=None):
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
-    or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
+    or slice in a Variable. 
+
+    :attr:`ref` is a Tensor with rank :math:`R` 
     and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
     has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates` 
     is a Tensor with rank :math:`K - 1 + R - Q` and its
     shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
+
     According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
     add the corresponding :attr:`updates` slice to the :attr:`ref` slice
     which is obtained by the last one dimension of :attr:`index` .
@@ -9698,15 +9704,15 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input.
+        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd_add op, and it must have the same type
-                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:]
-        name (str|None): The output variable name. Default None.
+        updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
+                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:].
+        name (str|None): The output variable name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape and type as ref.
+        output (Variable): The output is a tensor with the same shape and dtype as ref.
 
     Examples:
 
@@ -9714,9 +9720,9 @@ def scatter_nd_add(ref, index, updates, name=None):
 
             import paddle.fluid as fluid
 
-            ref = fluid.layers.data(name='ref', shape=[3, 5, 9, 10], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int32', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            ref = fluid.data(name='ref', shape=[3, 5, 9, 10], dtype='float32')
+            index = fluid.data(name='index', shape=[3, 2], dtype='int32')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
 
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
@@ -9755,10 +9761,10 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. 
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
-        name (str|None): The output variable name. Default None.
+        name (str|None): The output variable name. If set None, the layer will be named automatically.
 
     Returns:
         output (Variable): The output is a tensor with the same type as :attr:`updates` .
@@ -9769,8 +9775,8 @@ def scatter_nd(index, updates, shape, name=None):
 
             import paddle.fluid as fluid
 
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            index = fluid.data(name='index', shape=[3, 2], dtype='int64')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
 
             output = fluid.layers.scatter_nd(index, updates, shape)
@@ -15359,7 +15365,7 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This function recomputes the `input` indices according to the offset of the
+    This operator recomputes the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -15404,7 +15410,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            batch_size = 32
+            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
             shard_label = fluid.layers.shard_index(input=label,
                                                    index_num=20,
                                                    nshards=2,
