@@ -13521,7 +13521,7 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             place = fluid.core.CPUPlace()
 
-            x = fluid.layers.data(name="x", shape=[1], dtype="int32", lod_level=1)
+            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
             res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
 
             exe = fluid.Executor(place)

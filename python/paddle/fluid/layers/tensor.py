@@ -168,7 +168,7 @@ def cast(x, dtype):
 
             place = fluid.core.CPUPlace()
 
-            x_lod = fluid.layers.data(name="x", shape=[1], lod_level=1)
+            x_lod = fluid.data(name="x", shape=[1], lod_level=1)
             cast_res1 = fluid.layers.cast(x=x_lod, dtype="uint8")
             cast_res2 = fluid.layers.cast(x=x_lod, dtype=np.int32)
 
@@ -278,7 +278,7 @@ def tensor_array_to_tensor(input, axis=1, name=None):
 
             place = fluid.CPUPlace()
 
-            x1 = fluid.layers.data(name="x", shape=[2,2], lod_level=0)
+            x1 = fluid.data(name="x", shape=[2,2], lod_level=0)
             tmp = fluid.layers.fill_constant(shape=[2,3], dtype="float32", value=1)
             x_arr = fluid.layers.create_array(dtype="float32")
             c0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
