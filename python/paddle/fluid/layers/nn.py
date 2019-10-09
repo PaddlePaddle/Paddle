@@ -1601,8 +1601,8 @@ def cos_sim(X, Y):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
-            y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7], dtype='float32')
+            y = fluid.data(name='y', shape=[1, 7], dtype='float32')
             out = fluid.layers.cos_sim(x, y)
     """
     helper = LayerHelper('cos_sim', **locals())
@@ -1672,7 +1672,7 @@ def dropout(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
@@ -1758,8 +1758,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
             import paddle.fluid as fluid
             class_num = 7
-            x = fluid.layers.data(name='x', shape=[3, 10], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            x = fluid.data(name='x', shape=[None, 3, 10], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
@@ -2420,7 +2420,7 @@ def conv2d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -2680,7 +2680,7 @@ def conv3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -3778,7 +3778,7 @@ def batch_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
@@ -3944,7 +3944,7 @@ def instance_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
     """
@@ -4568,7 +4568,7 @@ def conv2d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
@@ -4840,7 +4840,7 @@ def conv3d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
@@ -14515,12 +14515,12 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     .. code-block:: python
 
        import paddle.fluid as fluid
-       anchor = fluid.layers.data(
-                     name = 'anchor', shape = [18, 6], dtype = 'float32', append_batch_size=False)
-       positive = fluid.layers.data(
-                     name = 'positive', shape = [18, 6], dtype = 'float32', append_batch_size=False)
-       labels = fluid.layers.data(
-                     name = 'labels', shape = [18], dtype = 'float32', append_batch_size=False)
+       anchor = fluid.data(
+                     name = 'anchor', shape = [18, 6], dtype = 'float32')
+       positive = fluid.data(
+                     name = 'positive', shape = [18, 6], dtype = 'float32')
+       labels = fluid.data(
+                     name = 'labels', shape = [18], dtype = 'float32')
 
        npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
   '''
