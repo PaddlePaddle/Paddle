@@ -661,8 +661,8 @@ def dynamic_lstm(input,
             vocab_size = 10000
             hidden_dim = 512
             
-            data = fluid.layers.data(name='x', shape=[1],
-                         dtype='int32', lod_level=1)
+            data = fluid.data(name='x', shape=[None, 1],
+                         dtype='int64', lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
             forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
@@ -812,8 +812,7 @@ def lstm(input,
 
             emb_dim = 256
             vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
+            data = fluid.data(name='x', shape=[None, 100, 1], dtype='int64')
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
@@ -1049,8 +1048,7 @@ def dynamic_lstmp(input,
 
             import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=[1],
-                                     dtype='int32', lod_level=1)
+            data = fluid.data(name='sequence', shape=[None, 1], dtype='int64', lod_level=1)
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
