@@ -475,29 +475,37 @@ def _buf2lines(buf, line_break="\n"):
 
 class PipeReader:
     """
-        PipeReader read data by stream from a command, take it's
-        stdout into a pipe buffer and redirect it to the parser to
-        parse, then yield data as your desired format.
+    PipeReader read data by stream from a command, take it's
+    stdout into a pipe buffer and redirect it to the parser to
+    parse, then yield data as your desired format.
 
-        You can using standard linux command or call another program
-        to read data, from HDFS, Ceph, URL, AWS S3 etc:
+    You can using standard linux command or call another program
+    to read data, from HDFS, Ceph, URL, AWS S3 etc:
+        
+    .. code-block:: python
 
-        .. code-block:: python
-           cmd = "hadoop fs -cat /path/to/some/file"
-           cmd = "cat sample_file.tar.gz"
-           cmd = "curl http://someurl"
-           cmd = "python print_s3_bucket.py"
+        cmd = "hadoop fs -cat /path/to/some/file"
+        cmd = "cat sample_file.tar.gz"
+        cmd = "curl http://someurl"
+        cmd = "python print_s3_bucket.py"
 
-        An example:
+    :param command: Command to generate a data source.
+    :param bufsize: The size of the pipe cache, default is 8192.
+    :param filetype: Command operation file type. The optional type
+        can only be plain or gzip. The default is plain.
+        
 
-        .. code-block:: python
+    An Example:
 
-           def example_reader():
-               for f in myfiles:
-                   pr = PipeReader("cat %s"%f)
-                   for l in pr.get_line():
-                       sample = l.split(" ")
-                       yield sample
+    .. code-block:: python
+
+        import paddle
+        def example_reader(filelist):
+            for f in filelist:
+                pr = PipeReader("cat %s"%f)
+                for l in pr.get_line():
+                    sample = l.split(" ")
+                    yield sample
     """
 
     def __init__(self, command, bufsize=8192, file_type="plain"):
