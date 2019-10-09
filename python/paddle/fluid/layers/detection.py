@@ -307,20 +307,13 @@ def rpn_target_assign(bbox_pred,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            bbox_pred = fluid.data(name='bbox_pred', shape=[100, 4],
-                            append_batch_size=False, dtype='float32')
-            cls_logits = fluid.data(name='cls_logits', shape=[100, 1],
-                            append_batch_size=False, dtype='float32')
-            anchor_box = fluid.data(name='anchor_box', shape=[20, 4],
-                            append_batch_size=False, dtype='float32')
-            anchor_var = fluid.data(name='anchor_var', shape=[20, 4],
-                            append_batch_size=False, dtype='float32')
-            gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
-                            append_batch_size=False, dtype='float32')
-            is_crowd = fluid.data(name='is_crowd', shape=[1],
-                            append_batch_size=False, dtype='float32')
-            im_info = fluid.data(name='im_infoss', shape=[1, 3],
-                            append_batch_size=False, dtype='float32')
+            bbox_pred = fluid.data(name='bbox_pred', shape=[None, 4], dtype='float32')
+            cls_logits = fluid.data(name='cls_logits', shape=[None, 1], dtype='float32')
+            anchor_box = fluid.data(name='anchor_box', shape=[None, 4], dtype='float32')
+            anchor_var = fluid.data(name='anchor_var', shape=[None, 4], dtype='float32')
+            gt_boxes = fluid.data(name='gt_boxes', shape=[None, 4], dtype='float32')
+            is_crowd = fluid.data(name='is_crowd', shape=[None], dtype='float32')
+            im_info = fluid.data(name='im_infoss', shape=[None, 3], dtype='float32')
             loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
                 bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
 
@@ -2268,16 +2261,11 @@ def generate_proposal_labels(rpn_rois,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            rpn_rois = fluid.layers.data(name='rpn_rois', shape=[2, 4],
-                           append_batch_size=False, dtype='float32')
-            gt_classes = fluid.layers.data(name='gt_classes', shape=[8, 1],
-                           append_batch_size=False, dtype='float32')
-            is_crowd = fluid.layers.data(name='is_crowd', shape=[8, 1],
-                           append_batch_size=False, dtype='float32')
-            gt_boxes = fluid.layers.data(name='gt_boxes', shape=[8, 4],
-                           append_batch_size=False, dtype='float32')
-            im_info = fluid.layers.data(name='im_info', shape=[10, 3],
-                           append_batch_size=False, dtype='float32')
+            rpn_rois = fluid.data(name='rpn_rois', shape=[None, 4], dtype='float32')
+            gt_classes = fluid.data(name='gt_classes', shape=[None, 1], dtype='float32')
+            is_crowd = fluid.data(name='is_crowd', shape=[None, 1], dtype='float32')
+            gt_boxes = fluid.data(name='gt_boxes', shape=[None, 4], dtype='float32')
+            im_info = fluid.data(name='im_info', shape=[None, 3], dtype='float32')
             rois, labels, bbox, inside_weights, outside_weights = fluid.layers.generate_proposal_labels(
                            rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                            class_nums=10)
@@ -2543,16 +2531,11 @@ def generate_proposals(scores,
         .. code-block:: python
         
             import paddle.fluid as fluid
-            scores = fluid.data(name='scores', shape=[2, 4, 5, 5],
-                         append_batch_size=False, dtype='float32')
-            bbox_deltas = fluid.data(name='bbox_deltas', shape=[2, 16, 5, 5],
-                         append_batch_size=False, dtype='float32')
-            im_info = fluid.data(name='im_info', shape=[2, 3],
-                         append_batch_size=False, dtype='float32')
-            anchors = fluid.data(name='anchors', shape=[5, 5, 4, 4],
-                         append_batch_size=False, dtype='float32')
-            variances = fluid.data(name='variances', shape=[5, 5, 10, 4],
-                         append_batch_size=False, dtype='float32')
+            scores = fluid.data(name='scores', shape=[None, 4, 5, 5], dtype='float32')
+            bbox_deltas = fluid.data(name='bbox_deltas', shape=[None, 16, 5, 5], dtype='float32')
+            im_info = fluid.data(name='im_info', shape=[None, 3], dtype='float32')
+            anchors = fluid.data(name='anchors', shape=[None, 5, 4, 4], dtype='float32')
+            variances = fluid.data(name='variances', shape=[None, 5, 10, 4], dtype='float32')
             rois, roi_probs = fluid.layers.generate_proposals(scores, bbox_deltas,
                          im_info, anchors, variances)
 

@@ -6576,9 +6576,9 @@ def warpctc(input,
             
             # using LoDTensor
             predict = fluid.data(name='predict', 
-                                        shape=[-1, 5],
+                                        shape=[None, 5],
                                         dtype='float32',lod_level=1)
-            label = fluid.data(name='label', shape=[-1, 1],
+            label = fluid.data(name='label', shape=[None, 1],
                                       dtype='int32', lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
             place = fluid.CPUPlace()
@@ -6600,15 +6600,15 @@ def warpctc(input,
             # length of the longest logit sequence
             max_seq_length = 5
             # number of logit sequences
-            batch_size = -1
+            batch_size = None
             logits = fluid.data(name='logits', 
                                        shape=[max_seq_length, batch_size, 5],
                                        dtype='float32')
-            logits_length = fluid.data(name='logits_length', shape=[-1],
+            logits_length = fluid.data(name='logits_length', shape=[None],
                                          dtype='int64')
-            label = fluid.layers.data(name='label', shape=[-1, 1],
+            label = fluid.layers.data(name='label', shape=[None, 1],
                                        dtype='int32')
-            label_length = fluid.layers.data(name='labels_length', shape=[-1],
+            label_length = fluid.layers.data(name='labels_length', shape=[None],
                                          dtype='int64')
             cost = fluid.layers.warpctc(input=logits, label=label,
                                         input_length=logits_length,
@@ -10375,7 +10375,7 @@ def affine_grid(theta, out_shape, name=None):
             import paddle.fluid as fluid
             import numpy as np
             place = fluid.CPUPlace()
-            theta = fluid.data(name="x", shape=[-1, 2, 3], dtype="float32")
+            theta = fluid.data(name="x", shape=[None, 2, 3], dtype="float32")
             out_shape = fluid.data(name="y", shape=[4], dtype="int32")
             grid_0 = fluid.layers.affine_grid(theta, out_shape)
             grid_1 = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
