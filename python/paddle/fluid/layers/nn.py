@@ -12023,7 +12023,7 @@ def strided_slice(input, axes, starts, ends, strides):
             import paddle.fluid as fluid
 
             input = fluid.data(
-                name="input", shape=[3, 4, 5, 6], dtype='float32', append_batch_size=False)
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
 
             # example 1:
             # attr starts is a list which doesn't contain tensor Variable.
