@@ -2230,24 +2230,27 @@ class LambOptimizer(AdamOptimizer):
 
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
-                                        Can be a float value or a Variable with one \
-                                        float value as data element.
-        lamb_weight_decay (float): The LAMB weight decay rate.
+            Can be a float value or a Variable with data type float32. Default 0.001.
+        lamb_weight_decay (float): The LAMB weight decay rate. Default 0.01.
         beta1 (float): The exponential decay rate for the 1st moment estimates.
+            Default 0.9.
         beta2 (float): The exponential decay rate for the 2nd moment estimates.
-        epsilon (float): A small float value for numerical stability.
-        regularization (Regularizer): A Regularizer, such as
-                        fluid.regularizer.L1DecayRegularizer.
-        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
-            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
-        name (str|None): An optional name prefix.
+            Default 0.999.
+        epsilon (float): A small float value for numerical stability. Default 1e-6.
+        regularization (Regularizer|None): A Regularizer, such as
+           fluid.regularizer.L1DecayRegularizer. Default None.
+        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
+            Default None.
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Examples:
         .. code-block:: python
             
             import paddle.fluid as fluid 
 
-            data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
@@ -2589,9 +2592,12 @@ class ExponentialMovingAverage(object):
 
     Args:
 	decay (float): The exponential decay rate, usually close to 1, such as 
-                       0.999, 0.9999, ... .
-        thres_steps (Variable|None): If not `None`, schedule the decay rate.
-	name (str|None): An optional name prefix.
+            0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
+            Default None.
+        name (str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name`. Usually name is no need to set and None by 
+            default.
 
 
     Examples:
@@ -2602,7 +2608,7 @@ class ExponentialMovingAverage(object):
 	    import paddle
 	    import paddle.fluid as fluid
 
-	    data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
 	    hidden = fluid.layers.fc(input=data, size=10)
 	    cost = fluid.layers.mean(hidden)
 

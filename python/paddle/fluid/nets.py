@@ -306,8 +306,9 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The Gated Linear Units(GLU) composed by split, sigmoid activation and element-wise
-    multiplication. Specifically, Split the input into two equal sized parts,
+    The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
+    :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` . 
+    Specifically, GLU will plit the input into two equal-sized parts,
     :math:`a` and :math:`b`, along the given dimension and then compute as
     following:
 
@@ -319,18 +320,20 @@ def glu(input, dim=-1):
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
+        input (Variable): The input variable which is a Tensor or LoDTensor. 
+                          The supported data types include float32, float64 
+                          and float16 (only for GPU).
         dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`. Default -1.
 
     Returns:
-        Variable: Variable with half the size of input.
+        Variable: Variable with half the size and same data type of input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(
+            data = fluid.data(
                 name="words", shape=[-1, 6, 3, 9], dtype="float32")
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
