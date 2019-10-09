@@ -278,13 +278,13 @@ def main_pascalvoc_preprocess(args):
         "--img_annotation_list",
         type=str,
         default="test_100.txt",
-        help="A file containing the image file path and relevant annotation file path"
+        help="A file containing the image file path and corresponding annotation file path"
     )
     parser.add_argument(
         "--label_file",
         type=str,
         default="label_list",
-        help="List the labels in the same sequence as denoted in the annotation file"
+        help="List of object labels with same sequence as denoted in the annotation file"
     )
     parser.add_argument(
         "--output_file",

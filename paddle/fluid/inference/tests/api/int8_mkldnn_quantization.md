@@ -95,17 +95,17 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 ## 3. Accuracy and Performance benchmark for Object Detection models
 
->**I. mAP on Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz:**
+>**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core):**
 
 | Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
 | :----------: | :-------------: | :------------:  | :--------------:           |
-| Mobilenet-SSD|  73.80%         |  72.91%         |   0.89%                    |
+| Mobilenet-SSD| 73.80%         |  73.17%         |   0.63%                    |
 
->**III. Throughput on Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz (batch size 1 on single core)**
+>**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
 
 | Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :------------:             | :------------:            | :------------:  |
-| Mobilenet-SSD    |    52.80                 |    159.39                  |     3.02       |
+| Mobilenet-SSD    |    51.14       | 150.01 |2.93 |
 
 * ## Prepare dataset
 
