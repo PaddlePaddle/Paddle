@@ -123,6 +123,129 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(
   functor(diff, top_diff, e_h, e_w, h0, w0, tmp);
 }
 
+template <typename T>
+HOSTDEVICE void CPUAccumulateRois(T* offset, T data) {
+  *offset += data;
+}
+
+template <typename T>
+HOSTDEVICE static T PrRoIPoolingGetCoeff(T dh, T dw) {
+  dw = dw > 0 ? dw : -dw;
+  dh = dh > 0 ? dh : -dh;
+  return (1.0f - dh) * (1.0f - dw);
+}
+
+template <typename T, typename H, typename W>
+HOSTDEVICE static T PrRoIPoolingInterpolation(const T* data, const H h,
+                                              const W w, const int height,
+                                              const int width) {
+  T retVal = 0.0f;
+  int h1 = floorf(h);
+  int w1 = floorf(w);
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
+  h1 = floorf(h) + 1;
+  w1 = floorf(w);
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
+  h1 = floorf(h);
+  w1 = floorf(w) + 1;
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
+  h1 = floorf(h) + 1;
+  w1 = floorf(w) + 1;
+  retVal +=
+      PrRoIPoolingGetData(data, h1, w1, height, width) *
+      PrRoIPoolingGetCoeff(h - static_cast<T>(h1), w - static_cast<T>(w1));
+  return retVal;
+}
+
+template <typename T>
+HOSTDEVICE T PrRoIPoolingSingleCoorIntegral(T s, T t, T c1, T c2) {
+  return 0.5f * (t * t - s * s) * c2 +
+         (t - 0.5f * t * t - s + 0.5f * s * s) * c1;
+}
+
+template <typename T, typename Functor, typename MaxFunctor,
+          typename MinFunctor>
+HOSTDEVICE void PrRoIPoolingCoorBackward(
+    int s_w, int e_w, int s_h, int e_h, int width, int height, T win_start_w,
+    T win_start_h, T win_end_w, T win_end_h, int pw, int ph,
+    const int pooled_width, const int pooled_height, T win_size,
+    const float spatial_scale, const T* this_bottom_data,
+    const T* this_top_data, T* this_data_grad, T* this_out_grad,
+    Functor functor, MaxFunctor maxFunctor, MinFunctor minFunctor) {
+  T g_x1_y = 0.f;
+  T g_x2_y = 0.f;
+  T g_x_y1 = 0.f;
+  T g_x_y2 = 0.f;
+
+  for (int h_iter = s_h; h_iter < e_h; ++h_iter) {
+    g_x1_y += PrRoIPoolingSingleCoorIntegral(
+        maxFunctor(win_start_h, static_cast<T>(h_iter)) - h_iter,
+        minFunctor(win_end_h, static_cast<T>(h_iter + 1)) - h_iter,
+        PrRoIPoolingInterpolation(this_bottom_data, h_iter, win_start_w, height,
+                                  width),
+        PrRoIPoolingInterpolation(this_bottom_data, h_iter + 1, win_start_w,
+                                  height, width));
+
+    g_x2_y += PrRoIPoolingSingleCoorIntegral(
+        maxFunctor(win_start_h, static_cast<T>(h_iter)) - h_iter,
+        minFunctor(win_end_h, static_cast<T>(h_iter + 1)) - h_iter,
+        PrRoIPoolingInterpolation(this_bottom_data, h_iter, win_end_w, height,
+                                  width),
+        PrRoIPoolingInterpolation(this_bottom_data, h_iter + 1, win_end_w,
+                                  height, width));
+  }
+
+  for (int w_iter = s_w; w_iter < e_w; ++w_iter) {
+    g_x_y1 += PrRoIPoolingSingleCoorIntegral(
+        maxFunctor(win_start_w, static_cast<T>(w_iter)) - w_iter,
+        minFunctor(win_end_w, static_cast<T>(w_iter + 1)) - w_iter,
+        PrRoIPoolingInterpolation(this_bottom_data, win_start_h, w_iter, height,
+                                  width),
+        PrRoIPoolingInterpolation(this_bottom_data, win_start_h, w_iter + 1,
+                                  height, width));
+
+    g_x_y2 += PrRoIPoolingSingleCoorIntegral(
+        maxFunctor(win_start_w, static_cast<T>(w_iter)) - w_iter,
+        minFunctor(win_end_w, static_cast<T>(w_iter + 1)) - w_iter,
+        PrRoIPoolingInterpolation(this_bottom_data, win_end_h, w_iter, height,
+                                  width),
+        PrRoIPoolingInterpolation(this_bottom_data, win_end_h, w_iter + 1,
+                                  height, width));
+  }
+
+  float partial_x1 = -g_x1_y + (win_end_h - win_start_h) * (*this_top_data);
+  float partial_y1 = -g_x_y1 + (win_end_w - win_start_w) * (*this_top_data);
+  float partial_x2 = g_x2_y - (win_end_h - win_start_h) * (*this_top_data);
+  float partial_y2 = g_x_y2 - (win_end_w - win_start_w) * (*this_top_data);
+
+  partial_x1 = partial_x1 / win_size * spatial_scale;
+  partial_x2 = partial_x2 / win_size * spatial_scale;
+  partial_y1 = partial_y1 / win_size * spatial_scale;
+  partial_y2 = partial_y2 / win_size * spatial_scale;
+
+  this_data_grad[0] = 0;
+  functor(this_data_grad + 1,
+          (partial_x1 * (1.0 - float(pw) / pooled_width) +
+           partial_x2 * (1.0 - float(pw + 1) / pooled_width)) *
+              (*this_out_grad));
+  functor(this_data_grad + 2,
+          (partial_y1 * (1.0 - float(ph) / pooled_height) +
+           partial_y2 * (1.0 - float(ph + 1) / pooled_height)) *
+              (*this_out_grad));
+  functor(this_data_grad + 3, (partial_x2 * float(pw + 1) / pooled_width +
+                               partial_x1 * float(pw) / pooled_width) *
+                                  (*this_out_grad));
+  functor(this_data_grad + 4, (partial_y2 * float(ph + 1) / pooled_height +
+                               partial_y1 * float(ph) / pooled_height) *
+                                  (*this_out_grad));
+}
+
 template <typename DeviceContext, typename T>
 class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
@@ -249,18 +372,24 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Input<framework::Tensor>("Out");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* output_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* input_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* input_roi_grad =
+        ctx.Output<framework::Tensor>(framework::GradVarName("ROIs"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    if (input_grad) {
+    if (input_grad && input_roi_grad) {
       auto in_dims = in->dims();
+      auto* in_data = in->data<T>();
+      auto* out_data = out->data<T>();
+
       int input_channels = in_dims[1];
       auto output_channels = input_channels;
       int height = in_dims[2];
@@ -284,6 +413,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       const T* input_rois = rois->data<T>();
       const T* output_grad_data = output_grad->data<T>();
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+      T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
       // set gradient of X to be 0. before backpropagate.
       math::SetConstant<DeviceContext, T> set_zero;
@@ -306,6 +436,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
             (roi_batch_id * input_channels + input_channel) * height * width;
         T* offset_input_grad_data = input_grad_data + input_offset;
         const T* offset_output_grad_data = output_grad_data + i;
+        const T* offset_out_data = out_data + i;
 
         // [start, end) interval for spatial sampling
         const T* offset_input_rois = input_rois + n * 4;
@@ -313,6 +444,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         T roi_start_h = static_cast<T>(offset_input_rois[1]) * spatial_scale;
         T roi_end_w = static_cast<T>(offset_input_rois[2]) * spatial_scale;
         T roi_end_h = static_cast<T>(offset_input_rois[3]) * spatial_scale;
+        T* offset_input_roi_grad_data = input_roi_grad_data + n * 4;
 
         T roi_width = std::max(roi_end_w - roi_start_w, static_cast<T>(0.0));
         T roi_height = std::max(roi_end_h - roi_start_h, static_cast<T>(0.0));
@@ -350,6 +482,16 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
                 height, width, PrRoIPoolingDistributeDiff<T>);
           }
         }
+
+        const T* offset_in_data = in_data + input_offset;
+        PrRoIPoolingCoorBackward(
+            s_w, e_w, s_h, e_h, width, height, win_start_w, win_start_h,
+            win_end_w, win_end_h, pw, ph, pooled_width, pooled_height, win_size,
+            spatial_scale, offset_in_data, offset_out_data,
+            offset_input_grad_data, offset_input_roi_grad_data,
+            CPUAccumulateRois<T>,
+            [](const T x, const T y) { return std::max(x, y); },
+            [](const T x, const T y) { return std::min(x, y); });
       }
     }
   }
