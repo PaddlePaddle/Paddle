@@ -74,9 +74,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
 
 // convert dlpack's DLTensor to tensor
-void TensorFromDLPack(const ::DLTensor& dl_tensor,
-                      const platform::DeviceContext& ctx,
-                      framework::Tensor* dst);
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 
 //
 // The implementation of template functions.

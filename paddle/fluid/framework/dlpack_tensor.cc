@@ -121,7 +121,7 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   t_.byte_offset = 0;
 }
 
-::DLManagedTensor *DLPackTensor::toDLManagedTensor() {
+::DLManagedTensor *DLPackTensor::ToCudfCompatibleDLManagedTensor() {
   // init shape, tensor dims
   // for DLManagedTensor shape need to be compatible with ndim
   // refer to cupy and cudf, we new int64[ndim]
@@ -136,6 +136,8 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // refer to cupy and cudf, the compact tensor first dim's strides need to be 1
   // and second dim's strides need to be length of rows of cudf
   // cudf now only support dim=2
+  PADDLE_ENFORCE_LE(t_.ndim, 2, "cudf now only support dim=2.");
+
   if (t_.ndim > 1)
     t_.strides = new int64_t[2]{1, t_.shape[1]};
   else

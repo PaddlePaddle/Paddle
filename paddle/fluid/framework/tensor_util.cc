@@ -497,90 +497,50 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 
 // get tensor data point by DLDataType
 void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
-                            const platform::CPUPlace& dst_place) {
-  if (type.lanes > 1) return nullptr;  // vector types not currently supported
+                            const platform::Place& dst_place) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(type.lanes, 1, "vector types not currently supported");
 
   switch (type.bits) {
     case 8:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int8_t>(dst_place))
-                 : (type.code == kDLUInt)
-                       ? static_cast<void*>(
-                             dst->mutable_data<uint8_t>(dst_place))
-                       : nullptr;
+      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLUInt),
+                     "There is no this type.code <%d> when type.bits is 8.",
+                     type.code);
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
+      if (type.code == kDLUInt)
+        return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
     case 16:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int16_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(
-                             dst->mutable_data<paddle::platform::float16>(
-                                 dst_place))
-                       : nullptr;
+      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
+                     "There is no this type.code <%d> when type.bits is 16.",
+                     type.code);
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(
+            dst->mutable_data<paddle::platform::float16>(dst_place));
     case 32:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int32_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(dst->mutable_data<float>(dst_place))
-                       : nullptr;
+      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
+                     "There is no this type.code <%d> when type.bits is 32.",
+                     type.code);
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<float>(dst_place));
     case 64:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int64_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(
-                             dst->mutable_data<double>(dst_place))
-                       : nullptr;
+      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
+                     "There is no this type.code <%d> when type.bits is 64.",
+                     type.code);
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<double>(dst_place));
     default:
-      break;
+      PADDLE_THROW("Unsupport type.bits %d", type.bits);
   }
-
-  return nullptr;
 }
 
-#ifdef PADDLE_WITH_CUDA
-void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
-                            const platform::CUDAPlace& dst_place) {
-  if (type.lanes > 1) return nullptr;  // vector types not currently supported
-
-  switch (type.bits) {
-    case 8:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int8_t>(dst_place))
-                 : (type.code == kDLUInt)
-                       ? static_cast<void*>(
-                             dst->mutable_data<uint8_t>(dst_place))
-                       : nullptr;
-    case 16:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int16_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(
-                             dst->mutable_data<paddle::platform::float16>(
-                                 dst_place))
-                       : nullptr;
-    case 32:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int32_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(dst->mutable_data<float>(dst_place))
-                       : nullptr;
-    case 64:
-      return (type.code == kDLInt)
-                 ? static_cast<void*>(dst->mutable_data<int64_t>(dst_place))
-                 : (type.code == kDLFloat)
-                       ? static_cast<void*>(
-                             dst->mutable_data<double>(dst_place))
-                       : nullptr;
-    default:
-      break;
-  }
-
-  return nullptr;
-}
-#endif
-
-void TensorFromDLPack(const ::DLTensor& dl_tensor,
-                      const platform::DeviceContext& ctx,
-                      framework::Tensor* dst) {
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
   platform::CPUPlace dst_place = platform::CPUPlace();
   platform::CPUPlace src_place = platform::CPUPlace();
 
@@ -592,8 +552,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor,
 
   dst->Resize(vddim);
   ::DLDataType type = dl_tensor.dtype;
-  void* dst_ptr = nullptr;
-  dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+  void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
 
   auto src_ptr = static_cast<const void*>(dl_tensor.data);
   auto size = paddle::framework::product(vddim) * type.bits / 8;
@@ -608,10 +567,10 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor,
     platform::CUDAPlace src_place =
         platform::CUDAPlace(dl_tensor.ctx.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
     memory::Copy(
         dst_place, dst_ptr, src_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+        reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
   }
 #endif
 }

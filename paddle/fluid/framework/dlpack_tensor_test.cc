@@ -71,11 +71,46 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 
   CHECK_EQ(GetDLDataTypeCode<T>(), dl_tensor.dtype.code);
 
-  ::DLManagedTensor *dl_managed_tensor = dlpack_tensor.toDLManagedTensor();
+  // test case for ToCudfCompatibleDLManagedTensor
+  DDim dims2{4, 5};
+  Tensor tensor2;
+  tensor2.Resize(dims2);
+  tensor2.mutable_data<T>(place);
+
+  DLPackTensor dlpack_tensor2(tensor2, lanes);
+  ::DLManagedTensor *dl_managed_tensor =
+      dlpack_tensor2.ToCudfCompatibleDLManagedTensor();
+
   CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+
+  for (auto i = 0; i < dims2.size(); ++i) {
+    CHECK_EQ(dims2[i], dl_managed_tensor->dl_tensor.shape[i]);
+  }
+
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
+
+  dl_managed_tensor->deleter(dl_managed_tensor);
+}
+
+template <typename T>
+void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
+                                         uint16_t lanes) {
+  DDim dims{6, 7};
+  Tensor tensor;
+  tensor.Resize(dims);
+  tensor.mutable_data<T>(place);
+
+  DLPackTensor dlpack_tensor(tensor, lanes);
+
+  ::DLManagedTensor *dl_managed_tensor =
+      dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+
+  CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+
   for (auto i = 0; i < dims.size(); ++i) {
     CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
   }
+
   CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
 
   dl_managed_tensor->deleter(dl_managed_tensor);
@@ -97,6 +132,7 @@ void TestMainLoop() {
   for (auto &p : places) {
     for (auto &l : lanes) {
       TestMain<T>(p, l);
+      TestToCudfCompatibleDLManagedTensor<T>(p, l);
     }
   }
 }

@@ -33,7 +33,7 @@ class DLPackTensor {
 
   inline operator ::DLTensor&() { return t_; }
 
-  ::DLManagedTensor* toDLManagedTensor();
+  ::DLManagedTensor* ToCudfCompatibleDLManagedTensor();
 
  private:
   ::DLTensor t_;

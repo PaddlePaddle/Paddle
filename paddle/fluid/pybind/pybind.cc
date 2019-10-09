@@ -181,16 +181,12 @@ PYBIND11_MODULE(core_noavx, m) {
     DLTensor dl = dmt->dl_tensor;
     Tensor tensor;
 
-    auto cpu_place = new paddle::platform::CPUPlace();
-    paddle::platform::CPUDeviceContext cpu_ctx(*cpu_place);
     if (dl.ctx.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dl, cpu_ctx, &tensor);
+      paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #ifdef PADDLE_WITH_CUDA
     if (dl.ctx.device_type == kDLGPU) {
-      auto gpu_place = new paddle::platform::CUDAPlace();
-      paddle::platform::CUDADeviceContext gpu_ctx(*gpu_place);
-      paddle::framework::TensorFromDLPack(dl, gpu_ctx, &tensor);
+      paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #endif
     return tensor;
@@ -316,7 +312,8 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_to_dlpack",
            [](Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt = dlpack_tensor.toDLManagedTensor();
+             DLManagedTensor *dmt =
+                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
              auto capsule = py::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (ptr) {
