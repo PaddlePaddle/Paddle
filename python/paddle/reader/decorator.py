@@ -71,7 +71,7 @@ def map_readers(func, *readers):
     Args:
         func: a function to read data and compute result, the output of this function 
               will be set as the output of the resulted data reader.
-        readers : list of readers whose outputs will be used as arguments of func.
+        readers (Reader|list of Reader): list of readers whose outputs will be used as arguments of func.
  
     Returns:
         the resulted data reader (Reader)
