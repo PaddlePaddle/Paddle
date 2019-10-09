@@ -4306,30 +4306,39 @@ def group_norm(input,
 
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
-    Args:
-        input(Variable): The input tensor variable.
-        groups(int): The number of groups that divided from channels.
-        epsilon(float): The small value added to the variance to prevent
-            division by zero.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-            scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the bias is initialized one. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
-            bias :math:`b`. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        act(str): Activation to be applied to the output of group normalizaiton.
-        data_layout(string, default NCHW): NCHW(num_batch, channels, h, w) or NHWC(num_batch, h, w, channels).
-        name (str): The name of this layer. It is optional.
+    Parameters:
+        input(Variable): 4-D Tensor, the data type is float32 or float64.
+        groups(int): The number of groups that divided from channels, the data type
+            is int32.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero, the data type is float32. Default: 1e-05.
+        param_attr(ParamAttr|bool, optional): ParamAttr object that specifies weight parameter
+            attribute. If a bool type, only False is supported, which means there is no weight parameter.
+            Default: None, the default weight parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        bias_attr(ParamAttr|bool, optional): ParamAttr object that specifies bias parameter
+            attribute. If a bool type, only False is supported, which means there is no bias parameter.
+            Default: None, the default bias parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        act(str, optional): Activation to be applied to the output of group normalizaiton.
+        data_layout(str, optional): The data format of the input and output data. An optional string
+            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, channels, height, width]`. Default: "NCHW".
+        name (str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A tensor variable which is the result after applying group normalization on the input.
+        Variable: A 4-D Tensor has same data type and data format with `input`.
+
+    Raises:
+        ValueError: If `data_layout` is neither 'NCHW' nor 'NHWC'.
 
     Examples:
+       .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> data = fluid.layers.data(name='data', shape=[8, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.group_norm(input=data, groups=4)
+            import paddle.fluid as fluid
+            data = fluid.data(name='data', shape=[None, 8, 32, 32], dtype='float32')
+            x = fluid.layers.group_norm(input=data, groups=4)
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
