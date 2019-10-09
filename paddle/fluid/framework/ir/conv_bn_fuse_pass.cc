@@ -200,7 +200,6 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
-
       GraphSafeRemoveNodes(
           graph,
           {conv_out, bn_scale, bn_bias, bn_mean, bn_variance, batch_norm,
