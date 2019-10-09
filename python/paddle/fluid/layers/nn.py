@@ -417,8 +417,8 @@ def center_loss(input,
 
           import paddle.fluid as fluid 
 
-          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
-          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          input = fluid.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.data(name='y',shape=[20,1],dtype='int64')
           num_classes = 1000
           alpha = 0.01
           param_attr = fluid.initializer.Xavier(uniform=False)
@@ -9676,8 +9676,8 @@ def gather_nd(input, index, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 4, 5], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[2, 2], dtype='int32')
+            x = fluid.data(name='x', shape=[3, 4, 5], dtype='float32')
+            index = fluid.data(name='index', shape=[2, 2], dtype='int32')
             output = fluid.layers.gather_nd(x, index)
 
     """
@@ -9807,9 +9807,9 @@ def scatter_nd_add(ref, index, updates, name=None):
 
             import paddle.fluid as fluid
 
-            ref = fluid.layers.data(name='ref', shape=[3, 5, 9, 10], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int32', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            ref = fluid.data(name='ref', shape=[3, 5, 9, 10], dtype='float32')
+            index = fluid.data(name='index', shape=[3, 2], dtype='int32')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
 
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
@@ -9862,8 +9862,8 @@ def scatter_nd(index, updates, shape, name=None):
 
             import paddle.fluid as fluid
 
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            index = fluid.data(name='index', shape=[3, 2], dtype='int64')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
 
             output = fluid.layers.scatter_nd(index, updates, shape)
