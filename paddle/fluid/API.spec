@@ -18,7 +18,7 @@ paddle.fluid.in_dygraph_mode (ArgSpec(args=[], varargs=None, keywords=None, defa
 paddle.fluid.is_compiled_with_cuda (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '60c7f107a5050aeb58bb74eb175672b5'))
 paddle.fluid.Variable ('paddle.fluid.framework.Variable', ('document', '8e51f2adcad7ae33aa35a178cceebdf6'))
 paddle.fluid.Variable.__init__ (ArgSpec(args=['self', 'block', 'type', 'name', 'shape', 'dtype', 'lod_level', 'capacity', 'persistable', 'error_clip', 'stop_gradient', 'is_data', 'need_check_feed'], varargs=None, keywords='kwargs', defaults=(VarType.LOD_TENSOR, None, None, None, None, None, None, None, False, False, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.Variable.astype (ArgSpec(args=['self', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '36388c052fa1bfeb7f538ca624da6c90'))
+paddle.fluid.Variable.astype (ArgSpec(args=['self', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', 'ffc7049afe250829b56986c40cf3cca3'))
 paddle.fluid.Variable.backward (ArgSpec(args=['self', 'backward_strategy'], varargs=None, keywords=None, defaults=(None,)), ('document', 'a2fabca0102442aae4d6537028574d07'))
 paddle.fluid.Variable.clear_gradient (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'c6e511dcccf51a95eeb83447322b4345'))
 paddle.fluid.Variable.detach (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '833afb90a8d9353610e3d671b2de9f4f'))

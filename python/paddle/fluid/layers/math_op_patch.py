@@ -108,8 +108,8 @@ def monkey_patch_variable():
             Variable: Variable with new dtype
 
         Examples:
+            In Static Graph Mode:
 
-        In Static Graph Mode:
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -121,7 +121,8 @@ def monkey_patch_variable():
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}".format(new_variable.dtype))
 
-        In Dygraph Mode:
+            In Dygraph Mode:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid
