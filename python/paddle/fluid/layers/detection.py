@@ -804,8 +804,7 @@ def polygon_box_transform(input, name=None):
         .. code-block:: python
             
             import paddle.fluid as fluid
-            input = fluid.layers.data(name='input', shape=[4, 10, 5, 5],
-                                      append_batch_size=False, dtype='float32')
+            input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
     helper = LayerHelper("polygon_box_transform", **locals())
