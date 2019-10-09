@@ -119,7 +119,8 @@ bool SaveStaticNameListToDisk(
     auto var_ptr = scope.FindVar(vec_tensor_name_list[i]);
     PADDLE_ENFORCE_NE(
         var_ptr, nullptr,
-        "Variable find error, when save model, can't not find vairable [%s]",
+        "Variable find error, when save model, can't not find vairable [%s], "
+        "Please make sure you have run StartUpProgram",
         vec_tensor_name_list[i]);
     Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
@@ -192,7 +193,8 @@ bool LoadStaticNameListFromDisk(
 
     PADDLE_ENFORCE_NE(
         var_ptr, nullptr,
-        "Parameter not created, when load model, can't not find parameter [%s]",
+        "Parameter not created, when load model, can't not find parameter [%s] "
+        "please make sure you have run StartUpProgram",
         vec_tensor_name_list[i]);
 
     Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
