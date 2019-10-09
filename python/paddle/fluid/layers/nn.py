@@ -7033,8 +7033,23 @@ def nce(input,
                        custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
-    assert isinstance(input, Variable)
-    assert isinstance(label, Variable)
+
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in nce layer must be Variable, but received %s"
+            % (type(input)))
+    if not isinstance(label, Variable):
+        raise TypeError(
+            "The type of 'label' in nce layer must be Variable, but received %s"
+            % (type(label)))
+    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in nce layer must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+    if convert_dtype(label.dtype) not in ['int64']:
+        raise TypeError(
+            "The data type of 'label' in nce layer must be int64, but received %s."
+            % (convert_dtype(label.dtype)))
 
     dim = input.shape[1]
     num_true_class = label.shape[1]
