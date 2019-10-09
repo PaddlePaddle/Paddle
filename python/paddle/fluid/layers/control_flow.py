@@ -1168,8 +1168,8 @@ def equal(x, y, cond=None):
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created 
-        Variable that meets the requirements to store the result of *equal*.
-        if cond is None, a new Varibale will be create to store the result.
+            Variable that meets the requirements to store the result of *equal*.
+            if cond is None, a new Varibale will be create to store the result.
 
     Returns:
         Variable: output Tensor that the shape is the same as the input Tensor,
