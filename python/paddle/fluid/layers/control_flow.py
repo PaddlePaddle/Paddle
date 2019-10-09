@@ -310,7 +310,7 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -396,7 +396,7 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -423,7 +423,7 @@ class StaticRNN(object):
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -499,7 +499,7 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -550,7 +550,7 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
@@ -609,7 +609,7 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
                 input=x,
