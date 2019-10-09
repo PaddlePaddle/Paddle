@@ -254,13 +254,13 @@ class DownpourServer(Server):
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = strategy.get('datanorm_table_class',
-                                         "DownpourDenseDoubleTable")
+                                         'DownpourDenseTable')
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
-            'datanorm_accessor_class', "DownpourDenseValueDoubleAccessor")
+            'datanorm_accessor_class', 'DownpourDenseValueAccessor')
         table.accessor.dense_sgd_param.name = strategy.get('datanorm_operation',
-                                                           "summarydouble")
+                                                           'summary')
         table.accessor.dense_sgd_param.summary.summary_decay_rate = strategy.get(
             'datanorm_decay_rate', 0.999999)
         table.accessor.fea_dim = fea_dim
