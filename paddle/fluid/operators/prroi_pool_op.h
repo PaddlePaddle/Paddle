@@ -231,19 +231,21 @@ HOSTDEVICE void PrRoIPoolingCoorBackward(
 
   this_data_grad[0] = 0;
   functor(this_data_grad + 1,
-          (partial_x1 * (1.0 - float(pw) / pooled_width) +
-           partial_x2 * (1.0 - float(pw + 1) / pooled_width)) *
+          (partial_x1 * (1.0 - static_cast<T>(pw) / pooled_width) +
+           partial_x2 * (1.0 - static_cast<T>(pw + 1) / pooled_width)) *
               (*this_out_grad));
   functor(this_data_grad + 2,
-          (partial_y1 * (1.0 - float(ph) / pooled_height) +
-           partial_y2 * (1.0 - float(ph + 1) / pooled_height)) *
+          (partial_y1 * (1.0 - static_cast<T>(ph) / pooled_height) +
+           partial_y2 * (1.0 - static_cast<T>(ph + 1) / pooled_height)) *
               (*this_out_grad));
-  functor(this_data_grad + 3, (partial_x2 * float(pw + 1) / pooled_width +
-                               partial_x1 * float(pw) / pooled_width) *
-                                  (*this_out_grad));
-  functor(this_data_grad + 4, (partial_y2 * float(ph + 1) / pooled_height +
-                               partial_y1 * float(ph) / pooled_height) *
-                                  (*this_out_grad));
+  functor(this_data_grad + 3,
+          (partial_x2 * static_cast<T>(pw + 1) / pooled_width +
+           partial_x1 * static_cast<T>(pw) / pooled_width) *
+              (*this_out_grad));
+  functor(this_data_grad + 4,
+          (partial_y2 * static_cast<T>(ph + 1) / pooled_height +
+           partial_y1 * static_cast<T>(ph) / pooled_height) *
+              (*this_out_grad));
 }
 
 template <typename DeviceContext, typename T>
