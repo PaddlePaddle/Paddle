@@ -177,48 +177,47 @@ Args:
 
 Returns:
 
-    Variable: The output tensor of Thresholded RELU op, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Variable: The output tensor of Thresholded ReLU op, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
-     # declarative mode
-     >>> import numpy as np
-     >>> from paddle import fluid
-     >>> x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
-     >>> y = fluid.layers.thresholded_relu(x, threshold=0.1)
-     >>> place = fluid.CPUPlace()
-     >>> exe = fluid.Executor(place)
-     >>> start = fluid.default_startup_program()
-     >>> main = fluid.default_main_program()
-     >>> data = np.random.randn(2, 3).astype("float32")
-     >>> exe.run(start)
-     >>> y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
-     >>> data
-     # array([[ 0.43060726, -0.8275702 , -0.74713653],
-     #        [-0.8739619 ,  0.485993  , -0.7506466 ]], dtype=float32)
-     >>> y_np
-     # array([[ 0.43060726, -0.        , -0.        ],
-     #        [-0.        ,  0.485993  , -0.        ]], dtype=float32)
+    .. code-block:: python
+    
+        # declarative mode
+        import numpy as np
+        from paddle import fluid
+        x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
+        y = fluid.layers.thresholded_relu(x, threshold=0.1)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        start = fluid.default_startup_program()
+        main = fluid.default_main_program()
+        data = np.random.randn(2, 3).astype("float32")
+        exe.run(start)
+        y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+        data
+        # array([[ 0.21134382, -1.1805999 ,  0.32876605],
+        #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
+        y_np
+        # array([[ 0.21134382, -0.        ,  0.32876605],
+        #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 
-
-     # imperative mode
-	 >>> import numpy as np
-     >>> from paddle import fluid
-     >>> import paddle.fluid.dygraph as dg
-     >>> 
-     >>> data = np.random.randn(2, 3).astype("float32")
-	 >>> 
-	 >>> place = fluid.CPUPlace()
-     >>> with dg.guard(place) as g:
-     >>>     x = dg.to_variable(data)
-     >>>     y = fluid.layers.thresholded_relu(x, threshold=0.1)
-     >>>     y_np = y.numpy()
-     >>> data
-     # array([[ 0.21134382, -1.1805999 ,  0.32876605],
-     #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
-     >>> y_np
-     # array([[ 0.21134382, -0.        ,  0.32876605],
-     #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
-
-
+    .. code-block:: python
+    
+        # imperative mode
+        import numpy as np
+        from paddle import fluid
+        import paddle.fluid.dygraph as dg
+        data = np.random.randn(2, 3).astype("float32")
+        place = fluid.CPUPlace()
+        with dg.guard(place) as g:
+            x = dg.to_variable(data)
+            y = fluid.layers.thresholded_relu(x, threshold=0.1)
+            y_np = y.numpy()
+        data
+        # array([[ 0.21134382, -1.1805999 ,  0.32876605],
+        #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
+        y_np
+        # array([[ 0.21134382, -0.        ,  0.32876605],
+        #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 """

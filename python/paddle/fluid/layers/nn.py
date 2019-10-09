@@ -10980,7 +10980,7 @@ def swish(x, beta=1.0, name=None):
     Examples:
 
         .. code-block:: python
-	
+
             # declarative mode 
             import numpy as np
             from paddle import fluid
@@ -10994,27 +10994,27 @@ def swish(x, beta=1.0, name=None):
    
             exe.run(start)
             x_np, = exe.run(main, feed={}, fetch_list=[x])
-	
-        	x_np
-        	# array([[2.3060477, 2.676496 , 3.9911983],
-        	#        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
-	
-	
+
+            x_np
+            # array([[2.3060477, 2.676496 , 3.9911983],
+            #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
+
+
         .. code-block:: python
 
             # imperative mode
             import numpy as np
             from paddle import fluid
             import paddle.fluid.dygraph as dg
-    
-        	place = fluid.CPUPlace()
+
+            place = fluid.CPUPlace()
             with dg.guard(place) as g:
                 x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
                 x_np = x.numpy()
-	
-        	x_np
-        	# array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
-        	#        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
+
+            x_np
+            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
+            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -11768,7 +11768,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
 
     Examples:
        .. code-block:: python
-	
+       
            # declarative mode 
            import numpy as np
            from paddle import fluid
@@ -11782,12 +11782,11 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
    
            exe.run(start)
            x_np, = exe.run(main, feed={}, fetch_list=[x])
-	
-       	   x_np
-       	   # array([[2.3060477, 2.676496 , 3.9911983],
-       	   #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
-	
-	
+
+           x_np
+           # array([[2.3060477, 2.676496 , 3.9911983],
+           #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
+
        .. code-block:: python
 
            # imperative mode
@@ -11795,14 +11794,13 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            from paddle import fluid
            import paddle.fluid.dygraph as dg
     
-       	   place = fluid.CPUPlace()
-              with dg.guard(place) as g:
-                  x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-                  x_np = x.numpy()
-	       
-       	   x_np
-       	   # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
-       	   #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
+           place = fluid.CPUPlace()
+           with dg.guard(place) as g:
+               x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
+               x_np = x.numpy()       
+           x_np
+           # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
+           #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
     helper = LayerHelper('gaussian_random', **locals())
