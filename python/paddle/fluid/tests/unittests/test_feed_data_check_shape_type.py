@@ -123,7 +123,7 @@ class TestFeedData(unittest.TestCase):
 
     def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
-        in_size = [-1, 3, 4, 8]
+        in_size = [None, 3, 4, 8]
         feed_in_data = np.random.uniform(
             size=[batch_size, 3, 4, 5]).astype(np.float32)
         label_size = [-1, 1]
@@ -137,7 +137,7 @@ class TestFeedData(unittest.TestCase):
         in_size = [-1, 3, 4, 5]
         feed_in_data = np.random.uniform(
             size=[batch_size, 3, 4, 5]).astype(np.float32)
-        label_size = (-1, 1)
+        label_size = (None, 1)
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[batch_size, 1]).astype(np.int64)
         self._feed_data_in_executor(in_size, label_size, feed_in_data,
