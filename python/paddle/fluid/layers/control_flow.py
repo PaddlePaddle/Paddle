@@ -646,7 +646,7 @@ class While(object):
     while loop control flow. Repeat while body until cond is False.
 
     Args:
-        cond(Variable): A Tensor whose datatype is bool controlling whether to continue looping.
+        cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is None.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
@@ -1466,11 +1466,13 @@ class Switch(object):
 
     Member Functions:
         case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        
         default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
     Case and default functions can only be used inside the scope of Switch, as shown below:
 
     .. code-block:: python
+        import paddle.fluid as fluid
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
@@ -1661,9 +1663,9 @@ class IfElse(object):
  
         The block is constructed by calling the ``with ie. false_block()`` function in the object, and the computational logic under condition false is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
 
-        `` Out = ie. input (x) `` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
+        ``Out = ie. input (x)`` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
 
-        `` ie. output (out) `` writes the result to the output of the corresponding condition.
+        ``ie. output (out)`` writes the result to the output of the corresponding condition.
 
         There is a ``call ()`` function inside the object, that is, by calling ``output = ie ()``, all the outputs inside the block of False are fused as the whole output, the output type is a list, and the type of each element in the list is Variable.
 
