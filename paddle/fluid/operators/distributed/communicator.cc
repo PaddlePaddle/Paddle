@@ -89,8 +89,6 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
               FLAGS_communicator_send_queue_size);
     }
 
-    this->BarrierTriggerReset(FLAGS_communicator_max_merge_var_num);
-
     consume_threadpool_.reset(
         new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   }
@@ -590,9 +588,9 @@ void HalfAsyncCommunicator::Start() {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread and recv thread";
-    running_ = true;
 
-    BarrierTriggerReset(FLAGS_communicator_min_send_grad_num_before_recv);
+    BarrierTriggerReset(FLAGS_communicator_max_merge_var_num);
+    running_ = true;
     consume_thread_.reset(new std::thread(
         std::bind(&HalfAsyncCommunicator::ConsumeThread, this)));
   }
