@@ -134,30 +134,30 @@ def save_vars(executor,
               predicate=None,
               filename=None):
     """
-    This function saves the specific variables in the `Program` to files.
+    This API saves specific variables in the `Program` to files.
 
     There are two ways to specify the variables to be saved: set variables in 
     a list and assign it to the `vars`, or use the `predicate` function to select
     variables that make `predicate(variable) == True`. The first way has a higher priority.
 
-    The `dirname` is used to specify the folder where to save the variables.
-    If you prefer to save the variables in separate files in the `dirname` floder,
-    do not set `filename`. If you prefer to save all the variables in a single file,
+    The `dirname` is used to specify the folder where to save variables.
+    If you prefer to save variables in separate files in the `dirname` floder,
+    do not set `filename`. If you prefer to save all variables in a single file,
     use `filename` to specify it.
 
     Args:
         executor(Executor): The executor to run for saving variables.
-        dirname(str): The folder where to save the variables.
-        main_program(Program|None): The program whose variables will be saved.
+        dirname(str): The folder where to save variables.
+        main_program(Program, optional): The program whose variables will be saved.
                                     If it is None, the default main program will
                                     be used automatically.
                                     Default: None
-        vars(list[Variable]|None): The list contains all variables to be saved.
+        vars(list[Variable], optional): The list contains all variables to be saved.
                                    Default: None
-        predicate(function|None): The function selects the variables that make
-	                          'predicate(variable) == True'. 
+        predicate(function, optional): The function selects the variables that make
+	                          `predicate(variable) == True`. 
                                   Default: None
-        filename(str|None): If you prefer to save all the variables in a single file,
+        filename(str, optional): If you prefer to save all variables in a single file,
 			    use `filename` to specify it. Otherwise, let `filename` be None. 
                             Default: None
 
@@ -542,14 +542,14 @@ def load_vars(executor,
               predicate=None,
               filename=None):
     """
-    This function loads variables from files by executor.
+    This API loads variables from files by executor.
 
     There are two ways to specify the variables to be loaded: the first way, set
     variables in a list and assign it to the `vars`; the second way, use the 
     `predicate` function to select variables that make `predicate(variable) == True`. 
     The first way has a higher priority.
 
-    The `dirname` is used to specify the folder where to load the variables.
+    The `dirname` is used to specify the folder where to load variables.
     If variables were saved in separate files in the folder `dirname`,
     set `filename` None. If all variables were saved in a single file,
     use `filename` to specify it.
@@ -557,16 +557,16 @@ def load_vars(executor,
     Args:
         executor(Executor): The executor to run for loading variables.
         dirname(str): The folder where to load the variables.
-        main_program(Program|None): The program whose variables will be loaded.
+        main_program(Program, optional): The program whose variables will be loaded.
                                     If it is None, the default main program will
                                     be used automatically.
                                     Default: None
-        vars(list[Variable]|None): The list that contains all variables to be loaded.
+        vars(list[Variable], optional): The list that contains all variables to be loaded.
                                    Default: None
-        predicate(function|None): The function selects the variables that make 
-	                          'predicate(variable) == True'.
+        predicate(function, optional): The function selects variables that make 
+	                          `predicate(variable) == True`.
                                   Default: None
-        filename(str|None): The file which saved all required variables. If variables
+        filename(str, optional): The file which saved all required variables. If variables
                             were saved in separate files, set it to be None.
                             Default: None
 

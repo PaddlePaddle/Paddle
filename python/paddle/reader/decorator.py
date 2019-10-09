@@ -85,30 +85,30 @@ def shuffle(reader, buf_size):
     paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
     and paddle.reader.shuffle is an alias.
 
-    Creates a decorated reader that outputs the shuffled data.
+    This API creates a decorated reader that outputs the shuffled data.
 
     The output data from the origin reader will be saved into a buffer, 
     and then shuffle the data. The size of buffer is determined by argument buf_size.
  
-    :param reader: the original reader whose data will be shuffled.
-    :type reader: callable
-    :param buf_size: the size of shuffled buffer.
-    :type buf_size: int
+    Args:
+        reader(callable): the original reader whose data will be shuffled.
+        buf_size(int): the size of shuffled buffer.
 
-    :return: a decorated reader.
-    :rtype: callable
+    Returns:
+    	callable: a decorated reader.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+
 	    def reader():
     	        for i in range(5):
         	    yield i
 	    shuffled_reader = fluid.io.shuffle(reader, 3)
 	    for e in shuffled_reader():
                 print(e)
-	    # outputs are 0~4 disordered arrangemen
+	    # outputs are 0~4 unordered arrangement
     """
 
     def data_reader():
@@ -256,19 +256,21 @@ def firstn(reader, n):
     paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
     and paddle.reader.firstn is an alias.
     
-    Creates a decorated reader, and limits the max number of samples that reader could return.
+    This API creates a decorated reader, and limits the max number of 
+    samples that reader could return.
 
-    :param reader: the input reader.
-    :type reader: callable
-    :param n: the max number of samples in the reader.
-    :type n: int
-    :return: a decorated reader.
-    :rtype: callable
+    Args:
+    	reader(callable): the input reader.
+    	n(int): the max number of samples in the reader.
+
+    Returns:
+    	callable: the decorated reader.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+
 	    def reader():
     	        for i in range(100):
                     yield i

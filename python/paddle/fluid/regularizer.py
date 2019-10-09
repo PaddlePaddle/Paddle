@@ -111,7 +111,7 @@ class WeightDecayRegularizer(object):
 
 class L2DecayRegularizer(WeightDecayRegularizer):
     """ 
-    Implements the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
+    Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
     In the implementation, the formula of L2 Weight Decay Regularization is as follows:
 
@@ -120,7 +120,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         L2WeightDecay = reg\_coeff * parameter
 
     Args:
-        regularization_coeff(float): regularization coeff, the default value is 0.0.
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0
 
     Examples:
         .. code-block:: python
@@ -185,7 +186,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
 class L1DecayRegularizer(WeightDecayRegularizer):
     """
-    Implements the L1 Weight Decay Regularization, which encourages the weights to be sparse.
+    Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
     In the implementation, the formula of L1 Weight Decay Regularization is as follows:
 	
@@ -194,7 +195,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         L1WeightDecay = reg\_coeff * sign(parameter)
 
     Args:
-        regularization_coeff(float): regularization coeff, the default value is 0.0.
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0.
 	
     Examples:
         .. code-block:: python
