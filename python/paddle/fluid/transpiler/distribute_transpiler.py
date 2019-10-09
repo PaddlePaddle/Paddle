@@ -834,7 +834,7 @@ class DistributeTranspiler(object):
         Get transpiled trainer side program. The program on trainer side compared with origin program 
         has following difference:
 
-            - Delete optimizer related op, parameter updated on Pserver
+            - Delete optimizer related op, because parameter updated on Pserver
             - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op`` 
         
         Args:
