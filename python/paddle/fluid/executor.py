@@ -22,6 +22,7 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
+from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
@@ -66,11 +67,21 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    Change the global/default scope instance by Python `with` statement. All
-    variable in runtime will assigned to the new scope.
+    This function switches scope through python `with` statement.
+    Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
+    similar to brackets in programming languages.
+    If this function is not invoked, all variables and variable names are recorded in the default global scope.
+    When users need to create variables with the same name,
+    they need to switch scopes through this function
+    if they do not want the mapping of variables with the same name to be overwritten.
+    After switching through the `with` statement,
+    all variables created in the `with` block will be assigned to a new scope.
 
-    Args:
-        scope: The new global/default scope.
+    Parameters:
+        scope: The new scope.
+
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -204,13 +215,18 @@ def check_feed_shape_type(var, feed):
     """
     if var.desc.need_check_feed():
         if not dimension_is_compatible_with(feed.shape(), var.shape):
-            raise ValueError('Cannot feed value of shape %r for Variable %r, '
-                             'which has shape %r' %
-                             (feed.shape, var.name, var.shape))
+            raise ValueError(
+                'The feeded Variable %r should have dimensions = %d, shape = '
+                '%r, but received feeded shape %r' %
+                (var.name, len(var.shape), var.shape, feed.shape()))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
-            raise ValueError('Cannot feed value of type %r for Variable %r, '
-                             'which has type %r' %
-                             (feed._dtype(), var.name, var.dtype))
+            var_dtype_format = convert_dtype(var.dtype) if isinstance(
+                var.dtype, core.VarDesc.VarType) else var.dtype
+            feed_dtype_format = convert_dtype(feed._dtype()) if isinstance(
+                feed._dtype(), core.VarDesc.VarType) else feed._dtype()
+            raise ValueError(
+                'The data type of feeded Variable %r must be %r, but received %r'
+                % (var.name, var_dtype_format, feed_dtype_format))
     return True
 
 
