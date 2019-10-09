@@ -462,7 +462,7 @@ def _py_reader(capacity,
                         break
                 feed_queue.close()
             except Exception as ex:
-                feed_queue.close()
+                feed_queue.kill()
                 logging.warn('Your decorated reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
