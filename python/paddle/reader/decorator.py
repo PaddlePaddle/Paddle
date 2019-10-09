@@ -72,7 +72,6 @@ def map_readers(func, *readers):
         func: a function to read data and compute result, the output of this function 
               will be set as the output of the resulted data reader.
         readers : list of readers whose outputs will be used as arguments of func.
-              For more information about Reader, please refer to :ref:`api_guide_python_reader` .
  
     Returns:
         the resulted data reader (Reader)
