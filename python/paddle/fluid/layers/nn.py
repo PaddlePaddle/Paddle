@@ -15596,7 +15596,7 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This function recomputes the `input` indices according to the offset of the
+    This operator recomputes the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -15641,7 +15641,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            batch_size = 32
+            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
             shard_label = fluid.layers.shard_index(input=label,
                                                    index_num=20,
                                                    nshards=2,
