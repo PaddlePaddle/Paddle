@@ -41,13 +41,9 @@ static constexpr bool CanInplaceAct() {
       : public ::paddle::framework::OpProtoAndCheckerMaker {                  \
    public:                                                                    \
     void Make() override {                                                    \
-      AddInput(                                                               \
-          "X",                                                                \
-          "Input of " #OP_NAME                                                \
-          " operator. A LoDTensor or Tensor with type float32, float64. ");   \
-      AddOutput(                                                              \
-          "Out",                                                              \
-          "A LoDTensor or Tensor with the same shape and type as input. ");   \
+      AddInput("X", "Input of " #OP_NAME                                      \
+                    " operator. A Tensor with type float32, float64. ");      \
+      AddOutput("Out", "A Tensor with the same shape and type as input. ");   \
       AddAttr<bool>(                                                          \
           "use_mkldnn",                                                       \
           "(bool, optional) Only used in mkldnn kernel. Default is false. ")  \
@@ -473,10 +469,9 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "Input of Relu6 operator. A LoDTensor or Tensor with type "
+             "Input of Relu6 operator. A Tensor with type "
              "float32, float64. ");
-    AddOutput("Out",
-              "A LoDTensor or Tensor with the same shape and type as input. ");
+    AddOutput("Out", "A Tensor with the same shape and type as input. ");
     AddAttr<float>("threshold",
                    "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);

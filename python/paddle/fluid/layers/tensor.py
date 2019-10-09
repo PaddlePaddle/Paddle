@@ -205,7 +205,7 @@ def concat(input, axis=0, name=None):
     This function concatenates the input along the axis.
 
     Args:
-        input(list): List of tensors with type float32, float64, int32, int64.
+        input(list): List of input tensors with type float32, float64, int32, int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
@@ -533,7 +533,7 @@ def argmin(x, axis=0):
     element along the provided axis.
 
     Args:
-        x(Variable): A input Tensor with type float32, float64, int8, int16,
+        x(Variable): An input Tensor with type float32, float64, int8, int16,
             int32, int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -592,7 +592,7 @@ def argmax(x, axis=0):
     element along the provided axis.
 
     Args:
-        x(Variable): A input Tensor with type float32, float64, int8, int16,
+        x(Variable): An input Tensor with type float32, float64, int8, int16,
             int32, int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -650,7 +650,7 @@ def argsort(input, axis=-1, name=None):
     :attr:`input`.
 
     Args:
-        x(Variable): A input Tensor with type float32, float64, int8, int16,
+        x(Variable): An input Tensor with type float32, float64, int8, int16,
             int32, int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
