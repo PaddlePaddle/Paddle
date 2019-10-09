@@ -2176,12 +2176,15 @@ def is_empty(x, cond=None):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result
-                              of given 'x'. Default: None
+        cond (Variable, optional): Output parameter. Default: None. If this parameter is given, it
+                              saves the test result of given 'x'.
 
     Returns:
-        Variable: A bool scalar. True if 'x' is an empty Variable.
+        A bool scalar. True if 'x' is an empty Variable.
 
+    Return Type:
+        Variable
+    
     Raises:
         TypeError: If input cond is not a variable, or cond's dtype is
                    not bool.
