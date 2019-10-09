@@ -1215,28 +1215,16 @@ def dynamic_gru(input,
                 h_0=None,
                 origin_mode=False):
     """
-    **Gated Recurrent Unit (GRU) Layer**
+    **Note: The input type of this must be LoDTensor. If the input type to be
+    processed is Tensor, use :ref:`api_fluid_layers_StaticRNN**
 
-    if origin_mode is False, then the equation of a gru step is from paper
-    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
-    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_ .
+    This operator is used to perform the calculations for a single layer of
+    Gated Recurrent Unit（GRU）on full sequences step by step. The calculations
+    in one time step support these two modes:
 
-    The formula is as follows:
-
-    .. math::
-
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
-
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
-
-        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-
-        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
-
-
-    if origin_mode is True then the equation is from paper
-    Learning Phrase Representations using RNN Encoder-Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+    If ``origin_mode`` is True, then the formula used is from paper
+    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
 
     .. math::
 
@@ -1248,57 +1236,67 @@ def dynamic_gru(input,
 
         h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    is the update gate and reset gate activation function and :math:`sigmoid`
-    is usually used for it. :math:`act_c` is the activation function for
-    candidate hidden state and :math:`tanh` is usually used for it.
 
-    Note that these :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` operations on
-    the input :math:`x_{t}` are NOT included in this operator. Users can choose
-    to use fully-connect layer before GRU layer.
+    if ``origin_mode`` is False, then the formula used is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+    :math:`x_t` is the input of current time step, but it is not from ``input`` .
+    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
+    **Note** thus a fully-connect layer whose size is 3 times of ``size`` should
+    be used before this operator, and the output should be used as ``input`` here.
+    :math:`h_{t-1}` is the hidden state from previous time step. 
+    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
+    update gate, reset gate, candidate hidden and hidden output separately.
+    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
+    the weight matrix and bias used in update gate, reset gate, candidate hidden
+    calculations. For implementation, the three weight matrix are merged into a
+    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
+    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
+    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
+    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
+    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
+
 
     Args:
-        input(Variable): The input of dynamic_gru layer, which supports
-            variable-time length input sequence. The underlying tensor in this
-            Variable is a matrix with shape :math:`(T \\times 3D)`, where
-            :math:`T` is the total time steps in this mini-batch, :math:`D`
-            is the hidden size.
-        size(int): The dimension of the gru cell.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-            hidden-hidden weight matrix. Note:
-
-            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
-              :math:`D` is the hidden size.
-            - All elements in the weight matrix can be divided into two parts.
-              The first part are weights of the update gate and reset gate with
-              shape :math:`(D \\times 2D)`, and the second part are weights for
-              candidate hidden state with shape :math:`(D \\times D)`.
-
-            If it is set to None or one attribute of ParamAttr, dynamic_gru will
-            create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
-            the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate,
-            reset gate and candidate calculations. If it is set to None or one
-            attribute of ParamAttr, dynamic_gru will create ParamAttr as
-            bias_attr. If the Initializer of the bias_attr is not set, the bias
-            is initialized zero. Default: None.
-        is_reverse(bool): Whether to compute reversed GRU, default
-            :attr:`False`.
-        gate_activation(str): The activation for update gate and reset gate.
-            Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
-        candidate_activation(str): The activation for candidate hidden state.
-            Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
-        h_0 (Variable): This is initial hidden state. If not set, default is
-            zero. This is a tensor with shape (N x D), where N is the number of
-            total time steps of input mini-batch feature and D is the hidden
-            size.
+        input(Variable): A LoDTensor whose lod level is 1, representing the input
+            after linear projection. Its shape should be :math:`[T, D \\times 3]` ,
+            where :math:`T` stands for the total sequence lengths in this mini-batch,
+            :math:`D` for the hidden size. The data type should be float32 or float64.
+        size(int): Indicate the hidden size.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Default: None.
+        bias_attr (ParamAttr, optional): The parameter attribute for the bias
+            of GRU. Default: None.
+        is_reverse(bool, optional): Whether to compute in the reversed order of
+            input sequences. Default False.
+        gate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "sigmoid".
+        candidate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "tanh".
+        h_0 (Variable, optional): A Tensor representing the initial hidden state.
+            It not provided, the default initial hidden state is 0. The shape is
+            :math:`[N, D]` , where :math:`N` is the number of sequences in the
+            mini-batch, :math:`D` for the hidden size. The data type should be
+            same as ``input`` . Default None.
 
     Returns:
-        Variable: The hidden state of GRU. The shape is :math:`(T \\times D)`, \
-            and sequence length is the same with the input.
+        Variable: A LoDTensor whose lod level is 1 and shape is :math:`[T, D]` , \
+            where :math:`T` stands for the total sequence lengths in this mini-batch \
+            :math:`D` for the hidden size. It represents GRU transformed sequence output, \
+            and has the same lod and data type with ``input`` .
 
     Examples:
 
@@ -1307,9 +1305,11 @@ def dynamic_gru(input,
             import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=[1],
-                                     dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            data = fluid.data(name='sequence',
+                      shape=[-1, 1],
+                      dtype='int64',
+                      lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
             x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
@@ -1365,79 +1365,83 @@ def gru_unit(input,
              gate_activation='sigmoid',
              origin_mode=False):
     """
-    **GRU unit layer**
+    Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
+    one time step and it supports these two modes:
 
-    if origin_mode is True, then the equation of a gru step is from paper
-    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
+    If ``origin_mode`` is True, then the formula used is from paper
+    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
 
-        .. math::
-            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+    .. math::
 
-            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
 
-            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
 
-            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
-    if origin_mode is False, then the equation of a gru step is from paper
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
+
+
+    if ``origin_mode`` is False, then the formula used is from paper
     `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
-    Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
+    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
 
-        .. math::
-            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
+    .. math::
 
-            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
 
-            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
 
-            h_t & = dot((1-u_t), h_{t-1}) + dot(u_t, m_t)
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
 
+        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
 
-    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
-    of the equation above, the :math:`z_t` is split into 3 parts -
-    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
-    implement a full GRU unit operator for an input, a fully
-    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+    :math:`x_t` is the input of current time step, but it is not ``input`` .
+    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
+    **Note** thus a fully-connect layer whose size is 3 times of GRU hidden size should
+    be used before this operator, and the output should be used as ``input`` here.
+    :math:`h_{t-1}` is the hidden state from previous time step. 
+    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
+    update gate, reset gate, candidate hidden and hidden output separately.
+    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
+    the weight matrix and bias used in update gate, reset gate, candidate hidden
+    calculations. For implementation, the three weight matrix are merged into a
+    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
+    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
+    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
+    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
+    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
 
-    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
-    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
-    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
-    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
-    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Args:
-        input (Variable): The fc transformed input value of current step.
-        hidden (Variable): The hidden value of gru unit from previous step.
-        size (integer): The input dimension value.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-            hidden-hidden weight matrix. Note:
-
-            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
-              :math:`D` is the hidden size.
-            - All elements in the weight matrix can be divided into two parts.
-              The first part are weights of the update gate and reset gate with
-              shape :math:`(D \\times 2D)`, and the second part are weights for
-              candidate hidden state with shape :math:`(D \\times D)`.
-
-            If it is set to None or one attribute of ParamAttr, gru_unit will
-            create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
-            the bias in the update gate, reset gate and candidate calculations.
-            If it is set to False, no bias will be applied to the update gate,
-            reset gate and candidate calculations. If it is set to None or one
-            attribute of ParamAttr, gru_unit will create ParamAttr as
-            bias_attr. If the Initializer of the bias_attr is not set, the bias
-            is initialized zero. Default: None.
-        activation (string): The activation type for cell (actNode).
-                             Default: 'tanh'
-        gate_activation (string): The activation type for gates (actGate).
-                                  Default: 'sigmoid'
+        input(Variable): A 2D Tensor representing the input after linear projection
+            after linear projection. Its shape should be :math:`[N, D \\times 3]` ,
+            where :math:`N` stands for batch size, :math:`D` for the hidden size.
+            The data type should be float32 or float64.
+        hidden(Variable): A 2D Tensor representing the hidden state from previous step.
+            Its shape should be :math:`[N, D]` , where :math:`N` stands for batch size,
+            :math:`D` for the hidden size. The data type should be same as ``input`` .
+        size(int): Indicate the hidden size.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            hidden-hidden weight matrix. Default: None.
+        bias_attr (ParamAttr, optional): The parameter attribute for the bias
+            of GRU. Default: None.
+        activation(str, optional): The activation fuction corresponding to
+            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "tanh".
+        gate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "sigmoid".
 
     Returns:
-        tuple: The hidden value, reset-hidden value and gate values.
+        tuple: The tuple contains three Tensor variables with the same data type \
+            as ``input`` . They represent the hidden state for next time step ( :math:`h_t` ), \
+            reseted previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
+            concatenation of :math:`h_t, r_t, \\tilde{h_t}` . And they have shape \
+            :math:`[N, D]` , :math:`[N, D]` , :math:`[N, D \times 3]` separately. \
+            Usually only the hidden state for next time step ( :math:`h_t` ) is used \
+            as output and state, the other two are intermediate results of calculations.
 
     Examples:
 
@@ -1446,7 +1450,7 @@ def gru_unit(input,
             import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
+            data = fluid.data(name='step_data', shape=[-1, 1], dtype='int64')
             emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
             x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
@@ -2028,17 +2032,14 @@ def chunk_eval(input,
                excluded_chunk_types=None,
                seq_length=None):
     """
-    **Chunk Evaluator**
-
-    This function computes and outputs the precision, recall and
-    F1-score of chunk detection.
+    This operator computes the precision, recall and F1-score for chunk detection.
+    It is often used in sequence tagging tasks, such as Named Entity Recognition(NER).
 
     For some basics of chunking, please refer to
     `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
 
-    ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
-    and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
-    Here is a NER example of labeling for these tagging schemes:
+    This operator supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
+    Here is a NER example for the usage of these tagging schemes:
 
     .. code-block:: python
 
@@ -2052,11 +2053,11 @@ def chunk_eval(input,
        ====== ====== ======  =====  ==  ============   =====  ===== =====  ==  =========
 
     There are three chunk types(named entity types) including PER(person), ORG(organization)
-    and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
+    and LOC(location), and we can see that the labels have the form `<tag type>-<chunk type>` .
 
-    Since the calculations actually use label ids rather than labels, extra attention
-    should be paid when mapping labels to ids to make CheckEvalOp work. The key point
-    is that the listed equations are satisfied by ids.
+    Since the implementation of this operator actually uses label ids rather than
+    label strings, to make it work, there should be a way to map label ids to
+    tag types and chunk types. This operator uses the following way to do mapping:
 
     .. code-block:: python
 
@@ -2074,8 +2075,8 @@ def chunk_eval(input,
         IOE     -     0      1     -
         IOBES   0     1      2     3
 
-    Still use NER as example, assuming the tagging scheme is IOB while chunk types are ORG,
-    PER and LOC. To satisfy the above equations, the label map can be like this:
+    Accordingly, in the above NER example, if the tagging scheme is IOB and chunk
+    types are ORG, PER and LOC, then the label ids would be as follows:
 
     .. code-block:: python
 
@@ -2087,23 +2088,32 @@ def chunk_eval(input,
        I-LOC  5
        O      6
 
-    It's not hard to verify the equations noting that the num of chunk types
-    is 3 and the num of tag types in IOB scheme is 2. For example, the label
-    id of I-LOC is 5, the tag type id of I-LOC is 1, and the chunk type id of
-    I-LOC is 2, which consistent with the results from the equations.
+    With which we can map each label id to the corresponding tag type and chunk
+    type correctly.
 
     Args:
-        input (Variable): prediction output of the network.
-        label (Variable): label of the test data set.
-        chunk_scheme (str): ${chunk_scheme_comment}
-        num_chunk_types (int): ${num_chunk_types_comment}
-        excluded_chunk_types (list): ${excluded_chunk_types_comment}
-        seq_length(Variable): 1-D Tensor specifying sequence length when input and label are Tensor type.
+        input (Variable): A Tensor or LoDTensor, representing the predicted labels
+            from the network. When it is a Tensor, its shape would be `[N, M, 1]`,
+            where `N` stands for batch size, `M` for sequence length; When it is
+            a LoDTensor, its shape would be `[N, 1]` where `N` stands for the total
+            sequence lengths in this mini-batch. The data type should be int64.
+        label (Variable): A Tensor or LoDTensor representing the ground-truth labels.
+            It shoud have the same shape, lod and data type as ``input`` .
+        chunk_scheme (str): Indicate the tagging schemes used here. The value must
+            be IOB，IOE，IOBES or plain.
+        num_chunk_types (int): The number of chunk types.
+        excluded_chunk_types (list, optional): Indicate the chunk types shouldn't
+            be taken into account. It should be a list of chunk type ids(integer).
+            Default None.
+        seq_length(Variable, optional): A 1D Tensor containing the length of each
+            sequence when ``input`` and ``label`` are Tensor. It needn't be
+            provided if ``input`` and ``label`` are LoDTensor. Default None.
 
     Returns:
-        tuple: tuple containing: precision, recall, f1_score,
-        num_infer_chunks, num_label_chunks,
-        num_correct_chunks
+        tuple: A tuple including precision, recall, F1-score, chunk number detected, \
+            chunk number in ground-truth, chunk number correctly detected. Each \
+            is a Tensor with shape `[1]`. The data type of precision, recall and \
+            F1-score all is float32, and the others' data type all is int64.
 
     Examples:
         .. code-block:: python
@@ -2112,9 +2122,9 @@ def chunk_eval(input,
 
             dict_size = 10000
             label_dict_len = 7
-            sequence = fluid.layers.data(
-                name='id', shape=[1], lod_level=1, dtype='int64')
-            embedding = fluid.layers.embedding(
+            sequence = fluid.data(
+                name='id', shape=[-1, 1], lod_level=1, dtype='int64')
+            embedding = fluid.embedding(
                 input=sequence, size=[dict_size, 512])
             hidden = fluid.layers.fc(input=embedding, size=512)
             label = fluid.layers.data(
@@ -5644,64 +5654,70 @@ def beam_search(pre_ids,
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
 
-    This layer does the search in beams for one time step. Specifically, it
-    selects the top-K candidate word ids of current step from :attr:`ids`
-    according to their :attr:`scores` for all source sentences, where K is
-    :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
-    computation cell. If :attr:`ids` is not set, it will be calculated out
-    according to :attr:`scores`. Additionally, :attr:`pre_ids` and
-    :attr:`pre_scores` are the output of beam_search at previous step, they
+    **This operator only supports LoDTensor.** It is used after finishing
+    scores calculation to perform beam search for one time step. Specifically,
+    after ``ids`` and ``scores`` have been produced, it selects the top-K
+    ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
+    according to the correspongding ``scores``. Additionally, ``pre_id`` and
+    ``pre_scores`` are the output of `beam_search` at previous step, they
     are needed for special use to handle ended candidate translations.
 
-    Note that if :attr:`is_accumulated` is :attr:`True`, the :attr:`scores`
-    passed in should be accumulated scores. Else, the :attr:`scores` are
-    considered as the straightforward scores and will be transformed to the
-    log field and accumulated the :attr:`pre_scores` in this operator.
-    Length penalty should be done with extra operators before calculating the
-    accumulated scores if needed.
+    Note that if ``is_accumulated`` is True, the ``scores`` passed in should
+    be accumulated scores. Otherwise, the ``scores`` are
+    considered as the probabilities of single step and would be transformed to
+    the log field and added up with ``pre_scores`` for final scores in this
+    operator. Length penalty should be done with extra operators before calculating
+    the accumulated scores if needed.
 
     Please see the following demo for a fully beam search usage example:
 
         fluid/tests/book/test_machine_translation.py
 
     Args:
-        pre_ids(Variable): The LodTensor variable which is the output of
-            beam_search at previous step. It should be a LodTensor with shape
-            :math:`(batch_size, 1)` and lod
-            :math:`[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
-            first step.
-        pre_scores(Variable): The LodTensor variable which is the output of
-            beam_search at previous step.
-        ids(Variable): The LodTensor variable containing the candidates ids.
-            Its shape should be :math:`(batch_size \\times beam_size, K)`,
-            where :math:`K` supposed to be :attr:`beam_size`.
-        scores(Variable): The LodTensor variable containing the accumulated
-            scores corresponding to :attr:`ids` and its shape is the same as
-            the shape of :attr:`ids`.
+        pre_ids(Variable): A LodTensor variable (lod level is 2), representing
+            the selected ids of previous step. It is the output of beam_search
+            at previous step. Its shape is `[batch_size, 1]` and its lod is
+            `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
+            first step. The data type should be int64.
+        pre_scores(Variable): A LodTensor variable has the same shape and lod
+            with ``pre_ids`` , representing the accumulated scores corresponding
+            to the selected ids of previous step. It is the output of
+            beam_search at previous step. The data type should be float32.
+        ids(Variable|None): A LodTensor variable containing the candidates ids.
+            It has the same lod with ``pre_ids`` and its shape should be
+            `[batch_size * beam_size, K]`, where `K` supposed to be greater than
+            ``beam_size`` and the first dimension size (decrease as samples reach
+            to the end) should be same as that of ``pre_ids`` . The data type
+            should be int64. It can be None, which use indice in ``scores`` as
+            ids.
+        scores(Variable): A LodTensor variable containing the accumulated
+            scores corresponding to ``ids`` . Both its shape and lod are same as
+            thoes of ``ids`` . The data type should be float32.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
-        level(int, default 0): It can be ignored and mustn't change currently.
-            It means the source level of lod, which is explained as following.
-            The lod level of :attr:`ids` should be 2. The first level is source
-            level which describes how many prefixes (branchs) for each source
-            sentece (beam), and the second level is sentence level which
-            describes how these candidates belong to the prefix. The paths
-            linking prefixes and selected candidates are organized and reserved
-            in lod.
-        is_accumulated(bool, default True): Whether the input :attr:`score` is
-             accumulated scores.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-        return_parent_idx(bool): Whether to return an extra Tensor variable 
-                        preserving the selected_ids' parent indice in pre_ids
-                        in output, which can be used to gather cell states at
-                        the next time step.
+        level(int): ** It can be ignored and mustn't change
+            currently. ** The 2 level lod used in this operator has the following
+            meaning: The first level describes how many beams each sample has,
+            which would change to 0 when beams of the sample all end (batch reduce);
+            The second level describes how many times each beam is selected.
+            Default 0, which shouldn't be changed currently.
+        is_accumulated(bool): Whether the input ``score`` is accumulated scores.
+            Default True.
+        name (str, optional): For detailed information, please refer to api_guide_Name.
+            Usually is no need to set and None by default.
+        return_parent_idx(bool, optional): Whether to return an extra Tensor variable
+            in output, which stores the selected ids' parent indice in
+            ``pre_ids`` and can be used to update RNN's states by gather operator.
+            Default False.
 
     Returns:
-        Variable: The LodTensor tuple containing the selected ids and the \
-            corresponding scores. If :attr:`return_parent_idx` is :attr:`True`, \
-            an extra Tensor variable preserving the selected_ids' parent indice \
-            is included.
+        tuple: The tuple contains two or three LodTensor variables. The two LodTensor, \
+            representing the selected ids and the corresponding accumulated scores of \
+            current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
+            and have data types int64 and float32. If ``return_parent_idx`` is True, \
+            an extra Tensor variable preserving the selected ids' parent indice \
+            is included, whose shape is `[batch_size * beam_size]` and data type \
+            is int64.
 
     Examples:
         .. code-block:: python
@@ -5713,12 +5729,12 @@ def beam_search(pre_ids,
             # at previous step.
             beam_size = 4
             end_id = 1
-            pre_ids = fluid.layers.data(
-                name='pre_id', shape=[1], lod_level=2, dtype='int64')
-            pre_scores = fluid.layers.data(
-                name='pre_scores', shape=[1], lod_level=2, dtype='float32')
-            probs = fluid.layers.data(
-                name='probs', shape=[10000], dtype='float32')
+            pre_ids = fluid.data(
+                name='pre_id', shape=[-1, 1], lod_level=2, dtype='int64')
+            pre_scores = fluid.data(
+                name='pre_scores', shape=[-1, 1], lod_level=2, dtype='float32')
+            probs = fluid.data(
+                name='probs', shape=[-1, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
@@ -5772,28 +5788,45 @@ def beam_search(pre_ids,
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     """
-    Beam Search Decode Layer. This layer constructs the full hypotheses for
-    each source sentence by walking back along the LoDTensorArray :attr:`ids`
-    whose lods can be used to restore the path in the beam search tree.
+    This operator is used after beam search has completed. It constructs the
+    full predicted sequences for each sample by walking back along the search
+    paths stored in lod of ``ids`` . The result sequences are stored in a
+    LoDTensor, which uses the following way to parse:
+
+    .. code-block:: text
+
+        If lod = [[0, 3, 6], [0, 12, 24, 40, 54, 67, 82]]
+
+        The first level of lod stands for: There are 2 samples each having 3
+        (beam width) predicted sequence.
+
+        The second level of lod stands for: The lengths of the first sample's
+        3 predicted sequences are 12, 12, 16; The lengths of the second sample's
+        3 predicted sequences are 14, 13, 15.
+
+
     Please see the following demo for a fully beam search usage example:
         fluid/tests/book/test_machine_translation.py
 
     Args:
-        ids(Variable): The LodTensorArray variable containing the selected ids
-            of all steps.
-        scores(Variable): The LodTensorArray variable containing the selected
-            scores of all steps.
+        ids(Variable): The LoDTensorArray variable containing the selected ids
+            of all steps. Each LoDTensor in it has int64 data type and 2 level
+            lod which can be used to get the search paths.
+        scores(Variable): The LodTensorArray variable containing the accumulated
+            scores corresponding to selected ids of all steps. It has the same size
+            as ``ids`` . Each LoDTensor in it has the same shape and lod as the
+            counterpart in ``ids`` , and has a float32 data type.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name (str, optional): For detailed information, please refer to api_guide_Name.
+            Usually is no need to set and None by default.
 
     Returns:
-        Variable: The LodTensor pair containing the generated id sequences \
-            and the corresponding scores. The shapes and lods of the two \
-            LodTensor are same. The lod level is 2 and the two levels \
-            separately indicate how many hypotheses each source sentence has \
-            and how many ids each hypothesis has.
+        tuple: The tuple contains two LodTensor variables. The two LodTensor, \
+            containing the full sequences of ids and the correspongding accumulated \
+            scores, have the same shape flattened to 1D and have the same 2 level \
+            lod. The lod can be used to get how many predicted sequences each sample \
+            has and how many ids each predicted sequence has.
 
     Examples:
         .. code-block:: python
@@ -8308,7 +8341,7 @@ def one_hot(input, depth, allow_out_of_range=False):
         attrs = {'depth': depth}
     else:
         if not isinstance(depth, Variable):
-            # user attribute 
+            # user attribute
             inputs = {'X': input}
             attrs = {'depth': depth}
         else:
@@ -13831,9 +13864,9 @@ for func in [
         additional_args_lines=[
             "axis (int32, optional): If X.dimension != Y.dimension, \
             Y.dimension must be a subsequence of x.dimension. \
-            And axis is the start dimension index for broadcasting Y onto X. ",
+            And axis is the start dimension index for broadcasting Y onto X. "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ,
             "act (string, optional): Activation applied to the output. \
-            Default is None. Details: :ref:`api_guide_activations_en` ",
+            Default is None. Details: :ref:`api_guide_activations_en` "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
@@ -15022,12 +15055,13 @@ def teacher_student_sigmoid_loss(input,
 
 def add_position_encoding(input, alpha, beta, name=None):
     """
-    **Add Position Encoding Layer**
+    This operator performs weighted sum of input feature at each position
+    (position in the sequence) and the corresponding position encoding.
 
-    This layer accepts an input 3D-Tensor of shape [N x M x P], and returns an
-    output Tensor of shape [N x M x P] with positional encoding value.
+    For more details of position encoding, please refer to `Attention Is All You 
+    Need <http://arxiv.org/pdf/1706.03762.pdf>`_ .
 
-    Refer to `Attention Is All You Need <http://arxiv.org/pdf/1706.03762.pdf>`_ .
+    The formula is as follows:
 
     .. math::
         PE(pos, 2i) &= \\sin{(pos / 10000^{2i / P})}   \\\\
@@ -15035,28 +15069,35 @@ def add_position_encoding(input, alpha, beta, name=None):
         Out(:, pos, i) &= \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
 
     Where:
-      - :math:`PE(pos, 2i)` : the increment for the number at even position
-      - :math:`PE(pos, 2i + 1)` : the increment for the number at odd position
+      - :math:`PE(pos, 2i)` : the value at even index `2i` for encoding of position `pos`.
+      - :math:`PE(pos, 2i + 1)` : the value at odd index `2i+1` for encoding of position `pos`
 
     Args:
-        input (Variable): 3-D input tensor with shape [N x M x P]
-        alpha (float): multiple of Input Tensor
-        beta (float): multiple of Positional Encoding Tensor
-        name (string): the name of position encoding layer
+        input (Variable): A Tensor or LoDTensor (lod level is 1). If it is a
+            Tensor, the shape should be `[N, M, P]`, where `N` stands for
+            batch size, `M` for sequence length, `P` for the size of feature
+            dimension. If it is a LoDTensor, the shape should be `[N, P]`,
+            where `N` stands for the total sequence lengths in this mini-batch,
+            `P` for the size of feature. The data type should be float32 or float64.
+        alpha (float): Indicate the weight coefficient for `input` when performing
+            weighted sum.
+        beta (float): Indicate the weight coefficient for position encoding when
+            performing weighted sum.
+        name (str, optional): For detailed information, please refer to api_guide_Name.
+            Usually is no need to set and None by default.
 
     Returns:
-        Variable: A 3-D Tensor of shape [N x M x P] with positional encoding.
+        Variable: A Tensor or LoDTensor. It has the same shape, data type and lod as `input`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
 
-          tensor = fluid.layers.data(
+          tensor = fluid.data(
               name='tensor',
               shape=[32, 64, 512],
-              dtype='float32',
-              append_batch_size=False)
+              dtype='float32')
           position_tensor = fluid.layers.add_position_encoding(
               input=tensor, alpha=1.0, beta=1.0)
 
