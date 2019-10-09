@@ -1432,7 +1432,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     ${comment}
 
     Args:
-        input(${emission_type}): ${emission_comment}
+        input(${emission_type}): ${emission_comment} 
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
@@ -1440,7 +1440,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
         output(${transition_exps_type}): ${transition_exps_comment} \n
-        output(${log_likelihood_type}): ${log_likelihood_comment}
+        output(${log_likelihood_type}): ${log_likelihood_comment} \n
 
     Examples:
         .. code-block:: python
@@ -1452,8 +1452,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
-                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                input_data = fluid.data(name='input_data', shape=[-1,10], dtype='float32')
+                label = fluid.data(name='label', shape=[-1,1], dtype='int')
                 emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
                 crf_cost = fluid.layers.linear_chain_crf(
                     input=emission,
@@ -1476,9 +1476,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
-                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
-                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                input_data2 = fluid.data(name='input_data2', shape=[-1,10,10], dtype='float32')
+                label2 = fluid.data(name='label2', shape=[-1,10,1], dtype='int')
+                label_length = fluid.data(name='length', shape=[-1,1], dtype='int')
                 emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
                 crf_cost2 = fluid.layers.linear_chain_crf(
                     input=emission2,
@@ -1496,15 +1496,19 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #define data, using padding
             cc=np.random.rand(4,10,10).astype('float32')
             dd=np.random.rand(4,10,1).astype('int64')
-            ll=np.array([[3,3,4,2]])
+            ll=np.array([[3],[3],[4],[2]])
             feed2 = {'input_data2':cc,'label2':dd,'length':ll}
-
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
-            
+            #[array([[ 7.8902354],
+            #        [ 7.3602567],
+            #        [ 10.004011],
+            #        [ 5.86721  ]], dtype=float32)]
+
             #you can use find_var to get transition parameter.
             transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
             print(transition)
+            
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[2] if length else input.shape[1]
@@ -2271,7 +2275,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
 
     Args:
-        input (Variable): The input variable.
+        input (Variable): The input variable. A LoDTensor or Tensor with type 
+        float32, float64.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stablity, set use_cudnn to \
             False by default. Default: False
@@ -2279,23 +2284,28 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             will be named automatically. Default: None.
         axis (int): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input variable. Default: -1.
+            input variable. Default: -1. -1 means the last dimension.
 
     Returns:
-        Variable: output of softmax
+        Variable: output of softmax. A Tensor with type float32, float64.
 
     Examples:
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-             fc = fluid.layers.fc(input=x, size=10)
-             # perform softmax in the second dimension
-             softmax = fluid.layers.softmax(input=fc, axis=1)
-             # perform softmax in the last dimension
-             softmax = fluid.layers.softmax(input=fc, axis=-1)
+            import paddle.fluid as fluid
+            import numpy as np
 
+            data = fluid.data(name="input", shape=[-1, 3],dtype="float32")
+            result = fluid.layers.softmax(data,axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 3).astype("float32")
+            output= exe.run(feed={"input": x},
+                             fetch_list=[result[0]])
+            print(output)
+            #array([0.22595254, 0.39276356, 0.38128382], dtype=float32)]
     """
     helper = LayerHelper('softmax', **locals())
     if not isinstance(input, Variable):
@@ -7701,31 +7711,47 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
+            A LoDTensor or Tensor with type float32.
         y (Variable): A tensor with rank at least 2. The target value of smooth
             L1 loss op with same shape as :attr:`x`.
+            A LoDTensor or Tensor with type float32.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with :attr:`x`. If
             provided, the result of (:attr:`x` - :attr:`y`) will be multiplied
             by this tensor element by element.
+            A Tensor with type float32.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with :attr:`x`. If
             provided, the out smooth L1 loss will be multiplied by this tensor
             element by element.
+            A Tensor with type float32.
         sigma (float|None): Hyper parameter of smooth L1 loss layer. A float
            scalar with default value 1.0.
 
     Returns:
-        Variable: The output smooth L1 loss with shape [batch_size, 1].
+        Variable: The output smooth L1 loss with shape [batch_size, 1].  A Tensor with type float32.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[100], dtype='float32')
-            fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.smooth_l1(x=fc, y=label)
+            import numpy as np
+            data = fluid.data(name="x", shape=[-1, 3], dtype="float32")
+            label = fluid.data(name="y", shape=[-1, 3], dtype="float32")
+            result = fluid.layers.smooth_l1(data,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3,3).astype("float32")
+            y = np.random.rand(3,3).astype("float32")
+            output= exe.run(feed={"x":x, "y":y},
+                             fetch_list=[result])
+            print(output)
+        
+            #[array([[0.08220536],
+            #       [0.36652038],
+            #      [0.20541131]], dtype=float32)]
+
     """
 
     helper = LayerHelper('smooth_l1_loss', **locals())
@@ -10852,7 +10878,7 @@ def pow(x, factor=1.0, name=None):
 
 
 @templatedoc()
-def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
+def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
     ${comment}
     Args:
@@ -10863,15 +10889,28 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
                         will be named automatically.
 
     Returns:
-        output(${out_type}): ${out_comment}
+        output(${out_type}): ${out_comment}. 
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
+            import numpy as np
+            data = fluid.data(name="input", shape=[-1, 3])
+            result = fluid.layers.stanh(data,scale_a=0.67, scale_b=1.72)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.random(size=(3, 3)).astype('float32')
+            output= exe.run(feed={"input": x},
+                         fetch_list=[result])
+            print(output)
+
+            #[array([[0.626466  , 0.89842904, 0.7501062 ],
+            #       [0.25147712, 0.7484996 , 0.22902708],
+            #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
+
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
