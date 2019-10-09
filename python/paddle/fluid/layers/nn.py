@@ -7422,9 +7422,13 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         ${out_comment}.
 
     Examples:
+        >>>  # for LodTensor inputs
         >>> import paddle.fluid as fluid
-        >>> x = fluid.layers.data(name='x', shape=[16],
+        >>> x = fluid.data(name='x', shape=[9, 16],
         >>>                        dtype='float32', lod_level=1)
+        >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
+        >>> # for Tensor inputs
+        >>> x = fluid.data(name='x', shape=[9, 4, 16], dtype='float32')
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
