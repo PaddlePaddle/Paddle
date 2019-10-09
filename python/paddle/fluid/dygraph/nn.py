@@ -347,8 +347,9 @@ class Conv3D(layers.Layer):
             The default value is None.
 
     Attribute:
-        weight (Parameter): the learnable weights of filters of this layer.
-        bias (Parameter): the learnable bias of this layer.
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
         None.
@@ -577,8 +578,9 @@ class Conv3DTranspose(layers.Layer):
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Attribute:
-        weight (Parameter): the learnable weights of filters of this layer.
-        bias (Parameter): the learnable bias of this layer.
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
         None.
@@ -1587,8 +1589,9 @@ class GRUUnit(layers.Layer):
             float32, float64. The default value is 'float32'.
 
     Attribute:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter): the learnable bias of this layer.
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values. The hidden value
@@ -2053,8 +2056,9 @@ class BilinearTensorProduct(layers.Layer):
            If it is set to None, the bias is initialized zero. The default value is None.
 
     Attribute:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter): the learnable bias of this layer.
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
        Variable: A 2-D Tensor of shape [batch_size, size].
