@@ -2182,10 +2182,7 @@ def is_empty(x, cond=None):
                               saves the test result of given 'x'.
 
     Returns:
-        A bool scalar. True if 'x' is an empty Variable.
-
-    Return Type:
-        Variable
+        Variable: A bool scalar. True if 'x' is an empty Variable.
     
     Raises:
         TypeError: If input cond is not a variable, or cond's dtype is
