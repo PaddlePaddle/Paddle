@@ -11065,24 +11065,29 @@ def swish(x, beta=1.0, name=None):
     Examples:
 
         .. code-block:: python
-
-            # declarative mode 
+            
+            # declarative mode
             import numpy as np
             from paddle import fluid
-   
-            x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
-   
+            
+            x = fluid.layers.data(name="x", shape=(3,), dtype="float32")
+            y = fluid.layers.swish(x, beta=2.0)
+            
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             start = fluid.default_startup_program()
             main = fluid.default_main_program()
-   
+            
+            data = np.random.randn(2, 3).astype("float32")
             exe.run(start)
-            x_np, = exe.run(main, feed={}, fetch_list=[x])
-
-            x_np
-            # array([[2.3060477, 2.676496 , 3.9911983],
-            #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
+            y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+            
+            data
+            # array([[-1.1239197 ,  1.3391294 ,  0.03921051],
+            #        [ 1.1970421 ,  0.02440812,  1.2055548 ]], dtype=float32)
+            y_np
+            # array([[-0.2756806 ,  1.0610548 ,  0.01998957],
+            #        [ 0.9193261 ,  0.01235299,  0.9276883 ]], dtype=float32)
 
 
         .. code-block:: python
@@ -11091,15 +11096,18 @@ def swish(x, beta=1.0, name=None):
             import numpy as np
             from paddle import fluid
             import paddle.fluid.dygraph as dg
-
-            place = fluid.CPUPlace()
+            
+            data = np.random.randn(2, 3).astype("float32")
             with dg.guard(place) as g:
-                x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-                x_np = x.numpy()
-
-            x_np
-            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
-            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
+                x = dg.to_variable(data)
+                y = fluid.layers.swish(x)
+                y_np = y.numpy()
+            data
+            # array([[-0.0816701 ,  1.1603649 , -0.88325626],
+            #        [ 0.7522361 ,  1.0978601 ,  0.12987892]], dtype=float32)
+            y_np
+            # array([[-0.03916847,  0.8835007 , -0.25835553],
+            #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
