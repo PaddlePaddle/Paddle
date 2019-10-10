@@ -186,7 +186,7 @@ class CompositeMetric(MetricBase):
     After the metrics added in, calling eval() method will compute all the contained metrics automatically.
     CAUTION: only metrics with the SAME argument list can be added in a CompositeMetric instance.
 
-    Inherit from: [MetricBase](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase)
+    Inherit from: `MetricBase <https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase>`_ 
 
     Args:
        name (str, optional): Metric name. For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -222,7 +222,7 @@ class CompositeMetric(MetricBase):
         of the added one should be consistent with existed ones.  
 
         Args:
-            metric(MetricBase): a instance of [MetricBase](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase)
+            metric(MetricBase): a instance of `MetricBase <https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase>`_ 
         """
         if not isinstance(metric, MetricBase):
             raise ValueError("SubMetric should be inherit from MetricBase.")
@@ -464,8 +464,9 @@ class Accuracy(MetricBase):
         """
         This function takes the minibatch states (value, weight) as input,
         to accumulate and update the corresponding status of the Accuracy object. The update method is as follows:
+        
         .. math::
-            \\ \begin{array}{l}{\text { self. value }+=\text { value } * \text { weight }} \\ {\text { self. weight }+=\text { weight }}\end{array} \\
+            \\\\ \\begin{array}{l}{\\text { self. value }+=\\text { value } * \\text { weight }} \\\\ {\\text { self. weight }+=\\text { weight }}\\end{array} \\\\
 
         Args:
             value(float|numpy.array): accuracy of one minibatch.
@@ -551,7 +552,7 @@ class ChunkEvaluator(MetricBase):
         to accumulate and update the corresponding status of the ChunkEvaluator object. The update method is as follows:
         
         .. math:: 
-                   \\ \begin{array}{l}{\text { self. num_infer_chunks }+=\text { num_infer_chunks }} \\ {\text { self. num_Label_chunks }+=\text { num_label_chunks }} \\ {\text { self. num_correct_chunks }+=\text { num_correct_chunks }}\end{array} \\
+                   \\\\ \\begin{array}{l}{\\text { self. num_infer_chunks }+=\\text { num_infer_chunks }} \\\\ {\\text { self. num_Label_chunks }+=\\text { num_label_chunks }} \\\\ {\\text { self. num_correct_chunks }+=\\text { num_correct_chunks }}\\end{array} \\\\
 
         Args:
             num_infer_chunks(int|numpy.array): The number of chunks in Inference on the given minibatch.
