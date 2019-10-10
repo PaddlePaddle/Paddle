@@ -667,7 +667,7 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.PyReader() instead.')
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -747,6 +747,9 @@ def create_py_reader_by_data(capacity,
              except fluid.core.EOFException:
                  reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
