@@ -51,20 +51,6 @@ static void DataTranspose(const framework::ExecutionContext& ctx,
   transpose(dev_ctx, *input, output, axis);
 }
 
-static inline bool IsSymmetricPadding(const std::vector<int>& paddings,
-                                      const int data_dim) {
-  bool is_sys_pad = true;
-  if (paddings.size() == data_dim * 2) {
-    for (size_t i = 0; i < data_dim; ++i) {
-      if (paddings[2 * i] != paddings[2 * i + 1]) {
-        is_sys_pad = false;
-        return is_sys_pad;
-      }
-    }
-  }
-  return is_sys_pad;
-}
-
 template <typename T>
 class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
  public:
@@ -124,7 +110,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_input;
@@ -373,7 +359,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_output_grad;
