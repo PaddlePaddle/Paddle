@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "io/fs.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -83,15 +82,13 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
   need_dump_param_ = false;
-  dump_param_path_ = desc.dump_param_path();
   dump_param_.resize(desc.dump_param_size());
   for (int i = 0; i < desc.dump_param_size(); ++i) {
     dump_param_[i] = desc.dump_param(i);
   }
-  if (desc.dump_param_size() != 0 && dump_param_path_ != "") {
+  if (desc.dump_param_size() != 0) {
     need_dump_param_ = true;
   }
-  mpi_rank_ = desc.mpi_rank() / 2;
 }
 
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
@@ -171,10 +168,6 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
 }
 
 void DownpourWorker::DumpParam() {
-  int err_no = 0;
-  std::string path = string::format_string("%s/part-%03d",
-                                           dump_param_path_.c_str(), mpi_rank_);
-  std::shared_ptr<FILE> param_fd = fs_open_write(path, &err_no, "");
   std::string os;
   for (auto& param : dump_param_) {
     os.clear();
@@ -186,17 +179,7 @@ void DownpourWorker::DumpParam() {
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int64_t len = tensor->numel();
     os += PrintLodTensor(tensor, 0, len);
-    size_t write_count =
-        fwrite_unlocked(os.data(), 1, os.length(), param_fd.get());
-    if (write_count != os.length()) {
-      VLOG(3) << "dump param failed";
-      continue;
-    }
-    write_count = fwrite_unlocked("\n", 1, 1, param_fd.get());
-    if (write_count != 1) {
-      VLOG(3) << "dump param failed";
-      continue;
-    }
+    writer_ << os;
   }
 }
 
@@ -809,6 +792,9 @@ void DownpourWorker::TrainFiles() {
         writer_ << ars[i];
       }
     }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam();
+    }
 
     PrintFetchVars();
     thread_scope_->DropKids();
@@ -816,9 +802,6 @@ void DownpourWorker::TrainFiles() {
   }
   if (need_dump_field_) {
     writer_.Flush();
-  }
-  if (need_dump_param_ && mpi_rank_ == 0) {
-    DumpParam();
   }
 }
 
