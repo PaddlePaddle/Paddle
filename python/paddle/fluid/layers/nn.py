@@ -667,7 +667,6 @@ def _pull_box_sparse(input, size, dtype='float32'):
     return outs
 
 
-@templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
                  h_0=None,
@@ -682,58 +681,82 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-    ${comment}
+    **Note**:
+        1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
+        2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
-    Args:
-        input (Variable): ${input_comment}
-        size (int): 4 * hidden size.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the hidden size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weights.
+    The implementation of this OP include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you do not need peephole connections, please set use_peepholes to False .
 
-                               - Weights = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
+    This OP computes each timestep as follows:
 
-                               If it is set to None or one attribute of ParamAttr,
-                               dynamic_lstm will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
+    .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
+
+    The symbolic meanings in the formula are as follows:
+
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size (int): must be 4 * hidden_size.
+        h_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. Default: None.
+        c_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. `h_0` and `c_0` can be None but only at the same time. Default: None.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
+
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [hidden_size, 4*hidden_size].
+
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
 
                               1. `use_peepholes = False`
                                  - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                 - The shape is (1 x 4D).
+                                 - The shape is [1, 4*hidden_size].
                               2. `use_peepholes = True`
                                  - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                 - The shape is (1 x 7D).
-
-                              If it is set to None or one attribute of ParamAttr,
-                              dynamic_lstm will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        use_peepholes (bool): ${use_peepholes_comment}
-        is_reverse (bool): ${is_reverse_comment}
-        gate_activation (str): ${gate_activation_comment}
-        cell_activation (str): ${cell_activation_comment}
-        candidate_activation (str): ${candidate_activation_comment}
-        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+                                 - The shape is [1, 7*hidden_size].
+                                 
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default: True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default: False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default: "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default: "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default: "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default: "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
 
     Returns:
-        tuple: The hidden state, and cell state of LSTM. The shape of both \
-        is (T x D), and lod is the same with the `input`.
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+            The hidden state and cell state of LSTM
+
+                - hidden: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
         .. code-block:: python
@@ -743,15 +766,16 @@ def dynamic_lstm(input,
             vocab_size = 10000
             hidden_dim = 512
             
-            data = fluid.layers.data(name='x', shape=[1],
-                         dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
             forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
 
-            forward, _ = fluid.layers.dynamic_lstm(
+            forward, cell = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+            forward.shape  # (-1, 512)
+            cell.shape  # (-1, 512)
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
@@ -813,77 +837,76 @@ def lstm(input,
          default_initializer=None,
          seed=-1):
     """
-    If Device is GPU, This op will use cudnn LSTM implementation
+    **Note**:
+        This OP only supports running on GPU devices.
 
-    A four-gate Long Short-Term Memory network with no peephole connections.
-    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
-    the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
+    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf>`_ .
+
+    The implementation of this OP does not include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need peephole connections, please use :ref:`api_fluid_layers_dynamic_lstm` .
+
+    This OP computes each timestep as follows:
 
     .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
 
-       i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
+    The symbolic meanings in the formula are as follows:
 
-       f_t &= \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
-       o_t &= \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
-
-       \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
-
-       c_t &= f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-       h_t &= o_t \odot tanh(c_t)
-
-    - $W$ terms denote weight matrices (e.g. $W_{ix}$ is the matrix
-      of weights from the input gate to the input)
-    - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
-    - sigmoid is the logistic sigmoid function.
-    - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
-      and cell activation vectors, respectively, all of which have the same size as
-      the cell output activation vector $h$.
-    - The :math:`\odot` is the element-wise product of the vectors.
-    - :math:`tanh` is the activation functions.
-    - :math:`\\tilde{c_t}` is also called candidate hidden state,
-      which is computed based on the current input and the previous hidden state.
-
-    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
-    X represensts a matrix multiplication
-
-
-    Args:
-        input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
-        init_h(Variable): The initial hidden state of the LSTM
-                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        init_c(Variable): The initial cell state of the LSTM.
-                       This is a tensor with shape ( num_layers x batch_size x hidden_size )
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len
-        hidden_size (int): hidden size of the LSTM
-        num_layers (int): total layers number of the LSTM
-        dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
-                             There is NO dropout work on rnn output of the last RNN layers
-        is_bidirec (bool): If it is bidirectional
-        is_test (bool): If it is in test phrase
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
-        default_initializer(Initialize|None): Where use initializer to initialize the Weight
-                         If set None, defaule initializer will be used
-        seed(int): Seed for dropout in LSTM, If it's -1, dropout will use random seed
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
+        init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
+        hidden_size (int): hidden size of the LSTM.
+        num_layers (int): total layers number of the LSTM.
+        dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers.
+                             Default: 0.0.
+        is_bidirec (bool, optional): If it is bidirectional. Default: False.
+        is_test (bool, optional): If it is in test phrase. Default: False.
+        name (str, optional): A name for this layer. If set None, the layer
+                         will be named automatically. Default: None.
+        default_initializer(Initializer, optional): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used. Default: None.
+        seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
 
     Returns:
-        rnn_out(Tensor),last_h(Tensor),last_c(Tensor):
+        tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
 
                         Three tensors, rnn_out, last_h, last_c:
 
-                        - rnn_out is result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
-                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+                        - rnn_out is result of LSTM hidden, shape is :math:`[seq\_len, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[seq\_len, batch\_size, hidden\_size*2]`
                         - last_h is the hidden state of the last step of LSTM \
-                          shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
                         - last_c(Tensor): the cell state of the last step of LSTM \
-                          shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
 
 
     Examples:
@@ -894,9 +917,8 @@ def lstm(input,
 
             emb_dim = 256
             vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None, 100], dtype='int64')
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
@@ -908,6 +930,9 @@ def lstm(input,
             rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
                     max_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
+            rnn_out.shape  # (-1, 100, 150)
+            last_h.shape  # (1, 20, 150)
+            last_c.shape  # (1, 20, 150)
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
@@ -992,138 +1017,102 @@ def dynamic_lstmp(input,
                   cell_clip=None,
                   proj_clip=None):
     """
-    **Dynamic LSTMP Layer**
+    **Note**:
+        1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
-    LSTMP (LSTM with recurrent projection) layer has a separate projection
-    layer after the LSTM layer, projecting the original hidden state to a
-    lower-dimensional one, which is proposed to reduce the number of total
-    parameters and furthermore computational complexity for the LSTM,
-    espeacially for the case that the size of output units is relative
-    large (https://research.google.com/pubs/archive/43905.pdf).
+    This OP implements the LSTMP (LSTM Projected) layer.
+    The LSTMP layer has a separate linear mapping layer behind the LSTM layer. -- `Sak, H., Senior, A., & Beaufays, F. (2014) <https://ai.google/research/pubs/pub43905.pdf>`_ .
 
-    The formula is as follows:
+    Compared with the standard LSTM layer, LSTMP has an additional linear mapping layer,
+    which is used to map from the original hidden state :math:`h_t` to the lower dimensional state :math:`r_t` .
+    This reduces the total number of parameters and computational complexity, especially when the output unit is relatively large.
+
+    The default implementation of the OP contains diagonal/peephole connections,
+    please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need to disable the peephole connections, set use_peepholes to False.
+
+    This OP computes each timestep as follows:
 
     .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+    .. math::
+          f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+    .. math::
+          o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_{t-1} + b_o)
+    .. math::
+          \widetilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
+    .. math::
+          c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+          h_t = o_t \odot act_h(c_t)
+    .. math::
+          r_t = \overline{act_h}(W_{rh}h_t)
 
-        i_t & = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+    The symbolic meanings in the formula are as follows:
 
-        f_t & = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`r_{t}` : represents the state of the projected output of the hidden state :math:`h_{t}`
+    - :math:`h_{t-1}, c_{t-1}, r_{t-1}` represent the hidden state, cell state and projected output at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
-        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
-
-        o_t & = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o)
-
-        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-        h_t & = o_t \odot act_h(c_t)
-
-        r_t & = \overline{act_h}(W_{rh}h_t)
-
-    In the above formula:
-
-    * :math:`W`: Denotes weight matrices (e.g. :math:`W_{xi}` is \
-          the matrix of weights from the input gate to the input).
-    * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
-          matrices for peephole connections. In our implementation, \
-          we use vectors to represent these diagonal weight matrices.
-    * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
-          bias vector).
-    * :math:`\sigma`: The activation, such as logistic sigmoid function.
-    * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
-          gate, and cell activation vectors, respectively, all of which have \
-          the same size as the cell output activation vector :math:`h`.
-    * :math:`h`: The hidden state.
-    * :math:`r`: The recurrent projection of the hidden state.
-    * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
-          computation is based on the current input and previous hidden state.
-    * :math:`\odot`: The element-wise product of the vectors.
-    * :math:`act_g` and :math:`act_h`: The cell input and cell output \
-          activation functions and `tanh` is usually used for them.
-    * :math:`\overline{act_h}`: The activation function for the projection \
-          output, usually using `identity` or same as :math:`act_h`.
-
-    Set `use_peepholes` to `False` to disable peephole connection. The formula
-    is omitted here, please refer to the paper
-    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
-    operations on the input :math:`x_{t}` are NOT included in this operator.
-    Users can choose to use fully-connected layer before LSTMP layer.
-
-    Args:
-        input(Variable): The input of dynamic_lstmp layer, which supports
-                         variable-time length input sequence. The underlying
-                         tensor in this Variable is a matrix with shape
-                         (T X 4D), where T is the total time steps in this
-                         mini-batch, D is the hidden size.
-        size(int): 4 * hidden size.
+    Parameters:
+        input( :ref:`api_guide_Variable_en` ): The input of dynamic_lstmp layer, which supports
+                         variable-time length input sequence.
+                         It is a multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size(int): must be 4 * hidden_size.
         proj_size(int): The size of projection output.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weight and projection weight.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
 
-                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}.
-                               - The shape of hidden-hidden weight is (P x 4D),
-                                 where P is the projection size and D the hidden
-                                 size.
-                               - Projection weight = {:math:`W_{rh}`}.
-                               - The shape of projection weight is (D x P).
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [P, 4*hidden_size] , where P is the projection size.
+                              - Projection weight  = :math:`\{ W_{rh} \}` , the shape is [hidden_size, P].
 
-                               If it is set to None or one attribute of ParamAttr,
-                               dynamic_lstm will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
 
                               1. `use_peepholes = False`
-                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                - The shape is (1 x 4D).
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is [1, 4*hidden_size].
                               2. `use_peepholes = True`
-                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                - The shape is (1 x 7D).
+                                 - The shape is [1, 7*hidden_size].
 
-                              If it is set to None or one attribute of ParamAttr,
-                              dynamic_lstm will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        use_peepholes(bool): Whether to enable diagonal/peephole connections,
-                             default `True`.
-        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
-        gate_activation(str): The activation for input gate, forget gate and
-                              output gate. Choices = ["sigmoid", "tanh", "relu",
-                              "identity"], default "sigmoid".
-        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
-                              "tanh", "relu", "identity"], default "tanh".
-        candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the projection size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
-        cell_clip(float): If provided the cell state is clipped
-                             by this value prior to the cell output activation.
-        proj_clip(float): If `num_proj > 0` and `proj_clip` is
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default "tanh".
+        proj_activation(str, optional): The activation for projection output. Default "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
+        h_0( :ref:`api_guide_Variable` , optional): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size. Default: None.
+        c_0( :ref:`api_guide_Variable` , optional): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size.
+                       `h_0` and `c_0` can be None but only at the same time. Default: None.
+        cell_clip(float, optional): If not None, the cell state is clipped
+                             by this value prior to the cell output activation. Default: None.
+        proj_clip(float, optional): If `num_proj > 0` and `proj_clip` is
                             provided, then the projected values are clipped elementwise to within
-                            `[-proj_clip, proj_clip]`.
+                            `[-proj_clip, proj_clip]`. Default: None.
 
     Returns:
-        tuple: A tuple of two output variable: the projection of hidden state, \
-               and cell state of LSTMP. The shape of projection is (T x P), \
-               for the cell state which is (T x D), and both LoD is the same \
-               with the `input`.
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+                The hidden state and cell state of LSTMP
+
+                - hidden: LoDTensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
 
@@ -1131,19 +1120,20 @@ def dynamic_lstmp(input,
 
             import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=[1],
-                                     dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                     act=None, bias_attr=None)
-            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
-                                                     size=hidden_dim * 4,
-                                                     proj_size=proj_dim,
-                                                     use_peepholes=False,
-                                                     is_reverse=True,
-                                                     cell_activation="tanh",
-                                                     proj_activation="tanh")
+                                    act=None, bias_attr=None)
+            proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                    size=hidden_dim * 4,
+                                                    proj_size=proj_dim,
+                                                    use_peepholes=False,
+                                                    is_reverse=True,
+                                                    cell_activation="tanh",
+                                                    proj_activation="tanh")
+            proj_out.shape  # (-1, 256)
+            last_c.shape  # (-1, 512)
     """
 
     assert in_dygraph_mode(
