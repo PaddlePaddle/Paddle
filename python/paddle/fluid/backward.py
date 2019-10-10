@@ -1071,7 +1071,7 @@ def append_backward(loss,
                 "The type of parameter_list argument must be list, but received %s."
                 % (type(parameter_list)))
         for i, param_name in enumerate(parameter_list):
-            if not isinstance(param_name, str):
+            if not isinstance(param_name, (str, unicode)):
                 raise TypeError(
                     "The type of parameter_list's member must be str, but received %s."
                     % (type(param_name)))

@@ -428,7 +428,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             if core.is_float16_supported(
                     place) and self.pool_type != "max" and check_grad:
                 self.check_grad_with_place(
-                    place, set(['X']), 'Out', max_relative_error=0.07)
+                    place, ['X'], 'Out', max_relative_error=0.07)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name

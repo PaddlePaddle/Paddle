@@ -179,8 +179,7 @@ class TestCUDNNLstmOp(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place,
-                set(['Input', 'W', 'InitH', 'InitC']),
+                place, ['Input', 'W', 'InitH', 'InitC'],
                 ['Out', 'last_h', 'last_c'],
                 max_relative_error=0.02)
 
