@@ -104,7 +104,6 @@ class BlockingQueue {
 
   void Close() {
     std::lock_guard<std::mutex> lock(mutex_);
-    EnforceNotKilled();
     VLOG(1) << "close queue";
     closed_ = true;
     send_cv_.notify_all();

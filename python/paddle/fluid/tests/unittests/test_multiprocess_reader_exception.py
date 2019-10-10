@@ -20,6 +20,10 @@ import six
 import sys
 
 
+class ReaderException(Exception):
+    pass
+
+
 class TestMultiprocessReaderException(unittest.TestCase):
     def setUp(self):
         self.use_pipe = False
@@ -32,9 +36,12 @@ class TestMultiprocessReaderException(unittest.TestCase):
             return [fluid.CPUPlace()]
 
     def main_impl(self, place, iterable):
+        sample_num = 40
+        batch_size = 4
+
         def fake_reader():
             def __impl__():
-                for _ in range(40):
+                for _ in range(sample_num):
                     if not self.raise_exception:
                         yield list(
                             np.random.uniform(
@@ -57,25 +64,31 @@ class TestMultiprocessReaderException(unittest.TestCase):
 
             if isinstance(place, fluid.CUDAPlace):
                 reader.decorate_sample_generator(
-                    decorated_reader, batch_size=4, places=fluid.cuda_places())
+                    decorated_reader,
+                    batch_size=batch_size,
+                    places=fluid.cuda_places())
             else:
                 reader.decorate_sample_generator(
-                    decorated_reader, batch_size=4, places=fluid.cpu_places())
+                    decorated_reader,
+                    batch_size=batch_size,
+                    places=fluid.cpu_places())
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
+            batch_num = int(sample_num * 2 / batch_size)
+
             if iterable:
                 for _ in range(3):
                     num = 0
-                    for data in reader():
-                        exe.run(feed=data, fetch_list=[image_p_1])
-                        num += 1
-                    if not self.raise_exception:
-                        self.assertEquals(num, 20)
-                    else:
+                    try:
+                        for data in reader():
+                            exe.run(feed=data, fetch_list=[image_p_1])
+                            num += 1
+                        self.assertEquals(num, batch_num)
+                    except fluid.core.EnforceNotMet as ex:
                         self.assertEquals(num, 0)
-                        raise ValueError('Reader raises exception')
+                        raise ReaderException()
             else:
                 for _ in range(3):
                     num = 0
@@ -86,11 +99,12 @@ class TestMultiprocessReaderException(unittest.TestCase):
                             num += 1
                     except fluid.core.EOFException:
                         reader.reset()
-                        if not self.raise_exception:
-                            self.assertEquals(num, 20)
-                        else:
-                            self.assertEquals(num, 0)
-                            raise ValueError('Reader raises exception')
+                        self.assertFalse(self.raise_exception)
+                        self.assertEquals(num, batch_num)
+                    except fluid.core.EnforceNotMet as ex:
+                        self.assertTrue(self.raise_exception)
+                        self.assertEquals(num, 0)
+                        raise ReaderException()
 
     def test_main(self):
         for p in self.places():
@@ -100,7 +114,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
                         self.main_impl(p, iterable)
 
                     self.assertTrue(not self.raise_exception)
-                except ValueError:
+                except ReaderException:
                     self.assertTrue(self.raise_exception)
 
 
