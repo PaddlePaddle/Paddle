@@ -2336,11 +2336,11 @@ def sequence_softmax(input, use_cudnn=False, name=None):
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
+             x = fluid.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
 
-             y = fluid.layers.data(name='y', shape=[7],
+             y = fluid.data(name='y', shape=[7],
                  dtype='float32', lod_level=1)
              x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
     """
@@ -5448,7 +5448,7 @@ def sequence_unpad(x, length, name=None):
             import numpy
 
             # pad data
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
             
@@ -10226,11 +10226,10 @@ def sequence_scatter(input, index, updates, name=None):
         .. code-block:: python
 	
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
 
-            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
-            index = layers.data( name='index', shape=[12, 1], dtype='int64')
-            updates = layers.data( name='updates', shape=[12, 1], dtype='float32')
+            input = fluid.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
+            index = fluid.data( name='index', shape=[12, 1], dtype='int64')
+            updates = fluid.data( name='updates', shape=[12, 1], dtype='float32')
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
