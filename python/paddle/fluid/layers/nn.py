@@ -3984,7 +3984,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False,
+               do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False):
     """
@@ -4315,7 +4315,7 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=False):
+              do_model_average_for_mean_and_var=True):
     """
     **Data Normalization Layer**
 
