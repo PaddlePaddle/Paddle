@@ -2297,11 +2297,11 @@ class LambOptimizer(AdamOptimizer):
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t 
 
-        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
-        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 

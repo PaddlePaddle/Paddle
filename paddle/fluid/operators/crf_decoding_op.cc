@@ -51,7 +51,7 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");
     AddInput("Length",
-             "(Tensor). The actual length of each sample before "
+             "(Tensor, optional). The actual length of each sample before "
              "padding with shape [B x 1]. It means the Input(Emission), "
              "Input(Label) and Output(ViterbiPath) are common tensors with "
              "padding when this input is given. The data type is int64.")
