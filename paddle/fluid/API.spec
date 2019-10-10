@@ -92,7 +92,7 @@ paddle.fluid.io.DataLoader.__init__
 paddle.fluid.io.DataLoader.from_dataset (ArgSpec(args=['dataset', 'places', 'drop_last'], varargs=None, keywords=None, defaults=(True,)), ('document', 'eb8b6d31e1c2ec2ca8ebbb62fcf46557'))
 paddle.fluid.io.DataLoader.from_generator (ArgSpec(args=['feed_list', 'capacity', 'use_double_buffer', 'iterable', 'return_list'], varargs=None, keywords=None, defaults=(None, None, True, True, False)), ('document', 'e3bdde36774236c3e381d2218e9cc09e'))
 paddle.fluid.io.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
-paddle.fluid.io.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '77cbadb09df588e21e5cc0819b69c87d'))
+paddle.fluid.io.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '2d0903e1d2f00b4f1d6618e6b5310121'))
 paddle.fluid.io.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None), ('document', '0d6186f109feceb99f60ec50a0a624cb'))
 paddle.fluid.io.compose (ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None), ('document', '884291104e1c3f37f33aae44b7deeb0d'))
 paddle.fluid.io.chain (ArgSpec(args=[], varargs='readers', keywords=None, defaults=None), ('document', 'e0311508658a7e741fc39feea8be0ad2'))
