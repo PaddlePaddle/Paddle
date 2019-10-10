@@ -587,20 +587,36 @@ def iou_similarity(x, y, name=None):
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+        x (Variable): ${x_comment}.The data type is float32 or float64.
+        y (Variable): ${y_comment}.The data type is float32 or float64.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable: ${out_comment}.The data type is same with x.
 
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            use_gpu = False
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            x = fluid.data(name='x', shape=[None, 4], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 4], dtype='float32')
             iou = fluid.layers.iou_similarity(x=x, y=y)
+
+            exe.run(fluid.default_startup_program())
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            [out_iou] = exe.run(test_program,
+                    fetch_list=iou,
+                    feed={'x': np.array([[0.5, 0.5, 2.0, 2.0],
+                                         [0., 0., 1.0, 1.0]]).astype('float32'),
+                          'y': np.array([[1.0, 1.0, 2.5, 2.5]]).astype('float32')})
+            # out_iou is [[0.2857143],
+            #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
@@ -818,22 +834,24 @@ def yolov3_loss(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
+        x (Variable): ${x_comment}The data type is float32 or float64. 
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
                           in the third dimenstion, x, y, w, h should be stored. 
                           x,y is the center cordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
-                          an image.
+                          an image.The data type is float32 or float64. 
         gt_label (Variable): class id of ground truth boxes, shoud be in shape
-                            of [N, B].
+                            of [N, B].The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
         gt_score (Variable): mixup score of ground truth boxes, shoud be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
@@ -855,10 +873,10 @@ def yolov3_loss(x,
       .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
-          gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
-          gt_score = fluid.layers.data(name='gt_score', shape=[6], dtype='float32')
+          x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+          gt_box = fluid.data(name='gt_box', shape=[None, 6, 4], dtype='float32')
+          gt_label = fluid.data(name='gt_label', shape=[None, 6], dtype='int32')
+          gt_score = fluid.data(name='gt_score', shape=[None, 6], dtype='float32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
           loss = fluid.layers.yolov3_loss(x=x, gt_box=gt_box, gt_label=gt_label,
@@ -939,13 +957,15 @@ def yolo_box(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
-        img_size (Variable): ${img_size_comment}
+        x (Variable): ${x_comment} The data type is float32 or float64. 
+        img_size (Variable): ${img_size_comment} The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolo box layer. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -963,8 +983,8 @@ def yolo_box(x,
     .. code-block:: python
 
         import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
+        x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+        img_size = fluid.data(name='img_size',shape=[None, 2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
         boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
@@ -2788,9 +2808,10 @@ def multiclass_nms(bboxes,
                            N is the batch size. Each bounding box has four
                            coordinate values and the layout is 
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the 
-                           class number   
+                           class number. The data type is float32 or float64.   
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
@@ -2798,11 +2819,11 @@ def multiclass_nms(bboxes,
                            number of bounding boxes. For each category there 
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
-                           of BBoxes.
+                           of BBoxes.The data type is float32 or float64. 
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
-                           case with shape [M, C, 4].
+                           case with shape [M, C, 4].The data type is float32 or float64. 
         background_label (int): The index of background label, the background 
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
@@ -2820,7 +2841,7 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Out(Variable): A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
              Each row has 10 values: 
@@ -2837,9 +2858,9 @@ def multiclass_nms(bboxes,
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            boxes = fluid.data(name='bboxes', shape=[None,81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = fluid.data(name='scores', shape=[None,81],
                                       dtype='float32', lod_level=1)
             out = fluid.layers.multiclass_nms(bboxes=boxes,
                                               scores=scores,
