@@ -1710,9 +1710,9 @@ def prior_box(input,
                 fetch_list=[box,var],
                 return_numpy=True)
  
-	    print(box_out.shape)
+	    # print(box_out.shape)
 	    # (6, 9, 1, 4)
-	    print(var_out.shape)
+	    # print(var_out.shape)
 	    # (6, 9, 1, 4)
 
 	    # imperative mode
@@ -1724,12 +1724,12 @@ def prior_box(input,
     		box, var = fluid.layers.prior_box(
 		    input=input,
 		    image=image,
-                    min_sizes=[100.],
+		    min_sizes=[100.],
 		    clip=True,
-	            flip=True)
-                print(box.shape)
+		    flip=True)
+		# print(box.shape)
 		# [6L, 9L, 1L, 4L]
-                print(var.shape)
+                # print(var.shape)
 		# [6L, 9L, 1L, 4L]
 
     """

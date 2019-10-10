@@ -15510,8 +15510,8 @@ def pixel_shuffle(x, upscale_factor):
 	    with dg.guard(place) as g:
     		input = dg.to_variable(input_data)
     		output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
-                print(output.shape)
-	    	# [2L, 1L, 12L, 12L]
+		# print(output.shape)
+		# [2L, 1L, 12L, 12L]
 
     """
 
