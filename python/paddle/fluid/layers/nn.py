@@ -5524,7 +5524,6 @@ def sequence_expand_as(x, y, name=None):
     return tmp
 
 
-
 def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
     **Sequence Pad Layer**
