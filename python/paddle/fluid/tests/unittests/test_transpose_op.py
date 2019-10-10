@@ -77,6 +77,7 @@ class TestCase4(TestTransposeOp):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
+
 class TestTransposeOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -106,7 +107,6 @@ class TestTransposeOpError(OpTest):
                 fluid.layers.transpose(x, perm=[3, 5, 7])
 
             self.assertRaises(ValueError, test_each_elem_value)
-
 
 
 if __name__ == '__main__':
