@@ -142,6 +142,8 @@ class TestDistRunnerBase(object):
         print_to_err("gpu_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
+        if args.use_none_strategy:
+            dist_strategy = None
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
@@ -420,6 +422,7 @@ def runtime_main(test_class):
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
+    parser.add_argument('--use_none_strategy', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
     parser.add_argument(
@@ -660,6 +663,9 @@ class TestDistBase(unittest.TestCase):
         if self._use_reader_alloc:
             tr0_cmd += " --use_reader_alloc"
             tr1_cmd += " --use_reader_alloc"
+        if self._use_none_strategy:
+            tr0_cmd += " --use_none_strategy"
+            tr1_cmd += " --use_none_strategy"
         if self.__use_cuda:
             tr0_cmd += " --use_cuda"
             tr1_cmd += " --use_cuda"

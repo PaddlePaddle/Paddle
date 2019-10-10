@@ -24,6 +24,22 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         self._use_reader_alloc = False
         self._nccl2_mode = True
         self._gpu_fleet_api = True
+        self._use_none_strategy = False
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist.py", delta=1e-5)
+
+
+class TestDistMnistNCCL2FleetApiNoneStrategy(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._gpu_fleet_api = True
+        self._use_none_strategy = True
 
     def test_dist_train(self):
         import paddle.fluid as fluid
