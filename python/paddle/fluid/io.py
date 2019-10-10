@@ -27,7 +27,7 @@ import paddle
 import paddle.reader
 from paddle.reader import *
 from paddle.fluid import layers
-from paddle.fluid.executor import Executor
+from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, program_guard
 from paddle.fluid.compiler import CompiledProgram
@@ -41,7 +41,8 @@ batch = paddle.batch
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model', 'batch'
+    'load_persistables', 'save_inference_model', 'load_inference_model',
+    'batch', 'save', 'load'
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -92,6 +93,10 @@ def is_persistable(var):
             var.desc.type() == core.VarDesc.VarType.READER:
         return False
     return var.persistable
+
+
+def is_belong_to_optimizer(var):
+    return var.belong_to_optimizer
 
 
 def _clone_var_in_block_(block, var):
@@ -1419,3 +1424,96 @@ def _load_persistable_nodes(executor, dirname, graph):
         else:
             _logger.warn("Cannot find the var %s!!!" % (node.name()))
     load_vars(executor=executor, dirname=dirname, vars=var_list)
+
+
+def save(program, model_path):
+    """
+    This function save parameters, optimizer information and network description to  model_path.
+
+    The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
+    The optimizer information contains all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will save to a file with suffix ".pdopt". (If the optimizer have no variable need to save (like SGD), the fill will not generated).
+    The network description is the description of the program. It's only used for deployment. The description  will save to a file with a suffix ".pdmodel".
+    
+    Args:
+        program(Program) : The program to saved.
+        model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            prog = fluid.default_main_program()
+            fluid.save( prog, "./temp")
+
+    """
+
+    base_name = os.path.basename(model_path)
+    assert base_name != "", \
+            "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+
+    parameter_list = list(filter(is_parameter, program.list_vars()))
+    paddle.fluid.core._save_static_dict(model_path + ".pdparams",
+                                        parameter_list, global_scope())
+
+    optimizer_var_list = list(
+        filter(is_belong_to_optimizer, program.list_vars()))
+
+    paddle.fluid.core._save_static_dict(model_path + ".pdopt",
+                                        optimizer_var_list, global_scope())
+
+    main_program = program.clone()
+    program.desc.flush()
+    main_program.desc._set_version()
+    paddle.fluid.core.save_op_compatible_info(program.desc)
+
+    with open(model_path + ".pdmodel", "wb") as f:
+        f.write(program.desc.serialize_to_string())
+
+
+def load(program, model_path):
+    """
+    This function filter out parameters and optimizer information from program, and then get corresponding value from file.
+    An exception will throw if shape or dtype of the parameters is not match between program and loaded file.
+
+    NOTICE: This function MUST called after run start_up_program
+
+    Args: 
+        program: The program to be load
+        model_path: The file prefix store the program
+
+    Returns:
+        None
+        
+     Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            prog = fluid.default_main_program()
+            fluid.save( prog, "./temp")
+
+            fluid.load( prog, "./temp")
+
+    """
+
+    parameter_file_name = model_path + ".pdparams"
+    assert os.path.exists(parameter_file_name), \
+            "Parameter file [{}] not exits".format( parameter_file_name)
+
+    parameter_list = list(filter(is_parameter, program.list_vars()))
+    paddle.fluid.core._load_static_dict(parameter_file_name, parameter_list,
+                                        global_scope())
+
+    optimizer_var_list = list(
+        filter(is_belong_to_optimizer, program.list_vars()))
+
+    if len(optimizer_var_list) > 0:
+        opt_file_name = model_path + ".pdopt"
+        assert os.path.exists(opt_file_name), \
+                "Optimizer file [{}] not exits".format( opt_file_name)
+        paddle.fluid.core._load_static_dict(opt_file_name, optimizer_var_list,
+                                            global_scope())
