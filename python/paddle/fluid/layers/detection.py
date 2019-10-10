@@ -1464,8 +1464,8 @@ def ssd_loss(location,
             with shape [Np, 4]. Np and 4 are the same as they are in `prior_box`
         background_label (int): The index of background label, 0 by default.
         overlap_threshold (float): If match_type is 'per_prediction', use
-            `overlap_threshold` to determine the extra matching bboxes when
-             finding matched boxes. 0.5 by default.
+            `overlap_threshold` to determine the extra matching bboxes when finding \
+            matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
             boxes, used only when mining_type is 'max_negative', 3.0 by default.
         neg_overlap (float): The negative overlap upper bound for the unmatched
