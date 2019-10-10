@@ -1638,9 +1638,9 @@ def crf_decoding(input, param_attr, label=None, length=None):
             Default: None, which means the default weight parameter property is 
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
 
-        label(${label_type}): ${label_comment}
+        label(${label_type}, optional): ${label_comment}
         
-        length(${length_type}): ${length_comment}
+        length(${length_type}, optional): ${length_comment}
 
     Returns:
         Variable: ${viterbi_path_comment}
