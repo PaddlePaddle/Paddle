@@ -5186,51 +5186,51 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Please note that the input ``x`` should be LodTensor or Tensor, \
         and input ``y`` must be LodTensor.
-    
+
     Following examples will explain how sequence_expand works:
 
     .. code-block:: text
 
-        * Case 1
+        Case 1
 
-            Consider 2 sequences [a][b] and [c][d], now we want to expand them to 4 \
-                sequences [a][b]、[a][b]、[c][d] and [c][d]. Sequence [a][b] expand twice \
-                and [c][d] expands twice, so the lod which according to is [2, 2].
-            
-            Input x is a 1-level LoDTensor:
-                x.lod  = [[2,        2]]    #lod based on length may be easier to understand
-                x.data = [[a], [b], [c], [d]]
-                x.dims = [4, 1]
+        Consider 2 sequences [a][b] and [c][d], now we want to expand them to [a][b], [a][b], [c][d] and [c][d].
+        Sequence [a][b] expand twice and [c][d] expands twice, so the lod which according to is [2, 2].
 
-            input y is a LoDTensor:
-                y.lod = [[2,    2],    #the 0th level lod, according to this level
-                         [3, 3, 1, 1]] #the 1st level lod, it has nothing to do with this level
+        Input x is a 1-level LoDTensor:
+            x.lod  = [[2,        2]]    #lod based on length may be easier to understand
+            x.data = [[a], [b], [c], [d]]
+            x.dims = [4, 1]
 
-            ref_level: 0
+        input y is a LoDTensor:
+            y.lod = [[2,    2],    #the 0th level lod, according to this level
+                     [3, 3, 1, 1]] #the 1st level lod, it has nothing to do with this level
 
-            then output is a 1-level LoDTensor out:
-                out.lod =  [[2,        2,        2,        2]]    #lod based on offfset
-                out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
-                out.dims = [8, 1]
+        ref_level: 0
 
-        * Case 2
+        then output is a 1-level LoDTensor out:
+            out.lod =  [[2,        2,        2,        2]]    #lod based on offfset
+            out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
+            out.dims = [8, 1]
 
-            Consider 3 sequences [a], [b], [c], now we want to expand them to 3 \
-                sequences [a][a]、[c][c][c], with the length 2, 0, 3.
-            It's obvious that the lod info of expanded sequences is [2, 0, 3].
 
-            x is a Tensor:
-                x.data = [[a], [b], [c]]
-                x.dims = [3, 1]
+        Case 2
 
-            y is a LoDTensor:
-                y.lod = [[2, 0, 3]]
+        Consider 3 sequences [a], [b], [c], now we want to expand them to [a][a], [c][c][c].
+        It's obvious that the lod info of expanded sequences is [2, 0, 3].
 
-            ref_level: -1
+        x is a Tensor:
+            x.data = [[a], [b], [c]]
+            x.dims = [3, 1]
 
-            then output is a 1-level LodTensor:
-                out.data = [[a], [a], [c], [c], [c]]
-                out.dims = [5, 1]
+        y is a LoDTensor:
+            y.lod = [[2, 0, 3]]
+
+        ref_level: -1
+
+        then output is a 1-level LodTensor:
+            out.data = [[a], [a], [c], [c], [c]]
+            out.dims = [5, 1]
+
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor, with the \
             dims ``[M, K]``. The lod level is at most 1. The data type should be \
@@ -5243,10 +5243,9 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default. 
 
-    Returns:
-        The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
+    Returns: The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
-            The data type is same with input.
+            The data type is same as input.
 
     Return Type: Variable
 
@@ -5322,48 +5321,47 @@ def sequence_expand_as(x, y, name=None):
 
     .. code-block:: text
 
-        * Case 1:
+        Case 1:
 
-        Consider 4 sequences [a], [b], [c], [d], now we want to expand them to 4 \
-            sequences [a][a][a]、[b][b][b]、[c] and [d], with the length 3, 3, 1, 1.
+        Consider 4 sequences [a], [b], [c], [d], now we want to expand them to [a][a][a], [b][b][b], [c] and [d].
         It's obvious that the lod info of expanded sequences is [0, 3, 6, 7, 8].
-        Give a 1-level LodTensor ``x``: 
-                x.data = [[a], [b], [c], [d]]
-                x.dims = [4, 1]
-            and input ``y``
-                y.lod = [[3, 3, 1, 1]] #lod based on length may be easier to understand
+        Given a 1-level LodTensor ``x``: 
+            x.data = [[a], [b], [c], [d]]
+            x.dims = [4, 1]
+        and input ``y``
+            y.lod = [[3, 3, 1, 1]] #lod based on length may be easier to understand
 
-            then we get 1-level LoDTensor out:
-                Out.lod =  [[0,            3,              6,  7,  8]] #based on offset
-                Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
-                Out.dims = [8, 1]
+        then we get 1-level LoDTensor out:
+            Out.lod =  [[0,            3,              6,  7,  8]] #based on offset
+            Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
+            Out.dims = [8, 1]
 
-        * Case 2:
 
-            Given a common Tensor ``x``:
-                x.data = [[a, b], [c, d], [e, f]]
-                x.dims = [3, 2]
-            and input ``y``:
-                y.lod = [[0, 2, 3, 6]]
+        Case 2:
 
-            then we get a 1-level LoDTensor:
-                out.lod =  [[0,             2,     3,                    6]]
-                out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
-                out.dims = [6, 2]
+        Given a common Tensor ``x``:
+            x.data = [[a, b], [c, d], [e, f]]
+            x.dims = [3, 2]
+        and input ``y``:
+            y.lod = [[0, 2, 3, 6]]
+
+        then we get a 1-level LoDTensor:
+            out.lod =  [[0,             2,     3,                    6]]
+            out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
+            out.dims = [6, 2]
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor, with the \
             dims ``[M, K]``. The data type should be float32, float64, int8, int32 \
             or int64.
         y (Variable): The input variable which is a LoDTensor with 1-level lod.
-        name(str, optional): For detailed information, please refer \
+        name (str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns:
-        The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
+    Returns: The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
-            The data type is same with input.
+            The data type is same as input.
 
     Return Type: Variable
 
@@ -5437,7 +5435,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     .. code-block:: text
 
         Case 1:
-        Give input 1-level LoDTensor x:
+        Given input 1-level LoDTensor x:
             x.lod = [[0,  2,   5]]
             x.data = [[a],[b],[c],[d],[e]]
         pad_value:
@@ -5449,7 +5447,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             Length.data = [2, 3]      #Original sequences length
 
         Case 2:
-        Give input 1-level LoDTensor x:
+        Given input 1-level LoDTensor x:
             x.lod =  [[0,             2,                     5]]
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
@@ -5458,10 +5456,10 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
         the output tuple (Out, Length):
             Out.data = [[[a1,a2],[b1,b2],[0,0]],[[c1,c2],[d1,d2],[e1,e2]]]
-            Length.data = [2， 3]
+            Length.data = [2, 3]
 
         Case 3:
-        Give input 1-level LoDTensor x:
+        Given input 1-level LoDTensor x:
             x.lod =  [[0,             2,                     5]]
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
@@ -5470,7 +5468,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
         get tuple (Out, Length):
             Out.data = [[[a1,a2],[b1,b2],[p1,p2]],[[c1,c2],[d1,d2],[e1,e2]]]
-            Length.data = [2， 3]
+            Length.data = [2, 3]
 
 
 
@@ -5481,18 +5479,17 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         pad_value (Variable): Padding value. It can be a scalar or a 1D tensor \
             with length ``K``. If it's a scalar, it will be automatically broadcasted \
             to a Tensor. The data type should be as same as ``x``.
-        maxlen (int, optional): The length of padded sequences. Defualt by None. \
+        maxlen (int, optional): The length of padded sequences, None by default. \
             When it is None, all sequences will be padded up to the length of the \
             longest one among them; when it a certain positive value, it must be \
             greater than the length of the longest original sequence.
-        name(str, optional): For detailed information, please refer \
+        name (str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns:
-        A Python tuple (Out, Lenght): the 1st is a 0 level LodTensor \
+    Returns: A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
-            sequences length infor ``Lenght``, which should be a 0-level 1D LodTensor. \
+            sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
 
     Return Type: tuple
@@ -5503,8 +5500,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             import paddle.fluid as fluid
             import numpy
 
-            x = fluid.data(name='x', shape=[10, 5],
-                             dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(
                 input=numpy.array([0.0], dtype=numpy.float32))
             out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
@@ -11670,6 +11666,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
             out.dims = [5, 2]
 
+
     Args:
         input (Variable): The input variable which is a index sequence, \
             which should be a LodTensor with shape ``[d_1, 1]`` and 1-level lod info. \
@@ -11678,12 +11675,11 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         pad_value (int, optional): The padding value, default 0.
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns:
-        The enumerate sequence variable which is a LoDTensor with \
+    Returns: The enumerate sequence variable which is a LoDTensor with \
             shape ``[d_1, win_size]`` and 1-level lod info. \
-            The data type is same with input.
+            The data type is same as ``input``.
 
     Return Type: Variable
 
@@ -11692,7 +11688,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
+            x = fluid.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     assert not in_dygraph_mode(), (
@@ -11725,11 +11721,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     .. code-block:: text
 
-        * Case 1:
+        Case:
 
         Consider input:
             x = [3, 1, 1, 0]    max_len = 4
-        
+
         then we get out:
             mask = [[1, 1, 1, 0],
                     [1, 0, 0, 0],
@@ -11742,14 +11738,13 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
         maxlen (int, optional): Maximum length of the sequence. If :code:`maxlen` \
                            is None, it would be replace with :math:`max(x)`.
-        dtype (np.dtype|core.VarDesc.VarType|str, , optional): Data type of the output, \
-            defualt by ``int64``.
+        dtype (np.dtype|core.VarDesc.VarType|str, optional): Data type of the output, \
+             ``int64`` by default.
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns:
-        The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
+    Returns: The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be float32, float64, int8, \
             int32 or int64.
 
@@ -11757,7 +11752,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
@@ -13840,18 +13835,18 @@ def space_to_depth(x, blocksize, name=None):
 
     .. code-block:: text
 
-        Give the input x with the shape [1, 1, 4, 4]：
+        Given the input x with the shape [1, 1, 4, 4]:
         x.data = [[[[1,   2,  5,  6],
                     [3,   4,  7,  8],
                     [9,  10, 13, 14],
                     [11, 12, 15, 16]]]]
         blocksize = 2
 
-        then get the output with the shape [1, 4, 2, 2]：
+        then get the output with the shape [1, 4, 2, 2]:
         out.data = [[[[1,   2],  [3,  4]],
-                    [[5,   6],  [7,  8]],
-                    [[9,  10], [11, 12]],
-                    [[13, 14], [15, 16]]]]
+                     [[5,   6],  [7,  8]],
+                     [[9,  10], [11, 12]],
+                     [[13, 14], [15, 16]]]]
 
     Args:
         x (Variable): The input, which should be 4 dims Tensor or LodTensor, with the shape \
@@ -13859,10 +13854,9 @@ def space_to_depth(x, blocksize, name=None):
         blocksize (int): The blocksize to select the element on each feature map should be > 2
         name(str, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
+            None by default.
 
-    Returns:
-        The output, which should be 4 dims Tensor or LodTensor, with the shape \
+    Returns: The output, which should be 4 dims Tensor or LodTensor, with the shape \
             [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
 
     Return Type: Variable
@@ -13872,7 +13866,7 @@ def space_to_depth(x, blocksize, name=None):
 
     Examples:
         .. code-block:: python
-	
+    
             import paddle.fluid as fluid
             import numpy as np
 
@@ -13886,9 +13880,9 @@ def space_to_depth(x, blocksize, name=None):
 
             print(data_np)
             #array([[[[ 0.,  1.], [ 2.,  3.]],
-            #         [[ 4.,  5.], [ 6.,  7.]],
-            #         [[ 8.,  9.], [10., 11.]],
-            #         [[12., 13.], [14., 15.]]]], dtype=float32)
+            #        [[ 4.,  5.], [ 6.,  7.]],
+            #        [[ 8.,  9.], [10., 11.]],
+            #        [[12., 13.], [14., 15.]]]], dtype=float32)
 
             out_main = exe.run(fluid.default_main_program(),
                         feed={'data': data_np},
