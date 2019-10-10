@@ -10,7 +10,7 @@ paddle.fluid.Program.to_string (ArgSpec(args=['self', 'throw_on_error', 'with_de
 paddle.fluid.default_startup_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', 'accb52b28228f8e93a26fabdc960f56c'))
 paddle.fluid.default_main_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '853718df675e59aea7104f3d61bbf11d'))
 paddle.fluid.program_guard (ArgSpec(args=['main_program', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '78fb5c7f70ef76bcf4a1862c3f6b8191'))
-paddle.fluid.name_scope (ArgSpec(args=['prefix'], varargs=None, keywords=None, defaults=(None,)), ('document', '917d313881ff990de5fb18d98a9c7b42'))
+paddle.fluid.name_scope (ArgSpec(args=['prefix'], varargs=None, keywords=None, defaults=(None,)), ('document', '907a5f877206079d8e67ae69b06bb3ba'))
 paddle.fluid.cuda_places (ArgSpec(args=['device_ids'], varargs=None, keywords=None, defaults=(None,)), ('document', '1f2bb6ece651e44117652d2d7bedecf5'))
 paddle.fluid.cpu_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', '956bab564ebc69ffd17195c08cc8ffa0'))
 paddle.fluid.cuda_pinned_places (ArgSpec(args=['device_count'], varargs=None, keywords=None, defaults=(None,)), ('document', 'c2562241744aabe3fff1b59af22dd281'))
