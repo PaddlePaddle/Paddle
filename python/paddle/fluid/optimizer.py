@@ -1851,7 +1851,7 @@ class AdadeltaOptimizer(Optimizer):
 
             import paddle.fluid as fluid
 
-            image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+            image = fluid.data(name='image', shape=[None, 28], dtype='float32')
             fc = fluid.layers.fc(image, size=10)
             cost = fluid.layers.reduce_mean(fc)
             optimizer = fluid.optimizer.Adadelta(
