@@ -1001,7 +1001,7 @@ paddle.fluid.optimizer.FtrlOptimizer.get_opti_var_name_list (ArgSpec(args=['self
 paddle.fluid.optimizer.FtrlOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'grad_clip'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '8387af01322a6defc92c1832faccd304'))
 paddle.fluid.optimizer.FtrlOptimizer.set_dict (ArgSpec(args=['self', 'state_dict'], varargs=None, keywords=None, defaults=None), ('document', '36aa497a2d29abaa4147987d71721d17'))
 paddle.fluid.optimizer.FtrlOptimizer.state_dict (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'deca1537945d33940b350923fb16ddf8'))
-paddle.fluid.optimizer.RMSPropOptimizer ('paddle.fluid.optimizer.RMSPropOptimizer', ('document', '5217bc4fc399010021d6b70541005780'))
+paddle.fluid.optimizer.RMSPropOptimizer ('paddle.fluid.optimizer.RMSPropOptimizer', ('document', '6aeb527f958d1d6962d4e56751f44dbd'))
 paddle.fluid.optimizer.RMSPropOptimizer.__init__ (ArgSpec(args=['self', 'learning_rate', 'rho', 'epsilon', 'momentum', 'centered', 'regularization', 'name'], varargs=None, keywords=None, defaults=(0.95, 1e-06, 0.0, False, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RMSPropOptimizer.apply_gradients (ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '80ea99c9af7ef5fac7e57fb302103610'))
 paddle.fluid.optimizer.RMSPropOptimizer.apply_optimize (ArgSpec(args=['self', 'loss', 'startup_program', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '5c46d1926a40f1f873ffe9f37ac89dae'))
