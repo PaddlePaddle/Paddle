@@ -65,7 +65,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &path, framework::Scope *scope,
     const platform::Place &place) {
-  framework::Executor exe(place, false);
+  framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
 
@@ -73,7 +73,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path, const std::string &params_path,
     framework::Scope *scope, const platform::Place &place,
     bool model_from_memory) {
-  framework::Executor exe(place, false);
+  framework::Executor exe(place);
   if (!model_from_memory) {
     return Load(&exe, scope, program_path, params_path);
   } else {
