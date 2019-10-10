@@ -554,23 +554,27 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
 class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of HardSigmoid operator");
-    AddOutput("Out", "Output of HardSigmoid operator");
-    AddAttr<float>("slope", "Slope for linear approximation of sigmoid")
+    AddInput("X",
+             "Input of hard_sigmoid operator. An N-D Tensor with data type "
+             "float32, float64.");
+    AddOutput("Out",
+              "Output of hard_sigmoid operator. A Tensor with the same shape "
+              "as input.");
+    AddAttr<float>("slope",
+                   "The slope of the linear approximation of sigmoid. Its "
+                   "value MUST BE positive. Default is 0.2.")
         .SetDefault(0.2f);
-    AddAttr<float>("offset", "Offset for linear approximation of sigmoid")
+    AddAttr<float>(
+        "offset",
+        "The offset of the linear approximation of sigmoid. Default is 0.5.")
         .SetDefault(0.5f);
     AddComment(R"DOC(
 HardSigmoid Activation Operator.
 
-Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
+A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
 which is much faster than sigmoid.
 
-$out = \max(0, \min(1, slope * x + shift))$
-
-The slope should be positive. The offset can be either positive or negative.
-The default slope and shift are set according to the above reference.
-It is recommended to use the defaults for this activation.
+$out = \max(0, \min(1, slope * x + offset))$
 
 )DOC");
   }
