@@ -7494,12 +7494,12 @@ def transpose(x, perm, name=None):
 
     if not isinstance(x, Variable):
         raise TypeError(
-            "The type of Input(x) in transpose must be Variable, but received %s" %
-            (type(x)))
+            "The type of Input(x) in transpose must be Variable, but received %s"
+            % (type(x)))
     if not isinstance(perm, list):
         raise TypeError(
-            "The type of Input(perm) in transpose must be list, but received %s" %
-            (type(perm)))
+            "The type of Input(perm) in transpose must be list, but received %s"
+            % (type(perm)))
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
