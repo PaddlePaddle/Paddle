@@ -6426,12 +6426,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         .. code-block:: python
 	    
 	    # declarative mode
-            import paddle.fluid as fluid
-            data = fluid.layers.data(name="data",
-                                     shape=(3, 17, 13),
-                                     dtype="float32")
-            normed = fluid.layers.l2_normalize(x=data, axis=1)
-
 	    import paddle.fluid as fluid
 	    import numpy as np
 	    input = fluid.data(name="input", shape=[2,3])
@@ -15516,8 +15510,8 @@ def pixel_shuffle(x, upscale_factor):
 	    with dg.guard(place) as g:
     		input = dg.to_variable(input_data)
     		output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
-    		print(output.shape)
-	    # [2L, 1L, 12L, 12L]
+                print(output.shape)
+	    	# [2L, 1L, 12L, 12L]
 
     """
 
