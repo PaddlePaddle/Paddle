@@ -6314,7 +6314,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 	name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
-        Variable: The output has the same shape with `x`.
+        Variable: The output has the same shape and data type with `x`.
 
     Examples:
 
