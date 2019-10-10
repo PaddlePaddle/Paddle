@@ -1936,16 +1936,6 @@ class DynamicRNN(object):
         name (str, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name` .
-
-    Methods:
-
-    - **step_input**, setting sequence as input variable
-    - **static_input**, setting static input variable
-    - **block**, defining operations during each time step
-    - **memory**, defining variable to deliver information cross time steps
-    - **update_memory**, updating memory variable
-    - **output**, setting output variable of each time step
-    - **__call__**, getting output sequence
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1981,37 +1971,37 @@ class DynamicRNN(object):
 
         - Case 1:
 
-            .. code-block:: text
+        .. code-block:: text
 
-                # input，where Si is slice data of shape [1, N]
-                level = 0
-                x.lod = [[2, 1, 3]]
-                x.shape = [6, N]
-                x.data = [[S0],
-                          [S0],
-                          [S1],
-                          [S2],
-                          [S2],
-                          [S2]]
+            # input，where Si is slice data of shape [1, N]
+            level = 0
+            x.lod = [[2, 1, 3]]
+            x.shape = [6, N]
+            x.data = [[S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2],
+                      [S2]]
 
-                # output
-                # step 0, time step data of 3 sequences
-                out.lod = [[]]
-                out.shape = [3, N]
-                out.data = [[S2],
-                            [S0],
-                            [S1]]
+            # output
+            # step 0, time step data of 3 sequences
+            out.lod = [[]]
+            out.shape = [3, N]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
 
-                # step 1, time step data of 2 sequences
-                out.lod = [[]]
-                out.shape = [2, N]
-                out.data = [[S2],
+            # step 1, time step data of 2 sequences
+            out.lod = [[]]
+            out.shape = [2, N]
+            out.data = [[S2],
                             [S0]]
 
-                # step 2, time step data of 1 sequences
-                out.lod = [[]]
-                out.shape = [1, N]
-                out.data = [[S2]]
+            # step 2, time step data of 1 sequences
+            out.lod = [[]]
+            out.shape = [1, N]
+            out.data = [[S2]]
 
 
         Args:
@@ -2104,74 +2094,74 @@ class DynamicRNN(object):
 
         - Case 1, set static input with LoD
 
-            .. code-block:: text
+        .. code-block:: text
 
-                # RNN's input is the same as the case listed in step_input
-                # static input, where Si is slice data of shape [1, M]
-                x.lod = [[3, 1, 2]]
-                x.shape = [6, M]
-                x.data = [[S0],
-                          [S0],
-                          [S0],
-                          [S1],
-                          [S2],
-                          [S2]]
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[3, 1, 2]]
+            x.shape = [6, M]
+            x.data = [[S0],
+                      [S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2]]
 
-                # step 0, batch data corresponding to the 3 input sequences
-                out.lod = [[2, 3, 1]]
-                out.shape = [6, M]
-                out.data = [[S2],
-                            [S2],
-                            [S0],
-                            [S0],
-                            [S0],
-                            [S1]]
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[2, 3, 1]]
+            out.shape = [6, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0],
+                        [S1]]
 
-                # step 1, batch data corresponding to the 2 input sequences
-                out.lod = [[2, 3]]
-                out.shape = [5, M]
-                out.data = [[S2],
-                            [S2],
-                            [S0],
-                            [S0],
-                            [S0]]
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[2, 3]]
+            out.shape = [5, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0]]
 
-                # step 2, batch data corresponding to the 1 input sequences
-                out.lod = [[2]]
-                out.shape = [2, M]
-                out.data = [[S2],
-                            [S2]]
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[2]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S2]]
 
 
         - Case 2, set static input without LoD
 
-            .. code-block:: text
+        .. code-block:: text
 
-                # RNN's input is the same as the case listed in step_input
-                # static input, where Si is slice data of shape [1, M]
-                x.lod = [[]]
-                x.shape = [3, M]
-                x.data = [[S0],
-                          [S1],
-                          [S2]]
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[]]
+            x.shape = [3, M]
+            x.data = [[S0],
+                      [S1],
+                      [S2]]
 
-                # step 0, batch data corresponding to the 3 input sequences
-                out.lod = [[]]
-                out.shape = [3, M]
-                out.data = [[S2],
-                            [S0],
-                            [S1]]
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[]]
+            out.shape = [3, M]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
 
-                # step 1, batch data corresponding to the 2 input sequences
-                out.lod = [[]]
-                out.shape = [2, M]
-                out.data = [[S2],
-                            [S0]]
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S0]]
 
-                # step 2, batch data corresponding to the 1 input sequences
-                out.lod = [[]]
-                out.shape = [1, M]
-                out.data = [[S2]]
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[]]
+            out.shape = [1, M]
+            out.data = [[S2]]
 
 
         Args:
