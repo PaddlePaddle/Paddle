@@ -264,6 +264,9 @@ py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULE
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
+    # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
+    py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
+    set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
 
 set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
