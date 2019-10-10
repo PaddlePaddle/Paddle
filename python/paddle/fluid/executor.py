@@ -67,11 +67,21 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    Change the global/default scope instance by Python `with` statement. All
-    variable in runtime will assigned to the new scope.
+    This function switches scope through python `with` statement.
+    Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
+    similar to brackets in programming languages.
+    If this function is not invoked, all variables and variable names are recorded in the default global scope.
+    When users need to create variables with the same name,
+    they need to switch scopes through this function
+    if they do not want the mapping of variables with the same name to be overwritten.
+    After switching through the `with` statement,
+    all variables created in the `with` block will be assigned to a new scope.
 
-    Args:
-        scope: The new global/default scope.
+    Parameters:
+        scope: The new scope.
+
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
