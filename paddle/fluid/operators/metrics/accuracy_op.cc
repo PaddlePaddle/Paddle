@@ -51,7 +51,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
                                  label_dim[1]);
     PADDLE_INFERSHAPE_ENFORCE_EQ(
         ctx, inference_dim[0], label_dim[0],
-        "ShapeError:the output's num_rows of AccuracyOp must be"
+        "ShapeError: the output's num_rows of AccuracyOp must be"
         " the same as label's num_rows. But received output's "
         "shape = [%s], label's shape = [%s], output's num_rows = %d, label's "
         "num_rows = %d",
