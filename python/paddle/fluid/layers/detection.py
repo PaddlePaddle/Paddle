@@ -1048,11 +1048,11 @@ def detection_map(detect_res,
         overlap_threshold: ${overlap_threshold_comment}
         evaluate_difficult: ${evaluate_difficult_comment}
         has_state: ${has_state_comment}
-        input_states: (list) If not None, It contains 3 elements:
+        input_states: (tuple|None) If not None, It contains 3 elements:
             (1) pos_count ${pos_count_comment}.
             (2) true_pos ${true_pos_comment}.
             (3) false_pos ${false_pos_comment}.
-        out_states: (list) If not None, it contains 3 elements.
+        out_states: (tuple|None) If not None, it contains 3 elements.
             (1) accum_pos_count ${accum_pos_count_comment}.
             (2) accum_true_pos ${accum_true_pos_comment}.
             (3) accum_false_pos ${accum_false_pos_comment}.
