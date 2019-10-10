@@ -5326,6 +5326,7 @@ def sequence_unpad(x, length, name=None):
      
     The OP removes the filled element from the input based on the length information and returns a LoDTensor.
 
+    On the contrary, the OP of sequence_pad can fill the data. See: :ref:`api_fluid_layers_sequence_pad`   
 
     .. code-block:: text
 
@@ -5347,7 +5348,7 @@ def sequence_unpad(x, length, name=None):
 	    out.lod = [[0, 2, 5, 9]]
 
     Args:
-        x(Variable): A Tensor which contains filler elements, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
+        x(Variable): A Tensor which contains filled elements, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
         length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor has the same shape with the 0th dimension of the X . Supported data types: int64.
         name(str|None):  See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
@@ -9970,31 +9971,33 @@ def sequence_scatter(input, index, updates, name=None):
      
     The OP updates the information in the updates parameter to the output based on the location provided by index.
    
-    Here is an example:
+    The OP initializes output with input, and then updates updates the updates information to output by output[instance_index][index [pos]] += updates[pos], where instance_idx is the K sample corresponding to pos in batch.
 
-    Given the following input:
+    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    .. code-block:: text
-
-        input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
-        input.dims = [3, 6]
-
-        index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
-        index.lod =  [[0,        3,                       8,                 12]]
-
-        updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
-        updates.lod =  [[  0,            3,                                 8,                         12]]
-
-    Then we have the output:
+    For example, in the following example, the lod information for index is divided into three intervals. Among them, because the element 0 can be found in the first interval of the index, it is updated with the value of the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot be found in the third interval of index, out[2][1] = input[2][1].
 
     .. code-block:: text
+        
+        *Case 1:
 
-        out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
-                    [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
-                    [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
-        out.dims = X.dims = [3, 6]
+            Given:
+                input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+                              input.dims = [3, 6]
+
+                index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+                index.lod =  [[0,        3,                       8,                 12]]
+
+                updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
+                updates.lod =  [[  0,            3,                                 8,                         12]]
+
+            Then:
+                out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
+                            [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
+                            [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
+                out.dims = X.dims = [3, 6]
 
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
