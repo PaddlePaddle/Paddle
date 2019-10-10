@@ -1071,7 +1071,7 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run infer_from_dataset, default is False
-            fetch_list(Variable List): fetch variable list, each variablewill be printed during
+            fetch_list(Variable List): fetch variable list, each variable will be printed during
                 training, default is None
             fetch_info(String List): print information for each variable, default is None
             print_period(int): the number of mini-batches for each print, default is 100
