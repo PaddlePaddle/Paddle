@@ -12430,11 +12430,11 @@ def sum(x):
             exe.run(fluid.default_main_program())
 
             # The printed result is:
-            1570701754	the sum of input0 and input1: 	The place is:CPUPlace
-            Tensor[sum_0.tmp_0]
-                shape: [2,3,]
-                dtype: l
-                data: 8,8,8,8,8,8,
+            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
+            # Tensor[sum_0.tmp_0]
+            #    shape: [2,3,]
+            #    dtype: l
+            #    data: 8,8,8,8,8,8,
 
             # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
             # dtype is the corresponding C++ data type, which may vary in different environments.
