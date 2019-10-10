@@ -99,7 +99,7 @@ class DataLoader(object):
 
         Args:  
             feed_list (list(Variable)|tuple(Variable)): feed variable list.
-                The variables should be created by :code:`fluid.layers.data()`.
+                The variables should be created by :code:`fluid.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader 
                 is fast. 
@@ -212,8 +212,8 @@ class DataLoader(object):
                     else:
                         raise ValueError('Unsupported data format')
 
-                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                image = fluid.data(name='image', shape=[None, 784], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
                 # Define DataLoader 
                 loader = fluid.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
@@ -281,8 +281,8 @@ class DataLoader(object):
 
                 import paddle.fluid as fluid
 
-                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                image = fluid.data(name='image', shape=[None, 784], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
                 dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
                 dataset.set_batch_size(32)

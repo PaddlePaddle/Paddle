@@ -61,13 +61,33 @@ def cache(reader):
 def map_readers(func, *readers):
     """
     Creates a data reader that outputs return value of function using
-    output of each data readers as arguments.
+    output of each data reader as arguments.
 
-    :param func: function to use. The type of func should be (Sample) => Sample
-    :type: callable
-    :param readers: readers whose outputs will be used as arguments of func.
-    :return: the created data reader.
-    :rtype: callable
+    If input readers output the following data entries: 2 3,
+    and the input func is mul(x, y),
+    the output of the resulted reader will be 6.
+
+
+    Args:
+        func: a function to read data and compute result, the output of this function 
+              will be set as the output of the resulted data reader.
+        readers (Reader|list of Reader): list of readers whose outputs will be used as arguments of func.
+ 
+    Returns:
+        the resulted data reader (Reader)
+
+    Examples:
+
+        .. code-block:: python
+
+         import paddle.reader
+         d = {"h": 0, "i": 1}
+         def func(x):
+             return d[x]
+         def reader():
+             yield "h"
+             yield "i"
+         map_reader_result = paddle.reader.map_readers(func, reader)
     """
 
     def reader():
@@ -117,19 +137,51 @@ def shuffle(reader, buf_size):
 
 def chain(*readers):
     """
-    Creates a data reader whose output is the outputs of input data
-    readers chained together.
+    Use the input data readers to create a chained data reader. The new created reader
+    chains the outputs of input readers together as its output.
 
-    If input readers output following data entries:
-    [0, 0, 0]
-    [1, 1, 1]
-    [2, 2, 2]
+    **Note**:
+        ``paddle.reader.chain`` is the alias of ``paddle.fluid.io.chain``, and
+        ``paddle.fluid.io.chain`` is recommended to use.
+
+    For example, if three input readers' outputs are as follows:
+    [0, 0, 0],
+    [10, 10, 10],
+    [20, 20, 20].
     The chained reader will output:
-    [0, 0, 0, 1, 1, 1, 2, 2, 2]
+    [[0, 0, 0], [10, 10, 10], [20, 20, 20]].
 
-    :param readers: input readers.
-    :return: the new data reader.
-    :rtype: callable
+    Args:
+        readers(list): input data readers.
+
+    Returns:
+        callable: the new chained data reader.
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle
+
+            def reader_creator_3(start):
+                def reader():
+                    for i in range(start, start + 3):
+                        yield [i, i, i]
+                return reader
+
+            c = paddle.reader.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
+            for e in c():
+                print(e)
+            # Output:
+            # [0, 0, 0]
+            # [1, 1, 1]
+            # [2, 2, 2]
+            # [10, 10, 10]
+            # [11, 11, 11]
+            # [12, 12, 12]
+            # [20, 20, 20]
+            # [21, 21, 21]
+            # [22, 22, 22]
+
     """
 
     def reader():
