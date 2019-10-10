@@ -667,7 +667,7 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.PyReader() instead.')
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -747,6 +747,9 @@ def create_py_reader_by_data(capacity,
              except fluid.core.EOFException:
                  reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
@@ -857,24 +860,25 @@ def read_file(reader):
         return out
 
 
-@templatedoc()
 def load(out, file_path, load_as_fp16=None):
     """
-    ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
-    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+    Load operator will load a LoDTensor / SelectedRows variable from disk file.
 
     Args:
-        out(${out_type}): ${out_comment}.
+        out(Variable): The LoDTensor / SelectedRows need to be loaded..
 
-        file_path(${file_path_type}): ${file_path_comment}.
+        file_path(STRING): Variable will be loaded from "file_path".
 
-        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
-
+        load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}
