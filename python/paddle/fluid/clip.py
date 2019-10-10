@@ -360,7 +360,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             import paddle.fluid as fluid
 
             def network():
-                image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+                image = fluid.data(name='image', shape=[None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
                 param_attr2 = fluid.ParamAttr("fc2_param")
