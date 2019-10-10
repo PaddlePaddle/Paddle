@@ -92,12 +92,17 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place, bool clear_mkldnn_cache)
-    : place_(place) {
+    : place_(place), clear_mkldnn_cache_(clear_mkldnn_cache) {}
+
+Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((clear_mkldnn_cache) && (platform::is_cpu_place(place))) {
+  // Clear mkl-dnn cache, unless explicitly
+  // (as set in constructor) marked not to do so
+  // this is needed to have mkl-dnn unit tests working
+  if ((clear_mkldnn_cache_) && (platform::is_cpu_place(place_))) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
-        (platform::MKLDNNDeviceContext*)pool.Get(place);
+        (platform::MKLDNNDeviceContext*)pool.Get(place_);
     dev_ctx->ResetBlobMap();
   }
 #endif

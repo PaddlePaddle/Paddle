@@ -59,6 +59,7 @@ class Executor {
   explicit Executor(const platform::Place& place,
                     bool clear_mkldnn_cache = true);
 
+  Executor::~Executor();
   /*
    * Close this Executor.
    * Calling this method will send complete messages to all pserver instances.
@@ -128,6 +129,7 @@ class Executor {
 
  private:
   const platform::Place place_;
+  const bool clear_mkldnn_cache_;
 };
 
 }  // namespace framework
