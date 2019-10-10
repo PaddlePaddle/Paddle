@@ -1139,7 +1139,7 @@ def greater_equal(x, y, cond=None):
             type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape should be the same as input :attr:`x`.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
