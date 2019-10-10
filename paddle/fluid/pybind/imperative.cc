@@ -180,7 +180,7 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
 
-    BackwardStrategy is a descriptor of a how to run the backward process.
+    BackwardStrategy is a descriptor of how to run the backward process.
 
     **Note**:
         **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
@@ -188,7 +188,7 @@ void BindImperative(py::module *m_ptr) {
     Attribute:
         **sort_sum_gradient**:
 
-        If it will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if it will sum gradient of `x_var` by the reverse order.
+        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
 
         By Default: False
 
