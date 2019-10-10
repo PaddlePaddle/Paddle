@@ -36,34 +36,30 @@ static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == kDepOut || GradFunctor::FwdDeps() == kNoDeps;
 }
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                     \
-  class OP_NAME##OpMaker                                                      \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {                  \
-   public:                                                                    \
-    void Make() override {                                                    \
-      AddInput("X", "Input of " #OP_NAME                                      \
-                    " operator, an N-D Tensor, with data type float32, "      \
-                    "float64 or float16.");                                   \
-      AddInput("name",                                                        \
-               "(str, optional)  The default value is None.  Normally there " \
-               "is no need for user to set this property.  For more "         \
-               "information, please refer to :ref:`api_guide_Name` .");       \
-      AddOutput("Out", "Output of " #OP_NAME                                  \
-                       " operator, a Tensor with shape same as input.");      \
-      AddAttr<bool>("use_mkldnn",                                             \
-                    "(bool, default false) Only used in mkldnn kernel")       \
-          .SetDefault(false);                                                 \
-      AddAttr<bool>("use_cudnn",                                              \
-                    "(bool, default false) Only used in cudnn kernel, need "  \
-                    "install cudnn")                                          \
-          .SetDefault(false);                                                 \
-      AddAttr<bool>(                                                          \
-          "is_test",                                                          \
-          "(bool, default false) Set to true for inference only, false "      \
-          "for training. Some layers may run faster when this is true.")      \
-          .SetDefault(false);                                                 \
-      AddComment(OP_COMMENT);                                                 \
-    }                                                                         \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
+  class OP_NAME##OpMaker                                                     \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
+   public:                                                                   \
+    void Make() override {                                                   \
+      AddInput("X", "Input of " #OP_NAME                                     \
+                    " operator, an N-D Tensor, with data type float32, "     \
+                    "float64 or float16.");                                  \
+      AddOutput("Out", "Output of " #OP_NAME                                 \
+                       " operator, a Tensor with shape same as input.");     \
+      AddAttr<bool>("use_mkldnn",                                            \
+                    "(bool, default false) Only used in mkldnn kernel")      \
+          .SetDefault(false);                                                \
+      AddAttr<bool>("use_cudnn",                                             \
+                    "(bool, default false) Only used in cudnn kernel, need " \
+                    "install cudnn")                                         \
+          .SetDefault(false);                                                \
+      AddAttr<bool>(                                                         \
+          "is_test",                                                         \
+          "(bool, default false) Set to true for inference only, false "     \
+          "for training. Some layers may run faster when this is true.")     \
+          .SetDefault(false);                                                \
+      AddComment(OP_COMMENT);                                                \
+    }                                                                        \
   }
 
 template <ActBwdOpFwdDeps kDepValue>
