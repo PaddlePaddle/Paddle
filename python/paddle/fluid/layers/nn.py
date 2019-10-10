@@ -13674,32 +13674,48 @@ def affine_channel(x,
     Args:
         x (Variable): Feature map input can be a 4D tensor with order NCHW
             or NHWC. It also can be a 2D tensor and the affine transformation
-            is applied in the second dimension.
+            is applied in the second dimension.The data type is float32 or float64.
         scale (Variable): 1D input of shape (C), the c-th element is the scale
             factor of the affine transformation for the c-th channel of
-            the input.
+            the input.The data type is float32 or float64.
         bias (Variable): 1D input of shape (C), the c-th element is the bias
             of the affine transformation for the c-th channel of the input.
-        data_layout (string, default NCHW): NCHW or NHWC. If input is 2D
+            The data type is float32 or float64.
+        data_layout (str, default NCHW): NCHW or NHWC. If input is 2D
             tensor, you can ignore data_layout.
-        name (str, default None): The name of this layer.
+        name (str, default None): The name of this layer. For more information,
+            please refer to :ref:`api_guide_Name` .
         act (str, default None): Activation to be applied to the output of this layer.
 
     Returns:
-        out (Variable): A tensor of the same shape and data layout with x.
+        Variable: A tensor which has the same shape, data layout and data type with x.
 
     Examples:
         .. code-block:: python
-            
+
+            import numpy as np
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[3, 32, 32],
-                                     dtype='float32')
-            input_scale = fluid.layers.create_parameter(shape=[3],
-                                     dtype="float32")
-            input_bias = fluid.layers.create_parameter(shape=[3],
-                                     dtype="float32")
+
+            use_gpu = False
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            data = fluid.data(name='data', shape=[None, 1, 2, 2], dtype='float32')
+            input_scale = fluid.layers.create_parameter(shape=[1], dtype="float32",
+                                    default_initializer=fluid.initializer.Constant(2.0))
+            input_bias = fluid.layers.create_parameter(shape=[1],dtype="float32",
+                                    default_initializer=fluid.initializer.Constant(0.5))
             out = fluid.layers.affine_channel(data,scale=input_scale,
-                                     bias=input_bias)
+                                    bias=input_bias)
+
+            exe.run(fluid.default_startup_program())
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            [out_array] = exe.run(test_program,
+                                  fetch_list=out,
+                                  feed={'data': np.ones([1,1,2,2]).astype('float32')})
+            # out_array is [[[[2.5, 2.5],
+            #                [2.5, 2.5]]]] with shape: [1, 1, 2, 2]
 
     """
     helper = LayerHelper("affine_channel", **locals())
