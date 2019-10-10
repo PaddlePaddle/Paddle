@@ -180,7 +180,7 @@ class TestLayer(LayerTest):
             self.assertFalse(np.array_equal(out1.numpy(), out2.numpy()))
 
             mismatched_weight = np.random.randn(4, 4).astype("float32")
-            with self.assertRaises(ValueError):
+            with self.assertRaises(AssertionError):
                 fc2.weight.set_value(mismatched_weight)
             fc2.weight.set_value(fc1_weight_init)
             fc2.bias.set_value(fc1_bias_init)
