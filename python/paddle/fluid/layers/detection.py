@@ -1672,17 +1672,15 @@ def prior_box(input,
     Returns:
         Tuple: A tuple with two Variable (boxes, variances)
 
-        boxes: the output prior boxes of PriorBox.
-	    4-D tensor, the layout is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input,
-            num_priors is the total
-            box count of each position of input.
+        boxes(Variable): the output prior boxes of PriorBox.
+	4-D tensor, the layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input,
+        num_priors is the total box count of each position of input.
 
-        variances: the expanded variances of PriorBox.
-    	    4-D tensor, the layput is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input
-            num_priors is the total
-            box count of each position of input
+        variances(Variable): the expanded variances of PriorBox.
+    	4-D tensor, the layput is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input
+        num_priors is the total box count of each position of input
 
     Examples:
         .. code-block:: python
@@ -1808,7 +1806,7 @@ def density_prior_box(input,
     
     .. math::
 
-        N_density_prior_box = SUM(N_fixed_ratios * densities_i^2)
+        N\_density_prior\_box = SUM(N\_fixed\_ratios * densities\_i^2)
 
     N_density_prior_box is the number of density_prior_box and N_fixed_ratios is the number of fixed_ratios.
 
@@ -1842,14 +1840,14 @@ def density_prior_box(input,
         Tuple: A tuple with two Variable (boxes, variances)
 
         boxes: the output density prior boxes of PriorBox.
-            4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
-            2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
-            H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
+        4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+        2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+        H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
 
         variances: the expanded variances of PriorBox.
-            4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
-            2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
-            H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
+        4-D tensor, the layout is [H, W, num_priors, 4] when flatten_to_2d is False.
+        2-D tensor, the layout is [H * W * num_priors, 4] when flatten_to_2d is True.
+        H is the height of input, W is the width of input, and num_priors is the total box count of each position of input.
 
 
     Examples:

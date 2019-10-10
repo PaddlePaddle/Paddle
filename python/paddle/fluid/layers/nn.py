@@ -6604,9 +6604,9 @@ def edit_distance(input,
     distance for a pair of strings respectively. If Attr(normalized) is true,
     the edit distance will be divided by the length of reference string.
 
-    Args:
-        input(Variable): The indices for hypothesis strings, it should have rank 2 and its data type should be int64.
-        label(Variable): The indices for reference strings, it should have rank 2 and its data type should be int64.
+    Parameters:
+        input(Variable): The indices for hypothesis strings, its rank should equals to 2 and its data type should be int64.
+        label(Variable): The indices for reference strings, its rank should equals to 2 and its data type should be int64.
         normalized(bool, default True): Indicated whether to normalize the edit distance by
                           the length of reference string.
         ignored_tokens(list<int>, default None): Tokens that should be removed before
@@ -6615,11 +6615,12 @@ def edit_distance(input,
         label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
 
     Returns:
+	Tuple:
+
         edit_distance_out(Variable): edit distance result in shape [batch_size, 1].
         sequence_num(Variable): sequence number in shape [].
         
 
-    Return type: Tuple.
 
     Examples:
         .. code-block:: python
@@ -9570,7 +9571,7 @@ def resize_bilinear(input,
               W_out = W_{in} * scale_{factor}
 
     Parameters:
-        input(Variable): 4-D Tensor, its data type is float32, float64, or uint8,
+        input(Variable): 4-D Tensor(NCHW), its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
             layer, the shape is (out_h, out_w).Default: None. If a list, each 
@@ -9600,7 +9601,7 @@ def resize_bilinear(input,
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-	4-D tensor(NCHW or NHWC).
+	Variable: 4-D tensor(NCHW or NHWC).
     
     Examples:
         .. code-block:: python
@@ -9762,7 +9763,7 @@ def resize_trilinear(input,
                                     Default: 'NCDHW'.
 
     Returns:
-        A 5-D Tensor(NCDHW or NDHWC) 
+        Variable: A 5-D Tensor(NCDHW or NDHWC) 
 
     Examples:
         .. code-block:: python
@@ -9914,7 +9915,7 @@ def resize_nearest(input,
                                     Default: 'NCHW'.
 
     Returns:
-	4-D tensor(NCHW or NHWC).
+	Variable: 4-D tensor(NCHW or NHWC).
 
     Examples:
         .. code-block:: python
@@ -12235,9 +12236,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
 
     Returns:
-        sampling tensor.
-
-    Return type: Variable
+        Variable: sampling tensor.
 
     Examples:
         .. code-block:: python
@@ -15229,15 +15228,12 @@ def pixel_shuffle(x, upscale_factor):
         upscale_factor(int): factor to increase spatial resolution.
 
     Returns:
-
         Out(Variable): Reshaped tensor according to the new dimension.
 
     Raises:
-
         ValueError: If the square of upscale_factor cannot divide the channels of input.
 
     Examples:
-
         .. code-block:: python
 
 	    # declarative mode
