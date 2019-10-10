@@ -1048,11 +1048,18 @@ class Executor(object):
                            print_period=100,
                            fetch_handler=None):
         """
-        The document of infer_from_dataset is almost the same as
-        train_from_dataset, except that in distributed training,
-        push gradients will be disabled in infer_from_dataset.
-        infer_from_dataset() can be used for evaluation in multi-thread
-        very easily.
+
+        Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Given a program, either a program or compiled program, infer_from_dataset will
+        consume all data samples in dataset. Input scope can be given by users. By default,
+        scope is global_scope(). The total number of thread run in training is `thread`.
+        Thread number used in training will be minimum value of threadnum in Dataset and
+        the value of thread in this interface. Debug can be set so that executor will display
+        Run-Time for all operators and the throughputs of current infer task.
+
+        The document of infer_from_dataset is almost the same as train_from_dataset,
+        except that in distributed training, push gradients will be disabled in infer_from_dataset.
+        infer_from_dataset() can be used for evaluation in multi-threadvery easily.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
