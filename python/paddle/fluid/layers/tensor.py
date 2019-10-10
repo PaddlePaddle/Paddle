@@ -374,38 +374,35 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
-    This OP creates a LoDTensor or  SelectedRows  with specified `shape` and `dtype`, and
+    This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specifed by `value`.
 
-    The attribute `stop_gradient` of the created LoDTensor or SelectedRows is setted to True.
+    The attribute `stop_gradient` of the created Tensor is setted to True.
 
     Args:
-        shape(tuple|list): Shape of the LoDTensor or SelectedRows to be created.
+        shape(tuple|list): Shape of the Tensor to be created.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
-        value(float): The constant value used to initialize the LoDTensor or SelectedRows to be created.
+        value(float): The constant value used to initialize the Tensor to be created.
         force_cpu(True): data should be on CPU if it's true, defalut value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
 
     Returns:
-        Variable: LoDTensor or SelectedRows which is created according the shape and dtype.
+        Variable: Tensor which is created according the shape and dtype.
 
     Raise:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out LoDTensor or SelectedRows  must be the same as the dtype. 
+        and the data type of out Tensor must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          b = fluid.default_main_program().global_block()
-          data3 = b.create_var(name="X", dtype="int64", shape=[1], persistable=True,
-          type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-          data1 = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64') #data1=[0]
-          data2 = fluid.layers.fill_constant(shape=[1], value=5, dtype='int64', out=data1) #data1=[5] data2=[5]
-          data3 = fluid.layers.fill_constant(shape=[1], value=5, dtype='int64', out=data3) #data3=[5]
+          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') #data1=[[0],[0]]
+          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
+          #data1=[[5], [5]] data2=[[5], [5]]
     """
 
     helper = LayerHelper("fill_constant", **locals())
