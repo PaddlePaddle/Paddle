@@ -297,7 +297,7 @@ class StaticRNN(object):
 
     The StaticRNN can process a batch of sequence data. The first dimension of inputs
     represents sequence length, the length of each input sequence must be equal.
-    StaticRNN will unfold sequence into time steps, user need to define how to process
+    StaticRNN will unfold sequence into time steps, user needs to define how to process
     each time step during the :code:`with` step.
 
     Args:
