@@ -1048,7 +1048,6 @@ class Executor(object):
                            print_period=100,
                            fetch_handler=None):
         """
-
         Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, infer_from_dataset will
         consume all data samples in dataset. Input scope can be given by users. By default,
