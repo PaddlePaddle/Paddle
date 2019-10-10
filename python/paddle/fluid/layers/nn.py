@@ -8587,46 +8587,46 @@ def lod_append(x, level):
 
 def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     """
-    Local Response Normalization Layer. This layer performs a type of
-    "lateral inhibition" by normalizing over local input regions.
+    This operator implements the Local Response Normalization Layer.
+    This layer performs a type of "lateral inhibition" by normalizing over local input regions.
+    For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 
     The formula is as follows:
 
     .. math::
 
-      Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
+        Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
 
     In the above equation:
 
-    * :math:`n`: The number of channels to sum over.
-    * :math:`k`: The offset (avoid being divided by 0).
-    * :math:`alpha`: The scaling parameter.
-    * :math:`beta`: The exponent parameter.
+    - :math:`n` : The number of channels to sum over.
+    - :math:`k` : The offset (avoid being divided by 0).
+    - :math:`\\alpha` : The scaling parameter.
+    - :math:`\\beta` : The exponent parameter.
 
-    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
-    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 
     Args:
-        input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
-        n (int, default 5): The number of channels to sum over.
-        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
-        alpha (float, default 1e-4): The scaling parameter.
-        beta (float, default 0.75): The exponent.
-        name (str, default None): A name for this operation.
-
-    Raises:
-        ValueError: If rank of the input tensor is not 4.
+        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
+        n (int, optional): The number of channels to sum over. Default: 5
+        k (float, optional): An offset, positive. Default: 1.0
+        alpha (float, optional): The scaling parameter, positive. Default:1e-4
+        beta (float, optional): The exponent, positive. Default:0.75
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        A tensor variable storing the transformation result.
+        Variable: A tensor variable storing the transformation result with the same shape and data type as input.
+
 
     Examples:
-        .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.layers.data(
-              name="data", shape=[3, 112, 112], dtype="float32")
-          lrn = fluid.layers.lrn(input=data)
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        data = fluid.data(
+            name="data", shape=[None, 3, 112, 112], dtype="float32")
+        lrn = fluid.layers.lrn(input=data)
+        print(lrn.shape)  # [-1, 3, 112, 112]
+        print(lrn.dtype)  # float32
     """
     helper = LayerHelper('lrn', **locals())
     dtype = helper.input_dtype()
@@ -8870,38 +8870,57 @@ def label_smooth(label,
 @templatedoc()
 def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     """
-    ${comment}
-
+    This operator implements the roi_pooling layer. 
+    Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
+    
+    The operator has three steps:
+    
+        1. Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height;
+        2. Finding the largest value in each section;
+        3. Copying these max values to the output buffer.
+    
+    For more information, please refer to https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
+    
     Args:
-        input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                         the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates.
-        pooled_height (integer): ${pooled_height_comment} Default: 1
-        pooled_width (integer): ${pooled_width_comment} Default: 1
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
-
+        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
+        rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
+        pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+    
     Returns:
-        Variable: ${out_comment}.
-
+        Variable: The pooled feature, 4D-Tensor with the shape of [num_rois, C, pooled_height, pooled_width].
+    
+    
     Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.layers.data(
-                name='x', shape=[8, 112, 112], dtype='float32')
-            rois = fluid.layers.data(
-                name='roi', shape=[4], lod_level=1, dtype='float32')
-            pool_out = fluid.layers.roi_pool(
+    
+    ..  code-block:: python
+    
+        import paddle.fluid as fluid
+        import numpy as np
+    
+        DATATYPE='float32'
+    
+        place = fluid.CPUPlace()
+        #place = fluid.CUDAPlace(0)
+    
+        input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
+        roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
+    
+        x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
+        rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
+    
+        pool_out = fluid.layers.roi_pool(
                 input=x,
                 rois=rois,
-                pooled_height=7,
-                pooled_width=7,
+                pooled_height=1,
+                pooled_width=1,
                 spatial_scale=1.0)
-
+    
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'input':input_data ,'roi':roi_data}, fetch_list=[pool_out.name])
+        print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
+        print(np.array(out).shape)  # (2, 1, 1, 1)
     """
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
@@ -14861,44 +14880,49 @@ def prroi_pool(input,
 
 def huber_loss(input, label, delta):
     """
-    Huber loss is a loss function used in robust.
-    Huber loss can evaluate the fitness of input to label.
-    Different from MSE loss, Huber loss is more robust for outliers.
+    This operator computes the Huber loss between input and label.
+    Huber loss is commonly used in regression tasks. Compared to square_error_cost, Huber loss is more robust and less sensitivity to outliers.
 
-    When the difference between input and label is large than delta
+    When the absolute difference between input and label is greater than delta, the linear error is calculated:
+
     .. math::
+            huber\_loss = delta * (label - input) - 0.5 * delta * delta
 
-        huber\_loss = delta * (label - input) - 0.5 * delta * delta
+    When the absolute difference between input and label is greater than delta, the square error is calculated:
 
-    When the difference between input and label is less than delta
     .. math::
-
-        huber\_loss = 0.5 * (label - input) * (label - input)
+            huber\_loss = 0.5 * (label - input) * (label - input)
 
 
     Args:
-        input (Variable): This input is a probability computed by the previous operator.
-                          The first dimension is batch size, and the last dimension is 1.
-        label (Variable): The groud truth whose first dimension is batch size
-                          and last dimension is 1.
-        delta (float): The parameter of huber loss, which controls
-                       the range of outliers
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
+        delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
 
     Returns:
-        huber\_loss (Variable): The huber loss with shape [batch_size, 1].
+        Variable: The huber loss, a tensor with the same shape and data type as input.
+
 
     Examples:
-        .. code-block:: python
 
-            import paddle.fluid as fluid
+    ..  code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            predict = fluid.layers.fc(input=x, size=1)
-            label = fluid.layers.data(
-                name='label', shape=[1], dtype='float32')
-            loss = fluid.layers.huber_loss(
-                input=predict, label=label, delta=1.0)
+        import paddle.fluid as fluid
+        import numpy as np
 
+        DATATYPE='float32'
+        input_data = np.array([[1.],[2.],[3.],[4.]]).astype(DATATYPE)
+        label_data = np.array([[3.],[3.],[4.],[4.]]).astype(DATATYPE)
+
+        x = fluid.data(name='input', shape=[None, 1], dtype=DATATYPE)
+        y = fluid.data(name='label', shape=[None, 1], dtype=DATATYPE)
+        loss = fluid.layers.huber_loss(input=x, label=y, delta=1.0)
+
+        place = fluid.CPUPlace()
+        #place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        HuberLoss, = exe.run(feed={'input':input_data ,'label':label_data}, fetch_list=[loss.name])
+        print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     helper = LayerHelper('huber_loss', **locals())
     residual = helper.create_variable_for_type_inference(
@@ -15922,25 +15946,50 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 @templatedoc()
 def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     """
-    ${comment}
+    This operator implements the hard_swish activation function.
+    Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
+    For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
+
+    The formula is as follows:
+
+    .. math::
+
+        out = \\frac{x * (min(max(0, x+offset), threshold))}{scale}
+
+    In the above equation:
+
+    ``threshold`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
+
     Args:
-        x(Varaible): Input of HardSwish operator.
-        threshold(float): The threshold parameter of HardSwish operator. Default:threshold=6.0
-        scale(float): The scale parameter of HardSwish operator. Default:scale=6.0
-        offset(float): The offset parameter of HardSwish operator. Default:offset=3.0
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-
+        x (Variable): Input feature, multi-dimensional Tensor. The data type should be float32 or float64.
+        threshold (float, optional): The threshold in Relu function. Default: 6.0
+        scale (float, optional): The scale factor. Default: 6.0
+        offset (float, optional): The offset factor. Default: 3.0
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
+        
     Returns:
-        Variable: The output tensor with the same shape as input.
-
+        Variable: The output tensor with the same shape and data type as input.
+    
+    
     Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.hard_swish(x)
+    
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+        import numpy as np
+    
+        DATATYPE='float32'
+    
+        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
+    
+        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
+        y = fluid.layers.hard_swish(x)
+    
+        place = fluid.CPUPlace()
+        #place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
+        print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
     helper = LayerHelper('hard_swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
