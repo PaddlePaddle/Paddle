@@ -23,6 +23,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
 from . import nn
+from ..data_feeder import convert_dtype
 
 __all__ = ['accuracy', 'auc']
 
@@ -71,6 +72,14 @@ def accuracy(input, label, k=1, correct=None, total=None):
             #[array([0.6666667], dtype=float32)]
     """
     helper = LayerHelper("accuracy", **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in softmax must be Variable, but received %s" %
+            (type(input)))
+    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in accuracy must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
