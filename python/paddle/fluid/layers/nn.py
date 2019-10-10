@@ -5799,8 +5799,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, which performs sum operation on the specified dim of input tensor,
-        has the same data type with input data type.
+        Variable: Tensor, results of summation operation on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
     Raises:
         TypeError, if out data type is different with the input data type.
@@ -5874,8 +5874,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
-        Variable: Tensor, which performs average operation on the specified dim of input tensor,
-        has the same data type with input data type.
+        Variable: Tensor, results of average on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
     
     Raises:
         TypeError, if out data type is different with the input data type.
@@ -5947,8 +5947,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, which performs max operation on the specified dim of input tensor,
-        has the same data type with input data type.
+        Variable: Tensor, results of maximum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
     Examples:
         .. code-block:: python
@@ -6008,8 +6008,8 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, which performs min operation on the specified dim of input tensor,
-        has the same data type with input data type.
+        Variable: Tensor, result of minimum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
     Examples:
         .. code-block:: python
@@ -6069,8 +6069,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: Tensor, which performs prob operation on the specified dim of input tensor,
-        has the same data type with input data type.
+        Variable: Tensor, result of product on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
     
     Examples:
         .. code-block:: python
