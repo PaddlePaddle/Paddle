@@ -338,7 +338,7 @@ paddle.fluid.layers.has_nan (ArgSpec(args=['x'], varargs=None, keywords=None, de
 paddle.fluid.layers.isfinite (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', 'b9fff4ffc8d11934cde099f4c39bf841'))
 paddle.fluid.layers.range (ArgSpec(args=['start', 'end', 'step', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '3e982b788b95f959eafeeb0696a3cbde'))
 paddle.fluid.layers.linspace (ArgSpec(args=['start', 'stop', 'num', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '156e653497804566a43f6a53d48b08c4'))
-paddle.fluid.layers.zeros_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '99f72d278ca0015fba274c82ed757301'))
+paddle.fluid.layers.zeros_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '5432543db3ff898451aa3af6bb38ab56'))
 paddle.fluid.layers.ones_like (ArgSpec(args=['x', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', 'd18d42059c6b189cbd3fab2fcb206c15'))
 paddle.fluid.layers.diag (ArgSpec(args=['diagonal'], varargs=None, keywords=None, defaults=None), ('document', '10f13aae2f0d3db88353d3ec7db4869b'))
 paddle.fluid.layers.eye (ArgSpec(args=['num_rows', 'num_columns', 'batch_shape', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 'float32')), ('document', '60cdc70ae43ba69fae36d720ef3016a1'))
