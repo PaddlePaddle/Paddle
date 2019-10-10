@@ -1092,11 +1092,11 @@ def array_write(x, i, array=None):
             exe.run(main_program)
 
             # The printed result is:
-            1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
-            Tensor[array_read_0.tmp_0]
-                shape: [3,2,]
-                dtype: l
-                data: 5,5,5,5,5,5,
+            # 1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
+            # Tensor[array_read_0.tmp_0]
+            #    shape: [3,2,]
+            #    dtype: l
+            #    data: 5,5,5,5,5,5,
 
             # the output is 2-D Tensor with shape [3,2], which is tmp above.
             # dtype is the corresponding C++ data type, which may vary in different environments.
@@ -1434,11 +1434,11 @@ def array_read(array, i):
 
             # The printed result is:
 
-            1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
-            Tensor[array_read_0.tmp_0]
-                shape: [3,2,]
-                dtype: l
-                data: 5,5,5,5,5,5,
+            # 1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
+            # Tensor[array_read_0.tmp_0]
+            #    shape: [3,2,]
+            #    dtype: l
+            #    data: 5,5,5,5,5,5,
 
             # the output is 2-D Tensor with shape [3,2].
             # dtype is the corresponding C++ data type, which may vary in different environments.
@@ -1529,11 +1529,11 @@ def array_length(array):
 
             # The printed result is:
 
-            1569576542  The length of LoDTensorArray:   The place is:CPUPlace
-            Tensor[array_length_0.tmp_0]
-                shape: [1,]
-                dtype: l
-                data: 11,
+            # 1569576542  The length of LoDTensorArray:   The place is:CPUPlace
+            # Tensor[array_length_0.tmp_0]
+            #    shape: [1,]
+            #    dtype: l
+            #    data: 11,
             
             # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
             # is 11.
