@@ -177,6 +177,10 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _set_paddle_lib_path
+        from .core_avx import _save_static_dict
+        from .core_avx import _load_static_dict
+        from .core_avx import _save_dygraph_dict
+        from .core_avx import _load_dygraph_dict
     except Exception as e:
         if has_avx_core:
             raise e
@@ -206,6 +210,10 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _set_paddle_lib_path
+        from .core_noavx import _save_static_dict
+        from .core_noavx import _load_static_dict
+        from .core_noavx import _save_dygraph_dict
+        from .core_noavx import _load_dygraph_dict
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(
