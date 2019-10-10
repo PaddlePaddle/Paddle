@@ -850,18 +850,20 @@ def range(start, end, step, dtype):
     Values are generated within the half-open interval [start, stop) (in other words,
     the interval including start but excluding stop).
 
-    args:
-        start(int|float|Variable): Start of interval. The interval includes this value.
-        end(int|float|Variable): End of interval. The interval does not include this
+    Parameters:
+        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
+            when start is Variable, it is a 1-D Tensor with shape [1].
+        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
                                  value, except in some cases where step is not an integer
-                                 and floating point round-off affects the length of out. 
-        step(int|float|Variable): Spacing between values. For any output out, this is the
+                                 and floating point round-off affects the length of out. When end is Variable,
+                                 it is a 1-D Tensor with shape [1].
+        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
                                   distance between two adjacent values, out[i+1] - out[i].
-                                  The default step size is 1.
-        dtype(string): 'float32'|'int32'|..., the data type of the output tensor.
+        dtype(str): the data type of the output tensor, can be float32, float64, int32, int64.
 
-    returns:
-        Evenly spaced values within a given interval.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    
+    Return type: Variable
 
     examples:
 

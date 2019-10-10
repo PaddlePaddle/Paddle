@@ -152,11 +152,11 @@ def img_conv_group(input,
     result to Pool2d.
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format.
+        input (Variable): The input is 4-D Tensor with shape [N, C, H, W], the data type of input is float32 or float64.
         conv_num_filter(list|tuple): Indicates the numbers of filter of this group.
         pool_size (int|list|tuple): The pooling size of Pool2d Layer. If pool_size
-            is a list or tuple, it must contain two integers, (pool_size_H, pool_size_W).
-            Otherwise, the pool_size_H = pool_size_W = pool_size.
+            is a list or tuple, it must contain two integers, (pool_size_height, pool_size_width).
+            Otherwise, the pool_size_height = pool_size_width = pool_size.
         conv_padding (int|list|tuple): The padding size of the Conv2d Layer. If padding is
             a list or tuple, its length must be equal to the length of conv_num_filter.
             Otherwise the conv_padding of all Conv2d Layers are the same. Default 1.
@@ -184,14 +184,14 @@ def img_conv_group(input,
             library is installed. Default: True
 
     Return:
-        Variable: The final result after serial computation using Convolution2d,
-            BatchNorm, DropOut, and Pool2d.
+        The final result after serial computation using Convolution2d,
+        BatchNorm, DropOut, and Pool2d.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+            img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
             conv_pool = fluid.nets.img_conv_group(input=img,
                                                   conv_padding=1,
                                                   conv_num_filter=[3, 3],
