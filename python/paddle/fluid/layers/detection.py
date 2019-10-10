@@ -432,7 +432,7 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2., alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
