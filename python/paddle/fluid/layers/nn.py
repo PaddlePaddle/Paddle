@@ -11785,12 +11785,11 @@ def uniform_random_batch_size_like(input,
             import paddle.fluid as fluid
             
             # example 1: 
-            input_1 = fluid.data(name="input", shape=[1, 3], dtype='float32')
-            out_1 = layers.uniform_random_batch_size_like(input, [2, 4]) # shape=[1, 4]
+            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
+            out_1 = layers.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
 
             # example 2: 
-            input_2 = fluid.data(name="input", shape=[1, 3], dtype='float32')
-            out_2 = layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # shape=[2, 3]
+            out_2 = layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
 
             
     """
