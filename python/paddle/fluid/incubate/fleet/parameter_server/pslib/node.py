@@ -400,8 +400,9 @@ class DownpourWorker(Worker):
 
         #table.dense_variable_name.extend(sorted(dense_param_name, cmp_fc))
         table.dense_variable_name.extend(dense_param_name)
-        table.dense_gradient_variable_name.extend(
-            sorted(dense_grad_name, cmp_fc))
+        table.dense_gradient_variable_name.extend(dense_grad_name)
+        #table.dense_gradient_variable_name.extend(
+        #    sorted(dense_grad_name, cmp_fc))
 
     def get_desc(self):
         """
