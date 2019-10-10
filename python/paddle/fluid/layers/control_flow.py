@@ -2241,7 +2241,12 @@ class DynamicRNN(object):
     @signature_safe_contextmanager
     def block(self):
         """
-        The block for user to define operators in RNN.
+        The function is used for user to list the operations executed during
+        each time step in RNN. The operation list will be executed :code:`max_sequence_len`
+        times (where :code:`max_sequence_len` is the maximum length of RNN's input sequences).
+
+        Raises:
+            ValueError: When :code:`block()` is called multiple times.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
