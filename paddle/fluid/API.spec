@@ -882,7 +882,7 @@ paddle.fluid.dygraph.CosineDecay ('paddle.fluid.dygraph.learning_rate_scheduler.
 paddle.fluid.dygraph.CosineDecay.__init__ (ArgSpec(args=['self', 'learning_rate', 'step_each_epoch', 'epochs', 'begin', 'step', 'dtype'], varargs=None, keywords=None, defaults=(0, 1, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.CosineDecay.create_lr_var (ArgSpec(args=['self', 'lr'], varargs=None, keywords=None, defaults=None), ('document', '013bc233558149d0757b3df57845b866'))
 paddle.fluid.dygraph.CosineDecay.step (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '5d9496052ec793810c9f12ffad5c73ce'))
+paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '8a72aeec45b7e44797bfce857d13b69c'))
 paddle.fluid.dygraph.BackwardStrategy.__init__ __init__(self: paddle.fluid.core_avx.BackwardStrategy) -> None
 paddle.fluid.transpiler.DistributeTranspiler ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspiler', ('document', 'b2b19821c5dffcd11473d6a4eef089af'))
 paddle.fluid.transpiler.DistributeTranspiler.__init__ (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
