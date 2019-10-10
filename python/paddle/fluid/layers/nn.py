@@ -3335,7 +3335,7 @@ def pool2d(input,
           data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
 
           # max pool2d
-          pool2d = fludi.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
             input = data,
             pool_size = 2,
             pool_type = "max",
@@ -3343,7 +3343,7 @@ def pool2d(input,
             global_pooling=False)
 
           # average pool2d
-          pool2d = fludi.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
             input = data,
             pool_size = 2,
             pool_type = "avg",
@@ -3351,7 +3351,7 @@ def pool2d(input,
             global_pooling=False)
 
           # global average pool2d
-          pool2d = fludi.layers.pool2d(
+          pool2d = fluid.layers.pool2d(
             input = data,
             pool_size = 2,
             pool_type = "avg",
@@ -3534,7 +3534,7 @@ def pool3d(input,
           data = fluid.data(name='data', shape=[None, 3, 32, 32, 32], dtype='float32')
 
           # max pool3d
-          pool3d = fludi.layers.pool3d(
+          pool3d = fluid.layers.pool3d(
             input = data,
             pool_size = 2,
             pool_type = "max",
@@ -3542,7 +3542,7 @@ def pool3d(input,
             global_pooling=False)
 
           # average pool3d
-          pool3d = fludi.layers.pool3d(
+          pool3d = fluid.layers.pool3d(
             input = data,
             pool_size = 2,
             pool_type = "avg",
@@ -3550,7 +3550,7 @@ def pool3d(input,
             global_pooling=False)
 
           # global average pool3d
-          pool3d = fludi.layers.pool3d(
+          pool3d = fluid.layers.pool3d(
             input = data,
             pool_size = 2,
             pool_type = "avg",
