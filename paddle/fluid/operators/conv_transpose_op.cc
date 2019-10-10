@@ -401,7 +401,7 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Filter", this->Input("Filter"));
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
-    if (this->HaveInput("Bias")) {
+    if (this->HasInput("Bias")) {
       op->SetInput("Bias", this->Input("Bias"));
       op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }

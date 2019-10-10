@@ -191,7 +191,7 @@ class CropGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("crop_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
-    if (this->HaveInput("Offsets")) {
+    if (this->HasInput("Offsets")) {
       op->SetInput("Offsets", this->Input("Offsets"));
     }
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));

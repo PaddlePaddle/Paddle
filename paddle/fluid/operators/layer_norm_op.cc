@@ -177,12 +177,12 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("Mean", this->Output("Mean"));
     op->SetInput("Variance", this->Output("Variance"));
-    if (this->HaveInput("Scale")) {
+    if (this->HasInput("Scale")) {
       op->SetInput("Scale", this->Input("Scale"));
       op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     }
 
-    if (this->HaveInput("Bias")) {
+    if (this->HasInput("Bias")) {
       op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
 

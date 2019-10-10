@@ -187,7 +187,7 @@ class SequenceConvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if (op->HasAttr("paddingTrainable") &&
         boost::get<bool>(op->GetAttr("paddingTrainable")) &&
-        this->HaveInput("PaddingData")) {
+        this->HasInput("PaddingData")) {
       op->SetInput("PaddingData", this->Input("PaddingData"));
       op->SetOutput(framework::GradVarName("PaddingData"),
                     this->InputGrad("PaddingData"));

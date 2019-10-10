@@ -326,7 +326,7 @@ class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Alpha", this->Output("Alpha"));
     op->SetInput("EmissionExps", this->Output("EmissionExps"));
     op->SetInput("TransitionExps", this->Output("TransitionExps"));
-    if (this->HaveInput("Length")) {
+    if (this->HasInput("Length")) {
       op->SetInput("Length", this->Input("Length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),

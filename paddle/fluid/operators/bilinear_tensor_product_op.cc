@@ -161,7 +161,7 @@ class BilinearTensorProductGradOpMaker
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("Weight", this->Input("Weight"));
-    if (this->HaveInput("Bias")) {
+    if (this->HasInput("Bias")) {
       op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
 

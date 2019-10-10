@@ -278,12 +278,12 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Input", this->Input("Input"));
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
 
-    if (this->HaveInput("H0")) {
+    if (this->HasInput("H0")) {
       op->SetInput("H0", this->Input("H0"));
       op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
     }
 
-    if (this->HaveInput("C0")) {
+    if (this->HasInput("C0")) {
       op->SetInput("C0", this->Input("C0"));
       op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
     }

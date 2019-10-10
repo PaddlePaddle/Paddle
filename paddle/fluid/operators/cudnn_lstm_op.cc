@@ -210,7 +210,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
-    if (this->HaveInput("Cache")) {
+    if (this->HasInput("Cache")) {
       op->SetInput("Cache", this->Input("Cache"));
     }
     op->SetInput("Out", this->Output("Out"));

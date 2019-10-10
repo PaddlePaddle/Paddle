@@ -433,13 +433,13 @@ class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
     std::unique_ptr<T> op(new T());
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
-    if (this->HaveInput("SizeTensor") > 0) {
+    if (this->HasInput("SizeTensor") > 0) {
       op->SetInput("SizeTensor", this->Input("SizeTensor"));
     }
-    if (this->HaveInput("OutSize") > 0) {
+    if (this->HasInput("OutSize") > 0) {
       op->SetInput("OutSize", this->Input("OutSize"));
     }
-    if (this->HaveInput("Scale") > 0) {
+    if (this->HasInput("Scale") > 0) {
       op->SetInput("Scale", this->Input("Scale"));
     }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));

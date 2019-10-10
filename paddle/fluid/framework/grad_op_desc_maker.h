@@ -137,7 +137,7 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  protected:
-  bool HaveInput(const std::string& name) const {
+  bool HasInput(const std::string& name) const {
     return (fwd_op_.Inputs().count(name) > 0);
   }
 

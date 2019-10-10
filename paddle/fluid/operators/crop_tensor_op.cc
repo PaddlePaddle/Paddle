@@ -272,10 +272,10 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("crop_tensor_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
-    if (this->HaveInput("OffsetsTensor")) {
+    if (this->HasInput("OffsetsTensor")) {
       op->SetInput("OffsetsTensor", this->Input("OffsetsTensor"));
     }
-    if (this->HaveInput("Offsets")) {
+    if (this->HasInput("Offsets")) {
       op->SetInput("Offsets", this->Input("Offsets"));
     }
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));

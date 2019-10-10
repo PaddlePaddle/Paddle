@@ -101,7 +101,7 @@ class GradOpBaseMakerBase {
   std::string ForwardOpType() const { return fw_op_base_->Type(); }
 
  protected:
-  bool HaveInput(const std::string& name) const {
+  bool HasInput(const std::string& name) const {
     auto it = var_base_map_in_.find(name);
 
     return it != var_base_map_in_.end();
