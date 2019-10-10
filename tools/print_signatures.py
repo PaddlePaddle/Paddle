@@ -28,10 +28,9 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.LoDTensorset"}
-
 # APIs that should not be printed into API.spec 
 omitted_list = [
+    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
     "paddle.fluid.io.ComposeNotAligned",
     "paddle.fluid.io.ComposeNotAligned.__init__",
 ]
@@ -63,8 +62,6 @@ def queue_dict(member, cur_name):
 
 
 def visit_member(parent_name, member):
-    if parent_name + member.__name__ in experimental_namespace:
-        return
     cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
         queue_dict(member, cur_name)
@@ -82,8 +79,6 @@ def visit_member(parent_name, member):
 
 
 def visit_all_module(mod):
-    if (mod.__name__ in experimental_namespace):
-        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
