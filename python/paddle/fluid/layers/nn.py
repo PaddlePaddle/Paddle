@@ -5452,7 +5452,7 @@ def sequence_unpad(x, length, name=None):
             pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
             
-            # upad data
+            # unpad data
             unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
