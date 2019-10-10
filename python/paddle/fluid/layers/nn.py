@@ -1216,7 +1216,7 @@ def dynamic_gru(input,
                 origin_mode=False):
     """
     **Note: The input type of this must be LoDTensor. If the input type to be
-    processed is Tensor, use :ref:`api_fluid_layers_StaticRNN**
+    processed is Tensor, use :ref:`api_fluid_layers_StaticRNN` **
 
     This operator is used to perform the calculations for a single layer of
     Gated Recurrent Unit（GRU）on full sequences step by step. The calculations
@@ -1274,10 +1274,12 @@ def dynamic_gru(input,
             where :math:`T` stands for the total sequence lengths in this mini-batch,
             :math:`D` for the hidden size. The data type should be float32 or float64.
         size(int): Indicate the hidden size.
-        param_attr(ParamAttr, optional): The parameter attribute for the learnable
-            hidden-hidden weight matrix. Default: None.
-        bias_attr (ParamAttr, optional): The parameter attribute for the bias
-            of GRU. Default: None.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
         is_reverse(bool, optional): Whether to compute in the reversed order of
             input sequences. Default False.
         gate_activation(str, optional): The activation fuction corresponding to
@@ -1306,7 +1308,7 @@ def dynamic_gru(input,
 
             dict_dim, emb_dim = 128, 64
             data = fluid.data(name='sequence',
-                      shape=[-1, 1],
+                      shape=[None],
                       dtype='int64',
                       lod_level=1)
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
@@ -1423,10 +1425,12 @@ def gru_unit(input,
             Its shape should be :math:`[N, D]` , where :math:`N` stands for batch size,
             :math:`D` for the hidden size. The data type should be same as ``input`` .
         size(int): Indicate the hidden size.
-        param_attr(ParamAttr, optional): The parameter attribute for the learnable
-            hidden-hidden weight matrix. Default: None.
-        bias_attr (ParamAttr, optional): The parameter attribute for the bias
-            of GRU. Default: None.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
         activation(str, optional): The activation fuction corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
@@ -1450,12 +1454,12 @@ def gru_unit(input,
             import paddle.fluid as fluid
 
             dict_dim, emb_dim = 128, 64
-            data = fluid.data(name='step_data', shape=[-1, 1], dtype='int64')
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            data = fluid.data(name='step_data', shape=[None], dtype='int64')
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim = 512
             x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            pre_hidden = fluid.layers.data(
-                name='pre_hidden', shape=[hidden_dim], dtype='float32')
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
             hidden = fluid.layers.gru_unit(
                 input=x, hidden=pre_hidden, size=hidden_dim * 3)
 
@@ -5703,8 +5707,9 @@ def beam_search(pre_ids,
             Default 0, which shouldn't be changed currently.
         is_accumulated(bool): Whether the input ``score`` is accumulated scores.
             Default True.
-        name (str, optional): For detailed information, please refer to api_guide_Name.
-            Usually is no need to set and None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
             in output, which stores the selected ids' parent indice in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
@@ -5730,11 +5735,11 @@ def beam_search(pre_ids,
             beam_size = 4
             end_id = 1
             pre_ids = fluid.data(
-                name='pre_id', shape=[-1, 1], lod_level=2, dtype='int64')
+                name='pre_id', shape=[None, 1], lod_level=2, dtype='int64')
             pre_scores = fluid.data(
-                name='pre_scores', shape=[-1, 1], lod_level=2, dtype='float32')
+                name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
             probs = fluid.data(
-                name='probs', shape=[-1, 10000], dtype='float32')
+                name='probs', shape=[None, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
@@ -5818,8 +5823,9 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
             counterpart in ``ids`` , and has a float32 data type.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
-        name (str, optional): For detailed information, please refer to api_guide_Name.
-            Usually is no need to set and None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
 
     Returns:
         tuple: The tuple contains two LodTensor variables. The two LodTensor, \
@@ -5865,71 +5871,63 @@ def lstm_unit(x_t,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """Lstm unit layer. The equation of a lstm step is:
+    """
+    Long-Short Term Memory（LSTM）RNN cell. This operator performs LSTM calculations for
+    one time step, whose implementation is based on calculations described in `RECURRENT
+    NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
 
-        .. math::
+    We add forget_bias to the biases of the forget gate in order to
+    reduce the scale of forgetting. The formula is as follows:
+    
+    .. math::
 
-            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i)
+        i_{t} &= \sigma \left ( W_{x_{i}}x_{t}+W_{h_{i}}h_{t-1}+b_{i} \right ) \\
+        f_{t} &= \sigma \left ( W_{x_{f}}x_{t}+W_{h_{f}}h_{t-1}+b_{f}+forget\_bias \right ) \\
+        c_{t} &= f_{t}c_{t-1}+i_{t}tanh\left ( W_{x_{c}}x_{t} +W_{h_{c}}h_{t-1}+b_{c}\right ) \\
+        o_{t} &= \sigma \left ( W_{x_{o}}x_{t}+W_{h_{o}}h_{t-1}+b_{o} \right ) \\
+        h_{t} &= o_{t}tanh \left ( c_{t} \right )
 
-            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + b_f)
-
-            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t + W_{h_c}h_{t-1} + b_c)
-
-            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + b_o)
-
-            h_t & = o_t tanh(c_t)
-
-    The inputs of lstm unit include :math:`x_t`, :math:`h_{t-1}` and
-    :math:`c_{t-1}`. The 2nd dimensions of :math:`h_{t-1}` and :math:`c_{t-1}`
-    should be same. The implementation separates the linear transformation and
-    non-linear transformation apart. Here, we take :math:`i_t` as an example.
-    The linear transformation is applied by calling a `fc` layer and the
-    equation is:
-
-        .. math::
-
-            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i
-
-    The non-linear transformation is applied by calling `lstm_unit_op` and the
-    equation is:
-
-        .. math::
-
-            i_t = \sigma(L_{i_t})
-
-    This layer has two outputs including :math:`h_t` and :math:`c_t`.
+    :math:`x_{t}` stands for ``x_t`` , corresponding to the input of current time step;
+    :math:`h_{t-1}` and :math:`c_{t-1}` correspond to ``hidden_t_prev`` and ``cell_t_prev`` ,
+    representing the output of from previous time step.
+    :math:`i_{t}, f_{t}, c_{t}, o_{t}, h_{t}` are input gate, forget gate, cell, output gate
+    and hidden calculation.
 
     Args:
-        x_t (Variable): The input value of current step, a 2-D tensor with shape
-            M x N, M for batch size and N for input size.
-        hidden_t_prev (Variable): The hidden value of lstm unit, a 2-D tensor
-            with shape M x S, M for batch size and S for size of lstm unit.
-        cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor with
-            shape M x S, M for batch size and S for size of lstm unit.
-        forget_bias (float): The forget bias of lstm unit.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weights.
-                               If it is set to None or one attribute of ParamAttr,
-                               lstm_unit will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
-                              weights. If it is set to False, no bias will be added
-                              to the output units. If it is set to None or one attribute of ParamAttr,
-                              lstm_unit will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        x_t(Variable): A 2D Tensor representing the input of current time step.
+            Its shape should be :math:`[N, M]` , where :math:`N` stands for batch
+            size, :math:`M` for the feature size of input. The data type should
+            be float32 or float64.
+        hidden_t_prev(Variable): A 2D Tensor representing the hidden value from
+            previous step. Its shape should be :math:`[N, D]` , where :math:`N`
+            stands for batch size, :math:`D` for the hidden size. The data type
+            should be same as ``x_t`` .
+        cell_t_prev(Variable): A 2D Tensor representing the cell value from
+            previous step. It has the same shape and data type with ``hidden_t_prev`` .
+        forget_bias (float, optional): :math:`forget\\_bias` added to the biases
+            of the forget gate. Default 0.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
 
     Returns:
-        tuple: The hidden value and cell value of lstm unit.
+        tuple: The tuple contains two Tensor variables with the same shape and \
+            data type with ``hidden_t_prev`` , representing the hidden value and \
+            cell value which correspond to :math:`h_{t}` and :math:`c_{t}` in \
+            the formula.
 
     Raises:
-        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**
-                    not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev**
-                    and **cell_t_prev** not be the same or the 2nd dimensions of
-                    **hidden_t_prev** and **cell_t_prev** not be the same.
+        ValueError: Rank of x_t must be 2.
+        ValueError: Rank of hidden_t_prev must be 2.
+        ValueError: Rank of cell_t_prev must be 2.
+        ValueError: The 1st dimensions of x_t, hidden_t_prev and cell_t_prev must be the same.
+        ValueError: The 2nd dimensions of hidden_t_prev and cell_t_prev must be the same.
 
     Examples:
 
@@ -5938,12 +5936,12 @@ def lstm_unit(x_t,
             import paddle.fluid as fluid
 
             dict_dim, emb_dim, hidden_dim = 128, 64, 512
-            data = fluid.layers.data(name='step_data', shape=[1], dtype='int32')
-            x = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
-            pre_hidden = fluid.layers.data(
-                name='pre_hidden', shape=[hidden_dim], dtype='float32')
-            pre_cell = fluid.layers.data(
-                name='pre_cell', shape=[hidden_dim], dtype='float32')
+            data = fluid.data(name='step_data', shape=[None], dtype='int64')
+            x = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
+            pre_cell = fluid.data(
+                name='pre_cell', shape=[None, hidden_dim], dtype='float32')
             hidden = fluid.layers.lstm_unit(
                 x_t=x,
                 hidden_t_prev=pre_hidden,
@@ -13864,9 +13862,9 @@ for func in [
         additional_args_lines=[
             "axis (int32, optional): If X.dimension != Y.dimension, \
             Y.dimension must be a subsequence of x.dimension. \
-            And axis is the start dimension index for broadcasting Y onto X. "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ,
+            And axis is the start dimension index for broadcasting Y onto X. "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ,
             "act (string, optional): Activation applied to the output. \
-            Default is None. Details: :ref:`api_guide_activations_en` "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ,
+            Default is None. Details: :ref:`api_guide_activations_en` "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ,
             "name (string, optional): Name of the output. \
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
@@ -15073,18 +15071,19 @@ def add_position_encoding(input, alpha, beta, name=None):
       - :math:`PE(pos, 2i + 1)` : the value at odd index `2i+1` for encoding of position `pos`
 
     Args:
-        input (Variable): A Tensor or LoDTensor (lod level is 1). If it is a
+        input(Variable): A Tensor or LoDTensor (lod level is 1). If it is a
             Tensor, the shape should be `[N, M, P]`, where `N` stands for
             batch size, `M` for sequence length, `P` for the size of feature
             dimension. If it is a LoDTensor, the shape should be `[N, P]`,
             where `N` stands for the total sequence lengths in this mini-batch,
             `P` for the size of feature. The data type should be float32 or float64.
-        alpha (float): Indicate the weight coefficient for `input` when performing
+        alpha(float): Indicate the weight coefficient for `input` when performing
             weighted sum.
-        beta (float): Indicate the weight coefficient for position encoding when
+        beta(float): Indicate the weight coefficient for position encoding when
             performing weighted sum.
-        name (str, optional): For detailed information, please refer to api_guide_Name.
-            Usually is no need to set and None by default.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
 
     Returns:
         Variable: A Tensor or LoDTensor. It has the same shape, data type and lod as `input`.
@@ -15096,7 +15095,7 @@ def add_position_encoding(input, alpha, beta, name=None):
 
           tensor = fluid.data(
               name='tensor',
-              shape=[32, 64, 512],
+              shape=[None, 64, 512],
               dtype='float32')
           position_tensor = fluid.layers.add_position_encoding(
               input=tensor, alpha=1.0, beta=1.0)
