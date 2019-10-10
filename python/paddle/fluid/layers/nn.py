@@ -2284,10 +2284,10 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     """
     **Note**:
     
-    **The input type of the OP must be LoDTensor. If the input type to be processed is Tensor, use:** :ref:`api_fluid_layers_softmax` 
+    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
 
-    The OP divides the input dimension 0 according to LoD information, and calculates within each interval.
-    The shape of input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
+    A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
+    The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
     is the sum of the length of all sequences. Recommended usage: :math:`[N]`.
 
     For i-th sequence in a mini-batch:
@@ -2296,8 +2296,8 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
-    For example, for a mini-batch of 6 sequences with variable-length,
-    each containing 3, 2, 4, 1, 2, 3 time-steps, the lod of which is [[0, 3, 5, 9, 10, 12, 15]],
+    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order), 
+    the lod in the runtime is [[0, 3, 5, 9, 10, 12, 15]],
     then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
     and :math:`N` turns out to be 15.
 
@@ -5523,15 +5523,13 @@ def sequence_unpad(x, length, name=None):
     """
     **Note**:
     
-    **The input of the OP is Tensor and the output is LoDTensor.**  
+    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
      
-    The OP removes the filled element from the input based on the length information and returns a LoDTensor.
-
-    On the contrary, the OP of sequence_pad can fill the data. See: :ref:`api_fluid_layers_sequence_pad`   
+    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
 
     .. code-block:: text
 
-	Example:
+	Case 1:
 
 	Given input Variable **x**:
 	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
@@ -5549,7 +5547,7 @@ def sequence_unpad(x, length, name=None):
 	    out.lod = [[0, 2, 5, 9]]
 
     Args:
-        x(Variable): A Tensor which contains filled elements, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
+        x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
         length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor has the same shape with the 0th dimension of the X . Supported data types: int64.
         name(str|None):  See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
@@ -10357,13 +10355,13 @@ def sequence_scatter(input, index, updates, name=None):
     
     **The index and updates parameters of the OP must be LoDTensor.**
      
-    The OP updates the information in the updates parameter to the output based on the location provided by index.
-   
-    The OP initializes output with input, and then updates updates the updates information to output by output[instance_index][index [pos]] += updates[pos], where instance_idx is the K sample corresponding to pos in batch.
+    Plus the updates data to the correspoding input according to the index.
+ 
+    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], where instance_idx is the K sample corresponding to pos in batch.
 
     The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    For example, in the following example, the lod information for index is divided into three intervals. Among them, because the element 0 can be found in the first interval of the index, it is updated with the value of the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot be found in the third interval of index, out[2][1] = input[2][1].
+    For example, in the following example, the lod information for index is divided into three sequences. Among them, because the element 0 can be found in the first interval of the index, it is updated with the value of the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot be found in the third interval of index, out[2][1] = input[2][1].
 
     .. code-block:: text
         
@@ -10389,8 +10387,8 @@ def sequence_scatter(input, index, updates, name=None):
 
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
-        index (Variable):  A LoDTensor that contains index information. Its LoD level must be 1 and its data type must be int64.
-        updates (Variable): It is a LodTensor that contains updates information. It has the same  LoD level with the index and has the same data type  with the input. Supported data types: float32, float64, int32, int64.
+        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
+        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the same data type  with the input. Supported data types: float32, float64, int32, int64.
         name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
 
     Returns:
