@@ -7513,7 +7513,7 @@ def transpose(x, perm, name=None):
         if dim >= len(x.shape):
             raise ValueError(
                 "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                "but %d-th element in Input(perm) is %d which accesses Input(x)'s "
+                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
                 "dimension %d." % (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
