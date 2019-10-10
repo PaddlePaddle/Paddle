@@ -10460,7 +10460,6 @@ def log(x, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[1], [2]]).astype(np.float32)
@@ -11600,7 +11599,6 @@ def leaky_relu(x, alpha=0.02, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[-1, 2], [3, -4]]).astype(np.float32)
@@ -13526,7 +13524,6 @@ def logical_and(x, y, out=None, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
@@ -13576,7 +13573,6 @@ def logical_or(x, y, out=None, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
@@ -13626,7 +13622,6 @@ def logical_xor(x, y, out=None, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
@@ -13674,7 +13669,6 @@ def logical_not(x, out=None, name=None):
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_i = np.array([[1, 0]]).astype(np.bool)
