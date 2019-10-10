@@ -1058,24 +1058,28 @@ def less_than(x, y, force_cpu=None, cond=None):
 @templatedoc()
 def less_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
+    This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First operand of *less_equal*
-        y(Variable): Second operand of *less_equal*
-        cond(Variable|None): Optional output variable to store the result of *less_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
+            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
+            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *less_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.less_equal(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([1, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([1, 2], dtype='int32'))
+          out = fluid.layers.less_equal(x=label, y=limit) #out=[True, False]
+          out1 = label<= limit #out1=[True, False]
+
     """
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
@@ -1098,24 +1102,27 @@ def less_equal(x, y, cond=None):
 @templatedoc()
 def greater_than(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
+    This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
-        x(Variable): First operand of *greater_than*
-        y(Variable): Second operand of *greater_than*
-        cond(Variable|None): Optional output variable to store the result of *greater_than*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
+            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_than*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_than(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
+          out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
+          out1 = label > limit #out1=[False, True]
     """
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
@@ -1138,24 +1145,28 @@ def greater_than(x, y, cond=None):
 @templatedoc()
 def greater_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
+    This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
-        x(Variable): First operand of *greater_equal*
-        y(Variable): Second operand of *greater_equal*
-        cond(Variable|None): Optional output variable to store the result of *greater_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
+            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_equal(x=label, y=limit)
+          import numpy as np
+
+          label = fluid.layers.assign(np.array([2, 2], dtype='int32'))
+          limit = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          out = fluid.layers.greater_equal(x=label, y=limit) #out=[True, False]
+          out_1 = label >= limit #out1=[True, False]
 
     """
     helper = LayerHelper("greater_equal", **locals())
@@ -1209,15 +1220,17 @@ def equal(x, y, cond=None):
 
 def not_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
+    This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
-        x(Variable): First operand of *not_equal*
-        y(Variable): Second operand of *not_equal*
-        cond(Variable|None): Optional output variable to store the result of *not_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
+             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *not_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
