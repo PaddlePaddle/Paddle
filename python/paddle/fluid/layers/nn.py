@@ -3228,12 +3228,12 @@ def sequence_slice(input, offset, length, name=None):
           should be equal. The **offset** should start from 0.
 
     Args:
-        input(Variable): The input Variable which consists of the complete
+        input(Variable): LoDTensor, The input Variable which consists of the complete
                          sequences.
-        offset(Variable): The offset to slice each sequence.
-        length(Variable): The length of each subsequence.
+        offset(Variable): LoDTensor, The offset to slice each sequence.
+        length(Variable): LoDTensor, The length of each subsequence.
         name(str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+                        layer will be named automatically.None by default.
 
     Returns:
         Variable: The output subsequences.
@@ -3244,7 +3244,7 @@ def sequence_slice(input, offset, length, name=None):
 
              import paddle.fluid as fluid
              import numpy as np
-             seqs = fluid.layers.data(name='x', shape=[10, 5],
+             seqs = fluid.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
@@ -13548,7 +13548,7 @@ def sigmoid_cross_entropy_with_logits(x,
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
         ignore_index(&{ignore_index}): ${ignore_index_comment}
-        name(basestring|None): Name of the output.
+        name(str|None): Name of the output.None by default.
         normalize(bool): If true, divide the output by the number of
             targets != ignore_index.
 
@@ -13559,9 +13559,9 @@ def sigmoid_cross_entropy_with_logits(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[10], dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='data', shape=[10], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=input,
