@@ -35,7 +35,7 @@ __all__ = [
 class Conv2D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Conv2D`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCHW format, where N is batch size, C is the number of
@@ -106,12 +106,12 @@ class Conv2D(layers.Layer):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr or bool, optional): The parameter attribute for the bias of conv2d.
+        bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
@@ -730,7 +730,7 @@ class Conv3DTranspose(layers.Layer):
 class Pool2D(layers.Layer):
     """
     This interface is used to construct a callable object of the ``Pool2D`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     The pooling2d operation calculates the output based on the input, pool_type and pool_size, pool_stride,
     pool_padding parameters.Input and output are in NCHW format, where N is batch size, C is the number of feature map,
     H is the height of the feature map, and W is the width of the feature map.
@@ -791,9 +791,10 @@ class Pool2D(layers.Layer):
         pool_stride (int or list or tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
             the pool stride size will be a square of an int. Default: 1.
-        pool_padding (int or list or tuple, optional): The pool padding size. If pool padding size is a tuple,
+        pool_padding (int or list or tuple, optional): The padding size for pooling operation. 
+            If ``pool_padding`` is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
-            Otherwise, the pool padding size will be a square of an int. Default: 0.
+            Otherwise, the padding size for pooling operation will be a square of an int. Default: 0.
         global_pooling (bool, optional): Whether to use the global pooling. If global_pooling = true,
             kernel size and paddings will be ignored. Default: False.
         use_cudnn (bool, optional): Only used in cudnn kernel, need install cudnn. Default: True.
@@ -888,10 +889,8 @@ class Pool2D(layers.Layer):
 
 class FC(layers.Layer):
     """
-    **Fully Connected Layer**
-
     This interface is used to construct a callable object of the ``FC`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It creates a fully connected layer in the network. It can take
     one or multiple ``Tensor`` as its inputs. It creates a Variable called weights for each input tensor,
     which represents a fully connected weight matrix from each input unit to
@@ -954,8 +953,8 @@ class FC(layers.Layer):
             `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
             Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1
         param_attr (ParamAttr or list of ParamAttr, optional): The parameter attribute for learnable
-            parameters/weights of this layer. Default: None.
-        bias_attr (ParamAttr or list of ParamAttr, optional): The parameter attribute for the bias
+            weights(Parameter) of this layer. Default: None.
+        bias_attr (ParamAttr or list of ParamAttr, optional): The attribute for the bias
             of this layer. If it is set to False, no bias will be added to the output units.
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, optional): Activation to be applied to the output of this layer. Default: None.
@@ -965,7 +964,7 @@ class FC(layers.Layer):
     Attribute:
         **weight** (list of Parameter): the learnable weights of this layer.
 
-        **bias** (Parameter|None): the learnable bias of this layer.
+        **bias** (Parameter or None): the learnable bias of this layer.
 
     Returns:
         None
@@ -2190,10 +2189,8 @@ class BilinearTensorProduct(layers.Layer):
 
 class Conv2DTranspose(layers.Layer):
     """
-    **Convlution2D transpose layer**
-
     This interface is used to construct a callable object of the ``Conv2DTranspose`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input and output
     are in NCHW format. Where N is batch size, C is the number of feature map,
@@ -2272,11 +2269,11 @@ class Conv2DTranspose(layers.Layer):
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: 1.
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
+        bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv2d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
@@ -2818,10 +2815,8 @@ class SpectralNorm(layers.Layer):
 
 class TreeConv(layers.Layer):
     """
-    ***Tree-Based Convolution Operator***
-
     This interface is used to construct a callable object of the ``TreeConv`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     Tree-Based Convolution is a kind of convolution based on tree structure.
     Tree-Based Convolution is a part of Tree-Based Convolution Neural Network(TBCNN),
     which is used to classify tree structures, such as Abstract Syntax Tree.
@@ -2842,7 +2837,7 @@ class TreeConv(layers.Layer):
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
 
-        **bias** (Parameter|None): the learnable bias of this layer.
+        **bias** (Parameter or None): the learnable bias of this layer.
 
     Returns:
         None

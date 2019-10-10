@@ -832,9 +832,23 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
-    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    CUDAPlace is a descriptor of a device.
+    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
+    staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
+    Numbering here refers to the logical ID of the visible graphics card, not the actual ID of the graphics card.
+    You can set visible GPU devices by setting the `CUDA_VISIBLE_DEVICES` environment variable.
+    When the program starts, visible GPU devices will be numbered from 0.
+    If `CUDA_VISIBLE_DEVICES` is not set, all devices are visible by default,
+    and the logical ID is the same as the actual ID.
+
+    Parameters:
+        id (int): GPU device ID.
 
     Examples:
         .. code-block:: python
@@ -892,14 +906,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
-    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
-    CPUPlace can be accessed by CPU.
+    CPUPlace is a descriptor of a device.
+    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          cpu_place = fluid.CPUPlace()to be allocated
 
         )DOC")
       .def(py::init<>())
@@ -912,8 +926,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
-    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
-    can be accessed by GPU and CPU.
+    CUDAPinnedPlace is a descriptor of a device.
+    It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
+    The host operating system will not paging and exchanging the memory.
+    It can be accessed through direct memory access technology to speed up the copy of data between the host and GPU.
+    For more information on CUDA data transfer and `pinned memory`,
+    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
         .. code-block:: python
@@ -1113,7 +1131,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
-    Array of LoDTensor.
+    LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
         .. code-block:: python
@@ -1142,6 +1160,12 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
+              
+             Args:
+                   tensor (LoDTensor): The LoDTensor to be appended.
+
+             Returns:
+                   None.
 
              Examples:
                  .. code-block:: python
