@@ -94,7 +94,7 @@ paddle.fluid.io.DataLoader.__init__
 paddle.fluid.io.DataLoader.from_dataset (ArgSpec(args=['dataset', 'places', 'drop_last'], varargs=None, keywords=None, defaults=(True,)), ('document', 'eb8b6d31e1c2ec2ca8ebbb62fcf46557'))
 paddle.fluid.io.DataLoader.from_generator (ArgSpec(args=['feed_list', 'capacity', 'use_double_buffer', 'iterable', 'return_list'], varargs=None, keywords=None, defaults=(None, None, True, True, False)), ('document', 'e3bdde36774236c3e381d2218e9cc09e'))
 paddle.fluid.io.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
-paddle.fluid.io.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '77cbadb09df588e21e5cc0819b69c87d'))
+paddle.fluid.io.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '2d0903e1d2f00b4f1d6618e6b5310121'))
 paddle.fluid.io.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None), ('document', '0d6186f109feceb99f60ec50a0a624cb'))
 paddle.fluid.io.compose (ArgSpec(args=[], varargs='readers', keywords='kwargs', defaults=None), ('document', '884291104e1c3f37f33aae44b7deeb0d'))
 paddle.fluid.io.chain (ArgSpec(args=[], varargs='readers', keywords=None, defaults=None), ('document', 'e0311508658a7e741fc39feea8be0ad2'))
@@ -903,7 +903,7 @@ paddle.fluid.dygraph.CosineDecay ('paddle.fluid.dygraph.learning_rate_scheduler.
 paddle.fluid.dygraph.CosineDecay.__init__ (ArgSpec(args=['self', 'learning_rate', 'step_each_epoch', 'epochs', 'begin', 'step', 'dtype'], varargs=None, keywords=None, defaults=(0, 1, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.CosineDecay.create_lr_var (ArgSpec(args=['self', 'lr'], varargs=None, keywords=None, defaults=None), ('document', '013bc233558149d0757b3df57845b866'))
 paddle.fluid.dygraph.CosineDecay.step (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '5d9496052ec793810c9f12ffad5c73ce'))
+paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '4fcdc2c2d0c162f3840737abda39eb27'))
 paddle.fluid.dygraph.BackwardStrategy.__init__ __init__(self: paddle.fluid.core_avx.BackwardStrategy) -> None
 paddle.fluid.transpiler.DistributeTranspiler ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspiler', ('document', 'b2b19821c5dffcd11473d6a4eef089af'))
 paddle.fluid.transpiler.DistributeTranspiler.__init__ (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
@@ -1103,7 +1103,7 @@ paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('documen
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
 paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', '7b5bfe856689036b8fffb71af1558e5c'))
 paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.WeightNormParamAttr ('paddle.fluid.param_attr.WeightNormParamAttr', ('document', 'b5ae1698ea72d5a9428000b916a67379'))
+paddle.fluid.WeightNormParamAttr ('paddle.fluid.param_attr.WeightNormParamAttr', ('document', 'ea029ec9e0dea75f136211c433154f25'))
 paddle.fluid.WeightNormParamAttr.__init__ (ArgSpec(args=['self', 'dim', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.DataFeeder ('paddle.fluid.data_feeder.DataFeeder', ('document', 'd9e64be617bd5f49dbb08ac2bc8665e6'))
 paddle.fluid.DataFeeder.__init__ (ArgSpec(args=['self', 'feed_list', 'place', 'program'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
