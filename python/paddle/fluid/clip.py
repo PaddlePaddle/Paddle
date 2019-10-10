@@ -21,7 +21,6 @@ import functools
 from . import layers
 from . import framework
 from . import core
-from .dygraph.base import _not_support
 
 __all__ = [
     'set_gradient_clip',
@@ -337,19 +336,19 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         return param, new_grad
 
 
-@_not_support
+@framework.dygraph_not_support
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     To specify parameters that require gradient clip.
 
     Args:
-        clip(BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
+        clip (BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
                 for example :ref:`api_fluid_clip_GradientClipByGlobalNorm` ,
                 which describes the type and detailed attributes of required gradient clip.
-        param_list(list(Variable), optional): Parameters that require gradient clip.
+        param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
                 Default None, meaning that all parameters in the program will be included.
-        program(Program, optional): The program where parameters are located.
+        program (Program, optional): The program where parameters are located.
                 Default None, meaning that using :ref:`api_fluid_default_main_program` .
 
     Returns:
@@ -361,7 +360,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             import paddle.fluid as fluid
 
             def network():
-                image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+                image = fluid.data(name='image', shape=[None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
                 param_attr2 = fluid.ParamAttr("fc2_param")

@@ -99,7 +99,7 @@ class DataLoader(object):
 
         Args:  
             feed_list (list(Variable)|tuple(Variable)): feed variable list.
-                The variables should be created by :code:`fluid.layers.data()`.
+                The variables should be created by :code:`fluid.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader 
                 is fast. 
@@ -212,8 +212,8 @@ class DataLoader(object):
                     else:
                         raise ValueError('Unsupported data format')
 
-                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                image = fluid.data(name='image', shape=[None, 784], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
                 # Define DataLoader 
                 loader = fluid.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
@@ -281,8 +281,8 @@ class DataLoader(object):
 
                 import paddle.fluid as fluid
 
-                image = fluid.layers.data(name='image', shape=[784], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                image = fluid.data(name='image', shape=[None, 784], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
                 dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
                 dataset.set_batch_size(32)
@@ -451,6 +451,17 @@ class GeneratorLoader(DataLoaderBase):
             assert not self._iterable, "reset() cannot be called when DataLoader is iterable"
             self._reset()
 
+    @classmethod
+    def _check_input_array(cls, item):
+        arr = np.array(item)
+        if arr.dtype == np.object:
+            raise TypeError((
+                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "this means the input data contains nested lists with different lengths. "
+                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
+                " to locate the data causes this issue.\n\t* Please consider using "
+                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
+
     def _start(self):
         def __thread_main__():
             try:
@@ -458,6 +469,7 @@ class GeneratorLoader(DataLoaderBase):
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
+                            self._check_input_array(item)
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp

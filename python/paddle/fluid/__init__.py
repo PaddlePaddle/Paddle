@@ -86,6 +86,8 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .io import save, load
+from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
 
@@ -122,6 +124,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'Scope',
         'install_check',
+        'save',
+        'load',
     ]
 
 
@@ -189,12 +193,15 @@ def __bootstrap__():
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
 
+        read_env_flags.append('worker_update_interval_secs')
+
         # env for communicator
         read_env_flags.append('communicator_independent_recv_thread')
         read_env_flags.append('communicator_send_queue_size')
         read_env_flags.append('communicator_min_send_grad_num_before_recv')
         read_env_flags.append('communicator_thread_pool_size')
         read_env_flags.append('communicator_max_merge_var_num')
+        read_env_flags.append('communicator_merge_sparse_bucket')
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
         read_env_flags.append('communicator_merge_sparse_grad')
