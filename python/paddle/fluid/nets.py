@@ -323,7 +323,7 @@ def glu(input, dim=-1):
         input (Variable): The input variable which is a Tensor or LoDTensor. 
                           The supported data types include float32, float64 
                           and float16 (only for GPU).
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the
+        dim (int, optional): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`. Default -1.
 
     Returns:

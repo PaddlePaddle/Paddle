@@ -6968,7 +6968,7 @@ def nce(input,
             and data type is float32 or float64.
         label (Variable): Input label, 2-D tensor with shape [batch_size, num_true_class],
             and data type is int64.
-        num_total_classes (int):${num_total_classes_comment}
+        num_total_classes (int):${num_total_classes_comment}.
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
@@ -6978,19 +6978,19 @@ def nce(input,
         bias_attr (ParamAttr|None): To specify the bias parameter attribute. 
             Default: None, which means the default bias parameter property is 
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        num_neg_samples (int): ${num_neg_samples_comment}
+        num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to 
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        sampler (str): The sampler used to sample class from negtive classes.
+        sampler (str, optional): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
         custom_dist (nd.array|None): A numpy ndarray with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
-        seed (int|None): The seed used in sampler. Default 0.
-        is_sparse(bool|None): The flag indicating whether to use sparse update, 
-            the weight@GRAD and bias@GRAD will be changed to SelectedRows.
+        seed (int, optional): The seed used in sampler. Default 0, means no random seed.
+        is_sparse(bool, optional): The flag indicating whether to use sparse update, 
+            the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default False.
 
     Returns:
         Variable: The output nce loss.
@@ -8073,9 +8073,9 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     and the step size is 1.
 
     Args:
-        counter_name(str): The counter name. Default '@STEP_COUNTER@'.
-        begin(int): The first return value of this counter. Default 1.
-        step(int): The step size. Default 1.
+        counter_name(str, optional): The counter name. Default '@STEP_COUNTER@'.
+        begin(int, optional): The first return value of this counter. Default 1.
+        step(int, optional): The step size. Default 1.
 
     Returns:
         Variable: The auto-increased Variable with data type int64.
@@ -9825,11 +9825,11 @@ def gather(input, index, overwrite=True):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input with rank>=1. Supported data type is 
+        input (Variable): The source input tensor with rank>=1. Supported data type is 
             int32, int64, float32, float64 and uint8 (only for CPU), 
             float16 (only for GPU).
-        index (Variable): The index input with rank=1. Data type is int32 or int64.
-        overwrite (bool|None): The mode that updating the grad when has same index.
+        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
+        overwrite (bool, optional): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
 	    if False, use the accumulate mode to update the grad of the same index. 
 	    Default value is True.
@@ -12039,7 +12039,7 @@ def gaussian_random_batch_size_like(input,
         mean (float): ${mean_comment}
         std (float): ${std_comment}
         seed (int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data float32 or float_64.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
 
     Returns:
         out (Variable): ${out_comment}
@@ -14041,7 +14041,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         label (Variable|list):  The ground truth which is a 2-D tensor with
                                 shape [N x 1], where N is the batch size. 
                                 Data type float32.
-        epsilon (float): A small number for numerical stability. Default 1e-4.
+        epsilon (float, optional): A small number for numerical stability. Default 1e-4.
         name(str|None): For detailed information, please refer to 
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
@@ -14202,7 +14202,7 @@ def bilinear_tensor_product(x,
     In this formula:
       - :math:`x`: the first input contains M elements, shape is [batch_size, M].
       - :math:`y`: the second input contains N elements, shape is [batch_size, N].
-      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N].
       - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
@@ -14210,9 +14210,9 @@ def bilinear_tensor_product(x,
         x (Variable): 2-D input tensor with shape [batch_size, M]. Data type 
             is float32 or float64.
         y (Variable): 2-D input tensor with shape [batch_size, N]. Data type 
-            should be same as ``x``.
+            should be same as **x**.
         size (int): The dimension of this layer.
-        act (str, default None): Activation to be applied to the output of this layer.
+        act (str|None): Activation to be applied to the output of this layer. Default None.
         name(str|None): For detailed information, please refer to 
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute. 
@@ -14222,8 +14222,7 @@ def bilinear_tensor_product(x,
             Default: None, which means the default bias parameter property is 
             used. See usage for details in :ref:`api_fluid_ParamAttr` .
     Returns:
-        Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the 
-                  same as input ``x``.
+        Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
 
     Examples:
         .. code-block:: python

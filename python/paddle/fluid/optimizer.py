@@ -2254,11 +2254,11 @@ class LambOptimizer(AdamOptimizer):
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \\
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \
 
-        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \\
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \
 
-        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \\
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
@@ -2267,14 +2267,14 @@ class LambOptimizer(AdamOptimizer):
     learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
+        learning_rate (float|Variable, optional): the learning rate used to update parameters. \
             Can be a float value or a Variable with data type float32. Default 0.001.
-        lamb_weight_decay (float): The LAMB weight decay rate. Default 0.01.
-        beta1 (float): The exponential decay rate for the 1st moment estimates.
+        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01.
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             Default 0.9.
-        beta2 (float): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
-        epsilon (float): A small float value for numerical stability. Default 1e-6.
+        epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
         regularization (Regularizer|None): A Regularizer, such as
            fluid.regularizer.L1DecayRegularizer. Default None.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
@@ -2741,7 +2741,7 @@ class ExponentialMovingAverage(object):
 
 
     Args:
-	decay (float): The exponential decay rate, usually close to 1, such as 
+	decay (float, optional): The exponential decay rate, usually close to 1, such as 
             0.999, 0.9999, ... . Default 0.999.
         thres_steps (Variable|None): If not `None`, schedule the decay rate. 
             Default None.
@@ -2916,7 +2916,8 @@ class ExponentialMovingAverage(object):
         
         Args:
             executor (Executor): The Executor to execute applying.
-            need_restore (bool): Whether to restore parameters after applying.
+            need_restore (bool, optional): Whether to restore parameters after 
+                applying. Default True.
         """
         executor.run(self.apply_program)
         try:

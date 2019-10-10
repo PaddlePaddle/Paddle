@@ -58,9 +58,9 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
     AddComment(R"DOC(
 
 Used to initialize tensors with gaussian random generator.
-The default mean of the distribution is 0. and default standard
-deviation (std) of the distribution is 1.. Uers can set mean and std
-by input arguments.
+The default mean of the distribution is 0, and default standard
+deviation (std) of the distribution is 1.0. Uers can set mean and std
+via input arguments.
 )DOC");
   }
 };
