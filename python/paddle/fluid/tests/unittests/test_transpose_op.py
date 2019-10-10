@@ -89,6 +89,13 @@ class TestTransposeOpError(OpTest):
 
             self.assertRaises(TypeError, test_x_Variable_check)
 
+            def test_x_dtype_check():
+                # the Input(x)'s dtype must be one of [float16, float32, float64, int32, int64]
+                x1 = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='bool')
+                fluid.layers.transpose(x1, perm=[1, 0, 2])
+
+            self.assertRaises(TypeError, test_x_dtype_check)
+
             def test_perm_list():
                 # Input(perm)'s type must be list
                 fluid.layers.transpose(x, perm=[1, 0, 2])
