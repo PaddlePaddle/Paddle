@@ -1970,11 +1970,15 @@ def square_error_cost(input, label):
         label (Variable): Label tensor, the data type should be float32.
 
     Returns:
-        Variable: The tensor variable storing the element-wise squared error \
+        The tensor variable storing the element-wise squared error \
                   difference between input and label.
 
+    Return type: Variable.
+
     Examples:
+
         .. code-block:: python
+
 	    # declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
@@ -6312,8 +6316,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     Returns:
         Variable: The output has the same shape with `x`.
 
-    Return type: Variable.
-
     Examples:
 
         .. code-block:: python
@@ -6617,7 +6619,8 @@ def edit_distance(input,
         sequence_num(Variable): sequence number in shape [].
         
 
-    Return type: Tuple
+    Return type: Tuple.
+
     Examples:
         .. code-block:: python
             
@@ -12222,17 +12225,19 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
 @templatedoc()
 def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     """
-    ${comment}
+    This op is used for sampling id from multinomial distribution from the input, sampling one id for one sample.
 
     Parameters:
         x (Variable): 2-D tensor, [batch_size, input_feature_dimensions]
         min (Float): minimum , default 0.0.
-        max (Float): maximum$, default 1.0.
+        max (Float): maximum, default 1.0.
         seed (Float): Random seed, default 0. if seed is not 0, will generate same number every time. 
         dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
 
     Returns:
-        out (Variable): sampling tensor.
+        sampling tensor.
+
+    Return type: Variable
 
     Examples:
         .. code-block:: python
@@ -14646,7 +14651,7 @@ def shuffle_channel(x, group, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name='input', shape=[4,2,2], dtype='float32')
+            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
     helper = LayerHelper("shuffle_channel", **locals())
@@ -15221,13 +15226,11 @@ def pixel_shuffle(x, upscale_factor):
     Parameters:
 
         x(Variable): 4-D tensor, the data type should be float32 or float64.
-        upscale_factor(int): factor to increase spatial resolution。
+        upscale_factor(int): factor to increase spatial resolution.
 
     Returns:
 
         Out(Variable): Reshaped tensor according to the new dimension.
-
-    Return type: Variable
 
     Raises:
 
