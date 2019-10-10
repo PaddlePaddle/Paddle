@@ -15824,7 +15824,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             # example 3:
             # attr shape is a Variable, the data type must be int64
-            var_shape = fluid.data(name='var_shape',shape=[2],append_batch_size=False)
+            var_shape = fluid.data(name='var_shape', shape=[None, 2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
 
     """
