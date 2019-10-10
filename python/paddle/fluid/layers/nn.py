@@ -1274,7 +1274,7 @@ def dynamic_gru(input,
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
 
-            - The shape of the weight matrix is :math:`(D \\times 3D)`, where
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
               :math:`D` is the hidden size.
             - All elements in the weight matrix can be divided into two parts.
               The first part are weights of the update gate and reset gate with
@@ -1420,7 +1420,7 @@ def gru_unit(input,
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
 
-            - The shape of the weight matrix is :math:`(D \\times 3D)`, where
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
               :math:`D` is the hidden size.
             - All elements in the weight matrix can be divided into two parts.
               The first part are weights of the update gate and reset gate with
