@@ -1768,7 +1768,7 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_relu_depthwise_conv_ = b;
           },
-          R"DOC((bool, optional) fuse_relu_depthwise_conv indicate whether
+          R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
                 to fuse relu and depthwise_conv2d,
                 it will save GPU memory and may make the execution faster.
                 This options is only available in GPU devices.
