@@ -1715,44 +1715,38 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-    The dynamic RNN can process a batch of sequence data. The length of each
-    sample sequence can be different. This API automatically process them in
-    batch.
+    Note: the input of this class should be LoDTensor which holds the
+    information of variable-length sequence. If the input is Tensor,
+    please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` ).
 
-    The input lod must be set. Please reference to `lod_tensor`.
+    DynamicRNN can process a minibatch of variable-length sequences.
+    The length of each sample sequence can be different and is recorded in LoD.
+    In DynamicRNN, a input sequence will be unfold into time steps and users
+    can define how to process each time step in :code:`block` .
+    The total number of time steps is determined by the longest sequence.
+    DynamicRNN will not pad all sequences to the same length, instead it will
+    sort the sequences internally by the sequence length in descending order.
+    As time steps increase, the input sequences is shrinked because only
+    sequences of which the sequence is larger than the time step will
+    participate the remaining calculation.
 
-    The dynamic RNN will unfold sequence into timesteps. Users need to define
-    how to process each time step during the :code:`with` block.
+    Warning:
+        Currently it is not supported to set :code:`is_sparse = True` of any 
+        layers defined within DynamicRNN's :code:`block` function.
 
-    The `memory` is used staging data cross time step. The initial value of
-    memory can be zero or another variable.
+    Args:
+        name (str, optional): The default value is None.  Normally there is no
+            need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name` .
 
-    The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
-    get the output sequence.
-
-    NOTES:
-        Currently it is not supported that setting is_sparse to True of any 
-        layers within DynamicRNN.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-
-          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
-          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
-    
-          drnn = fluid.layers.DynamicRNN()
-          with drnn.block():
-              word = drnn.step_input(embedding)
-              prev = drnn.memory(shape=[200])
-              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
-              drnn.update_memory(prev, hidden)  # set prev to hidden
-              drnn.output(hidden)
-
-          # Get the last time step of rnn. It is the encoding result.
-          rnn_output = drnn()
-          last = fluid.layers.sequence_last_step(rnn_output)
+    Methods:
+        step_input, setting sequence as input variable
+        static_input, setting static input variable
+        block, defining operations during each time step
+        memory, defining variable to deliver information cross time steps
+        update_memory, updating memory variable
+        output, setting output variable of each time step
+        __call__, getting output sequence
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1776,7 +1770,7 @@ class DynamicRNN(object):
 
     def step_input(self, x, level=0):
         """
-        Mark a sequence as a dynamic RNN input.
+        Mark a sequence as a dynamic RNN input. The dynamic RNN can mark multiple variables as its output. 
 
         Args:
             x (Variable): The input sequence which should have lod information.
@@ -1915,6 +1909,27 @@ class DynamicRNN(object):
     def __call__(self, *args, **kwargs):
         """
         Get the output of RNN. This API should only be invoked after RNN.block()
+
+        Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
+          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
+    
+          drnn = fluid.layers.DynamicRNN()
+          with drnn.block():
+              word = drnn.step_input(embedding)
+              prev = drnn.memory(shape=[200])
+              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
+              drnn.update_memory(prev, hidden)  # set prev to hidden
+              drnn.output(hidden)
+
+          # Get the last time step of rnn. It is the encoding result.
+          rnn_output = drnn()
+          last = fluid.layers.sequence_last_step(rnn_output)
+
         """
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
@@ -1937,6 +1952,9 @@ class DynamicRNN(object):
         this variable. The :code:`need_reorder` is used to reorder the memory as
         the input variable. It should be set to true when the initialized memory
         depends on the input sample.
+
+        The `memory` is used staging data cross time step. The initial value of
+        memory can be zero or another variable.
 
         Examples:
             .. code-block:: python
