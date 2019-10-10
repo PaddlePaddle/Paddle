@@ -349,7 +349,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
   int lr_decay_block_id = Attr<int>(kLRDecayBlockId);
 
-  VLOG(0) << "pserver_id: " << pserver_id << ", sync_mode:" << sync_mode
+  VLOG(4) << "pserver_id: " << pserver_id << ", sync_mode:" << sync_mode
           << ", fan_in:" << fan_in << ", end_point:" << endpoint
           << ", checkpoint_block_id: " << checkpoint_block_id
           << ", lr_decay_block_id: " << lr_decay_block_id;
