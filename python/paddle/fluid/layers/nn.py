@@ -5791,7 +5791,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
@@ -5866,7 +5866,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             must be in the range :math:`[-rank(input), rank(input))`. If
             :math:`dim[i] < 0`, the dimension to reduce is
             :math:`rank(input) + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default 
             value is False.
@@ -5939,7 +5939,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
@@ -6000,7 +6000,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
@@ -6061,7 +6061,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
             value is False.
