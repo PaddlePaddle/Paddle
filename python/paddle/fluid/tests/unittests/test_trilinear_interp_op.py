@@ -625,15 +625,18 @@ class TestTrilinearInterpAPI(OpTest):
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
+
+class TestTrilinearInterpOpException(OpTest):
     def test_exception(self):
         input = fluid.layers.data(
             name="input", shape=[3, 6, 9, 4], dtype="float32")
-        try:
+
+        def attr_data_format():
             # for 5-D input, data_format only can be NCDHW or NDHWC
             out = fluid.layers.resize_trilinear(
                 input, out_shape=[4, 8, 4], data_format='NHWC')
-        except:
-            pass
+
+        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == "__main__":

@@ -41,8 +41,11 @@ static constexpr bool CanInplaceAct() {
       : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
    public:                                                                   \
     void Make() override {                                                   \
-      AddInput("X", "Input of " #OP_NAME " operator");                       \
-      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddInput("X", "Input of " #OP_NAME                                     \
+                    " operator, an N-D Tensor, with data type float32, "     \
+                    "float64 or float16.");                                  \
+      AddOutput("Out", "Output of " #OP_NAME                                 \
+                       " operator, a Tensor with shape same as input.");     \
       AddAttr<bool>("use_mkldnn",                                            \
                     "(bool, default false) Only used in mkldnn kernel")      \
           .SetDefault(false);                                                \
@@ -210,10 +213,10 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-Please make sure legal input, when input a negative value closed to zero,
-you should add a small epsilon(1e-12) to avoid negative number caused by numerical errors.
+.. math:: out=\sqrt x=x^{1/2}
 
-$out = \sqrt{x}$
+**Note**:
+  input value must be greater than or equal to zero.
 
 )DOC";
 
@@ -262,9 +265,17 @@ $out = sin(x)$
 )DOC";
 
 UNUSED constexpr char RoundDoc[] = R"DOC(
-Round Activation Operator.
+The OP rounds the values in the input to the nearest integer value.
 
-$out = [x]$
+.. code-block:: python
+
+  input:
+    x.shape = [4]
+    x.data = [1.2, -0.9, 3.4, 0.9]
+
+  output:
+    out.shape = [4]
+    out.data = [1., -1., 3., 1.]
 
 )DOC";
 

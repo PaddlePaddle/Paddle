@@ -69,7 +69,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 4-D tensor with shape of [N*T,  C, H, W]. "
              "While N is the batch size, T is the temporal segment "
              "number, C is the channel number, H is the height of "
-             "features and W is the width of features.");
+             "features and W is the width of features. "
+             "The data type is float32 and float64");
     AddOutput("Out",
               "The output tensor of temporal shift operator. "
               "This is a 4-D tensor in the same shape with Input(X).");
@@ -82,7 +83,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
         "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
         "and the second :attr:`shift_ratio` part of channels will be shifted "
-        "by 1 along the temporal dimension. Default 0.25.")
+        "by 1 along the temporal dimension. :attr:`shift_ratio` should be in "
+        "range [0, 0.5]. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(
