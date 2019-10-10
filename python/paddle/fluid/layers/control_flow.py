@@ -2193,7 +2193,7 @@ class DynamicRNN(object):
                 with drnn.block():
                     # Set sentence as RNN's input, each time step processes a word from the sentence
                     current_word = drnn.step_input(sentence)
-                    # Set encode_projas RNN's static input
+                    # Set encode_proj as RNN's static input
                     encoder_word = drnn.static_input(encoder_proj)
                     # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
                     memory = drnn.memory(init=decoder_boot, need_reorder=True)
@@ -2266,28 +2266,56 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Get the output of RNN. This API should only be invoked after RNN.block()
+        This function is used to get the output  sequneces of DynamicRNN.
+
+        If defined :code:`drnn = DynamicRNN`, then users can call :code:`drnn()`
+        to abtain the result sequences. It is a LoDTensor gained by merging all
+        time steps's output. When RNN's input sequence x (the input LoDTensor set
+        by :code:`step_input()` ) meets :code:`x.lod_level == 1`, the output LoDTensor
+        will have the same LoD with x. The result of :code:`drnn()` includes RNN's outputs
+        of all time steps, users can call :ref:`api_fluid_layers_sequence_last_step` to
+        extract the data of the last time step.
+
+        Args:
+            None
+
+        Returns:
+            Variable or Variable list: RNN's output sequences.
+
+        Raises:
+            ValueError: When :code:`__call__()` is called before :code:`block()` .
 
         Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
-          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
-    
-          drnn = fluid.layers.DynamicRNN()
-          with drnn.block():
-              word = drnn.step_input(embedding)
-              prev = drnn.memory(shape=[200])
-              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
-              drnn.update_memory(prev, hidden)  # set prev to hidden
-              drnn.output(hidden)
+            sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+            encoder_proj = fluid.data(name='encoder_proj', shape=[None, 32], dtype='float32', lod_level=1)
+            decoder_boot = fluid.data(name='boot', shape=[None, 10], dtype='float32')
 
-          # Get the last time step of rnn. It is the encoding result.
-          rnn_output = drnn()
-          last = fluid.layers.sequence_last_step(rnn_output)
+            drnn = fluid.layers.DynamicRNN()
+            with drnn.block():
+                # Set sentence as RNN's input, each time step processes a word from the sentence
+                current_word = drnn.step_input(sentence)
+                # Set encode_proj as RNN's static input
+                encoder_word = drnn.static_input(encoder_proj)
+                # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                memory = drnn.memory(init=decoder_boot, need_reorder=True)
+                fc_1 = fluid.layers.fc(input=encoder_word, size=30)
+                fc_2 = fluid.layers.fc(input=current_word, size=30)
+                decoder_inputs = fc_1 + fc_2
+                hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
+                # Update memory with hidden
+                drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                # Set hidden and out as RNN's outputs
+                drnn.output(hidden, out)
 
+            # Get RNN's result
+            hidden, out = drnn()
+            # Get RNN's result of the last time step
+            last = fluid.layers.sequence_last_step(out)
         """
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
