@@ -17,16 +17,39 @@ __all__ = ['batch']
 
 def batch(reader, batch_size, drop_last=False):
     """
-    Create a batched reader.
+    This operator is a reader decorator. When reading with the result decorated
+    reader, output data will be automatically organized to batched data at a 
+    specified :code:`batch_size` size.
 
     :param reader: the data reader to read from.
-    :type reader: callable
+    :type reader: generator
     :param batch_size: size of each mini-batch
     :type batch_size: int
-    :param drop_last: drop the last batch, if the size of last batch is not equal to batch_size.
+    :param drop_last: If set to True, the last batch is dropped when the size 
+                      of last batch is not equal to batch_size, if set to False,
+                      it will not. Default: False.
     :type drop_last: bool
     :return: the batched reader.
-    :rtype: callable
+    :rtype: generator
+
+    Examples:
+        .. code-block:: python
+           
+            import paddle.fluid as fluid
+            def reader():
+                for i in range(10):
+                    yield i
+            batch_reader = fluid.io.batch(reader, batch_size=2)
+            
+            for data in batch_reader():
+                print(data)
+
+            # Output is
+            # [0, 1]
+            # [2, 3]
+            # [4, 5]
+            # [6, 7]
+            # [8, 9]
     """
 
     def batch_reader():

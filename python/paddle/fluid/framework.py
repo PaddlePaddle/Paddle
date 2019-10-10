@@ -4491,6 +4491,13 @@ def program_guard(main_program, startup_program=None):
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
+    Args:
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program): New startup program inside `"with"` statement.
+            None means not changing startup program, default_startup_program 
+            is still used.
+            Default: None.
+
     Examples:
        .. code-block:: python
        
@@ -4499,7 +4506,7 @@ def program_guard(main_program, startup_program=None):
          main_program = fluid.Program()
          startup_program = fluid.Program()
          with fluid.program_guard(main_program, startup_program):
-             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
              hidden = fluid.layers.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
@@ -4513,12 +4520,8 @@ def program_guard(main_program, startup_program=None):
          main_program = fluid.Program()
          # does not care about startup program. Just pass a temporary value.
          with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
-
-    Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program): New startup program inside `"with"` statement.
-            None means not changing startup program.
+             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+    
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
