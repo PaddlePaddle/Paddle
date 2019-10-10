@@ -1912,7 +1912,6 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-
     **Note: the input of this class should be LoDTensor which holds the
     information of variable-length sequence. If the input is Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **).**
@@ -1929,7 +1928,7 @@ class DynamicRNN(object):
     participate the remaining calculation.
 
     Warning:
-        Currently it is not supported to set :code:`is_sparse = True` of any 
+        Currently it is not supported to set :code:`is_sparse = True` of any
         layers defined within DynamicRNN's :code:`block` function.
 
     Args:
@@ -1959,7 +1958,6 @@ class DynamicRNN(object):
 
     def step_input(self, x, level=0):
         """
-
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
@@ -1996,7 +1994,7 @@ class DynamicRNN(object):
             out.lod = [[]]
             out.shape = [2, N]
             out.data = [[S2],
-                            [S0]]
+                        [S0]]
 
             # step 2, time step data of 1 sequences
             out.lod = [[]]
@@ -2033,7 +2031,8 @@ class DynamicRNN(object):
                 with drnn.block():
                     # Set embedding as RNN's input, each time step processes a word from the sentence
                     word = drnn.step_input(embedding)
-                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 200], where batch_size is the number of sequences in embedding.
+                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 200],
+                    # where batch_size is the number of sequences in embedding.
                     memory = drnn.memory(shape=[200])
                     hidden = fluid.layers.fc(input=[word, memory], size=200, act='relu')
                     # Update memory to hidden
@@ -2089,7 +2088,6 @@ class DynamicRNN(object):
 
     def static_input(self, x):
         """
-
         This function is used to set x as DynamicRNN's static input. It is optional.
 
         - Case 1, set static input with LoD
@@ -2178,7 +2176,7 @@ class DynamicRNN(object):
         Raises:
             ValueError: When :code:`static_input()` is called outside :code:`block()` .
             TypeError: When x is not a Variable.
-            RuntimeError: When :code:`static_input()` is called before :code:`step_input()` . 
+            RuntimeError: When :code:`static_input()` is called before :code:`step_input()` .
 
         Examples:
             .. code-block:: python
@@ -2341,8 +2339,8 @@ class DynamicRNN(object):
                 If init is not None, it should hold the same number of sequences
                 as RNN's input (the input LoDTensor set by :code:`step_input()` )
                 and the memory will be initialized to it. If init's LoD is null,
-                it will be treated as a minibatch with :code:`init.shape[0]`
-                sequences of length 1. The default value is None.
+                it will be treated as a minibatch with :code:`init.shape[0]` sequences
+                of length 1. The default value is None.
             shape (list|tuple, optional): When init is None, it is used to specify
                 the memory's shape. Note that the shape does not include the batch_size.
                 If setting shape to :code:`[D1, D2, ...]` , the shape of memory Tensor
@@ -2403,7 +2401,8 @@ class DynamicRNN(object):
                 with drnn.block():
                     # Set sentence as RNN's input, each time step processes a word from the sentence
                     word = drnn.step_input(sentence)
-                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 10], where batch_size is the number of sequences in sentence.
+                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 10],
+                    # where batch_size is the number of sequences in sentence.
                     memory = drnn.memory(shape=[10], dtype='float32', value=0)
                     hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
                     # Update memory with hidden
@@ -2484,7 +2483,7 @@ class DynamicRNN(object):
     def update_memory(self, ex_mem, new_mem):
         """
         Update the memory which need to be delivered across time steps.
-        
+
         Args:
             ex_mem (Variable): The memory data of previous time step.
             new_mem (Variable): The new memory data produced in current time step.
@@ -2517,7 +2516,7 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        This function is used to set :code:`outputs` as RNN's output. 
+        This function is used to set :code:`outputs` as RNN's output.
 
         Args:
             *outputs (Variable ...): The output Tensor. DynamicRNN can mark multiple
