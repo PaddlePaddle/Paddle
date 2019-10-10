@@ -14688,7 +14688,6 @@ def psroi_pool(input,
 @templatedoc()
 def prroi_pool(input,
                rois,
-               output_channels,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
@@ -14705,7 +14704,6 @@ def prroi_pool(input,
                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
-        output_channels (integer): The output's channel.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
@@ -14721,12 +14719,10 @@ def prroi_pool(input,
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
             rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
-            pool_out = fluid.layers.prroi_pool(x, rois, 10, 1.0, 7, 7)
+            pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
     """
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
-    if not isinstance(output_channels, int):
-        raise TypeError("output_channels must be int type")
     if not isinstance(spatial_scale, float):
         raise TypeError("spatial_scale must be float type")
     if not isinstance(pooled_height, int):
@@ -14741,7 +14737,6 @@ def prroi_pool(input,
                 'ROIs': rois},
         outputs={'Out': out},
         attrs={
-            'output_channels': output_channels,
             'spatial_scale': spatial_scale,
             'pooled_height': pooled_height,
             'pooled_width': pooled_width
