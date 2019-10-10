@@ -6766,7 +6766,7 @@ def warpctc(input,
     (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation is
-    interated to the Warp-CTC library, to to normlize values for each row of the
+    interated to the Warp-CTC library to normlize values for each row of the
     input tensor.
 
     Args:
@@ -6778,14 +6778,15 @@ def warpctc(input,
          (not including the blank label). When it is a 3-D Tensor, it's shape 
          is [max_logit_length, batch_size, num_classes + 1],
          where max_logit_length is the length of the longest
-         input logit sequence.
+         input logit sequence. The data type must be float32.
        label (Variable): The ground truth of variable-length sequence,
          which is a 2-D Tensor with LoD information or a 2-D Tensor without
          LoD information. When it is a 2-D LoDTensor or 2-D Tensor, 
          it is of the shape [Lg, 1], where Lg is th sum of all labels' length.
+         The data type must be int32.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
-         half-opened interval [0, num_classes + 1).
+         half-opened interval [0, num_classes + 1). The data type must be int32. 
        norm_by_times(bool, default false): Whether to normalize the gradients
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
@@ -6797,40 +6798,72 @@ def warpctc(input,
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
-        which is a 2-D Tensor of the shape [batch_size, 1].
+        which is a 2-D Tensor with the shape [batch_size, 1].
+        The date type is the same as input.
 
     Examples:
+
         .. code-block:: python
 
             # using LoDTensor
             import paddle.fluid as fluid
             import numpy as np
             
-            label = fluid.layers.data(name='label', shape=[12, 1],
-                                      dtype='float32', lod_level=1)
-            predict = fluid.layers.data(name='predict', 
-                                        shape=[11, 8],
+            predict = fluid.data(name='predict', 
+                                        shape=[None, 5],
                                         dtype='float32',lod_level=1)
+            label = fluid.data(name='label', shape=[None, 1],
+                                      dtype='int32', lod_level=1)
             cost = fluid.layers.warpctc(input=predict, label=label)
+            place = fluid.CPUPlace()
+            x=fluid.LoDTensor()
+            data = np.random.rand(8, 5).astype("float32")
+            x.set(data, place)
+            x.set_lod([[0,4,8]])
+            y=fluid.LoDTensor()
+            data = np.random.randint(0, 5, [4, 1]).astype("int32")
+            y.set(data, place)
+            y.set_lod([[0,2,4]])
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            output= exe.run(feed={"predict": x,"label": y},
+                                         fetch_list=[cost.name])
+            print output
+
+        .. code-block:: python
 
             # using Tensor
-            input_length = fluid.layers.data(name='logits_length', shape=[11],
-                                         dtype='int64')
-            label_length = fluid.layers.data(name='labels_length', shape=[12],
-                                         dtype='int64')
-            target = fluid.layers.data(name='target', shape=[12, 1],
-                                       dtype='int32')
+            import paddle.fluid as fluid
+            import numpy as np
+            
             # length of the longest logit sequence
-            max_seq_length = 4
+            max_seq_length = 5
             # number of logit sequences
-            batch_size = 4
-            output = fluid.layers.data(name='output', 
-                                       shape=[max_seq_length, batch_size, 8],
+            batch_size = None
+            logits = fluid.data(name='logits', 
+                                       shape=[max_seq_length, batch_size, 5],
                                        dtype='float32')
-            loss = fluid.layers.warpctc(input=output,label=target,
-                                        input_length=input_length,
+            logits_length = fluid.data(name='logits_length', shape=[None],
+                                         dtype='int64')
+            label = fluid.layers.data(name='label', shape=[None, 1],
+                                       dtype='int32')
+            label_length = fluid.layers.data(name='labels_length', shape=[None],
+                                         dtype='int64')
+            cost = fluid.layers.warpctc(input=logits, label=label,
+                                        input_length=logits_length,
                                         label_length=label_length)
-
+            place = fluid.CPUPlace()
+            batch_size = 2
+            x = np.random.rand(max_seq_length, batch_size, 5).astype("float32")
+            y = np.random.randint(0, 5, [max_seq_length * batch_size, 1]).astype("int32")
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            output= exe.run(feed={"logits": x,
+                                  "label": y,
+                                  "logits_length": np.array([5, 4]).astype("int64"),
+                                  "labels_length": np.array([3, 2]).astype("int64")},
+                                  fetch_list=[cost.name])
+            print(output)
     """
     helper = LayerHelper('warpctc', **locals())
     this_inputs = {'Logits': [input], 'Label': [label]}
@@ -10665,77 +10698,16 @@ def affine_grid(theta, out_shape, name=None):
     the input feature map should be sampled to produce the transformed
     output feature map.
 
-    .. code-block:: text
-
-        * Case 1:
-
-          Given:
-
-              theta = [[[x_11, x_12, x_13]
-                        [x_14, x_15, x_16]]
-                       [[x_21, x_22, x_23]
-                        [x_24, x_25, x_26]]]
-
-              out_shape = [2, 3, 5, 5]
-
-          Step 1:
-
-              Generate normalized coordinates according to out_shape.
-              The values of the normalized coordinates are in the interval between -1 and 1.
-              The shape of the normalized coordinates is [2, H, W] as below:
-
-              C = [[[-1.  -1.  -1.  -1.  -1. ]
-                    [-0.5 -0.5 -0.5 -0.5 -0.5]
-                    [ 0.   0.   0.   0.   0. ]
-                    [ 0.5  0.5  0.5  0.5  0.5]
-                    [ 1.   1.   1.   1.   1. ]]
-                   [[-1.  -0.5  0.   0.5  1. ]
-                    [-1.  -0.5  0.   0.5  1. ]
-                    [-1.  -0.5  0.   0.5  1. ]
-                    [-1.  -0.5  0.   0.5  1. ]
-                    [-1.  -0.5  0.   0.5  1. ]]]
-              C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
-
-          Step2:
-
-              Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
-              C_ = [[-1.  -1.   1. ]
-                    [-0.5 -1.   1. ]
-                    [ 0.  -1.   1. ]
-                    [ 0.5 -1.   1. ]
-                    [ 1.  -1.   1. ]
-                    [-1.  -0.5  1. ]
-                    [-0.5 -0.5  1. ]
-                    [ 0.  -0.5  1. ]
-                    [ 0.5 -0.5  1. ]
-                    [ 1.  -0.5  1. ]
-                    [-1.   0.   1. ]
-                    [-0.5  0.   1. ]
-                    [ 0.   0.   1. ]
-                    [ 0.5  0.   1. ]
-                    [ 1.   0.   1. ]
-                    [-1.   0.5  1. ]
-                    [-0.5  0.5  1. ]
-                    [ 0.   0.5  1. ]
-                    [ 0.5  0.5  1. ]
-                    [ 1.   0.5  1. ]
-                    [-1.   1.   1. ]
-                    [-0.5  1.   1. ]
-                    [ 0.   1.   1. ]
-                    [ 0.5  1.   1. ]
-                    [ 1.   1.   1. ]]
-          Step3:
-              Compute output by equation $$Output[i] = C_ * Theta[i]^T$$
-
     Args:
-        theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
-        out_shape (Variable | list | tuple): The shape of target output with format [N, C, H, W].
-                                             ``out_shape`` can be a Variable or a list or tuple.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        theta (Variable) - A Tensor with shape [N, 2, 3]. It contains a batch of affine transform parameters.
+                           The data type can be float32 or float64.
+        out_shape (Variable | list | tuple): The shape of target output with format [batch_size, channel, height, width].
+                                             ``out_shape`` can be a Tensor or a list or tuple. The data
+                                             type must be int32.
+        name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output with shape [N, H, W, 2].
+        Variable: A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`. 
 
     Raises:
         ValueError: If the type of arguments is not supported.
@@ -10745,13 +10717,20 @@ def affine_grid(theta, out_shape, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            theta = fluid.layers.data(name="x", shape=[2, 3], dtype="float32")
-            out_shape = fluid.layers.data(name="y", shape=[-1], dtype="float32")
-            data = fluid.layers.affine_grid(theta, out_shape)
-
-            # or
-            data = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
-
+            import numpy as np
+            place = fluid.CPUPlace()
+            theta = fluid.data(name="x", shape=[None, 2, 3], dtype="float32")
+            out_shape = fluid.data(name="y", shape=[4], dtype="int32")
+            grid_0 = fluid.layers.affine_grid(theta, out_shape)
+            grid_1 = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
+            batch_size=2
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            output= exe.run(feed={"x": np.random.rand(batch_size,2,3).astype("float32"),
+                                  "y": np.array([5, 3, 28, 28]).astype("int32")},
+                                  fetch_list=[grid_0.name, grid_1.name])
+            print(output[0])
+            print(output[1])
     """
     helper = LayerHelper('affine_grid')
 
