@@ -10227,7 +10227,7 @@ def sequence_scatter(input, index, updates, name=None):
 	
             import paddle.fluid as fluid
 
-            input = fluid.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
+            input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
             index = fluid.data( name='index', shape=[12, 1], dtype='int64')
             updates = fluid.data( name='updates', shape=[12, 1], dtype='float32')
             output = fluid.layers.sequence_scatter(input, index, updates)
