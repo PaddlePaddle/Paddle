@@ -35,7 +35,7 @@ __all__ = [
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    Create a variable, which will hold a LoDTensor with data type dtype.
+    Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
         dtype(string|numpy.dtype): the data type of Tensor to be created, the
@@ -374,10 +374,10 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
-    This OP creates a tensor with specified `shape` and `dtype`, and
+    This OP creates a LoDTensor or  SelectedRows  with specified `shape` and `dtype`, and
     initializes it with a constant specifed by `value`.
 
-    The attribute `stop_gradient` of the created tensor is setted to True.
+    The attribute `stop_gradient` of the created LoDTensor or SelectedRows is setted to True.
 
     Args:
         shape(tuple|list): Shape of the LoDTensor or SelectedRows to be created.
@@ -394,14 +394,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     Raise:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be the same as the dtype. 
+        and the data type of out LoDTensor or SelectedRows  must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
+          b = fluid.default_main_program().global_block()
+          data3 = b.create_var(name="X", dtype="int64", shape=[1], persistable=True,
+          type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
           data1 = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64') #data1=[0]
           data2 = fluid.layers.fill_constant(shape=[1], value=5, dtype='int64', out=data1) #data1=[5] data2=[5]
+          data3 = fluid.layers.fill_constant(shape=[1], value=5, dtype='int64', out=data3) #data3=[5]
     """
 
     helper = LayerHelper("fill_constant", **locals())
