@@ -8103,7 +8103,11 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     if counter_name is None:
         counter_name = '@STEP_COUNTER@'
     counter, is_new_var = helper.create_or_get_global_variable(
-        name=counter_name, dtype='int64', shape=[1], persistable=True)
+        name=counter_name,
+        dtype='int64',
+        shape=[1],
+        persistable=True,
+        belong_to_optimizer=True)
     if is_new_var:
         helper.set_variable_initializer(
             counter, initializer=Constant(
