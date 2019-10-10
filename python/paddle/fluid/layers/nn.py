@@ -343,8 +343,22 @@ def fc(input,
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
     helper = LayerHelper("fc", **locals())
-
+    if isinstance(input, (list, tuple)):
+        for i, input_x in enumerate(input):
+            if not isinstance(input_x, Variable):
+                raise TypeError(
+                    "The type of input[%d] in fc must be Variable, but received %s"
+                    % (i, type(input_x)))
+    else:
+        if not isinstance(input, Variable):
+            raise TypeError(
+                "The type of 'input' in fc must be Variable, but received %s" %
+                (type(input)))
     dtype = helper.input_dtype()
+    if convert_dtype(dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in fc must be float32 or float64, but received %s."
+            % (convert_dtype(dtype)))
 
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
