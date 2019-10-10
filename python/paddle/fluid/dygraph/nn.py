@@ -1610,7 +1610,7 @@ class GRUUnit(layers.Layer):
         gate_activation (str): The activation type for gates (actGate).
                                   The default value is 'sigmoid'.
         dtype(str): The dtype of the layers. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.

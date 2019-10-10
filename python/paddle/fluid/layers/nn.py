@@ -8802,7 +8802,7 @@ def label_smooth(label,
                  name=None):
     """
     Label smoothing is a mechanism to regularize the classifier layer and is called 
-    label-smoothing regularization (LSR).
+    label-smoothing regularization (LSR). 
 
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
@@ -8834,7 +8834,7 @@ def label_smooth(label,
                         distribution and the fixed distribution. The default value is 
                         0.1.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
-                        as float32, float64. The default value is "float32".
+                        as 'float32', 'float64'. The default value is 'float32'.
         name(str, optional): The default value is None. Normally there is no need for user 
                         to set this property. For more information, please refer to 
                         :ref:`api_guide_Name`.

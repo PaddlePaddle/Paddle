@@ -85,14 +85,14 @@ class PiecewiseDecay(LearningRateDecay):
             learning_rate = 0.1
 
     Parameters:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int.
+        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
         values(list): A list of learning rate values that will be picked during
             different step boundaries. The type of element in the list is python float.
         begin(int): The begin step to initilize the global_step in the description above.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -155,10 +155,10 @@ class NaturalExpDecay(LearningRateDecay):
         staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -235,10 +235,10 @@ class ExponentialDecay(LearningRateDecay):
         staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -309,10 +309,10 @@ class InverseTimeDecay(LearningRateDecay):
         staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be 
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -388,10 +388,10 @@ class PolynomialDecay(LearningRateDecay):
         power(float, optional): Power of polynomial. The default value is 1.0.
         cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -464,10 +464,10 @@ class CosineDecay(LearningRateDecay):
         step_each_epoch(int): The number of steps in an epoch.
         epochs(int): The number of epochs.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
@@ -521,10 +521,10 @@ class NoamDecay(LearningRateDecay):
         warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable, 
             it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The increasementation used to calculate the new global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
             The defalult value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            float32, float64. The default value is 'float32'.
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
         None.
