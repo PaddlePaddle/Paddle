@@ -7492,16 +7492,26 @@ def transpose(x, perm, name=None):
             x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
     """
 
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of Input(x) in transpose must be Variable, but received %s" %
+            (type(x)))
+    if not isinstance(perm, list):
+        raise TypeError(
+            "The type of Input(perm) in transpose must be list, but received %s" %
+            (type(perm)))
     if len(perm) != len(x.shape):
         raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(input). "
-            "Its length should be equal to Input(input)'s rank.")
+            "Input(perm) is the permutation of dimensions of Input(x), "
+            "its length should be equal to dimensions of Input(x), "
+            "but received dimension of Input(x) is %s, "
+            "the length of Input(perm) is %s." % (len(x.shape), len(perm)))
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
-                "Each element in perm should be less than x's rank. "
-                "%d-th element in perm is %d which accesses x's rank %d." %
-                (idx, perm[idx], len(x.shape)))
+                "Each element in Input(perm) should be less than Input(x)'s dimension, "
+                "but %d-th element in Input(perm) is %d which accesses Input(x)'s "
+                "dimension %d." % (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)

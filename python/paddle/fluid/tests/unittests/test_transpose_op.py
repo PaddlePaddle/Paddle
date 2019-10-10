@@ -77,6 +77,37 @@ class TestCase4(TestTransposeOp):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
+class TestTransposeOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
+
+            def test_x_Variable_check():
+                # the Input(x)'s type must be Variable
+                fluid.layers.transpose("not_variable", perm=[1, 0, 2])
+
+            self.assertRaises(TypeError, test_x_Variable_check)
+
+            def test_perm_list():
+                # Input(perm)'s type must be list
+                fluid.layers.transpose(x, perm=[1, 0, 2])
+
+            self.assertRaises(TypeError, test_perm_list_check)
+
+            def test_perm_length_and_x_dim():
+                # Input(perm) is the permutation of dimensions of Input(input)
+                # its length should be equal to dimensions of Input(input)
+                fluid.layers.transpose(x, perm=[1, 0, 2, 3, 4])
+
+            self.assertRaises(ValueError, test_perm_length_and_x_dim)
+
+            def test_each_elem_value():
+                # Each element in Input(perm) should be less than Input(x)'s dimension
+                fluid.layers.transpose(x, perm=[3, 5, 7])
+
+            self.assertRaises(ValueError, test_each_elem_value)
+
+
 
 if __name__ == '__main__':
     unittest.main()
