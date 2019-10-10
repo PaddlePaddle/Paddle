@@ -58,7 +58,7 @@ class ParamAttr(object):
                                             regularizer=fluid.regularizer.L2Decay(1.0),
                                             trainable=True)
             print(w_param_attrs.name) # "fc_weight"
-            x = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            x = fluid.data(name='X', shape=[None, 1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=10, param_attr=w_param_attrs)
     """
 
@@ -183,7 +183,7 @@ class ParamAttr(object):
 
 class WeightNormParamAttr(ParamAttr):
     """
-    Used for weight Norm. Weight Norm is a reparameterization of the weight vectors
+    Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
     in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
@@ -191,17 +191,27 @@ class WeightNormParamAttr(ParamAttr):
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 
     Args:
-        dim(int): Dimension over which to compute the norm. Default None.
-        name(str): The parameter's name. Default None.
-        initializer(Initializer): The method to initial this parameter. Default None.
-        learning_rate(float): The parameter's learning rate. The learning rate when
-            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
+        dim(int): Dimension over which to compute the norm. Dim is a non-negative
+            number which is less than the rank of weight Tensor. For Example, dim can
+            be choosed from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
+            and rank is 4. Default None, meaning that all elements will be normalized.
+        name(str, optional): The parameter's name. Default None, meaning that the name would
+            be created automatically. Please refer to :ref:`api_guide_Name` for more details.
+        initializer(Initializer): The method to initialize this parameter, such as
+            ``initializer = fluid.initializer.ConstantInitializer(1.0)``. Default None,
+            meaning that the weight parameter is initialized by Xavier initializer, and
+            the bias parameter is initialized by 0.
+        learning_rate(float32): The parameter's learning rate when
+            optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
-        trainable(bool): Whether this parameter is trainable. Default True.
-        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
-            gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average.
+        regularizer(WeightDecayRegularizer): Regularization factor, such as
+            ``regularizer = fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1)``.
+            Default None, meaning that there is no regularization.
+        trainable(bool, optional): Whether this parameter is trainable. Default True.
+        gradient_clip: The method to clip this parameter's gradient, such as
+            ``gradient_clip = fluid.clip.GradientClipByNorm(clip_norm=2.0))`` .
+            Default None, meaning that there is no gradient clip.
+        do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
 
     Examples:
@@ -212,8 +222,14 @@ class WeightNormParamAttr(ParamAttr):
             fc = fluid.layers.fc(input=data,
                                  size=1000,
                                  param_attr=fluid.WeightNormParamAttr(
-                                      dim=None,
-                                      name='weight_norm_param'))
+                                          dim=None,
+                                          name='weight_norm_param',
+                                          initializer=fluid.initializer.ConstantInitializer(1.0),
+                                          learning_rate=1.0,
+                                          regularizer=fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1),
+                                          trainable=True,
+                                          gradient_clip=fluid.clip.GradientClipByNorm(clip_norm=2.0),
+                                          do_model_average=False))
 
     """
     # List to record the parameters reparameterized by weight normalization.

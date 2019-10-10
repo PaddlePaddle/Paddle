@@ -200,8 +200,9 @@ void Pool2dOpMaker::Make() {
   // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "global_pooling",
-      "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, kernel size and paddings will be ignored.")
+      "(bool) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored. "
+      "Default False.")
       .SetDefault(false);
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
@@ -217,36 +218,38 @@ void Pool2dOpMaker::Make() {
       .SetDefault({0, 0});
   AddAttr<bool>(
       "exclusive",
-      "(bool, default True) When true, will exclude the zero-padding in the "
+      "(bool) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The default is True.")
+      "is only used when pooling_type is avg. The default is True. "
+      "Default True.")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool) When true, will perform adaptive pooling instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
-      "pooling in each grid area to get output pooling value.")
+      "pooling in each grid area to get output pooling value. "
+      "Default False.")
       .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn.")
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Whether to use the ceil function to calculate "
+      "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
-      "the floor function will be used.")
+      "the floor function will be used. Default False")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel.")
+                "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false);
   AddAttr<bool>("use_quantizer",
-                "(bool, default false) "
+                "(bool) "
                 "Set to true for operators that should be quantized and use "
                 "int8 kernel. "
-                "Only used on CPU.")
+                "Only used on CPU. Default False")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -269,11 +272,11 @@ void Pool2dOpMaker::Make() {
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-The pooling2d operation calculates the output based on
-the input, pooling_type and ksize, strides, paddings parameters.
-Input(X) and output(Out) are in NCHW or NHWC format, where N is batch size, C is the
+This operation calculates the pooling output based on
+the input, pooling_type and pool_size, pool_stride, pool_padding parameters.
+Input(X) and Output(Out) are in NCHW or NHWC format, where N is batch size, C is the
 number of channels, H is the height of the feature, and W is the width of the feature.
-Parameters(ksize, strides, paddings) are two elements.
+Parameters(pool_size, pool_stride, pool_padding) hold two integer elements.
 These two elements represent height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
@@ -393,8 +396,9 @@ void Pool3dOpMaker::Make() {
   // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "global_pooling",
-      "(bool, default false) Whether to use the global pooling. "
-      "If global_pooling = true, kernel size and paddings will be ignored.")
+      "(bool) Whether to use the global pooling. "
+      "If global_pooling = true, kernel size and paddings will be ignored. "
+      "Default False")
       .SetDefault(false);
   AddAttr<std::vector<int>>(
       "strides",
@@ -413,30 +417,32 @@ void Pool3dOpMaker::Make() {
                                // TypedAttrChecker don't support vector type.)
   AddAttr<bool>(
       "exclusive",
-      "(bool, default True) When true, will exclude the zero-padding in the "
+      "(bool) When true, will exclude the zero-padding in the "
       "averaging calculating, otherwise, include the zero-padding. Note, it "
-      "is only used when pooling_type is avg. The default is True.")
+      "is only used when pooling_type is avg. The default is True. "
+      "Default True")
       .SetDefault(true);
   AddAttr<bool>(
       "adaptive",
-      "(bool, default False) When true, will perform adaptive pooling instead, "
+      "(bool) When true, will perform adaptive pooling instead, "
       "output shape in H and W dimensions will be same as ksize, input data "
       "will be divided into grids specify by ksize averagely and perform "
-      "pooling in each grid area to get output pooling value.")
+      "pooling in each grid area to get output pooling value. "
+      "Default False")
       .SetDefault(false);
 
   AddAttr<bool>(
       "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn.")
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
       .SetDefault(false);
   AddAttr<bool>(
       "ceil_mode",
-      "(bool, default false) Whether to use the ceil function to calculate "
+      "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
-      "the floor function will be used.")
+      "the floor function will be used. Default False")
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
+                "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -454,14 +460,12 @@ void Pool3dOpMaker::Make() {
   // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
-Pool3d Operator.
-
-The pooling3d operation calculates the output based on
-the input, pooling_type, ksize, strides, and paddings parameters.
+This operation calculates the output based on
+the input, pooling_type, pool_size, pool_stride, and pool_padding parameters.
 Input(X) and output(Out) are in NCDHW or NDHWC format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
-width of the feature, respectively. Parameters(ksize, strides, paddings)
-are three elements. These three elements represent depth, height and
+width of the feature, respectively. Parameters(pool_size, pool_stride, pool_padding)
+hold three integer elements. These three elements represent depth, height and
 width, respectively. The input(X) size and output(Out) size may be different.
 
 Example:

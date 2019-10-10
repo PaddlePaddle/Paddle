@@ -814,10 +814,10 @@ def has_inf(x):
     Test if any of x contains an infinity number
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is infinity number in x or not.
     
     Examples:
         .. code-block:: python
@@ -838,10 +838,10 @@ def has_nan(x):
     Test if any of x contains a NAN
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
     
     Examples:
         .. code-block:: python

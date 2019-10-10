@@ -561,6 +561,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFileListIndex(&file_idx_);
     preload_readers_[i]->SetFileList(filelist_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetInputChannel(input_channel_.get());
     preload_readers_[i]->SetOutputChannel(nullptr);
     preload_readers_[i]->SetConsumeChannel(nullptr);
