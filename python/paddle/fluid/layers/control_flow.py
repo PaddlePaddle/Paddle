@@ -1715,14 +1715,15 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-    Note: the input of this class should be LoDTensor which holds the
+
+    **Note: the input of this class should be LoDTensor which holds the
     information of variable-length sequence. If the input is Tensor,
-    please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` ).
+    please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **).**
 
     DynamicRNN can process a minibatch of variable-length sequences.
     The length of each sample sequence can be different and is recorded in LoD.
     In DynamicRNN, a input sequence will be unfold into time steps and users
-    can define how to process each time step in :code:`block` .
+    can define how to process each time step in :code:`block()` .
     The total number of time steps is determined by the longest sequence.
     DynamicRNN will not pad all sequences to the same length, instead it will
     sort the sequences internally by the sequence length in descending order.
@@ -1740,13 +1741,13 @@ class DynamicRNN(object):
             please refer to :ref:`api_guide_Name` .
 
     Methods:
-        step_input, setting sequence as input variable
-        static_input, setting static input variable
-        block, defining operations during each time step
-        memory, defining variable to deliver information cross time steps
-        update_memory, updating memory variable
-        output, setting output variable of each time step
-        __call__, getting output sequence
+        - step_input, setting sequence as input variable
+        - static_input, setting static input variable
+        - block: defining operations during each time step
+        - memory: defining variable to deliver information cross time steps
+        - update_memory: updating memory variable
+        - output: setting output variable of each time step
+        - __call__: getting output sequence
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1770,14 +1771,54 @@ class DynamicRNN(object):
 
     def step_input(self, x, level=0):
         """
-        Mark a sequence as a dynamic RNN input. The dynamic RNN can mark multiple variables as its output. 
+        This function is used to set sequence x as DynamicRNN's input.
+        The maximum sequence length in x determines the number of time steps
+        the RNN unit will be executed. DynamicRNN can take multiple inputs.
+        When all inputs' :code:`lod_level` are 1, all inputs should hold the
+        same LoD. When :code:`x.lod_level >= 2` , the input sequence will be
+        unfold along specified level, and the slice of each time step is a
+        LoDTensor of which the lod_level is :code:`x.lod_level - level - 1` .
+        In this case, the specied LoD level of multiple inputs should be the same.
 
         Args:
-            x (Variable): The input sequence which should have lod information.
-            level (int): The level of lod used to split steps. Default: 0.
+            x (Variable): The input LoDTensor which holds information of a
+                minibatch of variable-length sequences and should meet :code:`x.lod_level >= 1` .
+                When RNN has multiple inputs, the first dimension should match
+                across all inputs, but other shape components may differ.
+            level (int, optional): The level of lod used to split steps.
+                It should be in range :math:`[0, x.lod\_level)` . The default value is 0.
 
         Returns:
-            The current timestep in the input sequence.
+            Variable: The current time step in the input sequence. If there are :code:`num_sequences` \
+                sequences in x of which the length is larger than :code:`step_idx` , the returned Variable \
+                will only hold the :code:`step_idx` -th time step of those `num_sequences` sequences.
+
+        Raises:
+            ValueError: When :code:`step_input()` is called outside :code:`block()` .
+            TypeError: When x is not a Variable.
+
+        Examples:
+            ..  code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 1], dtype='int64', lod_level=1)
+                embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set embedding as RNN's input, each time step gets a word from the sentence
+                    word = drnn.step_input(embedding)
+                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 200], where batch_size is the number of sequences in embedding.
+                    memory = drnn.memory(shape=[200])
+                    hidden = fluid.layers.fc(input=[word, memory], size=200, act='relu')
+                    # Update memory to hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Mask hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
@@ -2103,7 +2144,7 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        Mark the RNN output variables.
+        Mark the RNN output variables. The dynamic RNN can mark multiple variables as its output.
 
         Args:
             outputs: The output variables.
