@@ -1938,13 +1938,14 @@ class DynamicRNN(object):
             please refer to :ref:`api_guide_Name` .
 
     Methods:
-        - step_input, setting sequence as input variable
-        - static_input, setting static input variable
-        - block: defining operations during each time step
-        - memory: defining variable to deliver information cross time steps
-        - update_memory: updating memory variable
-        - output: setting output variable of each time step
-        - __call__: getting output sequence
+
+    - **step_input**, setting sequence as input variable
+    - **static_input**, setting static input variable
+    - **block**, defining operations during each time step
+    - **memory**, defining variable to deliver information cross time steps
+    - **update_memory**, updating memory variable
+    - **output**, setting output variable of each time step
+    - **__call__**, getting output sequence
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -1980,37 +1981,37 @@ class DynamicRNN(object):
 
         - Case 1:
 
-        .. code-block:: text
+            .. code-block:: text
 
-            # input，where Si is slice data of shape [1, N]
-            level = 0
-            x.lod = [[2, 1, 3]]
-            x.shape = [6, N]
-            x.data = [[S0],
-                      [S0],
-                      [S1],
-                      [S2],
-                      [S2],
-                      [S2]]
+                # input，where Si is slice data of shape [1, N]
+                level = 0
+                x.lod = [[2, 1, 3]]
+                x.shape = [6, N]
+                x.data = [[S0],
+                          [S0],
+                          [S1],
+                          [S2],
+                          [S2],
+                          [S2]]
 
-            # output
-            # step 0, time step data of 3 sequences
-            out.lod = [[]]
-            out.shape = [3, N]
-            out.data = [[S2],
-                        [S0],
-                        [S1]]
+                # output
+                # step 0, time step data of 3 sequences
+                out.lod = [[]]
+                out.shape = [3, N]
+                out.data = [[S2],
+                            [S0],
+                            [S1]]
 
-            # step 1, time step data of 2 sequences
-            out.lod = [[]]
-            out.shape = [2, N]
-            out.data = [[S2],
-                        [S0]]
+                # step 1, time step data of 2 sequences
+                out.lod = [[]]
+                out.shape = [2, N]
+                out.data = [[S2],
+                            [S0]]
 
-            # step 2, time step data of 1 sequences
-            out.lod = [[]]
-            out.shape = [1, N]
-            out.data = [[S2]]
+                # step 2, time step data of 1 sequences
+                out.lod = [[]]
+                out.shape = [1, N]
+                out.data = [[S2]]
 
 
         Args:
@@ -2103,74 +2104,74 @@ class DynamicRNN(object):
 
         - Case 1, set static input with LoD
 
-        .. code-block:: text
+            .. code-block:: text
 
-            # RNN's input is the same as the case listed in step_input
-            # static input, where Si is slice data of shape [1, M]
-            x.lod = [[3, 1, 2]]
-            x.shape = [6, M]
-            x.data = [[S0],
-                      [S0],
-                      [S0],
-                      [S1],
-                      [S2],
-                      [S2]]
+                # RNN's input is the same as the case listed in step_input
+                # static input, where Si is slice data of shape [1, M]
+                x.lod = [[3, 1, 2]]
+                x.shape = [6, M]
+                x.data = [[S0],
+                          [S0],
+                          [S0],
+                          [S1],
+                          [S2],
+                          [S2]]
 
-            # step 0, batch data corresponding to the 3 input sequences
-            out.lod = [[2, 3, 1]]
-            out.shape = [6, M]
-            out.data = [[S2],
-                        [S2],
-                        [S0],
-                        [S0],
-                        [S0],
-                        [S1]]
+                # step 0, batch data corresponding to the 3 input sequences
+                out.lod = [[2, 3, 1]]
+                out.shape = [6, M]
+                out.data = [[S2],
+                            [S2],
+                            [S0],
+                            [S0],
+                            [S0],
+                            [S1]]
 
-            # step 1, batch data corresponding to the 2 input sequences
-            out.lod = [[2, 3]]
-            out.shape = [5, M]
-            out.data = [[S2],
-                        [S2],
-                        [S0],
-                        [S0],
-                        [S0]]
+                # step 1, batch data corresponding to the 2 input sequences
+                out.lod = [[2, 3]]
+                out.shape = [5, M]
+                out.data = [[S2],
+                            [S2],
+                            [S0],
+                            [S0],
+                            [S0]]
 
-            # step 2, batch data corresponding to the 1 input sequences
-            out.lod = [[2]]
-            out.shape = [2, M]
-            out.data = [[S2],
-                        [S2]]
+                # step 2, batch data corresponding to the 1 input sequences
+                out.lod = [[2]]
+                out.shape = [2, M]
+                out.data = [[S2],
+                            [S2]]
 
 
         - Case 2, set static input without LoD
 
-        .. code-block:: text
+            .. code-block:: text
 
-            # RNN's input is the same as the case listed in step_input
-            # static input, where Si is slice data of shape [1, M]
-            x.lod = [[]]
-            x.shape = [3, M]
-            x.data = [[S0],
-                      [S1],
-                      [S2]]
+                # RNN's input is the same as the case listed in step_input
+                # static input, where Si is slice data of shape [1, M]
+                x.lod = [[]]
+                x.shape = [3, M]
+                x.data = [[S0],
+                          [S1],
+                          [S2]]
 
-            # step 0, batch data corresponding to the 3 input sequences
-            out.lod = [[]]
-            out.shape = [3, M]
-            out.data = [[S2],
-                        [S0],
-                        [S1]]
+                # step 0, batch data corresponding to the 3 input sequences
+                out.lod = [[]]
+                out.shape = [3, M]
+                out.data = [[S2],
+                            [S0],
+                            [S1]]
 
-            # step 1, batch data corresponding to the 2 input sequences
-            out.lod = [[]]
-            out.shape = [2, M]
-            out.data = [[S2],
-                        [S0]]
+                # step 1, batch data corresponding to the 2 input sequences
+                out.lod = [[]]
+                out.shape = [2, M]
+                out.data = [[S2],
+                            [S0]]
 
-            # step 2, batch data corresponding to the 1 input sequences
-            out.lod = [[]]
-            out.shape = [1, M]
-            out.data = [[S2]]
+                # step 2, batch data corresponding to the 1 input sequences
+                out.lod = [[]]
+                out.shape = [1, M]
+                out.data = [[S2]]
 
 
         Args:
@@ -2182,7 +2183,7 @@ class DynamicRNN(object):
             Variable: The input LoDTensor after sorted and shrinked. If there are :code:`num_sequences` \
                 sequences in RNN's input LoDTensor of which the length is larger than :code:`step_idx` , \
                 the static input Tensor will be sorted to the same order as RNN's input and \
-                will only retain data corresponding to those `num_sequences` sequences.
+                will only retain data corresponding to those :code:`num_sequences` sequences.
 
         Raises:
             ValueError: When :code:`static_input()` is called outside :code:`block()` .
@@ -2246,7 +2247,7 @@ class DynamicRNN(object):
         times (where :code:`max_sequence_len` is the maximum length of RNN's input sequences).
 
         Raises:
-            ValueError: When :code:`block()` is called multiple times.
+            ValueError: When :code:`block()` is called multi-times.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
@@ -2313,65 +2314,87 @@ class DynamicRNN(object):
                need_reorder=False,
                dtype='float32'):
         """
-        Create a memory variable for dynamic rnn.
-
-        If the :code:`init` is not None, :code:`memory` will be initialized by
-        this variable. The :code:`need_reorder` is used to reorder the memory as
-        the input variable. It should be set to true when the initialized memory
-        depends on the input sample.
-
-        The `memory` is used staging data cross time step. The initial value of
-        memory can be zero or another variable.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-
-              sentence = fluid.layers.data(name='sentence', shape=[32], dtype='float32', lod_level=1)
-              boot_memory = fluid.layers.data(name='boot', shape=[10], dtype='float32', lod_level=1)
-              
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  word = drnn.step_input(sentence)
-                  memory = drnn.memory(init=boot_memory, need_reorder=True)
-                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
-                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                  drnn.output(hidden)
-
-              rnn_output = drnn()
-
-
-        Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
-        :code:`memory` will be initialized by this :code:`value`.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-
-              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
-              
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  word = drnn.step_input(sentence)
-                  memory = drnn.memory(shape=[10], dtype='float32', value=0)
-                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
-                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                  drnn.output(hidden)
-
-              rnn_output = drnn()
-
+        Create a memory Variable for DynamicRNN to deliver data cross time step.
+        It can be initialized by a existing Tensor or to a constant Tensor of given
+        dtype and shape.
 
         Args:
-            init(Variable|None): The initialized variable.
-            shape(list|tuple): The memory shape. The shape does not contain batch_size.
-            value(float): the initalized value.
-            need_reorder(bool): True if the initialized memory depends on the input sample.
-            dtype(str|numpy.dtype): The data type of the initialized memory.
+            init (Variable, optional): LoDTensor used to initialize the memory.
+                If init is not None, it should hold the same number of sequences
+                as RNN's input (the input LoDTensor set by :code:`step_input()` )
+                and the memory will be initialized to it. If init's LoD is null,
+                it will be treated as a minibatch with :code:`init.shape[0]`
+                sequences of length 1. The default value is None.
+            shape (list|tuple, optional): When init is None, it is used to specify
+                the memory's shape. Note that the shape does not include the batch_size.
+                If setting shape to :code:`[D1, D2, ...]` , the shape of memory Tensor
+                will be :code:`[batch_size, D1, D2, ...]` , where batch_size is
+                determined by RNN's input sequences. The default value is None.
+            value (float, optional): When init is None, it is used as initalized value
+                of memory. The default value is 0.0.
+            need_reorder (bool, optional): When init is not None, it determines whether
+                the memory need to reorder like the RNN's input sequeneces. It should be
+                set to True when the initialized memory depends on the order of input samples.
+                The default value is False.
+            dtype (str|numpy.dtype, optional): When init is None, it is used to set the
+                data type of memory. Optional data types are: "float32", "float64", "int32", "int64".
 
         Returns:
-            The memory variable.
+            Variable: The memory LoDTensor after shrinked.  If there are :code:`num_sequences` \
+                sequences in RNN's input LoDTensor of which the length is larger than :code:`step_idx` , \
+                the memory Tensor also need to be shrinked and will only retain data \
+                corresponding to those :code:`num_sequences` sequences.
+
+        Raises:
+            ValueError: When :code:`memory()` is called outside :code:`block()` .
+            TypeError: When init is set and is not a Variable.
+            ValueError: When :code:`memory()` is called before :code:`step_input()` .
+
+        Examples 1:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+                boot_memory = fluid.data(name='boot', shape=[None, 10], dtype='float32')
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    word = drnn.step_input(sentence)
+                    # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                    memory = drnn.memory(init=boot_memory, need_reorder=True)
+                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Set hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
+
+
+        Examples 2:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    word = drnn.step_input(sentence)
+                    # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 10], where batch_size is the number of sequences in sentence.
+                    memory = drnn.memory(shape=[10], dtype='float32', value=0)
+                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Set hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
