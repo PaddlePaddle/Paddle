@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
+import os
 import logging
 import tarfile
-import os
+
+import random
 
 import paddle
 import paddle.fluid.incubate.data_generator as data_generator
@@ -61,14 +63,18 @@ def load_lr_input_record(sent):
 
 class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
     def generate_sample(self, line):
+        def get_rand(low=0.0, high=1.0):
+            return random.random()
+
         def iter():
-            fs = line.strip().split('\t')
-            dnn_input = load_dnn_input_record(fs[0])
-            lr_input = load_lr_input_record(fs[1])
-            click = [int(fs[2])]
-            yield ("dnn_data", dnn_input), \
-                  ("lr_data", lr_input), \
-                  ("click", click)
+            if get_rand() < 0.1:
+                fs = line.strip().split('\t')
+                dnn_input = load_dnn_input_record(fs[0])
+                lr_input = load_lr_input_record(fs[1])
+                click = [int(fs[2])]
+                yield ("dnn_data", dnn_input), \
+                      ("lr_data", lr_input), \
+                      ("click", click)
 
         return iter
 
