@@ -275,7 +275,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
 
     Examples Results:
 
-        .. code-block:: python
+        .. code-block:: text
 
             #### Examples Results ####
             #### 1) sorted_key = 'total', 'calls', 'max', 'min', 'ave' ####
