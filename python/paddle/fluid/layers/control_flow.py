@@ -2314,7 +2314,7 @@ class DynamicRNN(object):
                need_reorder=False,
                dtype='float32'):
         """
-        Create a memory Variable for DynamicRNN to deliver data cross time step.
+        Create a memory Variable for DynamicRNN to deliver data cross time steps.
         It can be initialized by a existing Tensor or to a constant Tensor of given
         dtype and shape.
 
@@ -2350,7 +2350,7 @@ class DynamicRNN(object):
             TypeError: When init is set and is not a Variable.
             ValueError: When :code:`memory()` is called before :code:`step_input()` .
 
-        Examples 1:
+        Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -2374,7 +2374,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
 
 
-        Examples 2:
+        Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -2465,15 +2465,21 @@ class DynamicRNN(object):
 
     def update_memory(self, ex_mem, new_mem):
         """
-        Update the memory from ex_mem to new_mem. NOTE that the shape and data
-        type of :code:`ex_mem` and :code:`new_mem` must be same.
+        Update the memory which need to be delivered across time steps.
         
         Args:
-            ex_mem(Variable): the memory variable.
-            new_mem(Variable): the plain variable generated in RNN block.
+            ex_mem (Variable): The memory data of previous time step.
+            new_mem (Variable): The new memory data produced in current time step.
+                The shape and data type of ex_mem and new_mem should be the same.
 
         Returns:
             None
+        
+        Raises:
+            ValueError: When :code:`update_memory()` is called outside :code:`block()` .
+            TypeError: When :code:`ex_mem` or :code:`new_mem` is not a Variable.
+            ValueError: When :code:`ex_mem` is defined by :code:`memory()` .
+            ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
         if not isinstance(ex_mem, Variable):
@@ -2493,13 +2499,17 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        Mark the RNN output variables. The dynamic RNN can mark multiple variables as its output.
+        This function is used to set :code:`outputs` as RNN's output. 
 
         Args:
-            outputs: The output variables.
+            *outputs (Variable ...): The output Tensor. DynamicRNN can mark multiple
+                Variables as its output.
 
         Returns:
             None
+
+        Raises:
+            ValueError: When :code:`output()` is called outside :code:`block()` .
         """
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
