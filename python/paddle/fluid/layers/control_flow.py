@@ -154,17 +154,18 @@ def Print(input,
 
     Args:
         input (Variable): A Tensor to print.
-        summarize (int): Print this number of elements in the tensor, will print
-                all if left is negative.
+        summarize (int): Number of elements in the tensor to be print. If it's
+                vaule is -1, then all elements in the tensor will be print.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
-        print_tensor_name (bool): Print the tensor name.
-        print_tensor_type (bool): Print the tensor type.
-        print_tensor_shape (bool): Print the tensor shape.
-        print_tensor_lod (bool): Print the tensor lod.
+        print_tensor_name (bool, optional): Print the tensor name. Default: True.
+        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
-                'backward' and 'both'. If set to 'backward' or 'both', will
-                print the gradients of input tensor.
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will 
+                only print the gradients of input tensor; If set to 'both', will
+                both print the input tensor itself and the gradients of input tensor.
 
     Returns:
         Variable: Output tensor.
@@ -189,16 +190,12 @@ def Print(input,
     Output at runtime:
         .. code-block:: bash 
            
-           1564546375   The content of input layer:     The place is:CPUPlace
+           The content of input layer:     The place is:CPUPlace
            Tensor[fill_constant_0.tmp_0]
                shape: [10,2,]
                dtype: x
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
-           # The information of dtype at runtime may vary in different environments.
-           # Eg: 
-           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
-           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -2374,8 +2371,8 @@ def is_empty(x, cond=None):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result
-                              of given 'x'. Default: None
+        cond (Variable, optional): Output parameter. Default: None. If this parameter is given, it
+                              saves the test result of given 'x'.
 
     Returns:
         Variable: A bool scalar. True if 'x' is an empty Variable.
