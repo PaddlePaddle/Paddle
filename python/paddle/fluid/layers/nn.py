@@ -11048,7 +11048,7 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 @templatedoc()
 def swish(x, beta=1.0, name=None):
     """
-    Elementwise swish activation function. Se `Searching for Activation Functions <https://arxiv.org/abs/1710.05941>`_ for more details.
+    Elementwise swish activation function. See `Searching for Activation Functions <https://arxiv.org/abs/1710.05941>`_ for more details.
     
     Equation:
 
@@ -11056,15 +11056,15 @@ def swish(x, beta=1.0, name=None):
         out = \\frac{x}{1 + e^{- beta * x}}
     
     Args:
-        x(Variable): dtype: float32 or float64, the input.
+        x(Variable): Tensor or LoDTensor, dtype: float32 or float64, the input of swish activation.
         
         beta(float): Constant beta of swish operator, default 1.0.
         
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
 
-        Variable: Output of the swish activation, with the same dtype and shape with the input x.
+        Variable: Output of the swish activation, Tensor or LoDTensor, with the same dtype and shape with the input x.
 
     Examples:
 
