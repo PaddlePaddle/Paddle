@@ -13,31 +13,35 @@
 # limitations under the License.
 
 from __future__ import print_function
+
+import time
 import unittest
-from test_dist_base import TestDistBase
-import os
+import numpy as np
+
+import paddle.fluid.core as core
+import paddle.fluid as fluid
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
+class TestFetchHandler(unittest.TestCase):
+    def test_fetch_handler(self):
+        place = core.CPUPlace()
+        scope = core.Scope()
 
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
+        table = np.random.random((3, 10)).astype("float32")
 
-    return __func__
+        class FH(fluid.executor.FetchHandler):
+            def handler(self, fetch_target_vars):
+                assert len(fetch_target_vars) == 1
 
+        table_var = scope.var('emb').get_tensor()
+        table_var.set(table, place)
 
-class TestDistseResnXt2x2WithMemopt(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = True
-        self._mem_opt = True
-        self._use_reader_alloc = False
+        fh = FH(['emb'], period_secs=2, return_np=True)
+        fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
 
-    @skip_ci
-    def test_dist_train(self):
-        self.check_with_place("dist_se_resnext.py", delta=1e-7)
+        fm.start()
+        time.sleep(10)
+        fm.stop()
 
 
 if __name__ == "__main__":
