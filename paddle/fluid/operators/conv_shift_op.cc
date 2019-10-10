@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
+#include <memory>
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {
@@ -191,12 +192,31 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
     }
   }
 };
+
+class ConvShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("conv_shift_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvShiftGradOpDescMaker);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);
