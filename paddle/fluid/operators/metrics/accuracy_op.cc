@@ -40,12 +40,22 @@ class AccuracyOp : public framework::OperatorWithKernel {
     // Assume indices has same shape as inference, because
     // it's the output of topk.
 
-    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "label's rank must be 2.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2,
+                      "ShapeError: label's dimensions of AccuracyOp must be 2. "
+                      "But received label's dimensions = %d",
+                      label_dim.size());
     PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, label_dim[1], 1,
-                                 "label's second dimension must be 1");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, inference_dim[0], label_dim[0],
-                                 "the inference tensor's num_rows must be"
-                                 " the same as label.");
+                                 "ShapeError: label's second dimension of "
+                                 "AccuracyOp must be 1. But received label's "
+                                 "second dimension is = %d",
+                                 label_dim[1]);
+    PADDLE_INFERSHAPE_ENFORCE_EQ(
+        ctx, inference_dim[0], label_dim[0],
+        "ShapeError:the output's num_rows of AccuracyOp must be"
+        " the same as label's num_rows. But received output's "
+        "shape = [%s], label's shape = [%s], output's num_rows = %d, label's "
+        "num_rows = %d",
+        inference_dim, label_dim, inference_dim[0], label_dim[0]);
 
     ctx->SetOutputDim("Accuracy", {1});
     ctx->SetOutputDim("Correct", {1});
