@@ -285,27 +285,46 @@ def name_scope(prefix=None):
     """
     Generate hierarchical name prefix for the operators.
 
-    Note: This should only used for debugging and visualization purpose.
-    Don't use it for serious analysis such as graph/program transformations.
+    Note: 
+        This should only used for debugging and visualization purpose.
+        Don't use it for serious analysis such as graph/program transformations.
 
     Args:
-        prefix(str): prefix.
+        prefix(str, optional): prefix. Default is none.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
           with fluid.name_scope("s1"):
-              a = fluid.layers.data(name='data', shape=[1], dtype='int32')
-              b = a + 1
-              with fluid.name_scope("s2"):
-                  c = b * 1
-              with fluid.name_scope("s3"):
-                  d = c / 1
+             a = fluid.data(name='data', shape=[None, 1], dtype='int32')
+             b = a + 1
+             with fluid.name_scope("s2"):
+                c = b * 1
+             with fluid.name_scope("s3"):
+                d = c / 1
           with fluid.name_scope("s1"):
-              f = fluid.layers.pow(d, 2.0)
+                f = fluid.layers.pow(d, 2.0)
           with fluid.name_scope("s4"):
-              g = f - 1
+                g = f - 1
+
+          # Op are created in the default main program.  
+          for op in fluid.default_main_program().block(0).ops:
+              # elementwise_add is created in /s1/
+              if op.type == 'elementwise_add':
+                  assert op.desc.attr("op_namescope") == '/s1/'
+              # elementwise_mul is created in '/s1/s2'
+              elif op.type == 'elementwise_mul':
+                  assert op.desc.attr("op_namescope") == '/s1/s2/'
+              # elementwise_div is created in '/s1/s3'
+              elif op.type == 'elementwise_div':
+                  assert op.desc.attr("op_namescope") == '/s1/s3/'
+              # elementwise_sum is created in '/s4'
+              elif op.type == 'elementwise_sub':
+                  assert op.desc.attr("op_namescope") == '/s4/'
+              # pow is created in /s1_1/
+              elif op.type == 'pow':
+                  assert op.desc.attr("op_namescope") == '/s1_1/'
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
