@@ -773,10 +773,10 @@ def has_inf(x):
     Test if any of x contains an infinity number
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is infinity number in x or not.
     
     Examples:
         .. code-block:: python
@@ -797,10 +797,10 @@ def has_nan(x):
     Test if any of x contains a NAN
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
     
     Examples:
         .. code-block:: python
@@ -896,18 +896,21 @@ def range(start, end, step, dtype):
 
 def linspace(start, stop, num, dtype):
     """
-    Return fixed number of evenly spaced values within a given interval.
-
-    First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.
+    This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
-        start(float|Variable): First entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
-        stop(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
-        num(int|Variable): Number of entry in the sequence. It is an int scalar, or a tensor of shape [1] with type int32.
-        dtype(string): 'float32'|'float64', the data type of the output tensor.
+        start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        stop(float|Variable): The input :attr:`stop` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
+            or a tensor of shape [1] with type int32.
+        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
 
     Returns:
-        Variable: The tensor variable storing a 1-D tensor. 
+        Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
+        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
+        the value with input :attr:`start`. 
 
     Examples:
         .. code-block:: python
@@ -939,23 +942,24 @@ def linspace(start, stop, num, dtype):
 
 def zeros_like(x, out=None):
     """
-    **zeros_like**
-
-    This function creates a zeros tensor which has identical shape and dtype 
+    This OP creates a zeros tensor which has identical shape and dtype 
     with `x`.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype.
-        out(Variable): The output tensor.
+        x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
+        out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
+            this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
+            The defalut value is :attr:`None` .
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \
+            the output value is False, otherwise is zero. The output shape is the same as the input.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
     """
@@ -971,15 +975,15 @@ def zeros_like(x, out=None):
 
 def diag(diagonal):
     """
-    **diag**
-
-    This function creates a square matrix which has diagonal values specified by `diagonal`.
+    This OP creates a square matrix which has diagonal values specified by input :attr:`diagonal`.
 
     Args:
-        diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
+        diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
+            specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
 
     Returns:
-        Variable: The tensor variable storing the square matrix.
+        Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
+            the diagonal values specified by input :attr:`diagonal`. the output shape is :math:`[N, N]` with two dims.
 
     Examples:
         .. code-block:: python
@@ -990,7 +994,9 @@ def diag(diagonal):
 
           import paddle.fluid as fluid
           import numpy as np
-          data = fluid.layers.diag(np.arange(3, 6, dtype='int32')) 
+          diagonal = np.arange(3, 6, dtype='int32')
+          data = fluid.layers.diag(diagonal)
+          # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
 
