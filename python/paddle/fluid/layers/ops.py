@@ -79,16 +79,16 @@ softshrink.__doc__ = """
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases}
-            x - \alpha, \text{if } x > \alpha \\
-            x + \alpha, \text{if } x < -\alpha \\
-            0,  \text{otherwise}
-            \end{cases}
+    out = \\begin{cases}
+            x - \\alpha, \\text{if } x > \\alpha \\\\
+            x + \\alpha, \\text{if } x < -\\alpha \\\\
+            0,  \\text{otherwise}
+            \\end{cases}
 
 
 Args:
-    x: Input of Softshrink operator
-    alpha (FLOAT): non-negative offset
+    x - Input of Softshrink operator, an N-D Tensor, with data type float32, float64 or float16.
+    alpha (float) - the alpha value of the formula.
     
 Returns:
     Output of Softshrink operator
@@ -97,7 +97,7 @@ Examples:
     .. code-block:: python
     
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[784])
+        data = fluid.data(name="input", shape=[784])
         result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
 

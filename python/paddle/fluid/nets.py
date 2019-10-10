@@ -184,8 +184,8 @@ def img_conv_group(input,
             library is installed. Default: True
 
     Return:
-        The final result after serial computation using Convolution2d,
-        BatchNorm, DropOut, and Pool2d.
+        A Variable holding Tensor representing the final result after serial computation using Convolution2d,
+        BatchNorm, DropOut, and Pool2d, whose data type is the same with input.
 
     Examples:
         .. code-block:: python
