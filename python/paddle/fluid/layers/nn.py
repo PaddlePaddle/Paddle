@@ -238,24 +238,24 @@ def fc(input,
     """
     **Fully Connected Layer**
 
-    This function creates a fully connected layer in the network. It can take
-    one or multiple tensors as its inputs(input can be a list of Variable, see
-    Args in detail). It creates a variable called weights for each input tensor,
+    This operator creates a fully connected layer in the network. It can take
+    a Tensor(or LoDTensor) or a list of Tensor(or LoDTensor) as its inputs(see
+    Args in detail). It creates a variable called weight for each input Tensor,
     which represents a fully connected weight matrix from each input unit to
-    each output unit. The fully connected layer multiplies each input tensor
-    with its corresponding weight to produce an output Tensor with shape [M, `size`],
-    where M is batch size. If multiple input tensors are given, the results of
-    multiple output tensors with shape [M, `size`] will be summed up. If bias_attr
+    each output unit. The fully connected layer multiplies each input Tensor
+    with its corresponding weight to produce an output Tensor with shape :math:`[M, size]` ,
+    where M is batch size. If a list of Tensor is given, the results of
+    multiple output Tensors with shape :math:`[M, size]` will be summed up. If :attr:`bias_attr`
     is not None, a bias variable will be created and added to the output.
-    Finally, if activation is not None, it will be applied to the output as well.
+    Finally, if :attr:`act` is not None, it will be applied to the output as well.
 
-    When the input is single tensor:
+    When the input is a single Tensor(or LoDTensor):
 
     .. math::
 
         Out = Act({XW + b})
 
-    When the input are multiple tensors:
+    When the input is a list of Tensor(or LoDTensor):
 
     .. math::
 
@@ -268,13 +268,24 @@ def fc(input,
     * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
     * :math:`b`: The bias parameter created by this layer (if needed).
     * :math:`Act`: The activation function.
-    * :math:`Out`: The output tensor.
-
-    See below for an example.
+    * :math:`Out`: The output Tensor.
 
     .. code-block:: text
 
-        Given:
+        Case 1:
+        Given a single Tensor data_1, and num_flatten_dims = 2:
+            data_1.data = [[[0.1, 0.2],
+                            [0.3, 0.4]]]
+            data_1.shape = (1, 2, 2) # 1 is batch_size
+
+            out = fluid.layers.fc(input=data_1, size=1, num_flatten_dims=2)
+
+        Then output is:
+            out.data = [[0.83234344], [0.34936576]]
+            out.shape = (1, 2, 1)
+
+        Case 2:
+        Given a list of Tensor:
             data_1.data = [[[0.1, 0.2],
                            [0.3, 0.4]]]
             data_1.shape = (1, 2, 2) # 1 is batch_size
@@ -289,43 +300,46 @@ def fc(input,
             out.shape = (1, 2)
 
     Args:
-        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
-            the input tensor(s) is at least 2.
-        size(int): The number of output units in this layer.
-        num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
+        input (Variable|list of Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` or
+            a list of Tensor(or LoDTensor). The dimensions of the input Tensor is at least 2 and the data
+            type should be float32 or float64.
+        size(int): The number of output units in this layer, which also means the feature size of ouput
+            Tensor(or LoDTensor).
+        num_flatten_dims (int): The fc layer can accept an input Tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
-            into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
-            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
+            into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
+            Tensor is flattened: the first :attr:`num_flatten_dims` (inclusive, index starts from 1)
             dimensions will be flatten to form the first dimension of the final matrix (height of
-            the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
-            form the second dimension of the final matrix (width of the matrix). For example, suppose
-            `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
-            parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        act (str, default None): Activation to be applied to the output of this layer.
-        name (str, default None): The name of this layer.
+            the matrix), and the rest :math:`rank(X) - num\_flatten\_dims` dimensions are flattened to
+            form the second dimension of the final matrix (width of the matrix). For example, assuming that
+            X is a 5-dimensional Tensor with a shape [2, 3, 4, 5, 6], and :attr:`num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1.
+        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+            sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The transformation result.
+        Variable: Tensor or LoDTensor calculated by fc layer. The data type is same with input.
 
     Raises:
-        ValueError: If rank of the input tensor is less than 2.
+        ValueError: If dimensions of the input Tensor is less than 2.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
           # when input is single tensor
-          data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          data = fluid.data(name="data", shape=[-1, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
 
           # when input are multiple tensors
-          data_1 = fluid.layers.data(name="data_1", shape=[32, 32], dtype="float32")
-          data_2 = fluid.layers.data(name="data_2", shape=[24, 36], dtype="float32")
+          data_1 = fluid.data(name="data_1", shape=[-1, 32], dtype="float32")
+          data_2 = fluid.data(name="data_2", shape=[-1, 36], dtype="float32")
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
     helper = LayerHelper("fc", **locals())
@@ -462,42 +476,110 @@ def embedding(input,
               param_attr=None,
               dtype='float32'):
     """
-    **Embedding Layer**
 
-    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
-    a lookup table. The result of this lookup is the embedding of each ID in the
-    :attr:`input`.
+    **WARING:** This OP will be deprecated in a future release. This OP requires the
+    last dimension of Tensor shape must be equal to 1. It is recommended to use
+    fluid. :ref:`api_fluid_embedding` .
 
-    All the input variables are passed in as local variables to the LayerHelper
-    constructor.
+    The operator is used to lookup embeddings vector of ids provided by :attr:`input` .
+    It automatically constructs a 2D embedding matrix based on the
+    input :attr:`size` (vocab_size, emb_size) and :attr:`dtype` .
+
+    This OP requires the last dimension of Tensor shape must be equal to 1. The shape
+    of output Tensor is generated by replacing the last dimension of the input Tensor shape
+    with emb_size.
+
+    **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` , 
+    otherwise the program will throw an exception and exit.
+
+    .. code-block:: text
+
+        Case 1:
+
+        input is a Tensor. padding_idx = -1
+            input.data = [[[1], [3]], [[2], [4]], [[4], [127]]]
+            input.shape = [3, 2, 1]
+        Given size = [128, 16]
+        output is a Tensor:
+            out.shape = [3, 2, 16]
+            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
+                        [0.345421456, 0.524563927, ..., 0.144534654]],
+
+                        [[0.345249859, 0.124939536, ..., 0.194353745],
+                        [0.945345345, 0.435394634, ..., 0.435345365]],
+                        
+                        [[0.945345345, 0.435394634, ..., 0.435345365],
+                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+        The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
+        It will pad all-zero data when ids is 127.
+        
+        Case 2:
+
+        input is a LoDTensor with 1-level LoD. padding_idx = 0
+            input.lod = [[2, 3]]
+            input.data = [[1], [3], [2], [4], [0]]
+            input.shape = [5, 1]
+        Given size = [128, 16]
+        output is a LoDTensor:
+            out.lod = [[2, 3]]
+            out.shape = [5, 16]
+            out.data = [[0.129435295, 0.244512452, ..., 0.436322452],
+                        [0.345421456, 0.524563927, ..., 0.144534654],
+                        [0.345249859, 0.124939536, ..., 0.194353745],
+                        [0.945345345, 0.435394634, ..., 0.435345365],
+                        [0.0,         0.0,         ..., 0.0        ]]  # padding data
+        It will pad all-zero data when ids is 0.
 
     Args:
-        input(Variable): Input is a Tensor<int64> Variable, which contains the IDs information.
-            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
-        size(tuple|list): The shape of the look up table parameter. It should
-            have two elements which indicate the size of the dictionary of
-            embeddings and the size of each embedding vector respectively.
-        is_sparse(bool): The flag indicating whether to use sparse update.
-        is_distributed(bool): Whether to run lookup table from remote parameter server.
-        padding_idx(int|long|None): It will output all-zero padding data whenever
-            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
-            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
-            will automatically be converted to :math:`size[0] + padding\_idx` to use.
-            Default: None.
-        param_attr(ParamAttr): Parameters for this layer.
-        dtype(np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
-            tensor. It can be float32, float_16, int etc.
+        input(Variable): A Tensor or LoDTensor with type int64, which contains the id information.
+            The last dimension of Tensor shape must be equal to 1. The value of the input id should
+            satisfy :math:`0<= id < size[0]` .
+        size(tuple|list): The shape of lookup table parameter. It should have two elements which
+            indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
+            affects the performance of the backwards gradient update. It is recommended to set 
+            True because sparse update is faster. But some optimizer does not support sparse update,
+            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` , 
+            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
+            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
+            In these case, is_sparse must be False. Default: False.
+        is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
+            in multi-machine distributed CPU training. Default: False.
+        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size). 
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If set None, it makes no effect to output. Default: None.
+        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
+            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
+            The local word vector needs to be transformed into numpy format, and the shape of local word
+            vector shoud be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            is used to load custom or pre-trained word vectors. See code example 2 for details.
+        dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor.
+            It must be float32 or float64. Default: float32.
 
     Returns:
-        Variable: The tensor variable storing the embeddings of the \
-                  supplied inputs.
+        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
-          emb = fluid.layers.embedding(input=data, size=[128, 64])    
+          import numpy as np
+          data = fluid.data(name='x', shape=[None, 1], dtype='int64')
+
+          # exampel 1
+          emb_1 = fluid.embedding(input=data, size=[128, 64])
+
+          # example 2: load custom or pre-trained word vectors
+          weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
+          w_param_attrs = fluid.ParamAttr(
+              name="emb_weight",
+              learning_rate=0.5,
+              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
+              trainable=True)
+          emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')   
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -2066,24 +2148,25 @@ def sequence_conv(input,
                   act=None,
                   name=None):
     """
-    The sequence_conv receives input sequences with variable length and other convolutional
-    configuration parameters for the filter and stride to apply the convolution operation.
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+
+    This operator receives input sequences with variable length and other convolutional
+    configuration parameters(num_filters, filter_size) to apply the convolution operation.
     It fills all-zero padding data on both sides of the sequence by default to ensure that
     the output is the same length as the input. You can customize the padding behavior by
-    configuring the parameter :attr:`padding\_start`.
+    configuring the parameter :attr:`padding\_start` .
     
     **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
 
     .. code-block:: text
 
-            Here we'll illustrate the details of the padding operation:
+            Here we will illustrate the details of the padding operation:
             For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
-            Assumed input (X) is a [4, M, N] float LoDTensor, and X->lod()[0] = [0, 3, 4].
-            Besides, for the sake of simplicity, we assume M=1 and N=2.
-            X = [[a1, a2;
-                  b1, b2;
-                  c1, c2]
-                 [d1, d2]]
+            Assumed input (X) is a [4, N] float LoDTensor, and for the sake of simplicity, we assume N=2.
+            input.data = [[1, 1],
+                          [2, 2],
+                          [3, 3],
+                          [4, 4]]
 
             This is to say that input (X) has 4 words and the dimension of each word
             representation is 2.
@@ -2096,25 +2179,36 @@ def sequence_conv(input,
                 down_pad_len = max(0, filter_size + padding_start - 1) = 1
 
                 The output of the input sequence after padding is:
-                data_aftet_padding = [[0,  0,  a1, a2, b1, b2;
-                                       a1, a2, b1, b2, c1, c2;
-                                       b1, b2, c1, c2, 0,  0 ]
-                                      [0,  0,  d1, d2, 0,  0 ]]
+                data_aftet_padding = [[0, 0, 1, 1, 2, 2],
+                                      [1, 1, 2, 2, 3, 3],
+                                      [2, 2, 3, 3, 0, 0],
+                                      [0, 0, 4, 4, 0, 0]]
 
                 It will be multiplied by the filter weight to get the final output.
+                Assume num_filters = 3
+                output.data = [[ 0.3234, -0.2334,  0.7433],
+                               [ 0.5646,  0.9464, -0.1223],
+                               [-0.1343,  0.5653,  0.4555],
+                               [ 0.9954, -0.1234, -0.1234]]
+                output.shape = [4, 3]     # 3 = num_filters
+                output.lod = [[0, 3, 4]]  # Remain the same
+
 
     Args:
-        input (Variable): ${x_comment}
+        input (Variable): LoDTensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
+            and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
+            float64.
         num_filters (int): the number of filters.
-        filter_size (int): the height of filter, the width is hidden size by default.
+        filter_size (int): the height of filter. Specified filter width is not supported, the width is
+            hidden_size by default. Default: 3.
         filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
         padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
             future. Currently, it will always pad input to make sure the length of the output is
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
-            while trainnig. 
-        padding_start (int|None): It is used to indicate the start index for padding the input
+            while trainnig. Default: True.
+        padding_start (int): It is used to indicate the start index for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
             The positive number means to skip :attr:`padding_start` time-steps of each instance,
@@ -2122,23 +2216,18 @@ def sequence_conv(input,
             at the end of the sequence to ensure that the output is the same length as the input.
             If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
-            is padded at the end of each input sequence.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, sequence_conv
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-            of sequence_conv. If it is set to None or one attribute of ParamAttr, sequence_conv
-            will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
+            is padded at the end of each input sequence. Default: None.
+        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+            sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: output of sequence_conv
+        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
 
     Examples:
 
@@ -2146,7 +2235,7 @@ def sequence_conv(input,
 
              import paddle.fluid as fluid
 
-             x = fluid.layers.data(name='x', shape=[10,10], append_batch_size=False, dtype='float32')
+             x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
              x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
@@ -2823,63 +2912,87 @@ def conv3d(input,
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
-    This function add the operator for sequence pooling.
-    It pools features of all time-steps of each instance, and is applied
-    on top of the input using pool_type mentioned in the parameters.
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
-    It supports four pool_type:
+    This operator only supports LoDTensor as input. It will apply specified pooling
+    operation on the input LoDTensor. It pools features of all time-steps of each
+    sequence at the last lod_level using :attr:`pool_type` mentioned in the parameters,
+    such as sum, average, sqrt, etc.
+
+    It supports six pool_type:
 
     - average: :math:`Out[i] = \\frac{\sum_i X_i}{N}`
     - sum:     :math:`Out[i] = \sum_jX_{ij}`
     - sqrt:    :math:`Out[i] = \\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}`
     - max:     :math:`Out[i] = max(X_i)`
+    - last:    :math:`Out[i] = X_{N_i}`
+    - first:   :math:`Out[i]` = X_0
+
+    where :math:`N_i` is the length of i-th input sequence.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor and **pad_value** = 0.0:
-         x.lod = [[2, 3, 2, 0]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+        Case 1:
+        input is a 1-level LoDTensor and pad_value = 0.0:
+            input.lod = [[0, 2, 5, 7, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [4, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
+        output is LoDTensor:
+            out.shape = [4, 1]
+            with condition out.shape[0] == len(x.lod[-1]) == 4
 
-       for different pool_type:
-         average: out.data = [2, 4, 3, 0.0], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
-         sum    : out.data = [4, 12, 6, 0.0], where 4=1+3, 12=2+4+6, 6=5+1
-         sqrt   : out.data = [2.82, 6.93, 4.24, 0.0], where 2.82=(1+3)/sqrt(2),
-                    6.93=(2+4+6)/sqrt(3), 4.24=(5+1)/sqrt(2)
-         max    : out.data = [3, 6, 5, 0.0], where 3=max(1,3), 6=max(2,4,6), 5=max(5,1)
-         last   : out.data = [3, 6, 1, 0.0], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
-         first  : out.data = [1, 2, 5, 0.0], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+        for different pool_type:
+            average: out.data = [[2.], [4.], [3.], [0.0]], where 2.=(1. + 3.)/2, 4.=(2. + 4. + 6.)/3, 3.=(5. + 1.)/2
+            sum    : out.data = [[4.], [12.], [6.], [0.0]], where 4.=1. + 3., 12.=2. + 4. + 6., 6.=5. + 1.
+            sqrt   : out.data = [[2.82], [6.93], [4.24], [0.0]], where 2.82=(1. + 3.)/sqrt(2), 6.93=(2. + 4. + 6.)/sqrt(3), 4.24=(5. + 1.)/sqrt(2)
+            max    : out.data = [[3.], [6.], [5.], [0.0]], where 3.=max(1., 3.), 6.=max(2., 4., 6.), 5.=max(5., 1.)
+            last   : out.data = [[3.], [6.], [1.], [0.0]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
+            first  : out.data = [[1.], [2.], [5.], [0.0]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
 
-         and all above 0.0 = **pad_value**.
+            and all above [0.0] at last of out.data is padding data.
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        If pool_typ = sum, it will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            where out.shape[0] == len(x.lod[-1]) == 5
+            sum: out.data = [[1.], [5.], [4.], [0.0], [12.]]
+            where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
 
     Args:
-        input (variable): The input variable which is a LoDTensor.
-        pool_type (string): The pooling type of sequence_pool.
-            It supports average, sum, sqrt and max.
-        is_test (bool): Used to distinguish training from scoring mode. Default False.
-        pad_value (float): Used to pad the pooling result for empty input sequence.
+        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
+        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
+            created to record the index information corresponding to the maximum value, which is used for backward
+            gradient calculation in the training phase. Default: False.
+        pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        The sequence pooling variable which is a Tensor.
+        Variable: LoDTensor after pooling with data type float32.
 
     Examples:
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
-             avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
-             sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
-             sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
-             max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
-             last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
-             first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
+            sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
+            sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
+            max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
+            last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
+            first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -2910,23 +3023,46 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 @templatedoc()
 def sequence_concat(input, name=None):
     """
-    ${comment}
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
+
+    This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
+    and outputs the concatenated LoDTensor.
+
+    .. code-block:: text
+
+        input is a list of LoDTensor:
+            input = [x1, x2]
+        where:
+            x1.lod = [[0, 3, 5]]
+            x1.data = [[1], [2], [3], [4], [5]]
+            x1.shape = [5, 1]
+
+            x2.lod = [[0, 2, 4]]
+            x2.data = [[6], [7], [8], [9]]
+            x2.shape = [4, 1]
+        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
+
+        output is LoDTensor:
+            out.lod = [[0, 3+2, 5+4]]
+            out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
+            out.shape = [9, 1]
 
     Args:
-        input(list): List of Variables to be concatenated.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor should be same.
+            The data type can be float32, float64 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: Output variable of the concatenation.
+        Variable: Output the concatenated LoDTensor. The data type is same as input.
 
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
-           x = fluid.layers.data(name='x', shape=[10], dtype='float32')
-           y = fluid.layers.data(name='y', shape=[10], dtype='float32')
-           out = fluid.layers.sequence_concat(input=[x, y])
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
+            y = fluid.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
+            out = fluid.layers.sequence_concat(input=[x, y])
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -2939,33 +3075,51 @@ def sequence_concat(input, name=None):
 
 def sequence_first_step(input):
     """
-    This function gets the first step of sequence.
+    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    select first time-step feature of each sequence as output.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+       Case 1:
+        input is 1-level LoDTensor:
+            input.lod = [[0, 2, 5, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [3, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
-         out.data = [1, 2, 5], where 1=first(1,3), 2=first(2,4,6), 5=first(5,1)
+        output is a LoDTensor:
+            out.shape = [3, 1]
+            out.shape[0] == len(x.lod[-1]) == 3
+            out.data = [[1.], [2.], [5.]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is a LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            out.shape[0] == len(x.lod[-1]) == 5
+            out.data = [[1.], [3.], [4.], [0.0], [6.]]
+            where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        The sequence's first step variable which is a Tensor.
+        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
     return sequence_pool(input=input, pool_type="first")
@@ -2973,33 +3127,52 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
-    This function gets the last step of sequence.
+    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
+    select last time-step feature of each sequence as output.
 
     .. code-block:: text
 
-       x is a 1-level LoDTensor:
-         x.lod = [[2, 3, 2]]
-         x.data = [1, 3, 2, 4, 6, 5, 1]
-         x.dims = [7, 1]
+        Case 1:
+        input is 1-level LoDTensor:
+            input.lod = [[0, 2, 5, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
 
-       then output is a Tensor:
-         out.dim = [3, 1]
-         with condition len(x.lod[-1]) == out.dims[0]
-         out.data = [3, 6, 1], where 3=last(1,3), 6=last(2,4,6), 1=last(5,1)
+        output is a LoDTensor:
+            out.shape = [3, 1]
+            out.shape[0] == len(x.lod[-1]) == 3
+            out.data = [[3.], [6.], [1.]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
+
+        Case 2:
+        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
+        where 0 means empty sequence.
+        The first sequence contains 2 subsequence with length info [1, 2];
+        The last sequence contains 3 subsequence with length info [1, 0, 3].
+            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
+            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            input.shape = [7, 1]
+
+        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
+        output is a LoDTensor:
+            out.shape= [5, 1]
+            out.lod = [[0, 2, 2, 5]]
+            out.shape[0] == len(x.lod[-1]) == 5
+            out.data = [[1.], [2.], [4.], [0.0], [1.]]
+            where 1.=last(1.), 2.=last(3., 2.), 4.=last(4.), 0.0 = pad_value, 1=last(6., 5., 1.)
+
 
     Args:
-        input(variable): The input variable which is a LoDTensor.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        The sequence's last step variable which is a Tensor.
+        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
+             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
     return sequence_pool(input=input, pool_type="last")
@@ -6677,51 +6850,47 @@ def warpctc(input,
 
 def sequence_reshape(input, new_dim):
     """
-    **Sequence Reshape Layer**
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
-    This layer will rearrange the input sequences. The new dimension is set by
-    user. Length of each sequence is computed according to original length,
-    original dimension and new dimension. The following example will help to
-    illustrate the function of this layer:
+    This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
+    it will compute new shape according to original length of each sequence,
+    original dimensions and :attr:`new_dim` . Then it will output a new LoDTensor
+    containing :attr:`new_dim` . Currently it only supports 1-level LoDTensor.
+    Please make sure that (original length * original dimensions) can be divided
+    by the :attr:`new_dim` with no remainder for each sequence.
 
     .. code-block:: text
 
-        x is a LoDTensor:
-            x.lod  = [[0, 2, 6]]
-            x.data = [[1,  2], [3,  4],
-                      [5,  6], [7,  8],
-                      [9, 10], [11, 12]]
-            x.dims = [6, 2]
+        input is a LoDTensor:
+            input.lod  = [[0, 2, 6]]
+            input.data = [[1,  2], [3,  4],
+                          [5,  6], [7,  8],
+                          [9, 10], [11, 12]]
+            input.shape = [6, 2]
 
         set new_dim = 4
-
-        then out is a LoDTensor:
-
+        out is a LoDTensor:
             out.lod  = [[0, 1, 3]]
-
             out.data = [[1,  2,  3,  4],
                         [5,  6,  7,  8],
                         [9, 10, 11, 12]]
-            out.dims = [3, 4]
+            out.shape = [3, 4]
 
-    Currently, only 1-level LoDTensor is supported and please make sure
-    (original length * original dimension) can be divided by new dimension with
-    no remainder for each sequence.
 
     Args:
 
-       input (Variable): A 2-D LoDTensor with shape being [N, M] where M for dimension.
+       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type should
+            be int32, int64, float32 or float64.
        new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
     Returns:
-
-        Variable: Reshaped LoDTensor according to new dimension.
+        Variable: Reshaped LoDTensor according to new dimension. The data type is same as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], append_batch_size=False, dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
             x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
     """
     assert not in_dygraph_mode(), (
@@ -7753,25 +7922,83 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
 
 def one_hot(input, depth, allow_out_of_range=False):
     """
-    This layer creates the one-hot representations for input indices.
+
+    **WARING:** This OP requires the last dimension of Tensor shape must be equal to 1.
+    This OP will be deprecated in a future release. It is recommended to use fluid. :ref:`api_fluid_one_hot` .
+
+    The operator converts each id in the input to an one-hot vector with a
+    :attr:`depth` length. The value in the vector dimension corresponding to the id
+    is 1, and the value in the remaining dimension is 0.
+
+    The shape of output Tensor or LoDTensor is generated by adding :attr:`depth` dimension
+    behind the last dimension of the input shape.
+
+    .. code-block:: text
+
+        Example 1 (allow_out_of_range=False):
+
+        input:
+            X.shape = [4, 1]
+            X.data = [[1], [1], [3], [0]]
+            depth = 4
+
+        output:
+            Out.shape = [4, 4]
+            Out.data = [[0., 1., 0., 0.],
+                        [0., 1., 0., 0.],
+                        [0., 0., 0., 1.],
+                        [1., 0., 0., 0.]]
+
+        Example 2 (allow_out_of_range=True):
+
+        input:
+            X.shape = [4, 1]
+            X.data = [[1], [1], [5], [0]]
+            depth = 4
+            allow_out_of_range = True
+
+        output:
+            Out.shape = [4, 4]
+            Out.data = [[0., 1., 0., 0.],
+                        [0., 1., 0., 0.], 
+                        [0., 0., 0., 0.], # This id is 5, which goes beyond depth, so set it all-zeros data.
+                        [1., 0., 0., 0.]]
+
+        Example 3 (allow_out_of_range=False):
+
+        input:
+            X.shape = [4, 1]
+            X.data = [[1], [1], [5], [0]]
+            depth = 4
+            allow_out_of_range = False
+
+        output: Throw an exception for Illegal value
+            The second dimension in X is 5, which is greater than depth.  
+            Allow_out_of_range =False means that does not allow the word id to exceed depth,
+            so it throws an exception.
 
     Args:
-        input(Variable): Input indices, last dimension must be 1.
-        depth(scalar): An interger defining the depth of the one-hot dimension.
+        input(Variable): Tensor or LoDTensor with shape :math:`[N_1, N_2, ..., N_k, 1]` ,
+            which contains at least one dimension and the last dimension must be 1.
+            The data type is int32 or int64.
+        depth(scalar): An integer defining the :attr:`depth` of the one hot dimension. If input 
+            is word id, depth is generally the dictionary size.
         allow_out_of_range(bool): A bool value indicating whether the input
-            indices could be out of range [0, depth). When input indices are
-            out of range, exceptions is raised if allow_out_of_range is False,
-            or zero-filling representations is created if it is set True
+            indices could be out of range :math:`[0, depth)` . When input indices are
+            out of range, exceptions :code:`Illegal value` is raised if :attr:`allow_out_of_range`
+            is False, or zero-filling representations is created if it is set True.
+            Default: False.
 
     Returns:
-        Variable: The one-hot representations of input.
+        Variable: The one-hot representations of input. A Tensor or LoDTensor with type float32.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            one_hot_label = fluid.layers.one_hot(input=label, depth=10)
+            # Correspond to the first example above, where label.shape is [4, 1] and one_hot_label.shape is [4, 4].
+            label = fluid.data(name="label", shape=[4, 1], dtype="int64")
+            one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
     helper = LayerHelper("one_hot", **locals())
 
@@ -13373,20 +13600,46 @@ def space_to_depth(x, blocksize, name=None):
 @templatedoc()
 def sequence_reverse(x, name=None):
     """
-    ${comment}
+    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
+
+    This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
+    Currently it only supports 1-level LoDTensor. This operator is very useful when building a
+    reverse :ref:`api_fluid_layers_DynamicRNN` network.
+
+    .. code-block:: text
+
+        input(x) is a LoDTensor:
+            x.lod  = [[0, 2, 5]]
+            x.data = [[1,  2,  3,  4],
+                      [5,  6,  7,  8],
+                      [9, 10, 11, 12],
+                      [13,14, 15, 16],
+                      [17,18, 19, 20]]
+            x.shape = [5, 4]
+
+        output LoDTensor with same shape and LoD info:
+            out.lod  = [[0, 2, 5]]
+            out.data = [[5,  6,  7,  8],
+                        [1,  2,  3,  4],
+                        [17,18, 19, 20],
+                        [13,14, 15, 16],
+                        [9, 10, 11, 12]]
+            out.shape = [5, 4]
 
     Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
+        x(Variable): LoDTensor with 1-level LoD info. Currently it only supports 1-level LoDTensor.
+            The data type should be float32, float64, int8, int32 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        out(${y_type}): ${y_comment}
+        Variable: LoDTensor reversed from input. The data type is same with input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 6], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
             x_reversed = fluid.layers.sequence_reverse(x)
     """
     assert not in_dygraph_mode(), (
@@ -13974,14 +14227,30 @@ def bilinear_tensor_product(x,
 @templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
-    ${comment}
+    This operator gets tensor data from input with SelectedRows type, and outputs a LoDTensor.
+
+    .. code-block:: text
+
+        input x is SelectedRows:
+           x.rows = [0, 5, 5, 4, 19]
+           x.height = 20
+           x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
+
+        Ouput is LoDTensor:
+           out.shape = [5, 2]
+           out.data = [[1, 1],
+                       [2, 2],
+                       [2, 2],
+                       [3, 3],
+                       [6, 6]]
 
     Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
+        x(SelectedRows): Input with SelectedRows type. The data type is float32, float64, int32 or int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable: LoDTensor transformed from SelectedRows. The data type is same with input.
 
     Examples:
         .. code-block:: python
