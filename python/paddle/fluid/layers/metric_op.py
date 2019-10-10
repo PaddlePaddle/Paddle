@@ -74,8 +74,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
     helper = LayerHelper("accuracy", **locals())
     if not isinstance(input, Variable):
         raise TypeError(
-            "The type of 'input' in softmax must be Variable, but received %s" %
-            (type(input)))
+            "The type of 'input' in accuracy must be Variable, but received %s"
+            % (type(input)))
     if convert_dtype(input.dtype) not in ['float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in accuracy must be float32 or float64, but received %s."
