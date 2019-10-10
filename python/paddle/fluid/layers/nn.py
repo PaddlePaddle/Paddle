@@ -12250,6 +12250,35 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in %s must be Variable, but received %s" %
+            (op_type, type(x)))
+    if not isinstance(y, Variable):
+        raise TypeError(
+            "The type of 'y' in %s must be Variable, but received %s" %
+            (op_type, type(y)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in batch_norm only support float16 on GPU now."
+        )
+    if convert_dtype(y.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'y' in batch_norm only support float16 on GPU now."
+        )
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'x' in batch_norm must be float16 or float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(y.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'y' in batch_norm must be float16 or float32 or float64 or int32 or int64, but received %s."
+            % (convert_dtype(y.dtype)))
+
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
