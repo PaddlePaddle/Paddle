@@ -1771,6 +1771,7 @@ class DynamicRNN(object):
 
     def step_input(self, x, level=0):
         """
+
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
@@ -1779,6 +1780,41 @@ class DynamicRNN(object):
         unfold along specified level, and the slice of each time step is a
         LoDTensor of which the lod_level is :code:`x.lod_level - level - 1` .
         In this case, the specied LoD level of multiple inputs should be the same.
+
+        - Case 1:
+
+        .. code-block:: text
+
+            # input，where Si is slice data of shape [1, N]
+            level = 0
+            x.lod = [[2, 1, 3]]
+            x.shape = [6, N]
+            x.data = [[S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2],
+                      [S2]]
+
+            # output
+            # step 0, time step data of 3 sequences
+            out.lod = [[]]
+            out.shape = [3, N]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
+
+            # step 1, time step data of 2 sequences
+            out.lod = [[]]
+            out.shape = [2, N]
+            out.data = [[S2],
+                        [S0]]
+
+            # step 2, time step data of 1 sequences
+            out.lod = [[]]
+            out.shape = [1, N]
+            out.data = [[S2]]
+
 
         Args:
             x (Variable): The input LoDTensor which holds information of a
@@ -1807,14 +1843,14 @@ class DynamicRNN(object):
 
                 drnn = fluid.layers.DynamicRNN()
                 with drnn.block():
-                    # Set embedding as RNN's input, each time step gets a word from the sentence
+                    # Set embedding as RNN's input, each time step processes a word from the sentence
                     word = drnn.step_input(embedding)
                     # Initialize memory to a Tensor of which the value is 0, shape=[batch_size, 200], where batch_size is the number of sequences in embedding.
                     memory = drnn.memory(shape=[200])
                     hidden = fluid.layers.fc(input=[word, memory], size=200, act='relu')
                     # Update memory to hidden
                     drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                    # Mask hidden as RNN's output
+                    # Set hidden as RNN's output
                     drnn.output(hidden)
 
                 # Get RNN's result
@@ -1865,38 +1901,126 @@ class DynamicRNN(object):
 
     def static_input(self, x):
         """
-        Mark a variable as a RNN input. The input will not be scattered into
-        time steps. It is optional.
+
+        This function is used to set x as DynamicRNN's static input. It is optional.
+
+        - Case 1, set static input with LoD
+
+        .. code-block:: text
+
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[3, 1, 2]]
+            x.shape = [6, M]
+            x.data = [[S0],
+                      [S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2]]
+
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[2, 3, 1]]
+            out.shape = [6, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0],
+                        [S1]]
+
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[2, 3]]
+            out.shape = [5, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0]]
+
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[2]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S2]]
+
+
+        - Case 2, set static input without LoD
+
+        .. code-block:: text
+
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[]]
+            x.shape = [3, M]
+            x.data = [[S0],
+                      [S1],
+                      [S2]]
+
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[]]
+            out.shape = [3, M]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
+
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S0]]
+
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[]]
+            out.shape = [1, M]
+            out.data = [[S2]]
+
 
         Args:
-            x (Variable): The input variable.
+            x (Variable): The static input LoDTensor which should hold the same number of sequences
+                as RNN's input (the input LoDTensor set by :code:`step_input()` ). If the LoD is null,
+                the input x will be treated as a minibatch with :code:`x.shape[0]` sequences of length 1.
 
         Returns:
-            The input variable that can access in RNN.
+            Variable: The input LoDTensor after sorted and shrinked. If there are :code:`num_sequences` \
+                sequences in RNN's input LoDTensor of which the length is larger than :code:`step_idx` , \
+                the static input Tensor will be sorted to the same order as RNN's input and \
+                will only retain data corresponding to those `num_sequences` sequences.
+
+        Raises:
+            ValueError: When :code:`static_input()` is called outside :code:`block()` .
+            TypeError: When x is not a Variable.
+            RuntimeError: When :code:`static_input()` is called before :code:`step_input()` . 
 
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+                import paddle.fluid as fluid
 
-              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
-              encoder_proj = fluid.layers.data(name='encoder_proj', dtype='float32', shape=[32], lod_level=1)
-              decoder_boot = fluid.layers.data(name='boot', dtype='float32', shape=[10], lod_level=1)
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+                encoder_proj = fluid.data(name='encoder_proj', shape=[None, 32], dtype='float32', lod_level=1)
+                decoder_boot = fluid.data(name='boot', shape=[None, 10], dtype='float32')
 
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  current_word = drnn.step_input(sentence)
-                  encoder_word = drnn.static_input(encoder_proj)
-                  hidden_mem = drnn.memory(init=decoder_boot, need_reorder=True)
-                  fc_1 = fluid.layers.fc(input=encoder_word, size=30, bias_attr=False)
-                  fc_2 = fluid.layers.fc(input=current_word, size=30, bias_attr=False)
-                  decoder_inputs = fc_1 + fc_2
-                  h, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=hidden_mem, size=30)
-                  drnn.update_memory(hidden_mem, h)
-                  out = fluid.layers.fc(input=h, size=10, bias_attr=True, act='softmax') 
-                  drnn.output(out)
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    current_word = drnn.step_input(sentence)
+                    # Set encode_projas RNN's static input
+                    encoder_word = drnn.static_input(encoder_proj)
+                    # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                    memory = drnn.memory(init=decoder_boot, need_reorder=True)
+                    fc_1 = fluid.layers.fc(input=encoder_word, size=30)
+                    fc_2 = fluid.layers.fc(input=current_word, size=30)
+                    decoder_inputs = fc_1 + fc_2
+                    hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                    # Set out as RNN's output
+                    drnn.output(out)
 
-              rnn_output = drnn()
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
