@@ -47,26 +47,26 @@ def data(name,
     """
     **Data Layer**
 
-    This function takes in the input and based on whether data has
-    to be returned back as a minibatch, it creates the global variable by using
-    the helper functions. The global variables can be accessed by all the
-    following operators in the graph.
+    This operator creates the global variable The global variables can be
+    accessed by all the following operators in the graph.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Notice: 
+        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
+        a later version. Please use :code:`paddle.fluid.data` .
 
-    Notice that paddle would only use :code:`shape` to infer the shapes of 
-    following variables in the network during compile-time. During run-time, 
-    paddle would not check whether the shape of the feeded data matches the 
-    :code:`shape` settings in this function. 
+        The :code:`paddle.fluid.layers.data` set shape and dtype at compile time
+        but does NOT check the shape or the dtype of feeded data, this
+        :code:`paddle.fluid.data` checks the shape and the dtype of data feeded 
+        by Executor or ParallelExecutor during run time.
 
     Args:
-       name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
-                    True and there is no -1 inside :code:`shape`, it should be 
-                    considered as the shape of the each sample. Otherwise, it
-                    should be considered as the shape of the batched data.  
-       append_batch_size(bool):
+        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+            True and there is no -1 inside :code:`shape`, it should be considered
+            as the shape of the each sample. Otherwise, it should be considered as
+            the shape of the batched data.  
+        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1]. This will 
             be useful to set different batch size at run time.
@@ -74,13 +74,20 @@ def data(name,
             append_batch_size will be enforced to be be False (ineffective)
             because PaddlePaddle cannot set more than 1 unknown number on the
             shape.
-       dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
-       type(VarType): The output type. By default it is LOD_TENSOR.
-       lod_level(int): The LoD Level. 0 means the input data is not a sequence.
-       stop_gradient(bool): A boolean that mentions whether gradient should flow.
+        dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
+            float16, float32, float64, int8, int16, int32, int64, uint8
+        type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
+            VarType.SELECTED_ROWS, VarType.NCCL_IDBy. Default: VarType.LOD_TENSOR.
+        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
+            Default: 0.
+        stop_gradient(bool): A boolean that mentions whether gradient should flow.
+            Default: True. 
 
     Returns:
-        Variable: The global variable that gives access to the data.
+        The global variable that gives access to the data.
+    
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
@@ -531,30 +538,44 @@ def py_reader(capacity,
     """
     Create a Python reader for data feeding in Python
 
-    This layer returns a Reader Variable.
+    This operator returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source. More details :ref:`user_guide_use_py_reader_en` .  When
-    :code:`Executor::Run()` is invoked in C++ side, the data from the generator
-    would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
-    reading process and :code:`Executor::Run()` process can run in parallel
-    using :code:`py_reader`. The :code:`start()` method of the Reader should be
-    called when each pass begins, while the :code:`reset()` method should be
-    called when the pass ends and :code:`fluid.core.EOFException` raises.
-    Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
+    source and feed the data from the data source to the Reader Variable. 
+    When :code:`Executor::Run()` is invoked in C++ side, the data from the 
+    generator would be read automatically. Unlike :code:`DataFeeder.feed()`,
+    the data reading process and :code:`Executor::Run()` process can run in 
+    parallel using :code:`py_reader`. The :code:`start()` method of the Reader
+    should be called when each pass begins, while the :code:`reset()` method 
+    should be called when the pass ends and :code:`fluid.core.EOFException` raises.
+    
+    Notice:
+       :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
+       refer to :ref:`api_fluid_Program` for more details.
+       
+       The :code:`read_file` call needs to be in the program block of :code:`py_reader`.
+       You can refer to :ref:`api_fluid_layers_read_file` for more details.
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       shapes(list|tuple): List of tuples which declaring data shapes.
-       dtypes(list|tuple): List of strs which declaring data type.
+       shapes(list|tuple): List of tuples which declaring data shapes. shapes[i] 
+           represents the i-th data shape. 
+       dtypes(list|tuple): List of strs which declaring data type. supported dtype:
+           bool, float16, float32, float64, int8, int16, int32, int64, uint8.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
-       name(basestring): The prefix Python queue name and Reader name. None will
-            be generated automatically.
-       use_double_buffer(bool): Whether use double buffer or not.
+       name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+       use_double_buffer(bool): Whether use double buffer or not. The double buffer is 
+            for pre-reading the data of the next batch，and copy the data asynchronously 
+            from the CPU to the GPU. Default is True.
 
     Returns:
-       Variable: A Reader from which we can get feeding data.
+       A Reader from which we can get feeding data.
 
+    Return Type:
+       Variable
+    
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
        
@@ -667,7 +688,7 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
+        'Please use paddle.fluid.io.PyReader() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -747,9 +768,6 @@ def create_py_reader_by_data(capacity,
              except fluid.core.EOFException:
                  reader.reset()
     """
-    logging.warn(
-        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
@@ -860,25 +878,24 @@ def read_file(reader):
         return out
 
 
+@templatedoc()
 def load(out, file_path, load_as_fp16=None):
     """
-    Load operator will load a LoDTensor / SelectedRows variable from disk file.
+    ${comment}
+
+    >>> import paddle.fluid as fluid
+    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
 
     Args:
-        out(Variable): The LoDTensor / SelectedRows need to be loaded..
+        out(${out_type}): ${out_comment}.
 
-        file_path(STRING): Variable will be loaded from "file_path".
+        file_path(${file_path_type}): ${file_path_comment}.
 
-        load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
+        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
+
     Returns:
         None
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
-            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}

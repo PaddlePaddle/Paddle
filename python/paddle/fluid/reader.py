@@ -595,7 +595,10 @@ class PyReader(DataLoaderBase):
             use return_list=True in dygraph mode. 
 
     Returns:
-        reader (Reader): the created reader object.
+        the created reader object.
+    
+    Return type:
+        reader(Reader)
 
     Examples:
         1. If iterable = False, the created PyReader object is almost the
