@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_seq_pool_op.h"
+#include <memory>
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -150,6 +151,25 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   }
 };
 
+template <typename T>
+class FusedEmbeddingSeqPoolGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("fused_embedding_seq_pool_grad");
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -157,9 +177,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
     fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-    ops::FusedEmbeddingSeqPoolOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    ops::FusedEmbeddingSeqPoolGradOpDescMaker,
+    ops::FusedEmbeddingSeqPoolOpMaker<paddle::framework::OpDesc, true>,
+    ops::FusedEmbeddingSeqPoolOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);

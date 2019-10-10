@@ -27,31 +27,52 @@ class NCEOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"));
-    PADDLE_ENFORCE(ctx->HasInput("Label"));
-    PADDLE_ENFORCE(ctx->HasInput("Weight"));
-    PADDLE_ENFORCE(ctx->HasOutput("Cost"));
-    PADDLE_ENFORCE(ctx->HasOutput("SampleLogits"));
-    PADDLE_ENFORCE(ctx->HasOutput("SampleLabels"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Weight"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Cost"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("SampleLogits"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("SampleLabels"), true);
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
     if (ctx->IsRuntime() || (x_dims[0] > 0 && label_dims[0] > 0)) {
-      PADDLE_ENFORCE_EQ(x_dims[0], label_dims[0]);
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], label_dims[0],
+          "ShapeError: the first dimension of Input(Input) and Input(Label) "
+          "should be equal in runtime. But received: Input(Input)'s shape = "
+          "[%s] with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st "
+          "dim = %d.",
+          x_dims, x_dims[0], label_dims, label_dims[0]);
     }
     int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Weight")[0],
-                        ctx->GetInputDim("Bias")[0]);
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Weight")[0], ctx->GetInputDim("Bias")[0],
+          "ShapeError: the first dimension of Input(Weight) and Input(Bias) "
+          "should be equal. But received: Input(Weight)'s shape = [%s] with "
+          "1st dim = %d, Input(Bias)'s shape = [%s] with 1st dim = %d.",
+          ctx->GetInputDim("Weight"), ctx->GetInputDim("Weight")[0],
+          ctx->GetInputDim("Bias"), ctx->GetInputDim("Bias")[0]);
     }
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
     auto num_total_classes = ctx->Attrs().Get<int>("num_total_classes");
     std::vector<int> custom_neg_classes =
         ctx->Attrs().Get<std::vector<int>>("custom_neg_classes");
-    PADDLE_ENFORCE_EQ(num_total_classes, ctx->GetInputDim("Weight")[0]);
+    PADDLE_ENFORCE_EQ(
+        num_total_classes, ctx->GetInputDim("Weight")[0],
+        "ShapeError: the number of total classes should be equal to the first "
+        "dimension of Input(Weight). But received: Attr(num_total_classes) = "
+        "%d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
+        num_total_classes, ctx->GetInputDim("Weight"),
+        ctx->GetInputDim("Weight")[0]);
     if (custom_neg_classes.size() > 0) {
-      PADDLE_ENFORCE_EQ(custom_neg_classes.size(),
-                        static_cast<size_t>(num_neg_samples));
+      PADDLE_ENFORCE_EQ(
+          custom_neg_classes.size(), static_cast<size_t>(num_neg_samples),
+          "ShapeError: the size of Attr(custom_neg_classes) should be equal "
+          "to the number of negative samples. But received: "
+          "custom_neg_classes.size() = %d, num_neg_samples = %d.",
+          custom_neg_classes.size(), num_neg_samples);
     }
     // set dims of output(Out)
     std::vector<int64_t> out_dims;

@@ -69,10 +69,12 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of KL divergence loss operator. "
              "This is a tensor with shape of [N, *], where N is the "
-             "batch size, * means any number of additional dimensions.");
+             "batch size, * means any number of additional dimensions. "
+             "The data type is float32 or flaot64");
     AddInput("Target",
              "The  tensor of KL divergence loss operator. "
-             "This is a tensor with shape of Input(X).");
+             "This is a tensor with shape of Input(X). "
+             "The data type is same as Input(X)");
     AddOutput(
         "Loss",
         "The output KL divergence loss tensor. if Attr(reduction) is "
@@ -90,7 +92,8 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
          This operator calculates the Kullback-Leibler divergence loss
-         between Input(X) and Input(Target).
+         between Input(X) and Input(Target). Notes that Input(X) is the
+         log-probability and Input(Target) is the probability.
 
          KL divergence loss is calculated as follows:
 

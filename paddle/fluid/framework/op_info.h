@@ -80,9 +80,7 @@ struct OpInfo {
   }
 
   // some op has no grad_op_maker, add check before use GradOpMaker()
-  bool HasGradOpMaker() const {
-    return grad_op_maker_ != nullptr ? true : false;
-  }
+  bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
 
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
@@ -102,9 +100,7 @@ struct OpInfo {
     return dygraph_grad_op_maker_ != nullptr ? true : false;
   }
 
-  bool HasInferInplace() const {
-    return infer_inplace_ != nullptr ? true : false;
-  }
+  bool HasInferInplace() const { return infer_inplace_ != nullptr; }
 
   const OpAttrChecker* Checker() const { return checker_; }
 
