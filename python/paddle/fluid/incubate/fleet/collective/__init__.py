@@ -69,6 +69,8 @@ class Collective(Fleet):
             "You should not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
+        if strategy is None:
+            strategy = DistributedStrategy()
         self._optimizer = \
             CollectiveOptimizer(optimizer, strategy)
         return self._optimizer
