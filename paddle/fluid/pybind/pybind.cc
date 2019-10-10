@@ -39,10 +39,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -153,6 +155,88 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
+static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
+  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
+  // is not inside obj, but it would also set the error flag of Python.
+  // If the error flag is set in C++, C++ code would not raise Exception,
+  // but Python would raise Exception once C++ call ends.
+  // To avoid unexpected Exception raised in Python, we check whether
+  // attribute exists before calling PyObject_GetAttrString.
+  //
+  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
+  // Developer should call Py_DECREF manually after the attribute is not used.
+  if (PyObject_HasAttrString(obj, attr_name)) {
+    return PyObject_GetAttrString(obj, attr_name);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
+    const PyNameVarBaseMap &state_dict) {
+  std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
+  vec_res.reserve(state_dict.size());
+
+  for (auto &para : state_dict) {
+    PyObject *py_obj = para.second.ptr();
+    if (!py_obj || py_obj == Py_None) {
+      PADDLE_THROW("Save parameter [%s] is None", para.first);
+    }
+
+    const char *kIVarField = "_ivar";
+    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
+    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
+
+    vec_res.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    Py_DECREF(py_ivar);
+  }
+
+  return vec_res;
+}
+
+static std::vector<std::string> inline GetNameList(
+    const py::handle &py_handle) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      vec_res.emplace_back(PyObjectCast<std::string>(py_name));
+      Py_DECREF(py_name);
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return vec_res;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -190,6 +274,40 @@ PYBIND11_MODULE(core_noavx, m) {
     }
 #endif
     return tensor;
+  });
+
+  m.def("_save_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_load_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
+                                 const PyNameVarBaseMap &state_dict) {
+    auto vec_var_base_list = GetVarBaseList(state_dict);
+
+    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
+  });
+
+  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
+    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
+
+    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
+        map_output;
+
+    for (size_t i = 0; i < load_tensor.size(); ++i) {
+      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
+    }
+
+    return map_output;
   });
 
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
@@ -413,7 +531,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
-      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths
+      // to
       // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
@@ -872,9 +991,23 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
-    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    CUDAPlace is a descriptor of a device.
+    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
+    staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
+    Numbering here refers to the logical ID of the visible graphics card, not the actual ID of the graphics card.
+    You can set visible GPU devices by setting the `CUDA_VISIBLE_DEVICES` environment variable.
+    When the program starts, visible GPU devices will be numbered from 0.
+    If `CUDA_VISIBLE_DEVICES` is not set, all devices are visible by default,
+    and the logical ID is the same as the actual ID.
+
+    Parameters:
+        id (int): GPU device ID.
 
     Examples:
         .. code-block:: python
@@ -932,14 +1065,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
-    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
-    CPUPlace can be accessed by CPU.
+    CPUPlace is a descriptor of a device.
+    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          cpu_place = fluid.CPUPlace()to be allocated
 
         )DOC")
       .def(py::init<>())
@@ -952,8 +1085,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
-    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
-    can be accessed by GPU and CPU.
+    CUDAPinnedPlace is a descriptor of a device.
+    It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
+    The host operating system will not paging and exchanging the memory.
+    It can be accessed through direct memory access technology to speed up the copy of data between the host and GPU.
+    For more information on CUDA data transfer and `pinned memory`,
+    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
         .. code-block:: python
@@ -1153,7 +1290,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
-    Array of LoDTensor.
+    LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
         .. code-block:: python
@@ -1182,6 +1319,12 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
+              
+             Args:
+                   tensor (LoDTensor): The LoDTensor to be appended.
+
+             Returns:
+                   None.
 
              Examples:
                  .. code-block:: python
@@ -1729,7 +1872,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or True");
+                  "BuildStrategy.memory_optimize must be None, False or "
+                  "True");
             }
           },
           R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
