@@ -6971,8 +6971,8 @@ def hsigmoid(input,
         label (Variable): A tensor contains the labels of training data. Its shape is [N, 1]
             and data type is int64.
         num_classes (int): The number of classes or the size of word dict, must be greater than 2.
-            If the default tree is used ( :attr:`is_custom` is set to False), :attr:`num_classes`
-            should not be None. If the custom tree is used ( :attr:`is_custom` is set to True),
+            If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
+            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
             :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
             classes using by the binary classifier.
         param_attr (ParamAttr, optional): The parameter attribute for the learnable parameters/weights
@@ -6999,7 +6999,7 @@ def hsigmoid(input,
             gradient of W and input will be sparse. Default: False.
 
     Returns:
-        Out: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
+        Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
 
     Examples:
 

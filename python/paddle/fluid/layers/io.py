@@ -687,7 +687,8 @@ def create_py_reader_by_data(capacity,
     the list of feed variables.
 
     Parameters:
-        capacity (int): The buffer capacity maintained by :code:`py_reader`.
+        capacity (int): The buffer capacity maintained by :code:`py_reader`. Its unit
+            is batch number. Set larger :attr:`capacity` if the reader is fast.
         feed_list (list(Variable)): The feed variables, are usually created by
             :code:`fluid.data()`.
         name (str, optional): Normally there is no need for user to set this property.
@@ -696,8 +697,7 @@ def create_py_reader_by_data(capacity,
             the OP would prefetch next batch data asynchronously. Default: True.
 
     Returns:
-        Reader: A Reader for data feeding. The data types of read data are the same as
-            the data types of variables of :attr:`feed_list`.
+        Reader: A Reader for data feeding. The data types of read data are the same as the data types of variables of :attr:`feed_list`.
 
     Examples:
         .. code-block:: python
