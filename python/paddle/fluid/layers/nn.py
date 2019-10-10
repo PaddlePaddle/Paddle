@@ -375,8 +375,10 @@ def center_loss(input,
     """
     **Center loss Cost layer**
     
-    This layer accepts input (deep features,the output of the last hidden layer)
-    and target label and return the center loss cost
+    This OP accepts input (deep features,the output of the last hidden layer)
+    and target label and return the center loss cost. The average of the 
+    distances of each sample in the mini-batch from the center of the 
+    corresponding category is calculated as the center loss.
     
     For deep features, :math:`X`, and target labels, :math:`Y`, the equation is:
     
@@ -385,9 +387,9 @@ def center_loss(input,
         Out = \\frac{1}{2}(X - Y)^2
 
     Args:
-        input (Variable): a 2-D tensor with shape[N x M].
+        input (Variable): a 2-D tensor with shape[N x M]. Its dtype should be float32 or float64.
         label (Variable): the groud truth which is a 2-D tensor
-                         with shape[N x 1],where N is the batch size.
+                         with shape[N x 1],where N is the batch size. Its dtype should be int32.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
         param_attr (ParamAttr): Attribute initializer of centers. 
@@ -401,8 +403,8 @@ def center_loss(input,
 
           import paddle.fluid as fluid 
 
-          input = fluid.layers.data(name='x',shape=[20,30],dtype='float32')
-          label = fluid.layers.data(name='y',shape=[20,1],dtype='int64')
+          input = fluid.data(name='x',shape=[20,30],dtype='float32')
+          label = fluid.data(name='y',shape=[20,1],dtype='int64')
           num_classes = 1000
           alpha = 0.01
           param_attr = fluid.initializer.Xavier(uniform=False)
@@ -1416,7 +1418,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     ${comment}
 
     Args:
-        input(${emission_type}): ${emission_comment}
+        input(${emission_type}): ${emission_comment} 
         label(${label_type}): ${label_comment}
         Length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
@@ -1424,7 +1426,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     Returns:
         output(${emission_exps_type}): ${emission_exps_comment} \n
         output(${transition_exps_type}): ${transition_exps_comment} \n
-        output(${log_likelihood_type}): ${log_likelihood_comment}
+        output(${log_likelihood_type}): ${log_likelihood_comment} \n
 
     Examples:
         .. code-block:: python
@@ -1436,8 +1438,8 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data = fluid.layers.data(name='input_data', shape=[10], dtype='float32', lod_level=1)
-                label = fluid.layers.data(name='label', shape=[1], dtype='int', lod_level=1)
+                input_data = fluid.data(name='input_data', shape=[-1,10], dtype='float32')
+                label = fluid.data(name='label', shape=[-1,1], dtype='int')
                 emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
                 crf_cost = fluid.layers.linear_chain_crf(
                     input=emission,
@@ -1460,9 +1462,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             train_program = fluid.Program()
             startup_program = fluid.Program()
             with fluid.program_guard(train_program, startup_program):
-                input_data2 = fluid.layers.data(name='input_data2', shape=[10,10], dtype='float32')
-                label2 = fluid.layers.data(name='label2', shape=[10,1], dtype='int')
-                label_length = fluid.layers.data(name='length', shape=[1], dtype='int')
+                input_data2 = fluid.data(name='input_data2', shape=[-1,10,10], dtype='float32')
+                label2 = fluid.data(name='label2', shape=[-1,10,1], dtype='int')
+                label_length = fluid.data(name='length', shape=[-1,1], dtype='int')
                 emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
                 crf_cost2 = fluid.layers.linear_chain_crf(
                     input=emission2,
@@ -1480,15 +1482,19 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #define data, using padding
             cc=np.random.rand(4,10,10).astype('float32')
             dd=np.random.rand(4,10,1).astype('int64')
-            ll=np.array([[3,3,4,2]])
+            ll=np.array([[3],[3],[4],[2]])
             feed2 = {'input_data2':cc,'label2':dd,'length':ll}
-
             loss2= exe.run(train_program,feed=feed2, fetch_list=[crf_cost2])
             print(loss2) 
-            
+            #[array([[ 7.8902354],
+            #        [ 7.3602567],
+            #        [ 10.004011],
+            #        [ 5.86721  ]], dtype=float32)]
+
             #you can use find_var to get transition parameter.
             transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
             print(transition)
+            
     """
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[2] if length else input.shape[1]
@@ -1601,8 +1607,8 @@ def cos_sim(X, Y):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7], dtype='float32', append_batch_size=False)
-            y = fluid.layers.data(name='y', shape=[1, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7], dtype='float32')
+            y = fluid.data(name='y', shape=[1, 7], dtype='float32')
             out = fluid.layers.cos_sim(x, y)
     """
     helper = LayerHelper('cos_sim', **locals())
@@ -1672,7 +1678,7 @@ def dropout(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
@@ -1758,8 +1764,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
             import paddle.fluid as fluid
             class_num = 7
-            x = fluid.layers.data(name='x', shape=[3, 10], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            x = fluid.data(name='x', shape=[None, 3, 10], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
@@ -2248,7 +2254,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
 
     Args:
-        input (Variable): The input variable.
+        input (Variable): The input variable. A LoDTensor or Tensor with type 
+        float32, float64.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stablity, set use_cudnn to \
             False by default. Default: False
@@ -2256,23 +2263,28 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             will be named automatically. Default: None.
         axis (int): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
-            input variable. Default: -1.
+            input variable. Default: -1. -1 means the last dimension.
 
     Returns:
-        Variable: output of softmax
+        Variable: output of softmax. A Tensor with type float32, float64.
 
     Examples:
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-             fc = fluid.layers.fc(input=x, size=10)
-             # perform softmax in the second dimension
-             softmax = fluid.layers.softmax(input=fc, axis=1)
-             # perform softmax in the last dimension
-             softmax = fluid.layers.softmax(input=fc, axis=-1)
+            import paddle.fluid as fluid
+            import numpy as np
 
+            data = fluid.data(name="input", shape=[-1, 3],dtype="float32")
+            result = fluid.layers.softmax(data,axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 3).astype("float32")
+            output= exe.run(feed={"input": x},
+                             fetch_list=[result[0]])
+            print(output)
+            #array([0.22595254, 0.39276356, 0.38128382], dtype=float32)]
     """
     helper = LayerHelper('softmax', **locals())
     if not isinstance(input, Variable):
@@ -2420,7 +2432,7 @@ def conv2d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -2680,7 +2692,7 @@ def conv3d(input,
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d = fluid.layers.conv3d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
@@ -3778,7 +3790,7 @@ def batch_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
     """
@@ -3944,7 +3956,7 @@ def instance_norm(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32', append_batch_size=False)
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
     """
@@ -4250,30 +4262,39 @@ def group_norm(input,
 
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
-    Args:
-        input(Variable): The input tensor variable.
-        groups(int): The number of groups that divided from channels.
-        epsilon(float): The small value added to the variance to prevent
-            division by zero.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-            scale :math:`g`. If it is set to False, no scale will be added to the output units.
-            If it is set to None, the bias is initialized one. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
-            bias :math:`b`. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        act(str): Activation to be applied to the output of group normalizaiton.
-        data_layout(string, default NCHW): NCHW(num_batch, channels, h, w) or NHWC(num_batch, h, w, channels).
-        name (str): The name of this layer. It is optional.
+    Parameters:
+        input(Variable): 4-D Tensor, the data type is float32 or float64.
+        groups(int): The number of groups that divided from channels, the data type
+            is int32.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero, the data type is float32. Default: 1e-05.
+        param_attr(ParamAttr|bool, optional): ParamAttr object that specifies weight parameter
+            attribute. If a bool type, only False is supported, which means there is no weight parameter.
+            Default: None, the default weight parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        bias_attr(ParamAttr|bool, optional): ParamAttr object that specifies bias parameter
+            attribute. If a bool type, only False is supported, which means there is no bias parameter.
+            Default: None, the default bias parameter attribute is used. For more information, please
+            refer to :ref:`api_guide_ParamAttr` .
+        act(str, optional): Activation to be applied to the output of group normalizaiton.
+        data_layout(str, optional): The data format of the input and output data. An optional string
+            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, channels, height, width]`. Default: "NCHW".
+        name (str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A tensor variable which is the result after applying group normalization on the input.
+        Variable: A 4-D Tensor has same data type and data format with `input`.
+
+    Raises:
+        ValueError: If `data_layout` is neither 'NCHW' nor 'NHWC'.
 
     Examples:
+       .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> data = fluid.layers.data(name='data', shape=[8, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.group_norm(input=data, groups=4)
+            import paddle.fluid as fluid
+            data = fluid.data(name='data', shape=[None, 8, 32, 32], dtype='float32')
+            x = fluid.layers.group_norm(input=data, groups=4)
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
@@ -4568,7 +4589,7 @@ def conv2d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
@@ -4840,7 +4861,7 @@ def conv3d_transpose(input,
        .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[3, 12, 32, 32], dtype='float32')
+          data = fluid.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
           conv3d_transpose = fluid.layers.conv3d_transpose(input=data, num_filters=2, filter_size=3)
     """
     assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
@@ -6806,8 +6827,23 @@ def nce(input,
                        custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
-    assert isinstance(input, Variable)
-    assert isinstance(label, Variable)
+
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in nce layer must be Variable, but received %s"
+            % (type(input)))
+    if not isinstance(label, Variable):
+        raise TypeError(
+            "The type of 'label' in nce layer must be Variable, but received %s"
+            % (type(label)))
+    if convert_dtype(input.dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in nce layer must be float32 or float64, but received %s."
+            % (convert_dtype(input.dtype)))
+    if convert_dtype(label.dtype) not in ['int64']:
+        raise TypeError(
+            "The data type of 'label' in nce layer must be int64, but received %s."
+            % (convert_dtype(label.dtype)))
 
     dim = input.shape[1]
     num_true_class = label.shape[1]
@@ -7655,31 +7691,47 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
     Args:
         x (Variable): A tensor with rank at least 2. The input value of smooth
             L1 loss op with shape [batch_size, dim1, ..., dimN].
+            A LoDTensor or Tensor with type float32.
         y (Variable): A tensor with rank at least 2. The target value of smooth
             L1 loss op with same shape as :attr:`x`.
+            A LoDTensor or Tensor with type float32.
         inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with :attr:`x`. If
             provided, the result of (:attr:`x` - :attr:`y`) will be multiplied
             by this tensor element by element.
+            A Tensor with type float32.
         outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with :attr:`x`. If
             provided, the out smooth L1 loss will be multiplied by this tensor
             element by element.
+            A Tensor with type float32.
         sigma (float|None): Hyper parameter of smooth L1 loss layer. A float
            scalar with default value 1.0.
 
     Returns:
-        Variable: The output smooth L1 loss with shape [batch_size, 1].
+        Variable: The output smooth L1 loss with shape [batch_size, 1].  A Tensor with type float32.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[100], dtype='float32')
-            fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.smooth_l1(x=fc, y=label)
+            import numpy as np
+            data = fluid.data(name="x", shape=[-1, 3], dtype="float32")
+            label = fluid.data(name="y", shape=[-1, 3], dtype="float32")
+            result = fluid.layers.smooth_l1(data,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3,3).astype("float32")
+            y = np.random.rand(3,3).astype("float32")
+            output= exe.run(feed={"x":x, "y":y},
+                             fetch_list=[result])
+            print(output)
+        
+            #[array([[0.08220536],
+            #       [0.36652038],
+            #      [0.20541131]], dtype=float32)]
+
     """
 
     helper = LayerHelper('smooth_l1_loss', **locals())
@@ -8585,10 +8637,10 @@ def roi_align(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(
-                name='data', shape=[256, 32, 32], dtype='float32')
-            rois = fluid.layers.data(
-                name='rois', shape=[4], dtype='float32')
+            x = fluid.data(
+                name='data', shape=[None, 256, 32, 32], dtype='float32')
+            rois = fluid.data(
+                name='rois', shape=[None, 4], dtype='float32')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
@@ -9573,10 +9625,11 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Variable): The source input
-        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank
+        input (Variable): The source input. Its dtype should be int32, int64, float32, float64.
+        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank.
+                          Its dtype should be int32, int64.
         name (str|None): A name for this layer(optional). If set None, the
-                         layer will be named automatically
+                         layer will be named automatically.
 
     Returns:
         output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
@@ -9586,8 +9639,8 @@ def gather_nd(input, index, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[3, 4, 5], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[2, 2], dtype='int32')
+            x = fluid.data(name='x', shape=[3, 4, 5], dtype='float32')
+            index = fluid.data(name='index', shape=[2, 2], dtype='int32')
             output = fluid.layers.gather_nd(x, index)
 
     """
@@ -9662,11 +9715,14 @@ def scatter_nd_add(ref, index, updates, name=None):
     **Scatter_nd_add Layer**
 
     Output is obtained by applying sparse addition to a single value
-    or slice in a Variable. :attr:`ref` is a Tensor with rank :math:`R` 
+    or slice in a Variable. 
+
+    :attr:`ref` is a Tensor with rank :math:`R` 
     and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index` 
     has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates` 
     is a Tensor with rank :math:`K - 1 + R - Q` and its
     shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
+
     According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
     add the corresponding :attr:`updates` slice to the :attr:`ref` slice
     which is obtained by the last one dimension of :attr:`index` .
@@ -9698,15 +9754,15 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input.
+        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd_add op, and it must have the same type
-                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:]
-        name (str|None): The output variable name. Default None.
+        updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
+                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:].
+        name (str|None): The output variable name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape and type as ref.
+        output (Variable): The output is a tensor with the same shape and dtype as ref.
 
     Examples:
 
@@ -9714,9 +9770,9 @@ def scatter_nd_add(ref, index, updates, name=None):
 
             import paddle.fluid as fluid
 
-            ref = fluid.layers.data(name='ref', shape=[3, 5, 9, 10], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int32', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            ref = fluid.data(name='ref', shape=[3, 5, 9, 10], dtype='float32')
+            index = fluid.data(name='index', shape=[3, 2], dtype='int32')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
 
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
@@ -9755,10 +9811,10 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. 
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
-        name (str|None): The output variable name. Default None.
+        name (str|None): The output variable name. If set None, the layer will be named automatically.
 
     Returns:
         output (Variable): The output is a tensor with the same type as :attr:`updates` .
@@ -9769,8 +9825,8 @@ def scatter_nd(index, updates, shape, name=None):
 
             import paddle.fluid as fluid
 
-            index = fluid.layers.data(name='index', shape=[3, 2], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 9, 10], dtype='float32', append_batch_size=False)
+            index = fluid.data(name='index', shape=[3, 2], dtype='int64')
+            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
 
             output = fluid.layers.scatter_nd(index, updates, shape)
@@ -10174,59 +10230,57 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
     .. code-block:: text
 
-        * Case 1:
-            Given
-                X = [[0, 1, 2, 0, 0]
-                     [0, 3, 4, 0, 0]
-                     [0, 0, 0, 0, 0]],
-            and
-                shape = [2, 2],
-                offsets = [0, 1],
-            output is:
+        * Case 1 (input is a 2-D Tensor):
+            Input:
+                X.shape = [3. 5]
+                X.data = [[0, 1, 2, 0, 0],
+                          [0, 3, 4, 0, 0],
+                          [0, 0, 0, 0, 0]]
+            Parameters:
+                shape = [2, 2]
+                offsets = [0, 1]
+            Output:
                 Out = [[1, 2],
-                       [3, 4]].
-        * Case 2:
-            Given
-                X =  [[[0, 1, 2, 3]
-                       [0, 5, 6, 7]
-                       [0, 0, 0, 0]],
-
-                      [[0, 3, 4, 5]
-                       [0, 6, 7, 8]
-                       [0, 0, 0, 0]]].
-            and
-                shape = [2, 2, 3],
-                offsets = [0, 0, 1],
-            output is:
-                Out = [[[1, 2, 3]
+                       [3, 4]]
+        * Case 2 (input is a 3-D Tensor):
+            Input:
+                X.shape = [2, 3, 4]
+                X.data =  [[[0, 1, 2, 3],
+                            [0, 5, 6, 7],
+                            [0, 0, 0, 0]],
+                           [[0, 3, 4, 5],
+                            [0, 6, 7, 8],
+                            [0, 0, 0, 0]]]
+            Parameters:
+                shape = [2, 2, 3]
+                offsets = [0, 0, 1]
+            Output:
+                Out = [[[1, 2, 3],
                         [5, 6, 7]],
+                       [[3, 4, 5],
+                        [6, 7, 8]]]
 
-                        [[3, 4, 5]
-                         [6, 7, 8]]].
-
-    Args:
-        x (Variable): The input tensor variable.
-        shape (Variable|list|tuple of integer): The output shape is specified
-            by `shape`. It can be a 1-D tensor Variable or a list/tuple. If a 
-            1-D tensor Variable, it's rank must be the same as `x`. If a 
-            list/tuple, it's length must be the same as the rank of `x`. Each 
-            element of list can be an integer or a tensor Variable of shape: [1].
+    Parameters:
+        x (Variable): 1-D to 6-D Tensor, the data type is float32 or float64.
+        shape (list|tuple|Variable): The output shape is specified
+            by `shape`. Its data type is int32. If a list/tuple, it's length must be
+            the same as the dimension size of `x`. If a Variable, it shoule be a 1-D Tensor.
+            When it is a list, each element can be an integer or a Tensor of shape: [1].
             If Variable contained, it is suitable for the case that the shape may 
             be changed each iteration. Only the first element of list/tuple can be 
-            set to -1, it means that the first dimension of the output is the same 
+            set to -1, it means that the first dimension's size of the output is the same 
             as the input.
-        offsets (Variable|list|tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a 1-D tensor Variable or a list/tuple.
-            If a 1-D tensor Variable, it's rank must be the same as `x`. If a list/tuple, 
-            it's length must be the same as the rank of `x`. Each element of list can be
-            an integer or a tensor Variable of shape: [1]. If Variable contained, it is 
-            suitable for the case that the offsets may be changed each iteration. If None, 
-            the offsets are 0 at each dimension.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        offsets (list|tuple|Variable, optional): Specifies the cropping
+            offsets at each dimension. Its data type is int32. If a list/tuple, it's length
+            must be the same as the dimension size of `x`. If a Variable, it shoule be a 1-D
+            Tensor. When it is a list, each element can be an integer or a Tensor of shape: [1].
+            If Variable contained, it is suitable for the case that the offsets may be changed
+            each iteration. Default: None, the offsets are 0 at each dimension.
+        name(str, optional): The default value is None. Normally there is no need for user to set
+            this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: The cropped tensor variable.
+        Variable: The cropped Tensor has same data type with `x`.
 
     Raises:
         ValueError: If shape is not a list, tuple or Variable.
@@ -10237,11 +10291,11 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
+            x = fluid.data(name="x", shape=[None, 3, 5], dtype="float32")
             # x.shape = [-1, 3, 5], where -1 indicates batch size, and it will get the exact value in runtime.
 
-            # shape is a 1-D tensor variable
-            crop_shape = fluid.layers.data(name="crop_shape", shape=[3], dtype="int32", append_batch_size=False)
+            # shape is a 1-D Tensor
+            crop_shape = fluid.data(name="crop_shape", shape=[3], dtype="int32")
             crop0 = fluid.layers.crop_tensor(x, shape=crop_shape)
             # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
 
@@ -10249,19 +10303,19 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
             # crop1.shape = [-1, 2, 3]
 
-            # or shape is a list in which each element is a constant or variable
-            y = fluid.layers.data(name="y", shape=[3, 8, 8], dtype="float32")
-            dim1 = fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
-            crop2 = fluid.layers.crop_tensor(y, shape=[-1, 3, dim1, 4])
-            # crop2.shape = [-1, 3, -1, 4]
+            # or shape is a list in which each element is a constant or Variable
+            y = fluid.data(name="y", shape=[3, 8, 8], dtype="float32")
+            dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
+            crop2 = fluid.layers.crop_tensor(y, shape=[3, dim1, 4])
+            # crop2.shape = [3, -1, 4]
 
-            # offsets is a 1-D tensor variable
-            crop_offsets = fluid.layers.data(name="crop_offsets", shape=[3], dtype="int32", append_batch_size=False)
+            # offsets is a 1-D Tensor
+            crop_offsets = fluid.data(name="crop_offsets", shape=[3], dtype="int32")
             crop3 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=crop_offsets)
             # crop3.shape = [-1, 2, 3]
 
-            # offsets is a list in which each element is a constant or variable
-            offsets_var =  fluid.layers.data(name="dim1", shape=[1], dtype="int32", append_batch_size=False)
+            # offsets is a list in which each element is a constant or Variable
+            offsets_var =  fluid.data(name="dim1", shape=[1], dtype="int32")
             crop4 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3], offsets=[0, 1, offsets_var])
             # crop4.shape = [-1, 2, 3]
 
@@ -10802,7 +10856,7 @@ def pow(x, factor=1.0, name=None):
 
 
 @templatedoc()
-def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
+def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     """
     ${comment}
     Args:
@@ -10813,15 +10867,28 @@ def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
                         will be named automatically.
 
     Returns:
-        output(${out_type}): ${out_comment}
+        output(${out_type}): ${out_comment}. 
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.stanh(x, scale_a=0.67, scale_b=1.72)
+            import numpy as np
+            data = fluid.data(name="input", shape=[-1, 3])
+            result = fluid.layers.stanh(data,scale_a=0.67, scale_b=1.72)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.random(size=(3, 3)).astype('float32')
+            output= exe.run(feed={"input": x},
+                         fetch_list=[result])
+            print(output)
+
+            #[array([[0.626466  , 0.89842904, 0.7501062 ],
+            #       [0.25147712, 0.7484996 , 0.22902708],
+            #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
+
     """
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -10935,7 +11002,7 @@ def prelu(x, mode, param_attr=None, name=None):
 
             import paddle.fluid as fluid
             from paddle.fluid.param_attr import ParamAttr
-            x = fluid.layers.data(name="x", shape=[5,10,10], dtype="float32")
+            x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
             mode = 'channel'
             output = fluid.layers.prelu(
                      x,mode,param_attr=ParamAttr(name='alpha'))
@@ -12279,12 +12346,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_add(x, y)
 
         place = fluid.CPUPlace()
@@ -12306,8 +12373,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12330,8 +12397,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12356,12 +12423,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_div(x, y)
 
         place = fluid.CPUPlace()
@@ -12383,8 +12450,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12407,8 +12474,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12433,12 +12500,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y)
 
         place = fluid.CPUPlace()
@@ -12460,8 +12527,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12484,8 +12551,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12510,12 +12577,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y)
 
         place = fluid.CPUPlace()
@@ -12537,8 +12604,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12561,8 +12628,8 @@ Examples:
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
         
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=3)
 
         place = fluid.CPUPlace()
@@ -12587,12 +12654,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
 
         place = fluid.CPUPlace()
@@ -12614,8 +12681,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12641,12 +12708,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
 
         place = fluid.CPUPlace()
@@ -12667,8 +12734,8 @@ Examples:
                 "y": np.zeros((3, 4)).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3,4], dtype='float32')
+        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+        y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
 
         place = fluid.CPUPlace()
@@ -12694,12 +12761,12 @@ Examples:
 
         def gen_data():
             return {
-                "x": np.array([2, 3, 4]),
-                "y": np.array([1, 5, 2])
+                "x": np.array([2, 3, 4]).astype('float32'),
+                "y": np.array([1, 5, 2]).astype('float32')
             }
 
-        x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[3], dtype='float32')
+        x = fluid.data(name="x", shape=[3], dtype='float32')
+        y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_pow(x, y)
 
         place = fluid.CPUPlace()
@@ -12996,8 +13063,8 @@ def clip_by_norm(x, max_norm, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
-                name='data', shape=[1], dtype='float32')
+            input = fluid.data(
+                name='data', shape=[None, 1], dtype='float32')
             reward = fluid.layers.clip_by_norm(x=input, max_norm=1.0)
     """
 
@@ -13211,9 +13278,9 @@ def maxout(x, groups, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', 
-                shape=[256, 32, 32], 
+                shape=[None, 256, 32, 32], 
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
@@ -14517,12 +14584,12 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     .. code-block:: python
 
        import paddle.fluid as fluid
-       anchor = fluid.layers.data(
-                     name = 'anchor', shape = [18, 6], dtype = 'float32', append_batch_size=False)
-       positive = fluid.layers.data(
-                     name = 'positive', shape = [18, 6], dtype = 'float32', append_batch_size=False)
-       labels = fluid.layers.data(
-                     name = 'labels', shape = [18], dtype = 'float32', append_batch_size=False)
+       anchor = fluid.data(
+                     name = 'anchor', shape = [18, 6], dtype = 'float32')
+       positive = fluid.data(
+                     name = 'positive', shape = [18, 6], dtype = 'float32')
+       labels = fluid.data(
+                     name = 'labels', shape = [18], dtype = 'float32')
 
        npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
   '''
@@ -15361,7 +15428,7 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This function recomputes the `input` indices according to the offset of the
+    This operator recomputes the `input` indices according to the offset of the
     shard. The length of the indices is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
@@ -15406,7 +15473,8 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            batch_size = 32
+            label = fluid.data(name="label", shape=[batch_size, 1], dtype="int64")
             shard_label = fluid.layers.shard_index(input=label,
                                                    index_num=20,
                                                    nshards=2,
