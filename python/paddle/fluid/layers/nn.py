@@ -4255,7 +4255,7 @@ def layer_norm(input,
     """
     **Layer Normalization Layer**
 
-    The OP implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    The API implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
@@ -4275,28 +4275,28 @@ def layer_norm(input,
     - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): A multidimensional ``Tensor`` of any dimension, and the data type is float32 or float64.
+        input(Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
-            normalization. Default True.
+            normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
-            normalization. Default True.
+            normalization. Default: True.
         begin_norm_axis(int, optional): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-            Default 1.
+            Default: 1.
         epsilon(float, optional): The small value added to the variance to prevent
-            division by zero. Default 1e-05.
+            division by zero. Default: 1e-05.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default None.
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
         bias_attr(ParamAttr, optional): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
         act(str, optional): Activation to be applied to the output of layer normalizaiton.
-                  Default None.
+                  Default: None.
         name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:

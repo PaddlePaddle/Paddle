@@ -1049,10 +1049,8 @@ class FC(layers.Layer):
 
 class BatchNorm(layers.Layer):
     """
-    **Batch Normalization Layer**
-
     This interface is used to construct a callable object of the ``BatchNorm`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It implements the function of the Batch Normalization Layer and can be used 
     as a normalizer function for conv2d and fully connected operations.
     The data is normalized by the mean and variance of the channel based on the current batch data.
@@ -1101,7 +1099,7 @@ class BatchNorm(layers.Layer):
         act(str, optional): Activation to be applied to the output of batch normalizaiton. Default: None.
         is_test (bool, optional): A flag indicating whether it is in test phrase or not. Default: False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default is 1e-5.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -1373,7 +1371,7 @@ class Embedding(layers.Layer):
 class LayerNorm(layers.Layer):
     """
     This interface is used to construct a callable object of the ``LayerNorm`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
@@ -2567,10 +2565,8 @@ class RowConv(layers.Layer):
 
 class GroupNorm(layers.Layer):
     """
-    **Group Normalization Layer**
-
     This interface is used to construct a callable object of the ``GroupNorm`` class.
-    For specific usage, refer to code examples.
+    For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
@@ -2669,10 +2665,8 @@ class GroupNorm(layers.Layer):
 
 class SpectralNorm(layers.Layer):
     """
-    **Spectral Normalization Layer**
-
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
-    For specific usage, refer to code examples. It implements the function of the Spectral Normalization Layer.
+    For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
     fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
     Parameters. Calculations are showed as follows.
