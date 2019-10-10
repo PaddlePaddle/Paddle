@@ -1078,7 +1078,7 @@ paddle.fluid.clip.ErrorClipByValue ('paddle.fluid.clip.ErrorClipByValue', ('docu
 paddle.fluid.clip.ErrorClipByValue.__init__ (ArgSpec(args=['self', 'max', 'min'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.clip.GradientClipByValue ('paddle.fluid.clip.GradientClipByValue', ('document', 'b7a22f687269cae0c338ef3866322db7'))
 paddle.fluid.clip.GradientClipByValue.__init__ (ArgSpec(args=['self', 'max', 'min'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.clip.GradientClipByNorm ('paddle.fluid.clip.GradientClipByNorm', ('document', '9a7f2f0173358d4f854ab05f4d58363d'))
+paddle.fluid.clip.GradientClipByNorm ('paddle.fluid.clip.GradientClipByNorm', ('document', '1296f6a2c1a2993fe33218e16ce64eff'))
 paddle.fluid.clip.GradientClipByNorm.__init__ (ArgSpec(args=['self', 'clip_norm'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.clip.GradientClipByGlobalNorm ('paddle.fluid.clip.GradientClipByGlobalNorm', ('document', 'ef50acbe212101121d4b82f693ec1733'))
 paddle.fluid.clip.GradientClipByGlobalNorm.__init__ (ArgSpec(args=['self', 'clip_norm', 'group_name'], varargs=None, keywords=None, defaults=('default_group',)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
