@@ -43,10 +43,9 @@ class TestDistCTR2x2(TestDistBase):
             "dist_ctr.py", delta=1e-2, check_error_log=True, log_name=flag_name)
 
 
-@skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
-        self._sync_mode = True
+        self._sync_mode = False
         self._enforce_place = "CPU"
 
     def test_dist_ctr(self):
