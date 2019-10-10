@@ -1688,6 +1688,7 @@ def prior_box(input,
 
     Examples:
         .. code-block:: python
+
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
@@ -1734,6 +1735,7 @@ def prior_box(input,
 		# [6L, 9L, 1L, 4L]
 		print(var.shape)
 		# [6L, 9L, 1L, 4L]
+
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -1803,10 +1805,11 @@ def density_prior_box(input,
     this operator, and the grid points is determined by densities and 
     the count of density prior box is determined by fixed_sizes and fixed_ratios. 
     Obviously, the number of fixed_sizes is equal to the number of densities.
+    
     For densities_i in densities:
-    N_density_prior_box =sum(N_fixed_ratios * densities_i^2),
+    N_density_prior_box = SUM(N_fixed_ratios * densities_i^2),
 
-    which N_density_prior_box is the number of density_prior_box and N_fixed_ratios is the number of fixed_ratios.
+    N_density_prior_box is the number of density_prior_box and N_fixed_ratios is the number of fixed_ratios.
 
     Parameters:
        input(Variable): 4-D tensor(NCHW), the data type should be float32 of float64.

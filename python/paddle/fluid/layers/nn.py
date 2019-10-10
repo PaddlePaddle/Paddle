@@ -1959,7 +1959,7 @@ def square_error_cost(input, label):
     This op accepts input predictions and target label and returns the
     squared error cost.
 
-    For predictions label, and target labels, the equation is:
+    For predictions label, and target label, the equation is:
 
     .. math::
 
@@ -9116,7 +9116,7 @@ def image_resize(input,
                  align_mode=1,
                  data_format='NCHW'):
     """
-    This op resize a batch of Images.
+    This op resizes a batch of images.
 
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
@@ -9515,7 +9515,7 @@ def resize_bilinear(input,
                     align_mode=1,
                     data_format='NCHW'):
     """
-    Resize input by performing bilinear interpolation based on given
+    This op resizes the input by performing bilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
@@ -9567,7 +9567,7 @@ def resize_bilinear(input,
               W_out = W_{in} * scale_{factor}
 
     Parameters:
-        input(${x_type}): 4-D Tensor, its data type is float32, float64, or uint8,
+        input(Variable): 4-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize bilinear
             layer, the shape is (out_h, out_w).Default: None. If a list, each 
@@ -9676,7 +9676,7 @@ def resize_trilinear(input,
                      align_mode=1,
                      data_format='NCDHW'):
     """
-    This op resize input by performing trilinear interpolation based on given
+    This op resizes the input by performing trilinear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
     in priority order.
 
@@ -9839,7 +9839,7 @@ def resize_nearest(input,
                    align_corners=True,
                    data_format='NCHW'):
     """
-    This op resize input by performing nearest neighbor interpolation in both the
+    This op resizes the input by performing nearest neighbor interpolation in both the
     height direction and the width direction based on given output shape 
     which is specified by actual_shape, out_shape and scale in priority order.
 
@@ -9992,7 +9992,7 @@ def resize_nearest(input,
 
 def image_resize_short(input, out_short_len, resample='BILINEAR'):
     """
-    This op resize a batch of images. The short edge of input images will be
+    This op resizes a batch of images. The short edge of input images will be
     resized to the given 'out_short_len'. The long edge of input images
     will be resized proportionately to make images' length-width ratio
     constant.
