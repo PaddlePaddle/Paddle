@@ -129,7 +129,8 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        self._communicator.stop()
+        if not self._transpile_config.sync_mode:
+            self._communicator.stop()
         self._executor.close()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
