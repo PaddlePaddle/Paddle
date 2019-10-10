@@ -11783,14 +11783,13 @@ def uniform_random_batch_size_like(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers 
             
             # example 1: 
-            input_1 = layers.data(name="input", shape=[1, 3], dtype='float32')
+            input_1 = fluid.data(name="input", shape=[1, 3], dtype='float32')
             out_1 = layers.uniform_random_batch_size_like(input, [2, 4]) # shape=[1, 4]
 
             # example 2: 
-            input_2 = layers.data(name="input", shape=[1, 3], dtype='float32')
+            input_2 = fluid.data(name="input", shape=[1, 3], dtype='float32')
             out_2 = layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # shape=[2, 3]
 
             
@@ -15825,7 +15824,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             # example 3:
             # attr shape is a Variable, the data type must be int64
-            var_shape = fluid.layers.data(name='var_shape',shape=[2],append_batch_size=False)
+            var_shape = fluid.data(name='var_shape',shape=[2],append_batch_size=False)
             result_3 = fluid.layers.uniform_random(var_shape)
 
     """
