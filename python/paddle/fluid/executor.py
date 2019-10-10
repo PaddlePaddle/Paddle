@@ -443,7 +443,7 @@ class Executor(object):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -745,7 +745,7 @@ class Executor(object):
               place = fluid.CPUPlace() # fluid.CUDAPlace(0)
               exe = fluid.Executor(place)
 
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.Adam()
