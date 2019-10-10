@@ -85,7 +85,7 @@ def retinanet_target_assign(bbox_pred,
     The searching principles for positive and negative samples are as followed:
 
     1. Anchors are assigned to ground-truth boxes when it has the highest IoU
-    overlap with a ground-truth box;
+    overlap with a ground-truth box.
 
     2. Anchors are assigned to ground-truth boxes when it has an IoU overlap
     higher than :attr:`positive_overlap` with any ground-truth box.
