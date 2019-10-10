@@ -459,37 +459,59 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
 def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     """
-    Applies linear learning rate warmup before the normal learning rate
-    scheduling.
-
-    .. code-block:: python
-
-     if global_step < warmup_steps:
-         linear_step = end_lr - start_lr
-         lr = start_lr + linear_step * (global_step / warmup_steps)
-
+    This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
+    For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
+    
+    When global_step < warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            linear_step = end_lr - start_lr
+            lr = start_lr + linear_step * (global_step / warmup_steps)
+    
+    where start_lr is the initial learning rate, and end_lr is the final learning rate;
+    
+    When global_step >= warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            lr = learning_rate
+    
+    where lr is the learning_rate after warm-up.
+    
     Args:
-        learning_rate (float | Variable): A float value or Variable.
-        warmup_steps (int): The warmup steps.
-        start_lr (float): The start learning rate of warmup.
-        end_lr (float): The end learning rate of warmup.
-
+        learning_rate (Variable|float): Learning_rate after warm-up, it could be 1D-Tensor or single value with the data type of float32.
+        warmup_steps (int): Steps for warm up.
+        start_lr (float): Initial learning rate of warm up.
+        end_lr (float): Final learning rate of warm up.
+    
     Returns:
-        The decayed learning rate in warmup period.
-
+        Variable: Warm-up learning rate with the same data type as learning_rate.
+    
+    
     Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            boundaries = [100, 200]
-            lr_steps = [0.1, 0.01, 0.001]
-            warmup_steps = 50 
-            start_lr = 1. / 3. 
-            end_lr = 0.1
-            decayed_lr = fluid.layers.linear_lr_warmup(
-                fluid.layers.piecewise_decay(boundaries, lr_steps),
-                warmup_steps, start_lr, end_lr)
-
+    
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+    
+        boundaries = [100, 200]
+        lr_steps = [0.1, 0.01, 0.001]
+        learning_rate = fluid.layers.piecewise_decay(boundaries, lr_steps) #case1, 1D-Tensor
+        #learning_rate = 0.1  #case2, single-value
+        warmup_steps = 50
+        start_lr = 1. / 3.
+        end_lr = 0.1
+        decayed_lr = fluid.layers.linear_lr_warmup(learning_rate,
+            warmup_steps, start_lr, end_lr)
+    
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        out, = exe.run(fetch_list=[decayed_lr.name])
+        print(out)
+        # case1: [0.33333334]
+        # case2: [0.33333334]
     """
     dtype = 'float32'
     if isinstance(learning_rate, Variable):
