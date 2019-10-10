@@ -714,7 +714,7 @@ def dynamic_lstm(input,
     - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
     - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
     - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` epresents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
     Parameters:
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
@@ -766,9 +766,8 @@ def dynamic_lstm(input,
             vocab_size = 10000
             hidden_dim = 512
             
-            data = fluid.data(name='x', shape=[None, 1],
-                         dtype='int64', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
             forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
@@ -872,7 +871,7 @@ def lstm(input,
     - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
     - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
     - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` epresents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
     Parameters:
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
@@ -918,8 +917,8 @@ def lstm(input,
 
             emb_dim = 256
             vocab_size = 10000
-            data = fluid.data(name='x', shape=[None, 100, 1], dtype='int64')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None, 100], dtype='int64')
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
@@ -1060,7 +1059,7 @@ def dynamic_lstmp(input,
     - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
     - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
     - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` epresents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
     Parameters:
         input( :ref:`api_guide_Variable_en` ): The input of dynamic_lstmp layer, which supports
@@ -1121,8 +1120,8 @@ def dynamic_lstmp(input,
 
             import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
-            data = fluid.data(name='sequence', shape=[None, 1], dtype='int64', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                     act=None, bias_attr=None)
