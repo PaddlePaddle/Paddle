@@ -1325,7 +1325,7 @@ class Embedding(layers.Layer):
             vector shoud be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example 2 for details.
         dtype(np.dtype|core.VarDesc.VarType|str): It refers to the data type of output Tensor.
-            It must be float32 or float64. Default: float32.
+            It must be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
