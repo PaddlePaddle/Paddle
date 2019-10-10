@@ -6550,7 +6550,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def topk(input, k, name=None):
     """
-    This operator is used to find values and indices of the k largest entries
+    This OP is used to find values and indices of the k largest entries
     for the last dimension.
 
     If the input is a 1-D Tensor, finds the k largest entries and outputs
@@ -6590,30 +6590,29 @@ def topk(input, k, name=None):
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        - ``values``: Input tensor's k largest elements along each last dimensional slice.
-                      The dimension is: :math:`input.shape[:-1]+[k]`.
-        - ``indices``: Indices of k largest elements alone the last dimension of input. The
-                      dimension is same as values.
+        Values (Variable): Input tensor's k largest elements along each last dimensional slice. The dimension is: :math:`input.shape[:-1]+[k]`.
+        Indices (Variable): Indices of k largest elements alone the last dimension of input. The dimension is same as values.
 
     Raises:
-        - ``ValueError``: If k < 1 or k > last dimension of input.
+        ValueError: If :math:`k < 1` or :math:`k > last dimension of input`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            # set batch size=None
             input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
             top5_values, top5_indices = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indices.shape=[None, 13, 5]
 
             # 1D Tensor
-            input = fluid.data(name="input", shape=[None, 13], dtype='float32')
-            top5_values, top5_indices = layers.topk(input, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
+            input1 = fluid.data(name="input1", shape=[None, 13], dtype='float32')
+            top5_values, top5_indices = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
 
             # k=Variable
-            input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
-            vk = layers.data(name="vk", shape=[1], dtype='int32') # save k in vk.data[0]
-            vk_values, vk_indices = layers.topk(input, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
+            input2 = fluid.data(name="input2", shape=[None, 13, 11], dtype='float32')
+            vk = fluid.data(name="vk", shape=[None, 1], dtype='int32') # save k in vk.data[0]
+            vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
     helper = LayerHelper("top_k", **locals())
@@ -8493,6 +8492,7 @@ def squeeze(input, axes, name=None):
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            # set batch size=None
             x = fluid.data(name='x', shape=[None, 5, 1, 10])
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
@@ -11901,12 +11901,13 @@ def stack(x, axis=0):
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            # set batch size=None
             x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
             x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
             # stack Tensor list
             data = layers.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
 
-            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[1, None, 1, 2]
+            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
 
             # stack single Tensor
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
