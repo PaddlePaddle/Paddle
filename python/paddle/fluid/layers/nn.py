@@ -8208,13 +8208,25 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             dim = fluid.layers.fill_constant([1], "int32", 5)
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
     """
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in reshape must be Variable, but received %s." %
+            (type(x)))
+
+    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'x' in reshape must be float32, float64, int32 or int64, "
+            "but received %s." % (convert_dtype(x.dtype)))
 
     if not isinstance(shape, (list, tuple, Variable)):
         raise TypeError(
-            "Input shape must be an Variable or python list or tuple.")
+            "The type of 'shape' in reshape must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
 
     if not isinstance(actual_shape, Variable) and (actual_shape is not None):
-        raise TypeError("actual_shape should either be Variable or None.")
+        raise TypeError(
+            "The type of 'actual_shape' in reshape must be Variable "
+            "or None, but received %s." % (type(actual_shape)))
 
     helper = LayerHelper("reshape2", **locals())
     inputs = {"X": x}
@@ -8249,15 +8261,21 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 attrs_shape.append(dim_size)
                 if dim_size == -1:
                     assert unk_dim_idx == -1, (
-                        "Only one dimension in shape can be unknown.")
+                        "Only one dimension value of 'shape' in reshape can "
+                        "be -1. But received shape[%d] is also -1." % dim_idx)
                     unk_dim_idx = dim_idx
                 elif dim_size == 0:
                     assert dim_idx < len(x.shape), (
-                        "The indice of 0s in shape can not exceed Rank(X).")
+                        "The index of 0 in `shape` must be less than "
+                        "the input tensor X's dimensions. "
+                        "But received shape[%d] = 0, X's dimensions = %d." %
+                        (dim_idx, len(x.shape)))
                 else:
                     assert dim_size > 0, (
-                        "Each dimension size given in shape must not be negtive "
-                        "except one unknown dimension.")
+                        "Each dimension value of 'shape' in reshape must not "
+                        "be negtive except one unknown dimension. "
+                        "But received shape[%d] = %s." %
+                        (dim_idx, str(dim_size)))
         return attrs_shape
 
     if in_dygraph_mode():
@@ -8269,7 +8287,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             inputs["Shape"] = shape
         elif isinstance(shape, (list, tuple)):
             assert len(shape) > 0, (
-                "The size of argument(shape) can't be zero.")
+                "The size of 'shape' in reshape can't be zero, "
+                "but received %s." % len(shape))
             attrs["shape"] = get_attr_shape(shape)
             if contain_var(shape):
                 inputs['ShapeTensor'] = get_new_shape_tensor(shape)
