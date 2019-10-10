@@ -15621,7 +15621,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = dict()
+    attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
         attrs = {'shape': shape}
     else:
