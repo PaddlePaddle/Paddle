@@ -8937,8 +8937,8 @@ def label_smooth(label,
                  dtype="float32",
                  name=None):
     """
-    Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR).
+    Label smoothing is a mechanism to regularize the classifier layer and is called 
+    label-smoothing regularization (LSR). 
 
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
@@ -8957,19 +8957,23 @@ def label_smooth(label,
 
     See more details about label smoothing in https://arxiv.org/abs/1512.00567.
 
-    Args:
+    Parameters:
         label(Variable): The input variable containing the label data. The
-                          label data should use one-hot representation.
-        prior_dist(Variable): The prior distribution to be used to smooth
-                              labels. If not provided, an uniform distribution
-                              is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`.
-        epsilon(float): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
-                                                  float_64, int etc.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                        label data should use one-hot representation. It's 
+                        a multidimensional tensor with a shape of 
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+        prior_dist(Variable, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is 
+                        0.1.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
+                        as 'float32', 'float64'. The default value is 'float32'.
+        name(str, optional): The default value is None. Normally there is no need for user 
+                        to set this property. For more information, please refer to 
+                        :ref:`api_guide_Name`.
 
     Returns:
         Variable: The tensor variable containing the smoothed labels.
@@ -13749,23 +13753,29 @@ def merge_selected_rows(x, name=None):
     return out
 
 
-@templatedoc()
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
-    ${comment}
+    Mul Operator.
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    The equation is:
+
+    ..  math::
+        Out = x * y
+
+    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
-        x_num_col_dims(${x_num_col_dims_type}): ${x_num_col_dims_comment}
-        y_num_col_dims(${y_num_col_dims_type}): ${y_num_col_dims_comment}
-        name(basestring|None): Name of the output.
+        x (Variable): The first input Tensor/LoDTensor of mul_op.
+        y (Variable): The second input Tensor/LoDTensor of mul_op.
+        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1. 
+        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1. 
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
 
     Examples:
-        .. code-block:: python
+        ..  code-block:: python
             
             import paddle.fluid as fluid
             dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
