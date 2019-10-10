@@ -13253,7 +13253,7 @@ def logical_and(x, y, out=None, name=None):
     
     .. math::
 
-        Out = X \&\& Y
+        Out = X \land Y
 
     Args:
         x(${x_type}): ${x_comment}
@@ -13296,7 +13296,14 @@ def logical_and(x, y, out=None, name=None):
 @templatedoc()
 def logical_or(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_or Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = X \lor Y
 
     Args:
         x(${x_type}): ${x_comment}
@@ -13346,7 +13353,7 @@ def logical_xor(x, y, out=None, name=None):
     
     .. math::
 
-        Out = (X || Y) \&\& !(X \&\& Y)
+        Out = (X \lor Y) \land \lnot (X \land Y)
 
     Args:
         x(${x_type}): ${x_comment}
@@ -13396,7 +13403,7 @@ def logical_not(x, out=None, name=None):
     
     .. math::
 
-        Out = !X
+        Out = \lnot X
 
     Args:
         x(${x_type}): ${x_comment}

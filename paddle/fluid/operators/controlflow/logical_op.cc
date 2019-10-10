@@ -29,9 +29,7 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
                                   "a LoDTensor or Tensor of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "n-dim bool LoDTensor or Tensor. Each element is %s",
-                         comment.equation));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor"));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
 It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
@@ -49,9 +47,7 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", string::Sprintf("Operand of %s operator. Must be "
                                   "a LoDTensor or Tensor of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "n-dim bool LoDTensor or Tensor. Each element is %s",
-                         comment.equation));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
 It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
