@@ -89,8 +89,8 @@ paddle.fluid.io.PyReader.reset (ArgSpec(args=['self'], varargs=None, keywords=No
 paddle.fluid.io.PyReader.start (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', 'a0983fb21a0a51e6a31716009fe9a9c1'))
 paddle.fluid.io.DataLoader ('paddle.fluid.reader.DataLoader', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.io.DataLoader.__init__ 
-paddle.fluid.io.DataLoader.from_dataset (ArgSpec(args=['dataset', 'places', 'drop_last'], varargs=None, keywords=None, defaults=(True,)), ('document', '58e8bffa033f26b00b256c8bb1daff11'))
-paddle.fluid.io.DataLoader.from_generator (ArgSpec(args=['feed_list', 'capacity', 'use_double_buffer', 'iterable', 'return_list'], varargs=None, keywords=None, defaults=(None, None, True, True, False)), ('document', '8034bdb488fa18d60c4ffb0ba9658337'))
+paddle.fluid.io.DataLoader.from_dataset (ArgSpec(args=['dataset', 'places', 'drop_last'], varargs=None, keywords=None, defaults=(True,)), ('document', 'eb8b6d31e1c2ec2ca8ebbb62fcf46557'))
+paddle.fluid.io.DataLoader.from_generator (ArgSpec(args=['feed_list', 'capacity', 'use_double_buffer', 'iterable', 'return_list'], varargs=None, keywords=None, defaults=(None, None, True, True, False)), ('document', 'e3bdde36774236c3e381d2218e9cc09e'))
 paddle.fluid.io.cache (ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None), ('document', '1676886070eb607cb608f7ba47be0d3c'))
 paddle.fluid.io.map_readers (ArgSpec(args=['func'], varargs='readers', keywords=None, defaults=None), ('document', '77cbadb09df588e21e5cc0819b69c87d'))
 paddle.fluid.io.buffered (ArgSpec(args=['reader', 'size'], varargs=None, keywords=None, defaults=None), ('document', '0d6186f109feceb99f60ec50a0a624cb'))
@@ -980,7 +980,7 @@ paddle.fluid.optimizer.RMSPropOptimizer.backward (ArgSpec(args=['self', 'loss', 
 paddle.fluid.optimizer.RMSPropOptimizer.get_opti_var_name_list (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.RMSPropOptimizer.load (ArgSpec(args=['self', 'stat_dict'], varargs=None, keywords=None, defaults=None), ('document', '649a92cf7f1ea28666fd00c4ea01acde'))
 paddle.fluid.optimizer.RMSPropOptimizer.minimize (ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set', 'grad_clip'], varargs=None, keywords=None, defaults=(None, None, None, None)), ('document', '8387af01322a6defc92c1832faccd304'))
-paddle.fluid.optimizer.AdadeltaOptimizer ('paddle.fluid.optimizer.AdadeltaOptimizer', ('document', 'f4354aef5e3b9134fa68919b75a3a097'))
+paddle.fluid.optimizer.AdadeltaOptimizer ('paddle.fluid.optimizer.AdadeltaOptimizer', ('document', '6710aad9700421ac6ccb4088b6b7f250'))
 paddle.fluid.optimizer.AdadeltaOptimizer.__init__ (ArgSpec(args=['self', 'learning_rate', 'epsilon', 'rho', 'regularization', 'name'], varargs=None, keywords=None, defaults=(1e-06, 0.95, None, None)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.optimizer.AdadeltaOptimizer.apply_gradients (ArgSpec(args=['self', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '80ea99c9af7ef5fac7e57fb302103610'))
 paddle.fluid.optimizer.AdadeltaOptimizer.apply_optimize (ArgSpec(args=['self', 'loss', 'startup_program', 'params_grads'], varargs=None, keywords=None, defaults=None), ('document', '5c46d1926a40f1f873ffe9f37ac89dae'))
@@ -1064,7 +1064,7 @@ paddle.fluid.CUDAPlace ('paddle.fluid.core_avx.CUDAPlace', ('document', '6a6cd8e
 paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPlace, arg0: int) -> None
 paddle.fluid.CUDAPinnedPlace ('paddle.fluid.core_avx.CUDAPinnedPlace', ('document', 'afd58ea5d390b5ea06ca70291a266d45'))
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core_avx.CUDAPinnedPlace) -> None
-paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', 'a4d4d13ce9eeb86bbaa7ab935c207577'))
+paddle.fluid.ParamAttr ('paddle.fluid.param_attr.ParamAttr', ('document', '7b5bfe856689036b8fffb71af1558e5c'))
 paddle.fluid.ParamAttr.__init__ (ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, True)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.WeightNormParamAttr ('paddle.fluid.param_attr.WeightNormParamAttr', ('document', 'b5ae1698ea72d5a9428000b916a67379'))
 paddle.fluid.WeightNormParamAttr.__init__ (ArgSpec(args=['self', 'dim', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, None, 1.0, None, True, None, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
@@ -1073,7 +1073,7 @@ paddle.fluid.DataFeeder.__init__ (ArgSpec(args=['self', 'feed_list', 'place', 'p
 paddle.fluid.DataFeeder.decorate_reader (ArgSpec(args=['self', 'reader', 'multi_devices', 'num_places', 'drop_last'], varargs=None, keywords=None, defaults=(None, True)), ('document', 'a0ed5ce816b5d603cb595aacb922335a'))
 paddle.fluid.DataFeeder.feed (ArgSpec(args=['self', 'iterable'], varargs=None, keywords=None, defaults=None), ('document', 'ce65fe1d81dcd7067d5092a5667f35cc'))
 paddle.fluid.DataFeeder.feed_parallel (ArgSpec(args=['self', 'iterable', 'num_places'], varargs=None, keywords=None, defaults=(None,)), ('document', '334c6af750941a4397a2dd2ea8a4d76f'))
-paddle.fluid.clip.set_gradient_clip (ArgSpec(args=['clip', 'param_list', 'program'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'a0b00ccc8584b4a1cf4ec5aa74780e77'))
+paddle.fluid.clip.set_gradient_clip (ArgSpec(args=['clip', 'param_list', 'program'], varargs=None, keywords=None, defaults=(None, None)), ('document', '7a0f76a77dd88a74f24485a103a22fc1'))
 paddle.fluid.clip.ErrorClipByValue ('paddle.fluid.clip.ErrorClipByValue', ('document', 'e6f815a03be88dee2537707d9e6b9209'))
 paddle.fluid.clip.ErrorClipByValue.__init__ (ArgSpec(args=['self', 'max', 'min'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.clip.GradientClipByValue ('paddle.fluid.clip.GradientClipByValue', ('document', 'b7a22f687269cae0c338ef3866322db7'))
