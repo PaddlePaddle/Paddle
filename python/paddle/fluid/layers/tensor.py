@@ -374,19 +374,17 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
-    **fill_constant**
-
-    This function creates a tensor with specified `shape` and `dtype`, and
+    This OP creates a tensor with specified `shape` and `dtype`, and
     initializes it with a constant specifed by `value`.
 
-    The attribute `stop_gradient` of the created tensor is set to True.
+    The attribute `stop_gradient` of the created tensor is setted to True.
 
     Args:
         shape(tuple|list): Shape of the LoDTensor or SelectedRows to be created.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the LoDTensor or SelectedRows to be created.
-        force_cpu(True): data should be on CPU if set true, defalut value is False.
+        force_cpu(True): data should be on CPU if it's true, defalut value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -396,7 +394,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     Raise:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be same as the dtype. 
+        and the data type of out Tensor must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
@@ -465,7 +463,7 @@ def fill_constant_batch_size_like(input,
             the value of batch_size of input Tensor. The default value is 0.
 
     Returns:
-        Variable: the created Tensor which data type si dtype.
+        Variable: the created Tensor which data type is dtype.
 
     Examples:
 
