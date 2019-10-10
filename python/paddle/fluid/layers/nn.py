@@ -3229,11 +3229,14 @@ def sequence_slice(input, offset, length, name=None):
 
     Args:
         input(Variable): LoDTensor, The input Variable which consists of the complete
-                         sequences.
-        offset(Variable): LoDTensor, The offset to slice each sequence.
-        length(Variable): LoDTensor, The length of each subsequence.
-        name(str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.None by default.
+                         sequences.The data type is float32 or float64.
+        offset(Variable): LoDTensor, The offset to slice each sequence.The data
+                         type is int32 or int64.
+        length(Variable): LoDTensor, The length of each subsequence.The data
+                         type is int32 or int64.
+        name(str|None): The default value is None.  Normally there is no need
+                        for user to set this property.  For more information,
+                        please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output subsequences.
@@ -13574,7 +13577,9 @@ def sigmoid_cross_entropy_with_logits(x,
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
         ignore_index(&{ignore_index}): ${ignore_index_comment}
-        name(str|None): Name of the output.None by default.
+        name(str|None): The default value is None.  Normally there is
+            no need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name`
         normalize(bool): If true, divide the output by the number of
             targets != ignore_index.
 

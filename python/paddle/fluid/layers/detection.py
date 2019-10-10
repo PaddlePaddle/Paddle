@@ -1404,8 +1404,9 @@ def ssd_loss(location,
             mining_type is 'hard_example'.
 
     Returns:
-        Variable(Tensor), The weighted sum of the localization loss and confidence loss, \
-        with shape [N * Np, 1], N and Np are the same as they are in `location`.
+        Variable(Tensor):  The weighted sum of the localization loss and confidence loss, \
+        with shape [N * Np, 1], N and Np are the same as they are in
+        `location`.The data type is float32 or float64.
 
     Raises:
         ValueError: If mining_type is 'hard_example', now only support mining \
