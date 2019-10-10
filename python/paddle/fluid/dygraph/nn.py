@@ -265,10 +265,9 @@ class Conv3D(layers.Layer):
     """
     **Convlution3D Layer**
 
-    It creates a callable object from Conv3D class.
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional tensors with a shape of
+    Output(Output) are multidimensional tensors with a shape of 
     :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
     and W is the width of the feature. Convlution3D is similar with Convlution2D
@@ -284,10 +283,10 @@ class Conv3D(layers.Layer):
 
     In the above equation:
 
-    * :math:`X`: Input value, a 5-D tensor with a shape of :math:`[N, C, D, H, W]`.
-    * :math:`W`: Filter value, a 5-D tensor with a shape of :math:`[M, C, D, H, W]`.
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
+    * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D tensor with a shape of :math:`[M, 1]`.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
@@ -295,12 +294,12 @@ class Conv3D(layers.Layer):
 
         - Input:
 
-          Input shape: :math:`[N, C_{in}, D_{in}, H_{in}, W_{in}]`
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
 
-          Filter shape: :math:`[C_{out}, C_{in}, D_f, H_f, W_f]`
+          Filter shape: :math:`(C_{out}, C_{in}, D_f, H_f, W_f)`
 
         - Output:
-          Output shape: :math:`[N, C_{out}, D_{out}, H_{out}, W_{out}]`
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
         Where
 
@@ -487,7 +486,6 @@ class Conv3DTranspose(layers.Layer):
     """
     **Convlution3D transpose layer**
 
-    It creates a callable object from Conv3DTranspose class.
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW format. Where N is batch size, C is the number of channels,
@@ -519,39 +517,65 @@ class Conv3DTranspose(layers.Layer):
 
         - Input:
 
-          Input shape: :math:`[N, C_{in}, D_{in}, H_{in}, W_{in}]`
+          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
 
-          Filter shape: :math:`[C_{in}, C_{out}, D_f, H_f, W_f]`
+          Filter shape: :math:`(C_{in}, C_{out}, D_f, H_f, W_f)`
 
         - Output:
 
-          Output shape: :math:`[N, C_{out}, D_{out}, H_{out}, W_{out}]`
+          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
 
         Where
 
         .. math::
 
-           D_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
+           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
+
+    **Note**:
+
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, 
+          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
+          conv3d_transpose can compute the kernel size automatically.
+
 
     Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple, optional): The output image size. If output size is a
-            tuple, it must contain three integers, (image_D, image_H, image_W). This
-            parameter only works when filter_size is None. The default value is None.
+            tuple, it must contain three integers, (image_depth, image_height, image_width). This
+            parameter only works when filter_size is None. If output_size and filter_size are 
+            specified at the same time, They should follow the formula above. The default value is None.
+            Output_size and filter_size should not be None at the same time.
         filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
             calculate filter_size. The default value is None.
-        padding(int|tuple, optional): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. The default value is 0.
-        stride(int|tuple, optional): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. The default value is 1.
+        padding(int|tuple, optional): The padding size. The padding argument effectively
+             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
+             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
+             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `'NCDHW'`, `padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `'NDHWC'`, `padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            The default value is 0.
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution. 
+            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+            The default value is 1.
         dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
