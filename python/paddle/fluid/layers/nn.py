@@ -4445,62 +4445,69 @@ def layer_norm(input,
                act=None,
                name=None):
     """
-    ${comment}
+    **Layer Normalization Layer**
+
+    The API implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
 
-        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
-
-    * :math:`H`: the number of hidden units in a layers
-
-    * :math:`g`: the trainable scale parameter.
-
-    * :math:`b`: the trainable bias parameter.
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): The input tensor variable.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after
-            normalization. Default True.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after
-            normalization. Default True.
-        begin_norm_axis(int): The normalization will be performed along
+        input(Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
+            normalization. Default: True.
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
+            normalization. Default: True.
+        begin_norm_axis(int, optional): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-            Default 1.
-        epsilon(float): The small value added to the variance to prevent
-            division by zero. Default 1e-05.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            Default: 1.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
-        act(str): Activation to be applied to the output of layer normalizaiton.
-                  Default None.
-        name(str): The name of this layer. It is optional. Default None, and a
-                   unique name would be generated automatically.
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        act(str, optional): Activation to be applied to the output of layer normalizaiton.
+                  Default: None.
+        name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        ${y_comment}
+        Variable: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
 
     Examples:
 
-        >>> import paddle.fluid as fluid
-        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
+            hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            np_x = np.random.random(size=(8, 3, 32, 32)).astype('float32')
+            output = exe.run(feed={"x": np_x}, fetch_list = [hidden1])
+            print(output)
     """
     assert in_dygraph_mode(
     ) is not True, "please use FC instead of fc in dygraph mode!"
@@ -6740,19 +6747,23 @@ def ctc_greedy_decoder(input,
                        padding_value=0,
                        name=None):
     """
-    This op is used to decode sequences by greedy policy by below steps:
+    This op is used to decode sequences by greedy policy by the following steps:
 
-    1. Get the indexes of max value for each row in input. a.k.a.
+    1. Get the indexes of maximum value for each row in input. a.k.a.
        numpy.argmax(input, axis=0).
     2. For each sequence in result of step1, merge repeated tokens between two
        blanks and delete all blanks.
+
+    This op is implemented in two modes: lod and padding, either of them can be used.
+    The input can be either LoDTensor or Tensor, corresponding to lod and padding 
+    mode respectively.
 
     A simple example as below:
 
     .. code-block:: text
 
         Given:
-        for lod mode:
+        (1) for lod mode:
 
         input.data = [[0.6, 0.1, 0.3, 0.1],
                       [0.3, 0.2, 0.4, 0.1],
@@ -6781,7 +6792,7 @@ def ctc_greedy_decoder(input,
 
         output.lod = [[2, 1]]
 
-        for padding mode:
+        (2) for padding mode:
 
          input.data = [[[0.6, 0.1, 0.3, 0.1],
                         [0.3, 0.2, 0.4, 0.1],
@@ -6808,45 +6819,54 @@ def ctc_greedy_decoder(input,
         output_length.data = [[2], [1]]
 
 
+    Parameters:
 
-
-    Args:
-
-        input(Variable): (LoDTensor<float>), the probabilities of
-                         variable-length sequences. When in lod mode, it is a 2-D Tensor with
-                         LoD information. It's shape is [Lp, num_classes + 1] 
+        input(Variable): the probabilities of variable-length sequences. When in lod mode, 
+                         it is a 2-D LoDTensor with LoD information. It's shape is [Lp, num_classes + 1] 
                          where Lp is the sum of all input sequences' length and
                          num_classes is the true number of classes. When in padding mode,
                          it is a 3-D Tensor with padding, It's shape is [batch_size, N, num_classes + 1].
-                         (not including the blank label).
+                         (not including the blank label). The data type can be float32 or float64.
         blank(int): the blank label index of Connectionist Temporal
-                    Classification (CTC) loss, which is in thehalf-opened
+                    Classification (CTC) loss, which is in the half-opened
                     interval [0, num_classes + 1).
-        input_length(Variable, optional): (LoDTensor<int>), shape is [batch_size, 1], when in lod mode, input_length
-                                 is None.
+        input_length(Variable, optional): 2-D LoDTensor, shape is [batch_size, 1], data type is int64.
+                                 It is used for padding mode. In lod mode, input_length is None.
         padding_value(int): padding value.
-        name (str, optional): The name of this layer. It is optional.
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        output(Variable): For lod mode, CTC greedy decode result which is a 2-D tensor with shape [Lp, 1]. \
-                  'Lp' is the sum if all output sequences' length. If all the sequences \
-                  in result were empty, the result LoDTensor will be [-1] with  \
-                  LoD [[]] and dims [1, 1]. For padding mode, CTC greedy decode result is a 2-D tensor \
-                  with shape [batch_size, N], output length's shape is [batch_size, 1] which is length \
-                  of every sequence in output.
-        output_length(Variable, optional): length of each sequence of output for padding mode.
+        For lod mode, returns the result of CTC greedy decoder, 2-D LoDTensor, shape is [Lp, 1], \
+        data type is int64. 'Lp' is the sum of all output sequences' length. If all the sequences \
+        in result were empty, the result LoDTensor will be [-1] with  empty \
+        LoD [[]].
+
+        For padding mode, returns a tuple of (output, output_length), which was describled as below: 
+
+        output, 2-D Tensor, shape is [batch_size, N], data type is int64.
+
+        output_length, 2-D Tensor, shape is [batch_size, 1], data type is int64. It is the length of \
+                           each sequence of output for padding mode.
+
+    Return type:
+        For lod mode: Variable
+
+        For padding mode: tuple of two Variables (output, output_length).
+
 
     Examples:
         .. code-block:: python
 
             # for lod mode
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 8], dtype='float32', lod_level=1)
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
 
             # for padding mode
-            x_pad = fluid.layers.data(name='x_pad', shape=[4,8], dtype='float32')
-            x_pad_len = fluid.layers.data(name='x_pad_len', shape=[1], dtype='int64')
+            x_pad = fluid.data(name='x_pad', shape=[10, 4, 8], dtype='float32')
+            x_pad_len = fluid.data(name='x_pad_len', shape=[10, 1], dtype='int64')
             out, out_len = fluid.layers.ctc_greedy_decoder(input=x_pad, blank=0,
                             input_length=x_pad_len)
 
@@ -8773,13 +8793,13 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
 def pad(x, paddings, pad_value=0., name=None):
     """
-    Pads a tensor with a constant value given by :attr:`pad_value`, and the
-    padded width is specified by :attr:`paddings`.
+    This op will pad a tensor with a constant value given by :attr:`pad_value`, and the
+    padded shape is specified by :attr:`paddings`.
 
-    Specifically, the number of values padded before the contents of :attr:`x`
-    in dimension :attr:`i` is indicated by :attr:`paddings[2i]`, and the number
-    of values padded after the contents of :attr:`x` in dimension :attr:`i` is
-    indicated by :attr:`paddings[2i+1]`.
+    Specifically, the number of values padded before the elements of :attr:`x`
+    in dimension :attr:`i` is indicated by :attr:`paddings[2*i]`, and the number
+    of values padded after the elements of :attr:`x` in dimension :attr:`i` is
+    indicated by :attr:`paddings[2*i+1]`.
 
     See below for an example.
 
@@ -8799,24 +8819,29 @@ def pad(x, paddings, pad_value=0., name=None):
                    [0, 0, 0, 0, 0]]
 
     Args:
-        x (Variable): The input tensor variable.
+        x (Variable): Tensor, data type is float32.
         paddings (list): A list of integers. Its elements specify the padded
-                         width before and after for each dimension in turn.
-                         The length of :attr:paddings must be
+                         width before and after each dimension in turn.
+                         The length of :attr:`paddings` must be equal to 
                          :math:`rank(x) \\times 2`.
         pad_value (float): The constant value used to pad.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The padded tensor variable.
+        The padded tensor, with the same data type and rank as :attr:`x`
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
 
-            # x is a rank 2 tensor variable.
+            # x is a rank 2 tensor variable with shape [100, 224].
+            # out will be a tensor of shape [101, 227] 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='data', shape=[224], dtype='float32')
+            x = fluid.data(name='data', shape=[100, 224], dtype='float32')
             out = fluid.layers.pad(
                 x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
@@ -8834,11 +8859,10 @@ def pad(x, paddings, pad_value=0., name=None):
 
 def pad_constant_like(x, y, pad_value=0., name=None):
     """
-    Pad input(Y) with :attr:`pad_value`, the number of values padded to
+    Pad :attr:`y` with :attr:`pad_value`, the number of values padded to
     the edges of each axis is specified by the difference of the shape
-    of X and Y. ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
-    unique pad widths for each axis. The input should be a k-D
-    tensor(k > 0 and k < 7).
+    of :attr:`x` and :attr:`y` . ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
+    specify padding widths for each axis. The input should be a k-D tensor(k > 0 and k < 7).
 
     See below for an example.
 
@@ -8882,14 +8906,19 @@ def pad_constant_like(x, y, pad_value=0., name=None):
             Out.shape = (2, 3, 2, 3)
 
     Args:
-        x (Variable): The input tensor variable.
-        y (Variable): The input tensor variable.
+        x (Variable): Tensor, its shape spicifies the shape of output.
+        y (Variable): Tensor, its rank is the same with :attr:`x`, and for each dimension :math:`i` , 
+                      :math:`y\_shape[i] <= x\_shape[i]` . The data type can be float32 or float64.
         pad_value (float): The constant value used to pad.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The padded tensor variable.
+        The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
@@ -8897,8 +8926,8 @@ def pad_constant_like(x, y, pad_value=0., name=None):
             # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
             # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2,3,2,3], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1,3,1,3], dtype='float32')
+            x = fluid.data(name='x', shape=[2,3,2,3], dtype='float32')
+            y = fluid.data(name='y', shape=[1,3,1,3], dtype='float32')
             out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
             # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
     """
@@ -9119,11 +9148,12 @@ def roi_align(input,
     return align_out
 
 
-def dice_loss(input, label, epsilon=0.00001):
+def dice_loss(input, label, epsilon=0.00001, name=None):
     """
-    Dice loss for comparing the similarity of two batch of data,
-    usually is used for binary image segmentation i.e. labels are binary.
-    The dice loss can be defined as below equation:
+    Dice loss for comparing the similarity between the input predictions and the label.
+    This implementation is for binary classification, where the input is sigmoid
+    predictions of each pixel, usually used for segmentation task. The dice loss can
+    be defined as the following equation:
 
     .. math::
 
@@ -9132,25 +9162,31 @@ def dice_loss(input, label, epsilon=0.00001):
                   &= \\frac{(union\_area - intersection\_area)}{total\_area}
 
 
-    Args:
-        input (Variable): The predictions with rank>=2. The first dimension is batch size,
-                          and the last dimension is class number.
-        label (Variable): The groud truth with the same rank with input. The first dimension
-                          is batch size, and the last dimension is 1.
+    Parameters:
+        input (Variable): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
+                          the batch_size, :math:`N_D` is 1. It is usually the output predictions of sigmoid activation.
+                          The data type can be float32 or float64.
+        label (Variable): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`. 
+                          where :math:`N_1` is the batch_size, :math:`N_D` is 1. The data type can be float32 or float64.
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
                          Default: 0.00001
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        dice_loss (Variable): The dice loss with shape [1].
+        The dice loss with shape [1], data type is the same as `input` .
+    Return Type:
+        Varaible
 
-    Examples:
+    Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='data', shape = [3, 224, 224, 2], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[3, 224, 224, 1], dtype='float32')
-            predictions = fluid.layers.softmax(x)
+            x = fluid.data(name='data', shape = [3, 224, 224, 1], dtype='float32')
+            label = fluid.data(name='label', shape=[3, 224, 224, 1], dtype='float32')
+            predictions = fluid.layers.sigmoid(x)
             loss = fluid.layers.dice_loss(input=predictions, label=label)
     """
     label = one_hot(label, depth=input.shape[-1])
@@ -10584,10 +10620,8 @@ def crop(x, shape=None, offsets=None, name=None):
     """
     Crop input into output, as specified by offsets and shape.
 
-    **Warning:** THIS FUNCTION IS DEPRECATED. It will be removed in a future version.
-    Instructions for updating: Use `fluid.layers.crop_tensor
-    <https://www.paddlepaddle.org.cn/documentation/docs/en/api/layers/nn.html#crop_tensor>`_
-    instead.
+    **Warning:** THIS OP IS DEPRECATED. It will be removed in the future version.
+    Instructions for updating: Use :ref:`api_fluid_layers_crop_tensor` instead.
 
     .. code-block:: text
 
@@ -10617,26 +10651,30 @@ def crop(x, shape=None, offsets=None, name=None):
                 Out = [[1, 2, 5],
                        [3, 4, 6]].
 
-    Args:
-        x (Variable): The input tensor variable.
-        shape (Variable|list/tuple of integer): The output shape is specified
-            by `shape`, which can be a Variable or a list/tuple of integer.
-            If a tensor Variable, it's rank must be the same as `x`. This way
+    Parameters:
+        x (Variable): Tensor, data type can be float32 or float64.
+        shape (Variable|list/tuple of integers): The output shape is specified
+            by `shape`, which can be a Tensor or a list/tuple of integers.
+            If it is a Tensor, it's rank must be the same as `x` , only 
+            it's shape will be used, and the value of it will be ignored. This way
             is suitable for the case that the output shape may be changed each
-            iteration. If a list/tuple of integer, it's length must be the same
+            iteration. If it is a list/tuple of integers, it's length must be the same
             as the rank of `x`
-        offsets (Variable|list/tuple of integer|None): Specifies the cropping
-            offsets at each dimension. It can be a Variable or a list/tuple
-            of integers. If a tensor Variable, it's rank must be the same as `x`.
+        offsets (Variable|list/tuple of integers|None): Specifies the cropping
+            offsets at each dimension. It can be a Tensor or a list/tuple
+            of integers. If it is a Tensor, it's rank must be the same as `x`.
             This way is suitable for the case that the offsets may be changed
-            each iteration. If a list/tuple of integer, it's length must be the
-            same as the rank of `x`. If None, the offsets are 0 at each
-            dimension.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+            each iteration. If it is a list/tuple of integers, it's length must be the
+            same as the rank of `x`. If None, the offsets are 0 at each dimension.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name` . Usually name is no need to set and 
+            None by default. 
 
     Returns:
-        Variable: The cropped tensor variable.
+        The cropped Tensor, which has the same rank and data type with `x`
+
+    Return Type:
+        Variable
 
     Raises:
         ValueError: If shape is not a list, tuple or Variable.
@@ -10646,13 +10684,13 @@ def crop(x, shape=None, offsets=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 5], dtype="float32")
-            y = fluid.layers.data(name="y", shape=[2, 3], dtype="float32")
+            x = fluid.data(name="x", shape=[3, 3, 5], dtype="float32")
+            y = fluid.data(name="y", shape=[2, 2, 3], dtype="float32")
             crop = fluid.layers.crop(x, shape=y)
 
             # or
-            z = fluid.layers.data(name="z", shape=[3, 5], dtype="float32")
-            crop = fluid.layers.crop(z, shape=[-1, 2, 3])
+            z = fluid.data(name="z", shape=[3, 3, 5], dtype="float32")
+            crop = fluid.layers.crop(z, shape=[2, 2, 3])
 
     """
     helper = LayerHelper('crop', **locals())
@@ -13481,18 +13519,23 @@ def clip(x, min, max, name=None):
 
     Args:
         x(${x_type}): ${x_comment}
-        min(${min_type}): ${min_comment}
-        max(${max_type}): ${max_comment}
-        name(basestring|None): Name of the output.
+        min(float): ${min_comment}
+        max(float): ${max_comment}
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_comment}
+
+    Return Type:
+        ${out_type}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[1], dtype='float32')
             reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
     """
@@ -14902,28 +14945,33 @@ def psroi_pool(input,
     """
     ${comment}
 
-    Args:
+    Parameters:
         input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
+        rois (Variable): LoDTensor, ROIs (Regions of Interest) to pool over.It should be
                          a 2-D LoDTensor of shape (num_rois, 4), the lod level
                          is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                          the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates.
-        output_channels (integer): ${output_channels_comment}
+                         right coordinates. The data type is the same as `input`
+        output_channels (int): ${output_channels_comment}
         spatial_scale (float): ${spatial_scale_comment} Default: 1.0
-        pooled_height (integer): ${pooled_height_comment} Default: 1
-        pooled_width (integer): ${pooled_width_comment} Default: 1
-        name (str, default None): The name of this layer.
+        pooled_height (int): ${pooled_height_comment} Default: 1
+        pooled_width (int): ${pooled_width_comment} Default: 1
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: ${out_comment}.
+        ${out_comment}.
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[100, 490, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.psroi_pool(x, rois, 10, 1.0, 7, 7)
     """
     helper = LayerHelper('psroi_pool', **locals())
@@ -15743,12 +15791,12 @@ def deformable_conv(input,
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
 
-    This function returns a col buffer of sliding local blocks of input x, also known
+    This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter silding over
     the input feature map, a series of such columns will be formed.
 
-    For each input :math:`X` with shape [N, C, H, W], the output shape [N, Cout, Lout]
+    For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]
     can be calculated as following.
 
     .. math::
@@ -15766,8 +15814,9 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         Lout &= hout \\times wout
 
 
-    Args:
-        x(Varaible):              The input tensor of format [N, C, H, W].
+    Parameters:
+        x(Varaible):              4-D Tensor, input tensor of format [N, C, H, W], 
+                                  data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
         strides(int|list):        The strides, should be [stride_h, stride_w]
@@ -15783,17 +15832,27 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         dilations(int|list):      the dilations of convolution kernel, shold be
                                   [dilation_h, dilation_w], or an integer dialtion treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     
     Returns:
-        Variable: The tensor variable corresponding to the sliding local blocks. The output shape is [N, Cout, Lout] as decribled above. Cout is the  total number of values within each block, and Lout is the total number of such blocks.
+        The tensor variable corresponding to the sliding local blocks. 
+        The output shape is [N, Cout, Lout] as decribled above. 
+        Cout is the  total number of values within each block, 
+        and Lout is the total number of such blocks. 
+        The data type of output is the same as the input :math:`x`
+
+    Return Type:
+        Variable
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name = 'data', shape = [3, 224, 224], dtype = 'float32')
+            x = fluid.data(name = 'data', shape = [100, 3, 224, 224], dtype = 'float32')
             y = fluid.layers.unfold(x, [3, 3], 1, 1, 1)
     """
 
