@@ -503,38 +503,34 @@ void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
 
   switch (type.bits) {
     case 8:
-      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLUInt),
-                     "There is no this type.code <%d> when type.bits is 8.",
-                     type.code);
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
       if (type.code == kDLUInt)
         return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
     case 16:
-      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
-                     "There is no this type.code <%d> when type.bits is 16.",
-                     type.code);
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(
             dst->mutable_data<paddle::platform::float16>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
     case 32:
-      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
-                     "There is no this type.code <%d> when type.bits is 32.",
-                     type.code);
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<float>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
     case 64:
-      PADDLE_ENFORCE((type.code == kDLInt) || (type.code == kDLFloat),
-                     "There is no this type.code <%d> when type.bits is 64.",
-                     type.code);
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<double>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
     default:
       PADDLE_THROW("Unsupport type.bits %d", type.bits);
   }
