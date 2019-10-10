@@ -15804,7 +15804,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Returns: 
         Variable: A Tensor with randomly initialized results whose data type is determined by the dtype parameter and whose shape is determined by the shape parameter.
 
-    Throw exception:
+    Raises:
         TypeError: The shape type should be list or tupple or variable.
     
     Examples:
