@@ -95,20 +95,20 @@ def shuffle(reader, buf_size):
         buf_size(int): the size of shuffled buffer.
 
     Returns:
-    	callable: a decorated reader.
+        callable: a decorated reader.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-	    def reader():
-    	        for i in range(5):
-        	    yield i
-	    shuffled_reader = fluid.io.shuffle(reader, 3)
-	    for e in shuffled_reader():
+            def reader():
+                for i in range(5):
+                    yield i
+            shuffled_reader = fluid.io.shuffle(reader, 3)
+            for e in shuffled_reader():
                 print(e)
-	    # outputs are 0~4 unordered arrangement
+            # outputs are 0~4 unordered arrangement
     """
 
     def data_reader():
@@ -292,24 +292,24 @@ def firstn(reader, n):
     samples that reader could return.
 
     Args:
-    	reader(callable): the input reader.
-    	n(int): the max number of samples in the reader.
+        reader(callable): the input reader.
+        n(int): the max number of samples in the reader.
 
     Returns:
-    	callable: the decorated reader.
+        callable: the decorated reader.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-	    def reader():
-    	        for i in range(100):
+            def reader():
+                for i in range(100):
                     yield i
-	    firstn_reader = fluid.io.firstn(reader, 5)
-	    for e in firstn_reader():
-	        print(e)
-	    # the outputs are: 0 1 2 3 4	
+            firstn_reader = fluid.io.firstn(reader, 5)
+            for e in firstn_reader():
+                print(e)
+            # the outputs are: 0 1 2 3 4  
     """
 
     # TODO(yuyang18): Check if just drop the reader, could clean the opened
