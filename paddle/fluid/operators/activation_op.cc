@@ -556,17 +556,17 @@ class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input of hard_sigmoid operator. An N-D Tensor with data type "
-             "float32, float64.");
+             "float32, float64. ");
     AddOutput("Out",
               "Output of hard_sigmoid operator. A Tensor with the same shape "
-              "as input.");
+              "as input. ");
     AddAttr<float>("slope",
                    "The slope of the linear approximation of sigmoid. Its "
-                   "value MUST BE positive. Default is 0.2.")
+                   "value MUST BE positive. Default is 0.2. ")
         .SetDefault(0.2f);
     AddAttr<float>(
         "offset",
-        "The offset of the linear approximation of sigmoid. Default is 0.5.")
+        "The offset of the linear approximation of sigmoid. Default is 0.5. ")
         .SetDefault(0.5f);
     AddComment(R"DOC(
 HardSigmoid Activation Operator.
