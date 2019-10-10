@@ -62,17 +62,20 @@ _dygraph_current_expected_place_ = None
 
 def in_dygraph_mode():
     """
-    Check program status(tracer), Whether it runs in dygraph mode or not
+    This function checks whether the program runs in dynamic graph mode or not.
+    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
 
     Returns:
-        out (boolean): True if the program is running in dynamic graph mode
+        bool: Whether the program is running in dynamic graph mode.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
-                pass
+                print('running in dygraph mode')
+            else:
+                print('not running in dygraph mode')
 
     """
     return _dygraph_tracer_ is not None
@@ -149,25 +152,29 @@ def is_compiled_with_cuda():
 
 def cuda_places(device_ids=None):
     """
-    Create a list of :code:`fluid.CUDAPlace` objects.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    This function creates a list of :code:`fluid.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus` would be checked first. For example, if
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.  
+    gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     
-    Args: 
-        device_ids (None|list(int)|tuple(int)): gpu device id list.
+    Parameters:
+        device_ids (list or tuple of int, optional): list of GPU device ids.
 
     Returns:
-        out (list(fluid.CUDAPlace)): gpu place list.
+        list of fluid.CUDAPlace: Created GPU place list.
 
     Examples:
         .. code-block:: python
@@ -187,18 +194,20 @@ def cuda_places(device_ids=None):
 
 def cpu_places(device_count=None):
     """
-    Create a list of :code:`fluid.CPUPlace` objects.
+    This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CPUPlace)): cpu place list.
+        list of fluid.CPUPlace: Created list of CPU places.
 
     Examples:
         .. code-block:: python
@@ -214,18 +223,20 @@ def cpu_places(device_count=None):
 
 def cuda_pinned_places(device_count=None):
     """
-    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+    This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+        list of fluid.CUDAPinnedPlace: Created list of CUDA pinned places.
 
     Examples:
         .. code-block:: python
@@ -407,18 +418,20 @@ def _debug_string_(proto, throw_on_error=True):
 
 class Variable(object):
     """
-    **Notes:**
+    **Notes**:
         **The constructor of Variable should not be invoked directly.**
-        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
-        **In Dygraph Mode: Please use** `fluid.dygraph.to_variable()` **to create a dygraph variable with real data**
 
-    In Fluid, every input and output of an operator is a variable. In most
+        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
+
+        **In Dygraph Mode: Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph variable with real data**
+
+    In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
-    labels. A variable belongs to a block. All variable has its own name and
-    two variables in different blocks could have the same name.
+    labels. A variable belongs to a :ref:`api_guide_Block_en` . All variable has its own name and
+    two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the framework.proto for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
@@ -434,7 +447,7 @@ class Variable(object):
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
-        In Dygraph Mode:
+        In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
 
         .. code-block:: python
 
@@ -566,15 +579,14 @@ class Variable(object):
     @dygraph_only
     def detach(self):
         """
-        **Notes: This API is ONLY avaliable in Dygraph mode**
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
         Returns:
-            Variable: The detached Variable.
+             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
 
-        Returns type:
-            Variable(Tensor|LoDTensor) dtype is same as current Variable
 
         Examples:
             .. code-block:: python
@@ -606,15 +618,16 @@ class Variable(object):
     @dygraph_only
     def numpy(self):
         """
-        **Notes: This API is ONLY avaliable in Dygraph mode**
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
 
-        Returns a numpy array shows the value of current :ref:`api_guide_Variable`
+        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
         Returns:
             ndarray: The numpy value of current Variable.
 
         Returns type:
-            ndarray dtype is same as current Variable
+            ndarray: dtype is same as current Variable
 
         Examples:
             .. code-block:: python
@@ -642,13 +655,13 @@ class Variable(object):
     @dygraph_only
     def set_value(self, value):
         """
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
+
         Set a new value for this Variable.
 
         Args:
             value (Variable|np.ndarray): the new value.
-
-        Returns:
-            None.
 
         Examples:
             .. code-block:: python
@@ -681,14 +694,16 @@ class Variable(object):
     @dygraph_only
     def backward(self, backward_strategy=None):
         """
-        **Notes: This API is ONLY avaliable in Dygraph mode**
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
-        Parameter:
-            - **backward_strategy** : ( :ref:`api_fluid_dygraph_BackwardStrategy` ) - The Backward Strategy to run backward
+        Args:
+            backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
 
-        Returns:  None
+        Returns:
+            NoneType: None
 
         Examples:
             .. code-block:: python
@@ -701,6 +716,8 @@ class Variable(object):
                     inputs2 = []
                     for _ in range(10):
                         tmp = fluid.dygraph.base.to_variable(x)
+                        # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                        # there is no one need gradient on it.
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
@@ -724,13 +741,13 @@ class Variable(object):
     @dygraph_only
     def gradient(self):
         """
-        **Notes: This API is ONLY avaliable in Dygraph mode**
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
 
         Get the Gradient of Current Variable
 
-        Returns:  Numpy value of the gradient of current Variable
-
-        Returns type: ndarray
+        Returns:
+            ndarray: Numpy value of the gradient of current Variable
 
         Examples:
             .. code-block:: python
@@ -767,9 +784,12 @@ class Variable(object):
     @dygraph_only
     def clear_gradient(self):
         """
-        **Notes: This API is ONLY avaliable in Dygraph mode**
+        **Notes**:
+            **1. This API is ONLY avaliable in Dygraph mode**
 
-        Clear  (set to zero) the Gradient of Current Variable
+            **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
+
+        Clear  (set to ``0`` ) the Gradient of Current Variable
 
         Returns:  None
 
@@ -805,18 +825,14 @@ class Variable(object):
         """
         Get debug string.
 
-        Parameters:
-            - **throw_on_error** (bool): True if raise an exception when self is
-                not initialized.
-            - **with_details** (bool): more details about variables and parameters
-                (e.g. trainable, optimize_attr, ...) will be printed when
-                with_details is True. Default False;
+        Args:
+
+            throw_on_error (bool): True if raise an exception when self is not initialized.
+
+            with_details (bool): more details about variables and parameters (e.g. trainable, optimize_attr, ...) will be printed when with_details is True. Default value is False;
 
         Returns:
             str: The debug string.
-
-        Returns Type:
-            str
 
         Examples:
             .. code-block:: python
@@ -829,7 +845,7 @@ class Variable(object):
                                                     shape=[-1, 23, 48],
                                                     dtype='float32')
                 print(new_variable.to_string(True))
-                print("\n=============with detail===============\n")
+                print("=============with detail===============")
                 print(new_variable.to_string(True, True))
         """
         if in_dygraph_mode():
@@ -859,6 +875,35 @@ class Variable(object):
 
     @property
     def stop_gradient(self):
+        """
+        Indicating if we stop gradient from current Variable
+
+        **Notes: This Property has default value as** ``True`` **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            with fluid.dygraph.guard():
+                value0 = np.arange(26).reshape(2, 13).astype("float32")
+                value1 = np.arange(6).reshape(2, 3).astype("float32")
+                value2 = np.arange(10).reshape(2, 5).astype("float32")
+                fc = fluid.FC("fc1", size=5, dtype="float32")
+                fc2 = fluid.FC("fc2", size=3, dtype="float32")
+                a = fluid.dygraph.to_variable(value0)
+                b = fluid.dygraph.to_variable(value1)
+                c = fluid.dygraph.to_variable(value2)
+                out1 = fc(a)
+                out2 = fc2(b)
+                out1.stop_gradient = True
+                out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+                out.backward()
+
+                assert (fc._w.gradient() == 0).all()
+                assert (out1.gradient() == 0).all()
+        """
         if in_dygraph_mode():
             return self._ivar.stop_gradient
         else:
@@ -873,6 +918,27 @@ class Variable(object):
 
     @property
     def persistable(self):
+        """
+        Indicating if we current Variable should be long-term alive
+
+
+        **Notes: This Property will be deprecated and this API is just to help user understand concept**
+
+            **1. All Variable's persistable is** ``False`` **except Parameters.**
+
+            **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("persistable of current Var is: {}".format(new_variable.persistable))
+        """
         if in_dygraph_mode():
             return self._ivar.persistable
         else:
@@ -889,6 +955,22 @@ class Variable(object):
 
     @property
     def name(self):
+        """
+        Indicating name of current Variable
+
+        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("name of current Var is: {}".format(new_variable.name))
+        """
         if in_dygraph_mode():
             return self._ivar.name
         else:
@@ -903,6 +985,23 @@ class Variable(object):
 
     @property
     def shape(self):
+        """
+        Indicating shape of current Variable
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("shape of current Var is: {}".format(new_variable.shape))
+
+        """
         # convert to tuple, make it as same as numpy API.
         if in_dygraph_mode():
             return self._ivar.shape
@@ -911,6 +1010,22 @@ class Variable(object):
 
     @property
     def dtype(self):
+        """
+        Indicating data type of current Variable
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("Dtype of current Var is: {}".format(new_variable.dtype))
+        """
         if in_dygraph_mode():
             return self._ivar.dtype
         else:
@@ -919,6 +1034,27 @@ class Variable(object):
     @property
     @dygraph_not_support
     def lod_level(self):
+        """
+        Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
+        of ``LoD``
+
+        **Notes**:
+
+            **1. This is a read-only property**
+
+            **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value should be** ``0(int)``
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("LoD Level of current Var is: {}".format(new_variable.lod_level))
+        """
         # TODO(minqiyang): Support lod_level in dygraph mode
         if in_dygraph_mode():
             raise Exception("Dygraph model DO NOT supprt lod")
@@ -926,6 +1062,22 @@ class Variable(object):
 
     @property
     def type(self):
+        """
+        Indicating Type of current Variable
+
+        **Notes: This is a read-only property**
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(name="X",
+                                                shape=[-1, 23, 48],
+                                                dtype='float32')
+            print("Type of current Var is: {}".format(new_variable.type))
+        """
         if in_dygraph_mode():
             return self._ivar.type
         else:
@@ -3155,10 +3307,12 @@ class Program(object):
     control flow op like conditional_block, while :ref:`api_fluid_layers_While` is included,
     it will contain nested block.
 
-    Please reference the framework.proto for details.
+    Please reference the
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_
+    for details.
 
     A set of Program usually contains startup program and main program.
-    A startup program is set to contain some initial work , and the main
+    A startup program is set to contain some initial work, eg. initialize the ``Parameter``, and the main
     program will contain the network structure and vars for train.
 
     A set of Program can be used for test or train, in train program ,
@@ -3166,15 +3320,13 @@ class Program(object):
     program Paddle will prune some content which is irrelevant to test, eg.
     backward ops and vars.
 
-    Notes: we have default_startup_program and default_main_program
-    by default, a pair of them will shared the parameters.
-    The default_startup_program only run once to initialize parameters,
-    default_main_program run in every mini batch and adjust the weights.
+    **Notes**:
+        **we have** :ref:`api_fluid_default_startup_program` **and** :ref:`api_fluid_default_main_program`
+        **by default, a pair of them will shared the parameters. The** :ref:`api_fluid_default_startup_program` **only run once to initialize parameters,**
+        :ref:`api_fluid_default_main_program` **run in every mini batch and adjust the weights.**
 
     Returns:
-        An empty Program.
-
-    Return type: Program
+        Program: An empty Program.
 
     Examples:
         .. code-block:: python
@@ -3359,20 +3511,17 @@ class Program(object):
         """
         To debug string.
 
-        Parameters:
-            - **throw_on_error** (bool): raise Value error when any of required fields
-                is not set.
+        Args:
 
-            - **with_details** (bool): True if more details about variables and
-                parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need
-                to print.
+            throw_on_error (bool): raise Value error when any of required fields is not set.
+
+            with_details (bool): True if more details about variables and parameters, e.g., :code:`trainable`, :code:`optimize_attr`, need to print.
 
         Returns:
-            The debug string describe current Program.
+            str: The debug string describe current Program.
 
         Raises:
-            ValueError: If any of required fields is not set and throw_on_error is
-                True.
+            ValueError: If any of required fields is not set and throw_on_error is True.
 
         Examples:
             .. code-block:: python
@@ -3381,8 +3530,9 @@ class Program(object):
 
                 prog = fluid.default_main_program()
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print(prog_string)
-
+                print("program string without detial: {}".format(prog_string))
+                prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
+                print("program string with detial: {}".format(prog_string_with_detail))
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -3414,15 +3564,17 @@ class Program(object):
     def clone(self, for_test=False):
         """
         **Notes**:
-            **1.** :code:`Program.clone()` **method DOES NOT clone** :code:`py_reader`.
-            **2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize`.**
+            **1.** :code:`Program.clone()` **method DOES NOT clone** :ref:`api_fluid_io_DataLoader` .
+
+            **2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize`.
+
             **3. This API has no effect in Dygraph Mode**
 
         Create a new Program with forward content of original one when ``for_test=True``.
         Create a new Program as the same as original one when ``for_test=False``
 
 
-        Some operators, e.g., :ref:`cn_api_fluid_layers_batch_norm` , behave differently between
+        Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
@@ -3431,32 +3583,31 @@ class Program(object):
         * Set for_test to True when we want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
-          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`. For example:
+          recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
+        For Example:
+            .. code-block:: python
 
-        .. code-block:: python
+                test_program = fluid.default_main_program().clone(for_test=True)
+                # Here we use clone before Momentum
+                optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+                optimizer.minimize()
 
-            test_program = fluid.default_main_program().clone(for_test=True)
-            # Here we use clone before Momentum
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize()
+        Args:
 
-        Parameters:
-            - **for_test** (bool) - True if change the :code:`is_test` attribute of
-                operators to :code:`True`.
+            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`.
 
-        Returns:   A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
+        Returns:
+            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
 
-        Return type: Program
 
         Examples:
 
-        Notes: The Program's order maybe different after :code:`clone` and
+        **Notes: The Program's order maybe different after** :code:`clone` **and
         this will not affect your training or testing progress. In the following
-        example we give you an simple method :code:`print_prog(program)` to
+        example we give you an simple method** :code:`print_prog(program)` **to
         print Program Descs inorder to make sure you have same print result
-        after :code:`clone`:
-
+        after** :code:`clone`:
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -3766,19 +3917,20 @@ class Program(object):
     @staticmethod
     def parse_from_string(binary_str):
         """
-        **Notes:**
-            **- All information about parameters will be lost after serialization**
-            **- This API has no effect in Dygraph mode**
+        **Notes**:
+            **1. All information about parameters will be lost after serialization**
+
+            **2. This API has no effect in Dygraph mode**
 
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
         This method always use to save and load model
 
-        Parameters:
-            - **binary_str_type** (str) - the binary prootbuf string.
+        Args:
 
-        Returns: Program: A deserialized Program.
+            binary_str_type (str): the binary prootbuf string.
 
-        Return type: Program
+        Returns:
+            Program: A deserialized Program.
 
         Examples:
             .. code-block:: python
@@ -3828,14 +3980,14 @@ class Program(object):
     @property
     def random_seed(self):
         """
-        **Notes: It must be set before the operators have been added.**
-
-        The default random seed for random operators in Program. Zero means get
+        The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        Returns: random seed in current Program
+        **Notes: It must be set before the operators have been added.**
 
-        Return type: int64
+        Returns:
+            int64: Random seed in current Program
+
 
         Examples:
             .. code-block:: python
@@ -3858,13 +4010,13 @@ class Program(object):
     @property
     def num_blocks(self):
         """
-        **Notes: This API has no effect in Dygraph mode**
-
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        Returns: num of :ref:`api_guide_Block_en`  in current Program
+        **Notes: This API has no effect in Dygraph mode**
 
-        Return type: int(Platform-dependent size)
+        Returns:
+            int(Platform-dependent size): num of :ref:`api_guide_Block_en`  in current Program
+
 
         Examples:
             .. code-block:: python
@@ -3890,13 +4042,14 @@ class Program(object):
 
     def global_block(self):
         """
-        **Notes: This API has no effect in Dygraph mode**
+        **Notes**:
+            **This API has no effect in Dygraph mode**
 
         Get the first :ref:`api_guide_Block_en` of this Program.
 
-        Returns: The first  :ref:`api_guide_Block_en`  of this Program.
+        Returns:
+            :ref:`api_guide_Block_en`: The first :ref:`api_guide_Block_en`  of this Program.
 
-        Return type: :ref:`api_guide_Block_en`
 
         Examples:
             .. code-block:: python
@@ -3912,16 +4065,16 @@ class Program(object):
 
     def block(self, index):
         """
-        **Notes: This API has no effect in Dygraph mode**
+        **Notes**:
+            **This API has no effect in Dygraph mode**
 
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
-        Parameter:
-            - **index** (int) - The index of  :ref:`api_guide_Block_en`  to get
+        Args:
+            index (int) - The index of  :ref:`api_guide_Block_en`  to get
 
-        Returns: The :code:`index` block
-
-        Return type:  :ref:`api_guide_Block_en`
+        Returns:
+            :ref:`api_guide_Block_en`: The :code:`index` block
 
         Examples:
             .. code-block:: python
@@ -3936,14 +4089,14 @@ class Program(object):
 
     def current_block(self):
         """
-        **Notes: This API has no effect in Dygraph mode**
+        **Notes**:
+            **This API has no effect in Dygraph mode**
 
-        Get the current block. The :code:`current` block is the block to append
-        operators.
+        Get the current  :ref:`api_guide_Block_en` . The :code:`current`  :ref:`api_guide_Block_en`
+        is the  :ref:`api_guide_Block_en`  to append operators.
 
-        Returns: The :code:`index` block
-
-        Return type: Block
+        Returns:
+             :ref:`api_guide_Block_en`: The :code:`index`  :ref:`api_guide_Block_en`
 
         Examples:
             .. code-block:: python
@@ -3962,6 +4115,7 @@ class Program(object):
         to new block.
 
         Args:
+
             parent_idx(int): The parent block index.
 
         Returns:
@@ -4070,11 +4224,10 @@ class Program(object):
     @dygraph_not_support
     def list_vars(self):
         """
-        Get all :ref:`api_guide_Variable` from this Program. A iterable object is returned.
+        Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
 
-        Returns: The Generator will yield every variable in this program.
-
-        Return type: iterable :ref:`api_guide_Variable_en`
+        Returns:
+            iterable :ref:`api_guide_Variable_en`: The Generator will yield every variable in this program.
 
         Examples:
             .. code-block:: python
@@ -4191,17 +4344,17 @@ def default_startup_program():
     """
     Get default/global startup program.
 
-    The layer function in :code:`fluid.layers` will create parameters, readers,
-    NCCL handles as global variables. The :code:`startup_program` will
-    initialize them by the operators in startup program. The layer function will
+    The layer function in :ref:`api_fluid_layers` will create parameters, :ref:`api_paddle_data_reader_reader` ,
+    `NCCL <https://developer.nvidia.com/nccl>`_ handles as global variables. The :code:`startup_program` will
+    initialize them by the OPs in startup  :ref:`api_fluid_Program` . The  :ref:`api_fluid_layers`  function will
     append these initialization operators into startup program.
 
     This method will return the :code:`default` or the :code:`current` startup
-    program. Users can use :code:`fluid.program_guard` to switch program.
+    program. Users can use  :ref:`api_fluid_program_guard`  to switch :ref:`api_fluid_Program` .
 
-    Returns: current default startup program
+    Returns: current default startup :ref:`api_fluid_Program`
 
-    Returns type: Program
+    Returns type: :ref:`api_fluid_Program`
 
     Examples:
         .. code-block:: python
