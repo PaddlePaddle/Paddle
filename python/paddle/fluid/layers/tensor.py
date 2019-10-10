@@ -390,7 +390,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             if out is None, a new Varibale will be create to store the result.
 
     Returns:
-        Variable: Tensor which is created according the shape and dtype.
+        Variable: Tensor which is created according to shape and dtype.
 
     Raise:
         TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
@@ -464,7 +464,7 @@ def fill_constant_batch_size_like(input,
             the value of batch_size of input Tensor. The default value is 0.
 
     Returns:
-        Variable: the created Tensor which data type is dtype.
+        Variable: Tensor which will be created according to dtype.
 
     Examples:
 
