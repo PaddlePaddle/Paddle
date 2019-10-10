@@ -5779,13 +5779,12 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             import numpy
 
             # Graph Organizing
-            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 3], dtype='float32')
+            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
             output = fluid.layers.matmul(x, y, True, True)
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
             input_x = numpy.ones([2, 3]).astype(numpy.float32)
@@ -7762,14 +7761,13 @@ def lod_reset(x, y=None, target_lod=None):
             import numpy
 
             # Graph Organizing
-            x = fluid.layers.data(name='x', shape=[6])
-            y = fluid.layers.data(name='y', shape=[6], lod_level=2)
+            x = fluid.data(name='x', shape=[6])
+            y = fluid.data(name='y', shape=[6], lod_level=1)
             output = fluid.layers.lod_reset(x=x, y=y)
 
             # Create an executor using CPU as an example
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_tensor = fluid.core.LoDTensor()
@@ -12690,14 +12688,13 @@ def mean(x, name=None):
             import numpy
 
             # Graph Organizing
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[2, 3], dtype='float32')
             output = fluid.layers.mean(input)
 
             # Create an executor using CPU as an example
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
 
             # Execute
             x_ndarray = numpy.ones([2, 3]).astype(numpy.float32)

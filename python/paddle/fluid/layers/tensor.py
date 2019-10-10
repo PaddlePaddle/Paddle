@@ -824,15 +824,14 @@ def isfinite(x):
             import numpy
 
             # Graph Organizing
-            var = fluid.layers.data(name="data", shape=(4, 6), dtype="float32")
+            var = fluid.data(name="data", shape=(4, 6), dtype="float32")
             output = fluid.layers.isfinite(var)
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
 
             # Execute
-            img = numpy.array((4, 6)).astype(numpy.float32)
+            img = numpy.ones((4, 6)).astype(numpy.float32)
             res, = exe.run(fluid.default_main_program(), feed={'data':img}, fetch_list=[output])
             print(res)  # Output Value: [ True]
     """
