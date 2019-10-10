@@ -356,7 +356,7 @@ paddle.fluid.layers.less_than (ArgSpec(args=['x', 'y', 'force_cpu', 'cond'], var
 paddle.fluid.layers.less_equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '7b6d952a9f6340a044cfb91c16aad842'))
 paddle.fluid.layers.greater_than (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '55710e2fafeda70cd1b53d7509712499'))
 paddle.fluid.layers.greater_equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '14bff27b2be5e60eaa30e41925265beb'))
-paddle.fluid.layers.equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', 'f902aa3e04bfa41ef447f08ae0aac56b'))
+paddle.fluid.layers.equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e950bdfc9c45c82a02b79864268c81d3'))
 paddle.fluid.layers.not_equal (ArgSpec(args=['x', 'y', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '57adebb8858ffab6be2d86d0522b85dc'))
 paddle.fluid.layers.array_read (ArgSpec(args=['array', 'i'], varargs=None, keywords=None, defaults=None), ('document', 'caf0d94349cdc28e1bda3b8a19411ac0'))
 paddle.fluid.layers.array_length (ArgSpec(args=['array'], varargs=None, keywords=None, defaults=None), ('document', '6f24a9b872027634ad758ea2826c9727'))
