@@ -6391,8 +6391,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                     % (name, (type(val))))
             if convert_dtype(val.dtype) in ['float16']:
                 warnings.warn(
-                    "The data type of %s in matmul only support float16 in GPU now.",
-                    name)
+                    "The data type of %s in matmul only support float16 in GPU now."
+                    % name)
             if convert_dtype(
                     val.dtype) not in ['float16', 'float32', 'float64']:
                 raise TypeError(
