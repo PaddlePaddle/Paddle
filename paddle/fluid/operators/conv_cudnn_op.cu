@@ -609,6 +609,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
       dW->mutable_data<T>(ctx.GetPlace());
@@ -733,8 +735,6 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
       transformed_dX.Resize(new_input_shape);
-      auto& dev_ctx =
-          ctx.template device_context<paddle::platform::CUDADeviceContext>();
 
       transformed_X =
           ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
