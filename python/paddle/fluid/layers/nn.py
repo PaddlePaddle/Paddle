@@ -10815,32 +10815,34 @@ def log(x, name=None):
     return out
 
 
+@templatedoc()
 def relu(x, name=None):
     """
-    Relu takes one input data (Tensor) and produces one output data (Tensor)
-    where the rectified linear function, y = max(0, x), is applied to
-    the tensor elementwise.
-
-    .. math::
-
-        Out = \\max(0, x)
+    ${comment}
 
     Args:
-        x (Variable): The input tensor.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        x(Variable): ${x_comment}
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output tensor with the same shape as input.
+        Variable: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            output = fluid.layers.relu(x)
-    """
+            import numpy as np
+            in1 = np.array([[-1,0],[1,2.6]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.relu(x1)
+                print(out1.numpy())
+                # [[0.  0. ]
+                #  [1.  2.6]]
+"""
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -11602,11 +11604,13 @@ def elu(x, alpha=1.0, name=None):
 def relu6(x, threshold=6.0, name=None):
     """
     ${comment}
+
     Args:
         x(${x_type}): ${x_comment}
-        threshold(${threshold_type}|6.0): ${threshold_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        threshold(float, optional): ${threshold_comment}
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         output(${out_type}): ${out_comment}
@@ -11616,8 +11620,14 @@ def relu6(x, threshold=6.0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.relu6(x, threshold=6.0)
+            import numpy as np
+            in1 = np.array([[-1,0],[2.5,7.8]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.relu6(x=x1, threshold=6.0)
+                print(out1.numpy())
+                # [[0.  0. ]
+                #  [2.5 6. ]]
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -14838,64 +14848,49 @@ def similarity_focus(input, axis, indexes, name=None):
 
 def hash(input, hash_size, num_hash=1, name=None):
     """
-    Hash the input to an integer whose value is less than the given hash size.
-
+    This OP hash the input to an integer less than the hash_size.
     The hash algorithm we used was xxHash - Extremely fast hash algorithm
     (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
 
-    A simple example as below:
-
-    .. code-block:: text
-
-        Given:
-
-        # shape [2, 2]
-        input.data = 
-            [[1, 2],
-             [3, 4]]
-
-        hash_size = 10000
-
-        num_hash = 4
-
-        Then:
-
-        Hash op will take all number in input's 2nd dimension as hash algorithm's
-        input for each time. Each input will be hashed for 4 times, and get an
-        array whose length is 4. Each value in the array ranges from 0 to 9999.
-
-        # shape [2, 4]
-        output.data = [
-            [[9662, 9217, 1129, 8487],
-             [8310, 1327, 1654, 4567]],
-        ]
-
     Args:
-        input (Variable): The input variable which is a one-hot word. The
-            dimensions of the input variable must be 2. Both Tensor and LoDTensor are supported.
-        hash_size (int): The space size for hash algorithm. The output value
-            will keep in the range:math:`[0, hash_size - 1]`.
-        num_hash (int): The times of hash, default 1.
-        name (str, default None): The name of this layer.
+        input(Variable): A **Two-Dimensional** LoDTensor with type int32, int64.
+             **Only support LoDTensor**.
+        num_hash(int, optional): The times of hash, default is 1.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-       Variable: The hash result variable, which the same variable type as `input`.
+       Variable: A LoDTensor with the same data type as input.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            # titles has shape [batch, 1]
-            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=0)
-            # hash_r has shape [batch, 2]
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+            place = fluid.core.CPUPlace()
 
+            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
+            res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
 
-            # titles has shape [batch, 1] and lod information
-            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            # hash_r has shape [batch, 2] and inherits lod information from titles
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            in1 = np.array([[1,2],[3,4]]).astype("int32")
+            print(in1)
+            x_i = fluid.core.LoDTensor()
+            x_i.set(in1,place)
+            x_i.set_recursive_sequence_lengths([[0,2]])
+            res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
+            print(np.array(res[0]))
+            # [[[722]
+            #   [407]
+            #   [337]
+            #   [395]]
+            #  [[603]
+            #   [590]
+            #   [386]
+            #   [901]]]
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
