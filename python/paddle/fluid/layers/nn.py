@@ -6628,7 +6628,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
         alpha (float): The scale of output. Default 1.0.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name(str|optional): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -6639,30 +6639,57 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+            # fluid.layers.matmul(x, y)
+            # out: [B, ..., M, N]
 
             # x: [B, M, K], y: [B, K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)
+            # out: [B, M, N]
 
             # x: [B, M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # fluid.layers.matmul(x, y)
+            # out: [B, M, N]
 
             # x: [M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [M, N]
+            # fluid.layers.matmul(x, y)
+            # out: [M, N]
 
             # x: [B, M, K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [B, M]
+            # fluid.layers.matmul(x, y)
+            # out: [B, M]
 
             # x: [K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [1]
+            # fluid.layers.matmul(x, y)
+            # out: [1]
 
             # x: [M], y: [N]
-            # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+            # fluid.layers.matmul(x, y, True, True)
+            # out: [M, N]
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
-            out = fluid.layers.matmul(x, y, True, True)
+            import numpy
+
+            # Graph Organizing
+            x = fluid.data(name='x', shape=[2, 3], dtype='float32')
+            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+            output = fluid.layers.matmul(x, y, True, True)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            input_x = numpy.ones([2, 3]).astype(numpy.float32)
+            input_y = numpy.ones([3, 2]).astype(numpy.float32)
+            res, = exe.run(fluid.default_main_program(),
+                           feed={'x':input_x, 'y':input_y},
+                           fetch_list=[output])
+            print(res)
+            '''
+            Output Value:
+            [[2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]]
+            '''
     """
 
     def __check_input(x, y):
@@ -8732,6 +8759,9 @@ def lod_reset(x, y=None, target_lod=None):
                 y.data = [[2, 4]]
                 y.dims = [1, 3]
 
+            target_lod:
+                This parameter does not work when y is not none.
+
             then we get a 1-level LoDTensor:
                 out.lod =  [[2,            4]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
@@ -8749,6 +8779,9 @@ def lod_reset(x, y=None, target_lod=None):
                 y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
                 y.dims = [6, 1]
 
+            target_lod:
+                This parameter does not work when y is not none.
+
             then we get a 2-level LoDTensor:
                 out.lod =  [[2, 2], [2, 2, 1, 1]]
                 out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
@@ -8756,9 +8789,9 @@ def lod_reset(x, y=None, target_lod=None):
 
     Args:
         x (Variable): Input variable which could be a Tensor or LoDTensor.
-        y (Variable|None): If provided, output's LoD would be derived
+        y (Variable|optional): If provided, output's LoD would be derived
                            from :attr:`y`.
-        target_lod (list|tuple|None): One level LoD which should be considered
+        target_lod (list|tuple|optional): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
 
     Returns:
@@ -8771,9 +8804,35 @@ def lod_reset(x, y=None, target_lod=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10])
-            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = fluid.layers.lod_reset(x=x, y=y)
+            import numpy
+
+            # Graph Organizing
+            x = fluid.data(name='x', shape=[6])
+            y = fluid.data(name='y', shape=[6], lod_level=1)
+            output = fluid.layers.lod_reset(x=x, y=y)
+
+            # Create an executor using CPU as an example
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            # Execute
+            x_tensor = fluid.core.LoDTensor()
+            x_tensor.set(numpy.ones([6]).astype(numpy.float32), place)
+            y_ndarray = numpy.ones([6]).astype(numpy.float32)
+            y_lod = [[2, 2], [2, 2, 1, 1]]
+            y_tensor = fluid.create_lod_tensor(y_ndarray, y_lod, place)
+
+            res, = exe.run(fluid.default_main_program(),
+                           feed={'x':x_tensor, 'y':y_tensor},
+                           fetch_list=[output],
+                           return_numpy=False)
+            print(res)
+            # Output Value:
+            # lod: [[0, 2, 4], [0, 2, 4, 5, 6]]
+            # dim: 6
+            # layout: NCHW
+            # dtype: float
+            # data: [1 1 1 1 1 1]
     """
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -14193,9 +14252,27 @@ def mean(x, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            import numpy
+
+            # Graph Organizing
+            input = fluid.data(
                 name='data', shape=[2, 3], dtype='float32')
-            mean = fluid.layers.mean(input)
+            output = fluid.layers.mean(input)
+
+            # Create an executor using CPU as an example
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            # Execute
+            x_ndarray = numpy.ones([2, 3]).astype(numpy.float32)
+            res, = exe.run(fluid.default_main_program(),
+                           feed={'data':x_ndarray},
+                           fetch_list=[output])
+            print(res)
+            '''
+            Output Value:
+            [1.]
+            '''
     """
 
     helper = LayerHelper("mean", **locals())
@@ -14228,11 +14305,47 @@ def merge_selected_rows(x, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            b = fluid.default_main_program().global_block()
-            var = b.create_var(
-                name="X", dtype="float32", persistable=True,
-                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            import numpy
+
+            place = fluid.CPUPlace()
+            block = fluid.default_main_program().global_block()
+
+            var = block.create_var(name="X2",
+                                   dtype="float32",
+                                   persistable=True,
+                                   type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = fluid.layers.merge_selected_rows(var)
+            z = fluid.layers.get_tensor_from_selected_rows(y)
+
+            x_rows = [0, 2, 2, 4, 19]
+            row_numel = 2
+            np_array = numpy.ones((len(x_rows), row_numel)).astype("float32")
+
+            x = fluid.global_scope().var("X2").get_selected_rows()
+            x.set_rows(x_rows)
+            x.set_height(20)
+            x_tensor = x.get_tensor()
+            x_tensor.set(np_array, place)
+
+            exe = fluid.Executor(place=place)
+            result = exe.run(fluid.default_main_program(), fetch_list=[z])
+
+            print("x_rows: ", x_rows)
+            print("np_array: ", np_array)
+            print("result: ", result)
+            '''
+            Output Values:
+            ('x_rows: ', [0, 2, 2, 4, 19])
+            ('np_array: ', array([[1., 1.],
+                   [1., 1.],
+                   [1., 1.],
+                   [1., 1.],
+                   [1., 1.]], dtype=float32))
+            ('result: ', [array([[1., 1.],
+                   [2., 2.],
+                   [1., 1.],
+                   [1., 1.]], dtype=float32)])
+            '''
     """
 
     helper = LayerHelper("merge_selected_rows", **locals())
