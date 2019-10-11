@@ -1079,7 +1079,7 @@ paddle.fluid.regularizer.L1DecayRegularizer ('paddle.fluid.regularizer.L1DecayRe
 paddle.fluid.regularizer.L1DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.regularizer.L2DecayRegularizer ('paddle.fluid.regularizer.L2DecayRegularizer', ('document', 'b94371c3434d7f695bc5b2d6fb5531fd'))
 paddle.fluid.regularizer.L2DecayRegularizer.__init__ (ArgSpec(args=['self', 'regularization_coeff'], varargs=None, keywords=None, defaults=(0.0,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.LoDTensor ('paddle.fluid.core_avx.LoDTensor', ('document', '25e8432ed1b9a375868bc8911359aa0d'))
+paddle.fluid.LoDTensor ('paddle.fluid.core_avx.LoDTensor', ('document', '8ee00d246c952b92e5e8ca2d92a4fc00'))
 paddle.fluid.LoDTensor.__init__ 1. __init__(self: paddle.fluid.core_avx.LoDTensor, arg0: List[List[int]]) -> None  2. __init__(self: paddle.fluid.core_avx.LoDTensor) -> None
 paddle.fluid.LoDTensor.has_valid_recursive_sequence_lengths has_valid_recursive_sequence_lengths(self: paddle.fluid.core_avx.LoDTensor) -> bool
 paddle.fluid.LoDTensor.lod lod(self: paddle.fluid.core_avx.LoDTensor) -> List[List[int]]
