@@ -338,8 +338,6 @@ def assign(input, output=None):
           fluid.layers.assign(hidden, out)
     """
     helper = LayerHelper('assign', **locals())
-    if output is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
         if convert_dtype(input.dtype) not in [
                 'float32', 'float64', 'int32', 'int64'
@@ -348,6 +346,9 @@ def assign(input, output=None):
                 "When the type of 'input' in assign is Variable, the data "
                 "type of 'input' must be float32, float64, int32 or int64, "
                 "but received %s." % convert_dtype(input.dtype))
+        if output is None:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
@@ -366,7 +367,9 @@ def assign(input, output=None):
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-
+        if output is None:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
