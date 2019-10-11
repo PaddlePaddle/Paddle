@@ -643,29 +643,34 @@ class WhileGuard(BlockGuard):
 
 class While(object):
     """
-    while loop control flow.
+    while loop control flow. Repeat while body until cond is False.
 
     Args:
-        cond(Variable): condition used to compare.
-        is_test(bool): A flag indicating whether execution is in test phase.
-        name(str): The name of this layer.
+        cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is None.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
           .. code-block:: python
             
             import paddle.fluid as fluid
-            
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            d0 = fluid.layers.data("d0", shape=[10], dtype='float32')
-            data_array = fluid.layers.array_write(x=d0, i=i)
-            array_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=3)
+            import numpy as np
 
-            cond = fluid.layers.less_than(x=i, y=array_len)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)           # loop counter
+
+            loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
+
+            cond = fluid.layers.less_than(x=i, y=loop_len)              
             while_op = fluid.layers.While(cond=cond)
-            with while_op.block():
-                d = fluid.layers.array_read(array=data_array, i=i)
+            with while_op.block():  
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=array_len, cond=cond)            
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)      
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[i])
+            print(res) # [array([10])]           
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -1042,24 +1047,28 @@ def less_than(x, y, force_cpu=None, cond=None):
 @templatedoc()
 def less_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
+    This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First operand of *less_equal*
-        y(Variable): Second operand of *less_equal*
-        cond(Variable|None): Optional output variable to store the result of *less_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
+            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
+            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *less_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.less_equal(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([1, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([1, 2], dtype='int32'))
+          out = fluid.layers.less_equal(x=label, y=limit) #out=[True, False]
+          out1 = label<= limit #out1=[True, False]
+
     """
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
@@ -1082,24 +1091,27 @@ def less_equal(x, y, cond=None):
 @templatedoc()
 def greater_than(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
+    This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
-        x(Variable): First operand of *greater_than*
-        y(Variable): Second operand of *greater_than*
-        cond(Variable|None): Optional output variable to store the result of *greater_than*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
+            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_than*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_than(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
+          out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
+          out1 = label > limit #out1=[False, True]
     """
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
@@ -1122,24 +1134,28 @@ def greater_than(x, y, cond=None):
 @templatedoc()
 def greater_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
+    This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
-        x(Variable): First operand of *greater_equal*
-        y(Variable): Second operand of *greater_equal*
-        cond(Variable|None): Optional output variable to store the result of *greater_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
+            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_equal(x=label, y=limit)
+          import numpy as np
+
+          label = fluid.layers.assign(np.array([2, 2], dtype='int32'))
+          limit = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          out = fluid.layers.greater_equal(x=label, y=limit) #out=[True, False]
+          out_1 = label >= limit #out1=[True, False]
 
     """
     helper = LayerHelper("greater_equal", **locals())
@@ -1193,15 +1209,17 @@ def equal(x, y, cond=None):
 
 def not_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
+    This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
-        x(Variable): First operand of *not_equal*
-        y(Variable): Second operand of *not_equal*
-        cond(Variable|None): Optional output variable to store the result of *not_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
+             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *not_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1451,18 +1469,35 @@ class ConditionalBlock(object):
 
 class Switch(object):
     """
-    Switch class works just like a `if-elif-else`. Can be used in learning rate scheduler
-    to modify learning rate
 
-    The Semantics:
+    This class is used to implement Switch branch control function. 
+    Switch branch contains several case branches and one default branch. 
+    Switch control flow checks whether the case branch conditions are satisfied in turn, 
+    and only executes the statement after the first case branch that satisfies the conditions. 
+    If there is no case branch that satisfies the condition, 
+    only the statement following the default branch is executed.
 
-    1. A `switch` control-flow checks cases one-by-one.
+    Member Functions:
+        case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        
+        default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
-    2. The condition of each case is a boolean value, which is a scalar Variable.
+    Case and default functions can only be used inside the scope of Switch, as shown below:
 
-    3. It runs the first matched case, or the default case if there is one.
+    .. code-block:: python
+        
+        '''
+        with fluid.layers.Switch() as switch:
+            with switch.case(cond1):
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+            with switch.case(cond2):
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+            with switch.default():
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        '''
 
-    4. Once it matches a case, it runs the corresponding branch and only that branch.
+    Args:
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
         .. code-block:: python
@@ -1476,14 +1511,13 @@ class Switch(object):
                 persistable=True,
                 name="learning_rate")
             zero_var = fluid.layers.fill_constant(
-                 shape=[1], dtype='float32', value=0.0)
+                shape=[1], dtype='float32', value=0.0)
             one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
             two_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=2.0) 
+                shape=[1], dtype='float32', value=2.0)
 
-            global_step = fluid.layers.autoincreased_step_counter(
-                   counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+            global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
@@ -1491,6 +1525,11 @@ class Switch(object):
                 with switch.default():
                     fluid.layers.assign(input=two_var, output=lr)
 
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[lr])
+            print(res) # [array([1.], dtype=float32)]
     """
 
     def __init__(self, name=None):
@@ -1579,36 +1618,72 @@ class IfElseBlockGuard(object):
 
 class IfElse(object):
     """
-    if-else control flow.
+    This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
+
+    Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
+
+    IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
+
+    .. code-block:: python
+        
+        # The following code completes the function: subtract 10 from the data greater than 0 in x, add 10 to the data less than 0 in x, and sum all the data.
+        import numpy as np
+        import paddle.fluid as fluid
+
+        x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32', append_batch_size=False)
+        y = fluid.layers.data(name='y', shape=[4, 1], dtype='float32', append_batch_size=False)
+
+        x_d = np.array([[3], [1], [-2], [-3]]).astype(np.float32)
+        y_d = np.zeros((4, 1)).astype(np.float32)
+        
+        # Compare the size of x, y pairs of elements, output cond, cond is shape [4, 1], data type bool 2-D tensor.
+        # Based on the input data x_d, y_d, it can be inferred that the data in cond are [[true], [true], [false], [false]].
+        cond = fluid.layers.greater_than(x, y)
+        # Unlike other common OPs, ie below returned by the OP is an IfElse OP object
+        ie = fluid.layers.IfElse(cond)
+
+        with ie.true_block():
+            # In this block, according to cond condition, the data corresponding to true dimension in X is obtained and subtracted by 10.
+            out_1 = ie.input(x)
+            out_1 = out_1 - 10
+            ie.output(out_1)
+        with ie.false_block():
+            # In this block, according to cond condition, get the data of the corresponding condition in X as false dimension, and add 10
+            out_1 = ie.input(x)
+            out_1 = out_1 + 10
+            ie.output(out_1)
+
+        # According to cond condition, the data processed in the two blocks are merged. The output here is output, the type is List, and the element type in List is Variable.
+        output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)] 
+
+        # Get the first Variable in the output List and add all elements.
+        out = fluid.layers.reduce_sum(output[0])
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
+        print res
+        # [array([-1.], dtype=float32)] 
 
     Args:
-        cond (Variable): condition used to compare.
-        name (str, default None): The name of this layer.
+        cond (Variable): cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the corresponding execution conditions of N input data. The data type is bool.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Examples:
-          .. code-block:: python
+    Returns:
+        Unlike other common OPs, the OP call returns an IfElse OP object (e.g. ie in the example), which branches the input data by calling the internal functions of the object ``true_block ()``, ``false_block ()``, ``input ()``, ``output ()``, and integrates the data processed by different branches as the overall output by calling the internal ``call ()`` function. The output type is a list, and the type of each element in the list is Variable.
 
-            import paddle.fluid as fluid
+    Internal Functions:
+        The block is constructed by calling the ``with ie. true_block()`` function in the object, and the computational logic under condition true is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
+ 
+        The block is constructed by calling the ``with ie. false_block()`` function in the object, and the computational logic under condition false is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
 
-            image = fluid.layers.data(name="X", shape=[2, 5, 5], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            limit = fluid.layers.fill_constant_batch_size_like(
-                 input=label, dtype='int64', shape=[1], value=5.0)
-            cond = fluid.layers.less_than(x=label, y=limit)
-            ie = fluid.layers.IfElse(cond)
-            with ie.true_block():
-                true_image = ie.input(image)
-                hidden = fluid.layers.fc(input=true_image, size=100, act='tanh')
-                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                ie.output(prob)
+        ``Out = ie. input (x)`` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
 
-            with ie.false_block():
-                false_image = ie.input(image)
-                hidden = fluid.layers.fc(
-                    input=false_image, size=200, act='tanh')
-                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                ie.output(prob)
-            prob = ie()
+        ``ie. output (out)`` writes the result to the output of the corresponding condition.
+
+        There is a ``call ()`` function inside the object, that is, by calling ``output = ie ()``, all the outputs inside the block of False are fused as the whole output, the output type is a list, and the type of each element in the list is Variable.
+
     """
     OUT_IF_ELSE_BLOCKS = 0
     IN_IF_ELSE_TRUE_BLOCKS = 1
@@ -2140,12 +2215,11 @@ def reorder_lod_tensor_by_rank(x, rank_table):
     ${comment}
 
     Args:
-    
-        x(${x_type}): ${x_comment}
-        rank_table(${rank_table_type}): ${rank_table_type}
+        x(${x_type}): ${x_comment}.
+        rank_table(${rank_table_type}): ${rank_table_comment}.
     
     Returns:
-        out(${out_type}): ${out_comment} 
+        out(${out_type}): ${out_comment}.
 
     Examples:
         .. code-block:: python

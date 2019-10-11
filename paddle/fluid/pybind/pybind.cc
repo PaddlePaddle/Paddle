@@ -39,10 +39,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -153,6 +155,88 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
+static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
+  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
+  // is not inside obj, but it would also set the error flag of Python.
+  // If the error flag is set in C++, C++ code would not raise Exception,
+  // but Python would raise Exception once C++ call ends.
+  // To avoid unexpected Exception raised in Python, we check whether
+  // attribute exists before calling PyObject_GetAttrString.
+  //
+  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
+  // Developer should call Py_DECREF manually after the attribute is not used.
+  if (PyObject_HasAttrString(obj, attr_name)) {
+    return PyObject_GetAttrString(obj, attr_name);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
+    const PyNameVarBaseMap &state_dict) {
+  std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
+  vec_res.reserve(state_dict.size());
+
+  for (auto &para : state_dict) {
+    PyObject *py_obj = para.second.ptr();
+    if (!py_obj || py_obj == Py_None) {
+      PADDLE_THROW("Save parameter [%s] is None", para.first);
+    }
+
+    const char *kIVarField = "_ivar";
+    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
+    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
+
+    vec_res.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    Py_DECREF(py_ivar);
+  }
+
+  return vec_res;
+}
+
+static std::vector<std::string> inline GetNameList(
+    const py::handle &py_handle) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      vec_res.emplace_back(PyObjectCast<std::string>(py_name));
+      Py_DECREF(py_name);
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return vec_res;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -174,6 +258,39 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("_save_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_load_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
+                                 const PyNameVarBaseMap &state_dict) {
+    auto vec_var_base_list = GetVarBaseList(state_dict);
+
+    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
+  });
+
+  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
+    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
+
+    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
+        map_output;
+
+    for (size_t i = 0; i < load_tensor.size(); ++i) {
+      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
+    }
+
+    return map_output;
+  });
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
@@ -373,7 +490,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
-      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths
+      // to
       // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
@@ -832,9 +950,23 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
-    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    CUDAPlace is a descriptor of a device.
+    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
+    staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
+    Numbering here refers to the logical ID of the visible graphics card, not the actual ID of the graphics card.
+    You can set visible GPU devices by setting the `CUDA_VISIBLE_DEVICES` environment variable.
+    When the program starts, visible GPU devices will be numbered from 0.
+    If `CUDA_VISIBLE_DEVICES` is not set, all devices are visible by default,
+    and the logical ID is the same as the actual ID.
+
+    Parameters:
+        id (int): GPU device ID.
 
     Examples:
         .. code-block:: python
@@ -892,14 +1024,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
-    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
-    CPUPlace can be accessed by CPU.
+    CPUPlace is a descriptor of a device.
+    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          cpu_place = fluid.CPUPlace()to be allocated
 
         )DOC")
       .def(py::init<>())
@@ -912,8 +1044,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
-    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
-    can be accessed by GPU and CPU.
+    CUDAPinnedPlace is a descriptor of a device.
+    It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
+    The host operating system will not paging and exchanging the memory.
+    It can be accessed through direct memory access technology to speed up the copy of data between the host and GPU.
+    For more information on CUDA data transfer and `pinned memory`,
+    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
         .. code-block:: python
@@ -1374,9 +1510,26 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+            import os
+            import numpy as np
             import paddle.fluid as fluid
+
+            os.environ["CPU_NUM"] = '2'
+            places = fluid.cpu_places()
+
+            data = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
             build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = True
+            build_strategy.memory_optimize = True
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+            program = fluid.compiler.CompiledProgram(fluid.default_main_program())
+            program = program.with_data_parallel(loss_name=loss.name,
+                                                 build_strategy=build_strategy,
+                                                 places=places)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -1398,13 +1551,13 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.ReduceStrategy, there are two reduce
+          R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
                 strategies in ParallelExecutor, AllReduce and Reduce. If you want
                 that all the parameters' optimization are done on all devices independently,
-                you should choose AllReduce; if you choose Reduce, all the parameters'
+                you should choose AllReduce; otherwise, if you choose Reduce, all the parameters'
                 optimization will be evenly distributed to different devices, and then
                 broadcast the optimized parameter to other devices.
-                Default 'AllReduce'.
+                Default is 'AllReduce'.
 
                 Examples:
                     .. code-block:: python
@@ -1422,11 +1575,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finalized.");
             self.gradient_scale_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.GradientScaleStrategy, there are three
-                ways of defining :math:`loss@grad` in ParallelExecutor, CoeffNumDevice,
+          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+                ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
-                you can choose Customized. Default 'CoeffNumDevice'.
+                you can choose Customized. Default is 'CoeffNumDevice'.
 
                 Examples:
                     .. code-block:: python
@@ -1484,9 +1637,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
-          R"DOC(The type is STR, debug_graphviz_path indicates the path that
+          R"DOC((str, optional): debug_graphviz_path indicates the path that
                 writing the SSA Graph to file in the form of graphviz.
-                It is useful for debugging. Default ""
+                It is useful for debugging. Default is empty string, that is, ""
 
                 Examples:
                     .. code-block:: python
@@ -1506,8 +1659,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would
-                be the same as what is in the program. Default False.
+          R"DOC((bool, optional): If set True, the execution order of ops would
+                be the same as what is in the program. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1526,8 +1679,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be
-                released and ParallelExecutor would run faster. Default True.
+          R"DOC((bool, optional): If set True, some locks in GPU ops would be
+                released and ParallelExecutor would run faster. Default is True.
 
                 Examples:
                     .. code-block:: python
@@ -1588,9 +1741,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
-          R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
+          R"DOC((bool, optional): fuse_elewise_add_act_ops indicate whether
                 to fuse elementwise_add_op and activation_op,
-                it may make the execution faster. Default False
+                it may make the execution faster. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1609,11 +1762,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_relu_depthwise_conv_ = b;
           },
-          R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
+          R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
                 to fuse relu and depthwise_conv2d,
                 it will save GPU memory and may make the execution faster.
                 This options is only available in GPU devices.
-                Default False.
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1632,12 +1785,20 @@ All parameter, weight, gradient are variables in Paddle.
                                         "BuildStrategy is finlaized.");
                       self.fuse_broadcast_ops_ = b;
                     },
-                    R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                    R"DOC((bool, optional): fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
                       broadcast Ops, in this case, all nccl streams are used only
-                      for NCCLReduce operations for a period of time. Default False.)DOC")
+                      for NCCLReduce operations for a period of time. Default False.
+
+                      Examples:
+                          .. code-block:: python
+
+                              import paddle.fluid as fluid
+                              build_strategy = fluid.BuildStrategy()
+                              build_strategy.fuse_broadcast_ops = True
+                    )DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
@@ -1656,14 +1817,12 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.sync_batch_norm_ = b;
           },
-          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+          R"DOC((bool, optional): sync_batch_norm indicates whether to use
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
-
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines.
-
-                Default False
+                And only synchronous on one machine, not all machines. 
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1689,16 +1848,17 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or True");
+                  "BuildStrategy.memory_optimize must be None, False or "
+                  "True");
             }
           },
-          R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
+          R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
-                True means enabling and False means disabling. Default None.)DOC")
+                True means enabling and False means disabling. Default is None.)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
