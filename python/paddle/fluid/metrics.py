@@ -238,7 +238,7 @@ class CompositeMetric(MetricBase):
         of the added one should be consistent with existed ones.  
 
         Args:
-            metric(MetricBase): a instance of `MetricBase <https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase>`_ 
+            metric(MetricBase): a instance of MetricBase
         """
         if not isinstance(metric, MetricBase):
             raise ValueError("SubMetric should be inherit from MetricBase.")
@@ -249,10 +249,8 @@ class CompositeMetric(MetricBase):
         Update the metrics of this container.
 
         Args:
-            preds(numpy.array): predicted results of current mini-batch, 
-                              the shape and dtype of which should meet the requirements of the corresponded metric.
-            labels(numpy.array): ground truth of current mini-batch, 
-                              the shape and dtype of which should meet the requirements of the corresponded metric. 
+            preds(numpy.array): predicted results of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric.
+            labels(numpy.array): ground truth of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric. 
         """
         for m in self._metrics:
             m.update(preds, labels)
@@ -670,8 +668,7 @@ class EditDistance(MetricBase):
         Update the overall edit distance
 
         Args:
-            distances(numpy.array): a (batch_size, 1) numpy.array, each element represents the 
-            edit distance between two sequences.
+            distances(numpy.array): a (batch_size, 1) numpy.array, each element represents the edit distance between two sequences.
             seq_num(int|float): standing for the number of sequence pairs.
         """
         if not _is_numpy_(distances):
@@ -760,10 +757,8 @@ class Auc(MetricBase):
         Update the auc curve with the given predictions and labels.
 
         Args:
-             preds (numpy.array): an numpy array in the shape of (batch_size, 2), preds[i][j] denotes the probability
-             of classifying the instance i into the class j.
-             labels (numpy.array): an numpy array in the shape of (batch_size, 1), labels[i] is either o or 1, representing
-             the label of the instance i.
+             preds (numpy.array): an numpy array in the shape of (batch_size, 2), preds[i][j] denotes the probability of classifying the instance i into the class j.
+             labels (numpy.array): an numpy array in the shape of (batch_size, 1), labels[i] is either o or 1, representing the label of the instance i.
         """
         if not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray.")
