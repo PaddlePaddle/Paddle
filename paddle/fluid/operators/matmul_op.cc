@@ -21,6 +21,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+/**
+ * Printing shape information into a string is easy to use.
+ */
+inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
+  std::stringstream buffer;
+  buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
+         << desc.width_ << "]";
+  return buffer.str();
+}
+
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
@@ -306,10 +317,11 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          "The condition that the matrix multiplication factor "
-          "batch size must be equal is not met. x_batch_size (%d) != "
-          "y_batch_size (%d).",
-          mat_dim_x.batch_size_, mat_dim_y.batch_size_);
+          "ShapeError: The batch size of the two matrices should be equal, or "
+          "zero.\n"
+          "But received x_shape: %s, y_shape: %s.",
+          DumpMatrixShape(mat_dim_x).c_str(),
+          DumpMatrixShape(mat_dim_y).c_str());
     }
     std::vector<int64_t> dim_out;
     int64_t dim_out_y = mat_dim_y.width_;
@@ -318,19 +330,21 @@ class MatMulOp : public framework::OperatorWithKernel {
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
     PADDLE_ENFORCE_LE(
         head_number, mat_dim_x.width_,
-        "Unsatisfied mkl acceleration library requirements: head_number "
-        "(%d) must be equal to x_width (%d).",
-        head_number, mat_dim_x.width_);
+        "ShapeError: Unsatisfied mkl acceleration library requirements: "
+        "head_number "
+        "(%d) must be equal to x_width. But received x_shape: %s.",
+        head_number, DumpMatrixShape(mat_dim_x).c_str());
 
     if (!split_vertical_y && head_number > 0) {
       dim_out_y = head_number * mat_dim_y.width_;
     }
 #else
-    PADDLE_ENFORCE_EQ(
-        mat_dim_x.width_, mat_dim_y.height_,
-        "The shape of the matrix does not satisfy "
-        "the multiplication prerequisites. x_width (%d) != y_height (%d).",
-        mat_dim_x.width_, mat_dim_y.height_);
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
+                      "ShapeError: x_width should be equal to the y_height, "
+                      "but received x_shape: %s,"
+                      "y_shape: %s.",
+                      DumpMatrixShape(mat_dim_x).c_str(),
+                      DumpMatrixShape(mat_dim_y).c_str());
 #endif
 
     if (mat_dim_x.batch_size_ != 0) {
