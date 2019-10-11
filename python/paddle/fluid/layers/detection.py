@@ -1919,7 +1919,7 @@ def multi_box_head(inputs,
            are calculated by `baze_size`, 'min_ratio' and `max_ratio`. The
            formula is as follows:
 
-              ..  code-block:: python
+              ..  code-block:: text
 
                   min_sizes = []
                   max_sizes = []
