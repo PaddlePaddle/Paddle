@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_seq_pool_op.h"
+#include <memory>
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -78,6 +79,12 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                          "are supported, sum computes the weighted sum of the "
                          "embedding results for each row.")
         .SetDefault("sum");
+    AddAttr<int64_t>("padding_idx",
+                     "(int64, default -1) "
+                     "If the value is -1, it makes no effect to lookup. "
+                     "Otherwise the given value indicates padding the output "
+                     "with zeros whenever lookup encounters it in Ids.")
+        .SetDefault(kNoPadding);
     // NOTE(minqiyang): grad_inplace is an temporal attribute,
     // please do NOT set this attribute in python layer.
     AddAttr<bool>("grad_inplace",
@@ -144,12 +151,30 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   }
 };
 
+class FusedEmbeddingSeqPoolGradOpDescMaker
+    : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("fused_embedding_seq_pool_grad");
+    op->SetInput("Ids", Input("Ids"));
+    op->SetInput("W", Input("W"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
+                  ops::FusedEmbeddingSeqPoolGradOpDescMaker,
                   ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,

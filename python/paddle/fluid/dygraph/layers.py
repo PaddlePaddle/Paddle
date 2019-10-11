@@ -24,6 +24,7 @@ from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.framework import Variable
 
 __all__ = ['Layer']
 
@@ -150,20 +151,20 @@ class Layer(core.Layer):
             if p.trainable:
                 p.clear_gradient()
 
-    def _build_once(self, *args):
+    def _build_once(self, *args, **kwargs):
         pass
 
-    def __call__(self, *inputs):
+    def __call__(self, *inputs, **kwargs):
         if not self._built:
-            self._build_once(*inputs)
+            self._build_once(*inputs, **kwargs)
             if parallel_helper._is_data_parallel_mode():
                 parallel_helper._broadcast_parameters(self._parameters.values())
 
-        outputs = self.forward(*inputs)
+        outputs = self.forward(*inputs, **kwargs)
         self._built = True
         return outputs
 
-    def forward(self, *inputs):
+    def forward(self, *inputs, **kwargs):
         raise NotImplementedError
 
     def backward(self, *inputs):
@@ -198,11 +199,11 @@ class Layer(core.Layer):
         """
         assert isinstance(parameter, framework.Parameter)
 
-        if parameter.name in self._loaddict_holder:
-            var = parameter._ivar.value()
-            tensor = var.get_tensor()
-            tensor.set(self._loaddict_holder[parameter.name].numpy(),
-                       framework._current_expected_place())
+        if len(self._loaddict_holder) > 0:
+            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                parameter.name)
+
+            parameter.set_value(self._loaddict_holder[parameter.name])
 
         self._parameters[name] = parameter
         return parameter
@@ -216,16 +217,24 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
+        if isinstance(getattr(type(self), name, None), property):
+            object.__setattr__(self, name, value)
         if isinstance(value, framework.Parameter):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
-            if value.name in self._loaddict_holder:
-                var = value._ivar.value()
-                tensor = var.get_tensor()
-                tensor.set(self._loaddict_holder[value.name].numpy(),
-                           framework._current_expected_place())
+            if len(self._loaddict_holder) > 0:
+                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                    value.name)
+
+                value.set_value(self._loaddict_holder[value.name])
+
+            if name in params:
+                # remove unused param in tracer
+                if framework._dygraph_tracer_ is not None:
+                    framework._dygraph_tracer_._vars.pop(params[name].name,
+                                                         None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
@@ -245,6 +254,27 @@ class Layer(core.Layer):
             object.__delattr__(self, name)
 
     def state_dict(self, destination=None, include_sublayers=True):
+        '''
+        Get all parameter of current and sub-layers. And set all the parameters into a dict
+
+        Args:
+            destination(dict|optical) : If provide, all the parameter will set to this dict . Defaul is None
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+
+        Retruns:
+            state_dict(dict) : dict contains all the parameters
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+
+        '''
+
         if destination is None:
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
@@ -261,14 +291,67 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
+    def set_dict(self, stat_dict, include_sublayers=True):
+        '''
+        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+
+        Args:
+            state_dict(dict) : Dict contains all the Parameter
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.set_dict( para_state_dict )
+
+        '''
+        self.load_dict(stat_dict, include_sublayers=include_sublayers)
+
     def load_dict(self, stat_dict, include_sublayers=True):
+        '''
+        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+
+        This api will be Deprecated. Please use set_dict
+
+        Args:
+            state_dict(dict) : Dict contains all the Parameter
+            include_sublayers(bool) : If true, also include the parameters from sublayers.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python                                                                                              
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.load_dict( para_state_dict )
+
+        '''
+
         self._loaddict_holder = stat_dict
         for name, item in self.__dict__.get('_parameters', None).items():
             if item.name in stat_dict:
-                var = item._ivar.value()
-                tensor = var.get_tensor()
-                tensor.set(stat_dict[item.name].numpy(),
-                           framework._current_expected_place())
+                item.set_value(stat_dict[item.name])
+            else:
+                raise RuntimeError(
+                    "Parameter not found, Can't not find [ {} ] in stat_dict".
+                    format(item.name))
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():

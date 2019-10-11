@@ -32,10 +32,12 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MulOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of MulOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
+                      "Input(Y) of MulOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of MulOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -47,23 +49,27 @@ class MulOp : public framework::OperatorWithKernel {
             << " x_num_col_dims=" << x_num_col_dims
             << " y_num_col_dims=" << y_num_col_dims;
 
-    PADDLE_ENFORCE_GT(
-        x_dims.size(), x_num_col_dims,
-        "The input tensor X's rank of MulOp should be larger than "
-        "x_num_col_dims.");
-    PADDLE_ENFORCE_GT(
-        y_dims.size(), y_num_col_dims,
-        "The input tensor Y's rank of MulOp should be larger than "
-        "y_num_col_dims: %ld vs %ld",
-        y_dims.size(), y_num_col_dims);
+    PADDLE_ENFORCE_GT(x_dims.size(), x_num_col_dims,
+                      "ShapeError: The input tensor X's dimensions of MulOp "
+                      "should be larger than x_num_col_dims. But received X's "
+                      "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
+                      x_dims.size(), x_dims, x_num_col_dims);
+    PADDLE_ENFORCE_GT(y_dims.size(), y_num_col_dims,
+                      "ShapeError: The input tensor Y's dimensions of MulOp "
+                      "should be larger than y_num_col_dims. But received Y's "
+                      "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
+                      y_dims.size(), y_dims, y_num_col_dims);
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
-    PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
-                      "First matrix's width must be equal with second matrix's "
-                      "height. %s, %s",
-                      x_mat_dims[1], y_mat_dims[0]);
+    PADDLE_ENFORCE_EQ(
+        x_mat_dims[1], y_mat_dims[0],
+        "ShapeError: After flatten the input tensor X and Y to 2-D dimensions "
+        "matrix X1 and Y1, the matrix X1's width must be equal with matrix "
+        "Y1's height. But received X's shape = [%s], X1's shape = [%s], X1's "
+        "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = %s.",
+        x_dims, x_mat_dims, x_mat_dims[1], y_dims, y_mat_dims, y_mat_dims[0]);
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
@@ -240,7 +246,8 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
 
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
+    if (ctx->HasOutput("DDOut") &&
+        (ctx->HasInput("DDX") || (ctx->HasInput("DDY")))) {
       ctx->ShareDim("DOut", "DDOut");
     }
     if (ctx->HasOutput("DX") && ctx->HasInput("DDY")) {
@@ -271,9 +278,9 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
     auto ddw = OutputGrad(framework::GradVarName("Y"));
     std::vector<std::string> empty_str = {};
 
-    retv->SetOutput("DDOut", (ddx.empty())
-                                 ? empty_str
-                                 : InputGrad(framework::GradVarName("Out")));
+    if (!ddx.empty() || !ddw.empty()) {
+      retv->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+    }
     retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
     retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
 
