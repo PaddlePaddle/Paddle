@@ -270,7 +270,7 @@ Examples:
         import paddle.fluid as fluid
         import numpy as np
 
-        inputs = fluid.layers.data(name="x", shape = [1], dtype='float32')
+        inputs = fluid.data(name="x", shape = [None, 1], dtype='float32')
         output = fluid.layers.%s(inputs)
 
         exe = fluid.Executor(fluid.CPUPlace())
