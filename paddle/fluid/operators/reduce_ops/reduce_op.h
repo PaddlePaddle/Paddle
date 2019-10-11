@@ -171,6 +171,12 @@ class ReduceOp : public framework::OperatorWithKernel {
                       "dimensions = %d, X's shape = [%s].",
                       x_rank, x_dims);
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    PADDLE_ENFORCE_GT(
+        dims.size(), 0,
+        "ShapeError: The input dim dimensions of Reduce "
+        "shoud be greater than 0. But received the dim dimesions of Reduce "
+        " = %d",
+        dims.size());
 
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
