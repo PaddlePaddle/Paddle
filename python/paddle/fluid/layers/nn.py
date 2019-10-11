@@ -358,7 +358,7 @@ def fc(input,
     if convert_dtype(dtype) in ['float16']:
         warnings.warn(
             "The data type of 'input' in fc only support float16 in GPU now.")
-    if convert_dtype(dtype) not in ['float16, float32', 'float64']:
+    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in fc must be float16, float32 or float64, but received %s."
             % (convert_dtype(dtype)))
