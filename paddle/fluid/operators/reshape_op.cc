@@ -367,7 +367,7 @@ class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *dd_x = ctx.Input<framework::Tensor>("DDX");
-    auto *dd_out = ctx.Output<framework::LoDTensor>("DDOut");
+    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
 
     auto out_dims = dd_out->dims();
 
@@ -447,7 +447,6 @@ class Reshape2DoubleGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
 
     auto ddx = OutputGrad(framework::GradVarName("X"));
-    std::vector<std::string> empty_str = {};
 
     grad_op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(Attrs());
@@ -514,8 +513,8 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("DDX")->type(), ctx.device_context());
+    return framework::OpKernelType(ctx.Input<framework::Tensor>("DDX")->type(),
+                                   ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
