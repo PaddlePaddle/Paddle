@@ -3220,12 +3220,15 @@ def sequence_slice(input, offset, length, name=None):
           should be equal. The **offset** should start from 0.
 
     Args:
-        input(Variable): The input Variable which consists of the complete
-                         sequences.
-        offset(Variable): The offset to slice each sequence.
-        length(Variable): The length of each subsequence.
-        name(str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+        input(Variable): LoDTensor, The input Variable which consists of the complete
+                         sequences.The data type is float32 or float64.
+        offset(Variable): LoDTensor, The offset to slice each sequence.The data
+                         type is int32 or int64.
+        length(Variable): LoDTensor, The length of each subsequence.The data
+                         type is int32 or int64.
+        name(str|None): The default value is None.  Normally there is no need
+                        for user to set this property.  For more information,
+                        please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output subsequences.
@@ -3236,7 +3239,7 @@ def sequence_slice(input, offset, length, name=None):
 
              import paddle.fluid as fluid
              import numpy as np
-             seqs = fluid.layers.data(name='x', shape=[10, 5],
+             seqs = fluid.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
@@ -13935,8 +13938,10 @@ def sigmoid_cross_entropy_with_logits(x,
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
-        ignore_index(&{ignore_index}): ${ignore_index_comment}
-        name(basestring|None): Name of the output.
+        ignore_index(int): ${ignore_index_comment}
+        name(str|None): The default value is None.  Normally there is
+            no need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name`
         normalize(bool): If true, divide the output by the number of
             targets != ignore_index.
 
@@ -13947,9 +13952,9 @@ def sigmoid_cross_entropy_with_logits(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[10], dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='data', shape=[10], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=input,
@@ -16544,7 +16549,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = dict()
+    attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
         attrs = {'shape': shape}
     else:
