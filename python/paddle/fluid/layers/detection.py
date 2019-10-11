@@ -1127,14 +1127,14 @@ def detection_map(detect_res,
         overlap_threshold: ${overlap_threshold_comment}
         evaluate_difficult: ${evaluate_difficult_comment}
         has_state: ${has_state_comment}
-        input_states: If not None, It contains 3 elements:
-            1. pos_count ${pos_count_comment}.
-            2. true_pos ${true_pos_comment}.
-            3. false_pos ${false_pos_comment}.
-        out_states: If not None, it contains 3 elements.
-            1. accum_pos_count ${accum_pos_count_comment}.
-            2. accum_true_pos ${accum_true_pos_comment}.
-            3. accum_false_pos ${accum_false_pos_comment}.
+        input_states: (tuple|None) If not None, It contains 3 elements:
+            (1) pos_count ${pos_count_comment}.
+            (2) true_pos ${true_pos_comment}.
+            (3) false_pos ${false_pos_comment}.
+        out_states: (tuple|None) If not None, it contains 3 elements.
+            (1) accum_pos_count ${accum_pos_count_comment}.
+            (2) accum_true_pos ${accum_true_pos_comment}.
+            (3) accum_false_pos ${accum_false_pos_comment}.
         ap_version: ${ap_type_comment}
 
     Returns:
@@ -1146,15 +1146,13 @@ def detection_map(detect_res,
 
             import paddle.fluid as fluid
             from fluid.layers import detection
-            detect_res = fluid.layers.data(
+            detect_res = fluid.data(
                 name='detect_res',
                 shape=[10, 6],
-                append_batch_size=False,
                 dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='label',
                 shape=[10, 6],
-                append_batch_size=False,
                 dtype='float32')
 
             map_out = detection.detection_map(detect_res, label, 21)
@@ -1446,22 +1444,28 @@ def ssd_loss(location,
         location (Variable): The location predictions are a 3D Tensor with
             shape [N, Np, 4], N is the batch size, Np is total number of
             predictions for each instance. 4 is the number of coordinate values,
-            the layout is [xmin, ymin, xmax, ymax].
+            the layout is [xmin, ymin, xmax, ymax].The data type is float32 or
+            float64.
         confidence (Variable): The confidence predictions are a 3D Tensor
             with shape [N, Np, C], N and Np are the same as they are in
-            `location`, C is the class number.
+            `location`, C is the class number.The data type is float32 or
+            float64.
         gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
-            bboxes of mini-batch input.
+            bboxes of mini-batch input.The data type is float32 or float64.
         gt_label (Variable): The ground-truth labels are a 2D LoDTensor
-            with shape [Ng, 1].
+            with shape [Ng, 1].Ng is the total number of ground-truth bboxes of
+            mini-batch input, 1 is the number of class. The data type is float32
+            or float64.
         prior_box (Variable): The prior boxes are a 2D Tensor with shape [Np, 4].
+            Np and 4 are the same as they are in `location`. The data type is
+            float32 or float64.
         prior_box_var (Variable): The variance of prior boxes are a 2D Tensor
-            with shape [Np, 4].
+            with shape [Np, 4]. Np and 4 are the same as they are in `prior_box`
         background_label (int): The index of background label, 0 by default.
         overlap_threshold (float): If match_type is 'per_prediction', use
-            `overlap_threshold` to determine the extra matching bboxes when
-             finding matched boxes. 0.5 by default.
+            'overlap_threshold' to determine the extra matching bboxes when finding \
+            matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
             boxes, used only when mining_type is 'max_negative', 3.0 by default.
         neg_overlap (float): The negative overlap upper bound for the unmatched
@@ -1479,32 +1483,34 @@ def ssd_loss(location,
             mining_type is 'hard_example'.
 
     Returns:
-        The weighted sum of the localization loss and confidence loss, with \
-        shape [N * Np, 1], N and Np are the same as they are in `location`.
+        Variable(Tensor):  The weighted sum of the localization loss and confidence loss, \
+        with shape [N * Np, 1], N and Np are the same as they are in
+        `location`.The data type is float32 or float64.
 
     Raises:
         ValueError: If mining_type is 'hard_example', now only support mining \
         type of `max_negative`.
 
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> pb = fluid.layers.data(
-        >>>                   name='prior_box',
-        >>>                   shape=[10, 4],
-        >>>                   append_batch_size=False,
-        >>>                   dtype='float32')
-        >>> pbv = fluid.layers.data(
-        >>>                   name='prior_box_var',
-        >>>                   shape=[10, 4],
-        >>>                   append_batch_size=False,
-        >>>                   dtype='float32')
-        >>> loc = fluid.layers.data(name='target_box', shape=[10, 4], dtype='float32')
-        >>> scores = fluid.layers.data(name='scores', shape=[10, 21], dtype='float32')
-        >>> gt_box = fluid.layers.data(
-        >>>         name='gt_box', shape=[4], lod_level=1, dtype='float32')
-        >>> gt_label = fluid.layers.data(
-        >>>         name='gt_label', shape=[1], lod_level=1, dtype='float32')
-        >>> loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            pb = fluid.data(
+                           name='prior_box',
+                           shape=[10, 4],
+                           dtype='float32')
+            pbv = fluid.data(
+                           name='prior_box_var',
+                           shape=[10, 4],
+                           dtype='float32')
+            loc = fluid.data(name='target_box', shape=[10, 4], dtype='float32')
+            scores = fluid.data(name='scores', shape=[10, 21], dtype='float32')
+            gt_box = fluid.data(
+                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
+            gt_label = fluid.data(
+                 name='gt_label', shape=[1], lod_level=1, dtype='float32')
+            loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
     """
 
     helper = LayerHelper('ssd_loss', **locals())
