@@ -150,6 +150,19 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+def _var_base_to_np(var_base):
+    """
+    convert VarBase tp numpy
+    
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
+
+    """
+    var = var_base._copy_to(core.CPUPlace(), True)
+    return np.array(var.value().get_tensor())
+
+
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -491,6 +504,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  need_check_feed=False,
+                 belong_to_optimizer=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -499,6 +513,8 @@ class Variable(object):
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
+        self.belong_to_optimizer = belong_to_optimizer
 
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
@@ -700,15 +716,25 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray))
-        if list(value.shape) != list(self.shape):
-            raise ValueError(
-                "The shape of the new value must be the same as that of the original Variable."
-            )
-        self_tensor = self._ivar.value().get_tensor()
+        assert isinstance(value, (Variable, np.ndarray, core.VarBase)), \
+                "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+
+        value_np = value
         if isinstance(value, Variable):
-            value = value._ivar.value().get_tensor().__array__()
-        self_tensor.set(value, _current_expected_place())
+            value_np = value.numpy()
+        elif isinstance(value, core.VarBase):
+            value_np = _var_base_to_np(value)
+        self_tensor = self._ivar.value().get_tensor()
+
+        self_tensor_np = np.array(self_tensor)
+
+        assert self_tensor_np.shape == value_np.shape,  \
+                                      "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self._ivar.name, self_tensor_np.shape, value_np.shape)
+
+        assert self_tensor_np.dtype == value_np.dtype,  \
+                                      "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self._ivar.name, self_tensor_np.dtype, value_np.dtype)
+
+        self_tensor.set(value_np, _current_expected_place())
 
     @dygraph_only
     def backward(self, backward_strategy=None):
@@ -4289,15 +4315,20 @@ class Parameter(Variable):
     """
 
     def __init__(self, block, shape, dtype, **kwargs):
-        if shape is None or dtype is None:
-            raise ValueError("Parameter must set shape and dtype")
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
         if len(shape) == 0:
-            raise ValueError("Parameter shape cannot be empty")
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
-                raise ValueError("Parameter shape should not be related with "
-                                 "batch-size")
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
 
         Variable.__init__(
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
