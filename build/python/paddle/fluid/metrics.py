@@ -86,7 +86,7 @@ class MetricBase(object):
 
     def __init__(self, name):
         """
-        The constructor of the metric class.
+        The constructor of the metric class in paddle.fluid.metrics.
 
         Args:
             name(str): The name of metric instance. such as, "accuracy".
@@ -811,8 +811,6 @@ class DetectionMAP(object):
     1. calculate the true positive and false positive according to the input
        of detection and labels.
     2. calculate mAP value, support two versions: '11 point' and 'integral'.
-       11point: the 11-point interpolated average precision.
-       integral: the natural integral of the precision-recall curve.
 
     Please get more information from the following articles:
 
@@ -821,18 +819,15 @@ class DetectionMAP(object):
       https://arxiv.org/abs/1512.02325
 
     Args:
-        input (Variable): LoDTensor, The detection results, which is a LoDTensor with shape
+        input (Variable): The detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
-            The data type is float32 or float64.
-        gt_label (Variable): LoDTensor, The ground truth label index, which is a LoDTensor
-            with shape [N, 1].The data type is float32 or float64.
-        gt_box (Variable): LoDTensor, The ground truth bounding box (bbox), which is a
+        gt_label (Variable): The ground truth label index, which is a LoDTensor
+            with shape [N, 1].
+        gt_box (Variable): The ground truth bounding box (bbox), which is a
             LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
-            The data type is float32 or float64.
-        gt_difficult (Variable|None): LoDTensor, Whether this ground truth is a difficult
+        gt_difficult (Variable|None): Whether this ground truth is a difficult
             bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
-            it means all the ground truth labels are not difficult bbox.The
-            data type is int.
+            it means all the ground truth labels are not difficult bbox.
         class_num (int): The class number.
         background_label (int): The index of background label, the background
             label will be ignored. If set to -1, then all categories will be
@@ -842,44 +837,47 @@ class DetectionMAP(object):
         evaluate_difficult (bool): Whether to consider difficult ground truth
             for evaluation, True by default. This argument does not work when
             gt_difficult is None.
-        ap_version (str): The average precision calculation ways, it must be
+        ap_version (string): The average precision calculation ways, it must be
             'integral' or '11point'. Please check
             https://sanchom.wordpress.com/tag/average-precision/ for details.
+            - 11point: the 11-point interpolated average precision.
+            - integral: the natural integral of the precision-recall curve.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
 
-            batch_size = None # can be any size
+            batch_size = -1 # can be any size
             image_boxs_num = 10
             bounding_bboxes_num = 21
 
-            pb = fluid.data(name='prior_box', shape=[image_boxs_num, 4],
-                       dtype='float32')
+            pb = layers.data(name='prior_box', shape=[image_boxs_num, 4],
+                append_batch_size=False, dtype='float32')
 
-            pbv = fluid.data(name='prior_box_var', shape=[image_boxs_num, 4],
-                         dtype='float32')
+            pbv = layers.data(name='prior_box_var', shape=[image_boxs_num, 4],
+                append_batch_size=False, dtype='float32')
 
-            loc = fluid.data(name='target_box', shape=[batch_size, bounding_bboxes_num, 4],
-                        dtype='float32')
+            loc = layers.data(name='target_box', shape=[batch_size, bounding_bboxes_num, 4],
+                append_batch_size=False, dtype='float32')
 
-            scores = fluid.data(name='scores', shape=[batch_size, bounding_bboxes_num, image_boxs_num],
-                            dtype='float32')
+            scores = layers.data(name='scores', shape=[batch_size, bounding_bboxes_num, image_boxs_num],
+                append_batch_size=False, dtype='float32')
 
             nmsed_outs = fluid.layers.detection_output(scores=scores,
                 loc=loc, prior_box=pb, prior_box_var=pbv)
 
-            gt_box = fluid.data(name="gt_box", shape=[batch_size, 4], dtype="float32")
-            gt_label = fluid.data(name="gt_label", shape=[batch_size, 1], dtype="float32")
-            difficult = fluid.data(name="difficult", shape=[batch_size, 1], dtype="float32")
+            gt_box = fluid.layers.data(name="gt_box", shape=[batch_size, 4], dtype="float32")
+            gt_label = fluid.layers.data(name="gt_label", shape=[batch_size, 1], dtype="float32")
+            difficult = fluid.layers.data(name="difficult", shape=[batch_size, 1], dtype="float32")
 
             exe = fluid.Executor(fluid.CUDAPlace(0))
             map_evaluator = fluid.metrics.DetectionMAP(nmsed_outs, gt_label, gt_box, difficult, class_num = 3)
 
             cur_map, accum_map = map_evaluator.get_map_var()
 
-
+ 
     """
 
     def __init__(self,
