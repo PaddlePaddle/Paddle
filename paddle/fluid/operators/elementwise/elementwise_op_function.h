@@ -71,7 +71,12 @@ inline void get_mid_dims(const framework::DDim &x_dims,
         // only support single y_dims[i] = 1 now.
         PADDLE_ENFORCE_EQ(*mid_flag, 0,
                           "Broadcast support y_dims with single 1.");
-        PADDLE_ENFORCE_EQ(y_dims[i], 1, "Broadcast dimension mismatch.");
+        PADDLE_ENFORCE_EQ(y_dims[i], 1,
+                          "ShapeError: broadcast dimension mismatch. Operands "
+                          "could not be broadcast together with the shape of "
+                          "X = [%s] and the shape of Y = [%s]. Received [%d] "
+                          "in X is not equal to [%d] in Y",
+                          x_dims, y_dims, x_dims[i + axis], y_dims[i]);
         // m*n*k m*1*k
         for (int j = 0; j < i; ++j) {
           (*pre) *= y_dims[j];
@@ -823,8 +828,13 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
       x, y, z, ctx.template device_context<DeviceContext>(), func);
   auto x_dims = x->dims();
   auto y_dims_untrimed = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
-                    "Rank of first input must >= rank of second input.");
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), y_dims_untrimed.size(),
+      "ShapeError: the dimension of input X must greater than or equal to "
+      "the one of input Y. But received: the shape of input X = [%s], the "
+      "dimension of input X = %d, the shape of input Y = [%s], the dimension "
+      "of of input Y = %d",
+      x_dims, x_dims.size(), y_dims_untrimed, y_dims_untrimed.size());
   if (x_dims == y_dims_untrimed) {
     functor.Run();
     return;
