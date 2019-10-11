@@ -1216,10 +1216,10 @@ def dynamic_gru(input,
                 origin_mode=False):
     """
     **Note: The input type of this must be LoDTensor. If the input type to be
-    processed is Tensor, use :ref:`api_fluid_layers_StaticRNN` **
+    processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
 
     This operator is used to perform the calculations for a single layer of
-    Gated Recurrent Unit（GRU）on full sequences step by step. The calculations
+    Gated Recurrent Unit (GRU) on full sequences step by step. The calculations
     in one time step support these two modes:
 
     If ``origin_mode`` is True, then the formula used is from paper
@@ -2104,7 +2104,7 @@ def chunk_eval(input,
         label (Variable): A Tensor or LoDTensor representing the ground-truth labels.
             It shoud have the same shape, lod and data type as ``input`` .
         chunk_scheme (str): Indicate the tagging schemes used here. The value must
-            be IOB，IOE，IOBES or plain.
+            be IOB, IOE, IOBES or plain.
         num_chunk_types (int): The number of chunk types.
         excluded_chunk_types (list, optional): Indicate the chunk types shouldn't
             be taken into account. It should be a list of chunk type ids(integer).
@@ -5699,8 +5699,8 @@ def beam_search(pre_ids,
             thoes of ``ids`` . The data type should be float32.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
-        level(int): ** It can be ignored and mustn't change
-            currently. ** The 2 level lod used in this operator has the following
+        level(int): **It can be ignored and mustn't change currently.**
+            The 2 level lod used in this operator has the following
             meaning: The first level describes how many beams each sample has,
             which would change to 0 when beams of the sample all end (batch reduce);
             The second level describes how many times each beam is selected.
@@ -5872,7 +5872,7 @@ def lstm_unit(x_t,
               bias_attr=None,
               name=None):
     """
-    Long-Short Term Memory（LSTM）RNN cell. This operator performs LSTM calculations for
+    Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
     one time step, whose implementation is based on calculations described in `RECURRENT
     NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
 
@@ -5881,11 +5881,15 @@ def lstm_unit(x_t,
     
     .. math::
 
-        i_{t} &= \sigma \left ( W_{x_{i}}x_{t}+W_{h_{i}}h_{t-1}+b_{i} \right ) \\
-        f_{t} &= \sigma \left ( W_{x_{f}}x_{t}+W_{h_{f}}h_{t-1}+b_{f}+forget\_bias \right ) \\
-        c_{t} &= f_{t}c_{t-1}+i_{t}tanh\left ( W_{x_{c}}x_{t} +W_{h_{c}}h_{t-1}+b_{c}\right ) \\
-        o_{t} &= \sigma \left ( W_{x_{o}}x_{t}+W_{h_{o}}h_{t-1}+b_{o} \right ) \\
-        h_{t} &= o_{t}tanh \left ( c_{t} \right )
+        i_{t} & = \sigma(W_{x_{i}}x_{t} + W_{h_{i}}h_{t-1} + b_{i})
+
+        f_{t} & = \sigma(W_{x_{f}}x_{t} + W_{h_{f}}h_{t-1} + b_{f} + forget\\_bias)
+
+        c_{t} & = f_{t}c_{t-1} + i_{t} tanh (W_{x_{c}}x_{t} + W_{h_{c}}h_{t-1} + b_{c})
+
+        o_{t} & = \sigma(W_{x_{o}}x_{t} + W_{h_{o}}h_{t-1} + b_{o})
+
+        h_{t} & = o_{t} tanh (c_{t})
 
     :math:`x_{t}` stands for ``x_t`` , corresponding to the input of current time step;
     :math:`h_{t-1}` and :math:`c_{t-1}` correspond to ``hidden_t_prev`` and ``cell_t_prev`` ,

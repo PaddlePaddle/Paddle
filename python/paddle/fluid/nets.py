@@ -370,9 +370,12 @@ def scaled_dot_product_attention(queries,
     The formula is as follows:
 
     .. math::
-        MultiHead(Q, K, V ) & = Concat(head_1, ..., head_h)\\
-        where \  head_i & = Attention(QW_i^Q , KW_i^K , VW_i^V )\\
-        Attention(Q, K, V) & = softmax(\frac{QK^\mathrm{T}}{\sqrt{d_k}})V\\
+
+        MultiHead(Q, K, V ) & = Concat(head_1, ..., head_h)
+
+        where \  head_i & = Attention(QW_i^Q , KW_i^K , VW_i^V )
+
+        Attention(Q, K, V) & = softmax (\\frac{QK^\mathrm{T}}{\sqrt{d_k}}) V
 
     For more details, please refer to `Attention Is All You Need
     <https://arxiv.org/pdf/1706.03762.pdf>`_ .
