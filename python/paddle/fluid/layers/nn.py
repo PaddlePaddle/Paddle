@@ -5639,8 +5639,7 @@ def sequence_unpad(x, length, name=None):
                          For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length 
-                  parameter and it has the same data type with input.
+        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
 
     Examples:
         .. code-block:: python
