@@ -42,6 +42,9 @@ def global_scope():
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
+    Returns:
+        Scope: The global/default scope instance.
+
     Examples:
         .. code-block:: python
 
@@ -50,9 +53,6 @@ def global_scope():
 
           fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
           numpy.array(fluid.global_scope().find_var("data").get_tensor())
-
-    Returns:
-        Scope: The global/default scope instance.
     """
     return g_scope
 
