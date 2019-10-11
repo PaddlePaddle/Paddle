@@ -15866,7 +15866,7 @@ def pixel_shuffle(x, upscale_factor):
                 fetch_list=[output],
                 return_numpy=True)
  
- 	    print(output.shape)
+ 	    # print(output.shape)
 	    # (2L, 1L, 12L, 12L)
 
 	    # imperative mode
