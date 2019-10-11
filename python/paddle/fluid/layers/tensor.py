@@ -669,7 +669,7 @@ def reverse(x, axis):
     """
     **reverse**
 
-    The OP reverses the tensor :attr:`x` along the given :attr:`axise`.
+    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
     Parameters:
         x (Variable): A tensor to be reversed, its data type supports int32, int64 and float64.
