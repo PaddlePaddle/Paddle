@@ -123,8 +123,7 @@ class Layer(core.Layer):
         """Returns a list of all Parameters from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from
-            sublayers. Default: True
+            include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from sublayers. Default: True
 
         Returns:
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
@@ -140,7 +139,7 @@ class Layer(core.Layer):
         """Returns a list of sub layers.
 
         Parameters:
-            include_sublayers: Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers.
+            include_sublayers(bool, optional): Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers. Default: True
 
         Returns:
             list of Layer : a list of sub layers.
