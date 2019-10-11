@@ -110,21 +110,24 @@ class WeightDecayRegularizer(object):
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    """Implements the L2 Weight Decay Regularization
+    """ 
+    Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
-    Small values of L2 can help prevent over fitting the training data.
+    In the implementation, the formula of L2 Weight Decay Regularization is as follows:
 
     .. math::
 
         L2WeightDecay = reg\_coeff * parameter
 
     Args:
-        regularization_coeff(float): regularization coeff
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
@@ -182,21 +185,24 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
-    """Implements the L1 Weight Decay Regularization
-
-    L1 regularization encourages sparsity.
-
+    """
+    Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
+    
+    In the implementation, the formula of L1 Weight Decay Regularization is as follows:
+	
     .. math::
 
         L1WeightDecay = reg\_coeff * sign(parameter)
 
     Args:
-        regularization_coeff(float): regularization coeff
-
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0.
+	
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):

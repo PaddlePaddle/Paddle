@@ -88,7 +88,8 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Weight",
              "The input weight tensor of spectral_norm operator, "
              "This can be a 2-D, 3-D, 4-D, 5-D tensor which is the "
-             "weights of fc, conv1d, conv2d, conv3d layer.");
+             "weights of fc, conv1d, conv2d, conv3d layer. "
+             "The data type is float32 or float64.");
     AddInput("U",
              "The weight_u tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [H, 1],"
@@ -123,7 +124,9 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<float>("eps",
                    "epsilon for numerical stability in "
-                   "calculating norms")
+                   "calculating norms, it will be added to "
+                   "the denominator to aviod divide zero. "
+                   "Default 1e-12.")
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
