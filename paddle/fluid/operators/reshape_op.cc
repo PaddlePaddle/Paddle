@@ -272,31 +272,6 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReshapeDoubleGradOp : public framework::OperatorWithKernel {
- public:
-  ReshapeDoubleGradOp(const std::string &type,
-                      const framework::VariableNameMap &inputs,
-                      const framework::VariableNameMap &outputs,
-                      const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shouldn't be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("DOut"), true,
-                      "Input(Out@GRAD) shouldn't be null.");
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
-    }
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
-  }
-};
-
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -535,8 +510,6 @@ REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
                   ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
                   ops::ReshapeGradInplaceInToOut);
-REGISTER_OPERATOR(reshape_grad_grad, ops::ReshapeDoubleGradOp,
-                  ops::ReshapeDoubleGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
@@ -545,13 +518,6 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
-
-REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad_grad, float,
-                               ops::ReshapeDoubleGradKernel, double,
-                               ops::ReshapeDoubleGradKernel, int,
-                               ops::ReshapeDoubleGradKernel, int64_t,
-                               ops::ReshapeDoubleGradKernel);
-
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker, ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
@@ -582,13 +548,6 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                 ops::ReshapeGradKernel, int64_t,
                                 ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel);
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape_grad_grad, float,
-                                ops::ReshapeDoubleGradKernel, double,
-                                ops::ReshapeDoubleGradKernel, int,
-                                ops::ReshapeDoubleGradKernel, int64_t,
-                                ops::ReshapeDoubleGradKernel, plat::float16,
-                                ops::ReshapeDoubleGradKernel);
-
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                 ops::ReshapeKernel, int, ops::ReshapeKernel,
                                 int64_t, ops::ReshapeKernel, plat::float16,
