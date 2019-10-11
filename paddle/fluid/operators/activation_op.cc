@@ -361,9 +361,14 @@ $$out = \tanh^{-1}(x)$$
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of LeakyRelu operator");
-    AddOutput("Out", "Output of LeakyRelu operator");
-    AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
+    AddInput("X",
+             "A LoDTensor or Tensor representing preactivation values. Must be "
+             "one of the following types: float32, float64.");
+    AddOutput(
+        "Out",
+        "A LoDTensor or Tensor with the same type and size as that of x.");
+    AddAttr<float>("alpha", "Slope of the activation function at x < 0.")
+        .SetDefault(0.02f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
@@ -374,7 +379,7 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
-$out = \max(x, \alpha * x)$
+$$out = \max(x, \alpha * x)$$
 
 )DOC");
   }
