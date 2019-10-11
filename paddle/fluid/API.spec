@@ -320,7 +320,7 @@ paddle.fluid.layers.create_global_var (ArgSpec(args=['shape', 'value', 'dtype', 
 paddle.fluid.layers.cast (ArgSpec(args=['x', 'dtype'], varargs=None, keywords=None, defaults=None), ('document', '1e44a534cf7d26ab230aa9f5e4e0525a'))
 paddle.fluid.layers.tensor_array_to_tensor (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(1, None)), ('document', '764c095ba4562ae740f979e970152d6e'))
 paddle.fluid.layers.concat (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(0, None)), ('document', 'b3f30feb5dec8f110d7393ffeb30dbd9'))
-paddle.fluid.layers.sums (ArgSpec(args=['input', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '53f48d51c177f56c4a27a803439a9530'))
+paddle.fluid.layers.sums (ArgSpec(args=['input', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '191164436efbc1b7bccc4190a88e7de2'))
 paddle.fluid.layers.assign (ArgSpec(args=['input', 'output'], varargs=None, keywords=None, defaults=(None,)), ('document', '8bd94aef4e123986d9a8c29f67b5532b'))
 paddle.fluid.layers.fill_constant_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'value', 'input_dim_idx', 'output_dim_idx'], varargs=None, keywords=None, defaults=(0, 0)), ('document', '37a288e4400f6d5510e982827461c11b'))
 paddle.fluid.layers.fill_constant (ArgSpec(args=['shape', 'dtype', 'value', 'force_cpu', 'out'], varargs=None, keywords=None, defaults=(False, None)), ('document', '66e1e468666dd47e5b2715226cebeac0'))
