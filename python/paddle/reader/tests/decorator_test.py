@@ -147,34 +147,6 @@ class TestXmap(unittest.TestCase):
                             self.assertEqual(e, mapper(idx))
 
 
-class TestPipeReader(unittest.TestCase):
-    def test_pipe_reader(self):
-        def example_reader(myfiles):
-            for f in myfiles:
-                pr = paddle.reader.PipeReader("cat %s" % f, bufsize=128)
-                for l in pr.get_line():
-                    yield l
-
-        import tempfile
-
-        records = [str(i) for i in range(5)]
-        temp = tempfile.NamedTemporaryFile()
-        try:
-            with open(temp.name, 'w') as f:
-                for r in records:
-                    f.write('%s\n' % r)
-
-            result = []
-            for r in example_reader([temp.name]):
-                result.append(r)
-
-            for idx, e in enumerate(records):
-                self.assertEqual(e, result[idx])
-        finally:
-            # delete the temporary file
-            temp.close()
-
-
 class TestMultiProcessReader(unittest.TestCase):
     def setup(self):
         self.samples = []
@@ -201,22 +173,6 @@ class TestMultiProcessReader(unittest.TestCase):
     def test_distributed_batch_reader(self):
         self.reader_test(use_pipe=False)
         self.reader_test(use_pipe=True)
-
-
-class TestFakeReader(unittest.TestCase):
-    def test_fake_reader(self):
-        def reader():
-            for i in range(10):
-                yield i
-
-        data_num = 100
-        fake_reader = paddle.reader.Fake()(reader, data_num)
-        for _ in range(10):
-            i = 0
-            for data in fake_reader():
-                self.assertEqual(data, 0)
-                i += 1
-            self.assertEqual(i, data_num)
 
 
 if __name__ == '__main__':
