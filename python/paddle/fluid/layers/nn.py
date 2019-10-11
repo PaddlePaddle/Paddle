@@ -6532,12 +6532,16 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         for name, val in var_names.items():
             if not isinstance(val, Variable):
                 raise TypeError(
-                    "The type of %s in matmul_op must be Variable, but received %s.\n"
+                    "The type of %s in matmul must be Variable, but received %s.\n"
                     % (name, (type(val))))
+            if convert_dtype(val.dtype) in ['float16']:
+                warnings.warn(
+                    "The data type of %s in matmul only support float16 in GPU now.",
+                    name)
             if convert_dtype(
                     val.dtype) not in ['float16', 'float32', 'float64']:
                 raise TypeError(
-                    "The data type of %s in matmul_op must be float16, float32 or float64, but received %s.\n"
+                    "The data type of %s in matmul must be float16 or float32 or float64, but received %s.\n"
                     % (name, (convert_dtype(val.dtype))))
 
         x_shape = list(x.shape)
@@ -13844,16 +13848,16 @@ def mean(x, name=None):
 
     if not isinstance(x, Variable):
         raise TypeError(
-            "The type of 'x' in mean_op must be Variable, but received %s.\n" %
+            "The type of 'x' in mean must be Variable, but received %s.\n" %
             (type(x)))
 
     if convert_dtype(x.dtype) in ['float16']:
         warnings.warn(
-            "The data type of 'x' in softmax only support float16 in GPU now.")
+            "The data type of 'x' in mean only support float16 in GPU now.")
 
     if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'x' in mean_op must be float16 or float32 or float64, but received %s.\n"
+            "The data type of 'x' in mean must be float16 or float32 or float64, but received %s.\n"
             % (convert_dtype(x.dtype)))
 
     if name is None:
