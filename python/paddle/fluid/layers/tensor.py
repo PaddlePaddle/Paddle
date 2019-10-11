@@ -66,24 +66,26 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    Create a parameter. The parameter is a learnable variable, which can have
+    This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
 
     NOTE: this is a very low-level API. This API is useful when you create
     operator by your self. instead of using layers.
 
-    Args:
-        shape(list[int]): shape of the parameter
-        dtype(string): element type of the parameter
-        attr(ParamAttr): attributes of the parameter
-        is_bias(bool): This can affect which default initializer is chosen
+    Parameters:
+        shape (list of int): Shape of the parameter
+        dtype (str): Data type of the parameter
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        attr (ParamAttr, optional): Attributes of the parameter
+        is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
                        Xavier() will be used.
-        default_initializer(Initializer): initializer for the parameter
+        default_initializer (Initializer, optional): Initializer for the parameter
 
     Returns:
-        the created parameter.
+        The created parameter.
 
     Examples:
         .. code-block:: python
@@ -106,23 +108,22 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a new tensor variable with value in the global block(block 0).
+    This function creates a new tensor variable with value in the global block(block 0).
 
-    Args:
-        shape(list[int]): shape of the variable
-        value(float): the value of the variable. The new created
+    Parameters:
+        shape (list of int): Shape of the variable
+        value (float): The value of the variable. The new created
                       variable will be filled with it.
-        dtype(string): data type of the variable
-        persistable(bool): if this variable is persistable.
+        dtype (str): Data type of the variable
+        persistable (bool, optional): If this variable is persistable.
                            Default: False
-        force_cpu(bool): force this variable to be on CPU.
+        force_cpu (bool, optional): Force this variable to be on CPU.
                          Default: False
-        name(str|None): The name of the variable. If set to None the variable
-                        name will be generated automatically.
-                        Default: None
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Variable: the created Variable
+        Variable: The created Variable
 
     Examples:
         .. code-block:: python
