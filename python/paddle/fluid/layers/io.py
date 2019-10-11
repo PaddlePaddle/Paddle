@@ -549,7 +549,7 @@ def py_reader(capacity,
     should be called when each pass begins, while the :code:`reset()` method 
     should be called when the pass ends and :code:`fluid.core.EOFException` raises.
 
-    Notice:
+    Note:
        :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
        refer to :ref:`api_fluid_Program` for more details.
        
