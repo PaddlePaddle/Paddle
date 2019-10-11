@@ -276,7 +276,7 @@ def sums(input, out=None):
 
     .. code-block:: text
 
-        # 输入：
+        # Input Tensors
         x0.shape = [2, 3]
         x0.data = [[1., 2., 3.],
                    [4., 5., 6.]]
@@ -287,7 +287,7 @@ def sums(input, out=None):
         x2.data = [[100., 200., 300.],
                    [400., 500., 600.]]
 
-        # 输出
+        # Output Tensor
         out.shape = [2, 3]
         out.data = [[111., 222., 333.],
                     [444., 555., 666.]]
